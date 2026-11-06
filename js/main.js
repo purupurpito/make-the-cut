@@ -4,8 +4,8 @@
  * reparto de eventos a los módulos, calidad adaptativa (con histéresis)
  * y escenas de depuración deterministas:
  *   ?debug=menu|serve|rally|spike|block|point|ace|setpoint|switch|over|end|
- *          mobile|pause|tutorial|controls|settings
- *   &seed=N  &live=1  &quality=low|medium|high  &maxdt=0.25  &fps=1
+ *          mobile|pause|tutorial|controls|settings|toss|jumpserve|dive
+ *   &seed=N  &live=1  &quality=low|medium|high  &maxdt=0.25  &fps=1  &clock=1 (serve/hud con regla de 8 s)
  *   &diff=easy|normal|hard  &panel=tut|ctl|set  &step=N (tutorial)
  * Ver CONTRACT.md para el orden por frame y las interfaces.
  * ===================================================================== */
@@ -26,6 +26,9 @@
   // dt máximo por frame (s). ?maxdt=0.25 solo para pruebas en entornos lentos (Chrome headless + SwiftShader)
   var MAX_DT = Q.maxdt ? Math.min(0.5, Math.max(0.02, +Q.maxdt || 0.05)) : 0.05;
   var MAX_STEPS = Math.ceil(MAX_DT / STEP) + 2;
+
+  // 4 niveles (Fácil, Normal, Difícil, Experto); VB.DIFF_ORDER lo da sim.js
+  var DIFFS = (VB.DIFF_ORDER && VB.DIFF_ORDER.slice()) || ['easy', 'normal', 'hard', 'expert'];
 
   // ---------- Contexto compartido ----------
   var isTouch = false;
@@ -60,13 +63,21 @@
     // camSens: 0.5..1.5 (rapidez de seguimiento de la cámara; la lee camera.js si quiere)
     // sfxVol/musicVol: 0..1 (los lee audio.js en onSettings)
     var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, camSens: 1, sfxVol: 1, musicVol: 0.75 };
-    try { var raw = localStorage.getItem('voley3d.settings'); if (raw) { var o = JSON.parse(raw); for (var k in o) if (k in s && typeof o[k] === typeof s[k]) s[k] = o[k]; } } catch (e) { }
-    if (['easy', 'normal', 'hard'].indexOf(s.difficulty) < 0) s.difficulty = 'normal';
+    var saved = false;
+    try { var raw = localStorage.getItem('voley3d.settings'); if (raw) { saved = true; var o = JSON.parse(raw); for (var k in o) if (k in s && typeof o[k] === typeof s[k]) s[k] = o[k]; } } catch (e) { }
+    // Jugador nuevo (sin ajustes guardados ni partidos jugados): empieza en Fácil. Normal contra un novato
+    // es un muro (simtest: un bot novato gana ~30 % de los puntos en Normal y ~54 % en Fácil).
+    // Las escenas de depuración siguen en Normal para que las capturas sean comparables.
+    if (!saved && !Q.debug) {
+      var rec = null; try { rec = JSON.parse(localStorage.getItem('voley3d.record') || 'null'); } catch (e) { }
+      if (!rec || !(rec.played > 0)) s.difficulty = 'easy';
+    }
+    if (DIFFS.indexOf(s.difficulty) < 0) s.difficulty = 'normal';
     if (['auto', 'high', 'medium', 'low'].indexOf(s.quality) < 0) s.quality = 'auto';
     s.camSens = Math.max(0.5, Math.min(1.5, +s.camSens || 1));
     s.sfxVol = Math.max(0, Math.min(1, isFinite(+s.sfxVol) ? +s.sfxVol : 1));
     s.musicVol = Math.max(0, Math.min(1, isFinite(+s.musicVol) ? +s.musicVol : 0.75));
-    if (Q.diff && ['easy', 'normal', 'hard'].indexOf(Q.diff) >= 0) s.difficulty = Q.diff;
+    if (Q.diff && DIFFS.indexOf(Q.diff) >= 0) s.difficulty = Q.diff;
     return s;
   }
   function saveSettings() { try { localStorage.setItem('voley3d.settings', JSON.stringify(ctx.settings)); } catch (e) { } }
@@ -78,6 +89,9 @@
     low:    { level: 'low',    rank: 0, pixelRatio: 1,   shadowSize: 512,  shadows: true, antialias: false, crowdDensity: 0.4 }
   };
   var BY_RANK = [QUALITY.low, QUALITY.medium, QUALITY.high];
+  // Último recurso por debajo de "baja": escala de render (<1 = menos píxeles que la pantalla).
+  // La calidad adaptativa la baja a 0,8 y luego a 0,67 si en "baja" sigue por debajo de 40 fps.
+  var renderScale = 1;
   function autoTop() { return isMobile ? QUALITY.medium : QUALITY.high; }
   function pickQuality() {
     var want = Q.quality || ctx.settings.quality;
@@ -87,10 +101,11 @@
 
   // Módulos en orden de inicialización/actualización
   var MODS = ['Arena', 'FX', 'Players', 'CameraRig', 'Input', 'Audio', 'UI'];
-  function call(name, fn) {
+  // Aridad fija (hasta 3 argumentos): sin `arguments`/slice, que asignaban un array en cada una de las
+  // ~15 llamadas por frame (CONTRACT §2: nada de basura por frame en el bucle).
+  function call(name, fn, a, b, c) {
     var m = VB[name]; if (!m || typeof m[fn] !== 'function') return;
-    var args = Array.prototype.slice.call(arguments, 2);
-    try { return m[fn].apply(m, args); }
+    try { return m[fn](a, b, c); }
     catch (e) { reportError(name + '.' + fn, e); }
   }
   var errCount = {};
@@ -103,9 +118,20 @@
     ctx.quality = q;
     var dpr = window.devicePixelRatio || 1;
     var cap = isMobile ? Math.min(1.5, q.pixelRatio) : Math.min(2, q.pixelRatio);
-    ctx.renderer.setPixelRatio(Math.min(dpr, cap));
-    ctx.renderer.shadowMap.enabled = q.shadows;
-    ctx.renderer.shadowMap.needsUpdate = true;
+    if (q.rank > 0) renderScale = 1;
+    ctx.renderer.setPixelRatio(Math.min(dpr, cap) * renderScale);
+    // sombras: PCF suave en media/alta; PCF simple (menos muestras por píxel) en baja
+    var st = q.rank === 0 ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap, sm = ctx.renderer.shadowMap;
+    if (sm.type !== st) {
+      sm.type = st;
+      // el tipo de sombra forma parte del programa de cada material: hay que recompilarlos
+      if (ctx.scene) ctx.scene.traverse(function (o) {
+        var m = o.material; if (!m) return;
+        if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) m[i].needsUpdate = true; } else m.needsUpdate = true;
+      });
+    }
+    sm.enabled = q.shadows;
+    sm.needsUpdate = true;
     resize(true);
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'setQuality', q);
   }
@@ -113,26 +139,77 @@
   // ---------- Renderer / escena ----------
   function initRenderer() {
     var q = pickQuality();
-    var r = new THREE.WebGLRenderer({ antialias: q.antialias && !isMobile, powerPreference: 'high-performance', alpha: false, stencil: false });
+    // MSAA del lienzo: sobra si arena va a pintar con su post-proceso (escritorio, calidad alta, WebGL2):
+    // la escena va a un destino propio con MSAA x4 y al lienzo solo llega un rectángulo a pantalla completa.
+    // Un búfer multimuestreo del tamaño de la pantalla costaría memoria y ancho de banda sin usarse.
+    // MSAA del lienzo (no se puede cambiar después de crearlo):
+    //  - móvil: SIEMPRE. En GPUs de teselas el MSAA x4 se resuelve en la memoria del chip y sale casi gratis;
+    //    el tope de pixelRatio 1,5 se mantiene. Antes el móvil iba sin AA (líneas, red y antenas en escalera).
+    //  - escritorio: también, salvo calidad FIJA "baja". Con el post-proceso de arena (alta + WebGL2) la escena
+    //    va a su destino MSAA propio y el lienzo solo recibe un rectángulo (coste: una resolución por frame);
+    //    pero si la calidad adaptativa baja de alta a media el post se apaga y, sin MSAA en el lienzo,
+    //    la imagen se quedaba sin AA ninguno.
+    var fixedLow = (Q.quality || ctx.settings.quality) === 'low';
+    var aa = isMobile ? true : !fixedLow;
+    ctx.canvasAA = aa; // lo puede leer arena
+    var r = new THREE.WebGLRenderer({ antialias: aa, powerPreference: 'high-performance', alpha: false, stencil: false });
+    // three r149 consulta el estado de enlace de cada programa nuevo (bloquea el hilo hasta que el driver
+    // termina de compilar): fuera de depuración no hace falta y quita picos de 50-150 ms al estrenar materiales
+    if (!ctx.debug && r.debug) r.debug.checkShaderErrors = false;
+    // renderer.info acumula TODO el frame (sombras, escena, bloom): main.js lo pone a cero al empezar cada render
+    r.info.autoReset = false;
     r.outputEncoding = THREE.sRGBEncoding;
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.0;
     r.shadowMap.enabled = true;
-    r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.shadowMap.type = q.rank === 0 ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     r.setClearColor(0x0b1220, 1);
     ctx.canvas = r.domElement; ctx.canvas.id = 'gl';
-    ctx.canvas.setAttribute('aria-label', 'Pista de voley en 3D');
-    ctx.canvas.addEventListener('webglcontextlost', function (e) { e.preventDefault(); showFatal('Se ha perdido el contexto gráfico. Recarga la página para seguir jugando.'); }, false);
+    ctx.canvas.setAttribute('aria-label', 'Pista de vóley en 3D');
+    ctx.canvas.addEventListener('webglcontextlost', onContextLost, false);
+    ctx.canvas.addEventListener('webglcontextrestored', onContextRestored, false);
     ctx.container.appendChild(ctx.canvas);
     ctx.renderer = r;
     ctx.scene = new THREE.Scene();
+    // la escena está en el origen y no se mueve: three no recalcula su matriz cada frame (arena congeló las suyas)
+    ctx.scene.matrixAutoUpdate = false; ctx.scene.updateMatrix();
     ctx.camera = new THREE.PerspectiveCamera(52, 16 / 9, 0.1, 200);
     ctx.camera.position.set(16, 6, 0); ctx.camera.lookAt(0, 1, 0);
     ctx.scene.add(ctx.camera);
     ctx.quality = q;
   }
 
+  // ---------- Pérdida del contexto WebGL ----------
+  // En el móvil es habitual al pasar la app a segundo plano. Se pausa el partido, se avisa sin bloquear y,
+  // cuando vuelve el contexto, three.js vuelve a subir texturas y geometrías: solo hay que rehacer sombras
+  // y destinos del post-proceso (applyQuality). Si en 6 s no ha vuelto, mensaje definitivo.
+  var glLost = false, glLostTimer = 0;
+  function onContextLost(e) {
+    e.preventDefault(); // imprescindible para que el navegador intente restaurarlo
+    glLost = true;
+    if (ctx.state === 'playing') ctx.actions.pause();
+    showFatal('Recuperando los gráficos…', true);
+    clearTimeout(glLostTimer);
+    glLostTimer = setTimeout(function () { if (glLost) showFatal('Se ha perdido el contexto gráfico. Recarga la página para seguir jugando.'); }, 6000);
+  }
+  function onContextRestored() {
+    glLost = false; clearTimeout(glLostTimer);
+    var d = document.getElementById('fatal'); if (d) { d.hidden = true; d.classList.remove('soft'); }
+    try {
+      ctx.renderer.shadowMap.needsUpdate = true;
+      applyQuality(ctx.quality);
+      call('Arena', 'onContextRestored', ctx); call('FX', 'onContextRestored', ctx);
+    } catch (err) { reportError('contextRestored', err); }
+    last = 0; meter.t = 0; meter.n = 0; // el parón no cuenta como fps bajos
+    console.info('[VB] contexto WebGL restaurado');
+  }
+
+  // Solo se lee el tamaño del contenedor cuando algo lo ha cambiado (evento resize / ResizeObserver):
+  // leer clientWidth cada frame podía forzar recálculo de estilos y maquetación con las animaciones del HUD.
+  var sizeDirty = true;
   function resize(force) {
+    if (!force && !sizeDirty) return;
+    sizeDirty = false;
     var w = ctx.container.clientWidth || window.innerWidth || 1, h = ctx.container.clientHeight || window.innerHeight || 1;
     if (!force && w === ctx.width && h === ctx.height) return;
     ctx.width = w; ctx.height = h;
@@ -151,6 +228,8 @@
     Sim.drainEvents(g, pendingEvents); // eventos iniciales (newMatch, serveReady...) se entregan en el primer frame
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onGameStart', g);
   }
+  // primer partido (sin récord guardado): la CPU saca más suave (notes/sim.md, createGame({rookie}))
+  function isRookie() { try { var r = JSON.parse(localStorage.getItem('voley3d.record') || 'null'); return !(r && r.played > 0); } catch (e) { return false; } }
   function seed() { return Q.seed ? (+Q.seed | 0) : ((Date.now() ^ (Math.random() * 1e9)) & 0x7fffffff); }
 
   ctx.actions.startMatch = function (opts) {
@@ -158,8 +237,11 @@
     call('Audio', 'unlock');
     tryFullscreen();
     ctx.frozen = false;
-    setGame(Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot }));
+    setGame(Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: isRookie() }));
     setState('playing');
+    // los jugadores se reconstruyen en onGameStart: sube sus texturas/programas antes del primer frame
+    // (sin pintar: aquí no hay telón que tape los objetos ocultos)
+    if (Q.prewarm !== '0') prewarm('t');
   };
   ctx.actions.toMenu = function () {
     ctx.frozen = false;
@@ -196,6 +278,7 @@
 
   // ---------- Entrada -> mundo ----------
   var simIn = { move: [0, 0], hit: false, jump: false, switchPlayer: false };
+  ctx.simMove = simIn.move; // entrada de MUNDO del frame (FX la lee para la retícula de apuntado en vivo)
   var edge = { hit: false, jump: false, switchPlayer: false };
   function buildInput(it) {
     // it: intenciones crudas de VB.Input.poll (pantalla: mx derecha+, my hacia la red+)
@@ -208,7 +291,7 @@
 
   // ---------- Bucle ----------
   var pendingEvents = [], frameEvents = [], EMPTY = [];
-  var acc = 0, last = 0;
+  var acc = 0, last = 0, fxAge = 0, idleT = 0;
   var bootEl = document.getElementById('boot'), fpsEl = document.getElementById('fps');
   var meter = { t: 0, n: 0 }, fpsShowT = 0;
 
@@ -218,7 +301,7 @@
     var raw = last ? Math.max(0, (now - last) / 1000) : 1 / 60;
     var realDt = Math.min(MAX_DT, raw); last = now;
     ctx.realDt = realDt; ctx.time += realDt; ctx.frame++;
-    resize(false);
+    if (sizeDirty) resize(false);
 
     var it = VB.Input && VB.Input.poll ? safePoll(realDt) : null;
     if (it) {
@@ -263,20 +346,33 @@
     ctx.gameDt = gdt;
 
     var ev = frameEvents.length ? frameEvents : EMPTY;
+    // escena tapada (pausa, pantalla final ya visible): se pinta a ritmo reducido. Durante la celebración
+    // previa a la pantalla final (ctx.endHold, ui.js) se pinta a ritmo completo.
+    if ((ctx.state === 'over' && g && g.finished && !ctx.endHold) || ctx.state === 'paused') idleT += realDt; else idleT = 0;
     call('Arena', 'update', g, gdt, ev);
     call('Players', 'update', g, gdt, ev);
     call('FX', 'update', g, gdt, ev);
+    // escenas congeladas: los efectos del evento que dispara la escena se envejecen lo que avanzó la sim desde él
+    // (si no, el destello/onda se queda congelado a plena intensidad en la captura)
+    if (fxAge > 0 && ctx.frozen && ev !== EMPTY) { call('FX', 'update', g, fxAge, EMPTY); fxAge = 0; }
     call('CameraRig', 'update', g, realDt, ev);
     call('Audio', 'handle', ev, g);
     call('Audio', 'update', g, realDt);
     call('UI', 'update', g, gdt, ev);
 
-    try {
-      if (ctx.renderFn) ctx.renderFn(ctx); else ctx.renderer.render(ctx.scene, ctx.camera);
-    } catch (e) { reportError('render', e); }
+    // En pausa (y en la pantalla final ya asentada) la escena queda detrás de un velo desenfocado: se pinta
+    // a 1/3 de frecuencia para ahorrar batería y calor en el móvil. Entrada y UI siguen a ritmo completo.
+    // Móvil en vertical: el aviso "Gira el móvil" tapa toda la pantalla, no se pinta nada (batería).
+    var throttled = ctx.portraitBlock || (idleT > 0.6 && (ctx.frame % 3) !== 0);
+    if (!throttled && !glLost) {
+      ctx.renderer.info.reset();
+      try {
+        if (ctx.renderFn) ctx.renderFn(ctx); else ctx.renderer.render(ctx.scene, ctx.camera);
+      } catch (e) { reportError('render', e); }
+    }
 
     if (ctx.frame === 3 && bootEl) { if (ctx.debug) bootEl.hidden = true; else bootEl.classList.add('gone'); }
-    measure(raw);
+    if (idleT > 0.6 || ctx.portraitBlock) { meter.t = 0; meter.n = 0; } else measure(raw); // sin medir mientras se pinta a ritmo reducido
   }
   function isGameOver(e) { return e.type === 'gameOver'; }
   function safePoll(dt) { try { return VB.Input.poll(dt); } catch (e) { reportError('Input.poll', e); return null; } }
@@ -292,7 +388,7 @@
     if (fpsEl && Q.fps === '1' && (fpsShowT += raw) > 0.5) {
       fpsShowT = 0; var info = ctx.renderer.info.render;
       fpsEl.hidden = false;
-      fpsEl.textContent = Math.round(ctx.fps) + ' fps · ' + ctx.quality.level + ' · pr ' + ctx.renderer.getPixelRatio().toFixed(2) + '\n' + info.calls + ' draw · ' + Math.round(info.triangles / 1000) + 'k tri';
+      fpsEl.textContent = Math.round(ctx.fps) + ' fps · ' + ctx.quality.level + ' · pr ' + ctx.renderer.getPixelRatio().toFixed(2) + (renderScale < 1 ? ' (×' + renderScale + ')' : '') + '\n' + info.calls + ' draw · ' + Math.round(info.triangles / 1000) + 'k tri';
     }
     if (meter.t < 2) return;
     ctx.fps = meter.n / meter.t; meter.t = 0; meter.n = 0;
@@ -301,7 +397,15 @@
   function adaptQuality(fps) {
     if (ctx.debug || Q.quality || ctx.settings.quality !== 'auto' || ctx.state === 'paused' || ctx.portraitBlock) { aq.low = aq.high = 0; return; }
     var r = ctx.quality.rank;
-    if (fps < 45) {
+    if (r === 0 && fps < 40 && renderScale > 0.7) {
+      // ya en "baja": último recurso, menos píxeles (×0,8 y luego ×0,67)
+      aq.high = 0;
+      if (++aq.low >= 2) {
+        aq.low = 0; aq.downs++; aq.lastDown = ctx.time;
+        renderScale = renderScale > 0.9 ? 0.8 : 0.67;
+        applyQuality(ctx.quality); console.info('[VB] escala de render ->', renderScale, Math.round(fps) + ' fps');
+      }
+    } else if (fps < 45) {
       aq.high = 0;
       if (r > 0 && ++aq.low >= 2) {
         aq.low = 0; aq.downs++; aq.lastDown = ctx.time;
@@ -321,17 +425,24 @@
   // &live=1 sigue corriendo después; &seed=N cambia la semilla.
   function debugScene(name) {
     var sd = Q.seed ? +Q.seed : 7, diff = ctx.settings.difficulty;
-    function mk(auto) { return Sim.createGame({ demo: false, autopilot: !!auto, seed: sd, difficulty: diff }); }
+    function mk(auto, noClock) { return Sim.createGame({ demo: false, autopilot: !!auto, seed: sd, difficulty: diff, serveClock: noClock ? false : undefined }); }
+    var preLand = null; // último 'land' ANTERIOR al momento buscado (escenas de punto: la marca del bote)
     function advanceUntil(g, pred, extra, maxSec, onAll) {
       var evs = [], keep = [], trig = -1, t = 0, max = (maxSec || 600) / STEP;
       for (var i = 0; i < max; i++) {
         Sim.step(g, STEP, null); evs.length = 0; Sim.drainEvents(g, evs);
         if (onAll && evs.length) onAll(evs, g);
-        for (var j = 0; j < evs.length; j++) { if (trig < 0 && pred(evs[j], g)) trig = i; if (trig >= 0) keep.push(evs[j]); }
+        for (var j = 0; j < evs.length; j++) {
+          var ej = evs[j];
+          if (trig < 0 && ej.type === 'serveReady') preLand = null;
+          if (trig < 0 && pred(ej, g)) trig = i;
+          if (trig >= 0) keep.push(ej); else if (ej.type === 'land') preLand = ej;
+        }
         if (trig < 0 && evs.length === 0 && pred(null, g)) trig = i;
         if (trig >= 0) { t += STEP; if (t >= extra) break; }
       }
       if (trig < 0) console.warn('[VB] escena ' + name + ': no se alcanzó el momento buscado');
+      fxAge = Math.min(0.6, extra || 0); // edad de los efectos del evento que dispara la escena (ver frame)
       return keep;
     }
     function uiIngest(evs, g) { call('UI', 'ingest', evs, g); }
@@ -340,7 +451,19 @@
       case 'menu': case 'tutorial': case 'controls': case 'settings':
         ctx.actions.toMenu(); return;
       case 'serve': case 'hud':
-        g = mk(false); break;
+        // sin la regla de 8 s: las capturas largas no acaban en falta de saque (&clock=1 la activa)
+        g = mk(false, Q.clock !== '1'); break;
+      case 'toss': case 'jumpserve': // saque humano con el balón en el aire (flotante / en salto)
+        g = mk(false, true);
+        for (var si = 0; si < 240 && !g.serveAuth; si++) Sim.step(g, STEP, null);
+        Sim.step(g, STEP, { move: [0, 0], hit: name === 'toss', jump: name === 'jumpserve', switchPlayer: false });
+        for (var sj = 0; sj < (name === 'toss' ? 50 : 145); sj++) Sim.step(g, STEP, null);
+        Sim.drainEvents(g, keep);
+        // sin 'newMatch': su banner "Set 1" taparía la escena congelada para siempre
+        keep = keep.filter(function (e) { return e.type !== 'newMatch'; }); break;
+      case 'dive': // plancha (autopilot; con seed=7 ocurre a los ~45 s de juego)
+        g = mk(true);
+        keep = advanceUntil(g, function (e) { return e && e.type === 'dive'; }, 0.12, 1200); break;
       case 'pause':
         g = mk(true);
         keep = advanceUntil(g, function (e) { return e && e.type === 'point'; }, 2.4, 600, uiIngest);
@@ -356,10 +479,17 @@
         keep = advanceUntil(g, function (e) { return e && e.type === 'block'; }, 0.06); break;
       case 'point':
         g = mk(true);
-        keep = advanceUntil(g, function (e) { return e && e.type === 'point'; }, 0.5, 600, uiIngest); break;
+        keep = advanceUntil(g, function (e) { return e && e.type === 'point'; }, 0.5, 600, uiIngest);
+        if (preLand) keep.unshift(preLand); // el bote que decide el punto: FX/arena pintan su marca como en vivo
+        break;
       case 'ace':
+        // ace NUESTRO (banner dorado). Con el autopilot en Normal casi no hay aces: la escena va en Fácil
+        // salvo &diff= (seed 7 → ace a los ~96 s). sim >= v2 lo marca en point.how (con roce de recepción, rallyHits > 0).
+        if (!Q.diff) diff = 'easy';
         g = mk(true);
-        keep = advanceUntil(g, function (e) { return e && e.type === 'point' && !e.sideout && !e.rallyHits && e.reason === 'in'; }, 0.5, 1200, uiIngest); break;
+        keep = advanceUntil(g, function (e) { return e && e.type === 'point' && e.team === 0 && (e.how ? e.how === 'ace' : (!e.sideout && !e.rallyHits && e.reason === 'in')); }, 0.5, 1500, uiIngest);
+        if (preLand) keep.unshift(preLand);
+        break;
       case 'setpoint':
         g = mk(true);
         keep = advanceUntil(g, function (e) { return e && e.type === 'serveReady' && (e.setPoint >= 0 || e.matchPoint >= 0); }, 0.5, 1500, uiIngest); break;
@@ -381,6 +511,36 @@
     console.info('[VB] escena de depuración: ' + name + ' (modo ' + g.mode + ', ' + g.score.join('-') + ', sets ' + g.sets.join('-') + ')');
   }
 
+  // ---------- Precalentado de GPU ----------
+  // Compila todos los programas y sube todas las texturas ANTES de que se vean, para que el primer remate,
+  // la primera onda o el primer confeti no paren el juego 50-150 ms. Con render=true (solo tras el telón de
+  // carga) también pinta un frame con los objetos ocultos visibles (pools de FX, confeti, etc.): así se
+  // compilan los programas de sombra y de post-proceso que compile() no cubre. Después los vuelve a ocultar.
+  function prewarm(mode) {
+    var render = mode === 'r', compile = mode === 'r' || mode === 'c';
+    var r = ctx.renderer, sc = ctx.scene; if (!r || !sc || glLost) return;
+    var t0 = performance.now(), hid = [], tex = [], seen = typeof Set === 'function' ? new Set() : null;
+    function addTex(t) { if (t && t.isTexture && !t.isRenderTargetTexture && t.image && seen && !seen.has(t)) { seen.add(t); tex.push(t); } }
+    function scanMat(m) {
+      for (var k in m) { var v = m[k]; if (v && v.isTexture) addTex(v); }
+      var u = m.uniforms; if (u) for (var n in u) { var x = u[n] && u[n].value; if (x && x.isTexture) addTex(x); }
+    }
+    try {
+      sc.traverse(function (o) {
+        if (render && !o.visible) { hid.push(o); o.visible = true; }
+        var m = o.material; if (!m) return;
+        if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) scanMat(m[i]); } else scanMat(m);
+      });
+      for (var j = 0; j < tex.length; j++) { try { r.initTexture(tex[j]); } catch (e) { } }
+      if (compile) r.compile(sc, ctx.camera);
+      if (render) { r.info.reset(); if (ctx.renderFn) ctx.renderFn(ctx); else r.render(sc, ctx.camera); }
+    } catch (e) { reportError('prewarm', e); }
+    for (var h = 0; h < hid.length; h++) hid[h].visible = false;
+    ctx.prewarmMs = Math.round(performance.now() - t0);
+    if (ctx.debug) console.info('[VB] precalentado: ' + (r.info.programs ? r.info.programs.length : '?') + ' programas, ' + tex.length + ' texturas, ' + Math.round(performance.now() - t0) + ' ms');
+  }
+  ctx.prewarm = prewarm;
+
   // ---------- Arranque ----------
   function boot() {
     if (!THREE) { showFatal('No se ha podido cargar el motor 3D. Revisa la conexión y recarga la página.'); return; }
@@ -395,15 +555,17 @@
     var unlock = function () { call('Audio', 'unlock'); };
     window.addEventListener('pointerdown', unlock, { passive: true });
     window.addEventListener('keydown', unlock);
-    window.addEventListener('resize', function () { resize(false); });
+    window.addEventListener('resize', function () { sizeDirty = true; });
+    try { if (window.ResizeObserver) new ResizeObserver(function () { sizeDirty = true; }).observe(ctx.container); } catch (e) { }
     document.addEventListener('visibilitychange', function () { if (document.hidden && ctx.state === 'playing' && !ctx.debug) ctx.actions.pause(); last = 0; });
     window.addEventListener('blur', function () { if (ctx.state === 'playing' && !ctx.debug) ctx.actions.pause(); });
     if (ctx.debug) debugScene(ctx.debug); else ctx.actions.toMenu();
+    if (Q.prewarm !== '0') prewarm(Q.prewarm || 't'); // tras el telón de carga (en depuración, el primer frame lo tapa)
     requestAnimationFrame(frame);
   }
-  function showFatal(msg) {
+  function showFatal(msg, soft) {
     var d = document.getElementById('fatal');
-    if (d) { d.innerHTML = '<b>Voley 3D</b><span></span>'; d.lastChild.textContent = msg; d.hidden = false; }
+    if (d) { d.innerHTML = '<b>Voley 3D</b><span></span>'; d.lastChild.textContent = msg; d.hidden = false; d.classList.toggle('soft', !!soft); }
     if (bootEl) bootEl.hidden = true;
   }
   VB.boot = boot;

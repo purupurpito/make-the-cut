@@ -3,9 +3,25 @@
 ## 1. What it is
 - 100 % procedural WebAudio, no files and no network. Every effect is **synthesised once in JS** (Float32Array) and played back
   as an `AudioBuffer`: each sound costs 1 source + 1 gain (+ optional panner, + optional reverb send). No live oscillators per hit.
-- Generation is **time-sliced**: a job queue runs about 6 ms per tick (`setTimeout` 12 ms) after the first `unlock()`, in priority
-  order (UI → whistle → touches → reverb → crowd → music), so the menu never stalls on a phone. Crowd beds start fading in
-  when they are ready (about 1-3 s). `VB.Audio.ready()` returns 0..1.
+- Generation is **time-sliced at sample level** (review 2 fix): every generator is a `function*` that yields every 512 samples
+  (16 k for cheap passes like normalize), so the budget is checked between steps of about 0.25 ms instead of between whole sounds.
+  The scheduler uses `requestIdleCallback` (idle time minus 1 ms of margin; when forced by timeout only 2 ms; timeout 60 ms in
+  menus, 250 ms in a match) and falls back to `setTimeout` at 3 ms per slice. Measured in real Chrome (1280x720, machine at
+  100 % CPU from other agents): p50 0.25 ms, p99 0.5 ms, p99.9 1.75 ms, worst slice 5 ms. Before the fix: one step reached 18.4 ms.
+- **Pre-synthesis without a gesture**: 1.2 s after `init()` the Float32 bank is synthesised in the menu's idle time (48 kHz assumed).
+  No AudioContext is created and nothing plays until `unlock()`. On the first gesture the arrays are copied into AudioBuffers
+  (one memcpy per step), so by the time the user clicks JUGAR the bank is usually complete and nothing is generated during the
+  first serve. A gesture earlier than 1.2 s starts generation at once. Order: UI → whistle → touches → reverb → crowd → music.
+- **Segmented reverb**: assigning `ConvolverNode.buffer` runs FFTs over the whole IR on the main thread (measured in Chrome:
+  about 60 ms with `normalize`, 25-35 ms without, for 1.8 s stereo). The IR is now split into 6 segments of 0.3 s, each in its own
+  ConvolverNode (`normalize=false`) behind a DelayNode set to its offset. The sum is the same convolution, and the convolver's
+  normalisation (RMS, -58 dB at 44.1 kHz) is baked into the IR. Verified with OfflineAudioContext against the old single
+  convolver: difference -101 dB (identical). One segment per step (3-4 ms on desktop), **never during a rally**
+  (`g.mode === 'rally'`). Audio-thread cost of 6 convolvers is about 2 % of a core. If the context is not 48 kHz the IR is
+  regenerated at the exact rate.
+- `VB.Audio.ready()` returns 0..1 (AudioBuffers built / total; 0 before the gesture). `stats.synth` = sounds already synthesised
+  (also before the gesture). Diagnostics: `stats.hist` (step histogram, 0.25 ms buckets), `stats.maxStepMs/maxStep`, `maxSliceMs`,
+  `slow` (first 12 steps > 1.5 ms), `startedAt/synthDoneAt/unlockAt/bankDoneAt/reverbAt` (performance.now).
 - The `AudioContext` is created **only** inside `unlock()` (a user gesture). Before that, every function is a silent no-op.
 - It loads in node without `window`/`AudioContext` (`root = window || globalThis`).
 
@@ -70,36 +86,8 @@ Contract (kept): `init(ctx)`, `unlock()`, `setMuted(b)`, `isMuted()`, `click()`,
 - `setQuality(q)` — `rank 0` → no reverb, 20 voices.
 - `play(name, gain?, x?, y?)` — any sound from the catalogue (see `VB.Audio.SOUNDS`), with optional position in sim coords.
 - `sting(name)` — `'setWin' | 'setLose' | 'matchWin' | 'matchLose'`.
-- Generation uses `requestIdleCallback` when available (gaps between frames), otherwise `setTimeout`; about 4-5 ms per slice.
+- Generation: see §1 (generators with yield, idle time, pre-synthesis before the gesture, segmented reverb).
 - `ready()` (0..1), `contextState()`, `stats` (`played`, `skipped`, `genMs`, `maxStepMs`), `synth(name, variant, sr)` and `synthRate(name, sr)` (pure generation, for tests).
-
-## 4. Requests to other owners
-
-### ui_main (index.html / js/ui.js / js/main.js)
-1. **Volume sliders** in Ajustes (optional but recommended). Persist two new settings fields and pass them through `setSetting`:
-   ```js
-   // main.js: defaults of ctx.settings
-   musicVol: 0.75, sfxVol: 1
-   // ui.js: on the range input (0..100)
-   ctx.actions.setSetting('sfxVol', +input.value / 100);   // effects + crowd
-   ctx.actions.setSetting('musicVol', +input.value / 100); // stings and UI
-   ```
-   `setSetting` already calls `Audio.onSettings(settings, k)`: nothing else is needed. Suggested labels: "Efectos" / "Música".
-2. **UI sounds**: `click()` already exists. Recommended additionally (all with guard):
-   ```js
-   // hover/focus on menu buttons (desktop only; on touch screens it does not apply)
-   btn.addEventListener('pointerenter', function () { if (VB.Audio && VB.Audio.hover) VB.Audio.hover(); });
-   // "Jugar" / start match button:
-   if (VB.Audio && VB.Audio.ui) VB.Audio.ui('start');   // instead of click() on that button
-   // "Volver"/"Menú" and closing panels:
-   if (VB.Audio && VB.Audio.ui) VB.Audio.ui('back');
-   ```
-3. Nothing in main.js needs to change: `unlock` on gesture, `handle`/`update` every frame, `setMuted` on M, and `onState`/`onSettings`/`setQuality` are already called with guard.
-   Note: on `visibilitychange`, audio suspends itself (it registers its own listener in `init`).
-
-### sim
-- Nothing required. The audio already uses the new fields/events (`toss`, `dive`, `netTouch`, `miss`, `hit.shot/power/grade`, `block.result`, `point.how`) with fallback if they are missing.
-- Suggestion for CONTRACT §4.3: document those events/fields (they are not in the contract table yet).
 
 ## 5. Verification (how I checked it)
 - Node: test harness with a simulated AudioContext (outside the repo; it can be copied to `tools/audiotest.js` if ui_main wants it):
@@ -109,3 +97,9 @@ Contract (kept): `init(ctx)`, `unlock()`, `setMuted(b)`, `isMuted()`, `click()`,
 - Headless Chrome with real WebAudio (`--autoplay-policy=no-user-gesture-required --mute-audio`): `running` context,
   sliced generation completes, every sound and sting plays, mute→`suspended`, unmute→`running`, no console errors.
 - WAV files for listening: `tools/out/audio/*.wav` (they are regenerated with the harness).
+
+## Aplicado (log)
+- 6-nov-2026 (Integrate, PC de casa): ui_main ya tenía los sliders Efectos/Música, Audio.hover y Audio.ui('start'|'back'). CONTRACT §4.3 documenta los
+  eventos/campos que usa el audio (toss, dive, netTouch, miss, hit.shot/power/grade, block.result, point.how). Nada pendiente.
+- 6-nov-2026 (integración tras Review 2): `hit.shot === 'body'` → golpe sordo ('free' a 0,5, pitch 0,7); `courtChange` → silbato corto tras el del punto;
+  `block.result 'touch'` cae en la rama de 'soft'.

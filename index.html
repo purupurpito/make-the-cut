@@ -29,6 +29,9 @@ body{height:100%;margin:0;background:var(--ink);color:var(--fg);font-family:var(
 #stage{position:absolute;inset:0}
 #stage canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
 [hidden]{display:none!important}
+/* precalentado del HUD tras el telón de carga (ui.js): se pinta casi transparente una vez para que el primer
+   frame del partido no pague el rasterizado del marcador (~100 ms medidos en Chrome/ANGLE) */
+.warm,.warm *{opacity:.01!important;pointer-events:none!important}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ---------- Botones base ---------- */
@@ -75,8 +78,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .sb-venue{display:flex;align-items:center;gap:6px;padding:0 10px 0 9px;background:#f7f2ea;color:#0b1220;border-radius:8px 0 0 0}
 .sb-venue svg{width:13px;height:13px}
 .sb-set{display:flex;align-items:center;padding:0 12px;background:var(--glass2);color:var(--gold);border-radius:0 8px 0 0;border:1px solid var(--line);border-left:0;border-bottom:0}
-.sb-body{background:linear-gradient(180deg,rgba(14,22,40,.94),rgba(8,13,24,.94));border:1px solid var(--line);border-radius:0 12px 12px 12px;overflow:hidden;min-width:236px;
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.sb-body{background:linear-gradient(180deg,rgba(14,22,40,.95),rgba(8,13,24,.95));border:1px solid var(--line);border-radius:0 12px 12px 12px;overflow:hidden;min-width:236px}
 .sb-row{position:relative;display:grid;grid-template-columns:7px 1fr 18px 30px 52px;align-items:center;gap:8px;height:40px;padding-right:12px}
 .sb-row+.sb-row{border-top:1px solid var(--line)}
 .sb-chip{align-self:stretch}
@@ -110,10 +112,10 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 #touchbar{position:absolute;left:50%;top:calc(14px + var(--st));transform:translateX(-50%);display:flex;align-items:center;gap:6px;
   font-family:var(--display);transition:opacity .25s,transform .35s var(--ease)}
 #touchbar.off{opacity:0;transform:translate(-50%,-10px)}
+#touchbar.dim:not(.off){opacity:.35}
 .tb-lbl{font:800 12px var(--display);letter-spacing:.24em;color:var(--muted);margin-right:4px;text-shadow:0 1px 6px rgba(0,0,0,.6)}
-.tb-seg{position:relative;display:flex;align-items:center;gap:7px;height:30px;padding:0 13px 0 6px;background:rgba(8,13,24,.78);border:1px solid var(--line);
-  font-weight:800;font-size:14px;letter-spacing:.12em;color:var(--dim);transform:skewX(-12deg);transition:all .25s var(--ease);
-  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.tb-seg{position:relative;display:flex;align-items:center;gap:7px;height:30px;padding:0 13px 0 6px;background:rgba(8,13,24,.86);border:1px solid var(--line);
+  font-weight:800;font-size:14px;letter-spacing:.12em;color:var(--dim);transform:skewX(-12deg);transition:all .25s var(--ease)}
 .tb-seg>*{transform:skewX(12deg)}
 .tb-seg i{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;background:rgba(255,255,255,.08);font-size:13px;color:var(--muted)}
 .tb-seg.done{color:var(--fg2);background:rgba(255,110,50,.28);border-color:rgba(255,140,70,.5)}
@@ -122,25 +124,40 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .tb-seg.next i{background:var(--gold);color:#1a1100;animation:nextPulse 1s ease-in-out infinite}
 @keyframes nextPulse{50%{transform:scale(1.15)}}
 
-/* Indicador del jugador controlado / aviso contextual */
-#prompt{position:absolute;left:50%;bottom:calc(26px + var(--sbm));transform:translateX(-50%);display:flex;align-items:center;gap:12px;
-  padding:9px 20px 9px 10px;border-radius:999px;background:rgba(8,13,24,.82);border:1px solid var(--line2);
-  font:900 italic 26px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;
-  box-shadow:0 10px 30px rgba(0,0,0,.4);transition:opacity .15s,transform .2s var(--ease)}
-#prompt.off{opacity:0;transform:translate(-50%,10px) scale(.95)}
-#prompt .key{font-size:19px}
-#prompt.hit{border-color:rgba(255,120,60,.8);box-shadow:0 0 0 2px rgba(255,100,40,.25),0 10px 34px rgba(255,90,40,.35)}
-#prompt.hit span{color:#ffd9c4}
-#prompt.jump{border-color:rgba(120,180,255,.9);box-shadow:0 0 0 2px rgba(80,150,255,.25),0 10px 34px rgba(60,130,255,.35)}
-#prompt.jump span{color:#d4e6ff}
-#prompt.go{animation:promptGo .5s ease-in-out infinite alternate}
-@keyframes promptGo{to{transform:translateX(-50%) scale(1.07)}}
-#coach{position:absolute;left:50%;bottom:calc(84px + var(--sbm));transform:translateX(-50%);max-width:min(640px,calc(100% - 32px));box-sizing:border-box;
-  padding:8px 16px;border-radius:12px;background:rgba(8,13,24,.70);border:1px solid var(--line);font:500 15px/1.35 var(--ui);color:var(--fg2);text-align:center;
-  text-shadow:0 1px 4px rgba(0,0,0,.5);transition:opacity .25s;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+/* Aviso contextual: pastilla compacta ANCLADA al jugador controlado (main/ui la colocan junto a su pecho,
+   nunca sobre los pies ni el aro amarillo). Sin ancla (jugador fuera de pantalla), abajo al centro. */
+#prompt{position:absolute;left:50%;bottom:calc(12px + var(--sbm));transform:translateX(-50%);pointer-events:none;z-index:2}
+#prompt.anch{left:0;top:0;bottom:auto;will-change:transform}
+.pr-in{position:relative;display:flex;align-items:center;gap:9px;height:38px;box-sizing:border-box;padding:0 15px 0 6px;border-radius:999px;
+  background:rgba(8,13,24,.86);border:1px solid var(--line2);overflow:hidden;
+  font:900 italic 20px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);transition:opacity .14s,transform .18s var(--ease);transform-origin:0 50%}
+#prompt.off .pr-in{opacity:0;transform:scale(.9)}
+#prompt .key{font-size:15px}
+#prompt.hit .pr-in{border-color:rgba(255,120,60,.8);box-shadow:0 0 0 2px rgba(255,100,40,.22),0 8px 26px rgba(255,90,40,.3)}
+#prompt.hit #promptText{color:#ffd9c4}
+#prompt.jump .pr-in{border-color:rgba(120,180,255,.9);box-shadow:0 0 0 2px rgba(80,150,255,.22),0 8px 26px rgba(60,130,255,.3)}
+#prompt.jump #promptText{color:#d4e6ff}
+#prompt.wait .pr-in{padding-left:15px;color:var(--fg2);border-color:rgba(255,255,255,.22)}
+#prompt.wait .key{display:none}
+#prompt.soon .pr-in{border-color:rgba(255,255,255,.28);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#prompt.soon #promptText{color:var(--fg2)}
+#prompt.go .pr-in{animation:promptGo .42s ease-in-out infinite alternate;background:rgba(40,16,6,.86)}
+#prompt.jump.go .pr-in{background:rgba(8,22,48,.88)}
+@keyframes promptGo{to{transform:scale(1.08)}}
+.pr-bar{position:absolute;left:10px;right:10px;bottom:3px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);display:none;overflow:hidden}
+.pr-bar b{display:block;height:100%;background:linear-gradient(90deg,#ffb238,#ff5a2c);transform-origin:0 50%;transform:scaleX(0)}
+#prompt.soon .pr-bar{display:block}
+/* Consejo para principiantes: franja alta bajo el contador de toques (antes iba abajo y tapaba pies y aro) */
+#coach{position:absolute;left:50%;top:calc(52px + var(--st));transform:translateX(-50%);max-width:min(640px,calc(100% - 560px));min-width:min(360px,calc(100% - 32px));box-sizing:border-box;
+  padding:6px 14px;border-radius:10px;background:rgba(8,13,24,.84);border:1px solid var(--line);font:500 14px/1.35 var(--ui);color:var(--fg2);text-align:center;
+  text-shadow:0 1px 4px rgba(0,0,0,.5);transition:opacity .25s,color .25s}
 #coach.off{opacity:0}
+/* atenuado con un aviso "¡ahora!" en marcha: baja el texto, la pastilla se queda (antes el texto quedaba sin fondo sobre el marcador colgado) */
+#coach.dim{color:rgba(223,230,239,.55)}
+#coach.dim b{color:rgba(255,210,63,.6)}
 #coach b{color:var(--gold);font-weight:700}
-#coach .key{font-size:13px;margin:0 2px}
+#coach .key{font-size:12px;margin:0 2px}
 
 /* Botones de HUD (escritorio) */
 .hud-btns{position:absolute;right:calc(16px + var(--sr));top:calc(14px + var(--st));display:flex;gap:8px;pointer-events:auto}
@@ -157,10 +174,20 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .bn-rib::after{content:"";position:absolute;left:12%;right:12%;top:0;height:2px;background:rgba(255,255,255,.55);transform:skewX(-14deg)}
 #bn1{position:relative;font-weight:900;font-style:italic;font-size:clamp(44px,8.4vw,108px);line-height:1;letter-spacing:.01em;text-transform:uppercase;
   color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.18),0 10px 34px rgba(0,0,0,.35);white-space:nowrap}
-#bn2{margin-top:10px;font-weight:700;font-size:clamp(16px,2.1vw,24px);letter-spacing:.05em;color:#eef3f9;text-shadow:0 2px 12px rgba(0,0,0,.75);text-align:center;padding:0 16px}
-#bn3{margin-top:10px;display:inline-block;padding:5px 14px;border-radius:8px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
-  font-weight:900;font-size:15px;letter-spacing:.18em;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+/* subtítulo y chip con fondo propio: sobre la grada, el suelo claro o la cinta LED se leían mal ("Sets 2¡VICTORIA!") */
+#bn2{margin:10px 16px 0;max-width:calc(100% - 32px);box-sizing:border-box;padding:4px 16px 5px;border-radius:9px;background:rgba(6,10,18,.74);box-shadow:0 6px 18px rgba(0,0,0,.28);
+  font-weight:700;font-size:clamp(18px,2.3vw,26px);letter-spacing:.05em;color:#f3f6fa;text-shadow:0 1px 3px rgba(0,0,0,.6);text-align:center}
+#bn3{margin-top:9px;display:inline-block;padding:6px 14px 6px 12px;border-radius:8px;background:rgba(8,13,24,.94);border:1px solid rgba(255,210,63,.7);color:var(--gold);
+  font-weight:900;font-size:15px;letter-spacing:.18em;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+#bn3::before{content:"\21C4";margin-right:8px;letter-spacing:0}
+#banner.long #bn1{font-size:clamp(36px,6.4vw,84px)}
 #banner.lose .bn-rib{--rib:rgba(40,110,255,.9)}
+/* Punto de set/partido al ir a sacar: versión compacta en la franja ALTA (sobre la grada), por encima de la red
+   y del sacador rival del fondo; el consejo se oculta mientras dura (ui.js). La antigua cinta tapaba red y sacador. */
+#banner.compact{top:calc(8px + var(--st))}
+#banner.compact .bn-rib{padding:3px clamp(26px,4vw,48px) 5px}
+#banner.compact #bn1{font-size:clamp(28px,3.9vw,50px)}
+#banner.compact #bn2{margin-top:5px;font-size:clamp(13px,1.4vw,17px)}
 #banner.gold .bn-rib{--rib:rgba(255,196,40,.95)}
 #banner.gold #bn1{color:#1c1300;text-shadow:0 2px 0 rgba(255,255,255,.35)}
 #banner.neutral .bn-rib{--rib:rgba(20,30,52,.92)}
@@ -173,17 +200,38 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 #banner.show #bn3{animation:fadeUp .4s .3s var(--spring) both}
 #banner.out{animation:bnOut .3s ease-in both}
 @keyframes ribIn{from{transform:skewX(-14deg) scaleX(0);opacity:.2}to{transform:skewX(-14deg) scaleX(1);opacity:1}}
-@keyframes txtIn{0%{opacity:0;transform:translateX(-40px) scale(1.12);letter-spacing:.18em;filter:blur(6px)}100%{opacity:1;transform:none;letter-spacing:.01em;filter:none}}
+/* sin filter:blur ni letter-spacing animados: costaban frames de 40-55 ms en cada banner (rasterizado + maquetación por frame) */
+@keyframes txtIn{0%{opacity:0;transform:translateX(-40px) scale(1.12)}60%{opacity:1}100%{opacity:1;transform:none}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes bnOut{to{opacity:0;transform:translateY(-14px) scale(.98)}}
 
 /* Aviso corto durante el peloteo */
-#callout{position:absolute;left:50%;top:calc(58px + var(--st));transform:translateX(-50%);pointer-events:none;z-index:4;
-  font:900 italic 30px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;padding:6px 22px;visibility:hidden;white-space:nowrap}
-#callout::before{content:"";position:absolute;inset:0;transform:skewX(-14deg);background:var(--glass2);border:1px solid var(--line2);z-index:-1}
-#callout.show{visibility:visible;animation:callIn .9s var(--ease) both}
+/* Aviso corto durante el peloteo: va DENTRO del marcador, justo debajo (franja izquierda, sobre la grada/banda).
+   Antes iba centrado arriba y tapaba la red, el bloqueador y el balón en pleno ataque. */
+#callout{position:relative;display:none;align-self:flex-start;margin:8px 0 0 4px;pointer-events:none;isolation:isolate;
+  font:900 italic 26px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;padding:6px 20px 7px 16px;white-space:nowrap;transform-origin:0 50%}
+#callout::before{content:"";position:absolute;inset:0;transform:skewX(-14deg);background:rgba(10,16,30,.94);border:1px solid var(--line2);border-left:4px solid currentColor;z-index:-1}
+#callout.show{display:block;animation:callIn .8s var(--ease) both}
 #callout.c0{color:#ffc8a8}#callout.c1{color:#bcd8ff}
-@keyframes callIn{0%{opacity:0;transform:translate(-50%,-8px) scale(.8)}15%{opacity:1;transform:translate(-50%,0) scale(1.06)}25%{transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0}}
+#callout.tip{font:700 18px/1.1 var(--display);letter-spacing:.06em;color:#ffe7a0}
+@keyframes callIn{0%{opacity:0;transform:translateX(-18px) scale(.9)}14%{opacity:1;transform:translateX(0) scale(1.04)}24%{transform:none}80%{opacity:1}100%{opacity:0}}
+.sb{display:flex;flex-direction:column;align-items:flex-start}
+.sb-top,.sb-body{align-self:stretch}
+
+/* Primeros toques guiados (primer partido): tarjeta centrada en la franja ALTA (donde va el consejo, que se oculta),
+   con cámara lenta. En la franja baja tapaba al jugador controlado, que la cámara encuadra abajo al centro. */
+#guide{position:absolute;left:50%;top:calc(50px + var(--st));transform:translateX(-50%);z-index:4;pointer-events:none;text-align:center;font-family:var(--display);visibility:hidden}
+#guide.show{visibility:visible;animation:guideIn .35s var(--spring) both}
+#guide.out{visibility:visible;animation:bnOut .3s ease-in both}
+#guide .gd-k{display:inline-block;padding:3px 12px;border-radius:6px 6px 0 0;background:var(--gold);color:#1a1100;font:900 13px var(--display);letter-spacing:.26em}
+#guide .gd-t{display:flex;align-items:center;gap:10px;padding:10px 20px;border-radius:12px;background:rgba(8,13,24,.92);border:2px solid var(--gold);
+  box-shadow:0 0 0 4px rgba(255,210,63,.18),0 14px 34px rgba(0,0,0,.45);font:800 italic 26px/1.1 var(--display);letter-spacing:.03em;color:#fff;white-space:nowrap}
+#guide .key{font-size:18px}
+@keyframes guideIn{from{opacity:0;transform:translate(-50%,-10px) scale(.92)}to{opacity:1;transform:translateX(-50%)}}
+/* Celebración antes de la pantalla final: aviso para saltarla */
+#skip{position:absolute;left:50%;bottom:calc(18px + var(--sbm));transform:translateX(-50%);z-index:5;pointer-events:none;padding:7px 16px;border-radius:999px;
+  background:rgba(8,13,24,.82);border:1px solid var(--line2);font:800 14px var(--display);letter-spacing:.2em;color:var(--fg2);text-transform:uppercase;animation:fadeUp .5s 1s var(--ease) both}
+#skip .key{font-size:12px;margin-right:6px}
 
 /* =====================================================================
    PANTALLAS
@@ -317,6 +365,16 @@ h2 span{color:var(--hot)}
 .end-rec b{color:var(--fg);font-weight:600}
 .end-rec .new{color:var(--gold);font-weight:700}
 .row-btn{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.row-btn button{padding:14px 20px}
+.st-r.tot{padding-bottom:7px;border-bottom:1px solid var(--line)}
+.st-r.tot .mid em{color:#fff}
+/* Primer partido: ¿tutorial o jugar ya? */
+#panel .sheet.first{max-width:560px}
+.first-lead{margin:0 0 16px;color:var(--fg2);font-size:16px;line-height:1.5}
+.first-opts{display:flex;flex-direction:column;gap:10px}
+.first-opts button{display:flex;justify-content:space-between;align-items:center;text-align:left;padding:14px 20px;font-size:22px}
+.first-opts button small{display:block;margin-top:4px;font:500 13.5px/1.2 var(--ui);letter-spacing:0;text-transform:none;opacity:.85}
+.first-opts .ic{font-size:18px;opacity:.75}
 
 /* Paneles: tutorial, controles, ajustes */
 #panel .sheet{max-width:760px;padding:26px 30px}
@@ -379,6 +437,8 @@ h2 span{color:var(--hot)}
 #rotate p{color:var(--muted);margin:0}
 #fatal{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;padding:24px;text-align:center;background:var(--ink);font-size:17px;line-height:1.5}
 #fatal b{font:900 italic 40px var(--display);text-transform:uppercase}
+#fatal.soft{background:rgba(7,11,20,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#fatal.soft span::after{content:"";display:block;width:120px;height:3px;margin:14px auto 0;border-radius:3px;background:linear-gradient(90deg,transparent,var(--hot),transparent);background-size:200% 100%;animation:sheen 1.2s linear infinite}
 #fps{position:absolute;right:calc(10px + var(--sr));bottom:calc(8px + var(--sbm));z-index:30;font:600 11px ui-monospace,monospace;color:#9fe0b0;background:rgba(0,0,0,.55);padding:4px 7px;border-radius:6px;pointer-events:none;white-space:pre}
 
 /* ---------- Responsive ---------- */
@@ -424,21 +484,64 @@ h2 span{color:var(--hot)}
   .stats{margin:10px 0 4px;gap:5px}
   .st-r b{font-size:19px}.st-r .bar{height:5px}.st-r .mid{gap:3px 4px}
   .end-rec{margin:8px 0 12px;font-size:12.5px}
-  #prompt{font-size:21px;bottom:calc(14px + var(--sbm))}
-  #coach{font-size:13px;bottom:calc(64px + var(--sbm))}
+  .pr-in{height:34px;font-size:18px}
+  #prompt .key{font-size:13px}
+  #coach{font-size:12.5px;top:calc(38px + var(--st));max-width:min(560px,calc(100% - 440px))}
   #touchbar{top:calc(8px + var(--st))}
+  #banner.compact #bn2{display:none} /* en apaisado bajo el subtítulo pisaba la cinta de la red; el chip ya lo dice */
+  /* en apaisado bajo, centrada tapaba la cabeza y el balón del sacador rival (la cámara lo encuadra en el centro):
+     a la derecha, junto al botón de pausa */
+  #banner.compact{left:auto;right:calc(64px + var(--sr));align-items:flex-end}
+  #banner.compact .bn-rib{padding:3px 30px 5px}
+  #banner.compact #bn1{font-size:26px}
   .tb-seg{height:24px;font-size:12px}
   .tb-lbl{display:none}
-  #callout{top:calc(42px + var(--st));font-size:24px}
+  #callout{font-size:22px;margin-top:6px}
+  #callout.tip{font-size:16px}
+  #guide{top:calc(36px + var(--st))}
+  #guide .gd-t{font-size:20px;padding:8px 16px}
+  #guide .key{font-size:15px}
+}
+/* Final en móvil apaisado: resultado y botones a la izquierda, estadísticas a la derecha (los botones siempre a la vista) */
+@media (max-height:560px) and (min-width:600px){
+  #end .sheet{max-width:820px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);column-gap:28px;align-items:start}
+  #end .sheet>*{grid-column:1}
+  #end .stats{grid-column:2;grid-row:1/span 6;align-self:center;margin:0}
+  #end .end-title{font-size:42px}
+  #end .end-score{margin-top:6px}
+  #end .es-t{font-size:18px}#end .es-t b{font-size:34px}#end .es-sep{font-size:28px}
+  #end .end-sets{margin:8px 0 2px;gap:6px}#end .end-sets span{font-size:15px;padding:4px 9px}
+  #end .end-rec{margin:6px 0 10px;gap:2px 12px}
+  #end .row-btn{gap:8px}
+  #end .row-btn button{padding:11px 14px;font-size:15px}
+  /* Pausa: marcador a la izquierda, opciones a la derecha (antes "Salir al menú" quedaba cortado a 844x390) */
+  #pause .sheet{max-width:720px;display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);column-gap:26px;align-items:center}
+  #pause .sheet>*{grid-column:1}
+  #pause .vlist{grid-column:2;grid-row:1/span 3;margin:0}
+}
+/* Ventanas estrechas de escritorio: el consejo se va a la derecha, bajo los botones de pausa/sonido (no pisa el marcador) */
+@media (max-width:1000px){
+  #coach{left:auto;right:calc(12px + var(--sr));transform:none;top:calc(62px + var(--st));min-width:0;max-width:calc(100% - 250px);text-align:right}
+}
+/* contador de toques en pantallas estrechas: solo el chip activo lleva texto (a 667x375 pisaba el marcador) */
+@media (max-width:760px){
+  .tb-seg span{display:none}
+  .tb-seg.next span{display:inline}
+  .tb-seg{padding:0 7px 0 5px;gap:5px}
+  .tb-seg.next{padding-right:10px}
+  #touchbar{gap:4px}
 }
 @media (max-width:640px){
   #menu{background:linear-gradient(90deg,rgba(5,8,15,.92),rgba(5,8,15,.6))}
   .rec{display:none}
-  .tb-seg span{display:none}
-  .tb-seg{padding:0 6px}
 }
-.is-touch #prompt{bottom:calc(24px + var(--sbm))}
-.is-touch #coach{display:none}
+.is-touch #prompt:not(.anch){bottom:calc(16px + var(--sbm))}
+/* táctil: consejo compacto de una línea bajo el contador de toques (antes no había ninguno en móvil) */
+.is-touch #coach{left:50%;right:auto;transform:translateX(-50%);top:calc(40px + var(--st));min-width:0;max-width:calc(100% - 420px);
+  padding:4px 12px;font-size:12.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.is-touch #coach .key{font-size:10.5px}
+/* táctil: sin desenfoque de fondo tampoco en el menú (la demo se pinta detrás a ritmo completo) */
+.is-touch .mi{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(10,16,30,.78)}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -465,6 +568,7 @@ h2 span{color:var(--hot)}
         <div class="sb-hist" id="sbHist" hidden></div>
       </div>
       <div class="sb-tag" id="sbTag" hidden></div>
+      <div id="callout"></div>
     </div>
 
     <div id="touchbar" class="off" aria-hidden="true">
@@ -475,7 +579,7 @@ h2 span{color:var(--hot)}
     </div>
 
     <div id="coach" class="off"></div>
-    <div id="prompt" class="off"><span class="key" id="promptKey">ESPACIO</span><span id="promptText">¡Golpea!</span></div>
+    <div id="prompt" class="off"><div class="pr-in"><span class="key" id="promptKey">ESPACIO</span><span id="promptText">¡Golpea!</span><i class="pr-bar"><b id="promptBar"></b></i></div></div>
 
     <div class="hud-btns">
       <button id="btnHudMute" aria-label="Sonido"><svg viewBox="0 0 24 24" id="icoSound"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="#f7f2ea" stroke-width="2" stroke-linecap="round"/></svg></button>
@@ -483,7 +587,8 @@ h2 span{color:var(--hot)}
     </div>
   </div>
   <div id="banner" aria-live="polite"><div class="bn-rib"><div id="bn1"></div></div><div id="bn2"></div><div id="bn3" hidden></div></div>
-  <div id="callout"></div>
+  <div id="guide" aria-live="polite"><div class="gd-k" id="guideK">PRIMER TOQUE</div><div class="gd-t" id="guideT"></div></div>
+  <div id="skip" hidden></div>
   <div id="touch" hidden></div>
 
   <!-- ================= MENÚ ================= -->
@@ -496,11 +601,11 @@ h2 span{color:var(--hot)}
           <svg class="lg-arc" viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true"><path d="M8 96 Q 190 -40 392 70"/></svg>
           <span class="lg-voley">VOLEY</span><span class="lg-3d">3D</span>
         </h1>
-        <p class="tagline">Voley de pista a pie de red. <b>Tú y tu pareja contra la CPU</b>, al mejor de 3 sets.</p>
+        <p class="tagline">Vóley en pista cubierta, 2 contra 2: <b>tú y tu pareja contra la CPU</b>, al mejor de 3 sets.</p>
       </div>
       <nav class="mlist" data-nav aria-label="Menú principal">
         <button class="mi primary" id="btnPlay"><span class="mi-n">01</span><span>Jugar<br><span class="mi-s" id="playSub">Partido · 25 · 25 · 15</span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
-        <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">02</span><span>Dificultad</span><span class="mi-v"><i>‹</i><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em></span><i>›</i></span></button>
+        <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">02</span><span>Dificultad</span><span class="mi-v"><i>‹</i><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span><i>›</i></span></button>
         <button class="mi" id="btnTut"><span class="mi-n">03</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
         <button class="mi" id="btnControls"><span class="mi-n">04</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
         <button class="mi" id="btnSettings"><span class="mi-n">05</span><span>Ajustes</span><span class="mi-s"></span></button>
@@ -515,7 +620,7 @@ h2 span{color:var(--hot)}
   <!-- ================= PAUSA ================= -->
   <div id="pause" class="screen dim" hidden>
     <div class="sheet" role="dialog" aria-labelledby="pauseTitle">
-      <p class="sh-k">Tiempo muerto</p>
+      <p class="sh-k">Partido en pausa</p>
       <h2 id="pauseTitle">Pausa</h2>
       <div class="p-score">
         <div class="p-team t0"><i></i>TÚ <b id="pS0">0</b></div>
@@ -545,6 +650,7 @@ h2 span{color:var(--hot)}
       <div class="end-rec" id="endRecord"></div>
       <div class="row-btn" data-nav>
         <button id="btnAgain">Revancha</button>
+        <button class="ghost" id="btnAgainAlt" hidden>Revancha en Normal</button>
         <button class="ghost" id="btnMenu">Menú principal</button>
       </div>
     </div>
@@ -566,6 +672,13 @@ h2 span{color:var(--hot)}
           <button class="ghost" id="btnTutPrev">‹ Anterior</button>
           <div class="dots" id="tutDots"></div>
           <button id="btnTutNext">Siguiente ›</button>
+        </div>
+      </div>
+      <div id="pnFirst" hidden>
+        <p class="first-lead">Es tu primer partido. ¿Quieres ver antes cómo se juega? Son 6 pasos cortos con dibujos: saque, recepción, colocación, remate, bloqueo y reglas.</p>
+        <div class="first-opts" data-nav>
+          <button id="btnFirstTut"><span>Ver cómo se juega<small>1 minuto · luego empieza el partido</small></span><span class="ic">▶</span></button>
+          <button class="ghost" id="btnFirstPlay"><span>Jugar ya<small id="firstDiff">Nivel Fácil · se cambia en el menú</small></span><span class="ic">›</span></button>
         </div>
       </div>
       <div id="pnCtl" hidden>
@@ -592,13 +705,14 @@ h2 span{color:var(--hot)}
           <section class="c-tc"><h3><svg viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10l5.2 1.1a2 2 0 0 1 1.6 2.2l-.6 5.2A2 2 0 0 1 16.2 20H11a2 2 0 0 1-1.6-.8l-3.6-4.8a1.4 1.4 0 0 1 2.1-1.8z"/></svg>Táctil</h3>
             <dl>
               <div><dt><span class="key">Mitad izq.</span></dt><dd>Joystick</dd></div>
-              <div><dt><span class="key tch">Golpear</span></dt><dd>Golpear · sacar</dd></div>
+              <div><dt><span class="key tch">Golpear</span></dt><dd>Golpear</dd></div>
+              <div><dt><span class="key tch">Sacar</span></dt><dd>Saque (el mismo botón)</dd></div>
               <div><dt><span class="key tch j">Saltar</span></dt><dd>Remate · bloqueo</dd></div>
               <div><dt><span class="key">II</span></dt><dd>Pausa</dd></div>
               <div><dt><span class="key">↻</span></dt><dd>En horizontal</dd></div>
             </dl></section>
         </div>
-        <p class="ctl-note"><b>Saque</b>: Golpear lanza un saque flotante y Saltar un saque en salto; después golpea cuando el balón baje. <b>Arriba es siempre hacia la red</b>: la cámara va detrás de tu jugador. El control pasa solo al compañero que debe dar el siguiente toque, y el juego elige el tipo de toque: 1º recepción, 2º colocación, 3º ataque. Si mantienes una dirección al golpear, apuntas el remate o el saque.</p>
+        <p class="ctl-note"><b>Saque</b>: Golpear (en táctil, el botón SACAR) lanza un saque flotante y Saltar un saque en salto; después vuelve a pulsarlo cuando el balón baje a tu mano. <b>Arriba es siempre hacia la red</b>: la cámara va detrás de tu jugador. El control pasa solo al compañero que debe dar el siguiente toque, y el juego elige el tipo de toque: 1.er toque recepción, 2.º colocación, 3.er ataque. Si mantienes una dirección al golpear, apuntas el remate o el saque.</p>
       </div>
       <div id="pnSet" hidden>
         <div class="opts" data-nav id="optList">
@@ -615,7 +729,7 @@ h2 span{color:var(--hot)}
     </div>
   </div>
 
-  <div id="rotate" hidden><div class="ph"></div><b>Gira el móvil</b><p>Voley 3D se juega en horizontal</p></div>
+  <div id="rotate" hidden><div class="ph"></div><b>Gira el móvil</b><p>Vóley 3D se juega en horizontal</p></div>
   <div id="boot"><div class="bt-logo">VOLEY <span>3D</span></div><div class="bt-bar"><i></i></div><p>PALAU DEL MAR</p></div>
   <div id="fatal" hidden></div>
   <div id="fps" hidden></div>

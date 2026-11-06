@@ -6,15 +6,27 @@
  * tiempo que falta, línea de altura, estela tipo cinta en remates/saques
  * potentes, destellos, ondas de choque, chispas aditivas, marcas en el
  * suelo (blanca dentro / roja fuera), polvo al aterrizar y confeti.
+ * Golpes: destello cálido y contenido (no tapa al jugador ni satura el
+ * bloom); calidad 'perfect' del humano = anillo dorado + chispas doradas;
+ * bloqueo 'stuff' contundente / 'soft'·'tool' suave; chispa en la cinta en
+ * el toque de red; polvo de parquet en la plancha.
+ * Review 2: una sola sombra (la de contacto), tamaño mínimo en pantalla + contorno del balón, "aro amarillo"
+ * (focusRing) como objetivo principal que se cierra con hitWindow().press, retícula + arco de apuntado en saque
+ * y remate del humano, huella del bote con filo verde/rojo (llamada de línea).
  * Coordenadas de sim -> three con VB.toThree. Sin asignaciones por frame.
  * ===================================================================== */
 (function () {
   'use strict';
   var VB = window.VB = window.VB || {};
   var THREE, ctx, C, Sim, root;
-  var ballPivot, ball, ballMat, ballShadow, dropLine, marker, markerMat, focusRing;
+  var ballPivot, ball, ballMat, ballShadow, dropLine, marker, markerMat, focusRing, focusMat, focusFill, ballOutline;
+  var aimRet, aimMat, aim = { a: 0, x: -6, y: 0, tx: -6, ty: 0, on: false, live: false, kill: 0 }, aimOut = { x: 0, y: 0 };
+  var hwOut = { t: 0, press: 0 }, focusVis = false;
+  var AIM_N = 30, aimArc = null; // arco punteado balón -> objetivo (se lee aunque el campo rival salga aplastado)
+  var YEL = [1, 0.76, 0.04]; // "aro amarillo" = dónde tienes que jugar el balón (focusRing)
   var spinQ, squashQ, tmpQ, tv, tv2, tv3, axis, UPV;
   var spin = { rate: 0, sign: 1, wob: 0 }, squash = { t: 0, k: 0 }, heat = 0;
+  var SQ_MAX = 0.095; // (1 + k/2) / (1 - k) ≈ 1,15: el balón se deforma sin dejar de leerse como balón
   var land = { x: 0, y: 0, z: 0, t: 0 };
   var qScale = 1; // factor de partículas por calidad
 
@@ -33,6 +45,43 @@
     gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(Math.max(0, inner - soft), 'rgba(255,255,255,0)');
     gr.addColorStop(inner, 'rgba(255,255,255,1)'); gr.addColorStop(outer, 'rgba(255,255,255,1)');
     gr.addColorStop(Math.min(1, outer + soft), 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 256); return tex(cv);
+  }
+  /** Aro con filo oscuro (se lee sobre la tarima clara): el blanco se tiñe con material.color, el negro queda negro. */
+  function outlinedRingTex(r, w) {
+    var cv = canvas(256, 256), g = cv.getContext('2d');
+    g.lineCap = 'round';
+    g.strokeStyle = 'rgba(12,8,0,0.72)'; g.lineWidth = w + 14; g.beginPath(); g.arc(128, 128, r, 0, 6.283); g.stroke();
+    g.strokeStyle = '#ffffff'; g.lineWidth = w; g.beginPath(); g.arc(128, 128, r, 0, 6.283); g.stroke();
+    return tex(cv);
+  }
+  /** Retícula de apuntado (saque / remate): aro, 4 marcas y punto central, con filo oscuro. */
+  function aimTex() {
+    var cv = canvas(256, 256), g = cv.getContext('2d');
+    function draw(extra, style) {
+      g.strokeStyle = style; g.fillStyle = style; g.lineCap = 'round';
+      g.lineWidth = 9 + extra; g.beginPath(); g.arc(128, 128, 88, 0, 6.283); g.stroke();
+      for (var k = 0; k < 4; k++) {
+        var a = k * Math.PI / 2 + Math.PI / 4;
+        g.lineWidth = 10 + extra; g.beginPath(); g.moveTo(128 + Math.cos(a) * 62, 128 + Math.sin(a) * 62); g.lineTo(128 + Math.cos(a) * 112, 128 + Math.sin(a) * 112); g.stroke();
+      }
+      g.beginPath(); g.arc(128, 128, 13 + extra / 2, 0, 6.283); g.fill();
+    }
+    draw(10, 'rgba(0,0,0,0.5)'); draw(0, '#ffffff');
+    return tex(cv);
+  }
+  /** Huella del balón en la tarima: óvalo oscuro con el borde más marcado (como el roce de la goma). */
+  function printTex() {
+    var cv = canvas(128, 128), g = cv.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(46,30,16,0.42)'); gr.addColorStop(0.55, 'rgba(40,26,14,0.62)'); gr.addColorStop(0.74, 'rgba(30,20,10,0.8)');
+    gr.addColorStop(0.86, 'rgba(30,20,10,0.25)'); gr.addColorStop(1, 'rgba(30,20,10,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return tex(cv);
+  }
+  /** Onda de choque: filo brillante fino con un halo interior muy tenue que cae a 0 (nada de disco gris). */
+  function shockRingTex() {
+    var cv = canvas(256, 256), g = cv.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.55, 'rgba(255,255,255,0)'); gr.addColorStop(0.78, 'rgba(255,255,255,0.12)');
+    gr.addColorStop(0.88, 'rgba(255,255,255,1)'); gr.addColorStop(0.93, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = gr; g.fillRect(0, 0, 256, 256); return tex(cv);
   }
   /** Balón: cada cara de la esfera-cubo es un grupo de 3 paneles (colores originales). */
@@ -68,6 +117,8 @@
       var x = p.getX(i) * 2, y = p.getY(i) * 2, z = p.getZ(i) * 2, face = Math.floor(i / per), u, w;
       // franjas perpendiculares entre caras vecinas (como un balón de 18 paneles)
       if (face < 2) { u = y; w = z; } else if (face < 4) { u = z; w = x; } else { u = x; w = y; }
+      // la cara opuesta de cada par (normal negativa) mira al otro lado: sin invertir u, el logo sale en espejo
+      if (face % 2 === 1) u = -u;
       uv.setXY(i, u * 0.5 + 0.5, w * 0.5 + 0.5);
       var sx = x * Math.sqrt(Math.max(0, 1 - y * y / 2 - z * z / 2 + y * y * z * z / 3));
       var sy = y * Math.sqrt(Math.max(0, 1 - z * z / 2 - x * x / 2 + z * z * x * x / 3));
@@ -86,6 +137,7 @@
   var MARK_N = 4, markPool = [], markHead = 0;
   var TN = 24, trail, tPts, tCols, tPos, trailA = 0, trailCol = null, trailW = 0.16, trailN = 0;
   var CONF_N = 520, conf, confD = [], confAlive = 0;
+  var DUST_N = 96, dust, du = [], duHead = 0, duAlive = 0; // polvo (mezcla normal, no aditiva)
 
   function addSpark(x, y, z, vx, vy, vz, life, r, g, b, grav) {
     var s = sp[spHead]; spHead = (spHead + 1) % SPARK_N;
@@ -100,11 +152,24 @@
     }
     spAlive = 1;
   }
+  /** Polvo de parquet (coords de sim): nube baja que se expande y se desvanece. */
+  function dustAt(x, y, n, spread, dirx, diry, push) {
+    n = Math.max(2, Math.round(n * qScale));
+    for (var i = 0; i < n; i++) {
+      var d = du[duHead]; duHead = (duHead + 1) % DUST_N;
+      var a = Math.random() * 6.283, v = spread * (0.3 + Math.random() * 0.7), f = push * (0.4 + Math.random() * 0.8);
+      d.x = x + Math.cos(a) * 0.15; d.y = y + Math.sin(a) * 0.15; d.z = 0.05 + Math.random() * 0.12;
+      d.vx = Math.cos(a) * v + dirx * f; d.vy = Math.sin(a) * v + diry * f; d.vz = 0.35 + Math.random() * 0.6;
+      d.life = d.max = 0.7 + Math.random() * 0.6; d.s = 0.5 + Math.random() * 0.5;
+    }
+    duAlive = 1;
+  }
   /** Atenúa destellos muy cerca de la cámara (golpes del propio jugador): que no tapen la jugada. */
   function nearFade(p) { var d = ctx.camera.position.distanceTo(p); return Math.max(0.12, Math.min(1, (d - 2) / 6)); }
+  var FLASH_K = 0.62; // intensidad del destello aditivo: solo el núcleo llega al umbral del bloom
   function flashAt(x, y, z, size, dur, r, g, b) {
     var f = flashPool[flashHead]; flashHead = (flashHead + 1) % FLASH_N;
-    VB.toThree(x, y, z, f.s.position); f.t = dur; f.d = dur; f.size = size; f.s.material.color.setRGB(r, g, b); f.s.visible = true;
+    VB.toThree(x, y, z, f.s.position); f.t = dur; f.d = dur; f.size = size; f.s.material.color.setRGB(r * FLASH_K, g * FLASH_K, b * FLASH_K); f.s.visible = true;
     f.near = nearFade(f.s.position);
   }
   function shockAt(x, y, z, size, dur, r, g, b) {
@@ -117,12 +182,21 @@
     w.m.position.x = x; w.m.position.z = -y; w.t = dur; w.d = dur; w.size = size; w.op = op || 0.8;
     w.m.material.color.setRGB(r, g, b); w.m.visible = true;
   }
-  function markAt(x, y, inside, speed) {
+  /** Marca del bote (la "llamada" del juez de línea): huella oscura en la tarima orientada según el vuelo
+   *  + filo de color (verde = dentro, rojo = fuera, mismo C.IN_TOL que el árbitro de sim). Dura 5 s para
+   *  cubrir todo el plano del punto; entra con un pulso. */
+  var MARK_LIFE = 5.2;
+  function markAt(x, y, inside, speed, vx, vy) {
     var m = markPool[markHead]; markHead = (markHead + 1) % MARK_N;
-    m.m.position.x = x; m.m.position.z = -y; m.t = 2.8; m.d = 2.8;
-    var s = 0.42 + Math.min(0.25, speed * 0.02); m.m.scale.set(s, s, s);
-    if (inside) m.m.material.color.setRGB(1, 0.97, 0.9); else m.m.material.color.setRGB(1, 0.18, 0.12);
-    m.m.visible = true;
+    m.m.position.x = x; m.m.position.z = -y; m.r.position.x = x; m.r.position.z = -y;
+    m.t = MARK_LIFE; m.d = MARK_LIFE;
+    var s = 0.46 + Math.min(0.16, speed * 0.012), hs = Math.hypot(vx || 0, vy || 0);
+    m.s = s; m.stretch = 1 + Math.min(0.45, hs * 0.03);
+    // óvalo alargado en la dirección del vuelo (sim (vx,vy) -> plano del suelo; rotation.z gira en el plano)
+    m.m.rotation.z = hs > 0.1 ? Math.atan2(vy, vx) : 0;
+    m.m.scale.set(s * m.stretch, s, 1);
+    if (inside) m.r.material.color.setRGB(0.12, 0.9, 0.24); else m.r.material.color.setRGB(1, 0.05, 0.03); // lineales: verde / rojo vivos
+    m.m.visible = true; m.r.visible = true;
   }
 
   function startTrail(r, g, b, width, strength) {
@@ -155,6 +229,74 @@
       tCols[i * 6] = cr; tCols[i * 6 + 1] = cg; tCols[i * 6 + 2] = cb; tCols[i * 6 + 3] = cr; tCols[i * 6 + 4] = cg; tCols[i * 6 + 5] = cb;
     }
     trail.geometry.attributes.position.needsUpdate = true; trail.geometry.attributes.color.needsUpdate = true;
+  }
+
+  // ---------- Apuntado (saque / remate del humano) ----------
+  function clampN(v, a, b) { return v < a ? a : v > b ? b : v; }
+  /** Dirección de apuntado actual en MUNDO (normalizada) o null. Lee la entrada de mundo que main.js deja
+   *  en ctx.simMove (si existe); si no, la última dirección dada durante el gesto (g.swingAim). */
+  var _aimDir = [0, 0];
+  function aimDir(g) {
+    var mv = ctx.simMove;
+    if (mv && mv.length >= 2) {
+      var l = Math.hypot(mv[0], mv[1]);
+      if (l > 0.2) { _aimDir[0] = mv[0] / l; _aimDir[1] = mv[1] / l; return _aimDir; }
+      if (!g.swingHasAim) return null;
+    }
+    if (g.swingHasAim && g.swingAim) { _aimDir[0] = g.swingAim[0]; _aimDir[1] = g.swingAim[1]; return _aimDir; }
+    return null;
+  }
+  /** Objetivo previsto del golpe del humano (coords de sim) o 0 si no toca apuntar.
+   *  Devuelve 1 = previsualización (saque aún sin lanzar), 2 = apuntado activo.
+   *  Si sim expone Sim.aimPoint(g, out) se usa; si no, reproduce las fórmulas de sim.js
+   *  (doServe sin objetivo de IA y attackTarget con dd = 6). Sin el error aleatorio de ejecución. */
+  function aimTarget(g, out) {
+    if (g.demo || g.autopilot) return 0;
+    var b = g.ball, a, tx, ty, mode = 0;
+    if (g.mode === 'serve') {
+      var sv = g.server; if (!sv || sv.team !== 0) return 0;
+      mode = g.serveState === 'toss' ? 2 : (g.serveAuth ? 1 : 0);
+      if (!mode) return 0;
+    } else if (g.mode === 'rally') {
+      var hp = g.ctrl;
+      if (!hp || hp.team !== 0 || hp.z < 0.12 || g.touchTeam !== 0 || g.touches !== 2) return 0;
+      if (b.x < -0.2 || b.x > 4.5 || b.z < C.NET_H) return 0;
+      mode = 2;
+    } else return 0;
+    if (Sim.aimPoint) {
+      var r = Sim.aimPoint(g, out);
+      if (!r) return 0;
+      if (r !== out && r.x != null) { out.x = r.x; out.y = r.y; }
+      return mode;
+    }
+    a = aimDir(g);
+    if (g.mode === 'serve') {
+      tx = -6; ty = 0;
+      if (a) { tx += a[0] * 2.4; ty += a[1] * 3.4; }
+      tx = -clampN(-tx, 2, 8.4); ty = clampN(ty, -4, 4);
+    } else {
+      tx = -6; ty = (g.ctrl.y >= 0 ? -1 : 1) * 1.6; // sin apuntar: diagonal
+      if (a) { tx = -5 + a[0] * 3.0; ty = a[1] * 3.7; }
+      tx = -clampN(-tx, 1.4, 8.3); ty = clampN(ty, -3.9, 3.9);
+    }
+    out.x = tx; out.y = ty;
+    return mode;
+  }
+
+  /** Arco punteado del balón al objetivo, pasando por encima de la red (vista previa de la dirección, no física). */
+  function updateAimArc(b, tx, ty, a) {
+    var pa = aimArc.geometry.attributes.position.array, ca = aimArc.geometry.attributes.color.array;
+    var sx = b.x, sy = b.y, sz = b.z, t0 = sx !== tx ? sx / (sx - tx) : 0.5;
+    t0 = clampN(t0, 0.15, 0.85);
+    var zNet = sz * (1 - t0), h = Math.max(0.5, (C.NET_H + 0.55 - zNet) / (4 * t0 * (1 - t0)));
+    var scroll = (ctx.time * 1.6) % 1;
+    for (var i = 0; i < AIM_N; i++) {
+      var t = (i + scroll) / AIM_N, x = sx + (tx - sx) * t, y = sy + (ty - sy) * t, z = sz * (1 - t) + 4 * h * t * (1 - t);
+      pa[i * 3] = x; pa[i * 3 + 1] = Math.max(0.03, z); pa[i * 3 + 2] = -y;
+      var k = a * 0.95 * Math.min(1, 0.3 + t * 4);
+      ca[i * 4] = 1; ca[i * 4 + 1] = 0.36; ca[i * 4 + 2] = 0.09; ca[i * 4 + 3] = k;
+    }
+    aimArc.geometry.attributes.position.needsUpdate = true; aimArc.geometry.attributes.color.needsUpdate = true;
   }
 
   // ---------- Confeti ----------
@@ -219,7 +361,14 @@
       // Balón: pivote (aplastamiento orientado) + malla (giro)
       ballPivot = new THREE.Group(); root.add(ballPivot);
       ballMat = new THREE.MeshStandardMaterial({ map: ballTexture(), roughness: 0.42, metalness: 0, envMapIntensity: 0.9, emissive: new THREE.Color(0xff5a20), emissiveIntensity: 0 });
-      ball = new THREE.Mesh(ballGeometry(C.BR), ballMat); ball.castShadow = true; ballPivot.add(ball);
+      // castShadow = false: la sombra del mapa de sombras y la de contacto eran DOS manchas separadas en el
+      // suelo; la buena para jugar es la de contacto (siempre en vertical bajo el balón).
+      var bgeo = ballGeometry(C.BR);
+      ball = new THREE.Mesh(bgeo, ballMat); ball.castShadow = false; ballPivot.add(ball);
+      // contorno oscuro (cáscara de caras traseras): separa el balón del público, que tiene sus mismos colores.
+      // Grosor constante en píxeles (ver update).
+      ballOutline = new THREE.Mesh(bgeo, new THREE.MeshBasicMaterial({ color: 0x0b1222, side: THREE.BackSide }));
+      ballOutline.renderOrder = 0; ballPivot.add(ballOutline);
 
       // sombra de contacto (siempre en vertical bajo el balón: legibilidad)
       ballShadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({
@@ -232,26 +381,54 @@
       dropLine.frustumCulled = false; root.add(dropLine);
 
       // marcador de caída: retícula que se cierra según el tiempo que falta
+      // (trazos con filo oscuro: sobre la tarima clara el blanco solo no se leía)
       var mcv = canvas(256, 256), g = mcv.getContext('2d');
-      g.strokeStyle = '#ffffff'; g.lineWidth = 10; g.beginPath(); g.arc(128, 128, 100, 0, 6.283); g.stroke();
-      g.lineWidth = 4; g.globalAlpha = 0.6; g.beginPath(); g.arc(128, 128, 74, 0, 6.283); g.stroke(); g.globalAlpha = 1;
-      g.lineWidth = 10; for (var k = 0; k < 4; k++) { var a = k * Math.PI / 2; g.beginPath(); g.moveTo(128 + Math.cos(a) * 112, 128 + Math.sin(a) * 112); g.lineTo(128 + Math.cos(a) * 126, 128 + Math.sin(a) * 126); g.stroke(); }
-      var cg = g.createRadialGradient(128, 128, 0, 128, 128, 30); cg.addColorStop(0, 'rgba(255,255,255,0.95)'); cg.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = cg; g.fillRect(98, 98, 60, 60);
+      var drawMarker = function (ex, style) {
+        g.strokeStyle = style; g.fillStyle = style; g.lineCap = 'round';
+        g.lineWidth = 9 + ex; g.beginPath(); g.arc(128, 128, 98, 0, 6.283); g.stroke();
+        for (var k = 0; k < 4; k++) { var a = k * Math.PI / 2; g.lineWidth = 9 + ex; g.beginPath(); g.moveTo(128 + Math.cos(a) * 108, 128 + Math.sin(a) * 108); g.lineTo(128 + Math.cos(a) * 122, 128 + Math.sin(a) * 122); g.stroke(); }
+        g.beginPath(); g.arc(128, 128, 9 + ex / 2, 0, 6.283); g.fill();
+      };
+      drawMarker(9, 'rgba(0,0,0,0.5)'); drawMarker(0, '#ffffff');
       markerMat = new THREE.MeshBasicMaterial({ map: tex(mcv), transparent: true, depthWrite: false, toneMapped: false, opacity: 0.9 });
       marker = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 1.15), markerMat);
       marker.rotation.x = -Math.PI / 2; marker.position.y = 0.016; marker.renderOrder = 3; root.add(marker);
 
-      // aro del punto donde jugará el balón tu equipo (1 m / 3 m)
-      focusRing = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), new THREE.MeshBasicMaterial({ map: ringTex(0.8, 0.86, 0.05), transparent: true, opacity: 0.3, depthWrite: false, toneMapped: false }));
-      focusRing.rotation.x = -Math.PI / 2; focusRing.position.y = 0.014; focusRing.renderOrder = 2; root.add(focusRing);
+      // "aro amarillo": punto donde tu equipo jugará el balón (1 m / 3 m). Es EL objetivo del jugador
+      // (texto del entrenador: "ve al aro amarillo"): amarillo saturado con filo oscuro, se cierra según
+      // hitWindow().press y se rellena en el instante de pulsar.
+      focusMat = new THREE.MeshBasicMaterial({ map: outlinedRingTex(104, 16), transparent: true, opacity: 0.92, depthWrite: false, toneMapped: false });
+      focusMat.color.setRGB(YEL[0], YEL[1], YEL[2]);
+      focusRing = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), focusMat);
+      focusRing.rotation.x = -Math.PI / 2; focusRing.position.y = 0.017; focusRing.renderOrder = 4; root.add(focusRing);
+      focusFill = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({
+        map: radialTex([[0, 'rgba(255,255,255,0.75)'], [0.6, 'rgba(255,255,255,0.45)'], [0.8, 'rgba(255,255,255,0.12)'], [1, 'rgba(255,255,255,0)']], 64),
+        transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+      focusFill.material.color.setRGB(YEL[0], YEL[1], YEL[2]);
+      focusFill.rotation.x = -Math.PI / 2; focusFill.position.y = 0.0165; focusFill.renderOrder = 3; focusFill.visible = false; root.add(focusFill);
+
+      // retícula de apuntado en el campo rival (saque y remate del humano)
+      aimMat = new THREE.MeshBasicMaterial({ map: aimTex(), transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
+      aimMat.color.set('#ff6326'); // (setRGB es LINEAL con ColorManagement: (1,0.5,0.24) salía color melocotón pálido)
+      aimRet = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), aimMat);
+      aimRet.rotation.x = -Math.PI / 2; aimRet.position.y = 0.019; aimRet.renderOrder = 4; aimRet.visible = false; root.add(aimRet);
+      // puntos opacos con filo oscuro (mezcla normal: el aditivo desaparecía sobre la tarima clara)
+      var dcv = canvas(64, 64), dg = dcv.getContext('2d');
+      dg.fillStyle = 'rgba(10,6,2,0.6)'; dg.beginPath(); dg.arc(32, 32, 26, 0, 6.283); dg.fill();
+      dg.fillStyle = '#ffffff'; dg.beginPath(); dg.arc(32, 32, 18, 0, 6.283); dg.fill();
+      var agp = new Float32Array(AIM_N * 3), agc = new Float32Array(AIM_N * 4), ag = new THREE.BufferGeometry();
+      ag.setAttribute('position', new THREE.BufferAttribute(agp, 3)); ag.setAttribute('color', new THREE.BufferAttribute(agc, 4));
+      aimArc = new THREE.Points(ag, new THREE.PointsMaterial({ size: 0.2, map: tex(dcv), vertexColors: true, transparent: true, depthWrite: false, toneMapped: false }));
+      aimArc.frustumCulled = false; aimArc.renderOrder = 7; aimArc.visible = false; root.add(aimArc);
 
       // estela tipo cinta (aditiva, orientada a cámara)
       tPts = new Float32Array(TN * 3); tPos = new Float32Array(TN * 6); tCols = new Float32Array(TN * 6);
       var tg = new THREE.BufferGeometry(), idx = [];
       for (var i = 0; i < TN - 1; i++) { var a0 = i * 2; idx.push(a0, a0 + 1, a0 + 2, a0 + 1, a0 + 3, a0 + 2); }
       tg.setAttribute('position', new THREE.BufferAttribute(tPos, 3)); tg.setAttribute('color', new THREE.BufferAttribute(tCols, 3)); tg.setIndex(idx);
-      trail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+      // transparent:false a propósito: en r149 un material transparente DoubleSide cambia side y pone needsUpdate dos veces
+      // por objeto y frame (recalcula el programa). Aditivo + sin profundidad funciona igual en la lista opaca (renderOrder alto).
+      trail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: false, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
       trail.frustumCulled = false; trail.visible = false; trail.renderOrder = 6; root.add(trail);
 
       // chispas
@@ -263,12 +440,12 @@
       sparks.frustumCulled = false; sparks.renderOrder = 7; root.add(sparks);
 
       // destellos y ondas de choque (sprites aditivos)
-      var flashTex = radialTex([[0, 'rgba(255,255,255,1)'], [0.18, 'rgba(255,240,210,0.85)'], [0.5, 'rgba(255,200,140,0.18)'], [1, 'rgba(255,180,120,0)']]);
+      var flashTex = radialTex([[0, 'rgba(255,250,235,1)'], [0.1, 'rgba(255,232,190,0.7)'], [0.32, 'rgba(255,190,120,0.16)'], [0.6, 'rgba(255,170,100,0.04)'], [1, 'rgba(255,160,90,0)']]);
       for (var f = 0; f < FLASH_N; f++) {
         var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
         s.visible = false; s.renderOrder = 8; root.add(s); flashPool.push({ s: s, t: 0, d: 1, size: 1, near: 1 });
       }
-      var shockTex = ringTex(0.78, 0.86, 0.1);
+      var shockTex = shockRingTex();
       for (var w = 0; w < WAVE_N; w++) {
         var ws = new THREE.Sprite(new THREE.SpriteMaterial({ map: shockTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
         ws.visible = false; ws.renderOrder = 8; root.add(ws); wavePool.push({ s: ws, t: 0, d: 1, size: 1, near: 1 });
@@ -280,11 +457,22 @@
         rm.rotation.x = -Math.PI / 2; rm.position.y = 0.018; rm.visible = false; rm.renderOrder = 3; root.add(rm); ripPool.push({ m: rm, t: 0, d: 1, size: 1, op: 1 });
       }
       // marcas del balón en el suelo
-      var markTex = radialTex([[0, 'rgba(255,255,255,0.9)'], [0.55, 'rgba(255,255,255,0.55)'], [0.8, 'rgba(255,255,255,0.15)'], [1, 'rgba(255,255,255,0)']]);
+      // marcas del bote: huella oscura + filo de color dentro/fuera
+      var markTex = printTex(), rimTex = outlinedRingTex(100, 18);
       for (var mI = 0; mI < MARK_N; mI++) {
-        var mm = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: markTex, transparent: true, depthWrite: false, opacity: 0.6 }));
-        mm.rotation.x = -Math.PI / 2; mm.position.y = 0.015; mm.visible = false; mm.renderOrder = 2; root.add(mm); markPool.push({ m: mm, t: 0, d: 1 });
+        var mm = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: markTex, transparent: true, depthWrite: false, opacity: 0.9 }));
+        mm.rotation.x = -Math.PI / 2; mm.position.y = 0.015; mm.visible = false; mm.renderOrder = 2; root.add(mm);
+        var mr = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: rimTex, transparent: true, depthWrite: false, opacity: 0.9, toneMapped: false }));
+        mr.rotation.x = -Math.PI / 2; mr.position.y = 0.0155; mr.visible = false; mr.renderOrder = 3; root.add(mr);
+        markPool.push({ m: mm, r: mr, t: 0, d: 1, s: 0.5, stretch: 1 });
       }
+      // polvo de parquet (plancha, aterrizajes): Points con alfa por vértice y mezcla normal
+      var dPos = new Float32Array(DUST_N * 3), dCol = new Float32Array(DUST_N * 4);
+      for (var dI = 0; dI < DUST_N; dI++) { du.push({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s: 1 }); dPos[dI * 3 + 1] = -50; }
+      var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dPos, 3)); dg.setAttribute('color', new THREE.BufferAttribute(dCol, 4));
+      dust = new THREE.Points(dg, new THREE.PointsMaterial({ size: 0.75, map: radialTex([[0, 'rgba(255,255,255,0.9)'], [0.45, 'rgba(255,255,255,0.35)'], [1, 'rgba(255,255,255,0)']], 64),
+        vertexColors: true, transparent: true, depthWrite: false }));
+      dust.frustumCulled = false; dust.renderOrder = 4; dust.visible = false; root.add(dust);
       // confeti
       conf = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.075, 0.12), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false }), CONF_N);
       for (var q = 0; q < CONF_N; q++) { confD.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, ax: 1, ay: 0, az: 0, ang: 0, spin: 0, ph: 0, life: 0 }); conf.setColorAt(q, tv.set(1, 1, 1)); }
@@ -295,18 +483,24 @@
     onGameStart: function () {
       trailA = 0; heat = 0; squash.t = 0; spin.rate = 0;
       for (var i = 0; i < SPARK_N; i++) sp[i].life = 0;
+      for (var dI = 0; dI < DUST_N; dI++) du[dI].life = 0;
       for (var f = 0; f < FLASH_N; f++) { flashPool[f].t = 0; flashPool[f].s.visible = false; }
       for (var w = 0; w < WAVE_N; w++) { wavePool[w].t = 0; wavePool[w].s.visible = false; }
       for (var r = 0; r < RIP_N; r++) { ripPool[r].t = 0; ripPool[r].m.visible = false; }
-      for (var m = 0; m < MARK_N; m++) { markPool[m].t = 0; markPool[m].m.visible = false; }
+      for (var m = 0; m < MARK_N; m++) { markPool[m].t = 0; markPool[m].m.visible = false; markPool[m].r.visible = false; }
+      aim.a = 0; aim.on = false; aimRet.visible = false; aimArc.visible = false; focusFill.visible = false;
       confAlive = 0; conf.count = 0; conf.visible = false;
     },
     /** Partículas en coordenadas de simulación (interfaz del contrato). */
     burst: function (x, y, z, n, power) { burstAt(x, y, z, n, power, 1, 0.92, 0.7, 1, 9); },
+    /** Polvo de la tarima (coords de sim), p. ej. planchas cosméticas de players.js. */
+    dust: function (x, y, n, dirx, diry) { dustAt(x, y, n || 22, 0.9, dirx || 0, diry || 0, 2.4); },
     /** Confeti del color de un equipo (opcional). */
     confetti: function (team, n) { confetti(team === 1 ? 1 : 0, n || 400); },
     /** Malla del balón (opcional, para otros módulos). */
     ballObject: function () { return ballPivot; },
+    /** Solo depuración (tools/eval.js): objetivo de apuntado que pintaría la retícula. */
+    _aimTarget: function (g, out) { out = out || { x: 0, y: 0 }; var m = aimTarget(g, out); return m ? { mode: m, x: out.x, y: out.y } : null; },
     update: function (g, dt, events) {
       if (!g) return;
       var b = g.ball;
@@ -330,11 +524,18 @@
         if (squash.t > 0) squash.t = Math.max(0, squash.t - dt);
         heat = Math.max(0, heat - dt * 2.2);
       }
-      var sq = squash.t > 0 ? Math.sin((1 - squash.t / 0.12) * Math.PI) * squash.k : 0;
-      ballPivot.quaternion.copy(squashQ); ballPivot.scale.set(1 + sq * 0.5, 1 - sq, 1 + sq * 0.5);
+      var sq = squash.t > 0 ? Math.sin((1 - squash.t / 0.12) * Math.PI) * Math.min(SQ_MAX, squash.k) : 0;
+      // tamaño mínimo en pantalla: radio >= 1,1 % de la altura del visor (máx. x1,6; el radio físico no cambia).
+      // Lejos (saque rival, remate de la CPU en móvil) el balón ya no se queda en 2 px perdido en la grada.
+      var cam = ctx.camera, dCam = cam.position.distanceTo(ballPivot.position), tanH = Math.tan(cam.fov * Math.PI / 360);
+      var bs = clampN(0.022 * dCam * tanH / C.BR, 1, 1.6);
+      var ballPx = C.BR * bs / Math.max(0.01, dCam * tanH) * (ctx.height || 720) * 0.5;
+      ballPivot.quaternion.copy(squashQ); ballPivot.scale.set(bs * (1 + sq * 0.5), bs * (1 - sq), bs * (1 + sq * 0.5));
+      // contorno de ~1,4 px (más fino de cerca, donde ya se lee solo)
+      var ol = 1 + clampN(1.4 / Math.max(1, ballPx), 0.03, 0.2); ballOutline.scale.set(ol, ol, ol);
       // la malla compensa la orientación del pivote para mantener el giro en mundo
       ball.quaternion.copy(squashQ).invert().multiply(spinQ);
-      ballMat.emissiveIntensity = heat * 0.9;
+      ballMat.emissiveIntensity = heat * 0.25; // filo cálido; los paneles siguen leyéndose
 
       // ---- sombra de contacto ----
       var h = Math.max(0, b.z - C.BR), s = 0.62 / (1 + h * 0.1);
@@ -350,27 +551,64 @@
         dropLine.geometry.attributes.position.needsUpdate = true;
         dropLine.material.opacity = Math.min(0.22, (b.z - 1.4) * 0.12);
       }
-      // ---- marcador de caída ----
+      // ---- aro amarillo (dónde jugará el balón tu equipo): el objetivo principal ----
+      var showFocus = inPlay && !g.demo && g.jobs && g.jobs[0] && Sim.focusPoint;
+      var fp = showFocus ? Sim.focusPoint(g) : null;
+      focusVis = !!fp;
+      focusRing.visible = focusVis; focusFill.visible = false;
+      if (focusVis) {
+        focusRing.position.x = fp.x; focusRing.position.z = -fp.y;
+        // se cierra hasta el instante de PULSAR (hitWindow.press) y se rellena en ese momento
+        var press = 1.2;
+        if (Sim.hitWindow) { var hw = Sim.hitWindow(g, g.jobs[0], hwOut); if (hw && isFinite(hw.press)) press = hw.press; }
+        var pk = clampN(press / 1.1, 0, 1), fsz = 0.72 + pk * 0.78 + Math.sin(ctx.time * 7) * 0.025 * pk;
+        focusRing.scale.set(fsz, fsz, fsz);
+        var now = clampN(1 - Math.abs(press) / 0.22, 0, 1);
+        focusMat.opacity = 0.82 + 0.18 * now;
+        if (now > 0.01) {
+          focusFill.visible = true; focusFill.position.x = fp.x; focusFill.position.z = -fp.y;
+          var ffs = fsz * 1.05; focusFill.scale.set(ffs, ffs, ffs); focusFill.material.opacity = 0.55 * now;
+        }
+      }
+      // ---- marcador de caída (secundario si el aro amarillo está activo) ----
       marker.visible = inPlay && b.vz < 6 && b.z > 0.5;
       if (marker.visible) {
         Sim.predictLanding(g, land);
         marker.position.x = land.x; marker.position.z = -land.y;
-        var tt = Math.min(1, Math.max(0, land.t) / 1.3), sc = 0.55 + tt * 0.75 + Math.sin(ctx.time * 9) * 0.03;
+        var tt = Math.min(1, Math.max(0, land.t) / 1.3), sc = 0.6 + tt * 0.7 + Math.sin(ctx.time * 9) * 0.03;
         marker.scale.set(sc, sc, sc); marker.rotation.z = ctx.time * 0.8;
         var mine = land.x > 0;
-        if (g.demo) markerMat.color.setRGB(0.9, 0.95, 1);
-        else if (mine) markerMat.color.setRGB(1, 0.86, 0.42);
-        else markerMat.color.setRGB(0.55, 0.8, 1);
-        var out = Math.abs(land.x) > C.HL + C.BR || Math.abs(land.y) > C.HW + C.BR;
-        markerMat.opacity = (mine && !g.demo ? 0.95 : 0.55) * (out ? 0.55 : 1);
+        var tol = C.IN_TOL != null ? C.IN_TOL : 0.03; // mismo umbral que el árbitro de sim
+        var out = Math.abs(land.x) > C.HL + tol || Math.abs(land.y) > C.HW + tol;
+        var mo;
+        if (g.demo) { markerMat.color.setRGB(0.9, 0.95, 1); mo = 0.55; }
+        else if (mine && !focusVis) { markerMat.color.setRGB(YEL[0], YEL[1], YEL[2]); mo = 0.95; } // nadie tuyo va: el bote es lo que importa
+        else if (mine) { markerMat.color.setRGB(1, 1, 1); mo = 0.6; }                             // blanco: no compite con el aro amarillo
+        else { markerMat.color.setRGB(0.55, 0.8, 1); mo = 0.6; }
+        markerMat.opacity = mo * (out ? 0.55 : 1);
       }
-      var showFocus = inPlay && !g.demo && g.jobs && g.jobs[0] && Sim.focusPoint;
-      focusRing.visible = !!showFocus;
-      if (showFocus) {
-        var fp = Sim.focusPoint(g);
-        if (fp) { focusRing.position.x = fp.x; focusRing.position.z = -fp.y; var fs = 1 + Math.sin(ctx.time * 6) * 0.05; focusRing.scale.set(fs, fs, fs); }
-        else focusRing.visible = false;
+      // ---- retícula de apuntado (saque / remate del humano) ----
+      var am = aimTarget(g, aimOut), rdt = ctx.realDt || 0;
+      if (am) {
+        if (!aim.on) { aim.x = aimOut.x; aim.y = aimOut.y; }
+        aim.on = true; aim.tx = aimOut.x; aim.ty = aimOut.y;
+        var ka = 1 - Math.exp(-16 * rdt); aim.x += (aim.tx - aim.x) * ka; aim.y += (aim.ty - aim.y) * ka;
+        aim.a = Math.min(am === 2 ? 1 : 0.5, aim.a + rdt * 5);
+        if (aim.a > (am === 2 ? 1 : 0.5)) aim.a = am === 2 ? 1 : 0.5;
+      } else {
+        aim.on = false; aim.a = Math.max(0, aim.a - rdt * (aim.kill > 0 ? 6 : 4));
       }
+      if (aim.kill > 0) aim.kill -= rdt;
+      aimRet.visible = aim.a > 0.01;
+      if (aimRet.visible) {
+        aimRet.position.x = aim.x; aimRet.position.z = -aim.y;
+        var asz = 1 + (1 - Math.min(1, aim.a * 2)) * 0.35 + Math.sin(ctx.time * 5) * 0.03;
+        aimRet.scale.set(asz, asz, asz); aimRet.rotation.z = -ctx.time * 0.6;
+        aimMat.opacity = 0.9 * aim.a;
+      }
+      // arco: solo con el apuntado activo (balón lanzado / en el aire para rematar)
+      aimArc.visible = aimRet.visible && aim.on && am === 2 && !b.held;
+      if (aimArc.visible) updateAimArc(b, aim.x, aim.y, aim.a);
 
       updateTrail(dt);
 
@@ -393,12 +631,30 @@
         sparks.geometry.attributes.position.needsUpdate = true; sparks.geometry.attributes.color.needsUpdate = true;
         if (!alive) spAlive = 0;
       }
+      // ---- polvo ----
+      if (duAlive) {
+        var dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array, dAlive = 0;
+        for (var dI = 0; dI < DUST_N; dI++) {
+          var D = du[dI];
+          if (D.life > 0) {
+            if (dt > 0) {
+              D.life -= dt; var ddr = 1 - 3.2 * dt; D.vx *= ddr; D.vy *= ddr; D.vz = D.vz * (1 - 2 * dt) - 0.25 * dt;
+              D.x += D.vx * dt; D.y += D.vy * dt; D.z = Math.max(0.04, D.z + D.vz * dt);
+            }
+            var lk = Math.max(0, D.life / D.max), al = Math.min(1, (1 - lk) * 6) * Math.sqrt(lk) * 0.7 * D.s;
+            dp[dI * 3] = D.x; dp[dI * 3 + 1] = D.z; dp[dI * 3 + 2] = -D.y;
+            dc[dI * 4] = 0.97; dc[dI * 4 + 1] = 0.9; dc[dI * 4 + 2] = 0.8; dc[dI * 4 + 3] = al; dAlive++;
+          } else if (dp[dI * 3 + 1] !== -50) { dp[dI * 3 + 1] = -50; dc[dI * 4 + 3] = 0; }
+        }
+        dust.geometry.attributes.position.needsUpdate = true; dust.geometry.attributes.color.needsUpdate = true;
+        dust.visible = dAlive > 0; if (!dAlive) duAlive = 0;
+      }
       // ---- destellos / ondas / marcas ----
       for (var f = 0; f < FLASH_N; f++) {
         var F = flashPool[f]; if (!F.s.visible) continue;
         if (dt > 0) F.t -= dt;
         if (F.t <= 0) { F.s.visible = false; continue; }
-        var u = F.t / F.d, fsz = F.size * (0.55 + (1 - u) * 0.7) * (0.5 + 0.5 * F.near); F.s.scale.set(fsz, fsz, 1); F.s.material.opacity = u * F.near;
+        var u = F.t / F.d, fsz = F.size * (0.7 + (1 - u) * 0.45) * (0.5 + 0.5 * F.near); F.s.scale.set(fsz, fsz, 1); F.s.material.opacity = u * u * F.near;
       }
       for (var w = 0; w < WAVE_N; w++) {
         var Wv = wavePool[w]; if (!Wv.s.visible) continue;
@@ -415,8 +671,12 @@
       for (var mI = 0; mI < MARK_N; mI++) {
         var Mk = markPool[mI]; if (!Mk.m.visible) continue;
         if (dt > 0) Mk.t -= dt;
-        if (Mk.t <= 0) { Mk.m.visible = false; continue; }
-        Mk.m.material.opacity = 0.65 * Math.min(1, Mk.t / 0.8);
+        if (Mk.t <= 0) { Mk.m.visible = false; Mk.r.visible = false; continue; }
+        var mf = Math.min(1, Mk.t / 1.0), age = Mk.d - Mk.t;
+        Mk.m.material.opacity = 0.9 * mf; Mk.r.material.opacity = 0.92 * mf;
+        // pulso de entrada del filo (1,7x -> 1x en 0,22 s) y un latido suave mientras dura la repetición
+        var pin = age < 0.22 ? 1 + 0.7 * (1 - age / 0.22) * (1 - age / 0.22) : 1 + Math.sin(age * 5) * 0.03;
+        var rs = Mk.s * 1.55 * pin; Mk.r.scale.set(rs, rs, rs);
       }
       updateConfetti(dt);
     },
@@ -425,34 +685,52 @@
       switch (e.type) {
         case 'hit': {
           var tc = T[e.team === 1 ? 1 : 0], qv = e.quality == null ? 0.8 : e.quality;
-          var k = e.kind;
-          if (k === 'spike') {
+          var k = e.kind, perfect = e.grade === 'perfect' && !!e.human, tip = k === 'free' && e.shot === 'tip';
+          var pw = e.power == null ? qv : e.power;
+          if (e.team === 0 && (k === 'serve' || k === 'spike')) aim.kill = 0.3; // la retícula se apaga en el contacto
+          if (e.shot === 'body') { // el balón da en el cuerpo sin gesto: golpe apagado y pequeño, sin destello
+            spin.rate = 4 + Math.random() * 4; spin.sign = -1; spin.wob = 0;
+            burstAt(e.x, e.y, e.z, 2, 1.0, 0.8, 0.82, 0.86, 0.5, 6);
+            trailA = 0; squash.t = 0.08; squash.k = 0.04;
+          } else if (k === 'spike') {
             spin.rate = 32 + qv * 14; spin.sign = 1; spin.wob = 0;
-            flashAt(e.x, e.y, e.z, 1.8 + qv * 0.8, 0.16, 1, 0.92, 0.8);
-            shockAt(e.x, e.y, e.z, 2.6 + qv, 0.32, tc.r, tc.g, tc.b);
-            burstAt(e.x, e.y, e.z, 26, 5.5, 1, 0.82, 0.5, 0.6, 7);
-            burstAt(e.x, e.y, e.z, 10, 3.5, tc.r, tc.g, tc.b, 0.4, 7);
-            startTrail(1, 0.62, 0.32, 0.17, 1);
-            squash.t = 0.12; squash.k = 0.32; heat = 1;
+            flashAt(e.x, e.y, e.z, 1.0 + pw * 0.45, 0.14, 1, 0.9, 0.74);
+            shockAt(e.x, e.y, e.z, 1.8 + pw * 0.7, 0.2, tc.r, tc.g, tc.b);
+            burstAt(e.x, e.y, e.z, 16 + pw * 10, 4.5 + pw * 1.5, 1, 0.78, 0.45, 0.6, 7);
+            burstAt(e.x, e.y, e.z, 8, 3.2, tc.r, tc.g, tc.b, 0.4, 7);
+            startTrail(1, 0.94, 0.66, 0.15 + pw * 0.04, 0.75 + pw * 0.3);
+            squash.t = 0.12; squash.k = 0.07 + pw * 0.025; heat = 0.6 + pw * 0.4;
           } else if (k === 'serve') {
-            var fast = (e.speed || 0) > 13 || e.serveType === 'jump' || e.style === 'jump';
-            var floatS = e.serveType === 'float' || e.style === 'float' || e.float === true;
+            var jumpS = e.shot === 'jump' || e.serveType === 'jump', floatS = e.shot === 'float' || e.serveType === 'float';
+            var fast = jumpS || (!floatS && (e.speed || 0) > 13);
             spin.rate = floatS ? 0.4 : fast ? 26 : 14; spin.sign = 1; spin.wob = floatS ? 1.8 : 0;
-            flashAt(e.x, e.y, e.z, fast ? 1.5 : 1.0, 0.12, 1, 0.95, 0.85);
-            burstAt(e.x, e.y, e.z, fast ? 16 : 8, fast ? 4 : 2.6, 1, 0.9, 0.7, 0.6, 8);
-            if (fast) { shockAt(e.x, e.y, e.z, 2, 0.26, 1, 0.9, 0.7); startTrail(1, 0.86, 0.6, 0.12, 0.8); heat = 0.4; }
+            flashAt(e.x, e.y, e.z, fast ? 0.95 : 0.6, 0.11, 1, 0.94, 0.8);
+            burstAt(e.x, e.y, e.z, fast ? 12 : 6, fast ? 3.6 : 2.2, 1, 0.88, 0.66, 0.6, 8);
+            if (fast) { shockAt(e.x, e.y, e.z, 1.5, 0.18, 1, 0.9, 0.7); startTrail(1, 0.96, 0.78, 0.12, 0.7); heat = 0.4; }
             else trailA = 0;
-            squash.t = 0.12; squash.k = fast ? 0.25 : 0.15;
+            squash.t = 0.12; squash.k = fast ? 0.08 : 0.05;
           } else if (k === 'set') {
             spin.rate = 3; spin.sign = -1; spin.wob = 0;
-            flashAt(e.x, e.y, e.z, 0.7, 0.08, 0.85, 0.92, 1);
-            burstAt(e.x, e.y, e.z, 4, 1.4, 0.8, 0.9, 1, 0.8, 6);
-            trailA = 0; squash.t = 0.1; squash.k = 0.08;
-          } else { // pass / free
+            flashAt(e.x, e.y, e.z, 0.42, 0.07, 0.85, 0.92, 1);
+            burstAt(e.x, e.y, e.z, 3, 1.2, 0.8, 0.9, 1, 0.8, 6);
+            trailA = 0; squash.t = 0.1; squash.k = 0.035;
+          } else if (tip) { // dejada: toque suave con la punta de los dedos, sin estela
+            spin.rate = 2; spin.sign = -1; spin.wob = 0;
+            flashAt(e.x, e.y, e.z, 0.36, 0.07, 1, 0.95, 0.85);
+            burstAt(e.x, e.y, e.z, 3, 1.0, 1, 0.92, 0.75, 0.6, 6);
+            trailA = 0; squash.t = 0.08; squash.k = 0.03;
+          } else { // pass / free (recepción, defensa, plancha, balón libre)
             spin.rate = 6 + Math.random() * 6; spin.sign = -1; spin.wob = 0;
-            flashAt(e.x, e.y, e.z, 0.9, 0.09, 0.9, 0.95, 1);
-            burstAt(e.x, e.y, e.z, 6, 1.8, 0.85, 0.92, 1, 0.8, 7);
-            trailA = 0; squash.t = 0.1; squash.k = 0.14;
+            var shank = e.shot === 'shank';
+            flashAt(e.x, e.y, e.z, shank ? 0.4 : 0.52, 0.08, 0.92, 0.95, 1);
+            burstAt(e.x, e.y, e.z, shank ? 3 : 5, 1.6, 0.85, 0.92, 1, 0.8, 7);
+            trailA = 0; squash.t = 0.1; squash.k = 0.06;
+          }
+          // toque perfecto del humano: anillo dorado y chispas doradas (recompensa visible, sin cegar)
+          if (perfect) {
+            shockAt(e.x, e.y, e.z, k === 'spike' || k === 'serve' ? 2.3 : 1.6, 0.26, 1, 0.8, 0.28);
+            burstAt(e.x, e.y, e.z, k === 'spike' ? 14 : 9, k === 'spike' ? 4.2 : 2.6, 1, 0.78, 0.25, 0.9, 5);
+            if (k !== 'set') flashAt(e.x, e.y, e.z, k === 'spike' ? 1.35 : 0.75, 0.1, 1, 0.85, 0.45);
           }
           // orientación del aplastamiento: eje Y local según la dirección de salida
           tv.set(g.ball.vx, g.ball.vz, -g.ball.vy); if (tv.lengthSq() < 1e-6) tv.set(0, 1, 0); tv.normalize();
@@ -460,11 +738,31 @@
           break;
         }
         case 'block': {
-          var tb = T[e.team === 1 ? 1 : 0];
-          flashAt(e.x, e.y, e.z, 1.7, 0.14, 1, 1, 1);
-          shockAt(e.x, e.y, e.z, 2.4, 0.3, tb.r, tb.g, tb.b);
-          burstAt(e.x, e.y, e.z, 20, 4, 1, 0.95, 0.85, 0.5, 8);
-          trailA = 0; squash.t = 0.12; squash.k = 0.3; spin.rate = 10; spin.sign = -1;
+          var tb = T[e.team === 1 ? 1 : 0], res = e.result || 'stuff';
+          if (res === 'stuff') { // bloqueo directo: impacto contundente
+            flashAt(e.x, e.y, e.z, 1.25, 0.14, 1, 0.97, 0.92);
+            shockAt(e.x, e.y, e.z, 2.4, 0.22, tb.r, tb.g, tb.b);
+            burstAt(e.x, e.y, e.z, 22, 4.6, 1, 0.95, 0.85, 0.5, 8);
+            burstAt(e.x, e.y, e.z, 10, 3.4, tb.r, tb.g, tb.b, 0.4, 8);
+            squash.t = 0.12; squash.k = 0.095; spin.rate = 12;
+          } else { // 'soft' (toque de bloqueo jugable) / 'tool' (block-out): roce
+            flashAt(e.x, e.y, e.z, 0.6, 0.09, 0.95, 0.97, 1);
+            burstAt(e.x, e.y, e.z, res === 'tool' ? 8 : 5, 2.0, 0.95, 0.95, 1, 0.5, 8);
+            squash.t = 0.1; squash.k = 0.06; spin.rate = res === 'tool' ? 14 : 6;
+          }
+          trailA = 0; spin.sign = -1; spin.wob = 0;
+          break;
+        }
+        case 'netTouch': { // un jugador toca la red: chispa fría en la cinta (plano de la red, x = 0)
+          var nz = Math.min(C.NET_H, Math.max(1.6, e.z || C.NET_H));
+          flashAt(0, e.y, nz, 0.55, 0.1, 0.75, 0.9, 1);
+          burstAt(0, e.y, nz, 12, 2.4, 0.7, 0.88, 1, 0.3, 7);
+          break;
+        }
+        case 'dive': { // plancha: polvo de parquet que sale hacia delante + onda en el suelo
+          var dx = e.dir ? e.dir[0] : 0, dy = e.dir ? e.dir[1] : 0, px = e.player ? e.player.x : e.x, py = e.player ? e.player.y : e.y;
+          dustAt(px + dx * 0.6, py + dy * 0.6, 22, 0.9, dx, dy, 2.4);
+          rippleAt(px + dx * 0.6, py + dy * 0.6, 1.3, 0.45, 0.95, 0.88, 0.75, 0.3);
           break;
         }
         case 'net':
@@ -475,7 +773,7 @@
           var sp2 = e.speed || 4;
           if (e.inside) rippleAt(e.x, e.y, 1.6 + sp2 * 0.12, 0.6, 1, 0.95, 0.85, 0.9);
           else rippleAt(e.x, e.y, 1.6 + sp2 * 0.12, 0.7, 1, 0.25, 0.18, 0.95);
-          markAt(e.x, e.y, e.inside, sp2);
+          markAt(e.x, e.y, e.inside, sp2, g && g.ball ? g.ball.vx : 0, g && g.ball ? g.ball.vy : 0);
           burstAt(e.x, e.y, 0.05, 10 + Math.min(14, sp2), 1.5 + sp2 * 0.15, 0.95, 0.9, 0.8, 1.2, 9);
           trailA = Math.min(trailA, 0.25);
           if (sp2 > 8) shockAt(e.x, e.y, 0.15, 1.6, 0.25, 1, 0.9, 0.8);
@@ -485,7 +783,7 @@
           if ((e.speed || 0) > 2.5) rippleAt(e.x, e.y, 0.9, 0.45, 1, 1, 1, 0.4);
           break;
         case 'landPlayer':
-          if (e.player) rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.35);
+          if (e.player) { rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.3); dustAt(e.player.x, e.player.y, 5, 0.7, 0, 0, 0); }
           break;
         case 'set':
           confetti(e.team === 1 ? 1 : 0, 160);

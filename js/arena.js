@@ -181,7 +181,9 @@
     drawFloor(floorCanvas, floorPpm);
     floorTex = texOf(floorCanvas); floorTex.anisotropy = Math.min(16, ctx.renderer.capabilities.getMaxAnisotropy());
     var floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * TX, 2 * TY),
-      new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.36, metalness: 0, envMapIntensity: 0.75 }));
+      // rugosidad 0.6: con menos, el reflejo del foco principal y de las lámparas del mapa de entorno
+      // forma una mancha que el bloom revienta en blanco justo detrás del jugador (visto en rally/block).
+      new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.6, metalness: 0, envMapIntensity: 0.85 }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; floor.name = 'floor'; root.add(floor);
     var outer = new THREE.Mesh(new THREE.PlaneGeometry(2 * HALL_X + 2, 2 * HALL_Y + 2),
       new THREE.MeshStandardMaterial({ color: PAL.outer, roughness: 0.85, envMapIntensity: 0.3 }));
@@ -194,6 +196,7 @@
    * red) con franjas de 10 cm; postes a 1 m con protección; cables.
    * La malla ondula cuando el balón toca la red.
    * ===================================================================== */
+  var casters = []; // mallas del pabellón que proyectan sombra (en calidad baja solo la proyectan jugadores y balón)
   var net = null, netRip = { a: 0, y: 0, z: 0, t: 9, dir: 1 };
   var NET_W = 10, NET_HH = 1, NSX = 50, NSY = 6;
   function netTexture() {
@@ -225,23 +228,39 @@
     for (var i = 0; i < n; i++) { g.fillStyle = i % 2 ? b : a; g.fillRect(0, i * 16, 8, 16); }
     return texOf(cv);
   }
-  function padTexture() {
-    var cv = canvas(256, 512), g = cv.getContext('2d');
-    var gr = g.createLinearGradient(0, 0, 256, 0); gr.addColorStop(0, '#163a5c'); gr.addColorStop(0.5, '#1f5076'); gr.addColorStop(1, '#163a5c');
-    g.fillStyle = gr; g.fillRect(0, 0, 256, 512);
-    g.fillStyle = '#ff6b3d'; g.fillRect(0, 470, 256, 18); g.fillStyle = '#ffd23f'; g.fillRect(0, 30, 256, 8);
-    g.save(); g.translate(128, 260); g.rotate(-Math.PI / 2); g.fillStyle = '#ffffff';
-    g.font = '900 64px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PALAU DEL MAR', 0, 0); g.restore();
-    return texOf(cv);
+  var padCv = null, padTex = null;
+  /** Protección del poste: el texto se ajusta a la longitud útil (márgenes ≥ 8 %) y se pinta en las
+   *  dos caras del cilindro (se lee desde los dos campos). Antes salía cortado ("ALAU DEL MA"). */
+  function drawPad(cv) {
+    var g = cv.getContext('2d'), W = cv.width, H = cv.height;
+    var gr = g.createLinearGradient(0, 0, W, 0);
+    gr.addColorStop(0, '#163a5c'); gr.addColorStop(0.25, '#1f5076'); gr.addColorStop(0.5, '#163a5c'); gr.addColorStop(0.75, '#1f5076'); gr.addColorStop(1, '#163a5c');
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    // franjas: naranja abajo (cerca del suelo), amarilla arriba; costuras horizontales suaves
+    g.fillStyle = '#ff6b3d'; g.fillRect(0, H - 52, W, 20); g.fillStyle = '#ffd23f'; g.fillRect(0, 26, W, 8);
+    g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 12, W, 3); g.fillRect(0, H - 15, W, 3);
+    var y0 = 44, y1 = H - 62, avail = (y1 - y0) * 0.86, text = 'PALAU DEL MAR', fs = 62;
+    g.font = '900 ' + fs + 'px ' + FONT;
+    while (g.measureText(text).width > avail && fs > 20) { fs -= 2; g.font = '900 ' + fs + 'px ' + FONT; }
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffffff';
+    for (var k = 0; k < 2; k++) {
+      g.save(); g.translate(W * (0.25 + k * 0.5), (y0 + y1) / 2); g.rotate(-Math.PI / 2); g.fillText(text, 0, 0); g.restore();
+    }
   }
+  function padTexture() { padCv = canvas(256, 512); drawPad(padCv); padTex = texOf(padCv); return padTex; }
+  function padRedraw() { if (padCv) { drawPad(padCv); padTex.needsUpdate = true; } }
   function buildNet(S) {
     var grp = new THREE.Group(), top = C.NET_H;
     var geo = new THREE.PlaneGeometry(NET_W, NET_HH, NSX, NSY);
     var tex = netTexture();
-    var mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-      map: tex, transparent: true, side: THREE.DoubleSide, roughness: 0.85, depthWrite: false, alphaTest: 0.04, envMapIntensity: 0.4 }));
-    mesh.rotation.y = Math.PI / 2; mesh.position.copy(VB.toThree(0, 0, top - NET_HH / 2, new THREE.Vector3()));
-    mesh.renderOrder = 1; grp.add(mesh);
+    // Dos mallas de una sola cara (delante/detrás) que comparten geometría: three r149 con un material
+    // transparente DoubleSide cambia side y pone needsUpdate DOS veces por frame (recalcula el programa).
+    var netOpts = { map: tex, transparent: true, side: THREE.FrontSide, roughness: 0.85, depthWrite: false, alphaTest: 0.04, envMapIntensity: 0.4 };
+    var mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial(netOpts));
+    netOpts.side = THREE.BackSide;
+    var meshB = new THREE.Mesh(geo, new THREE.MeshStandardMaterial(netOpts));
+    mesh.rotation.y = meshB.rotation.y = Math.PI / 2; mesh.position.copy(VB.toThree(0, 0, top - NET_HH / 2, new THREE.Vector3())); meshB.position.copy(mesh.position);
+    mesh.renderOrder = meshB.renderOrder = 1; grp.add(mesh); grp.add(meshB);
     net = { mesh: mesh, base: Float32Array.from(geo.attributes.position.array) };
     // cinta superior con volumen (proyecta sombra) y cable
     var white = col('#f4f1ea');
@@ -260,7 +279,7 @@
     var antGeo = new THREE.CylinderGeometry(0.013, 0.013, 1.8, 10);
     for (var a = -1; a <= 1; a += 2) {
       var ant = new THREE.Mesh(antGeo, antMat);
-      ant.position.copy(VB.toThree(0.03, a * (C.HW + 0.006), top - NET_HH + 0.9, new THREE.Vector3())); ant.castShadow = true; grp.add(ant);
+      ant.position.copy(VB.toThree(0.03, a * (C.HW + 0.006), top - NET_HH + 0.9, new THREE.Vector3())); ant.castShadow = true; casters.push(ant); grp.add(ant);
     }
     // postes a 1 m de las laterales (y = ±5.5) con protección acolchada
     var postMat = new THREE.MeshStandardMaterial({ color: '#c7ccd3', metalness: 0.75, roughness: 0.3 });
@@ -268,8 +287,8 @@
     var postGeo = new THREE.CylinderGeometry(0.05, 0.05, top + 0.2, 16), padGeo = new THREE.CylinderGeometry(0.17, 0.17, 1.95, 24);
     for (var p = -1; p <= 1; p += 2) {
       var py = p * (C.HW + 1);
-      var post = new THREE.Mesh(postGeo, postMat); post.position.copy(VB.toThree(0, py, (top + 0.2) / 2, new THREE.Vector3())); post.castShadow = true; grp.add(post);
-      var pad = new THREE.Mesh(padGeo, padMat); pad.position.copy(VB.toThree(0, py, 0.975, new THREE.Vector3())); pad.castShadow = true;
+      var post = new THREE.Mesh(postGeo, postMat); post.position.copy(VB.toThree(0, py, (top + 0.2) / 2, new THREE.Vector3())); post.castShadow = true; casters.push(post); grp.add(post);
+      var pad = new THREE.Mesh(padGeo, padMat); pad.position.copy(VB.toThree(0, py, 0.975, new THREE.Vector3())); pad.castShadow = true; casters.push(pad);
       pad.rotation.y = p > 0 ? Math.PI : 0; grp.add(pad);
       // base y tensor
       S.sbox(0.7, 0.7, 0.04, 0, py, 0.02, col('#2b323c'));
@@ -300,56 +319,129 @@
    * PERSONAS de arbitraje (1.er y 2.º árbitro, jueces de línea, anotadores)
    * Geometría fusionada con color por vértice; brazos y cabeza articulados.
    * ===================================================================== */
-  var personMat, refs = [], judges = [], R1 = null, R2 = null;
+  var personMat, refs = [], judges = [], R1 = null, R2 = null, officials = [];
+  /** LatheGeometry a partir de pares [radio, y] (de abajo arriba). */
+  function lathePts(pr, seg) {
+    var pts = []; for (var i = 0; i < pr.length; i++) pts.push(new THREE.Vector2(pr[i][0], pr[i][1]));
+    return new THREE.LatheGeometry(pts, seg || 10);
+  }
+  // Perfiles (metros). Tronco desde la cadera (y = 0) hasta la base del cuello; se escala elíptico.
+  var OFF_TORSO = [[0.0, 0.05], [0.152, 0.06], [0.158, 0.12], [0.148, 0.22], [0.16, 0.32], [0.178, 0.42], [0.186, 0.49], [0.178, 0.545], [0.15, 0.585], [0.1, 0.612], [0.06, 0.625], [0.0, 0.63]];
+  var OFF_PELVIS = [[0.0, -0.11], [0.12, -0.105], [0.158, -0.06], [0.163, 0.0], [0.157, 0.075], [0.0, 0.08]];
+  var OFF_LEG = [[0.0, -0.86], [0.046, -0.855], [0.052, -0.8], [0.06, -0.64], [0.058, -0.55], [0.052, -0.47], [0.064, -0.36], [0.078, -0.2], [0.084, -0.08], [0.07, 0.0], [0.0, 0.02]];
+  var OFF_ARM = [[0.0, -0.57], [0.03, -0.565], [0.034, -0.53], [0.041, -0.43], [0.038, -0.31], [0.043, -0.24], [0.046, -0.14], [0.0, -0.12]];
+  var OFF_SLEEVE = [[0.0, -0.2], [0.054, -0.195], [0.06, -0.12], [0.062, -0.04], [0.05, 0.02], [0.0, 0.05]];
+  /**
+   * Oficial (árbitros, jueces de línea, anotadores) con proporciones de atleta: tronco torneado con
+   * hombros y cuello, polo con cuello de otro color y escudo blanco en el pecho, pantalón largo,
+   * zapatillas con suela, cabeza con orejas, nariz, ojos, cejas y pelo. Mira a +Z local.
+   * Jerarquía: root -> piernas (fijas) + `upper` (pivote en la cadera: respiración, balanceo)
+   *            -> tronco, `head` (sigue el balón), `armR`/`armL` (señales).
+   */
   function makePerson(o) {
-    var grp = new THREE.Group(), B = new Builder();
-    var shirt = col(o.shirt), pants = col(o.pants), skin = col(o.skin), hair = col(o.hair), shoe = col('#15171b');
-    var up = o.seated ? -0.36 : 0;
-    var cap = function (r, l) { return new THREE.CapsuleGeometry(r, l, 3, 7); };
+    var grp = new THREE.Group(), LB = new Builder(), B = new Builder();
+    var shirt = col(o.shirt), pants = col(o.pants), skin = col(o.skin), hair = col(o.hair), shoe = col('#16181d'), sole = col('#e9e6df');
+    var collar = col(o.collar || o.shirt), badge = col(o.badge || '#f4f2ec'), belt = col('#0d0f13');
+    var hipY = o.seated ? 0.54 : 0.93;
+    var legG = lathePts(OFF_LEG, 9);
     if (!o.seated) {
       for (var s = -1; s <= 1; s += 2) {
-        B.geo(cap(0.068, 0.66), s * 0.1, 0.46, 0, pants);
-        B.box(0.11, 0.08, 0.27, s * 0.1, 0.04, 0.04, shoe);
+        LB.geo(legG, s * 0.092, hipY, 0, pants, 0, 0, s * 0.02);
+        LB.geo(new THREE.CapsuleGeometry(0.048, 0.17, 3, 8), s * 0.1, 0.055, 0.045, shoe, 0, Math.PI / 2, 0, 1.1, 1, 0.75);
+        LB.box(0.1, 0.022, 0.27, s * 0.1, 0.011, 0.045, sole);
       }
     } else {
+      // sentado: muslo hacia delante (el perfil cuelga en -Y; rx = -90° lo lleva a +Z) y espinilla vertical
+      var thigh = lathePts([[0.0, -0.46], [0.058, -0.455], [0.066, -0.36], [0.08, -0.16], [0.084, -0.05], [0.07, 0.0], [0.0, 0.02]], 9);
+      var shin = lathePts([[0.0, -0.5], [0.046, -0.495], [0.052, -0.44], [0.06, -0.3], [0.055, -0.1], [0.06, 0.0], [0.0, 0.02]], 9);
       for (var s2 = -1; s2 <= 1; s2 += 2) {
-        B.geo(cap(0.07, 0.34), s2 * 0.1, 0.52, 0.2, pants, 0, Math.PI / 2);
-        B.geo(cap(0.06, 0.36), s2 * 0.1, 0.26, 0.4, pants);
-        B.box(0.11, 0.08, 0.26, s2 * 0.1, 0.04, 0.45, shoe);
+        LB.geo(thigh, s2 * 0.095, hipY - 0.04, 0, pants, 0, -Math.PI / 2);
+        LB.geo(shin, s2 * 0.095, hipY - 0.04, 0.44, pants);
+        LB.geo(new THREE.CapsuleGeometry(0.048, 0.17, 3, 8), s2 * 0.095, 0.055, 0.49, shoe, 0, Math.PI / 2, 0, 1.1, 1, 0.75);
+        LB.box(0.1, 0.022, 0.27, s2 * 0.095, 0.011, 0.49, sole);
       }
     }
-    B.box(0.34, 0.2, 0.22, 0, 0.88 + up, 0, pants);
-    B.geo(cap(0.165, 0.34), 0, 1.2 + up, 0, shirt, 0, 0, 0, 1, 1, 0.66);
-    B.box(0.2, 0.05, 0.13, 0, 1.47 + up, 0.0, col(o.collar || o.shirt));
-    B.geo(new THREE.CylinderGeometry(0.05, 0.055, 0.12, 8), 0, 1.52 + up, 0, skin);
-    var body = new THREE.Mesh(B.build(), personMat); body.castShadow = true; grp.add(body);
-    var head = new THREE.Group(); head.position.y = 1.56 + up; head.rotation.order = 'YXZ'; grp.add(head);
+    // UNA SkinnedMesh por persona con piel rígida por hueso (antes 5 mallas: 30 dibujos + 30 en sombras para 6 oficiales)
+    var parts = [];
+    parts.push({ g: LB.build(), b: 0 });
+    var rootBone = new THREE.Bone(); grp.add(rootBone);
+    var upper = new THREE.Bone(); upper.position.y = hipY; rootBone.add(upper);
+    B.geo(lathePts(OFF_PELVIS, 12), 0, 0, 0, pants, 0, 0, 0, 1.13, 1, 0.74);
+    B.geo(new THREE.CylinderGeometry(0.164, 0.164, 0.035, 14, 1, true), 0, 0.068, 0, belt, 0, 0, 0, 1.12, 1, 0.73);
+    B.geo(lathePts(OFF_TORSO, 14), 0, 0.02, 0, shirt, 0, 0, 0, 1.15, 1, 0.66);
+    // cuello del polo (anillo) + tapeta de botones y escudo blanco a la izquierda del pecho
+    B.geo(new THREE.CylinderGeometry(0.068, 0.082, 0.05, 12, 1, true), 0, 0.64, -0.004, collar, 0, -0.12);
+    B.box(0.035, 0.11, 0.012, 0, 0.555, 0.118, collar, 0, -0.32);
+    B.box(0.06, 0.07, 0.012, 0.085, 0.44, 0.124, badge, 0, -0.1);
+    B.box(0.036, 0.012, 0.013, 0.085, 0.452, 0.128, col(o.badgeMark || '#c4532f'), 0, -0.1);
+    B.geo(new THREE.CylinderGeometry(0.047, 0.054, 0.13, 10), 0, 0.68, 0.004, skin);
+    parts.push({ g: B.build(), b: 1 });
+    var head = new THREE.Bone(); head.position.y = 0.74; head.rotation.order = 'YXZ'; upper.add(head);
     var HB = new Builder();
-    HB.geo(new THREE.SphereGeometry(0.108, 12, 9), 0, 0.12, 0, skin, 0, 0, 0, 1, 1.08, 1);
-    HB.geo(new THREE.SphereGeometry(0.114, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), 0, 0.135, -0.01, hair);
-    HB.box(0.03, 0.04, 0.04, 0, 0.11, 0.105, skin);
-    var hm = new THREE.Mesh(HB.build(), personMat); hm.castShadow = true; head.add(hm);
+    HB.geo(new THREE.SphereGeometry(0.104, 14, 10), 0, 0.105, 0.004, skin, 0, 0, 0, 0.92, 1.1, 1.0);
+    HB.geo(new THREE.SphereGeometry(0.06, 10, 6), 0, 0.045, 0.03, skin, 0, 0, 0, 1.15, 0.9, 1.1);        // mandíbula
+    HB.geo(new THREE.SphereGeometry(0.11, 14, 7, 0, Math.PI * 2, 0, Math.PI * 0.46), 0, 0.122, -0.008, hair, 0, -0.18, 0, 0.93, 1, 1.02);
+    HB.geo(new THREE.SphereGeometry(0.106, 12, 6, Math.PI * 1.12, Math.PI * 0.76, Math.PI * 0.3, Math.PI * 0.4), 0, 0.11, -0.008, hair, 0, 0, 0, 0.94, 1.08, 1.02); // nuca
+    for (var e2 = -1; e2 <= 1; e2 += 2) {
+      HB.geo(new THREE.SphereGeometry(0.022, 6, 5), e2 * 0.094, 0.1, 0.0, skin, 0, 0, 0, 0.5, 1, 0.8);       // orejas
+      HB.geo(new THREE.SphereGeometry(0.011, 6, 4), e2 * 0.034, 0.118, 0.092, col('#1b1410'));              // ojos
+      HB.box(0.034, 0.008, 0.01, e2 * 0.036, 0.142, 0.094, hair, 0, -0.1, e2 * -0.12);                      // cejas
+    }
+    HB.box(0.024, 0.042, 0.03, 0, 0.098, 0.104, skin, 0, 0.18);                                              // nariz
+    HB.box(0.034, 0.007, 0.01, 0, 0.058, 0.094, col('#7a4a3a'));                                             // boca
+    parts.push({ g: HB.build(), b: 2 });
+    var sleeveG = lathePts(OFF_SLEEVE, 9), armG = lathePts(OFF_ARM, 8);
     function arm(sx) {
-      var a = new THREE.Group(); a.position.set(sx * 0.215, 1.43 + up, 0); grp.add(a);
+      var a = new THREE.Bone(); a.position.set(sx * 0.2, 0.555, -0.005); upper.add(a);
       var AB = new Builder();
-      AB.geo(cap(0.056, 0.16), 0, -0.11, 0, shirt);
-      AB.geo(cap(0.045, 0.36), 0, -0.38, 0, skin);
-      AB.geo(new THREE.SphereGeometry(0.052, 8, 6), 0, -0.6, 0, skin);
-      var am = new THREE.Mesh(AB.build(), personMat); am.castShadow = true; a.add(am);
+      AB.geo(sleeveG, 0, 0, 0, shirt);
+      AB.geo(armG, 0, 0, 0, skin);
+      AB.geo(new THREE.SphereGeometry(0.042, 8, 6), 0, -0.615, 0.008, skin, 0, 0, 0, 0.62, 1.3, 1);          // mano
+      AB.geo(new THREE.CapsuleGeometry(0.012, 0.04, 2, 5), sx * -0.022, -0.59, 0.03, skin, 0, 0, sx * 0.5);  // pulgar
+      parts.push({ g: AB.build(), b: sx < 0 ? 3 : 4 });
       return a;
     }
-    var P = { root: grp, head: head, armR: arm(-1), armL: arm(1), tR: { x: 0, z: -0.12 }, tL: { x: 0, z: 0.12 }, hold: 0, flag: null };
-    P.armR.rotation.z = -0.12; P.armL.rotation.z = 0.12;
+    var P = { root: grp, upper: upper, head: head, armR: arm(-1), armL: arm(1), tR: { x: 0, z: -0.1 }, tL: { x: 0, z: 0.1 }, hold: 0, flag: null,
+      ph: rnd() * 6.283, restR: { x: o.seated ? -0.75 : 0.06, z: -0.1 }, restL: { x: o.seated ? -0.75 : 0.06, z: 0.1 } };
+    // piel: geometría de cada pieza llevada al espacio del grupo con la pose de reposo de su hueso
+    grp.updateMatrixWorld(true);
+    var bones = [rootBone, upper, head, P.armR, P.armL];
+    var sm = new THREE.SkinnedMesh(skinMerge(parts, bones), personMat); sm.castShadow = true; sm.name = 'official';
+    grp.add(sm); grp.updateMatrixWorld(true); sm.bind(new THREE.Skeleton(bones)); officials.push(sm);
+    P.armR.rotation.z = -0.1; P.armL.rotation.z = 0.1;
     if (o.flag) {
-      var fcv = canvas(32, 32), fg = fcv.getContext('2d');
-      for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) { fg.fillStyle = (i + j) % 2 ? '#ffd23f' : '#e0262f'; fg.fillRect(i * 8, j * 8, 8, 8); }
-      var fl = new THREE.Group(); fl.position.y = -0.62; P.armR.add(fl);
-      var stick = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 5), personMat); stick.position.y = -0.2; fl.add(stick);
+      var fcv = canvas(64, 64), fg = fcv.getContext('2d');
+      for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) { fg.fillStyle = (i + j) % 2 ? '#ffd23f' : '#e0262f'; fg.fillRect(i * 16, j * 16, 16, 16); }
+      var fl = new THREE.Group(); fl.position.set(0, -0.6, 0.02); P.armR.add(fl);
+      var stick = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.5, 6), stickMat || (stickMat = new THREE.MeshStandardMaterial({ color: '#2a2f38', roughness: 0.6 })));
+      stick.position.y = -0.2; fl.add(stick);
       var fm = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), new THREE.MeshStandardMaterial({ map: texOf(fcv), side: THREE.DoubleSide, roughness: 0.8 }));
-      fm.position.set(0, -0.3, 0.17); fm.rotation.y = Math.PI / 2; fl.add(fm); P.flag = fl;
+      fm.position.set(-0.17, -0.3, 0); fl.add(fm); P.flag = fl; // paño hacia fuera del cuerpo: se ve de frente desde la pista
     }
     root.add(grp);
     return P;
+  }
+  var stickMat = null;
+  /** Fusiona piezas {g (BufferGeometry indexada con position/normal/color), b (índice de hueso)} en una geometría con
+   *  skinIndex/skinWeight rígidos; cada pieza se transforma con la matriz (pose de reposo) de su hueso. */
+  function skinMerge(parts, bones) {
+    var P = [], N = [], Cc = [], SI = [], SW = [], I = [], off = 0;
+    for (var i = 0; i < parts.length; i++) {
+      var g = parts[i].g; g.applyMatrix4(bones[parts[i].b].matrixWorld);
+      var pa = g.attributes.position, na = g.attributes.normal, ca = g.attributes.color, ia = g.index.array;
+      for (var k = 0; k < pa.count; k++) {
+        P.push(pa.getX(k), pa.getY(k), pa.getZ(k)); N.push(na.getX(k), na.getY(k), na.getZ(k)); Cc.push(ca.getX(k), ca.getY(k), ca.getZ(k));
+        SI.push(parts[i].b, 0, 0, 0); SW.push(1, 0, 0, 0);
+      }
+      for (var j = 0; j < ia.length; j++) I.push(ia[j] + off);
+      off += pa.count; g.dispose();
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(Cc, 3));
+    geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4));
+    geo.setIndex(I); geo.computeBoundingSphere(); geo.boundingSphere.radius += 0.6; // brazos en alto
+    return geo;
   }
   function placePerson(P, sx, sy, sz, faceX, faceY) {
     VB.toThree(sx, sy, sz, P.root.position);
@@ -358,16 +450,31 @@
   }
   function buildOfficials(S) {
     personMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, envMapIntensity: 0.5 });
-    var ref = { shirt: '#1d2a44', collar: '#f1efe8', pants: '#16191f', skin: '#d9a77f', hair: '#2a1c12' };
+    var ref = { shirt: '#1a2540', collar: '#f1efe8', pants: '#14171c', skin: '#d9a77f', hair: '#2a1c12', badge: '#f4f2ec', badgeMark: '#c4532f' };
     // Silla del 1.er árbitro (junto al poste del lado -y), plataforma a 1.25 m
-    var ry = -(C.HW + 1.62), steel = col('#3a4350'), padc = col('#1f5076');
-    for (var lx = -1; lx <= 1; lx += 2) for (var ly = -1; ly <= 1; ly += 2) S.sbox(0.06, 0.06, 1.25, lx * 0.32, ry + ly * 0.32, 0.625, steel);
-    S.sbox(0.76, 0.76, 0.08, 0, ry, 1.25, steel);
-    S.sbox(0.76, 0.06, 0.95, 0, ry + 0.38, 1.7, steel);             // barandilla trasera
-    for (var rl = -1; rl <= 1; rl += 2) S.sbox(0.06, 0.76, 0.06, rl * 0.38, ry, 2.15, steel);
-    S.sbox(0.7, 0.12, 1.15, 0, ry - 0.36, 0.62, padc);               // protección frontal acolchada
-    for (var st = 0; st < 5; st++) S.sbox(0.5, 0.05, 0.03, 0, ry + 0.42, 0.22 + st * 0.22, steel); // escalera
-    R1 = makePerson(ref); placePerson(R1, 0, ry, 1.29, 0, 1); refs.push(R1);
+    // Plataforma elevada: columna acolchada (azul del pabellón con franjas), plataforma con reborde,
+    // barandilla acolchada en frente y laterales, peto frontal y escalera de 4 peldaños por detrás.
+    var ry = -(C.HW + 1.62), steel = col('#3a4350'), dark = col('#1b212b'), padc = col('#1f5076'), padd = col('#173f5f');
+    var orange = col('#ff6b3d'), whiteS = col('#eef0f2'), PZ = 1.25;
+    S.sbox(0.95, 0.95, 0.03, 0, ry, 0.015, dark);                                  // base
+    S.sbox(0.62, 0.62, PZ - 0.05, 0, ry, (PZ - 0.05) / 2, padc);                   // columna acolchada
+    S.sbox(0.64, 0.64, 0.12, 0, ry, 0.2, orange); S.sbox(0.64, 0.64, 0.025, 0, ry, 0.3, whiteS);
+    S.sbox(0.64, 0.64, 0.025, 0, ry, PZ - 0.2, whiteS);
+    S.sbox(0.86, 0.86, 0.08, 0, ry, PZ - 0.01, steel);                             // plataforma
+    S.sbox(0.9, 0.9, 0.02, 0, ry, PZ + 0.03, dark);                                // piso antideslizante
+    var railZ = PZ + 0.98, rd = 0.43;
+    for (var px2 = -1; px2 <= 1; px2 += 2) for (var py2 = -1; py2 <= 1; py2 += 2) S.sbox(0.035, 0.035, railZ - PZ, px2 * rd, ry + py2 * rd, (railZ + PZ) / 2, steel);
+    var railG = new THREE.CylinderGeometry(0.052, 0.052, 2 * rd + 0.1, 12);
+    S.geo(railG, 0, railZ, -(ry + rd), padd, 0, 0, Math.PI / 2);                   // barandilla frontal (lado pista)
+    for (var rs = -1; rs <= 1; rs += 2) S.geo(railG, rs * rd, railZ, -ry, padd, 0, Math.PI / 2, 0);  // laterales
+    S.sbox(2 * rd, 0.07, 0.58, 0, ry + rd, PZ + 0.38, padc);                       // peto frontal acolchado
+    S.sbox(2 * rd + 0.01, 0.075, 0.07, 0, ry + rd, PZ + 0.2, orange);
+    for (var st = 0; st < 4; st++) {                                               // peldaños macizos con huella clara
+      var tz = PZ - 0.31 * (st + 1) + 0.02, sy0 = ry - rd - 0.14 - st * 0.27;
+      if (tz < 0.1) break;
+      S.sbox(0.6, 0.27, tz, 0, sy0, tz / 2, dark); S.sbox(0.6, 0.04, 0.012, 0, sy0 + 0.12, tz + 0.006, whiteS);
+    }
+    R1 = makePerson(ref); placePerson(R1, 0, ry, PZ + 0.04, 0, 1); refs.push(R1);
     // 2.º árbitro de pie junto al poste opuesto
     R2 = makePerson(ref); placePerson(R2, 0, C.HW + 1.55, 0, 0, -1); refs.push(R2);
     // Mesa del anotador detrás del 2.º árbitro
@@ -375,7 +482,7 @@
     S.sbox(2.8, 0.7, 0.06, 0, ty, 0.76, col('#1a2433'));
     S.sbox(2.8, 0.05, 0.72, 0, ty - 0.33, 0.38, tabc);
     for (var c = -1; c <= 1; c += 2) {
-      var sc = makePerson({ shirt: '#22304a', pants: '#16191f', skin: c > 0 ? '#c68b5e' : '#f0c9a6', hair: c > 0 ? '#111' : '#6b4a2a', seated: true });
+      var sc = makePerson({ shirt: '#22304a', collar: '#f1efe8', pants: '#16191f', skin: c > 0 ? '#c68b5e' : '#f0c9a6', hair: c > 0 ? '#111' : '#6b4a2a', seated: true });
       placePerson(sc, c * 0.6, ty + 0.5, 0, 0, -1); refs.push(sc);
       S.sbox(0.44, 0.44, 0.05, c * 0.6, ty + 0.62, 0.45, steel); S.sbox(0.44, 0.05, 0.45, c * 0.6, ty + 0.84, 0.7, steel);
       S.sbox(0.05, 0.05, 0.45, c * 0.6, ty + 0.62, 0.22, steel);
@@ -383,10 +490,17 @@
       S.sbox(0.32, 0.24, 0.02, c * 0.6, ty - 0.05, 0.8, col('#d8dde4'));
     }
     // Jueces de línea en las esquinas diagonales (a la derecha de cada árbitro)
-    var lj = { shirt: '#eeeeea', collar: '#1d2a44', pants: '#16191f', skin: '#e6b48a', hair: '#3a2618', flag: true };
+    var lj = { shirt: '#1a2540', collar: '#f1efe8', pants: '#14171c', skin: '#e6b48a', hair: '#3a2618', flag: true, badge: '#f4f2ec', badgeMark: '#ffd23f' };
     var J1 = makePerson(lj); placePerson(J1, C.HL + 1.4, -(C.HW + 1.4), 0, -0.7, 0.7); J1.lines = [0, -1]; judges.push(J1);
     lj.skin = '#8d5a3b'; lj.hair = '#111111';
     var J2 = makePerson(lj); placePerson(J2, -(C.HL + 1.4), C.HW + 1.4, 0, 0.7, -0.7); J2.lines = [1, 1]; judges.push(J2);
+  }
+  /** Respiración y balanceo del peso (tiempo real: también en pausa/congelado se ven vivos). */
+  function breathe(P) {
+    var t = ctx.time + P.ph;
+    P.upper.scale.y = 1 + Math.sin(t * 1.6) * 0.007;
+    P.upper.rotation.z = Math.sin(t * 0.37) * 0.018;
+    P.upper.rotation.x = 0.02 + Math.sin(t * 0.23) * 0.01;
   }
   function angWrap(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
   function damp(a, b, rate, dt) { return a + (b - a) * (1 - Math.exp(-rate * dt)); }
@@ -401,13 +515,15 @@
       yaw = Math.max(-1.25, Math.min(1.25, yaw));
       var pitch = -Math.atan2(dy, Math.hypot(dx, dz)); pitch = Math.max(-0.6, Math.min(0.5, pitch));
       hp.rotation.y = damp(hp.rotation.y, yaw, 7, k); hp.rotation.x = damp(hp.rotation.x, pitch, 7, k);
-      if (P.hold > 0) P.hold -= dt; else { P.tR.x = 0; P.tR.z = -0.12; P.tL.x = 0; P.tL.z = 0.12; }
+      if (P.hold > 0) P.hold -= dt; else { P.tR.x = P.restR.x; P.tR.z = P.restR.z; P.tL.x = P.restL.x; P.tL.z = P.restL.z; }
+      breathe(P);
       P.armR.rotation.x = damp(P.armR.rotation.x, P.tR.x, 9, k); P.armR.rotation.z = damp(P.armR.rotation.z, P.tR.z, 9, k);
       P.armL.rotation.x = damp(P.armL.rotation.x, P.tL.x, 9, k); P.armL.rotation.z = damp(P.armL.rotation.z, P.tL.z, 9, k);
     }
     for (var j = 0; j < judges.length; j++) {
       var J = judges[j];
-      if (J.hold > 0) J.hold -= dt; else { J.tR.x = 0; J.tR.z = -0.12; J.tL.x = 0; J.tL.z = 0.12; }
+      if (J.hold > 0) J.hold -= dt; else { J.tR.x = J.restR.x; J.tR.z = J.restR.z; J.tL.x = J.restL.x; J.tL.z = J.restL.z; }
+      breathe(J);
       var wave = J.waving > 0 ? Math.sin(ctx.time * 14) * 0.5 : 0; if (J.waving > 0) J.waving -= dt;
       J.armR.rotation.x = damp(J.armR.rotation.x, J.tR.x, 10, k); J.armR.rotation.z = damp(J.armR.rotation.z, J.tR.z + wave, 10, k);
       J.armL.rotation.x = damp(J.armL.rotation.x, J.tL.x, 10, k); J.armL.rotation.z = damp(J.armL.rotation.z, J.tL.z, 10, k);
@@ -446,86 +562,215 @@
   var SHIRTS = {
     t0: ['#ff5b3a', '#ff7a3d', '#ff9a3d', '#e84a2c', '#ffb13d'],
     t1: ['#3f8cff', '#2c63d6', '#6fa8ff', '#1f4fb8'],
-    n: ['#f2efe8', '#2b3442', '#1f2833', '#6b7d8f', '#c9c2b0', '#3a4f66', '#7ee0c3', '#ffd23f', '#8a4f7d', '#d9d4c8', '#44505e', '#a33a3a', '#2f6b55']
+    // neutros apagados: así los colores de los equipos destacan en la grada
+    n: ['#ebe8e1', '#2b3442', '#1f2833', '#59687a', '#b9b2a2', '#3a4f66', '#8c8577', '#4a4f57', '#d9d4c8', '#6d5b4a', '#2f3d35', '#7a3434', '#c9cdd3', '#5b6e60']
   };
+  var HAIRS = ['#1a120c', '#2b1b10', '#3d2716', '#5a3a20', '#7a5532', '#a8814f', '#18181a', '#8f8f8f', '#cfc0a0', '#26150c'];
+  var PANTS = ['#1f2a3d', '#2e4466', '#1a1b1f', '#3b3f46', '#6b5f4a', '#2a2a2a', '#40506a'];
   var SKINS = ['#f0c9a6', '#e6b48a', '#d29a6e', '#c68b5e', '#a8714a', '#8d5a3b', '#6b4329', '#f3d2b5'];
-  function crowdGeometry() {
-    // Figura sentada mirando a +Z local; base (cadera) en y = 0.
-    // color.r = camiseta, color.g = piel, color.b = oscuro (pantalón/pelo). aArm = ±1 en brazos.
-    var parts = [];
-    function push(geo, x, y, z, part, arm, sx, sy, sz, rx) {
-      _e.set(rx || 0, 0, 0); _q.setFromEuler(_e); _s.set(sx || 1, sy || 1, sz || 1); _p.set(x, y, z); _m.compose(_p, _q, _s);
-      geo.applyMatrix4(_m); parts.push({ g: geo, part: part, arm: arm || 0 });
+  /* Figura sentada mirando a +Z local; cadera (asiento) en y = 0.
+   * Atributo `color` reutilizado como datos: x = pieza (0 camiseta, 1 piel, 2 pelo, 3 pantalón, 4 bufanda),
+   * y = brazo (±1 brazo, ±2 antebrazo; signo = lado), z = marca (1 bufanda, 2 cabeza).
+   * hi ≈ 300 triángulos (torso torneado con hombros y cuello, brazos de dos segmentos, pelo, bufanda);
+   * lo ≈ 150 (móvil / calidad baja). Articulaciones (deben coincidir con el shader): hombro (±0.225, 0.6, 0),
+   * codo (±0.25, 0.36, 0.04), cuello (0, 0.74, 0). */
+  var CROWD_SH = [0.225, 0.6, 0], CROWD_EL = [0.24, 0.37, 0.02];
+  function crowdGeometry(hi) {
+    var pos = [], nor = [], dat = [], idx = [], off = 0;
+    function M(x, y, z, rx, ry, rz, sx, sy, sz) {
+      _e.set(rx || 0, ry || 0, rz || 0, 'XYZ'); _q.setFromEuler(_e); _s.set(sx || 1, sy || 1, sz || 1); _p.set(x, y, z); return _m.compose(_p, _q, _s);
     }
-    push(new THREE.BoxGeometry(0.38, 0.15, 0.44), 0, 0.06, 0.14, 2);                       // muslos
-    push(new THREE.BoxGeometry(0.34, 0.42, 0.13), 0, -0.2, 0.34, 2);                      // piernas
-    push(new THREE.CylinderGeometry(0.17, 0.2, 0.56, 7, 1, false), 0, 0.38, 0, 0, 0, 1, 1, 0.68); // torso
-    var head = new THREE.SphereGeometry(0.118, 7, 5);
-    push(head, 0, 0.8, 0.0, 1, 0, 1, 1.08, 1);
-    push(new THREE.BoxGeometry(0.1, 0.5, 0.11), 0.235, 0.39, 0.03, 0, 1, 1, 1, 1, -0.25);   // brazos
-    push(new THREE.BoxGeometry(0.1, 0.5, 0.11), -0.235, 0.39, 0.03, 0, -1, 1, 1, 1, -0.25);
-    var pos = [], nor = [], colr = [], arm = [], idx = [], off = 0;
-    for (var i = 0; i < parts.length; i++) {
-      var gg = parts[i].g, p = gg.attributes.position, n = gg.attributes.normal;
+    /** Añade geo transformada por m; classify(x,y,z) -> [pieza, brazo, marca] por vértice (coords finales). */
+    function add(geo, m, classify, pre) {
+      var p = geo.attributes.position, n = geo.attributes.normal;
+      _m3.getNormalMatrix(m);
       for (var k = 0; k < p.count; k++) {
-        var x = p.getX(k), y = p.getY(k), z = p.getZ(k);
-        pos.push(x, y, z); nor.push(n.getX(k), n.getY(k), n.getZ(k));
-        var pt = parts[i].part;
-        if (pt === 1 && y > 0.83 && z < 0.07) pt = 2; // pelo en la parte alta/trasera de la cabeza
-        if (parts[i].arm && y < 0.2) pt = 1;          // manos
-        colr.push(pt === 0 ? 1 : 0, pt === 1 ? 1 : 0, pt === 2 ? 1 : 0);
-        arm.push(parts[i].arm);
+        _v.fromBufferAttribute(p, k); if (pre) pre(_v);
+        _v.applyMatrix4(m); pos.push(_v.x, _v.y, _v.z);
+        var c = classify(_v.x, _v.y, _v.z);
+        _v2.fromBufferAttribute(n, k).applyMatrix3(_m3).normalize(); nor.push(_v2.x, _v2.y, _v2.z);
+        dat.push(c[0], c[1], c[2]);
       }
-      var ix = gg.index.array; for (var j = 0; j < ix.length; j++) idx.push(ix[j] + off);
-      off += p.count;
+      var ia = geo.index.array; for (var j = 0; j < ia.length; j++) idx.push(ia[j] + off);
+      off += p.count; geo.dispose();
+    }
+    function fixed(a, b, c) { var r = [a, b, c]; return function () { return r; }; }
+    function limb(r0, r1, a, b, segs, part, code) { // cilindro abierto de a -> b
+      var dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], len = Math.hypot(dx, dy, dz);
+      var g = new THREE.CylinderGeometry(r1, r0, len, segs, 1, true);
+      _v.set(dx / len, dy / len, dz / len); _q.setFromUnitVectors(_v2.set(0, 1, 0), _v);
+      _p.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2); _s.set(1, 1, 1); _m.compose(_p, _q, _s);
+      add(g, _m, fixed(part, code, 0));
+    }
+    // torso torneado: cadera, cintura, pecho, hombros (bisel) y cuello
+    var prof = hi
+      ? [[0.15, 0.0], [0.165, 0.1], [0.152, 0.25], [0.172, 0.42], [0.186, 0.55], [0.162, 0.63], [0.088, 0.684], [0.05, 0.7], [0.047, 0.79]]
+      : [[0.15, 0.0], [0.158, 0.28], [0.186, 0.55], [0.1, 0.675], [0.048, 0.79]];
+    var pts = []; for (var i = 0; i < prof.length; i++) pts.push(new THREE.Vector2(prof[i][0], prof[i][1]));
+    add(new THREE.LatheGeometry(pts, hi ? 8 : 6), M(0, 0, 0, 0, 0, 0, 1.13, 1, 0.6), function (x, y) {
+      return [y > 0.688 ? 1 : y < 0.07 ? 3 : 0, 0, 0];
+    });
+    // cabeza con casquete de pelo (vértices de arriba/detrás, algo hinchados)
+    add(new THREE.SphereGeometry(0.105, hi ? 8 : 6, hi ? 6 : 4), M(0, 0.87, 0.012, 0, 0, 0, 0.94, 1.12, 1.0), function (x, y, z) {
+      var yr = y - 0.87, zr = z - 0.012; // nacimiento del pelo alto en la frente, bajo en la nuca
+      return [(yr > 0.072 || (zr < -0.008 && yr > -0.055)) ? 2 : 1, 0, 2];
+    }, function (v) { if (v.y > 0.068 || (v.z < -0.01 && v.y > -0.045)) v.multiplyScalar(1.07); });
+    // brazos
+    for (var sd = -1; sd <= 1; sd += 2) {
+      var S = [sd * CROWD_SH[0], CROWD_SH[1], CROWD_SH[2]], E = [sd * CROWD_EL[0], CROWD_EL[1], CROWD_EL[2]];
+      if (hi) {
+        limb(0.05, 0.043, S, E, 5, 0, sd);                                   // manga / brazo
+        limb(0.041, 0.036, E, [sd * 0.15, 0.2, 0.2], 5, 1, sd * 2);          // antebrazo (piel), mano sobre el muslo
+      } else { // LOD sencilla también con codo (antes un palo recto en diagonal: todos con el mismo brazo)
+        limb(0.05, 0.044, S, E, 4, 0, sd);
+        limb(0.042, 0.036, E, [sd * 0.15, 0.2, 0.2], 4, 1, sd * 2);
+      }
+    }
+    // piernas (sentado): muslos hacia delante y espinillas
+    for (var lg = -1; lg <= 1; lg += 2) { // dos piernas en las dos LOD (la sencilla era un bloque)
+      add(new THREE.BoxGeometry(0.15, 0.14, 0.44), M(lg * 0.088, 0.05, 0.16), fixed(3, 0, 0));
+      add(new THREE.BoxGeometry(0.12, 0.42, 0.12), M(lg * 0.088, -0.19, 0.36), fixed(3, 0, 0));
+    }
+    if (hi) {
+      // bufanda (solo la muestran las instancias con aAcc.w = 1): anillo al cuello + caída por delante
+      add(new THREE.CylinderGeometry(0.098, 0.112, 0.07, 8, 1, true), M(0, 0.668, 0, 0, 0, 0, 1.12, 1, 0.78), fixed(4, 0, 1));
+      add(new THREE.BoxGeometry(0.075, 0.27, 0.022), M(0.06, 0.52, 0.122, -0.08, 0, 0.05), fixed(4, 0, 1));
     }
     var geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(colr, 3));
-    geo.setAttribute('aArm', new THREE.Float32BufferAttribute(arm, 1));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(dat, 3));
     geo.setIndex(idx); return geo;
   }
+  var CROWD_GLSL_HEAD = [
+    'attribute vec4 aAnim; attribute vec3 aSkin; attribute vec3 aHair; attribute vec3 aPants; attribute vec4 aAcc;',
+    'varying vec3 vFace; varying float vFaceK;',
+    'uniform float uTime; uniform vec2 uCheer; uniform vec2 uCheerAge; uniform vec2 uWave; uniform float uTension; uniform vec3 uBall; uniform float uLook;',
+    'vec3 vbRotX(vec3 v, float a){ float c = cos(a), s = sin(a); return vec3(v.x, v.y * c - v.z * s, v.y * s + v.z * c); }',
+    'vec3 vbRotY(vec3 v, float a){ float c = cos(a), s = sin(a); return vec3(v.x * c + v.z * s, v.y, -v.x * s + v.z * c); }',
+    'vec3 vbRotZ(vec3 v, float a){ float c = cos(a), s = sin(a); return vec3(v.x * c - v.y * s, v.x * s + v.y * c, v.z); }',
+    // ánimo por instancia: equipo, retraso escalonado (no todos a la vez), ola
+    'float vbCheer(){ float dly = fract(aAnim.x * 0.731) * 0.42; vec2 ch = uCheer * smoothstep(vec2(dly), vec2(dly + 0.2), uCheerAge);',
+    ' float c = aAnim.z < 0.25 ? ch.x : (aAnim.z > 0.75 ? ch.y : max(ch.x, ch.y) * 0.55); return c * aAnim.y; }',
+    'float vbWave(){ float wd = abs(fract(aAnim.w - uWave.x + 0.5) - 0.5); return uWave.y * smoothstep(0.045, 0.0, wd); }'
+  ].join('\n');
   function crowdMaterial() {
-    crowdU = { uTime: { value: 0 }, uCheer: { value: new THREE.Vector2() }, uWave: { value: new THREE.Vector2() }, uTension: { value: 0 } };
-    var m = new THREE.MeshLambertMaterial({ vertexColors: true, color: 0xc4c4c4 }); // grada algo más oscura que la pista (look TV)
+    crowdU = { uTime: { value: 0 }, uCheer: { value: new THREE.Vector2() }, uCheerAge: { value: new THREE.Vector2(9, 9) }, uWave: { value: new THREE.Vector2() },
+      uTension: { value: 0 }, uBall: { value: new THREE.Vector3(0, 3, 0) }, uLook: { value: 1 } };
+    var m = new THREE.MeshLambertMaterial({ vertexColors: true, color: 0xc8c8c8 }); // grada algo más oscura que la pista (look TV)
     m.onBeforeCompile = function (sh) {
-      sh.uniforms.uTime = crowdU.uTime; sh.uniforms.uCheer = crowdU.uCheer; sh.uniforms.uWave = crowdU.uWave; sh.uniforms.uTension = crowdU.uTension;
-      sh.vertexShader = [
-        'attribute vec4 aAnim;', 'attribute vec3 aSkin;', 'attribute float aArm;',
-        'uniform float uTime;', 'uniform vec2 uCheer;', 'uniform vec2 uWave;', 'uniform float uTension;', sh.vertexShader].join('\n')
-        .replace('#include <beginnormal_vertex>', [
-          'float cTeam = aAnim.z;',
-          'float cheer = cTeam < 0.25 ? uCheer.x : (cTeam > 0.75 ? uCheer.y : max(uCheer.x, uCheer.y) * 0.55);',
-          'cheer *= aAnim.y;',
-          'float wd = abs(fract(aAnim.w - uWave.x + 0.5) - 0.5);',
-          'float wave = uWave.y * smoothstep(0.045, 0.0, wd);',
-          'float act = max(cheer, wave);',
-          'float armUp = clamp(act * 1.4, 0.0, 1.0) * (0.82 + 0.18 * sin(uTime * 11.0 + aAnim.x * 3.0));',
-          'float clap = uTension * (1.0 - act) * 0.35 * (0.5 + 0.5 * sin(uTime * 13.0 + aAnim.x * 7.0));',
-          'float ang = aArm * (armUp * 2.75 + clap);',
-          'float ca = cos(ang), sa = sin(ang);',
-          'vec3 objectNormal = vec3( normal );',
-          'if (aArm != 0.0) objectNormal.xy = vec2(objectNormal.x * ca - objectNormal.y * sa, objectNormal.x * sa + objectNormal.y * ca);'
-        ].join('\n'))
-        .replace('#include <begin_vertex>', [
-          'vec3 transformed = vec3( position );',
-          'if (aArm != 0.0) { vec2 pv = transformed.xy - vec2(aArm * 0.235, 0.62); transformed.xy = vec2(pv.x * ca - pv.y * sa, pv.x * sa + pv.y * ca) + vec2(aArm * 0.235, 0.62); }',
-          'float bob = sin(uTime * (1.1 + aAnim.y * 0.7) + aAnim.x) * 0.014 + uTension * sin(uTime * 4.0 + aAnim.x) * 0.02;',
-          'float hop = abs(sin(uTime * 8.0 + aAnim.x)) * 0.17 * cheer;',
-          'float rise = smoothstep(0.05, 0.6, act) * 0.36;',
-          'transformed.y += bob + hop + rise;'
-        ].join('\n'))
+      for (var k in crowdU) sh.uniforms[k] = crowdU[k];
+      sh.vertexShader = CROWD_GLSL_HEAD + '\n' + sh.vertexShader
         .replace('#include <color_vertex>', [
           '#ifdef USE_INSTANCING_COLOR',
-          'vColor = color.r * instanceColor.xyz + color.g * aSkin + color.b * vec3(0.035, 0.038, 0.045);',
+          ' vec3 cc = instanceColor.xyz; float pidc = color.x;',
+          ' if (pidc > 0.5) cc = aSkin; if (pidc > 1.5) cc = aHair; if (pidc > 2.5) cc = aPants; if (pidc > 3.5) cc = aAcc.xyz;',
+          // profundidad: las filas altas se oscurecen y desaturan (la luz de TV cae sobre la pista y las primeras filas)
+          ' float rowK = clamp((instanceMatrix[3].y - 1.3) / 6.0, 0.0, 1.0);',
+          ' cc = mix(cc, vec3(dot(cc, vec3(0.299, 0.587, 0.114))), rowK * 0.4) * (1.0 - rowK * 0.32);',
+          ' vColor = cc;',
           '#else',
-          'vColor = color;',
+          ' vColor = vec3(1.0);',
           '#endif'
+        ].join('\n'))
+        .replace('#include <beginnormal_vertex>', [
+          'float cheer = vbCheer(); float act = max(cheer, vbWave());',
+          'float armUp = clamp(act * 1.4, 0.0, 1.0) * (0.82 + 0.18 * sin(uTime * 11.0 + aAnim.x * 3.0));',
+          'float clap = uTension * (1.0 - act) * (0.5 + 0.5 * sin(uTime * 13.0 + aAnim.x * 7.0));',
+          'float armCode = color.y; float side = sign(armCode); float isFore = step(1.5, abs(armCode));',
+          'float shAng = side * (armUp * 2.75 + 0.12 * uTension * (1.0 - act));',
+          'float elAng = isFore * armUp * 1.45; float clapAng = -isFore * side * clap * 0.6;',
+          // posturas de reposo por instancia (se deshacen al animar): manos en los muslos, manos juntas en el regazo,
+          // mano en la barbilla, mano levantada a medias. Y encorvado/recostado variable.
+          'float pv = fract(aAnim.x * 5.17); float idleK = 1.0 - clamp(act * 2.0, 0.0, 1.0);',
+          'shAng += idleK * ((pv > 0.55 && pv < 0.75) ? -side * 0.17 : 0.0);',
+          'elAng += idleK * isFore * ((pv >= 0.75 && pv < 0.9 && side > 0.0) ? -1.5 : ((pv >= 0.9 && side < 0.0) ? -0.8 : 0.0));',
+          'float hun = (fract(aAnim.x * 2.31) * 0.24 - 0.06) * idleK;',
+          'float hunB = smoothstep(0.05, 0.45, position.y);',
+          // la cabeza sigue el balón (y a ratos charla con el de al lado)
+          'vec3 ip = instanceMatrix[3].xyz; vec3 fwv = normalize(instanceMatrix[2].xyz); vec3 rtv = normalize(instanceMatrix[0].xyz);',
+          'vec3 dB = uBall - ip; float yaw = atan(dot(dB, rtv), max(0.4, dot(dB, fwv)));',
+          'float chat = smoothstep(0.84, 0.98, sin(uTime * 0.19 + aAnim.x * 7.3)) * (fract(aAnim.x * 3.7) > 0.5 ? 1.0 : -1.0);',
+          'float isHead = step(1.5, color.z);',
+          'float hy = isHead * clamp(yaw * uLook * 0.85 + chat * 0.95 * (1.0 - act), -1.2, 1.2);',
+          'vec3 objectNormal = vec3(normal);',
+          'if (armCode != 0.0) { if (isFore > 0.5) objectNormal = vbRotY(vbRotX(objectNormal, elAng), clapAng); objectNormal = vbRotZ(objectNormal, shAng); }',
+          'if (isHead > 0.5) objectNormal = vbRotY(objectNormal, hy);',
+          'objectNormal = vbRotX(objectNormal, hun * hunB);'
+        ].join('\n'))
+        .replace('#include <begin_vertex>', [
+          'vec3 transformed = vec3(position);',
+          'if (color.z > 0.5 && color.z < 1.5 && aAcc.w < 0.5) transformed = vec3(0.0, 0.6, 0.0);', // sin bufanda: se pliega dentro del torso
+          'if (armCode != 0.0) {',
+          ' vec3 el = vec3(side * ' + CROWD_EL[0] + ', ' + CROWD_EL[1] + ', ' + CROWD_EL[2] + ');',
+          ' if (isFore > 0.5) transformed = vbRotY(vbRotX(transformed - el, elAng), clapAng) + el;',
+          ' vec3 sh = vec3(side * ' + CROWD_SH[0] + ', ' + CROWD_SH[1] + ', 0.0);',
+          ' transformed = vbRotZ(transformed - sh, shAng) + sh;',
+          '}',
+          'vFace = position - vec3(0.0, 0.87, 0.012); vFaceK = isHead * step(0.5, color.x) * step(color.x, 1.5);',
+          'if (isHead > 0.5) transformed = vbRotY(transformed - vec3(0.0, 0.74, 0.0), hy) + vec3(0.0, 0.74, 0.0);',
+          'transformed = vbRotX(transformed - vec3(0.0, 0.05, 0.0), hun * hunB) + vec3(0.0, 0.05, 0.0);',
+          'float bob = sin(uTime * (1.1 + aAnim.y * 0.7) + aAnim.x) * 0.012 + uTension * sin(uTime * 4.0 + aAnim.x) * 0.02;',
+          'float hop = abs(sin(uTime * 8.0 + aAnim.x)) * 0.17 * cheer;',
+          'float rise = smoothstep(0.05, 0.6, act) * 0.36;',
+          'transformed.y += bob + hop + rise;',
+          'transformed.x += sin(uTime * 0.55 + aAnim.x * 2.0) * 0.024 * max(0.0, transformed.y);' // balanceo suave
+        ].join('\n'))
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvFaceK *= 1.0 - smoothstep(7.0, 15.0, -mvPosition.z);');
+      // rasgos de la cara (ojos, cejas, boca) en el fragmento: solo de cerca, se apagan con la distancia
+      sh.fragmentShader = 'varying vec3 vFace; varying float vFaceK;\n' + sh.fragmentShader.replace('#include <color_fragment>', [
+        '#include <color_fragment>',
+        'if (vFaceK > 0.01 && vFace.z > 0.035) {',
+        ' vec3 fp = vFace;',
+        ' float eye = 1.0 - smoothstep(0.008, 0.013, length(vec2(abs(fp.x) - 0.035, (fp.y - 0.012) * 1.25)));',
+        ' float brow = (1.0 - smoothstep(0.004, 0.008, abs(fp.y - 0.036 + abs(fp.x) * 0.12))) * step(0.014, abs(fp.x)) * (1.0 - step(0.056, abs(fp.x)));',
+        ' float mouth = (1.0 - smoothstep(0.003, 0.007, abs(fp.y + 0.046 - fp.x * fp.x * 6.0))) * (1.0 - smoothstep(0.017, 0.025, abs(fp.x)));',
+        ' float fk = max(eye, max(brow * 0.75, mouth * 0.55)) * vFaceK;',
+        ' diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.18, fk);',
+        '}'].join('\n'));
+    };
+    m.customProgramCacheKey = function () { return 'vb-crowd-4'; };
+    return m;
+  }
+  /** Banderas en la grada (InstancedMesh aparte): mástil + paño de 3 franjas que ondea; se agitan al animar. */
+  function flagMaterial() {
+    var m = new THREE.MeshLambertMaterial({ vertexColors: true, color: 0xd0d0d0, side: THREE.DoubleSide });
+    m.onBeforeCompile = function (sh) {
+      for (var k in crowdU) sh.uniforms[k] = crowdU[k];
+      sh.vertexShader = CROWD_GLSL_HEAD + '\n' + sh.vertexShader
+        .replace('#include <color_vertex>', [
+          '#ifdef USE_INSTANCING_COLOR',
+          ' vColor = color.x < 0.5 ? vec3(0.55, 0.57, 0.6) : (color.x < 1.5 ? instanceColor.xyz : aAcc.xyz);',
+          '#else', ' vColor = vec3(1.0);', '#endif'].join('\n'))
+        .replace('#include <begin_vertex>', [
+          'float cheer = vbCheer(); float act = max(cheer, vbWave());',
+          'vec3 transformed = vec3(position);',
+          'float fx = clamp(transformed.x / 0.78, 0.0, 1.0);',
+          'if (color.x > 0.5) transformed.z += sin(uTime * 7.0 + transformed.x * 6.0 + aAnim.x * 4.0) * 0.1 * fx + sin(uTime * 3.1 + transformed.y * 5.0) * 0.03 * fx;',
+          'float sw = sin(uTime * (2.2 + aAnim.y) + aAnim.x * 5.0) * (0.12 + 0.55 * act);',
+          'transformed = vbRotZ(transformed - vec3(0.0, 0.75, 0.0), sw) + vec3(0.0, 0.75, 0.0);',
+          'transformed.y += smoothstep(0.05, 0.6, act) * 0.36 + abs(sin(uTime * 8.0 + aAnim.x)) * 0.17 * cheer;'
         ].join('\n'));
     };
-    m.customProgramCacheKey = function () { return 'vb-crowd-1'; };
+    m.customProgramCacheKey = function () { return 'vb-flag-1'; };
     return m;
+  }
+  function flagGeometry() {
+    var pos = [], nor = [], dat = [], idx = [], off = 0;
+    function add(geo, part, x, y, z) {
+      var p = geo.attributes.position, n = geo.attributes.normal;
+      for (var k = 0; k < p.count; k++) { pos.push(p.getX(k) + x, p.getY(k) + y, p.getZ(k) + z); nor.push(n.getX(k), n.getY(k), n.getZ(k)); dat.push(part, 0, 0); }
+      var ia = geo.index.array; for (var j = 0; j < ia.length; j++) idx.push(ia[j] + off); off += p.count; geo.dispose();
+    }
+    add(new THREE.BoxGeometry(0.025, 1.6, 0.025), 0, 0, 1.15, 0);               // mástil (de la mano hacia arriba)
+    add(new THREE.PlaneGeometry(0.78, 0.17, 6, 1), 1, 0.4, 1.83, 0);            // franja superior (color del equipo)
+    add(new THREE.PlaneGeometry(0.78, 0.17, 6, 1), 2, 0.4, 1.66, 0);            // franja central (secundario)
+    add(new THREE.PlaneGeometry(0.78, 0.17, 6, 1), 1, 0.4, 1.49, 0);            // franja inferior
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(dat, 3));
+    geo.setIndex(idx); return geo;
   }
   function buildStands(S, E) {
     var stepA = col(PAL.step), stepT = col(PAL.stepTop), seatA = col(PAL.seatA), seatB = col(PAL.seatB), seatC = col(PAL.seatC);
@@ -600,43 +845,92 @@
     }
     return seats;
   }
+  // bolsas de afición visitante (coords de sim): grupos compactos de azul en la grada rival
+  var AWAY_POCKETS = [[-12, -15.5, 4.2], [-22, 15, 3.6], [-21.5, 4.5, 3.4], [6, 16.5, 2.6]];
+  var crowdGeos = { hi: null, lo: null }, flagMesh = null;
   function buildCrowd(seats) {
-    var baseGeo = crowdGeometry(), mat = crowdMaterial();
+    crowdGeos.hi = crowdGeometry(true); crowdGeos.lo = crowdGeometry(false);
+    var mat = crowdMaterial();
     var c = new THREE.Color();
+    var flagSeats = [];
     crowdHeads.length = 0;
     for (var m = 0; m < 4; m++) {
       var list = seats[m];
       // mezcla aleatoria (para que `count` reducido quite gente repartida) y aforo ~88 %
       for (var i = list.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), t = list[i]; list[i] = list[j]; list[j] = t; }
       var n = Math.floor(list.length * 0.88);
-      var geo = baseGeo.clone();
-      var anim = new Float32Array(n * 4), skin = new Float32Array(n * 3);
-      var mesh = new THREE.InstancedMesh(geo, mat, n);
+      var anim = new Float32Array(n * 4), skin = new Float32Array(n * 3), hair = new Float32Array(n * 3), pants = new Float32Array(n * 3), acc = new Float32Array(n * 4);
+      var mesh = new THREE.InstancedMesh(crowdGeos.hi, mat, n);
       var minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9, minz = 1e9, maxz = -1e9;
       for (var k = 0; k < n; k++) {
         var st = list[k];
-        // afición: el fondo +x y la mitad +x de las laterales animan al equipo 0 (local)
-        var home = st.x > 2 ? 0.62 : st.x < -2 ? 0.2 : 0.4, away = st.x < -2 ? 0.5 : st.x > 2 ? 0.08 : 0.2;
-        if (m === 2) { home = 0.75; away = 0.05; } if (m === 3) { home = 0.22; away = 0.55; }
-        var rr = rnd(), team = rr < home ? 0 : rr < home + away ? 1 : 0.5;
+        // afición: el fondo +x y la mitad +x de las laterales animan al equipo 0 (local); bolsas azules visitantes
+        var home = st.x > 2 ? 0.66 : st.x < -2 ? 0.3 : 0.48, away = st.x < -2 ? 0.2 : st.x > 2 ? 0.04 : 0.1;
+        if (m === 2) { home = 0.78; away = 0.03; } if (m === 3) { home = 0.3; away = 0.25; }
+        for (var pk = 0; pk < AWAY_POCKETS.length; pk++) {
+          var P = AWAY_POCKETS[pk], pd = Math.hypot(st.x - P[0], st.y - P[1]);
+          if (pd < P[2]) { var pw = 1 - pd / P[2]; away = Math.max(away, 0.55 + 0.35 * pw); home = Math.min(home, 0.08); }
+        }
+        var rr = rnd(), team = rr < away ? 1 : rr < away + home ? 0 : 0.5;
         var shirt = team === 0 ? pick(SHIRTS.t0) : team === 1 ? pick(SHIRTS.t1) : pick(SHIRTS.n);
-        c.set(shirt).multiplyScalar(0.7 + rnd() * 0.35); mesh.setColorAt(k, c);
-        c.set(pick(SKINS)); skin[k * 3] = c.r; skin[k * 3 + 1] = c.g; skin[k * 3 + 2] = c.b;
+        c.set(shirt).multiplyScalar(0.78 + rnd() * 0.3); mesh.setColorAt(k, c);
+        var sk = pick(SKINS); c.set(sk); skin[k * 3] = c.r; skin[k * 3 + 1] = c.g; skin[k * 3 + 2] = c.b;
+        // pelo (un 6 % calvos: pelo = piel algo más oscura)
+        if (rnd() < 0.06) c.set(sk).multiplyScalar(0.85); else c.set(pick(HAIRS));
+        hair[k * 3] = c.r; hair[k * 3 + 1] = c.g; hair[k * 3 + 2] = c.b;
+        c.set(pick(PANTS)); pants[k * 3] = c.r; pants[k * 3 + 1] = c.g; pants[k * 3 + 2] = c.b;
+        // bufandas de la afición (más en los fondos)
+        var scarf = team !== 0.5 && rnd() < (m >= 2 ? 0.26 : 0.14);
+        if (scarf) { c.set(team === 0 ? pick(['#ff6b3d', '#ffd23f', '#ff8a3d']) : pick(['#3f8cff', '#f2f4f8', '#2c63d6'])); acc[k * 4] = c.r; acc[k * 4 + 1] = c.g; acc[k * 4 + 2] = c.b; acc[k * 4 + 3] = 1; }
         anim[k * 4] = rnd() * 6.283; anim[k * 4 + 1] = 0.55 + rnd() * 0.45; anim[k * 4 + 2] = team;
         anim[k * 4 + 3] = Math.atan2(st.y, st.x) / 6.2832 + 0.5;
-        var yaw = Math.atan2(st.fx, -st.fy), sc = 0.92 + rnd() * 0.16;
-        VB.toThree(st.x, st.y, st.z, _p); _e.set(0, yaw + (rnd() - 0.5) * 0.25, 0); _q.setFromEuler(_e); _s.set(sc, sc, sc);
+        // complexión: 4 % niños; anchura y altura variables
+        var kid = rnd() < 0.04, sh = kid ? 0.78 : 0.92 + rnd() * 0.16, sw = kid ? 0.8 : 0.9 + rnd() * 0.24;
+        var yaw = Math.atan2(st.fx, -st.fy);
+        VB.toThree(st.x, st.y, st.z, _p); _e.set(0, yaw + (rnd() - 0.5) * 0.25, 0); _q.setFromEuler(_e); _s.set(sw, sh, (sw + 1) / 2);
         _m.compose(_p, _q, _s); mesh.setMatrixAt(k, _m);
         if (_p.x < minx) minx = _p.x; if (_p.x > maxx) maxx = _p.x; if (_p.y < miny) miny = _p.y; if (_p.y > maxy) maxy = _p.y; if (_p.z < minz) minz = _p.z; if (_p.z > maxz) maxz = _p.z;
         if (k % 23 === 0) crowdHeads.push(_p.x, _p.y + 0.95, _p.z);
+        // banderas: algunos aficionados de equipo, a partir de la 3.ª fila
+        if (team !== 0.5 && !kid && _p.y > 2.0 && rnd() < (m >= 2 ? 0.03 : 0.014)) flagSeats.push({ m: _m.clone(), team: team, a: k * 4, anim: anim });
       }
-      geo.setAttribute('aAnim', new THREE.InstancedBufferAttribute(anim, 4));
-      geo.setAttribute('aSkin', new THREE.InstancedBufferAttribute(skin, 3));
-      geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((minx + maxx) / 2, (miny + maxy) / 2, (minz + maxz) / 2),
-        Math.hypot(maxx - minx, maxy - miny, maxz - minz) / 2 + 1.5);
+      var geo = crowdGeos.hi; // los atributos por instancia van en un clon por grada; las dos LOD comparten los mismos buffers
+      var ga = { aAnim: new THREE.InstancedBufferAttribute(anim, 4), aSkin: new THREE.InstancedBufferAttribute(skin, 3), aHair: new THREE.InstancedBufferAttribute(hair, 3),
+        aPants: new THREE.InstancedBufferAttribute(pants, 3), aAcc: new THREE.InstancedBufferAttribute(acc, 4) };
+      var bs = new THREE.Sphere(new THREE.Vector3((minx + maxx) / 2, (miny + maxy) / 2, (minz + maxz) / 2), Math.hypot(maxx - minx, maxy - miny, maxz - minz) / 2 + 1.5);
+      var lods = {};
+      ['hi', 'lo'].forEach(function (lv) {
+        var g = new THREE.BufferGeometry(), src = crowdGeos[lv];
+        g.setAttribute('position', src.attributes.position); g.setAttribute('normal', src.attributes.normal); g.setAttribute('color', src.attributes.color); g.setIndex(src.index);
+        for (var an in ga) g.setAttribute(an, ga[an]);
+        g.boundingSphere = bs; lods[lv] = g;
+      });
+      mesh.geometry = lods.hi;
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      mesh.userData.full = n; mesh.name = 'crowd' + m;
+      mesh.userData.full = n; mesh.userData.lods = lods; mesh.name = 'crowd' + m;
+      // r149 crea los InstancedMesh con frustumCulled = false; la esfera (mundo, +1,5 m para botes/brazos/ola)
+      // es correcta: la grada que queda detrás de la cámara deja de dibujarse
+      mesh.frustumCulled = true;
       root.add(mesh); crowdMeshes.push(mesh);
+    }
+    // banderas
+    if (flagSeats.length) {
+      var fg = flagGeometry(), fn = flagSeats.length;
+      var fAnim = new Float32Array(fn * 4), fAcc = new Float32Array(fn * 4);
+      flagMesh = new THREE.InstancedMesh(fg, flagMaterial(), fn);
+      for (var f = 0; f < fn; f++) {
+        var F = flagSeats[f];
+        for (var q = 0; q < 4; q++) fAnim[f * 4 + q] = F.anim[F.a + q];
+        // mástil en la mano derecha del aficionado
+        _v.set(0.2, 0, 0.12).applyMatrix4(F.m); F.m.setPosition(_v);
+        flagMesh.setMatrixAt(f, F.m);
+        c.set(F.team === 0 ? pick(['#ff5b3a', '#ff7a3d', '#ffb13d']) : pick(['#3f8cff', '#2c63d6'])); flagMesh.setColorAt(f, c);
+        c.set(F.team === 0 ? pick(['#ffffff', '#ffd23f', '#16243a']) : pick(['#ffffff', '#ffd23f'])); fAcc[f * 4] = c.r; fAcc[f * 4 + 1] = c.g; fAcc[f * 4 + 2] = c.b;
+      }
+      fg.setAttribute('aAnim', new THREE.InstancedBufferAttribute(fAnim, 4)); fg.setAttribute('aAcc', new THREE.InstancedBufferAttribute(fAcc, 4));
+      fg.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 4, 0), 40); // abarca todo el pabellón: frustumCulled se queda en false
+      flagMesh.instanceMatrix.needsUpdate = true; flagMesh.instanceColor.needsUpdate = true; flagMesh.name = 'flags';
+      root.add(flagMesh);
     }
   }
 
@@ -653,7 +947,7 @@
     { name: 'SALT·9', fg: '#ffffff', bg: ['#0e1118', '#252b38'], deco: 'dots' },
     { name: 'VOLEY 3D', fg: '#0e1118', bg: ['#ffd23f', '#ffb03d'], deco: 'ball' }
   ];
-  var led = { cv: null, tex: [], mcv: null, mtex: [], mats: [], msgT: 0, scroll: 0, msgOn: false, refl: [] };
+  var led = { cv: null, tex: null, mcv: null, mtex: null, mats: [], msgT: 0, msgOn: false, refl: [] }, ledReflMeshes = [];
   function drawDeco(g, kind, x, y, h, color) {
     g.save(); g.strokeStyle = color; g.fillStyle = color; g.lineWidth = h * 0.08;
     if (kind === 'flake') { for (var i = 0; i < 3; i++) { g.save(); g.translate(x, y); g.rotate(i * Math.PI / 3); g.beginPath(); g.moveTo(-h * 0.32, 0); g.lineTo(h * 0.32, 0); g.stroke(); g.restore(); } }
@@ -678,10 +972,7 @@
       g.fillText(b.name, x0 + H * 1.15, H * 0.54);
       g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x0 + seg - 2, 0, 2, H);
     }
-    // rejilla de píxeles LED
-    g.fillStyle = 'rgba(0,0,0,0.16)';
-    var px = Math.max(2, Math.round(H / 26));
-    for (var y = 0; y < H; y += px) g.fillRect(0, y, W, 1);
+    // la rejilla de píxeles LED la pinta el shader (ledMaterial): en el canvas producía moiré al mipmapear
   }
   function drawMsg(cv, text, color) {
     var g = cv.getContext('2d'), W = cv.width, H = cv.height;
@@ -697,49 +988,89 @@
       g.fillStyle = 'rgba(255,255,255,0.75)';
       for (var c = 0; c < 3; c++) { var cx = x + unit - H * 1.35 + c * H * 0.32; g.beginPath(); g.moveTo(cx, H * 0.25); g.lineTo(cx + H * 0.18, H * 0.5); g.lineTo(cx, H * 0.75); g.lineTo(cx + H * 0.08, H * 0.5); g.closePath(); g.fill(); }
     }
-    g.fillStyle = 'rgba(0,0,0,0.16)';
-    var px = Math.max(2, Math.round(H / 26)); for (var y = 0; y < H; y += px) g.fillRect(0, y, W, 1);
   }
-  function ledTex(cv, rep) { var t = texOf(cv); t.wrapS = THREE.RepeatWrapping; t.repeat.set(rep, 1); return t; }
-  /** Valla LED en el suelo. (cx,cy) centro en sim, len a lo largo, normal hacia la pista (nx,ny). */
+  /* Material LED común (vallas, videomarcadores, marcador colgado). Una sola textura por lienzo,
+   * compartida por todas las vallas: la repetición, la fase y el desplazamiento van en uniformes.
+   * La retícula de LEDs se dibuja aquí con fwidth y se apaga cuando cada LED ocupa < ~3 px
+   * (antes era una raya de 1 px en el canvas que producía moiré a distancia de juego). */
+  var LED_VS = 'varying vec2 vUv;\n#include <fog_pars_vertex>\nvoid main(){ vUv = uv; vec4 mvPosition = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mvPosition;\n#include <fog_vertex>\n}';
+  var LED_FS = [
+    'uniform sampler2D map; uniform float rep; uniform float phase; uniform float scroll; uniform float boost; uniform float dotK; uniform float vis; uniform vec2 cells;',
+    'varying vec2 vUv;',
+    '#include <fog_pars_fragment>',
+    'void main(){',
+    ' vec2 uv = vec2(vUv.x * rep + phase + scroll, vUv.y);',
+    ' vec3 c = texture2D(map, uv).rgb;',
+    ' vec2 gc = uv * cells; vec2 fw = fwidth(gc);',
+    ' float fade = (1.0 - smoothstep(0.16, 0.36, max(fw.x, fw.y))) * dotK;',
+    ' vec2 f = abs(fract(gc) - 0.5);',
+    ' float d = smoothstep(0.5, 0.3, max(f.x, f.y * 1.15));',
+    ' c *= mix(1.0, 0.42 + 0.72 * d, fade);',
+    ' gl_FragColor = vec4(c * boost * vis, 1.0);',
+    '#include <encodings_fragment>',
+    '#include <fog_fragment>',
+    '}'].join('\n');
+  function ledMaterial(map, rep, cellsX, cellsY, fog) {
+    var u = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
+      map: { value: null }, rep: { value: rep }, phase: { value: 0 }, scroll: { value: 0 }, boost: { value: 0.95 }, vis: { value: 1 },
+      dotK: { value: 1 }, cells: { value: new THREE.Vector2(cellsX, cellsY) } }]);
+    u.map.value = map; // merge clona los valores: la textura se asigna después para compartirla de verdad
+    var m = new THREE.ShaderMaterial({ uniforms: u, vertexShader: LED_VS, fragmentShader: LED_FS, fog: fog !== false, toneMapped: false });
+    m.extensions.derivatives = true;
+    return m;
+  }
+  function ledTex(cv) { var t = texOf(cv); t.wrapS = THREE.RepeatWrapping; return t; }
+  /** Valla LED. (cx,cy) centro en sim, len a lo largo, normal hacia la pista (nx,ny).
+   *  Las de suelo van inclinadas hacia atrás (-0.16 rad) dentro de una carcasa inclinada igual:
+   *  la pantalla queda 1,5 cm por delante de su cara frontal (antes quedaba medio enterrada). */
   function ledBoard(S, cx, cy, len, nx, ny, h, z0, speed, rows) {
     var meterPerSeg = h * (led.cv.width / BRANDS.length) / led.cv.height;
-    var rep = len / (meterPerSeg * BRANDS.length);
-    var t = ledTex(led.cv, rep), mt = ledTex(led.mcv, len / (h * led.mcv.width / led.mcv.height));
-    var mat = new THREE.MeshBasicMaterial({ map: t, toneMapped: false });
+    var repB = len / (meterPerSeg * BRANDS.length), repM = len / (h * led.mcv.width / led.mcv.height);
+    var cellsY = Math.round(h / 0.016), cellsX = Math.round(cellsY * led.cv.width / led.cv.height);
+    var mat = ledMaterial(led.tex, repB, cellsX, cellsY);
+    mat.uniforms.phase.value = rnd();
     var mesh = new THREE.Mesh(new THREE.PlaneGeometry(len, h), mat);
-    VB.toThree(cx + nx * 0.07, cy + ny * 0.07, z0 + h / 2, mesh.position);
-    mesh.rotation.order = 'YXZ'; mesh.rotation.y = Math.atan2(nx, -ny); mesh.rotation.x = rows ? 0 : -0.16;
+    var ry = Math.atan2(nx, -ny), rx = rows ? 0 : -0.16;
+    mesh.rotation.order = 'YXZ'; mesh.rotation.y = ry; mesh.rotation.x = rx;
+    _e.set(rx, ry, 0, 'YXZ'); _v.set(0, 1, 0).applyEuler(_e); _v2.set(0, 0, 1).applyEuler(_e);
+    if (rows) VB.toThree(cx + nx * 0.07, cy + ny * 0.07, z0 + h / 2, mesh.position);
+    else {
+      // borde inferior a 12 cm por delante de la línea de vallas; el centro sube por el plano inclinado
+      VB.toThree(cx + nx * 0.12, cy + ny * 0.12, z0, mesh.position); mesh.position.addScaledVector(_v, h / 2);
+      var d = 0.32, w = len + 0.1, hh = h + 0.14;
+      // carcasa: misma inclinación, cara frontal 1,5 cm detrás de la pantalla
+      S.box(w, hh, d, mesh.position.x - _v2.x * (d / 2 + 0.015), mesh.position.y - _v2.y * (d / 2 + 0.015) - 0.02, mesh.position.z - _v2.z * (d / 2 + 0.015), col('#0a0d12'), ry, rx);
+      // remate superior iluminado (filo de luz fría) y zócalo
+      S.box(w, 0.035, d + 0.02, mesh.position.x - _v2.x * (d / 2) + _v.x * (hh / 2), mesh.position.y + _v.y * (hh / 2) - 0.02, mesh.position.z - _v2.z * (d / 2) + _v.z * (hh / 2), col('#1a2230'), ry, rx);
+    }
     root.add(mesh);
-    var along = Math.abs(nx) > 0.5;
-    // carcasa
-    if (!rows) S.sbox(along ? 0.3 : len + 0.1, along ? len + 0.1 : 0.3, h + 0.12, cx - nx * 0.06, cy - ny * 0.06, z0 + h / 2, col('#0a0d12'));
-    var L = { mat: mat, t: t, mt: mt, speed: speed, refl: null };
-    led.tex.push(t); led.mtex.push(mt); led.mats.push(L);
-    t.offset.x = rnd();
+    var L = { mat: mat, repB: repB, repM: repM, phaseB: mat.uniforms.phase.value, scroll: 0, speed: speed, refl: null, mesh: mesh };
+    led.mats.push(L);
     return L;
   }
-  /** Reflejo falso de la valla en el suelo brillante (tira aditiva con degradado). */
+  /** Reflejo falso de la valla en el suelo brillante (tira aditiva con degradado). Comparte uniformes con la valla. */
   function ledReflection(cx, cy, len, nx, ny, L) {
-    var t = L.t;
+    var U = L.mat.uniforms;
     var m = new THREE.ShaderMaterial({
-      uniforms: { map: { value: t }, rep: { value: t.repeat.x }, off: { value: t.offset }, k: { value: 0.22 } },
+      uniforms: { map: U.map, rep: U.rep, phase: U.phase, scroll: U.scroll, k: { value: 0.22 } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: 'uniform sampler2D map; uniform float rep; uniform vec2 off; uniform float k; varying vec2 vUv;' +
-        'void main(){ vec3 c = texture2D(map, vec2(vUv.x * rep + off.x, 1.0 - vUv.y * 0.9)).rgb; float f = pow(1.0 - vUv.y, 2.2);' +
+      fragmentShader: 'uniform sampler2D map; uniform float rep; uniform float phase; uniform float scroll; uniform float k; varying vec2 vUv;' +
+        'void main(){ vec3 c = texture2D(map, vec2(vUv.x * rep + phase + scroll, 1.0 - vUv.y * 0.9)).rgb; float f = pow(1.0 - vUv.y, 2.2);' +
         ' gl_FragColor = vec4(c * c * f * k, 1.0); }',
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
     });
     var p = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.6), m);
     p.rotation.order = 'YXZ'; p.rotation.y = Math.atan2(nx, -ny); p.rotation.x = -Math.PI / 2;
-    VB.toThree(cx + nx * 0.85, cy + ny * 0.85, 0.004, p.position);
-    p.renderOrder = 1; root.add(p); led.refl.push(m); L.refl = m;
+    VB.toThree(cx + nx * 0.92, cy + ny * 0.92, 0.004, p.position);
+    p.renderOrder = 1; root.add(p); led.refl.push(m); L.refl = m; ledReflMeshes.push(p);
     return p;
   }
   function buildLED(S) {
     var hi = !ctx.isMobile;
     led.cv = canvas(hi ? 4096 : 2048, hi ? 128 : 64); drawBrands(led.cv);
     led.mcv = canvas(hi ? 2048 : 1024, hi ? 128 : 64); drawMsg(led.mcv, 'PALAU DEL MAR', '#146a86');
+    // UNA textura por lienzo para todas las vallas (antes 9 copias de 4096x128 con mipmaps, ~25 MB)
+    led.tex = ledTex(led.cv); led.mtex = ledTex(led.mcv);
     var h = 0.86;
     ledReflection(0, BY, 2 * FZX, 0, -1, ledBoard(S, 0, BY, 2 * FZX, 0, -1, h, 0.04, 0.012));
     ledReflection(0, -BY, 2 * FZX, 0, 1, ledBoard(S, 0, -BY, 2 * FZX, 0, 1, h, 0.04, -0.012));
@@ -757,22 +1088,22 @@
   }
   function ledMessage(text, color, dur) {
     drawMsg(led.mcv, text, color);
-    for (var i = 0; i < led.mtex.length; i++) led.mtex[i].needsUpdate = true;
+    led.mtex.needsUpdate = true; // una sola subida por mensaje (antes 8)
     led.msgT = dur; setLedMode(true);
   }
   function setLedMode(on) {
     if (led.msgOn === on) return; led.msgOn = on;
     for (var i = 0; i < led.mats.length; i++) {
-      var L = led.mats[i], t = on ? L.mt : L.t; L.mat.map = t;
-      if (L.refl) { L.refl.uniforms.map.value = t; L.refl.uniforms.rep.value = t.repeat.x; L.refl.uniforms.off.value = t.offset; }
+      var L = led.mats[i], U = L.mat.uniforms;
+      U.map.value = on ? led.mtex : led.tex; U.rep.value = on ? L.repM : L.repB; U.phase.value = on ? 0 : L.phaseB;
     }
   }
   function updateLED(dt) {
     if (led.msgT > 0) { led.msgT -= dt; if (led.msgT <= 0) setLedMode(false); }
     var sp = led.msgOn ? 6 : 1;
     for (var i = 0; i < led.mats.length; i++) {
-      var L = led.mats[i], t = led.msgOn ? L.mt : L.t;
-      t.offset.x = (t.offset.x + L.speed * sp * dt) % 1;
+      var L = led.mats[i];
+      L.scroll = (L.scroll + L.speed * sp * dt) % 1; L.mat.uniforms.scroll.value = L.scroll;
     }
   }
 
@@ -780,88 +1111,191 @@
    * VIDEOMARCADORES (fondos) y MARCADOR CENTRAL COLGADO
    * ===================================================================== */
   var SB = { names: ['TÚ', 'CPU'], score: [0, 0], sets: [0, 0], setNo: 1, serving: 0, msg: '', msgSub: '', msgCol: '#ff6b3d', msgT: 0, tag: '', dirty: true };
-  var screens = { big: null, bigTex: null, hung: null, hungTex: null, mats: [], flash: 0 };
-  function drawScore(cv, compact) {
+  var screens = { big: null, bigTex: null, hung: null, hungTex: null, mats: [], vis: [], flash: 0 };
+  function fitFont(g, text, weight, size, maxW) {
+    g.font = weight + ' ' + Math.round(size) + 'px ' + FONT;
+    var w = g.measureText(text).width;
+    if (w > maxW) { size = size * maxW / w; g.font = weight + ' ' + Math.round(size) + 'px ' + FONT; }
+    return size;
+  }
+  function drawSetDots(g, cx, cy, r, gap, t) {
+    for (var k = 0; k < 2; k++) {
+      g.beginPath(); g.arc(cx + (k - 0.5) * gap, cy, r, 0, 6.283);
+      g.fillStyle = k < SB.sets[t] ? TEAMC[t] : 'rgba(255,255,255,0.16)'; g.fill();
+    }
+  }
+  function drawMsgOverlay(g, W, H, top) {
+    if (!(SB.msgT > 0 && SB.msg)) return;
+    var by = top + (H - top) * 0.14, bh = (H - top) * 0.72, mid = W / 2;
+    g.fillStyle = 'rgba(4,7,12,0.9)'; g.fillRect(0, by, W, bh);
+    g.fillStyle = SB.msgCol; g.fillRect(0, by, W, H * 0.022); g.fillRect(0, by + bh - H * 0.022, W, H * 0.022);
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffffff';
+    fitFont(g, SB.msg, 'italic 900', bh * (SB.msgSub ? 0.46 : 0.6), W * 0.92);
+    g.fillText(SB.msg, mid, by + bh * (SB.msgSub ? 0.38 : 0.52));
+    if (SB.msgSub) { g.fillStyle = SB.msgCol; fitFont(g, SB.msgSub, '800', bh * 0.22, W * 0.9); g.fillText(SB.msgSub, mid, by + bh * 0.77); }
+  }
+  /** Videomarcador de fondo (ancho, 8:3). */
+  function drawScoreWide(cv) {
     var g = cv.getContext('2d'), W = cv.width, H = cv.height;
-    var bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#0d1626'); bg.addColorStop(1, '#070b13');
+    var bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#0d1626'); bg.addColorStop(1, '#060a12');
     g.fillStyle = bg; g.fillRect(0, 0, W, H);
-    // franja superior
-    var hb = H * 0.17;
+    var hb = H * 0.18;
     var gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#0b3a4f'); gr.addColorStop(0.5, '#146a86'); gr.addColorStop(1, '#0b3a4f');
     g.fillStyle = gr; g.fillRect(0, 0, W, hb);
-    g.fillStyle = '#ffffff'; g.textBaseline = 'middle'; g.textAlign = 'left';
-    g.font = '800 ' + Math.round(hb * 0.62) + 'px ' + FONT; g.fillText('PALAU DEL MAR', H * 0.06, hb * 0.54);
-    g.textAlign = 'right'; g.fillStyle = '#ffd23f'; g.fillText('SET ' + SB.setNo, W - H * 0.06, hb * 0.54);
-    // equipos
-    var mid = W / 2, y = hb + (H - hb) * 0.47;
+    g.textBaseline = 'middle'; g.textAlign = 'left'; g.fillStyle = '#ffffff';
+    g.font = '800 ' + Math.round(hb * 0.62) + 'px ' + FONT; g.fillText('PALAU DEL MAR', H * 0.07, hb * 0.54);
+    g.textAlign = 'right'; g.fillStyle = '#ffd23f'; g.font = '900 ' + Math.round(hb * 0.66) + 'px ' + FONT; g.fillText('SET ' + SB.setNo, W - H * 0.07, hb * 0.54);
+    var mid = W / 2;
     for (var t = 0; t < 2; t++) {
-      var side = t === 0 ? -1 : 1, cx = mid + side * W * 0.25, colr = TEAMC[t];
-      g.fillStyle = colr; g.fillRect(t === 0 ? 0 : W - W * 0.012, hb, W * 0.012, H - hb);
+      var side = t === 0 ? -1 : 1, cx = mid + side * W * 0.25;
+      g.fillStyle = TEAMC[t]; g.fillRect(t === 0 ? 0 : W - W * 0.014, hb, W * 0.014, H - hb);
       g.textAlign = 'center'; g.fillStyle = '#ffffff';
-      g.font = '800 ' + Math.round(H * 0.13) + 'px ' + FONT; g.fillText(SB.names[t], cx, hb + H * 0.11);
-      g.font = '900 ' + Math.round(H * (compact ? 0.42 : 0.46)) + 'px ' + FONT; g.fillStyle = '#ffffff';
-      g.fillText(String(SB.score[t]), cx, y + H * 0.04);
-      // sets ganados (puntos)
-      for (var k = 0; k < 2; k++) {
-        g.beginPath(); g.arc(cx + (k - 0.5) * H * 0.09, H * 0.9, H * 0.028, 0, 6.283);
-        g.fillStyle = k < SB.sets[t] ? colr : 'rgba(255,255,255,0.18)'; g.fill();
-      }
+      fitFont(g, SB.names[t], '800', H * 0.14, W * 0.3); g.fillText(SB.names[t], cx, hb + H * 0.12);
       if (SB.serving === t) {
-        g.font = '800 ' + Math.round(H * 0.13) + 'px ' + FONT;
         var nw = g.measureText(SB.names[t]).width;
-        g.beginPath(); g.arc(cx - nw / 2 - H * 0.07, hb + H * 0.11, H * 0.03, 0, 6.283);
-        g.fillStyle = '#ffd23f'; g.fill();
+        g.beginPath(); g.arc(cx - nw / 2 - H * 0.07, hb + H * 0.12, H * 0.032, 0, 6.283); g.fillStyle = '#ffd23f'; g.fill();
       }
+      // cifras blanco roto: con el post-proceso, el blanco puro cruzaba el umbral del bloom y la cifra se veía como una mancha
+      g.fillStyle = SCORE_INK; g.font = '900 ' + Math.round(H * 0.5) + 'px ' + FONT; g.fillText(String(SB.score[t]), cx, hb + (H - hb) * 0.55);
+      drawSetDots(g, cx, H * 0.91, H * 0.03, H * 0.1, t);
     }
-    g.fillStyle = 'rgba(255,255,255,0.35)'; g.font = '800 ' + Math.round(H * 0.2) + 'px ' + FONT; g.textAlign = 'center'; g.fillText('–', mid, y);
-    if (SB.tag) {
-      g.fillStyle = '#ffd23f'; g.font = '800 ' + Math.round(H * 0.08) + 'px ' + FONT; g.fillText(SB.tag, mid, H * 0.9);
+    g.fillStyle = 'rgba(255,255,255,0.3)'; g.font = '800 ' + Math.round(H * 0.2) + 'px ' + FONT; g.textAlign = 'center'; g.fillText('–', mid, hb + (H - hb) * 0.5);
+    if (SB.tag) { g.fillStyle = '#ffd23f'; fitFont(g, SB.tag, '900', H * 0.09, W * 0.3); g.fillText(SB.tag, mid, H * 0.91); }
+    drawMsgOverlay(g, W, H, hb);
+  }
+  /** Marcador colgado (16:9), visto a 15-20 m: dos cifras enormes, nombres cortos y gruesos, nada fino. */
+  var SCORE_INK = '#dfe5ee';
+  function drawScoreHung(cv) {
+    var g = cv.getContext('2d'), W = cv.width, H = cv.height, mid = W / 2;
+    g.fillStyle = '#05080e'; g.fillRect(0, 0, W, H);
+    var hb = H * 0.17;
+    // franja superior: SET n (o PUNTO DE SET / PARTIDO, en amarillo)
+    var gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#0b3a4f'); gr.addColorStop(0.5, '#157393'); gr.addColorStop(1, '#0b3a4f');
+    g.fillStyle = SB.tag ? '#ffd23f' : gr; g.fillRect(0, 0, W, hb);
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = SB.tag ? '#10141c' : '#ffffff';
+    var top = SB.tag || ('SET ' + SB.setNo);
+    fitFont(g, top, '900', hb * 0.78, W * 0.9); g.fillText(top, mid, hb * 0.54);
+    for (var t = 0; t < 2; t++) {
+      var x0 = t === 0 ? 0 : mid, cx = x0 + W / 4;
+      // panel del equipo con su color (degradado suave hacia el centro)
+      var pg = g.createLinearGradient(x0, 0, x0 + mid, 0);
+      pg.addColorStop(t === 0 ? 0 : 1, TEAMC[t]); pg.addColorStop(t === 0 ? 1 : 0, '#0a0f18');
+      g.globalAlpha = 0.28; g.fillStyle = pg; g.fillRect(x0, hb, mid, H - hb); g.globalAlpha = 1;
+      g.fillStyle = TEAMC[t]; g.fillRect(x0 + W * 0.03, hb + H * 0.205, mid - W * 0.06, H * 0.018);
+      g.fillStyle = '#ffffff'; fitFont(g, SB.names[t], '900', H * 0.15, mid * 0.72);
+      g.fillText(SB.names[t], cx, hb + H * 0.11);
+      if (SB.serving === t) {
+        var nw = g.measureText(SB.names[t]).width;
+        g.beginPath(); g.arc(cx + (t === 0 ? -1 : 1) * (nw / 2 + H * 0.06), hb + H * 0.11, H * 0.035, 0, 6.283); g.fillStyle = '#ffd23f'; g.fill();
+      }
+      g.fillStyle = SCORE_INK; g.font = '900 ' + Math.round(H * 0.52) + 'px ' + FONT;
+      g.fillText(String(SB.score[t]), cx, hb + H * 0.5);
+      drawSetDots(g, cx, H * 0.93, H * 0.032, H * 0.11, t);
     }
-    // mensaje superpuesto
-    if (SB.msgT > 0 && SB.msg) {
-      var by = hb + (H - hb) * 0.2, bh = (H - hb) * 0.6;
-      g.fillStyle = 'rgba(5,8,14,0.82)'; g.fillRect(0, by, W, bh);
-      g.fillStyle = SB.msgCol; g.fillRect(0, by, W, H * 0.015); g.fillRect(0, by + bh - H * 0.015, W, H * 0.015);
-      g.fillStyle = '#ffffff'; g.font = 'italic 900 ' + Math.round(bh * (SB.msgSub ? 0.5 : 0.62)) + 'px ' + FONT;
-      g.fillText(SB.msg, mid, by + bh * (SB.msgSub ? 0.4 : 0.52));
-      if (SB.msgSub) { g.fillStyle = SB.msgCol; g.font = '800 ' + Math.round(bh * 0.2) + 'px ' + FONT; g.fillText(SB.msgSub, mid, by + bh * 0.8); }
-    }
-    // retícula LED
-    g.fillStyle = 'rgba(0,0,0,0.18)'; var px = Math.max(2, Math.round(H / 90)); for (var yy = 0; yy < H; yy += px) g.fillRect(0, yy, W, 1);
+    g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(mid - W * 0.003, hb + H * 0.06, W * 0.006, H - hb - H * 0.12);
+    drawMsgOverlay(g, W, H, hb);
   }
   function buildScreens(S, E) {
     var hi = !ctx.isMobile;
     screens.big = canvas(hi ? 1024 : 768, hi ? 384 : 288); screens.bigTex = texOf(screens.big);
-    screens.hung = canvas(hi ? 512 : 384, hi ? 288 : 216); screens.hungTex = texOf(screens.hung);
+    // 1024x576 en escritorio (antes 512x288): se ve a 15-20 m de la cámara de juego
+    screens.hung = canvas(hi ? 1024 : 640, hi ? 576 : 360); screens.hungTex = texOf(screens.hung);
     var frame = col('#0b0e14');
     // videomarcadores en las paredes de los fondos
+    // Cada pantalla (y sus filos de luz) se apaga entera si la cámara la corta por arriba (ver screenVis):
+    // nada brillante asomando a medias detrás de la franja superior del HUD.
+    function stripMesh(B) {
+      var sm = new THREE.Mesh(B.build(), new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, fog: false }));
+      root.add(sm); return sm;
+    }
     for (var e = -1; e <= 1; e += 2) {
-      var m = new THREE.MeshBasicMaterial({ map: screens.bigTex, toneMapped: false });
+      var m = ledMaterial(screens.bigTex, 1, 400, 150);
       var p = new THREE.Mesh(new THREE.PlaneGeometry(14, 5.25), m);
-      VB.toThree(e * (HALL_X - 0.6), 0, SCR_Z, p.position); p.rotation.y = e > 0 ? -Math.PI / 2 : Math.PI / 2; root.add(p);
+      VB.toThree(e * (HALL_X - 0.63), 0, SCR_Z, p.position); // 3 cm delante del marco (antes coincidían: z-fighting)
+      p.rotation.y = e > 0 ? -Math.PI / 2 : Math.PI / 2; root.add(p);
       screens.mats.push(m);
       S.sbox(0.5, 14.6, 5.85, e * (HALL_X - 0.35), 0, SCR_Z, frame);
-      E.sbox(0.05, 14.6, 0.06, e * (HALL_X - 0.62), 0, SCR_Z - 2.95, col('#ff7a45'));
-      E.sbox(0.05, 14.6, 0.06, e * (HALL_X - 0.62), 0, SCR_Z + 2.95, col('#7fc8ff'));
+      var EB = new Builder();
+      EB.sbox(0.05, 14.6, 0.06, e * (HALL_X - 0.64), 0, SCR_Z - 2.95, col('#ff7a45'));
+      EB.sbox(0.05, 14.6, 0.06, e * (HALL_X - 0.64), 0, SCR_Z + 2.95, col('#7fc8ff'));
+      screens.vis.push({ mats: [m], strip: stripMesh(EB), x: e * (HALL_X - 0.63), y: 0, half: 7, z0: SCR_Z - 2.98, z1: SCR_Z + 2.98, v: 1 });
     }
     // marcador central colgado (4 caras)
-    var hz = 11.4, hw = 4.2, hh = 2.36, hd = 2.8;
-    var hm = new THREE.MeshBasicMaterial({ map: screens.hungTex, toneMapped: false }); screens.mats.push(hm);
+    var hz = 11.4, hw = 4.2, hh = 2.36, hd = 4.2; // caja cuadrada: las 4 caras con la proporción de la textura (16:9)
+    var hm = ledMaterial(screens.hungTex, 1, 192, 108, false); screens.mats.push(hm);
+    // las 4 caras en UNA malla (1 dibujo en vez de 4)
+    var hgs = [];
     for (var f = 0; f < 4; f++) {
       // caras: +x / -x (miran a los fondos, ancho = hd) y +y / -y (miran a las laterales, ancho = hw)
       var nx = [1, -1, 0, 0][f], ny = [0, 0, 1, -1][f];
-      var pl = new THREE.Mesh(new THREE.PlaneGeometry(f < 2 ? hd : hw, hh), hm), dist = f < 2 ? hw / 2 : hd / 2;
-      VB.toThree(nx * (dist + 0.01), ny * (dist + 0.01), hz, pl.position);
-      pl.rotation.y = Math.atan2(nx, -ny); root.add(pl);
+      // las pantallas van FUERA de la carcasa (que mide hw+0.2 x hd+0.2)
+      var pg = new THREE.PlaneGeometry(f < 2 ? hd : hw, hh), dist = (f < 2 ? hw : hd) / 2 + 0.1;
+      pg.rotateY(Math.atan2(nx, -ny));
+      VB.toThree(nx * (dist + 0.015), ny * (dist + 0.015), hz, _p); pg.translate(_p.x, _p.y, _p.z);
+      hgs.push(pg);
     }
+    var hP = [], hU = [], hI = [], hOff = 0;
+    for (var hg = 0; hg < hgs.length; hg++) {
+      var ga = hgs[hg].attributes, gi = hgs[hg].index.array;
+      for (var hv = 0; hv < ga.position.count; hv++) { hP.push(ga.position.getX(hv), ga.position.getY(hv), ga.position.getZ(hv)); hU.push(ga.uv.getX(hv), ga.uv.getY(hv)); }
+      for (var hi2 = 0; hi2 < gi.length; hi2++) hI.push(gi[hi2] + hOff);
+      hOff += ga.position.count;
+    }
+    var hgeo = new THREE.BufferGeometry();
+    hgeo.setAttribute('position', new THREE.Float32BufferAttribute(hP, 3)); hgeo.setAttribute('uv', new THREE.Float32BufferAttribute(hU, 2));
+    hgeo.setIndex(hI); hgeo.computeBoundingSphere();
+    var hmesh = new THREE.Mesh(hgeo, hm); hmesh.name = 'hungScreens'; root.add(hmesh);
     S.sbox(hw + 0.2, hd + 0.2, hh + 0.2, 0, 0, hz, frame);
     S.sbox(hw - 0.4, hd - 0.4, 0.6, 0, 0, hz - hh / 2 - 0.3, frame);
-    E.sbox(hw + 0.22, hd + 0.22, 0.05, 0, 0, hz + hh / 2 + 0.1, col('#7fc8ff'));
-    for (var c = -1; c <= 1; c += 2) for (var d = -1; d <= 1; d += 2) S.sbox(0.03, 0.03, HALL_H - hz - hh / 2, c * 1.5, d * 1.0, (HALL_H + hz + hh / 2) / 2, col('#2a2f38'));
+    // filos de luz arriba (frío) y abajo (cálido) en las 4 aristas de la caja
+    var HB = new Builder();
+    for (var eg = -1; eg <= 1; eg += 2) for (var ez = -1; ez <= 1; ez += 2) {
+      var ec = col(ez > 0 ? '#7fc8ff' : '#ff7a45'), zz = hz + ez * (hh / 2 + 0.1);
+      HB.sbox(hw + 0.24, 0.05, 0.05, 0, eg * (hd / 2 + 0.11), zz, ec); HB.sbox(0.05, hd + 0.24, 0.05, eg * (hw / 2 + 0.11), 0, zz, ec);
+    }
+    screens.vis.push({ mats: [hm], strip: stripMesh(HB), x: 0, y: 0, half: 0, z0: hz - hh / 2 - 0.15, z1: hz + hh / 2 + 0.15, v: 1 });
+    for (var c = -1; c <= 1; c += 2) for (var d = -1; d <= 1; d += 2) S.sbox(0.03, 0.03, HALL_H - hz - hh / 2, c * 1.5, d * 1.5, (HALL_H + hz + hh / 2) / 2, col('#2a2f38'));
+  }
+  /** Pantallas cortadas por el borde superior: si menos de ~70 % de su alto queda bajo la franja del HUD
+   *  (VIS_TOP en NDC), la pantalla y sus filos se apagan (pantalla LED negra). Proyección con la cámara del
+   *  frame anterior (camera.js se actualiza después de Arena): 1 frame de retraso, invisible con el fundido. */
+  function screenVis(rdt) {
+    // franja del HUD: ~7,5 % del alto, y como mínimo ~64 px (en móvil apaisado el HUD ocupa proporcionalmente más)
+    var VIS_TOP = 1 - 2 * Math.max(0.075, 64 / Math.max(200, ctx.height || 720));
+    var cam = ctx.camera, k = 1 - Math.exp(-7 * rdt);
+    for (var i = 0; i < screens.vis.length; i++) {
+      var S = screens.vis[i], want = 1;
+      VB.toThree(S.x, S.y, S.z1, _v); VB.toThree(S.x, S.y, S.z0, _v2);
+      _p.copy(_v).applyMatrix4(cam.matrixWorldInverse);
+      if (_p.z < -0.5) {
+        _v.project(cam); _v2.project(cam);
+        var yt = _v.y, yb = _v2.y, inX = Math.abs(_v.x) < 1.3;
+        if (inX && yt > VIS_TOP && yt > yb) {
+          var frac = (VIS_TOP - Math.max(yb, -1)) / (yt - yb);
+          frac = Math.max(0, Math.min(1, frac));
+          var u = Math.max(0, Math.min(1, (frac - 0.5) / 0.3)); want = u * u * (3 - 2 * u);
+        }
+      }
+      S.v += (want - S.v) * (rdt > 0 ? k : 1);
+      var mv = 0.02 + 0.98 * S.v;
+      for (var m = 0; m < S.mats.length; m++) S.mats[m].uniforms.vis.value = mv;
+      S.strip.material.color.setScalar(0.02 + 0.98 * S.v);
+    }
+  }
+  /** Fundido en la franja superior de la pantalla (NDC y 0,72 -> 0,98) para brillos del techo (halos de los
+   *  focos, tiras de luz): no se encienden detrás de la franja del HUD. y/w exacto por fragmento. */
+  function topFade(mat, key) {
+    mat.onBeforeCompile = function (sh) {
+      sh.vertexShader = 'varying vec2 vTopC;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vTopC = gl_Position.yw;');
+      sh.fragmentShader = 'varying vec2 vTopC;\n' + sh.fragmentShader.replace('#include <fog_fragment>',
+        ' gl_FragColor.rgb *= 1.0 - 0.92 * smoothstep(0.72, 0.98, vTopC.x / max(vTopC.y, 1e-4));\n#include <fog_fragment>');
+    };
+    mat.customProgramCacheKey = function () { return key; };
+    return mat;
   }
   function redrawScreens() {
-    drawScore(screens.big, false); screens.bigTex.needsUpdate = true;
-    drawScore(screens.hung, true); screens.hungTex.needsUpdate = true;
+    drawScoreWide(screens.big); screens.bigTex.needsUpdate = true;
+    drawScoreHung(screens.hung); screens.hungTex.needsUpdate = true;
     SB.dirty = false;
   }
   function scoreFromGame(g) {
@@ -869,7 +1303,7 @@
     SB.names = g.demo ? ['LOCAL', 'VISITA'] : ['TÚ', 'CPU'];
     SB.score[0] = g.score[0]; SB.score[1] = g.score[1]; SB.sets[0] = g.sets[0]; SB.sets[1] = g.sets[1];
     SB.setNo = g.setNo || 1; SB.serving = g.serving === 1 ? 1 : 0;
-    SB.tag = g.matchPoint >= 0 && g.mode !== 'over' ? 'PUNTO DE PARTIDO' : g.setPoint >= 0 && g.mode !== 'over' ? 'PUNTO DE SET' : '';
+    SB.tag = g.mode === 'over' || g.pendingSet ? '' : g.matchPoint >= 0 ? 'PUNTO DE PARTIDO' : g.setPoint >= 0 ? 'PUNTO DE SET' : '';
     SB.dirty = true;
   }
   function screenMsg(text, sub, color, dur) { SB.msg = text; SB.msgSub = sub || ''; SB.msgCol = color; SB.msgT = dur; SB.dirty = true; screens.flash = 1; }
@@ -878,15 +1312,21 @@
    * TECHO, PAREDES, CERCHAS, FOCOS, HACES DE LUZ, BANDEROLAS
    * ===================================================================== */
   var halos = null, cones = [], coneMat = null;
-  function bannerTex(title, sub, c1, c2) {
-    var cv = canvas(256, 512), g = cv.getContext('2d');
+  /** Banderola dibujada en el atlas (columna x0, 256x512). */
+  function drawBanner(g, x0, title, sub, c1, c2) {
+    g.save(); g.translate(x0, 0);
     var gr = g.createLinearGradient(0, 0, 0, 512); gr.addColorStop(0, c1); gr.addColorStop(1, c2); g.fillStyle = gr; g.fillRect(0, 0, 256, 512);
     g.fillStyle = 'rgba(255,255,255,0.9)'; g.fillRect(16, 16, 224, 4); g.fillRect(16, 492, 224, 4);
     g.fillStyle = '#ffd23f'; g.beginPath(); for (var i = 0; i < 5; i++) { var a = -Math.PI / 2 + i * 4 * Math.PI / 5, r = 34; g.lineTo(128 + Math.cos(a) * r, 120 + Math.sin(a) * r); } g.closePath(); g.fill();
     g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.font = '900 64px ' + FONT; g.fillText(title, 128, 260);
+    fitFont(g, title, '900', 64, 228); g.fillText(title, 128, 260);
     g.font = '700 30px ' + FONT; g.fillText(sub, 128, 330);
-    return texOf(cv);
+    g.restore();
+  }
+  var banner = { cv: null, tex: null, list: null };
+  function drawBanners() {
+    var g = banner.cv.getContext('2d');
+    for (var b = 0; b < banner.list.length; b++) { var B = banner.list[b]; drawBanner(g, b * 256, B[0], B[1], B[2], B[3]); }
   }
   function buildHall(S, E) {
     var wallMat = new THREE.MeshStandardMaterial({ color: '#0c111a', roughness: 0.95, side: THREE.BackSide, envMapIntensity: 0.2 });
@@ -922,6 +1362,7 @@
     var hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(hp, 3));
     halos = new THREE.Points(hg, new THREE.PointsMaterial({ size: 3.4, map: radialTex([[0, 'rgba(255,240,215,0.85)'], [0.2, 'rgba(255,225,180,0.28)'], [1, 'rgba(255,220,170,0)']]),
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, sizeAttenuation: true }));
+    topFade(halos.material, 'vb-halo-top');
     halos.frustumCulled = false; root.add(halos);
     // haces de luz volumétricos (conos aditivos muy sutiles)
     coneMat = new THREE.ShaderMaterial({
@@ -932,21 +1373,47 @@
         'void main(){ float e = pow(abs(dot(vN, vV)), 1.6); float f = smoothstep(0.0, 0.85, vH) * (1.0 - smoothstep(0.92, 1.0, vH));' +
         ' float near = smoothstep(9.0, 22.0, vD);' +
         ' gl_FragColor = vec4(vec3(1.0, 0.93, 0.82) * e * f * near * k, 1.0); }',
-      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false
+      // transparent:false a propósito: aditivo + sin escribir profundidad funciona igual en la lista opaca
+      // (renderOrder 5 = después de lo opaco) y evita el doble recompilado de transparente+DoubleSide en r149
+      transparent: false, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false
     });
     var cg = new THREE.CylinderGeometry(0.35, 2.2, lz - 0.3, 20, 1, true); cg.translate(0, -(lz - 0.3) / 2, 0);
     var conePos = [[-9, 7.2], [-3, 7.2], [3, 7.2], [9, 7.2], [-9, -7.2], [-3, -7.2], [3, -7.2], [9, -7.2]];
+    // los 8 conos fusionados en UNA malla (1 draw call en vez de 8)
+    var cP = [], cN = [], cU = [], cI = [], cOff = 0, cpa = cg.attributes.position, cna = cg.attributes.normal, cua = cg.attributes.uv, cia = cg.index.array;
     for (var c = 0; c < conePos.length; c++) {
-      var cm = new THREE.Mesh(cg, coneMat); VB.toThree(conePos[c][0], conePos[c][1], lz - 0.1, cm.position);
-      cm.rotation.order = 'YXZ'; cm.rotation.x = conePos[c][1] > 0 ? -0.16 : 0.16; // inclinados hacia la pista
-      cm.renderOrder = 5; root.add(cm); cones.push(cm);
+      VB.toThree(conePos[c][0], conePos[c][1], lz - 0.1, _p);
+      _e.set(conePos[c][1] > 0 ? -0.16 : 0.16, 0, 0, 'YXZ'); _q.setFromEuler(_e); _s.set(1, 1, 1); _m.compose(_p, _q, _s); _m3.getNormalMatrix(_m);
+      for (var cv = 0; cv < cpa.count; cv++) {
+        _v.fromBufferAttribute(cpa, cv).applyMatrix4(_m); cP.push(_v.x, _v.y, _v.z);
+        _v.fromBufferAttribute(cna, cv).applyMatrix3(_m3).normalize(); cN.push(_v.x, _v.y, _v.z);
+        cU.push(cua.getX(cv), cua.getY(cv));
+      }
+      for (var ci = 0; ci < cia.length; ci++) cI.push(cia[ci] + cOff);
+      cOff += cpa.count;
     }
+    var cgm = new THREE.BufferGeometry();
+    cgm.setAttribute('position', new THREE.Float32BufferAttribute(cP, 3)); cgm.setAttribute('normal', new THREE.Float32BufferAttribute(cN, 3));
+    cgm.setAttribute('uv', new THREE.Float32BufferAttribute(cU, 2)); cgm.setIndex(cI); cgm.computeBoundingSphere();
+    var cm = new THREE.Mesh(cgm, coneMat); cm.renderOrder = 5; cm.name = 'lightCones'; root.add(cm); cones.push(cm);
     // banderolas de títulos (ficticios) colgadas en las paredes laterales
     var BAN = [['LIGA', '2019', '#146a86', '#0b3a4f'], ['COPA', '2021', '#c4532f', '#6b2412'], ['LIGA', '2023', '#146a86', '#0b3a4f'], ['SUPERCOPA', '2024', '#2a55c9', '#13265e'], ['COPA', '2025', '#c4532f', '#6b2412']];
+    // las 5 en UNA malla con un atlas (antes 5 mallas, 5 materiales y 5 texturas)
+    banner.list = BAN; banner.cv = canvas(256 * BAN.length, 512); drawBanners(); banner.tex = texOf(banner.cv);
+    var bP = [], bN = [], bU = [], bI = [];
     for (var b = 0; b < BAN.length; b++) {
-      var bm = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 4.4), new THREE.MeshStandardMaterial({ map: bannerTex(BAN[b][0], BAN[b][1], BAN[b][2], BAN[b][3]), roughness: 0.9, side: THREE.DoubleSide, envMapIntensity: 0.3 }));
-      VB.toThree(-12 + b * 6, HALL_Y - 0.9, 14.2, bm.position); root.add(bm);
+      VB.toThree(-12 + b * 6, HALL_Y - 0.9, 14.2, _p);
+      var u0 = b / BAN.length, u1 = (b + 1) / BAN.length, o4 = b * 4;
+      bP.push(_p.x - 1.1, _p.y + 2.2, _p.z, _p.x + 1.1, _p.y + 2.2, _p.z, _p.x - 1.1, _p.y - 2.2, _p.z, _p.x + 1.1, _p.y - 2.2, _p.z);
+      bN.push(0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1);
+      bU.push(u0, 1, u1, 1, u0, 0, u1, 0);
+      bI.push(o4, o4 + 2, o4 + 1, o4 + 2, o4 + 3, o4 + 1);
     }
+    var bg = new THREE.BufferGeometry();
+    bg.setAttribute('position', new THREE.Float32BufferAttribute(bP, 3)); bg.setAttribute('normal', new THREE.Float32BufferAttribute(bN, 3));
+    bg.setAttribute('uv', new THREE.Float32BufferAttribute(bU, 2)); bg.setIndex(bI); bg.computeBoundingSphere();
+    var bmesh = new THREE.Mesh(bg, new THREE.MeshStandardMaterial({ map: banner.tex, roughness: 0.9, side: THREE.DoubleSide, envMapIntensity: 0.3 }));
+    bmesh.name = 'banners'; root.add(bmesh);
     // nombre del pabellón en la pared lateral opuesta (letras retroiluminadas)
     var nc = canvas(2048, 256), ng = nc.getContext('2d');
     ng.font = '900 200px ' + FONT; ng.textAlign = 'center'; ng.textBaseline = 'middle';
@@ -967,8 +1434,10 @@
     keyLight.shadow.mapSize.set(q.shadowSize, q.shadowSize); keyLight.shadow.bias = -0.0005; keyLight.shadow.normalBias = 0.025;
     root.add(keyLight); root.add(keyLight.target);
     fillLight = new THREE.DirectionalLight(0xb9d2ff, 0.38); VB.toThree(-10, 12, 14, fillLight.position); root.add(fillLight);
-    // contraluz cálido desde el fondo rival: perfila a los jugadores vistos de espaldas
-    rimLight = new THREE.DirectionalLight(0xffd2a0, 0.65); VB.toThree(-22, 3, 9, rimLight.position); root.add(rimLight);
+    // contraluz cálido desde el fondo rival: perfila a los jugadores vistos de espaldas.
+    // Alto (~52°) y suave: más bajo coincide con el ángulo rasante de la cámara de juego y su
+    // reflejo especular lava medio campo rival (y el bloom lo convierte en una mancha blanca).
+    rimLight = new THREE.DirectionalLight(0xffd2a0, 0.3); VB.toThree(-14, 4, 20, rimLight.position); root.add(rimLight);
   }
   function buildEnvironment() {
     try {
@@ -1135,17 +1604,23 @@
     ctx.renderFn = active ? renderPost : (was ? null : ctx.renderFn);
     // con post, los emisivos superan 1.0 (HDR) y el bloom los recoge
     var boost = active ? 1.55 : 1.0;
-    for (var i = 0; i < led.mats.length; i++) led.mats[i].mat.color.setScalar(boost * 0.95);
-    for (var j = 0; j < screens.mats.length; j++) screens.mats[j].color.setScalar(boost);
+    for (var i = 0; i < led.mats.length; i++) led.mats[i].mat.uniforms.boost.value = boost * 0.95;
+    // pantallas de marcador: poco por encima de 1 (a 1,55 las cifras blancas se volvían manchas de bloom)
+    screens.base = active ? 1.12 : 1.0;
+    for (var j = 0; j < screens.mats.length; j++) screens.mats[j].uniforms.boost.value = screens.base;
     if (emissiveMesh) emissiveMesh.material.color.setScalar(active ? 2.2 : 1.0);
     if (halos) halos.material.opacity = active ? 0.55 : 1.0;
   }
 
   // ---------- Estado runtime ----------
   var emissiveMesh = null;
-  var RT = { cheerT: [0, 0], cheerMax: [1, 1], waveAmp: 0, waveX: 0, waveT: 0, menuWave: 18, tension: 0 };
+  var RT = { cheerT: [0, 0], cheerAge: [9, 9], look: 1, cheerMax: [1, 1], waveAmp: 0, waveX: 0, waveT: 0, menuWave: 18, tension: 0 };
+  /** Arranca la alegría de un equipo; si ya estaba saltando no reinicia el escalonado. */
+  function startCheer(t, sec) { if (RT.cheerT[t] < 0.3) RT.cheerAge[t] = 0; RT.cheerT[t] = sec; }
   function teamName(t, g) { return g && g.demo ? (t === 0 ? 'LOCAL' : 'VISITA') : (t === 0 ? 'TÚ' : 'CPU'); }
-  var REASON = { 'in': 'DENTRO', out: 'FUERA', antenna: 'ANTENA', 'double': 'DOBLES', four: '4 TOQUES', net: 'RED' };
+  var REASON = { 'in': 'DENTRO', out: 'FUERA', antenna: 'ANTENA', 'double': 'DOBLES', four: '4 TOQUES', net: 'TOQUE DE RED',
+    serve: 'FALTA DE SAQUE', under: 'BAJO LA RED', block: 'BLOQUEO DEL SAQUE', attackServe: 'ATAQUE DEL SAQUE' };
+  var HOW = { ace: '¡ACE!', kill: 'REMATE', tip: 'DEJADA', block: 'BLOQUEO' };
 
   function onEvents(g, events) {
     for (var i = 0; i < events.length; i++) {
@@ -1161,17 +1636,20 @@
           if (e.score) { SB.score[0] = e.score[0]; SB.score[1] = e.score[1]; } else scoreFromGame(g);
           SB.serving = e.team; SB.dirty = true;
           var w = e.team, mul = e.matchWon ? 3.5 : e.setWon ? 2 : 1;
-          RT.cheerT[w] = 2.4 * mul; RT.cheerMax[w] = 1;
+          startCheer(w, 2.4 * mul); RT.cheerMax[w] = 1;
           RT.cheerT[1 - w] = Math.min(RT.cheerT[1 - w], 0.0);
           flRate = Math.max(flRate, e.matchWon ? 30 : 12);
           if (!e.setWon && !e.matchWon) {
             ledMessage('PUNTO · ' + teamName(w, g), TEAMC[w], 2.6);
-            screenMsg('PUNTO ' + teamName(w, g), REASON[e.reason] || '', TEAMC[w], 2.4);
+            screenMsg('PUNTO ' + teamName(w, g), (e.reason === 'in' && HOW[e.how]) || REASON[e.reason] || '', TEAMC[w], 2.4);
           }
           refSignal(e, g);
           if (e.reason === 'antenna') judgeSignal(0, g.ball.y, false, true);
           break;
         case 'land': judgeSignal(e.x, e.y, e.inside, false); break;
+        case 'whistle': // autorización del saque: silbato + brazo hacia el equipo que saca
+          if (e.reason === 'serve') { refSignal({ team: g.serving === 1 ? 1 : 0 }, g); if (R1) R1.hold = 1.0; }
+          break;
         case 'set':
           if (e.sets) { SB.sets[0] = e.sets[0]; SB.sets[1] = e.sets[1]; }
           ledMessage('SET · ' + teamName(e.team, g), TEAMC[e.team], 4);
@@ -1185,8 +1663,17 @@
           RT.waveAmp = 1; RT.waveT = 10; flRate = 40;
           break;
         case 'block':
-          RT.cheerT[e.team] = Math.max(RT.cheerT[e.team], 0.9);
-          if (!led.msgOn) ledMessage('¡BLOQUEO!', TEAMC[e.team], 1.4);
+          if (!e.result || e.result === 'stuff') {
+            startCheer(e.team, Math.max(RT.cheerT[e.team], 0.9));
+            if (!led.msgOn) ledMessage('¡BLOQUEO!', TEAMC[e.team], 1.4);
+          }
+          break;
+        case 'courtChange': // reglas 18.2.1 / 18.2.2: encadenado tras el mensaje de SET / PUNTO de los videomarcadores
+          var ccm = ['CAMBIO DE CAMPO', e.why === 'eight' ? 'SET DECISIVO · 8 PUNTOS' : 'FIN DEL SET ' + e.setNo, '#f2c14e', e.why === 'eight' ? 1.6 : 1.2];
+          if (SB.msgT > 0 && SB.msg) { SB.next = ccm; SB.msgT = Math.min(SB.msgT, e.why === 'eight' ? 1.3 : 2.6); } else screenMsg(ccm[0], ccm[1], ccm[2], ccm[3]);
+          break;
+        case 'netTouch': // un jugador toca la red: la malla vibra (más suave que un balonazo)
+          netRip.a = 0.08; netRip.t = 0; netRip.y = e.y || 0; netRip.dir = e.player && e.player.x < 0 ? 1 : -1;
           break;
         case 'hit':
           if (e.kind === 'spike') flRate = Math.max(flRate, 4);
@@ -1199,6 +1686,21 @@
     }
   }
 
+  /** Matrices fijas: todo el pabellón es estático salvo las personas de arbitraje (sus huesos se animan y el
+   *  2.º árbitro se desplaza). Sin esto, three recompone ~250 matrices locales por frame para nada.
+   *  (Para que tampoco recalcule las matrices de mundo, main.js puede poner scene.matrixAutoUpdate = false:
+   *  ver notes/arena.md.) */
+  function freezeStatic() {
+    var movers = [];
+    for (var i = 0; i < refs.length; i++) movers.push(refs[i].root);
+    for (var j = 0; j < judges.length; j++) movers.push(judges[j].root);
+    root.updateMatrixWorld(true);
+    (function walk(o) {
+      if (movers.indexOf(o) >= 0) return;
+      o.updateMatrix(); o.matrixAutoUpdate = false;
+      for (var c = 0; c < o.children.length; c++) walk(o.children[c]);
+    })(root);
+  }
   // ---------- Interfaz del módulo ----------
   VB.Arena = {
     init: function (c) {
@@ -1224,15 +1726,16 @@
       var sm = new THREE.Mesh(S.build(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05, envMapIntensity: 0.45 }));
       sm.receiveShadow = true; sm.castShadow = false; sm.name = 'static'; root.add(sm);
       // utillaje junto a la pista (cinta, postes, silla, mesa): sí proyecta sombra
-      var scm = new THREE.Mesh(SC.build(), sm.material); scm.castShadow = true; scm.receiveShadow = true; scm.name = 'props'; root.add(scm);
-      emissiveMesh = new THREE.Mesh(E.build(), new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, fog: false }));
+      var scm = new THREE.Mesh(SC.build(), sm.material); scm.castShadow = true; scm.receiveShadow = true; scm.name = 'props'; root.add(scm); casters.push(scm);
+      emissiveMesh = new THREE.Mesh(E.build(), topFade(new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, fog: false }), 'vb-emis-top'));
       emissiveMesh.name = 'emissive'; root.add(emissiveMesh);
       buildEnvironment();
       redrawScreens();
+      freezeStatic();
       // la fuente de la UI puede llegar tarde: repintar textos
       try {
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () {
-          try { drawBrands(led.cv); for (var i = 0; i < led.tex.length; i++) led.tex[i].needsUpdate = true; SB.dirty = true;
+          try { drawBrands(led.cv); led.tex.needsUpdate = true; SB.dirty = true; padRedraw(); if (banner.cv) { drawBanners(); banner.tex.needsUpdate = true; }
             drawFloor(floorCanvas, floorPpm); floorTex.needsUpdate = true; } catch (e) { }
         });
       } catch (e) { }
@@ -1240,22 +1743,39 @@
     },
     onGameStart: function (g) {
       RT.cheerT[0] = RT.cheerT[1] = 0; RT.waveAmp = 0; RT.waveT = 0; netRip.t = 9; led.msgT = 0; setLedMode(false);
-      SB.msgT = 0; SB.msg = ''; scoreFromGame(g);
+      SB.msgT = 0; SB.msg = ''; SB.next = null; scoreFromGame(g);
     },
     onState: function (s) { if (s === 'menu') RT.menuWave = 6; },
     setQuality: function (q) {
       if (!q || !keyLight) return;
       keyLight.castShadow = !!q.shadows;
+      // calidad baja: el utillaje, los postes y los oficiales no entran en el mapa de sombras (solo jugadores y balón)
+      for (var ca = 0; ca < casters.length; ca++) casters[ca].castShadow = q.rank >= 1;
+      for (var of = 0; of < officials.length; of++) officials[of].castShadow = q.rank >= 1;
       if (keyLight.shadow.mapSize.x !== q.shadowSize) {
         keyLight.shadow.mapSize.set(q.shadowSize, q.shadowSize);
         if (keyLight.shadow.map) { keyLight.shadow.map.dispose(); keyLight.shadow.map = null; }
       }
       var dens = q.crowdDensity == null ? 1 : q.crowdDensity;
-      for (var i = 0; i < crowdMeshes.length; i++) crowdMeshes[i].count = Math.max(1, Math.floor(crowdMeshes[i].userData.full * dens));
+      // LOD del público: detallada en alta; en media solo la grada de fondo detrás del sacador humano (crowd2, la que
+      // sale de cerca en saque/repetición; las laterales y el fondo rival se ven a distancia de juego); baja: sencilla
+      for (var i = 0; i < crowdMeshes.length; i++) {
+        var cmh = crowdMeshes[i]; cmh.count = Math.max(1, Math.floor(cmh.userData.full * dens));
+        var crowdLv = q.rank >= 2 || (q.rank === 1 && !ctx.isMobile && cmh.name === 'crowd2') ? 'hi' : 'lo';
+        if (cmh.userData.lods) cmh.geometry = cmh.userData.lods[crowdLv];
+      }
+      if (flagMesh) flagMesh.visible = q.rank >= 1;
       for (var c = 0; c < cones.length; c++) cones[c].visible = q.rank >= 1;
       if (coneMat) coneMat.uniforms.k.value = q.rank >= 2 ? 0.04 : 0.032;
       if (flashes) flashes.visible = q.rank >= 1;
       for (var r = 0; r < led.refl.length; r++) led.refl[r].uniforms.k.value = q.rank >= 1 ? 0.22 : 0.15;
+      // calidad baja = recortar CPU de verdad (en móvil el coste está en el propio render de three, no en la GPU):
+      // sin reflejos falsos de las vallas (4 dibujos) y sin luces de relleno/contraluz (2 luces menos en cada
+      // material iluminado: menos uniformes y menos trabajo por fragmento); la hemisférica compensa.
+      for (var r2 = 0; r2 < ledReflMeshes.length; r2++) ledReflMeshes[r2].visible = q.rank >= 1;
+      if (fillLight) fillLight.visible = q.rank >= 1;
+      if (rimLight) rimLight.visible = q.rank >= 1;
+      if (hemi) hemi.intensity = q.rank >= 1 ? 0.32 : 0.52;
       setPost(wantPost(q));
     },
     resize: function () { postResize(); },
@@ -1268,6 +1788,11 @@
       for (var t = 0; t < 2; t++) { if (RT.cheerT[t] > 0) RT.cheerT[t] = Math.max(0, RT.cheerT[t] - rdt); }
       crowdU.uTime.value = ctx.time;
       crowdU.uCheer.value.set(Math.min(1, RT.cheerT[0] / 0.8), Math.min(1, RT.cheerT[1] / 0.8));
+      RT.cheerAge[0] = Math.min(9, RT.cheerAge[0] + rdt); RT.cheerAge[1] = Math.min(9, RT.cheerAge[1] + rdt);
+      crowdU.uCheerAge.value.set(RT.cheerAge[0], RT.cheerAge[1]);
+      // las cabezas siguen el balón durante el rally; entre puntos miran más a su aire
+      VB.toThree(g.ball.x, g.ball.y, g.ball.z, crowdU.uBall.value);
+      RT.look = damp(RT.look, g.mode === 'rally' || g.mode === 'serve' ? 1 : 0.45, 2, rdt); crowdU.uLook.value = RT.look;
       if (ctx.state === 'menu' || g.demo) { RT.menuWave -= rdt; if (RT.menuWave <= 0) { RT.menuWave = 45; RT.waveT = 9; } }
       if (RT.waveT > 0) { RT.waveT -= rdt; RT.waveX = (RT.waveX + rdt * 0.11) % 1; }
       var wa = RT.waveT > 0 ? Math.min(1, RT.waveT / 1.5) : 0;
@@ -1275,13 +1800,14 @@
       var tens = (g.matchPoint >= 0 || g.setPoint >= 0) && g.mode !== 'over' ? 1 : 0;
       RT.tension += (tens - RT.tension) * Math.min(1, rdt * 2); crowdU.uTension.value = RT.tension;
       updateLED(rdt);
-      if (SB.msgT > 0) { SB.msgT -= rdt; if (SB.msgT <= 0) SB.dirty = true; }
+      if (SB.msgT > 0) { SB.msgT -= rdt; if (SB.msgT <= 0) { SB.dirty = true; if (SB.next) { var nx = SB.next; SB.next = null; screenMsg(nx[0], nx[1], nx[2], nx[3]); } } }
       if (SB.dirty) redrawScreens();
       if (screens.flash > 0) {
         screens.flash = Math.max(0, screens.flash - rdt * 1.5);
-        var fb = (post ? 1.55 : 1) * (1 + screens.flash * 0.6);
-        for (var j = 0; j < screens.mats.length; j++) screens.mats[j].color.setScalar(fb);
+        var fb = (screens.base || 1) * (1 + screens.flash * 0.45);
+        for (var j = 0; j < screens.mats.length; j++) screens.mats[j].uniforms.boost.value = fb;
       }
+      screenVis(rdt);
       updateNet(dt > 0 ? dt : 0, g);
       updateOfficials(g, dt, rdt);
       updateFlashes(rdt);
@@ -1292,10 +1818,12 @@
     /** Fuerza un mensaje en las vallas LED. */
     message: function (text, team, dur) { if (led.mcv) ledMessage(String(text), TEAMC[team === 1 ? 1 : 0], dur || 2.5); },
     /** Hace saltar al público de un equipo (0/1) durante `sec` segundos. */
-    cheer: function (team, sec) { RT.cheerT[team === 1 ? 1 : 0] = sec || 2; },
+    cheer: function (team, sec) { startCheer(team === 1 ? 1 : 0, sec || 2); },
     /** Lanza la ola en la grada. */
     wave: function (sec) { RT.waveT = sec || 8; },
     /** ¿Post-proceso activo? */
-    postActive: function () { return !!post && ctx.renderFn === renderPost; }
+    postActive: function () { return !!post && ctx.renderFn === renderPost; },
+    /** Solo depuración (tools/eval.js): uniformes del público, oficiales, etc. */
+    _dbg: function () { return { crowdU: crowdU, crowdMeshes: crowdMeshes, refs: refs, judges: judges, led: led, RT: RT }; }
   };
 })();

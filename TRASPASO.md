@@ -14,7 +14,7 @@ Un flujo multiagente (guion en `tools/workflow/voley-3d.workflow.js`) con estas 
 1. **Foundation** ✅ — arquitectura, port de la simulación del prototipo, 3D mínimo jugable,
    arnés de pruebas. Resultado: `CONTRACT.md` (la ley: propiedad de ficheros, interfaces, eventos,
    coordenadas, orden por frame).
-2. **Build** — 6 especialistas en paralelo, cada uno dueño de sus ficheros:
+2. **Build** ✅ — 6 especialistas en paralelo, cada uno dueño de sus ficheros:
    - `sim` → `js/sim.js`, `js/ai.js`, `tools/simtest.js` (reglas, calidad de golpe, saques, dificultad)
    - `players` → `js/players.js` (atletas y animación procedural)
    - `arena` → `js/arena.js`, `js/fx.js` (pabellón, luces, público, red, balón, efectos)
@@ -22,27 +22,48 @@ Un flujo multiagente (guion en `tools/workflow/voley-3d.workflow.js`) con estas 
    - `audio` → `js/audio.js` (sonido procedural) ✅ terminado
    - `ui_main` → `index.html`, `js/ui.js`, `js/main.js`, `tools/shot.sh`, `tools/console.sh`, `tools/drive.js`, `tools/eval.js`
    Lo que uno necesita en ficheros ajenos lo deja en `notes/<owner>.md`.
-3. **Integrate** — aplicar `notes/*.md`, hacer que todo funcione junto, probar todo. ⏳ PENDIENTE
+3. **Integrate** — aplicar `notes/*.md`, hacer que todo funcione junto, probar todo. ✅
 4. **Review ×2** — 5 críticos (visual, jugabilidad+reglas, cámara, técnico, primer jugador) +
-   arregladores por propietario + integración. ⏳ PENDIENTE
-5. **Final QA** ⏳ PENDIENTE
+   arregladores por propietario + integración. ✅ (2 rondas)
+5. **Final QA** ✅ (6-nov-2026, PC de casa)
 
-## Estado al parar (6-nov-2026, 12:25, PC del trabajo)
+## Estado (6-nov-2026, tras Final QA, PC de casa con RTX 3060 Ti)
 
-Flujo parado a mano por Ferran a mitad de **Build**:
+Todas las fases del guion están hechas: Foundation, Build (los 6 especialistas, incluida la pasada
+corta de cierre de `players`, `arena`, `camera_input` y `ui_main`), Integrate, Review 1 y Review 2,
+cada una con su integración, y Final QA. El detalle de cada fase está en `notes/informes-build.md` y en el log
+de cada `notes/<owner>.md`. Las capturas usan la GPU real (ANGLE D3D11, ~160 fps en headless); con
+`GL=swiftshader` vuelven al modo software.
 
-- ✅ Terminados con informe: `foundation`, `audio`, `sim`. Sus informes completos (qué hicieron,
-  qué verificaron, qué piden a otros ficheros, problemas conocidos) están en `notes/informes-build.md`.
-- ⚠️ Interrumpidos sin informe final: `players`, `arena`, `camera_input`, `ui_main`. Su trabajo está
-  en disco tal como lo dejaron (llevaban 45-60 min iterando), pero sin su verificación final.
-  Lo que pidieron a otros está en `notes/<owner>.md`.
-- Comprobado al parar: `node tools/simtest.js` → "TODO OK"; `tools/console.sh rally` → sin errores JS;
-  la escena `rally` se ve en 3D completa (pabellón, público, cámara detrás, HUD).
-- Detalle visto en la captura: el destello de impacto del golpe sale demasiado blanco y grande (fx.js).
+**Comprobado en Final QA (ejecutado, no supuesto):**
+- `node tools/simtest.js` completo (con la matriz de dificultad) → "TODO OK", sale con 0. Incluye las
+  comprobaciones de reglas: 4 toques, dobles, bloqueo sin toque, sets a 25 y 15 con 2 de diferencia,
+  red, antena, por debajo de la red, 8 s, bloqueo del saque, cambio de campo y los 4 niveles.
+- `node --check` de todos los `js/*.js` y `tools/*.js` → sin errores.
+- `tools/console.sh all` a 1280×720 y `TOUCH=1 tools/console.sh all 844 390` → las 19 escenas sin errores JS.
+- `node tools/drive.js 1280 720 40` y `node tools/drive.js 844 390 25` → "TODO OK". Prueban, con el teclado real:
+  menú con la demo, elección tutorial/jugar, saque en dos pulsaciones, puntos jugados, toques del humano y pausa/reanudar.
+- Capturas en `tools/out/final/1280/` y `tools/out/final/844/` (menú, saque, peloteo, remate, bloqueo,
+  punto, ace, punto de set, final, tutorial, saque en salto, plancha, cambio). Todas miradas: la escena 3D
+  completa, el HUD y los textos en castellano están bien.
+- Restricciones de Artifact: `index.html` empieza por `<title>Voley 3D</title>`, sin doctype/html/head/body
+  ni módulos; en ejecución por `file://` solo se pide three.js 0.149.0 de cdnjs y Google Fonts
+  (`performance.getEntriesByType('resource')`). Sin alert/confirm/prompt/print, y `localStorage` siempre
+  dentro de try/catch.
+- Coste de render en `rally` a 1280×720: alta 78 draw calls / 1,17 M triángulos (pixelRatio 2), media 71 / 0,56 M
+  (1,5), baja 51 / 0,34 M (1).
 
-**Siguiente paso en casa:** antes de integrar, dar a `players`, `arena`, `camera_input` y `ui_main`
-una pasada corta de "termina y verifica lo tuyo" (cada uno con sus ficheros), y después seguir
-con Integrate → Review ×2 → Final QA tal como está en el guion.
+**Sin comprobar o pendiente:**
+- Rendimiento en un móvil real: solo se ha medido en el PC con GPU. Falta comprobar que llega a 60 fps
+  y que la calidad adaptativa baja bien en un móvil medio.
+- Mando físico y táctil real: solo se ha probado el táctil emulado (DevTools) y la lógica del mando en código.
+- Audio: está verificado con un arnés en node y sin errores en la página, pero nadie lo ha escuchado en esta pasada.
+- El equilibrio de dificultad sale de bots (notes/informes-build.md §sim): falta probarlo con jugadores reales.
+- Detalles visuales menores: la etiqueta "TOQUES" se lee poco sobre el público. La escena `dive` congela con el
+  balón cerca de la cámara y no se ve bien al jugador que se tira.
+- Opcional, de sim: `Sim.aimPoint`, antena tocada sin cruzar, texto de sim para 'out'. Opcional, de
+  cámara/arena: plano de transición durante `courtChange`.
+- Publicación como Artifact: todavía no se ha publicado (se ha comprobado que cumple las restricciones).
 
 ## Cómo seguir en casa
 

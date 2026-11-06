@@ -82,13 +82,41 @@
     return chs;
   }
 
+  /* Troceado de la generación: todos los generadores son function* que ceden
+   * (yield) cada YM+1 muestras. El motor llama a it.next() mientras quede
+   * presupuesto en el frame, así ningún paso supera ~1 ms en escritorio
+   * (unos 4-5 ms en un móvil medio). En node, synth() los ejecuta de un tirón. */
+  var YM = 511;           // bucles de síntesis caros (por muestra: filtros, senos)
+  var YB = 16383;         // bucles baratos sobre buffers largos (normalizar, envolventes)
+  /** normalize() troceado para buffers largos (grada, reverb). */
+  function* normalizeG(chs, peak) {
+    var m = 0, i, c, d;
+    for (c = 0; c < chs.length; c++) { d = chs[c]; for (i = 0; i < d.length; i++) { var a = d[i] < 0 ? -d[i] : d[i]; if (a > m) m = a; if ((i & YB) === YB) yield 0; } }
+    if (m < 1e-9) return chs;
+    var k = peak / m;
+    for (c = 0; c < chs.length; c++) { d = chs[c]; for (i = 0; i < d.length; i++) { d[i] *= k; if ((i & YB) === YB) yield 0; } }
+    return chs;
+  }
+  /** loopify() troceado. */
+  function* loopifyG(chs, sr, x) {
+    var X = (x * sr) | 0, out = [];
+    for (var c = 0; c < chs.length; c++) {
+      var d = chs[c], n = d.length - X, o = d.slice(0, n);
+      for (var i = 0; i < X; i++) { var k = i / X; o[i] = d[i] * Math.sqrt(k) + d[n + i] * Math.sqrt(1 - k); if ((i & YM) === YM) yield 0; }
+      out.push(o); yield 0;
+    }
+    return out;
+  }
+  /** Ejecuta un generador hasta el final (node / tests). */
+  function runSync(it) { var r; do { r = it.next(); } while (!r.done); return r.value; }
+
   /* ------------------------------------------------------------------
    * 2. Generadores de efectos
    * ------------------------------------------------------------------ */
 
   /** Impacto genérico de balón: cuerpo grave con caída de tono + chasquido
    *  (ruido muy corto) + palmada (ruido filtrado) + resonancia de la cámara del balón. */
-  function impact(o, rng, sr) {
+  function* impact(o, rng, sr) {
     // parámetros a variables locales: los objetos de IMPACTS tienen formas distintas
     // y leerlos por muestra hace los accesos megamórficos (lentísimo)
     var n = Math.ceil(o.dur * sr), d = new Float32Array(n);
@@ -121,6 +149,7 @@
         y += tail.p(nz) * wa * Math.sin(Math.PI * u);
       }
       d[i] = y;
+      if ((i & YM) === YM) yield 0;
     }
     var chs = [d];
     if (o.drive) softclip(chs, o.drive);
@@ -168,7 +197,7 @@
   };
 
   /** Red: cinta/cable que vibra + traqueteo de la malla (granos) + sacudida. */
-  function genNet(tape, rng, sr) {
+  function* genNet(tape, rng, sr) {
     var dur = 0.75, n = Math.ceil(dur * sr), d = new Float32Array(n);
     var mesh = new Biq('bp', 520, 1.1, sr), g1 = new Biq('bp', 1800, 2, sr), thw = new Biq('bp', 700, 0.9, sr);
     var ph = 0, ph2 = 0, gEnv = 0, kG = Math.exp(-1 / (0.003 * sr));
@@ -187,12 +216,13 @@
       y += (Math.sin(ph) * eC + Math.sin(w2 * i) * eC * 0.34) * at; eC *= kC;
       if (eT > 1e-4) { y += thw.p(nz) * eT; eT *= kT; }
       d[i] = y;
+      if ((i & YM) === YM) yield 0;
     }
     return edges(normalize([d], 0.85), sr, 0.0005, 0.05);
   }
 
   /** Silbato de árbitro: dos tonos (cámaras) + trino del guisante + aliento. */
-  function genWhistle(dur, rng, sr) {
+  function* genWhistle(dur, rng, sr) {
     var tot = dur + 0.12, n = Math.ceil(tot * sr), d = new Float32Array(n);
     var br = new Biq('bp', 3100, 3, sr), air = new Biq('hp', 1500, 0.7, sr);
     var fA = 2950 + rng() * 120, fB = fA * 1.17, p1 = 0, p2 = 0, p3 = 0, tp = 0;
@@ -209,12 +239,13 @@
       var y = (Math.sin(p1) * 0.6 + Math.sin(p2) * 0.42 + Math.sin(p3) * 0.07) * amp;
       y += br.p(nz) * 0.5 * env * (0.6 + 0.4 * tr) + air.p(nz) * 0.05 * env * (1.5 - att * 0.8);
       d[i] = y;
+      if ((i & YM) === YM) yield 0;
     }
     return edges(normalize([d], 0.8), sr, 0.002, 0.02);
   }
 
   /** Chirrido de zapatilla sobre parqué (stick-slip). */
-  function genSqueak(rng, sr) {
+  function* genSqueak(rng, sr) {
     var dur = 0.07 + rng() * 0.1, n = Math.ceil(dur * sr), d = new Float32Array(n);
     var bp = new Biq('bp', 2600, 0.8, sr), hp = new Biq('hp', 3500, 0.7, sr);
     var f0 = 1500 + rng() * 1700, glide = (rng() - 0.4) * 0.5, ph = 0, ss = 30 + rng() * 25;
@@ -225,34 +256,37 @@
       var env = Math.min(1, t / 0.008) * (1 - u) * Math.sqrt(1 - u);
       var y = (Math.sin(ph) * 0.6 + Math.sin(2 * ph) * 0.3 + Math.sin(3 * ph) * 0.15) * env;
       d[i] = bp.p(y) * 1.4 + hp.p(nz) * 0.12 * env;
+      if ((i & YM) === YM) yield 0;
     }
     return edges(normalize([d], 0.8), sr, 0.001, 0.008);
   }
 
   /** Arrastre de zapatilla al despegar. */
-  function genScuff(rng, sr) {
+  function* genScuff(rng, sr) {
     var dur = 0.09, n = Math.ceil(dur * sr), d = new Float32Array(n), hp = new Biq('bp', 3200, 0.6, sr), ph = 0;
     for (var i = 0; i < n; i++) {
       var t = i / sr, nz = rng() * 2 - 1; ph += TAU * (90 - t * 300) / sr;
       d[i] = hp.p(nz) * Math.exp(-t / 0.025) * 0.8 + Math.sin(ph) * 0.5 * Math.exp(-t / 0.03);
+      if ((i & YM) === YM) yield 0;
     }
     return edges(normalize([d], 0.7), sr, 0.002, 0.01);
   }
 
   /** Brazo en el aire (golpe al vacío). */
-  function genWhoosh(rng, sr) {
+  function* genWhoosh(rng, sr) {
     var dur = 0.26, n = Math.ceil(dur * sr), d = new Float32Array(n), bp = new Biq('bp', 700, 1.5, sr);
     for (var i = 0; i < n; i++) {
       var t = i / sr, u = t / dur;
       if ((i & 31) === 0) bp.set('bp', 600 + 1400 * Math.sin(Math.PI * Math.min(1, u * 1.3)), 1.5, sr);
       var sn = Math.sin(Math.PI * u);
       d[i] = bp.p(rng() * 2 - 1) * sn * sn * (1 - 0.4 * (1 - sn));
+      if ((i & YM) === YM) yield 0;
     }
     return edges(normalize([d], 0.7), sr, 0.002, 0.01);
   }
 
   /** Plancha: el cuerpo cae y se desliza por el parqué (golpe + fricción de piel/tela). */
-  function genSlide(rng, sr) {
+  function* genSlide(rng, sr) {
     var dur = 0.45, n = Math.ceil(dur * sr), d = new Float32Array(n), bp = new Biq('bp', 1100, 0.6, sr), lp = new Biq('lp', 500, 0.7, sr), ph = 0;
     var eB = 1, kB = Math.exp(-1 / (0.06 * sr));
     for (var i = 0; i < n; i++) {
@@ -260,18 +294,19 @@
       ph += TAU * (70 - 25 * u) / sr;
       var fr = Math.sin(Math.PI * Math.min(1, u * 1.15)) * (0.75 + 0.25 * Math.sin(i * 0.004)); // fricción que crece y se apaga
       d[i] = Math.sin(ph) * eB * 1.1 + lp.p(nz) * eB * 0.9 + bp.p(nz) * 0.45 * fr * (1 - u * 0.6); eB *= kB;
+      if ((i & YM) === YM) yield 0;
     }
     return edges(normalize([d], 0.85), sr, 0.001, 0.04);
   }
   /** Destello sutil de "toque perfecto" (solo golpes del humano): dos parciales de campana. */
-  function genPerfect(rng, sr) {
+  function* genPerfect(rng, sr) {
     var dur = 0.32, n = Math.ceil(dur * sr), d = new Float32Array(n), w1 = TAU * 2093 / sr, w2 = TAU * 3136 / sr, e = 1, ke = Math.exp(-1 / (0.07 * sr));
-    for (var i = 0; i < n; i++) { d[i] = (Math.sin(w1 * i) * 0.6 + Math.sin(w2 * i) * 0.4 * (i > 0.035 * sr ? 1 : 0)) * e; e *= ke; }
+    for (var i = 0; i < n; i++) { d[i] = (Math.sin(w1 * i) * 0.6 + Math.sin(w2 * i) * 0.4 * (i > 0.035 * sr ? 1 : 0)) * e; e *= ke; if ((i & YM) === YM) yield 0; }
     return edges(normalize([d], 0.6), sr, 0.0015, 0.02);
   }
 
   /** Interfaz: clic con cuerpo y "hover" cristalino. */
-  function genUi(kind, rng, sr) {
+  function* genUi(kind, rng, sr) {
     var dur = kind === 'hover' ? 0.05 : kind === 'back' ? 0.09 : kind === 'start' ? 0.32 : 0.07;
     var n = Math.ceil(dur * sr), d = new Float32Array(n), hp = new Biq('hp', 3000, 0.7, sr), ph = 0, ph2 = 0;
     for (var i = 0; i < n; i++) {
@@ -283,6 +318,7 @@
         var tt = t < 0.08 ? t : t - 0.08; y = (Math.sin(ph) * 0.6 + Math.sin(ph2) * 0.15) * Math.exp(-tt / (t < 0.08 ? 0.05 : 0.12));
       } else { f = 1250 - t * 3500; ph += TAU * f / sr; ph2 += TAU * 2600 / sr; y = Math.sin(ph) * 0.6 * Math.exp(-t / 0.018) + Math.sin(ph2) * 0.12 * Math.exp(-t / 0.006); }
       d[i] = y + hp.p(nz) * 0.35 * Math.exp(-t / 0.0015);
+      if ((i & YM) === YM) yield 0;
     }
     return edges(normalize([d], kind === 'hover' ? 0.45 : 0.75), sr, 0.0003, 0.005);
   }
@@ -295,7 +331,7 @@
    *  silábica propia y posición estéreo aleatoria. o.sweep(t, out[2]) opcional
    *  multiplica F1/F2 con el tiempo (lamento descendente, "uuuh"). */
   var SW = [1, 1];
-  function crowdVoice(o, rng, sr, L, R) {
+  function* crowdVoice(o, rng, sr, L, R) {
     var n = L.length, q = o.q, pitched = o.pitched, depth = o.depth, syl = o.syll, sweep = o.sweep || null;
     var pglide = o.pglide || 0, stagger = o.stagger || 0;
     var F1 = o.f1[0] + rng() * (o.f1[1] - o.f1[0]), F2 = o.f2[0] + rng() * (o.f2[1] - o.f2[0]);
@@ -318,24 +354,25 @@
       var src = (rng() * 2 - 1) * aN + (2 * ph - 1) * pitched;
       var y = (b1.p(src) + 0.55 * b2.p(src)) * amp * (1 - depth + depth * env);
       L[i] += y * gl; R[i] += y * gr;
+      if ((i & YM) === YM) yield 0;
     }
   }
-  /** Plan de público: o = {dur, layers, env(t), loop (s de fundido), peak, extras(L,R,rng,sr) -> [pasos]} */
-  function crowdPlan(o, rng, sr) {
-    var n = Math.ceil((o.dur + (o.loop || 0)) * sr), L = new Float32Array(n), R = new Float32Array(n), steps = [];
-    o.layers.forEach(function (ly) {
-      for (var v = 0; v < ly.voices; v++) steps.push(function () { crowdVoice(ly, rng, sr, L, R); });
-    });
-    if (o.extras) steps = steps.concat(o.extras(L, R, rng, sr));
-    return { steps: steps, done: function () {
-      var i, chs = [L, R];
-      if (o.env) for (i = 0; i < n; i++) { var e = o.env(i / sr); L[i] *= e; R[i] *= e; }
-      if (o.loop) return normalize(loopify(chs, sr, o.loop), o.peak);
-      return edges(normalize(chs, o.peak), sr, 0.004, o.fade || 0.15);
-    } };
+  /** Plan de público: o = {dur, layers, env(t), loop (s de fundido), peak, extras(L,R,rng,sr) -> generador} */
+  function* crowdPlan(o, rng, sr) {
+    var n = Math.ceil((o.dur + (o.loop || 0)) * sr), L = new Float32Array(n), R = new Float32Array(n), i;
+    for (var l = 0; l < o.layers.length; l++) {
+      var ly = o.layers[l];
+      for (var v = 0; v < ly.voices; v++) yield* crowdVoice(ly, rng, sr, L, R);
+    }
+    if (o.extras) yield* o.extras(L, R, rng, sr);
+    var chs = [L, R];
+    if (o.env) for (i = 0; i < n; i++) { var e = o.env(i / sr); L[i] *= e; R[i] *= e; if ((i & 8191) === 8191) yield 0; }
+    if (o.loop) return yield* normalizeG(yield* loopifyG(chs, sr, o.loop), o.peak);
+    yield* normalizeG(chs, o.peak);
+    return edges(chs, sr, 0.004, o.fade || 0.15);
   }
   /** Silbidos de aficionados (dedos en la boca): glissandos agudos. */
-  function addFanWhistles(L, R, count, t0, t1, rng, sr, amp) {
+  function* addFanWhistles(L, R, count, t0, t1, rng, sr, amp) {
     for (var w = 0; w < count; w++) {
       var st = (t0 + rng() * (t1 - t0)) * sr | 0, dur = (0.35 + rng() * 0.5) * sr | 0, f0 = 2100 + rng() * 900;
       var up = rng() < 0.5, pan = rng(), ph = 0;
@@ -344,6 +381,7 @@
         ph += TAU * f / sr;
         var y = Math.sin(ph) * amp * Math.sin(Math.PI * u) * (0.8 + 0.2 * Math.sin(TAU * 6 * u));
         L[st + i] += y * (1 - pan); R[st + i] += y * pan;
+        if ((i & YM) === YM) yield 0;
       }
     }
   }
@@ -362,22 +400,21 @@
     }
     KS = ks; KS.sr = sr; return ks;
   }
-  function addClaps(L, R, t0, t1, rate, rng, sr, amp, decay) {
-    var ks = clapKernels(sr), n = L.length, blk = 32 / sr;
+  function* addClaps(L, R, t0, t1, rate, rng, sr, amp, decay) {
+    var ks = clapKernels(sr), n = L.length, blk = 32 / sr, nb = 0, work = 0;
     for (var t = t0; t < t1; t += blk) {
+      // cede cada ~64 bloques o cada ~6000 muestras de palmadas mezcladas (lo que llegue antes)
+      if (++nb >= 64 || work > 6000) { nb = 0; work = 0; yield 0; }
       var expect = rate * (decay ? Math.exp(-Math.max(0, t - decay[0]) / decay[1]) : 1) * blk;
       while (expect > 0) {
         if (rng() < expect) {
           var k = ks[(rng() * ks.length) | 0], st = ((t + rng() * blk) * sr) | 0, pan = rng(), a = amp * (0.3 + rng() * 0.7);
           for (var i = 0; i < k.length && st + i < n; i++) { L[st + i] += k[i] * a * (1 - pan); R[st + i] += k[i] * a * pan; }
+          work += k.length;
         }
         expect -= 1;
       }
     }
-  }
-  function sliced(fn, parts) { // divide un trabajo por tramos de tiempo [a, b) en varios pasos
-    var s = []; for (var p = 0; p < parts.length - 1; p++) (function (a, b) { s.push(function () { fn(a, b); }); })(parts[p], parts[p + 1]);
-    return s;
   }
 
   var CROWD = {
@@ -399,9 +436,12 @@
         { voices: 20, f1: [600, 1000], f2: [1050, 1800], q: 1.5, syll: 0.9, depth: 0.3, pitched: 0.45, pitch: [180, 520], stagger: 0.12 },
         { voices: 5, f1: [400, 900], f2: [1600, 3000], q: 0.6, syll: 0, depth: 0, pitched: 0, pitch: [100, 100] }],
         env: function (t) { return Math.min(1, t / 0.12) * (t < 0.7 ? 1 : Math.exp(-(t - 0.7) / 1.1)); },
-        extras: function (L, R, rng, sr) {
-          return [function () { addFanWhistles(L, R, 4, 0.25, 1.8, rng, sr, 0.18); }]
-            .concat(sliced(function (a, b) { addClaps(L, R, a, b, 70, rng, sr, 0.28, [1.4, 1.2]); }, [0.35, 1.6, 2.9, 4.2]));
+        extras: function* (L, R, rng, sr) {
+          yield* addFanWhistles(L, R, 4, 0.25, 1.8, rng, sr, 0.18);
+          // mismos tramos que antes: la secuencia aleatoria (y por tanto el sonido) no cambia
+          yield* addClaps(L, R, 0.35, 1.6, 70, rng, sr, 0.28, [1.4, 1.2]);
+          yield* addClaps(L, R, 1.6, 2.9, 70, rng, sr, 0.28, [1.4, 1.2]);
+          yield* addClaps(L, R, 2.9, 4.2, 70, rng, sr, 0.28, [1.4, 1.2]);
         } }, rng, sr);
     },
     // Lamento "ooohhh" descendente (error propio)
@@ -419,40 +459,51 @@
         env: function (t) { return Math.min(1, t / 0.2) * (t < 0.35 ? 1 : Math.exp(-(t - 0.35) / 0.35)); } }, rng, sr);
     },
     // Aplauso (decae)
-    applause: function (rng, sr) {
+    applause: function* (rng, sr) {
       var n = Math.ceil(3.2 * sr), L = new Float32Array(n), R = new Float32Array(n);
-      return { steps: sliced(function (a, b) { addClaps(L, R, a, b, 110, rng, sr, 0.5, [0.9, 0.8]); }, [0, 0.8, 1.6, 2.4, 3.2]),
-        done: function () {
-          var c = [L, R], lp = [new Biq('lp', 6000, 0.7, sr), new Biq('lp', 6000, 0.7, sr)];
-          for (var ch = 0; ch < 2; ch++) for (var i = 0; i < n; i++) c[ch][i] = lp[ch].p(c[ch][i]) * Math.min(1, i / (0.08 * sr));
-          return edges(normalize(c, 0.75), sr, 0.002, 0.2);
-        } };
+      yield* addClaps(L, R, 0, 0.8, 110, rng, sr, 0.5, [0.9, 0.8]);
+      yield* addClaps(L, R, 0.8, 1.6, 110, rng, sr, 0.5, [0.9, 0.8]);
+      yield* addClaps(L, R, 1.6, 2.4, 110, rng, sr, 0.5, [0.9, 0.8]);
+      yield* addClaps(L, R, 2.4, 3.2, 110, rng, sr, 0.5, [0.9, 0.8]);
+      var c = [L, R], lp = [new Biq('lp', 6000, 0.7, sr), new Biq('lp', 6000, 0.7, sr)];
+      for (var ch = 0; ch < 2; ch++) for (var i = 0; i < n; i++) { c[ch][i] = lp[ch].p(c[ch][i]) * Math.min(1, i / (0.08 * sr)); if ((i & 8191) === 8191) yield 0; }
+      yield* normalizeG(c, 0.75);
+      return edges(c, sr, 0.002, 0.2);
     },
     // Palmas al unísono de la grada (ritmo durante el saque local)
-    palmas: function (rng, sr) {
+    palmas: function* (rng, sr) {
       var ks = clapKernels(sr), n = Math.ceil(0.2 * sr), L = new Float32Array(n), R = new Float32Array(n);
       for (var c = 0; c < 70; c++) {
         var k = ks[(rng() * ks.length) | 0], off = 0.012 + (rng() + rng() + rng() - 1.5) * 0.012, st = Math.max(0, off * sr) | 0, pan = rng(), a = 0.3 + rng() * 0.7;
         for (var i = 0; i < k.length && st + i < n; i++) { L[st + i] += k[i] * a * (1 - pan); R[st + i] += k[i] * a * pan; }
+        if ((c & 7) === 7) yield 0;
       }
       return edges(normalize([L, R], 0.8), sr, 0.0005, 0.03);
     }
   };
 
   /** Impulso de reverberación de pabellón (~1.8 s), estéreo. */
-  function genIR(rng, sr) {
+  function* genIR(rng, sr) {
     var dur = 1.8, n = Math.ceil(dur * sr), L = new Float32Array(n), R = new Float32Array(n), pre = (0.018 * sr) | 0;
     var lpL = 0, lpR = 0, e = 1, ke = Math.exp(-1 / (0.3 * sr)), kk = Math.exp(-1 / (0.35 * sr)), lk = 1;
     for (var i = pre; i < n; i++) {
       var k = 0.15 + 0.8 * lk; lk *= kk; // se oscurece con el tiempo
       lpL += ((rng() * 2 - 1) - lpL) * k; lpR += ((rng() * 2 - 1) - lpR) * k;
       L[i] = lpL * e; R[i] = lpR * e; e *= ke;
+      if ((i & YM) === YM) yield 0;
     }
     for (var r = 0; r < 7; r++) { // primeras reflexiones (suelo, paredes, techo)
       var at = ((0.02 + rng() * 0.07) * sr) | 0, a = 0.5 * (1 - r / 8);
       L[at] += a * (rng() < 0.5 ? 1 : -1); R[at + ((rng() * 0.004 * sr) | 0)] += a * (rng() < 0.5 ? 1 : -1);
     }
-    return normalize([L, R], 0.5);
+    yield* normalizeG([L, R], 0.5);
+    // Normalización del ConvolverNode (potencia RMS; GainCalibration -58 dB a 44,1 kHz, como Chrome/WebKit/Firefox)
+    // aplicada aquí: así el motor usa normalize = false y el nodo no recorre la IR en el hilo principal.
+    var ss = 0;
+    for (i = 0; i < n; i++) { ss += L[i] * L[i] + R[i] * R[i]; if ((i & YB) === YB) yield 0; }
+    var pw = Math.max(0.000125, Math.sqrt(ss / (2 * n)) || 0), sc = 0.0012589254 / pw * 44100 / sr;
+    for (i = 0; i < n; i++) { L[i] *= sc; R[i] *= sc; if ((i & YB) === YB) yield 0; }
+    return [L, R];
   }
 
   /* ---------- Música: ráfagas originales de set y partido ---------- */
@@ -460,7 +511,7 @@
                Fs4: 369.99, G4: 392, A4: 440, B4: 493.88, Cs5: 554.37, D5: 587.33, Fs5: 739.99, D6: 1174.66,
                Fs6: 1479.98, A6: 1760, D7: 2349.32 };
   /** Voz "metal": dos sierras desafinadas + subarmónico, filtro que se abre al atacar. */
-  function brass(L, R, sr, f, t0, dur, amp, rng) {
+  function* brass(L, R, sr, f, t0, dur, amp, rng) {
     var st = (t0 * sr) | 0, n = Math.ceil((dur + 0.35) * sr), lp = new Biq('lp', 800, 1.2, sr), p1 = rng(), p2 = rng(), p3 = rng();
     var e15 = 1, k15 = Math.exp(-1 / (0.15 * sr)), e30 = 1, k30 = Math.exp(-1 / (0.3 * sr)), rel = 1, kr = Math.exp(-1 / (0.09 * sr)), dn = (dur * sr) | 0;
     var i1 = f * 1.003 / sr, i2 = f * 0.997 / sr, i3 = f * 0.5 / sr, vb = 1;
@@ -472,18 +523,20 @@
       if (p1 >= 1) p1 -= 1; if (p2 >= 1) p2 -= 1; if (p3 >= 1) p3 -= 1;
       var y = lp.p((2 * p1 - 1) + (2 * p2 - 1) + 0.3 * Math.sin(TAU * p3)) * env * amp;
       L[st + i] += y * 0.9; R[st + i] += y * 0.75;
+      if ((i & YM) === YM) yield 0;
     }
   }
   /** Campana FM (destellos). */
-  function bell(L, R, sr, f, t0, amp, pan) {
+  function* bell(L, R, sr, f, t0, amp, pan) {
     var st = (t0 * sr) | 0, n = (1.4 * sr) | 0, w = TAU * f / sr, I = 2.2, kI = Math.exp(-1 / (0.15 * sr)), e = amp, ke = Math.exp(-1 / (0.4 * sr));
     for (var i = 0; i < n && st + i < L.length; i++) {
       var y = Math.sin(w * i + I * Math.sin(w * 3.5 * i)) * e * Math.min(1, i / (0.002 * sr)); I *= kI; e *= ke;
       L[st + i] += y * (1 - pan); R[st + i] += y * pan;
+      if ((i & YM) === YM) yield 0;
     }
   }
   /** Piano eléctrico suave (derrota). */
-  function epiano(L, R, sr, f, t0, dur, amp) {
+  function* epiano(L, R, sr, f, t0, dur, amp) {
     var st = (t0 * sr) | 0, n = Math.ceil((dur + 0.6) * sr), w = TAU * f / sr, dn = (dur * sr) | 0;
     var e = amp, ke = Math.exp(-1 / ((dur * 0.9 + 0.2) * sr)), m = 0.8, km = Math.exp(-1 / (0.3 * sr)), h = 0.15, kh = Math.exp(-1 / (0.2 * sr)), r = 1, kr = Math.exp(-1 / (0.2 * sr));
     for (var i = 0; i < n && st + i < L.length; i++) {
@@ -492,19 +545,21 @@
       e *= ke; m *= km; h *= kh;
       var s5 = 0.1 * Math.sin(5 * i / sr);
       L[st + i] += y * (1 + s5); R[st + i] += y * (1 - s5);
+      if ((i & YM) === YM) yield 0;
     }
   }
-  function boom(L, R, sr, t0, amp, rng) {
+  function* boom(L, R, sr, t0, amp, rng) {
     var st = (t0 * sr) | 0, n = (0.9 * sr) | 0, ph = 0, e1 = 1, k1 = Math.exp(-1 / (0.05 * sr)), e2 = amp, k2 = Math.exp(-1 / (0.35 * sr)), e3 = 0.3 * amp, k3 = Math.exp(-1 / (0.02 * sr));
     for (var i = 0; i < n && st + i < L.length; i++) {
       ph += TAU * (48 + 40 * e1) / sr; e1 *= k1;
       var y = Math.sin(ph) * e2 + (rng() * 2 - 1) * e3; e2 *= k2; e3 *= k3;
       L[st + i] += y; R[st + i] += y;
+      if ((i & YM) === YM) yield 0;
     }
   }
-  function crash(L, R, sr, t0, amp, rng) {
+  function* crash(L, R, sr, t0, amp, rng) {
     var st = (t0 * sr) | 0, n = (2 * sr) | 0, hp = new Biq('hp', 5000, 0.7, sr), hp2 = new Biq('hp', 4000, 0.7, sr), e = amp, ke = Math.exp(-1 / (0.6 * sr));
-    for (var i = 0; i < n && st + i < L.length; i++) { L[st + i] += hp.p(rng() * 2 - 1) * e; R[st + i] += hp2.p(rng() * 2 - 1) * e; e *= ke; }
+    for (var i = 0; i < n && st + i < L.length; i++) { L[st + i] += hp.p(rng() * 2 - 1) * e; R[st + i] += hp2.p(rng() * 2 - 1) * e; e *= ke; if ((i & YM) === YM) yield 0; }
   }
   /** Partitura como datos: cada nota es un paso del plan.
    *  ['b', nota, t, dur, amp] metal · ['c', [notas], t, dur, amp] acorde · ['boom', t, amp] · ['crash', t, amp]
@@ -528,21 +583,21 @@
       ['ep', 'G3', 0.65, 0.6, 0.3], ['ep', 'B3', 0.69, 0.6, 0.3], ['ep', 'D4', 0.73, 0.6, 0.3],
       ['ep', 'Fs3', 1.3, 1.1, 0.3], ['ep', 'As3', 1.34, 1.1, 0.3], ['ep', 'Cs4', 1.38, 1.1, 0.3]] }
   };
-  function musicPlan(sc, rng, sr) {
-    var n = Math.ceil(sc.dur * sr), L = new Float32Array(n), R = new Float32Array(n), steps = [];
-    sc.n.forEach(function (x) {
-      if (x[0] === 'c') x[1].forEach(function (nt) { steps.push(function () { brass(L, R, sr, NOTE[nt], x[2], x[3], x[4], rng); }); });
-      else steps.push(function () {
-        switch (x[0]) {
-          case 'b': brass(L, R, sr, NOTE[x[1]], x[2], x[3], x[4], rng); break;
-          case 'boom': boom(L, R, sr, x[1], x[2], rng); break;
-          case 'crash': crash(L, R, sr, x[1], x[2], rng); break;
-          case 'bell': bell(L, R, sr, NOTE[x[1]], x[2], x[3], x[4]); break;
-          case 'ep': epiano(L, R, sr, NOTE[x[1]], x[2], x[3], x[4]); break;
-        }
-      });
-    });
-    return { steps: steps, done: function () { return edges(normalize([L, R], sc.peak), sr, 0.001, sc.fade); } };
+  function* musicPlan(sc, rng, sr) {
+    var n = Math.ceil(sc.dur * sr), L = new Float32Array(n), R = new Float32Array(n);
+    for (var k = 0; k < sc.n.length; k++) {
+      var x = sc.n[k];
+      switch (x[0]) {
+        case 'c': for (var c = 0; c < x[1].length; c++) yield* brass(L, R, sr, NOTE[x[1][c]], x[2], x[3], x[4], rng); break;
+        case 'b': yield* brass(L, R, sr, NOTE[x[1]], x[2], x[3], x[4], rng); break;
+        case 'boom': yield* boom(L, R, sr, x[1], x[2], rng); break;
+        case 'crash': yield* crash(L, R, sr, x[1], x[2], rng); break;
+        case 'bell': yield* bell(L, R, sr, NOTE[x[1]], x[2], x[3], x[4]); break;
+        case 'ep': yield* epiano(L, R, sr, NOTE[x[1]], x[2], x[3], x[4]); break;
+      }
+    }
+    yield* normalizeG([L, R], sc.peak);
+    return edges([L, R], sr, 0.001, sc.fade);
   }
 
   /* ---------- Catálogo ----------
@@ -587,10 +642,7 @@
    *  synth(name, variant, ctxSampleRate) -> [Float32Array...] (la frecuencia real: synthRate(name, ctxRate)) */
   function synth(name, variant, ctxRate) {
     var c = CATALOG[name]; if (!c) return null;
-    var r = c.gen(makeRng(seedOf(name, variant)), rateOf(c.rate, ctxRate));
-    if (Array.isArray(r)) return r;
-    for (var i = 0; i < r.steps.length; i++) r.steps[i]();
-    return r.done();
+    return runSync(c.gen(makeRng(seedOf(name, variant)), rateOf(c.rate, ctxRate)));
   }
 
   /* ------------------------------------------------------------------
@@ -598,11 +650,15 @@
    * ------------------------------------------------------------------ */
   var vctx = null;                    // VB.ctx
   var AC = null, N = {}, bank = {}, jobs = [], jobTimer = null, built = 0, total = 0;
+  var pend = [];                      // sonidos ya sintetizados (Float32) a la espera de tener AudioContext
+  var genStarted = false, delayT = null;
+  var GUESS_RATE = 48000;             // frecuencia supuesta antes del gesto (la habitual); solo la reverb exige la exacta
   var muted = false, hidden = false, state = 'menu', demo = true, reverbOn = true;
   var vol = { master: 0.9, sfx: 1, music: 0.75, crowd: 0.85 };
   var MAX_VOICES = 32, ends = new Float64Array(40), slowRate = 1;
   var last = {};                      // nombre -> último instante (anti-amontonado)
-  var stats = { played: {}, skipped: 0, built: 0, total: 0, genMs: 0, maxStepMs: 0, maxStep: '' };
+  var stats = { played: {}, skipped: 0, built: 0, synth: 0, total: 0, genMs: 0, steps: 0, maxStepMs: 0, maxStep: '', maxSliceMs: 0, slow: [], hist: new Uint32Array(41), // hist[k]: pasos de k/4..(k+1)/4 ms (el último: ≥ 10 ms)
+                startedAt: -1, synthDoneAt: -1, unlockAt: -1, bankDoneAt: -1, reverbAt: -1 };
   var stingDone = false, beatNext = 0, clapNext = 0, clapBeat = 0, serveWait = 0, serveTeam = -1, mpServe = false;
   var excite = 0, exciteBoost = 0, lastSpikeT = -9, lastSpikeTeam = -1, tossHush = 0;
   var pvx = new Float32Array(8), pvy = new Float32Array(8), scd = new Float32Array(8), squeakGap = 0;
@@ -621,50 +677,123 @@
     }
     return b;
   }
-  /** Cola de generación troceada: ~6 ms por tick, para no dar tirones en el menú (móvil). */
+  /* Cola de generación troceada.
+   *  - Empieza SIN AudioContext (sintetizar Float32Array no es audio): ~1,2 s después de init(),
+   *    en los huecos libres del menú. Al primer gesto el banco suele estar ya sintetizado y solo
+   *    queda copiarlo a AudioBuffers (barato, también troceado).
+   *  - Cada sonido es un generador que cede cada ~1k muestras: el presupuesto se comprueba entre
+   *    pasos de ≤ ~1 ms (escritorio), no entre sonidos enteros.
+   *  - Orden: interfaz, silbatos, toques; después grada y música (PRIORITY). La reverb (exige la
+   *    frecuencia exacta del contexto) entra en cola al crear el contexto. */
   function queueAll() {
     for (var p = 0; p < PRIORITY.length; p++) {
       var c = CATALOG[PRIORITY[p]];
-      for (var v = 0; v < c.variants; v++) jobs.push({ name: PRIORITY[p], v: v, plan: null, i: 0, sr: 0 });
+      for (var v = 0; v < c.variants; v++) jobs.push({ name: PRIORITY[p], v: v, it: null, sr: 0 });
     }
     total = stats.total = jobs.length;
   }
+  function startGen(delay) {
+    if (genStarted) return;
+    genStarted = true;
+    stats.startedAt = perf.now();
+    queueAll();
+    schedule(delay || 0);
+  }
+  function schedule(delay) {
+    if (jobTimer != null || (!jobs.length && !(AC && (pend.length || irWaiting())))) return;
+    var st = root.setTimeout;
+    if (delay > 0 && st) { if (delayT == null) delayT = st(function () { delayT = null; schedule(0); }, delay); return; }
+    if (delayT != null) return;     // aún en la espera inicial tras init()
+    // en partido solo huecos libres (timeout largo); en menú/pausa se fuerza antes si no hay huecos
+    var playing = state === 'playing' && !demo;
+    if (root.requestIdleCallback) jobTimer = root.requestIdleCallback(runJobs, { timeout: playing ? 250 : 60 });
+    else if (st) jobTimer = st(runJobs, playing ? 24 : 16);
+    else runJobs();
+  }
+  function bankDone() { if (!jobs.length && !pend.length && !irWaiting() && AC && stats.bankDoneAt < 0) stats.bankDoneAt = perf.now(); }
   function finishJob(j, chs) {
+    stats.synth++;
+    if (!jobs.length && stats.synthDoneAt < 0) stats.synthDoneAt = perf.now();
+    if (AC) toBank(j.name, chs, j.sr); else pend.push({ name: j.name, chs: chs, sr: j.sr });
+  }
+  function toBank(name, chs, sr) {
+    if (name === 'ir') {
+      if (sr !== AC.sampleRate) { // se sintetizó con la frecuencia supuesta y el contexto usa otra: rehacer
+        jobs.splice(jobs.length && jobs[0].it ? 1 : 0, 0, { name: 'ir', v: 0, it: null, sr: 0 });
+        return;
+      }
+      irData = chs; irSeg = 0; built++; stats.built = built;
+      return;
+    }
     try {
-      var b = toBuffer(chs, j.sr);
-      (bank[j.name] = bank[j.name] || []).push(b);
-      if (j.name === 'ir' && N.conv) N.conv.buffer = b;
-      if (j.name === 'murmur' || j.name === 'excite') startBed(j.name);
+      var b = toBuffer(chs, sr);
+      (bank[name] = bank[name] || []).push(b);
+      if (name === 'murmur' || name === 'excite') startBed(name);
     } catch (e) { }
     built++; stats.built = built;
   }
+  /* Reverb troceada: asignar ConvolverNode.buffer hace FFTs de toda la IR en el hilo principal
+   * (medido: ~60 ms con normalize, ~25-35 ms sin él, para 1,8 s estéreo en escritorio). Se reparte en
+   * IR_SEG tramos de 0,3 s, cada uno en su ConvolverNode precedido de un DelayNode con su desfase:
+   * la suma es la misma convolución, exacta. Un tramo por paso (~3-4 ms en escritorio) y nunca en
+   * pleno peloteo. Coste en el hilo de audio: ~2 % de un núcleo (medido con OfflineAudioContext). */
+  var IR_SEG = 0.3, irData = null, irSeg = -1;
+  function irWaiting() { return !!irData && irSeg >= 0; }
+  function quietNow() {
+    var g = vctx && vctx.game;
+    return state !== 'playing' || !g || g.mode !== 'rally';
+  }
+  function irStep() {
+    var sr = AC.sampleRate, n = irData[0].length, a = Math.round(irSeg * IR_SEG * sr), b = Math.min(n, Math.round((irSeg + 1) * IR_SEG * sr));
+    try {
+      var buf = AC.createBuffer(2, b - a, sr);
+      for (var c = 0; c < 2; c++) {
+        var sub = irData[c].subarray(a, b);
+        if (buf.copyToChannel) buf.copyToChannel(sub, c); else buf.getChannelData(c).set(sub);
+      }
+      var cv = AC.createConvolver(); cv.normalize = false; cv.buffer = buf;
+      if (a > 0) { var dl = AC.createDelay(Math.max(1, b / sr)); dl.delayTime.value = a / sr; N.revBus.connect(dl); dl.connect(cv); }
+      else N.revBus.connect(cv);
+      cv.connect(N.revOut);
+    } catch (e) { }
+    irSeg++;
+    if (b >= n) { irData = null; irSeg = -1; stats.reverbAt = perf.now(); }
+  }
   function runJobs(deadline) {
     jobTimer = null;
-    // en hueco libre entre frames si el navegador lo ofrece (requestIdleCallback); si no, ~4 ms por tick
-    var t0 = perf.now(), budget = deadline && deadline.timeRemaining && !deadline.didTimeout ? clamp(deadline.timeRemaining(), 3, 8) : 5;
-    while (jobs.length && perf.now() - t0 < budget) {
-      var j = jobs[0];
-      try {
-        if (!j.plan) {
-          var c = CATALOG[j.name];
-          j.sr = rateOf(c.rate, AC.sampleRate);
-          var g0 = perf.now(), r = c.gen(makeRng(seedOf(j.name, j.v)), j.sr), gd = perf.now() - g0;
-          if (gd > stats.maxStepMs) { stats.maxStepMs = gd; stats.maxStep = j.name + '#gen'; }
-          if (Array.isArray(r)) { jobs.shift(); finishJob(j, r); continue; }
-          j.plan = r;
-        }
-        var s0 = perf.now();
-        if (j.i < j.plan.steps.length) j.plan.steps[j.i++]();
-        else { jobs.shift(); finishJob(j, j.plan.done()); }
-        var sd = perf.now() - s0; if (sd > stats.maxStepMs) { stats.maxStepMs = sd; stats.maxStep = j.name + '#' + j.i; }
-      } catch (e) { jobs.shift(); built++; }
+    // Presupuesto: hueco libre real si lo hay (requestIdleCallback), menos 1 ms de margen para no rozar el
+    // siguiente frame; si el navegador fuerza la llamada (timeout) o no hay rIC, solo ~2-3 ms.
+    var t0 = perf.now(), idle = deadline && deadline.timeRemaining && !deadline.didTimeout;
+    var budget = idle ? clamp(deadline.timeRemaining() - 1, 1, 8) : (root.requestIdleCallback ? 2 : 3);
+    var irOk = AC && irWaiting() && quietNow();
+    while ((jobs.length || (AC && pend.length) || irOk) && perf.now() - t0 < budget) {
+      var s0 = perf.now(), lab;
+      if (AC && pend.length) { // copiar a AudioBuffer lo ya sintetizado (rápido: un memcpy por canal)
+        var pj = pend.shift(); lab = pj.name + '#buf';
+        toBank(pj.name, pj.chs, pj.sr); pj.chs = null;
+      } else if (irOk) {
+        lab = 'ir#seg' + irSeg; irStep(); irOk = irWaiting();
+      } else if (!jobs.length) {
+        break;
+      } else {
+        var j = jobs[0];
+        try {
+          if (!j.it) {
+            var c = CATALOG[j.name];
+            j.sr = rateOf(c.rate, AC ? AC.sampleRate : GUESS_RATE);
+            j.it = c.gen(makeRng(seedOf(j.name, j.v)), j.sr);
+          }
+          var r = j.it.next(); lab = j.name;
+          if (r.done) { jobs.shift(); finishJob(j, r.value); }
+        } catch (e) { jobs.shift(); built++; stats.built = built; }
+      }
+      var sd = perf.now() - s0; stats.steps++; stats.hist[Math.min(40, (sd * 4) | 0)]++;
+      if (sd > stats.maxStepMs) { stats.maxStepMs = sd; stats.maxStep = lab || '?'; }
+      if (sd > 1.5 && stats.slow.length < 12) stats.slow.push((lab || '?') + ':' + sd.toFixed(1)); // diagnóstico
     }
-    stats.genMs += perf.now() - t0;
-    if (jobs.length) {
-      if (root.requestIdleCallback) jobTimer = root.requestIdleCallback(runJobs, { timeout: 40 });
-      else if (root.setTimeout) jobTimer = root.setTimeout(runJobs, 12);
-      else runJobs();
-    }
+    var sl = perf.now() - t0; stats.genMs += sl; if (sl > stats.maxSliceMs) stats.maxSliceMs = sl;
+    bankDone();
+    schedule(0);
   }
 
   function ensure() {
@@ -683,15 +812,17 @@
       N.crowd = AC.createGain(); N.crowd.gain.value = vol.crowd; N.crowd.connect(N.crowdTone);
       N.music = AC.createGain(); N.music.gain.value = vol.music; N.music.connect(N.master);
       N.revIn = AC.createGain(); N.revIn.gain.value = 1;
-      N.conv = AC.createConvolver();
+      N.revBus = AC.createGain(); N.revBus.gain.value = 1;   // reparte a los tramos de convolución (irStep)
       N.revOut = AC.createGain(); N.revOut.gain.value = 0.55;
-      N.conv.connect(N.revOut); N.revOut.connect(N.fx);
-      if (reverbOn) N.revIn.connect(N.conv);
+      N.revOut.connect(N.fx);
+      if (reverbOn) N.revIn.connect(N.revBus);
       N.murG = AC.createGain(); N.murG.gain.value = 0; N.murG.connect(N.crowd);
       N.excG = AC.createGain(); N.excG.gain.value = 0; N.excG.connect(N.crowd);
     } catch (e) { AC = null; N = {}; return null; }
-    queueAll();
-    runJobs();
+    stats.unlockAt = perf.now();
+    startGen(0);
+    if (delayT != null) { try { root.clearTimeout(delayT); } catch (e) { } delayT = null; } // gesto antes de 1,2 s: empezar ya
+    if (jobTimer == null) runJobs(); // primer tramo ya, dentro del gesto (≤ ~3 ms)
     applyVolumes(true);
     return AC;
   }
@@ -786,6 +917,8 @@
   function onHit(e) {
     var k = e.kind, q = isFinite(e.quality) ? e.quality : 1, sp = isFinite(e.speed) ? e.speed : 8, x = e.x, y = e.y;
     var hg = e.human ? 1 : 0.92, shot = e.shot || '', pw = isFinite(e.power) ? clamp(e.power, 0, 1) : 0.5;
+    // el balón da en el cuerpo sin gesto (sim shot 'body'): golpe sordo, más apagado que un 'shank'
+    if (shot === 'body') { play('free', 0.5 * hg, x, y, jit(0.1) * 0.7, 0.1); lastSpikeTeam = -1; return; }
     switch (k) {
       case 'serve':
         if (shot === 'jump') play('spike', 0.85 * hg * (0.85 + 0.2 * pw), x, y, jit(0.06) * 1.05, 0.35); // saque en salto: casi un remate
@@ -884,6 +1017,9 @@
         else play('whistle', demo ? 0.3 : 0.5, null, null, jit(0.02), 0.45);
         break;
       case 'point': crowdReact(e, g); break;
+      case 'courtChange': // cambio de campo (18.2.1 / 18.2.2): silbato corto tras el del punto
+        if (!demo) play('whistle', 0.32, null, null, jit(0.02) * 1.03, 0.45, e.why === 'eight' ? 1.0 : 2.7);
+        break;
       case 'serveReady':
         serveWait = 0; serveTeam = e.team; clapBeat = 0; clapNext = 0;
         mpServe = !demo && e.matchPoint >= 0; beatNext = now() + 0.6;
@@ -944,6 +1080,9 @@
         });
       }
       if (vctx && vctx.settings) VB.Audio.onSettings(vctx.settings);
+      // Pre-síntesis del banco en los huecos del menú, antes de cualquier gesto (no crea AudioContext
+      // ni suena nada). Se espera ~1,2 s para no competir con el arranque (shaders, texturas).
+      if (hasDoc && (root.requestIdleCallback || root.setTimeout)) startGen(1200);
     },
     /** Primer gesto del usuario (y al empezar partido). Barato si ya está desbloqueado. */
     unlock: function () {
@@ -1015,7 +1154,7 @@
       MAX_VOICES = want ? 32 : 20;
       if (want === reverbOn) return;
       reverbOn = want;
-      if (N.revIn && N.conv) { try { if (want) N.revIn.connect(N.conv); else N.revIn.disconnect(); } catch (e) { } }
+      if (N.revIn && N.revBus) { try { if (want) N.revIn.connect(N.revBus); else N.revIn.disconnect(); } catch (e) { } }
     },
 
     /** Eventos del frame -> sonidos. Seguro con cualquier evento (y sin AudioContext). */

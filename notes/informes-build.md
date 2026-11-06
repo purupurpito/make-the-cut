@@ -217,3 +217,54 @@ Difficulty strings `'easy' | 'normal' | 'hard'` (as main.js already passes) work
 - CPU vs CPU, Hard is only slightly stronger than Normal against the fixed AI teammate (46% vs 45% of points for the teammate, within noise). Against the human-input bots the step is clear (55 → 44 for the average bot). The ordering check in simtest only requires Easy to be clearly easier and Normal to be no stronger than Hard by more than 4 points.
 - Some 2v2 simplifications remain: no side change and no back-row attack rule. A ball crossing outside the antenna is a fault immediately (FIVB allows recovering it from the opponent's free zone). Ball contact is only counted when a touch is attempted.
 - With default arguments the full simtest takes about 1.5 minutes on this loaded machine. Pass `0` as the third argument to skip the matrix.
+
+## integrate:build (6-nov-2026, PC de casa, RTX 3060 Ti)
+
+- Instantánea previa: `../voley-3d-snapshots/build-before`.
+- Herramientas: nuevo `tools/cdp.js` (cliente DevTools con viewport EXACTO vía `Emulation.setDeviceMetricsOverride`: con
+  `--window-size` la página medía 1264×569 / 828×239) y `tools/shot.js` (capturas + consola, varias escenas en un Chrome, `TOUCH=1`).
+  `shot.sh`/`console.sh` delegan en él; `eval.js` (con `SHOT=` = evalshot) y `drive.js` usan `cdp.js`. GPU real (ANGLE d3d11) ~160 fps.
+- Arreglos: hoja de pausa a dos columnas en pantallas bajas (a 844×390 "Salir al menú" quedaba cortado) y antetítulo
+  "Tiempo muerto" → "Partido en pausa"; escenas congeladas envejecen los FX del evento disparador (`fxAge` en main.js);
+  aviso táctil de saque dice SACAR como el botón.
+- CONTRACT.md: §4.2 (estado/funciones nuevas de sim, flujo de saque), §4.3 (toss, miss, dive, netTouch, hit.grade/timing/power/shot/
+  dive/aim/target, block.result/quality/human, point.how/player/lastKind/lastShot y razones net/serve/under/block, swing.shot,
+  newMatch.difficulty), §1 propiedad de las herramientas, §6 herramientas y escenas.
+- Verificado: `node tools/simtest.js` completo → TODO OK; `node --check` de todos los js; 19 escenas sin errores JS a 1280×720,
+  844×390 y 844×390 táctil (57 cargas, capturas miradas); `drive.js` 1280×720 30 s y 844×390 20 s → TODO OK; flujo completo
+  (tools/out/flow.js, scratch): menú → Jugar → set 1 → set 2 → punto de partido → gameOver → pantalla final → Revancha → pausa →
+  Reiniciar → Salir al menú → TODO OK a 1280×720 y 844×390; compañero nunca a < 4,7 m de la cámara en 40 s de juego real.
+- Pendiente para Review: cámara de saque baja (el campo rival se ve muy comprimido y la red cuesta de leer); en el tutorial táctil
+  el botón se llama GOLPEAR aunque en el saque el botón dice SACAR; saque en salto en el aire con los dos brazos arriba
+  (parece más bloqueo que armado de remate en la escena `jumpserve`); rendimiento en móvil real no medido.
+
+## Integración tras Review 1 (6-nov-2026, PC de casa, RTX 3060 Ti)
+- Instantánea previa: `../voley-3d-snapshots/round1-before`.
+- Aplicado de notes/*.md: aro de caída con `C.IN_TOL` (fx.js), `g.lastLand` (sim.js, para camera.js), `rookie` en el primer
+  partido (main.js), `debug=jumpserve` a 145 pasos (main.js), tutorial del remate con el apuntado (ui.js), "ATAQUE DEL SAQUE"
+  en el videomarcador (arena.js), CONTRACT §4.2/§4.3/§4.4 al día.
+- Arreglo propio: a 844×390 la cinta compacta de PUNTO DE SET tapaba al sacador rival; en apaisado bajo va a la derecha.
+- Verificado: `node tools/simtest.js` completo → TODO OK; `console.sh all` a 1280×720 y 844×390 táctil → sin errores JS
+  (19 escenas cada una, capturas miradas); `drive.js 1280 720 60` → TODO OK; partido completo en vivo acelerado ×10
+  (autopilot) → pantalla final → Revancha → partido nuevo 0-0, sin errores; red: solo cdnjs three 0.149.0 y Google Fonts.
+- Para Review 2: pies del colocador fuera de cuadro a 844×390 en `debug=rally`; sacador rival pequeño en móvil; aviso
+  "Golpea cuando el balón baje a tu mano" del saque en salto queda sobre el marcador colgado (texto algo apagado).
+
+## Integración tras Review 2 (6-nov-2026, PC de casa, RTX 3060 Ti)
+- Instantánea previa: `../voley-3d-snapshots/round2-before` (copia completa, incluido tools/out).
+- Aplicado de notes/*.md: sim §5 entero (4 niveles en menú/ajustes/main, banner + videomarcador + silbato de CAMBIO DE CAMPO
+  encadenados tras SET/PUNTO, `block.result 'touch'`, avisos y consejos según `g.defRole`, DEFENSA tras bloqueo propio,
+  `shot:'body'` en UI/FX/audio/players, deslizamiento largo con `switch.reason 'defense'`, tutorial del bloqueo y reglas
+  CUERPO / CAMBIO DE CAMPO); arena §7 (`ctx.simMove`, `scene.matrixAutoUpdate=false`, marcador del jugador blanco, textos del
+  aro amarillo y la diana naranja); players (`VB.FX.dust` + polvo en planchas cosméticas); camera_input (`#touchbar.dim`);
+  ui_main (sin `edge = {}` por frame en input.js). CONTRACT §4.1-§4.4/§6 al día.
+- Arreglos propios: "¡Golpea ahora!" al bloqueador en el aire (escena spike) → fuera; cono del jugador controlado tapaba la mano
+  del sacador en salto → se oculta en el aire / con el saque lanzado; etiqueta PUNTO DE SET del marcador colgado durante la pausa
+  entre sets → fuera; subtítulo del punto de bloqueo "Bloqueo directo al suelo".
+- Verificado: `node tools/simtest.js` completo → TODO OK; `console.sh all` 1280×720 y 844×390 táctil → sin errores JS (19 escenas,
+  capturas miradas) + `live=1` en rally y mobile low; `drive.js` 1280×720 30 s y 844×390 25 s → TODO OK;
+  `tools/out/int2/flow3.js` (1280×720 y 844×390 táctil): menú (4 niveles) → partido → SET + "Cambio de campo / Fin del 1.er set"
+  → 3.er set a los 8 "Cambio de campo / Set decisivo · 8 puntos" → celebración (endHold) → final → Revancha → pausa → menú, TODO OK;
+  consejo de defensa en vivo (`coach.js`). Red: solo cdnjs three 0.149.0 y Google Fonts; index.html empieza por `<title>`.
+- Pendiente (sim, opcional): `Sim.aimPoint`, antena tocada sin cruzar, texto de sim para 'out'; cámara/arena opcional en
+  `courtChange` (plano de transición, cambiar atrezo de fondo).

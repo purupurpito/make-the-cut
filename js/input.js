@@ -90,7 +90,7 @@
   function anyBtn(p, list) { for (var i = 0; i < list.length; i++) if (padBtn(p, list[i])) return true; return false; }
 
   // ---------------- Táctil ----------------
-  var T = { joy: null, ox: 0, oy: 0, jx: 0, jy: 0, R: 58, hit: false, jump: false, pause: false, sw: false,
+  var T = { lastTouch: 0, idle: false, see: [false, false, false], rects: null, rectAt: -1, joy: null, ox: 0, oy: 0, jx: 0, jy: 0, R: 58, hit: false, jump: false, pause: false, sw: false,
             hitDown: false, jumpDown: false, used: false, shown: false, lastLabel: '', lastReady: null, lastServe: null };
   var el = {};
   var CSS = '' +
@@ -113,28 +113,35 @@
     '.vt-btn{position:absolute;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#fff;' +
       'font:800 15px/1 "Barlow Condensed",system-ui,sans-serif;letter-spacing:.08em;touch-action:none;' +
       'border:2px solid rgba(255,255,255,.42);box-shadow:0 8px 22px rgba(0,0,0,.4),inset 0 2px 0 rgba(255,255,255,.28),inset 0 -6px 14px rgba(0,0,0,.18);' +
-      'opacity:.86;transition:transform .07s ease-out,opacity .12s,box-shadow .2s;text-shadow:0 1px 2px rgba(0,0,0,.35)}' +
+      'opacity:.86;transition:transform .07s ease-out,opacity .25s,box-shadow .2s;text-shadow:0 1px 2px rgba(0,0,0,.35)}' +
     '.vt-btn svg{width:34%;height:auto;display:block;pointer-events:none}' +
     '.vt-btn span{pointer-events:none}' +
     '.vt-btn.dn{transform:scale(.88);opacity:1;filter:brightness(1.12)}' +
+    // en reposo (sin tocar ~1,4 s) los botones se encogen un poco y bajan a .55: dejan ver el juego; con un jugador
+    // detrás, más transparentes (.3). Al tocar o al brillar (.ready) vuelven enseguida.
+    '#touch.idle .vt-btn:not(.dn):not(.ready):not(.off){opacity:.55;transform:scale(.94)}#touch.idle .vt-btn.off{transform:scale(.94)}' +
+    '#touch .vt-btn.see:not(.dn):not(.ready):not(.off){opacity:.3}' +
+    '#touch.idle .vt-btn.see:not(.dn):not(.ready):not(.off){opacity:.26}' +
     '.vt-hit{width:104px;height:104px;right:calc(22px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));' +
       'background:radial-gradient(circle at 40% 30%,#ff9a6b,#ff6b3d 55%,#e2481f)}' +
     '.vt-hit.ready{box-shadow:0 0 0 4px rgba(255,210,63,.85),0 0 28px rgba(255,190,60,.75),0 8px 22px rgba(0,0,0,.4),inset 0 2px 0 rgba(255,255,255,.28);opacity:1}' +
-    '.vt-jump{width:78px;height:78px;right:calc(140px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));' +
+    // arco con >= 16 px entre botones: SALTAR a la izquierda y algo más abajo que GOLPEAR; CAMBIAR (⇄) arriba a la
+    // derecha de GOLPEAR, fuera del recorrido del pulgar de SALTAR a GOLPEAR (antes estaba encima de SALTAR a 8 px)
+    '.vt-jump{width:78px;height:78px;right:calc(150px + env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));' +
       'background:radial-gradient(circle at 40% 30%,#7fb2ff,#3f8cff 55%,#2565d6);font-size:13px}' +
     '.vt-jump.off,.vt-sw.off{opacity:.3}' +
-    '.vt-sw{width:50px;height:50px;right:calc(150px + env(safe-area-inset-right));bottom:calc(112px + env(safe-area-inset-bottom));' +
+    '.vt-sw{width:50px;height:50px;right:calc(14px + env(safe-area-inset-right));bottom:calc(152px + env(safe-area-inset-bottom));' +
       'background:rgba(8,13,22,.62);font-size:10px;letter-spacing:.1em}' +
     '.vt-sw svg{width:46%}' +
     '.vt-pause{width:46px;height:46px;right:calc(14px + env(safe-area-inset-right));top:calc(14px + env(safe-area-inset-top));' +
       'background:rgba(8,13,22,.66);border-color:rgba(255,255,255,.3)}' +
     '.vt-pause svg{width:40%}' +
     '@media (max-height:420px){.vt-hit{width:90px;height:90px;bottom:calc(16px + env(safe-area-inset-bottom))}' +
-      '.vt-jump{width:68px;height:68px;right:calc(124px + env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom))}' +
-      '.vt-sw{width:44px;height:44px;right:calc(128px + env(safe-area-inset-right));bottom:calc(92px + env(safe-area-inset-bottom))}' +
+      '.vt-jump{width:68px;height:68px;right:calc(134px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom))}' +
+      '.vt-sw{width:44px;height:44px;right:calc(14px + env(safe-area-inset-right));bottom:calc(128px + env(safe-area-inset-bottom))}' +
       '.vt-pause{width:40px;height:40px}}' +
-    '@media (max-height:340px){.vt-hit{width:78px;height:78px}.vt-jump{width:60px;height:60px;right:calc(108px + env(safe-area-inset-right))}' +
-      '.vt-sw{right:calc(110px + env(safe-area-inset-right));bottom:calc(80px + env(safe-area-inset-bottom))}}';
+    '@media (max-height:340px){.vt-hit{width:78px;height:78px}.vt-jump{width:60px;height:60px;right:calc(120px + env(safe-area-inset-right))}' +
+      '.vt-sw{right:calc(12px + env(safe-area-inset-right));bottom:calc(118px + env(safe-area-inset-bottom))}}';
 
   var ICON_HIT = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5c-2.6 3-2.6 14 0 17M4.2 9.2c4.2 1.6 11.4 1.6 15.6 0M5.5 17c3.5-2.4 9.5-2.4 13 0"/></svg>';
   var ICON_JUMP = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>';
@@ -162,7 +169,7 @@
       var ids = {};
       node.addEventListener('pointerdown', function (e) {
         e.preventDefault(); e.stopPropagation();
-        T.used = true; it.device = 'touch'; T[key] = true; ids[e.pointerId] = 1;
+        T.used = true; it.device = 'touch'; T[key] = true; ids[e.pointerId] = 1; T.lastTouch = nowS();
         if (heldKey) T[heldKey] = true;
         node.classList.add('dn');
         try { node.setPointerCapture(e.pointerId); } catch (_) { }
@@ -178,7 +185,7 @@
     btn(el.hit, 'hit', 'hitDown'); btn(el.jump, 'jump', 'jumpDown'); btn(el.pause, 'pause'); btn(el.sw, 'sw');
 
     el.zone.addEventListener('pointerdown', function (e) {
-      e.preventDefault(); T.used = true; it.device = 'touch';
+      e.preventDefault(); T.used = true; it.device = 'touch'; T.lastTouch = nowS();
       if (T.joy !== null) return;
       var r = rootEl.getBoundingClientRect();
       T.joy = e.pointerId; T.ox = e.clientX - r.left; T.oy = e.clientY - r.top; T.jx = T.jy = 0;
@@ -225,20 +232,66 @@
     el.joy.style.transform = 'translate(' + x + 'px,' + y + 'px)';
     el.knob.style.transform = on ? 'translate(' + T.jx + 'px,' + T.jy + 'px)' : '';
   }
+  function nowS() { return (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) / 1000; }
+  /** Reposo y transparencia por oclusión: si el jugador que llevas o tu compañero quedan detrás de un botón, el
+   *  botón se vuelve casi transparente (la cámara ya intenta que no pase; esto cubre lo que queda). */
+  var pv3 = null, BTN_KEYS = ['hit', 'jump', 'sw'];
+  function touchVisibility() {
+    var t = nowS();
+    var idle = T.joy === null && !T.hitDown && !T.jumpDown && t - T.lastTouch > 1.4;
+    if (idle !== T.idle) { T.idle = idle; el.root.classList.toggle('idle', idle); }
+    var g = ctx.game, cam = ctx.camera;
+    if (!g || !g.ctrl || !cam || !ctx.THREE || !VB.toThree) return;
+    if (!pv3) pv3 = new ctx.THREE.Vector3();
+    // rectángulos de los botones relativos al overlay (se recalculan cada ~0,5 s o al cambiar el tamaño)
+    if (!T.rects || ctx.frame - T.rectAt > 30 || ctx.frame < T.rectAt) {
+      var rr = el.root.getBoundingClientRect();
+      T.rects = T.rects || [{}, {}, {}];
+      for (var i = 0; i < 3; i++) {
+        var b = el[BTN_KEYS[i]].getBoundingClientRect(), o = T.rects[i];
+        o.l = b.left - rr.left - 6; o.r = b.right - rr.left + 6; o.t = b.top - rr.top - 6; o.b = b.bottom - rr.top + 6;
+      }
+      T.rectAt = ctx.frame || 0;
+    }
+    var W = ctx.width || 1, H = ctx.height || 1, tm = g.teams[0], hitAny0 = false, hitAny1 = false, hitAny2 = false;
+    for (var k = 0; k < 2; k++) {
+      var q = tm[k];
+      for (var zz = 0; zz < 2; zz++) {   // pecho y cadera
+        VB.toThree(q.x, q.y, q.z + (zz ? 0.9 : 1.35), pv3); pv3.project(cam);
+        if (pv3.z > 1) continue;
+        var px = (pv3.x + 1) / 2 * W, py = (1 - pv3.y) / 2 * H, R = T.rects;
+        if (px > R[0].l && px < R[0].r && py > R[0].t && py < R[0].b) hitAny0 = true;
+        if (px > R[1].l && px < R[1].r && py > R[1].t && py < R[1].b) hitAny1 = true;
+        if (px > R[2].l && px < R[2].r && py > R[2].t && py < R[2].b) hitAny2 = true;
+      }
+    }
+    if (hitAny0 !== T.see[0]) { T.see[0] = hitAny0; el.hit.classList.toggle('see', hitAny0); }
+    if (hitAny1 !== T.see[1]) { T.see[1] = hitAny1; el.jump.classList.toggle('see', hitAny1); }
+    if (hitAny2 !== T.see[2]) { T.see[2] = hitAny2; el.sw.classList.toggle('see', hitAny2); }
+  }
   function resetTouch() { T.joy = null; T.jx = T.jy = 0; T.hitDown = T.jumpDown = false; if (el.hit) { el.hit.classList.remove('dn'); el.jump.classList.remove('dn'); } placeJoy(); }
 
   /** Estado contextual de los botones (SACAR en tu saque, brillo cuando llegas al balón). */
   function touchContext() {
     var g = ctx.game; if (!g || !el.hit) return;
-    var myServe = g.mode === 'serve' && g.ball && g.ball.held && g.ball.held.team === 0 && !g.demo && !g.autopilot;
+    // nuestro saque: sacador humano, tanto con el balón en la mano ('ready') como lanzado ('toss')
+    var sv = g.server || (g.ball && g.ball.held) || null;
+    var myServe = g.mode === 'serve' && !!sv && sv.team === 0 && !g.demo && !g.autopilot;
+    var tossing = myServe && g.serveState === 'toss';
     var label = myServe ? 'SACAR' : 'GOLPEAR';
     if (label !== T.lastLabel) { T.lastLabel = label; el.hitLabel.textContent = label; el.hit.setAttribute('aria-label', label === 'SACAR' ? 'Sacar' : 'Golpear'); }
     var ready = false;
     if (g.mode === 'rally' && g.ctrl && VB.Sim && VB.Sim.canReach) { try { ready = !!VB.Sim.canReach(g, g.ctrl); } catch (_) { ready = false; } }
-    ready = ready || myServe;
+    else if (myServe && !tossing) ready = g.serveAuth !== false;            // tras el silbato ya se puede lanzar
+    else if (tossing && VB.Sim && VB.Sim.hitWindow) {                         // balón en el aire: brilla en el momento de golpear
+      try { var w = VB.Sim.hitWindow(g, sv); ready = w.t > -0.06 && w.t < 0.14; } catch (_) { ready = false; }
+    }
     if (ready !== T.lastReady) { T.lastReady = ready; el.hit.classList.toggle('ready', ready); }
-    var serveNow = g.mode === 'serve';
-    if (serveNow !== T.lastServe) { T.lastServe = serveNow; el.jump.classList.toggle('off', serveNow); el.sw.classList.toggle('off', serveNow); }
+    // SALTAR: en nuestro saque (antes de lanzar) es el saque en salto; en el resto del saque, apagado
+    var jumpOff = g.mode === 'serve' && !(myServe && !tossing);
+    var swOff = g.mode === 'serve';
+    var key = (jumpOff ? 1 : 0) + (swOff ? 2 : 0);
+    if (key !== T.lastServe) { T.lastServe = key; el.jump.classList.toggle('off', jumpOff); el.sw.classList.toggle('off', swOff); }
   }
 
   // ---------------- Vibración ----------------
@@ -271,8 +324,10 @@
     },
     /** Limpia pulsaciones al cambiar de estado (p. ej. el Espacio que pulsa "Jugar" no saca). */
     onState: function () { edge = {}; T.hit = T.jump = T.pause = T.sw = false; },
-    resize: function () { layoutTouch(); placeJoy(); },
+    resize: function () { layoutTouch(); placeJoy(); T.rects = null; },
     isTouchActive: function () { return T.used || !!(ctx && ctx.isTouch); },
+    /** OPCIONAL: los controles táctiles están en pantalla (la cámara aparta el aro de los botones). */
+    overlayShown: function () { return T.shown; },
     /** OPCIONAL: vibración corta (mando o móvil). strength 0..1, ms. */
     rumble: rumble,
     /** Devuelve las intenciones del frame (objeto reutilizado). */
@@ -282,7 +337,7 @@
       if (mx && my) { mx *= 0.7071; my *= 0.7071; }
       var hit = !!edge.hit, jump = !!edge.jump, sw = !!edge['switch'], pause = !!edge.pause, mute = !!edge.mute, confirm = !!edge.confirm;
       var hitHeld = isDown('hit'), jumpHeld = isDown('jump');
-      edge = {};
+      for (var ek in edge) edge[ek] = false; // sin asignar un objeto nuevo por frame
       // --- táctil (y de pantalla hacia abajo => my negativo)
       if (T.joy !== null) {
         var jl = Math.hypot(T.jx, T.jy), R = T.R, dz = R * 0.16;
@@ -327,9 +382,9 @@
       var show = touchy && it.device === 'touch' && ctx.state === 'playing' && !ctx.portraitBlock;
       if (show !== T.shown) {
         T.shown = show; el.root.hidden = !show; el.root.classList.toggle('on', show);
-        if (!show) resetTouch(); else { layoutTouch(); placeJoy(); }
+        if (!show) resetTouch(); else { layoutTouch(); placeJoy(); T.rects = null; T.lastTouch = nowS(); }
       }
-      if (show) touchContext();
+      if (show) { touchContext(); touchVisibility(); }
       return it;
     }
   };
