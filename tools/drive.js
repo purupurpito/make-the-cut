@@ -15,10 +15,9 @@ const W = +(process.argv[2] || 960), H = +(process.argv[3] || 540), SECS = +(pro
 const PORT = 9300 + Math.floor(Math.random() * 500);
 fs.mkdirSync(OUT, { recursive: true });
 const prof = fs.mkdtempSync(path.join(os.tmpdir(), 'vb3d-'));
-const chrome = spawn('google-chrome', ['--headless=new', '--no-sandbox', '--user-data-dir=' + prof, '--remote-debugging-port=' + PORT,
-  '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio', '--hide-scrollbars',
-  '--window-size=' + W + ',' + H, 'about:blank'], { stdio: 'ignore', detached: true });
-function killChrome() { try { process.kill(-chrome.pid, 'SIGKILL'); } catch (e) { try { chrome.kill('SIGKILL'); } catch (_) { } } }
+const CH = require('./chrome.js'); // Chrome con GPU (GL=swiftshader para software)
+const chrome = CH.launch(prof, PORT, W + ',' + H);
+function killChrome() { CH.kill(chrome); }
 process.on('exit', killChrome); process.on('SIGINT', () => process.exit(130)); process.on('SIGTERM', () => process.exit(143));
 setTimeout(() => { console.error('TIEMPO AGOTADO'); process.exit(2); }, (SECS + 120) * 1000).unref();
 
@@ -57,7 +56,7 @@ const state = () => evalJs('JSON.stringify({s:VB.ctx.state,m:VB.ctx.game&&VB.ctx
       }
     };
     await send('Runtime.enable'); await send('Page.enable');
-    await send('Page.navigate', { url: 'file://' + ROOT + '/index.html' + (EXTRA ? '?' + EXTRA : '') });
+    await send('Page.navigate', { url: CH.pageUrl(ROOT, EXTRA) });
     await sleep(3000);
     let st = await state(); check(st.s === 'menu' && st.demo, 'arranca en el menú con demo detrás (' + JSON.stringify(st) + ')');
     await shot('1-menu');
