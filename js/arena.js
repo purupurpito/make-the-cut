@@ -1029,28 +1029,31 @@
   /* =====================================================================
    * POST-PROCESO (solo calidad alta + WebGL2): bloom + ACES + viñeta
    * ===================================================================== */
-  var post = null, savedTM = null;
+  var post = null;
   var QUAD_VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
   function makePost() {
     var r = ctx.renderer;
     if (!r.capabilities.isWebGL2) return null;
     var P = {};
-    var half = THREE.HalfFloatType;
-    var pp = ctx.params || {}, msaa = pp.msaa != null ? (+pp.msaa | 0) : 4, rtType = pp.rtf === 'u8' ? THREE.UnsignedByteType : half;
-    P.rt = new THREE.WebGLRenderTarget(4, 4, { type: rtType, samples: msaa });
-    P.a1 = new THREE.WebGLRenderTarget(4, 4, { type: half, depthBuffer: false });
-    P.b1 = new THREE.WebGLRenderTarget(4, 4, { type: half, depthBuffer: false });
-    P.a2 = new THREE.WebGLRenderTarget(4, 4, { type: half, depthBuffer: false });
-    P.b2 = new THREE.WebGLRenderTarget(4, 4, { type: half, depthBuffer: false });
+    // Cadena LDR: la escena se pinta con el tone mapping normal del renderer (ACES) en un destino
+    // de 8 bits sRGB con MSAA (sin bandas en oscuros). Se evitan a propósito los HalfFloat: en
+    // algunos drivers (SwiftShader) producen filas corruptas.
+    var pp = ctx.params || {}, msaa = pp.msaa != null ? (+pp.msaa | 0) : 4, u8 = THREE.UnsignedByteType;
+    P.rt = new THREE.WebGLRenderTarget(4, 4, { type: u8, samples: msaa, encoding: THREE.sRGBEncoding });
+    P.rt.texture.encoding = THREE.sRGBEncoding;
+    P.a1 = new THREE.WebGLRenderTarget(4, 4, { type: u8, depthBuffer: false });
+    P.b1 = new THREE.WebGLRenderTarget(4, 4, { type: u8, depthBuffer: false });
+    P.a2 = new THREE.WebGLRenderTarget(4, 4, { type: u8, depthBuffer: false });
+    P.b2 = new THREE.WebGLRenderTarget(4, 4, { type: u8, depthBuffer: false });
     P.scene = new THREE.Scene(); P.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     P.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2)); P.quad.frustumCulled = false; P.scene.add(P.quad);
     P.bright = new THREE.ShaderMaterial({
-      uniforms: { tDiffuse: { value: null }, texel: { value: new THREE.Vector2() }, threshold: { value: 1.0 } },
+      uniforms: { tDiffuse: { value: null }, texel: { value: new THREE.Vector2() }, threshold: { value: 0.8 } },
       vertexShader: QUAD_VS, depthTest: false, depthWrite: false,
       fragmentShader: 'uniform sampler2D tDiffuse; uniform vec2 texel; uniform float threshold; varying vec2 vUv;' +
-        'vec3 s(vec2 o){ vec3 c = texture2D(tDiffuse, vUv + o * texel).rgb; if (any(isnan(c)) || any(isinf(c))) return vec3(0.0); c = clamp(c, 0.0, 32.0);' +
-        ' float l = max(c.r, max(c.g, c.b)); return c * smoothstep(threshold, threshold + 0.8, l); }' +
-        'void main(){ vec3 c = s(vec2(-1.0,-1.0)) + s(vec2(1.0,-1.0)) + s(vec2(-1.0,1.0)) + s(vec2(1.0,1.0)); gl_FragColor = vec4(min(c * 0.25, vec3(8.0)), 1.0); }'
+        'vec3 s(vec2 o){ vec3 c = clamp(texture2D(tDiffuse, vUv + o * texel).rgb, 0.0, 1.0);' +
+        ' float l = max(c.r, max(c.g, c.b)); return c * smoothstep(threshold, 1.0, l); }' +
+        'void main(){ vec3 c = s(vec2(-1.0,-1.0)) + s(vec2(1.0,-1.0)) + s(vec2(-1.0,1.0)) + s(vec2(1.0,1.0)); gl_FragColor = vec4(c * 0.25, 1.0); }'
     });
     P.blur = new THREE.ShaderMaterial({
       uniforms: { tDiffuse: { value: null }, dir: { value: new THREE.Vector2() } },
@@ -1068,24 +1071,17 @@
         'void main(){ vec3 c = texture2D(tDiffuse, vUv + texel * vec2(-1.0,-1.0)).rgb + texture2D(tDiffuse, vUv + texel * vec2(1.0,-1.0)).rgb + texture2D(tDiffuse, vUv + texel * vec2(-1.0,1.0)).rgb + texture2D(tDiffuse, vUv + texel * vec2(1.0,1.0)).rgb; gl_FragColor = vec4(c * 0.25, 1.0); }'
     });
     P.comp = new THREE.ShaderMaterial({
-      uniforms: { tScene: { value: null }, tB1: { value: null }, tB2: { value: null }, exposure: { value: 1.0 }, bloom: { value: 0.32 },
+      uniforms: { tScene: { value: null }, tB1: { value: null }, tB2: { value: null }, exposure: { value: 1.0 }, bloom: { value: 0.9 },
         vig: { value: 0.32 }, aspect: { value: 1.7 }, time: { value: 0 } },
       vertexShader: QUAD_VS, depthTest: false, depthWrite: false,
       fragmentShader: [
         'uniform sampler2D tScene; uniform sampler2D tB1; uniform sampler2D tB2; uniform float exposure; uniform float bloom; uniform float vig; uniform float aspect; uniform float time; varying vec2 vUv;',
-        'vec3 RRTAndODTFit(vec3 v){ vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }',
-        'vec3 aces(vec3 color){ const mat3 IM = mat3(vec3(0.59719,0.07600,0.02840), vec3(0.35458,0.90834,0.13383), vec3(0.04823,0.01566,0.83777));',
-        ' const mat3 OM = mat3(vec3(1.60475,-0.10208,-0.00327), vec3(-0.53108,1.10813,-0.07276), vec3(-0.07367,-0.00605,1.07602));',
-        ' color *= exposure / 0.6; color = IM * color; color = RRTAndODTFit(color); color = OM * color; return clamp(color, 0.0, 1.0); }',
         'vec3 toSRGB(vec3 c){ return mix(pow(c, vec3(0.41666)) * 1.055 - 0.055, c * 12.92, vec3(lessThanEqual(c, vec3(0.0031308)))); }',
         'float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + time) * 43758.5453); }',
         'void main(){',
         ' vec3 c = texture2D(tScene, vUv).rgb;',
-        ' if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);',
-        ' vec3 b = texture2D(tB1, vUv).rgb * 0.7 + texture2D(tB2, vUv).rgb * 0.9;',
-        ' if (any(isnan(b)) || any(isinf(b))) b = vec3(0.0);',
-        ' c += b * bloom;',
-        ' c = aces(c);',
+        ' vec3 b = texture2D(tB1, vUv).rgb * 0.8 + texture2D(tB2, vUv).rgb * 1.0;',
+        ' c = 1.0 - (1.0 - c) * (1.0 - clamp(b * bloom, 0.0, 1.0));', // mezcla "screen": brillo sin quemar
         ' vec2 d = (vUv - 0.5) * vec2(aspect, 1.0); float v = smoothstep(1.25, 0.25, length(d) * 1.05);',
         ' c *= mix(1.0, v, vig);',
         ' c = toSRGB(c);',
@@ -1118,7 +1114,7 @@
       P.blur.uniforms.tDiffuse.value = P.a2.texture; P.blur.uniforms.dir.value.set(1 / P.w2, 0); pass(P.blur, P.b2);
       P.blur.uniforms.tDiffuse.value = P.b2.texture; P.blur.uniforms.dir.value.set(0, 1 / P.h2); pass(P.blur, P.a2);
       P.comp.uniforms.tScene.value = P.rt.texture; P.comp.uniforms.tB1.value = P.a1.texture; P.comp.uniforms.tB2.value = P.a2.texture;
-      P.comp.uniforms.exposure.value = r.toneMappingExposure; P.comp.uniforms.time.value = (c.time % 10);
+      P.comp.uniforms.time.value = (c.time % 10);
       pass(P.comp, null);
     } catch (err) {
       console.warn('[VB] arena: post-proceso desactivado', err);
@@ -1134,13 +1130,9 @@
   }
   function setPost(on) {
     if (on && !post) { try { post = makePost(); } catch (e) { post = null; } if (post) postResize(); }
-    var active = on && !!post, r = ctx.renderer;
+    var active = on && !!post;
     var was = ctx.renderFn === renderPost;
     ctx.renderFn = active ? renderPost : (was ? null : ctx.renderFn);
-    // r149 aplica el tone mapping también al renderizar a un render target: con post lo hace el
-    // compositor (ACES propio), así que el renderer pasa a NoToneMapping y se restaura al salir.
-    if (active && !was) { savedTM = r.toneMapping; r.toneMapping = THREE.NoToneMapping; }
-    else if (!active && was) { r.toneMapping = savedTM != null ? savedTM : THREE.ACESFilmicToneMapping; }
     // con post, los emisivos superan 1.0 (HDR) y el bloom los recoge
     var boost = active ? 1.55 : 1.0;
     for (var i = 0; i < led.mats.length; i++) led.mats[i].mat.color.setScalar(boost * 0.95);

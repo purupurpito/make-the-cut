@@ -329,7 +329,7 @@
   }
 
   // Temporales (sin asignaciones por frame)
-  var T = null, T2 = null, BL, CL, tV, tV2, tV3, mA, mB, mInv, qA, qB, qC, qD, eA, IKx, IKy, IKz, IKm, ZERO3;
+  var T = null, T2 = null, BL, CL, tV, tV2, tV3, mA, mB, mInv, qA, qB, qC, qD, eA, IKx, IKy, IKz, IKm, ZERO3, XAXIS;
 
   // =====================================================================
   //  CONSTRUCCIÓN DEL RIG
@@ -896,7 +896,7 @@
     IKy.set(-dx, -dy, -dz); IKz.set(bx, by, bz); IKx.crossVectors(IKy, IKz);
     IKm.makeBasis(IKx, IKy, IKz);
     upper.quaternion.setFromRotationMatrix(IKm);
-    lower.rotation.set(-bend, 0, 0);
+    lower.quaternion.setFromAxisAngle(XAXIS, -bend);
   }
 
   // =====================================================================
@@ -935,7 +935,7 @@
       tV.copy(v[HL + k]).applyMatrix4(mInv); tV.x -= sh.position.x; tV.y -= sh.position.y; tV.z -= sh.position.z;
       tV2.copy(v[AL + k]).applyQuaternion(qB);
       solveIK(r.up[k], r.el[k], tV.x, tV.y, tV.z, tV2.x, tV2.y, tV2.z, UPPER, FORE + PALM);
-      r.hand[k].rotation.set(s[WRL + k], 0, 0);
+      r.hand[k].quaternion.setFromAxisAngle(XAXIS, s[WRL + k]);
     }
     // piernas
     mB.copy(r.pelvis.matrix).invert(); qC.copy(r.pelvis.quaternion).invert();
@@ -1013,7 +1013,7 @@
     BL = new THREE.Vector3(); CL = new THREE.Vector3(); tV = new THREE.Vector3(); tV2 = new THREE.Vector3(); tV3 = new THREE.Vector3();
     mA = new THREE.Matrix4(); mB = new THREE.Matrix4(); mInv = new THREE.Matrix4();
     qA = new THREE.Quaternion(); qB = new THREE.Quaternion(); qC = new THREE.Quaternion(); qD = new THREE.Quaternion(); eA = new THREE.Euler();
-    IKx = new THREE.Vector3(); IKy = new THREE.Vector3(); IKz = new THREE.Vector3(); IKm = new THREE.Matrix4(); ZERO3 = new THREE.Vector3();
+    IKx = new THREE.Vector3(); IKy = new THREE.Vector3(); IKz = new THREE.Vector3(); IKm = new THREE.Matrix4(); ZERO3 = new THREE.Vector3(); XAXIS = new THREE.Vector3(1, 0, 0);
   }
 
   function rigFor(p) {

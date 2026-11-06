@@ -121,6 +121,8 @@ Rally CPU vs CPU: mediana ~5,0 s.
   `await press(' '); await waitFor("VB.ctx.game.mode!=='serve'", 8000);` añadir antes de `waitFor`:
   `await sleep(1000); await press(' ');` (si no, el saque acaba en falta, que también sale de `'serve'`).
   Esperar también a `VB.ctx.game.serveAuth` antes de la primera pulsación: `await waitFor("VB.ctx.game.serveAuth", 3000);`.
+- Escena `serve` (y tutorial): sin entrada, a los ~8,7 s de juego salta la falta de 8 s. Si molesta en capturas largas,
+  crear el partido con `Sim.createGame({ demo: false, seed: sd, serveClock: false })`.
 - Escenas de depuración sugeridas (probadas en node; el código de `advanceUntil` es el de main.js):
 ```js
       case 'toss': case 'jumpserve': // saque humano con el balón en el aire (flotante / en salto)

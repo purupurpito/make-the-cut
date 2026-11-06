@@ -27,10 +27,22 @@ Un flujo multiagente (guion en `tools/workflow/voley-3d.workflow.js`) con estas 
    arregladores por propietario + integración. ⏳ PENDIENTE
 5. **Final QA** ⏳ PENDIENTE
 
-## Estado de este commit
+## Estado al parar (6-nov-2026, 12:25, PC del trabajo)
 
-Ver el mensaje del último commit. Si dice "WIP a mitad de Build", los especialistas estaban
-editando y los ficheros pueden no encajar entre sí: lo siguiente es igualmente la **integración**.
+Flujo parado a mano por Ferran a mitad de **Build**:
+
+- ✅ Terminados con informe: `foundation`, `audio`, `sim`. Sus informes completos (qué hicieron,
+  qué verificaron, qué piden a otros ficheros, problemas conocidos) están en `notes/informes-build.md`.
+- ⚠️ Interrumpidos sin informe final: `players`, `arena`, `camera_input`, `ui_main`. Su trabajo está
+  en disco tal como lo dejaron (llevaban 45-60 min iterando), pero sin su verificación final.
+  Lo que pidieron a otros está en `notes/<owner>.md`.
+- Comprobado al parar: `node tools/simtest.js` → "TODO OK"; `tools/console.sh rally` → sin errores JS;
+  la escena `rally` se ve en 3D completa (pabellón, público, cámara detrás, HUD).
+- Detalle visto en la captura: el destello de impacto del golpe sale demasiado blanco y grande (fx.js).
+
+**Siguiente paso en casa:** antes de integrar, dar a `players`, `arena`, `camera_input` y `ui_main`
+una pasada corta de "termina y verifica lo tuyo" (cada uno con sus ficheros), y después seguir
+con Integrate → Review ×2 → Final QA tal como está en el guion.
 
 ## Cómo seguir en casa
 
