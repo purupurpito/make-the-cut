@@ -424,7 +424,7 @@ Las tres pendientes de la revisión 2 quedan HECHAS en sim.js (texto de 'out', a
 
 ## Aplicado (log, integración ronda 2 de verificación, 7-nov-2026)
 - CONTRACT §4.2: `rookieProf(pr, on, diff)` (Fácil solo saque; extras de peloteo solo en Normal), línea **R5** (`isAttackContact`, ace/kill que roza la cinta).
-- §R5.5 (textos del árbitro): NO aplicado; queda como decisión de Ferran en TRASPASO «Sin comprobar o pendiente».
+- §R5.5 (textos del árbitro): DECIDIDO por Ferran (7-nov-2026): «Ataque sobre el saque» aplicado; «Dobles» y «Falta de saque: 8 segundos» se quedan como están (no cambiar).
 - Petición de camera_input (deprecaciones de mapa, para sim/players/integración): aplicada en sim.js con `dblFields(o)` (junto a `emit`): los campos
   enteros de `g`, `g.ball`, `g.pr1/pr3`, `g.rally`, cada jugador (`mkPlayer`) y cada evento pasan por un double al crearse. Misma semántica: la salida
   de `node tools/simtest.js 10 12345 0` es idéntica byte a byte a la de antes y la matriz del simtest completo también. Medido con el log de V8

@@ -50,7 +50,7 @@ const POINT_TEXTS = {
   out: ['Saque fuera', 'Remate fuera', 'Dejada fuera', 'Recepción fuera', 'Defensa fuera', 'Colocación fuera', 'Balón fuera', 'Toca el bloqueo y sale fuera', 'Le da en el cuerpo y sale fuera', 'Saque a la red', 'Balón a la red'],
   antenna: ['Balón toca la antena', 'Balón por fuera de la antena'], under: ['Balón por debajo de la red'],
   double: ['Dobles: el mismo jugador toca dos veces'], four: ['4 toques'], net: ['Toque de red'], block: ['Bloqueo del saque'],
-  attackServe: ['Ataque del saque'], serve: ['Falta de saque: 8 segundos', 'Falta de saque: el balón cae sin golpearlo']
+  attackServe: ['Ataque sobre el saque'], serve: ['Falta de saque: 8 segundos', 'Falta de saque: el balón cae sin golpearlo']
 };
 const badText = new Set();
 

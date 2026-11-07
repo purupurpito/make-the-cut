@@ -579,7 +579,7 @@
       if (!inBlockVol(q, b)) continue;
       g.blockCD = 0.5; g.blockBy = q;
       if (g.lastKind === 'serve') { fault(g, q.team, 'block', 'Bloqueo del saque', q); return; }
-      if (g.atkServe) { fault(g, g.atkServe.team, 'attackServe', 'Ataque del saque', g.atkServe.player); return; } // lo toca el rival: ataque completado
+      if (g.atkServe) { fault(g, g.atkServe.team, 'attackServe', 'Ataque sobre el saque', g.atkServe.player); return; } // lo toca el rival: ataque completado
       var human = isHuman(g, q), prof = g.prof[q.team], kindB;
       var qb = blockQ(q), hands = b.z > q.z + BLK_HANDS, hw = hands ? blockHalfW(qb) : BLK_BODY;
       var pw = clamp((b.speed - 11) / 8, 0, 1), spike = g.lastKind === 'spike';
@@ -709,7 +709,7 @@
         emit(g, { type: 'net', x: 0, y: b.y, z: b.z, tape: tape });
       }
       // ataque del saque completado: el balón cruza entero el plano de la red (también tras pasar por la cinta)
-      if (g.atkServe && (px > 0) !== (b.x > 0)) { fault(g, g.atkServe.team, 'attackServe', 'Ataque del saque', g.atkServe.player); return; }
+      if (g.atkServe && (px > 0) !== (b.x > 0)) { fault(g, g.atkServe.team, 'attackServe', 'Ataque sobre el saque', g.atkServe.player); return; }
     }
     if (checkAntenna(g)) return;
     checkBlock(g);
