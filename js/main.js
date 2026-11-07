@@ -84,10 +84,13 @@
 
   // ---------- Calidad ----------
   var QUALITY = {
-    high:   { level: 'high',   rank: 2, pixelRatio: 2,   shadowSize: 2048, shadows: true, antialias: true,  crowdDensity: 1 },
-    medium: { level: 'medium', rank: 1, pixelRatio: 1.5, shadowSize: 1024, shadows: true, antialias: true,  crowdDensity: 0.7 },
-    low:    { level: 'low',    rank: 0, pixelRatio: 1,   shadowSize: 512,  shadows: true, antialias: false, crowdDensity: 0.4 }
+    high:   { level: 'high',   rank: 2, pixelRatio: 2,   mobilePixelRatio: 1.5,  shadowSize: 2048, shadows: true, antialias: true,  crowdDensity: 1 },
+    medium: { level: 'medium', rank: 1, pixelRatio: 1.5, mobilePixelRatio: 1.25, shadowSize: 1024, shadows: true, antialias: true,  crowdDensity: 0.7 },
+    low:    { level: 'low',    rank: 0, pixelRatio: 1,   mobilePixelRatio: 1,    shadowSize: 512,  shadows: true, antialias: false, crowdDensity: 0.4 }
   };
+  // Escritorio en "baja": mapa de sombra de 1024 (con 512 el frustum de 36x26 m da ~7 cm por texel y la sombra de los pies
+  // sale escalonada en los planos cercanos; la GPU de un PC lo paga sin notarlo). En el móvil se queda en 512 (presupuesto).
+  if (!isMobile) QUALITY.low.shadowSize = 1024;
   var BY_RANK = [QUALITY.low, QUALITY.medium, QUALITY.high];
   // Último recurso por debajo de "baja": escala de render (<1 = menos píxeles que la pantalla).
   // La calidad adaptativa la baja a 0,8 y luego a 0,67 si en "baja" sigue por debajo de 40 fps.
@@ -114,14 +117,23 @@
     if (errCount[where] <= 3) console.error('[VB][ERROR] ' + where + ': ' + (e && e.stack || e));
   }
 
+  // Tipo de sombra: un solo tipo por dispositivo (cambiar de tipo obliga a recompilar todos los materiales: medido con
+  // tools/perf.js, CPU ×10, la bajada de media a baja congelaba el juego ~2 s justo cuando ya iba lento).
+  //  - Móvil: PCF simple en todos los niveles (con un mapa de 1024 la diferencia de borde apenas se ve).
+  //  - Escritorio: PCF suave también en baja (con PCF simple y mapa de 512 la sombra de los pies salía escalonada en los
+  //    planos cercanos; ahora 1024 + PCF suave, y la bajada de alta/media a baja ya no recompila).
+  function shadowType(q) { return isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap; }
   function applyQuality(q) {
     ctx.quality = q;
     var dpr = window.devicePixelRatio || 1;
-    var cap = isMobile ? Math.min(1.5, q.pixelRatio) : Math.min(2, q.pixelRatio);
+    // tope de píxeles: en el móvil la pantalla tiene dpr 2,5-3,5 y la GPU de gama media no llena tanto (MSAA x4 incluido):
+    // alta 1,5, media 1,25, baja 1 (844x390 en media = 1055x488 px: 0,69 × los píxeles de antes, con pr 1,5).
+    // Escritorio: el pixelRatio de cada nivel con tope 2 (sin cambios: alta mantiene su aspecto).
+    var cap = isMobile ? (q.mobilePixelRatio || q.pixelRatio) : Math.min(2, q.pixelRatio);
     if (q.rank > 0) renderScale = 1;
     ctx.renderer.setPixelRatio(Math.min(dpr, cap) * renderScale);
-    // sombras: PCF suave en media/alta; PCF simple (menos muestras por píxel) en baja
-    var st = q.rank === 0 ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap, sm = ctx.renderer.shadowMap;
+    // sombras: un tipo fijo por dispositivo (ver shadowType); solo cambia si algún día cambia la regla
+    var st = shadowType(q), sm = ctx.renderer.shadowMap;
     if (sm.type !== st) {
       sm.type = st;
       // el tipo de sombra forma parte del programa de cada material: hay que recompilarlos
@@ -134,7 +146,29 @@
     sm.needsUpdate = true;
     resize(true);
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'setQuality', q);
+    fixShadowDepth();
   }
+
+  // ---------- Sombras: un material de profundidad por variante ----------
+  // three r149 pinta TODAS las sombras con un único MeshDepthMaterial. Al alternar en la misma pasada mallas con
+  // esqueleto (jugadores, oficiales), instanciadas y normales, ese material cambia de programa en cada cambio:
+  // getProgram() rehace los parámetros y la clave de programa (cadenas) 4 veces por frame (medido con tools/perf.js:
+  // ~650 KB/s de basura y CPU en cada frame). Con un customDepthMaterial compartido por variante cada programa queda fijo.
+  var depthMats = {};
+  function depthMat(kind) {
+    return depthMats[kind] || (depthMats[kind] = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }));
+  }
+  function fixShadowDepth() {
+    if (!ctx.scene || !THREE.MeshDepthMaterial) return;
+    try {
+      ctx.scene.traverse(function (o) {
+        if (!o.isMesh || o.customDepthMaterial) return;
+        if (o.isSkinnedMesh) o.customDepthMaterial = depthMat('skin');
+        else if (o.isInstancedMesh) o.customDepthMaterial = depthMat('inst');
+      });
+    } catch (e) { reportError('fixShadowDepth', e); }
+  }
+  ctx.fixShadowDepth = fixShadowDepth;
 
   // ---------- Renderer / escena ----------
   function initRenderer() {
@@ -162,7 +196,7 @@
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.0;
     r.shadowMap.enabled = true;
-    r.shadowMap.type = q.rank === 0 ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+    r.shadowMap.type = shadowType(q);
     r.setClearColor(0x0b1220, 1);
     ctx.canvas = r.domElement; ctx.canvas.id = 'gl';
     ctx.canvas.setAttribute('aria-label', 'Pista de vóley en 3D');
@@ -200,7 +234,7 @@
       applyQuality(ctx.quality);
       call('Arena', 'onContextRestored', ctx); call('FX', 'onContextRestored', ctx);
     } catch (err) { reportError('contextRestored', err); }
-    last = 0; meter.t = 0; meter.n = 0; // el parón no cuenta como fps bajos
+    last = 0; meter.t = 0; meter.n = 0; meter.js = 0; meter.lt = 0; aq.skip = 1; // el parón no cuenta como fps bajos
     console.info('[VB] contexto WebGL restaurado');
   }
 
@@ -227,6 +261,7 @@
     pendingEvents.length = 0;
     Sim.drainEvents(g, pendingEvents); // eventos iniciales (newMatch, serveReady...) se entregan en el primer frame
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onGameStart', g);
+    fixShadowDepth(); // los jugadores se reconstruyen en onGameStart
   }
   // primer partido (sin récord guardado): la CPU saca más suave (notes/sim.md, createGame({rookie}))
   function isRookie() { try { var r = JSON.parse(localStorage.getItem('voley3d.record') || 'null'); return !(r && r.played > 0); } catch (e) { return false; } }
@@ -256,13 +291,14 @@
     if (ctx.settings[k] === v) return;
     ctx.settings[k] = v; saveSettings();
     if (k === 'muted') call('Audio', 'setMuted', !!v);
-    if (k === 'quality') { aq.downs = 0; aq.lastDown = -99; applyQuality(pickQuality()); }
+    if (k === 'quality') { aq.downs = 0; aq.lastDown = -99; aq.noScale = false; aq.chk = null; applyQuality(pickQuality()); }
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', ctx.settings, k);
   };
   ctx.actions.toggleMute = function () { ctx.actions.setSetting('muted', !ctx.settings.muted); };
 
   function setState(s) {
     var prev = ctx.state; ctx.state = s;
+    if (prev !== s) aq.skip = 1; // la ventana de fps que cruza un cambio de estado no cuenta para la calidad adaptativa
     if (prev !== s) for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onState', s, prev);
   }
 
@@ -293,11 +329,20 @@
   var pendingEvents = [], frameEvents = [], EMPTY = [];
   var acc = 0, last = 0, fxAge = 0, idleT = 0;
   var bootEl = document.getElementById('boot'), fpsEl = document.getElementById('fps');
-  var meter = { t: 0, n: 0 }, fpsShowT = 0;
+  var meter = { t: 0, n: 0, js: 0, lt: 0 }, fpsShowT = 0;
+  // Tareas largas del hilo principal (>50 ms, incluidas las que no son del juego: GC, otras pestañas del proceso, compositor).
+  // ctx.frameMs solo mide el JS del juego; con la máquina saturada se queda corto y la calidad adaptativa creía que el cuello
+  // era la GPU. La suma de la ventana se usa como cota inferior del tiempo ocupado (ver measure / adaptQuality).
+  try {
+    if (window.PerformanceObserver && (PerformanceObserver.supportedEntryTypes || []).indexOf('longtask') >= 0) {
+      new PerformanceObserver(function (list) { var es = list.getEntries(); for (var i = 0; i < es.length; i++) meter.lt += es[i].duration; }).observe({ entryTypes: ['longtask'] });
+    }
+  } catch (e) { }
 
   function frame(now) {
     requestAnimationFrame(frame);
-    now = now || performance.now();
+    var tWork = performance.now(); // coste JS de este frame (ctx.frameMs; lo lee tools/perf.js)
+    now = now || tWork;
     var raw = last ? Math.max(0, (now - last) / 1000) : 1 / 60;
     var realDt = Math.min(MAX_DT, raw); last = now;
     ctx.realDt = realDt; ctx.time += realDt; ctx.frame++;
@@ -306,6 +351,7 @@
     var it = VB.Input && VB.Input.poll ? safePoll(realDt) : null;
     if (it) {
       if (it.device) ctx.inputDevice = it.device;
+      if (it.padEvent) call('UI', 'padEvent', it.padEvent); // 'connected' | 'disconnected' (antes de la pausa que provoca)
       if (it.pause) {
         // Esc/Start/P: primero cierra un panel abierto; si no, pausa/reanuda
         if (!call('UI', 'back') && (ctx.state === 'playing' || ctx.state === 'paused')) ctx.actions.togglePause();
@@ -372,51 +418,89 @@
     }
 
     if (ctx.frame === 3 && bootEl) { if (ctx.debug) bootEl.hidden = true; else bootEl.classList.add('gone'); }
-    if (idleT > 0.6 || ctx.portraitBlock) { meter.t = 0; meter.n = 0; } else measure(raw); // sin medir mientras se pinta a ritmo reducido
+    if (idleT > 0.6 || ctx.portraitBlock) { meter.t = 0; meter.n = 0; meter.js = 0; meter.lt = 0; } else measure(raw); // sin medir mientras se pinta a ritmo reducido
+    ctx.frameMs = performance.now() - tWork;
   }
   function isGameOver(e) { return e.type === 'gameOver'; }
   function safePoll(dt) { try { return VB.Input.poll(dt); } catch (e) { reportError('Input.poll', e); return null; } }
 
   // ---------- Medición y calidad adaptativa ----------
-  // Ventanas de 2 s. Baja un nivel si dos ventanas seguidas van < 45 fps; sube uno (solo hasta
-  // el máximo automático) tras 5 ventanas seguidas > 57 fps y 30 s sin bajar; tras 2 bajadas
-  // ya no vuelve a subir (evita oscilar). Desactivada con ?quality=, en depuración o calidad fija.
-  var aq = { low: 0, high: 0, downs: 0, lastDown: -99 };
+  // Ventanas de 2 s (afinado con tools/perf.js: móvil emulado 844x390, dpr 2,75, CPU ×4).
+  //  - BAJA un nivel tras 2 ventanas seguidas < 45 fps (no llega) o 3 seguidas < 52 fps (va justo: el objetivo es 55-60).
+  //  - Ya en "baja": escala de render ×0,8 y luego ×0,67 tras 2 ventanas < 45 fps, PERO solo si el cuello es la GPU
+  //    (tiempo ocupado del hilo principal < 40 % del intervalo entre frames; ocupado = máx. del JS del juego y de la suma de
+  //    tareas largas). Si el que no llega es el procesador, quitar píxeles no ayuda y solo emborrona la imagen. Además,
+  //    tras cada escalón se comprueba: si en las 2 ventanas siguientes los fps no suben al menos un 15 %, se deshace y no
+  //    se vuelve a escalar (con la CPU saturada al 90-100 % llegaba a 0,8 con js 0,50-0,53 y los fps seguían en ~48).
+  //  - Calentamiento: nada de ventanas en los primeros 8 s tras el arranque (compilación de shaders y subida de texturas
+  //    en los primeros frames; un móvil cargado bajaba de media a baja en el menú a los 3 s con un pico de 550 ms).
+  //  - SUBE uno (hasta el máximo automático: alta en escritorio, media en móvil) tras 5 ventanas seguidas > 58 fps y 30 s
+  //    sin bajar; tras 2 bajadas ya no sube (evita oscilar).
+  //  - La ventana siguiente a un cambio de calidad, al empezar partido o tras volver de la pausa no cuenta (recompilación
+  //    de sombras/materiales y subida de texturas dan picos que no son el ritmo real).
+  // Desactivada con ?quality=, en depuración (salvo &aq=1, para tools/perf.js) o con calidad fija en Ajustes.
+  var aq = { low: 0, mild: 0, high: 0, downs: 0, lastDown: -99, skip: 1, warmUntil: 0, boot: 0, chk: null, noScale: false };
+  ctx.cpuBusy = 0; // fracción ocupada del hilo principal en la última ventana (máx. de JS del juego y tareas largas)
+  ctx.frameMsAvg = 0; // coste JS medio por frame de la última ventana (ms)
   function measure(raw) {
     if (document.hidden || raw > 0.5) return;
-    meter.t += raw; meter.n++;
+    meter.t += raw; meter.n++; meter.js += ctx.frameMs || 0;
     if (fpsEl && Q.fps === '1' && (fpsShowT += raw) > 0.5) {
       fpsShowT = 0; var info = ctx.renderer.info.render;
       fpsEl.hidden = false;
-      fpsEl.textContent = Math.round(ctx.fps) + ' fps · ' + ctx.quality.level + ' · pr ' + ctx.renderer.getPixelRatio().toFixed(2) + (renderScale < 1 ? ' (×' + renderScale + ')' : '') + '\n' + info.calls + ' draw · ' + Math.round(info.triangles / 1000) + 'k tri';
+      fpsEl.textContent = Math.round(ctx.fps) + ' fps · ' + ctx.quality.level + ' · pr ' + ctx.renderer.getPixelRatio().toFixed(2) + (renderScale < 1 ? ' (×' + renderScale + ')' : '') + '\n' + info.calls + ' draw · ' + Math.round(info.triangles / 1000) + 'k tri · js ' + ctx.frameMsAvg.toFixed(1) + ' ms';
     }
     if (meter.t < 2) return;
-    ctx.fps = meter.n / meter.t; meter.t = 0; meter.n = 0;
-    adaptQuality(ctx.fps);
+    ctx.fps = meter.n / meter.t; ctx.frameMsAvg = meter.js / meter.n;
+    var interval = 1000 * meter.t / meter.n, win = 1000 * meter.t;
+    ctx.cpuBusy = Math.min(1, Math.max(ctx.frameMsAvg / interval, meter.lt / win));
+    meter.t = 0; meter.n = 0; meter.js = 0; meter.lt = 0;
+    adaptQuality(ctx.fps, ctx.cpuBusy);
   }
-  function adaptQuality(fps) {
-    if (ctx.debug || Q.quality || ctx.settings.quality !== 'auto' || ctx.state === 'paused' || ctx.portraitBlock) { aq.low = aq.high = 0; return; }
+  // Historial de la calidad adaptativa (lo lee tools/perf.js): {t (s de ctx.time, con tope por frame), rt (s reales desde el arranque), level, scale, pr, fps, js (fracción del frame), why}
+  ctx.qLog = [];
+  function logQ(why, fps, load) {
+    var e = { t: Math.round(ctx.time * 10) / 10, rt: Math.round((performance.now() - aq.boot) / 100) / 10, level: ctx.quality.level, scale: renderScale, pr: Math.round(ctx.renderer.getPixelRatio() * 100) / 100, fps: Math.round(fps), js: Math.round((load || 0) * 100) / 100, why: why };
+    if (ctx.qLog.length < 50) ctx.qLog.push(e);
+    console.info('[VB] calidad -> ' + e.level + (renderScale < 1 ? ' ×' + renderScale : '') + ' (' + e.fps + ' fps, ' + why + ')');
+  }
+  function stepDown(why, fps, load) {
+    aq.low = aq.mild = aq.high = 0; aq.downs++; aq.lastDown = ctx.time; aq.skip = 1;
+    applyQuality(BY_RANK[ctx.quality.rank - 1]); logQ(why, fps, load);
+  }
+  function adaptQuality(fps, load) {
+    if ((ctx.debug && Q.aq !== '1') || Q.quality || ctx.settings.quality !== 'auto' || ctx.state === 'paused' || ctx.portraitBlock) { aq.low = aq.mild = aq.high = 0; aq.skip = 1; aq.chk = null; return; }
+    if (performance.now() < aq.warmUntil) { aq.low = aq.mild = aq.high = 0; return; } // calentamiento tras el arranque
+    if (aq.skip > 0) { aq.skip--; return; }
+    if (aq.chk) { // ¿sirvió el último escalón de escala? 2 ventanas y media de fps
+      aq.chk.sum += fps; if (++aq.chk.n < 2) return;
+      var gain = aq.chk.sum / aq.chk.n / aq.chk.fps, prevScale = aq.chk.scale; aq.chk = null;
+      if (gain < 1.15) {
+        renderScale = prevScale; aq.noScale = true; aq.low = aq.mild = 0; aq.skip = 1;
+        applyQuality(ctx.quality); logQ('escala deshecha (x' + gain.toFixed(2) + ')', fps, load); return;
+      }
+    }
     var r = ctx.quality.rank;
-    if (r === 0 && fps < 40 && renderScale > 0.7) {
-      // ya en "baja": último recurso, menos píxeles (×0,8 y luego ×0,67)
-      aq.high = 0;
-      if (++aq.low >= 2) {
-        aq.low = 0; aq.downs++; aq.lastDown = ctx.time;
+    if (fps < 45) {
+      aq.high = 0; aq.mild++;
+      if (++aq.low < 2) return;
+      if (r > 0) { stepDown('baja', fps, load); return; }
+      // ya en "baja": menos píxeles solo si la GPU es el cuello de botella
+      if (renderScale > 0.7 && load < 0.4 && !aq.noScale) {
+        aq.low = aq.mild = 0; aq.downs++; aq.lastDown = ctx.time; aq.skip = 1;
+        aq.chk = { fps: fps, scale: renderScale, sum: 0, n: 0 };
         renderScale = renderScale > 0.9 ? 0.8 : 0.67;
-        applyQuality(ctx.quality); console.info('[VB] escala de render ->', renderScale, Math.round(fps) + ' fps');
-      }
-    } else if (fps < 45) {
-      aq.high = 0;
-      if (r > 0 && ++aq.low >= 2) {
-        aq.low = 0; aq.downs++; aq.lastDown = ctx.time;
-        applyQuality(BY_RANK[r - 1]); console.info('[VB] calidad ->', ctx.quality.level, Math.round(fps) + ' fps');
-      }
-    } else if (fps > 57) {
-      aq.low = 0;
+        applyQuality(ctx.quality); logQ('escala', fps, load);
+      } else aq.low = 0;
+    } else if (fps < 52) {
+      aq.low = 0; aq.high = 0;
+      if (r > 0 && ++aq.mild >= 3) stepDown('baja (justa)', fps, load);
+    } else if (fps > 58) {
+      aq.low = aq.mild = 0;
       if (r < autoTop().rank && aq.downs < 2 && ctx.time - aq.lastDown > 30 && ++aq.high >= 5) {
-        aq.high = 0; applyQuality(BY_RANK[r + 1]); console.info('[VB] calidad ->', ctx.quality.level, Math.round(fps) + ' fps');
+        aq.high = 0; aq.skip = 1; applyQuality(BY_RANK[r + 1]); logQ('sube', fps, load);
       }
-    } else { aq.low = 0; aq.high = 0; }
+    } else { aq.low = 0; aq.mild = 0; aq.high = 0; }
   }
 
   // ---------- Escenas de depuración ----------
@@ -461,9 +545,28 @@
         Sim.drainEvents(g, keep);
         // sin 'newMatch': su banner "Set 1" taparía la escena congelada para siempre
         keep = keep.filter(function (e) { return e.type !== 'newMatch'; }); break;
-      case 'dive': // plancha (autopilot; con seed=7 ocurre a los ~45 s de juego)
+      case 'dive': // plancha que se lea como plano principal
         g = mk(true);
-        keep = advanceUntil(g, function (e) { return e && e.type === 'dive'; }, 0.12, 1200); break;
+        // Por defecto, plancha de NUESTRO equipo hecha por el que NO controlamos, con el compañero controlado más cerca de
+        // la red (≥ 1,5 m) y el que se tira a < 4,8 m de ella: la cámara va detrás del controlado y el que se tira queda
+        // DELANTE, a media distancia y grande en el plano (seed 7: la 6.ª plancha propia, ~325 s de juego; seeds 2-5 también
+        // tienen una). La de la CPU, al otro lado de la red, quedaba diminuta (~85 px a 1280x720, ~25 px a 844x390), y la
+        // del jugador controlado tampoco sirve (el cambio automático lleva la cámara al compañero y el que se tira queda
+        // detrás de ella). Si no hay ninguna en 30 min de juego, la primera de la CPU.
+        // &team=0|1|any elige quién (sin el filtro de plano), &n=N la N-ésima, &t=s el instante tras el contacto (0,22 s: ya tendido).
+        var dT = Q.t ? +Q.t : 0.22, dN = Q.n ? +Q.n : 1, dSeen = 0;
+        if (Q.team == null) {
+          keep = advanceUntil(g, function (e, gg) {
+            if (!e || e.type !== 'dive' || e.miss || e.player.team !== 0) return false;
+            var d = e.player, c = gg.ctrl;
+            return c && c !== d && c.team === 0 && Math.abs(d.x) < 4.8 && Math.abs(c.x) < Math.abs(d.x) - 1.5 && ++dSeen >= dN;
+          }, dT, 1800);
+          if (!keep.length) { g = mk(true); dSeen = 0; keep = advanceUntil(g, function (e) { return e && e.type === 'dive' && !e.miss && e.player.team === 1 && ++dSeen >= dN; }, dT, 1800); }
+        } else {
+          var dTeam = Q.team === 'any' ? -1 : +Q.team;
+          keep = advanceUntil(g, function (e) { return e && e.type === 'dive' && !e.miss && (dTeam < 0 || e.player.team === dTeam) && ++dSeen >= dN; }, dT, 1800);
+        }
+        break;
       case 'pause':
         g = mk(true);
         keep = advanceUntil(g, function (e) { return e && e.type === 'point'; }, 2.4, 600, uiIngest);
@@ -561,6 +664,8 @@
     window.addEventListener('blur', function () { if (ctx.state === 'playing' && !ctx.debug) ctx.actions.pause(); });
     if (ctx.debug) debugScene(ctx.debug); else ctx.actions.toMenu();
     if (Q.prewarm !== '0') prewarm(Q.prewarm || 't'); // tras el telón de carga (en depuración, el primer frame lo tapa)
+    aq.boot = performance.now();
+    aq.warmUntil = aq.boot + (Q.aqwarm != null ? +Q.aqwarm * 1000 : 8000); // calentamiento sin calidad adaptativa
     requestAnimationFrame(frame);
   }
   function showFatal(msg, soft) {

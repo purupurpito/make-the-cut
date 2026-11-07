@@ -100,15 +100,17 @@
         if (s.runTeam === w) s.run++; else { s.run = 1; s.runTeam = w; }
         if (s.run > T.best) T.best = s.run;
         if ((e.rallyHits || 0) > s.longest) s.longest = e.rallyHits || 0;
-        var kind = 'point', srv = e.lastKind === 'serve' || (e.lastKind == null && (e.rallyHits | 0) === 0);
+        // falta de saque solo si la comete el equipo que saca (gana el receptor). Bloquear el saque o tocar la red durante el
+        // saque es falta del equipo RECEPTOR (12.6 / 14.6.3 / 11.3.1): gana el que saca y no es "falta de saque"
+        var kind = 'point', srv = (e.lastKind === 'serve' || (e.lastKind == null && (e.rallyHits | 0) === 0)) && !!e.sideout;
         if (e.how) { // sim >= v2: 'ace' | 'kill' | 'tip' | 'block' | 'error' | 'free'
           if (e.how === 'ace') kind = 'ace';
           else if (e.how === 'kill' || e.how === 'tip' || e.how === 'free') kind = e.how;
           else if (e.how === 'block') kind = 'blockPt';
-          else kind = (srv || e.reason === 'serve') ? 'srvErr' : 'error';
+          else kind = (srv || (e.reason === 'serve' && e.sideout)) ? 'srvErr' : 'error';
         }
         else if (e.reason === 'in' && !e.sideout && (e.rallyHits | 0) === 0) kind = 'ace';
-        else if ((e.rallyHits | 0) === 0 && e.reason !== 'in') kind = 'srvErr';
+        else if ((e.rallyHits | 0) === 0 && e.reason !== 'in' && e.sideout) kind = 'srvErr';
         else if (e.reason === 'in' && s.blockTeam === w) kind = 'blockPt';
         else if (e.reason === 'in') kind = s.lastHitKind === 'spike' && s.lastHitTeam === w ? 'kill' : 'free';
         else kind = 'error';
@@ -148,7 +150,8 @@
           else t1 = me ? '¡Punto!' : 'Punto de la CPU';
           var why = e.text || '';
           // "Fuera" como lo cantaría el árbitro, con el toque que lo manda fuera (quién pierde ya lo dice el título)
-          if (e.reason === 'out' && k !== 'srvErr') why = stats.blockTeam >= 0 && stats.blockTeam !== e.team ? 'Toca el bloqueo y sale fuera' : (e.lastShot === 'tip' ? 'Dejada fuera' : (OUTK[e.lastKind] || 'Fuera'));
+          // sim ya canta el 'fuera' por el último toque con el vocabulario FCVB (e.text); el cálculo propio queda de reserva
+          if (e.reason === 'out' && k !== 'srvErr') why = e.text ? e.text : stats.blockTeam >= 0 && stats.blockTeam !== e.team ? 'Toca el bloqueo y sale fuera' : (e.lastShot === 'tip' ? 'Dejada fuera' : (OUTK[e.lastKind] || 'Fuera'));
           // ace con roce de recepción (sim lo acredita al saque): "Balón a la red" bajo "¡ACE!" confundía
           if (k === 'ace') why = (e.rallyHits | 0) > 0 ? (me ? 'La CPU no controla la recepción' : 'No controlas la recepción') : (me ? 'Saque directo: nadie lo toca' : 'Nadie toca el saque de la CPU');
           if (k === 'blockPt' && /cae en el campo/i.test(why)) why = 'Bloqueo directo al suelo';
@@ -222,7 +225,7 @@
   // =====================================================================
   //  HUD
   // =====================================================================
-  var _bv = null, tbRect = null;
+  var _bv = null, tbRect = null, coachRect = null, guideRect = null;
   var promptCur = '', promptHold = 0, promptWho = null, serveT0 = 0, tbLabel1 = 'RECEPCIÓN', coachSeen = {};
 
   // ---- Primeros toques guiados (primer partido, o &guide=1) ----
@@ -242,7 +245,9 @@
     guideDone[key] = 1;
     // en mayúsculas, sin abreviaturas ordinales ("1.ER" queda mal)
     var k = nt === 1 ? 'Primer toque · ' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') : nt === 2 ? 'Segundo toque · Colocación' : 'Tercer toque · Remate';
-    var txt = nt === 1 ? 'Ve al aro amarillo y pulsa ' + gl.hit : nt === 2 ? 'Ponte bajo el balón y pulsa ' + gl.hit : gl.jump + ' para saltar · ' + gl.hit + ' arriba';
+    var shortT = device() === 'touch' && ctx.height <= 420; // móvil apaisado: tarjeta de una línea
+    var txt = shortT ? (nt === 1 ? 'Al aro amarillo y ' + gl.hit : nt === 2 ? 'Bajo el balón y ' + gl.hit : gl.jump + ' y ' + gl.hit + ' arriba')
+      : nt === 1 ? 'Ve al aro amarillo y pulsa ' + gl.hit : nt === 2 ? 'Ponte bajo el balón y pulsa ' + gl.hit : gl.jump + ' para saltar · ' + gl.hit + ' arriba';
     el.guideK.textContent = k.toUpperCase(); el.guideT.innerHTML = txt;
     el.guide.className = ''; void el.guide.offsetWidth; el.guide.className = 'show';
     guideT = 2.4;
@@ -251,8 +256,20 @@
   function guideHide() { guideT = 0.3; el.guide.className = 'out'; }
   // sin cierres por frame: llamadas a la sim protegidas
   function hw(g, p) { try { return VB.Sim.hitWindow(g, p); } catch (e) { return null; } }
+  // ventana del aviso "¡Golpea!" = la del brillo de GOLPEAR/SACAR (input.js CUE_OFF/CUE_ON); si cambia allí, cambiar aquí
+  var HINT_ON = 0.24, HINT_OFF = -0.15;
   function cr(g, p) { try { return VB.Sim.canReach(g, p); } catch (e) { return false; } }
   function dist2(a, b) { var dx = a.x - b.x, dy = a.y - b.y; return dx * dx + dy * dy; }
+
+  /** Etiqueta del 1.er toque deducida del estado: RECEPCIÓN si el único contacto rival de la jugada fue el saque, si no DEFENSA. */
+  function label1Of(g) {
+    if (!g || g.mode !== 'rally') return 'RECEPCIÓN';
+    if (g.touchTeam !== 0) return g.lastKind === 'serve' ? 'RECEPCIÓN' : 'DEFENSA';
+    if (g.lastKind === 'serve') return 'RECEPCIÓN';
+    // rally.hits no cuenta el saque: si todos los contactos de la jugada son nuestros y sacó la CPU, es la recepción
+    var hits = g.rally ? g.rally.hits | 0 : 0, t = g.touches | 0;
+    return (g.serving === 1 && hits <= t) ? 'RECEPCIÓN' : 'DEFENSA';
+  }
 
   /** Siguiente toque del equipo humano (1..3) o 0 si no le toca. */
   function nextTouch(g) {
@@ -307,15 +324,29 @@
       }
     }
     // red de seguridad: si el balón proyectado cae dentro del contador de toques, se atenúa (la cámara ya lo evita)
-    var tbDim = false;
-    if (nt && ctx.camera && VB.toThree && ctx.THREE) {
+    // Lo mismo con la pastilla del consejo (va justo debajo del contador y es opaca): con el balón detrás, se vuelve
+    // translúcida (.thru). Se usa el consejo visible del frame anterior (last.coach).
+    var tbDim = false, coachThru = false, guideThru = false;
+    if ((nt || last.coach || guideT > 0) && ctx.camera && VB.toThree && ctx.THREE) {
       if (!_bv) _bv = new ctx.THREE.Vector3();
-      if (!tbRect || (ctx.frame & 31) === 0) tbRect = el.touchbar.getBoundingClientRect();
       VB.toThree(g.ball.x, g.ball.y, g.ball.z, _bv); _bv.project(ctx.camera);
-      var bpx = (_bv.x + 1) * 0.5 * ctx.width, bpy = (1 - _bv.y) * 0.5 * ctx.height;
-      tbDim = _bv.z < 1 && bpx > tbRect.left - 12 && bpx < tbRect.right + 12 && bpy > tbRect.top - 12 && bpy < tbRect.bottom + 12;
+      var bpx = (_bv.x + 1) * 0.5 * ctx.width, bpy = (1 - _bv.y) * 0.5 * ctx.height, bOn = _bv.z < 1;
+      if (nt) {
+        if (!tbRect || (ctx.frame & 31) === 0) tbRect = el.touchbar.getBoundingClientRect();
+        tbDim = bOn && inRect(bpx, bpy, tbRect, 12);
+      }
+      if (last.coach) {
+        if (!coachRect || (ctx.frame & 31) === 0) coachRect = el.coach.getBoundingClientRect();
+        coachThru = bOn && inRect(bpx, bpy, coachRect, 12);
+      }
+      if (guideT > 0) { // tarjeta guiada: también se aparta si el balón pasa por detrás (CSS solo la atenúa en móvil apaisado)
+        if (!guideRect || (ctx.frame & 15) === 0) guideRect = el.guide.getBoundingClientRect();
+        guideThru = bOn && inRect(bpx, bpy, guideRect, 12);
+      } else guideRect = null;
     }
-    if (last.tbDim !== tbDim) { last.tbDim = tbDim; el.touchbar.classList.toggle('dim', tbDim); }
+    if (last.tbDim !== tbDim) { last.tbDim = tbDim; el.touchbar.classList.toggle('thru', tbDim); }
+    if (el.guide.classList.contains('thru') !== guideThru) el.guide.classList.toggle('thru', guideThru);
+    if (last.coachThru !== coachThru) { last.coachThru = coachThru; el.coach.classList.toggle('thru', coachThru); }
     // ---- aviso contextual + consejo ----
     var help = ctx.settings.showHelp !== false, gl = G(), touchDev = device() === 'touch';
     var pk = '', ptext = '', pcls = '', coach = '', progress = 0;
@@ -338,7 +369,10 @@
         // el aviso "¡Golpea!" solo con el balón BAJANDO. Antes, un aviso neutro con barra de tiempo.
         var ws = VB.Sim.hitWindow ? hw(g, p) : null, b = g.ball;
         var tl = serveTimeLeft(g, ws);
-        if (b.vz < 0 && ws && ws.reach && ws.t < 0.18 && ws.t > -0.06) { pk = 'serve'; ptext = device() === 'touch' ? '¡Golpea!' : '¡Golpea ahora!'; pcls = 'hit go'; }
+        // La MISMA ventana que el brillo del botón SACAR (input.js CUE_OFF/CUE_ON): ws.press (s hasta el instante ideal
+        // de PULSAR) en (-0,15, 0,24). Antes salía con ws.t < 0,18 (0,175 s antes del contacto, medido) y, con ~200 ms de reacción, tarde.
+        var wp = ws ? (ws.press === ws.press && ws.press != null ? ws.press : ws.t) : 9;
+        if (b.vz < 0 && ws && ws.reach && wp < HINT_ON && wp > HINT_OFF) { pk = 'serve'; ptext = device() === 'touch' ? '¡Golpea!' : '¡Golpea ahora!'; pcls = 'hit go'; }
         else if (tl > 0) {
           pk = 'serve'; ptext = 'Golpea al bajar'; pcls = 'hit soon';
           if (!serveT0 || tl > serveT0) serveT0 = tl;
@@ -351,7 +385,9 @@
         coach = help ? (touchDev ? 'Saca la CPU · a recibir' : 'Saca la CPU · prepárate para la <b>recepción</b>') : '';
       } else if (g.mode === 'rally') {
         var w = VB.Sim && VB.Sim.hitWindow ? hw(g, p) : null;
-        var reach = w ? (w.reach && w.t < 0.22 && w.t > -0.06 && nt > 0) : (VB.Sim && VB.Sim.canReach ? cr(g, p) : false);
+        var wpr = w ? (w.press === w.press && w.press != null ? w.press : w.t) : 9;
+        // misma ventana que el brillo de GOLPEAR (input.js): press en (-0,15, 0,24)
+        var reach = w ? (w.reach && wpr < HINT_ON && wpr > HINT_OFF && nt > 0) : (VB.Sim && VB.Sim.canReach ? cr(g, p) : false);
         // en el aire junto a la red con el remate rival aún en su lado: es un bloqueo (automático), no un golpe
         if (reach && g.touchTeam !== 0 && p.z > 0.2 && Math.abs(p.x) < 1.8 && g.ball.x <= 0.3) reach = false;
         if (reach) { pk = 'hit'; ptext = '¡Golpea ahora!'; pcls = 'hit go'; }
@@ -395,9 +431,9 @@
         el.promptKey.textContent = parts[0] === 'jump' ? gl.jumpT : (parts[0] === 'serve' && dv === 'touch' ? 'SACAR' : gl.hitT);
         el.promptKey.className = 'key' + (dv === 'gamepad' ? ' pad ' + (parts[0] === 'jump' ? 'pb' : 'pa') : dv === 'touch' ? ' tch' + (parts[0] === 'jump' ? ' j' : '') : '');
         el.promptText.textContent = parts[1];
-        el.prompt.className = (parts[0] === 'wait' ? 'wait' : parts[2] || 'hit') + (anchorOn ? ' anch' : '');
+        el.prompt.className = (parts[0] === 'wait' ? 'wait' : parts[2] || 'hit') + (anchorOn ? ' anch' : '') + (prThru ? ' thru' : '');
         promptW = 0; // se vuelve a medir
-      } else { el.prompt.className = 'off' + (anchorOn ? ' anch' : ''); prX = -1; }
+      } else { el.prompt.className = 'off' + (anchorOn ? ' anch' : ''); prX = -1; prThru = false; }
     }
     if (promptCur) {
       if (promptCur.indexOf('soon') >= 0) el.promptBar.style.transform = 'scaleX(' + Math.max(0, Math.min(1, progress)).toFixed(3) + ')';
@@ -413,16 +449,17 @@
       if (coachSeen[ckey] > 3) showCoach = false;
     }
     var ck = showCoach ? coach : '';
-    if (last.coach !== ck) { last.coach = ck; if (ck) el.coach.innerHTML = ck; el.coach.classList.toggle('off', !ck); }
+    if (last.coach !== ck) { last.coach = ck; coachRect = null; if (ck) el.coach.innerHTML = ck; el.coach.classList.toggle('off', !ck); }
     // con un aviso de "¡ahora!" en marcha, el consejo se atenúa: los ojos van al jugador
     var dimC = !!ck && !!promptCur && promptCur.indexOf('go') >= 0;
-    if (last.dimC !== dimC) { last.dimC = dimC; el.coach.classList.toggle('dim', dimC); }
+    if (last.dimC !== dimC) { last.dimC = dimC; el.coach.classList.toggle('faint', dimC); }
   }
 
   /** Borra el aviso al instante (golpe del equipo humano, cambio de jugador). */
   function clearPrompt() { promptCur = ''; promptHold = 0; }
 
   /** Segundos hasta que el balón lanzado del saque BAJE a la altura de contacto (sirve también mientras sube). */
+  function inRect(x, y, r, m) { return x > r.left - m && x < r.right + m && y > r.top - m && y < r.bottom + m; }
   function serveTimeLeft(g, ws) {
     if (!ws) return 0;
     var b = g.ball, Gv = (VB.C && VB.C.G) || 9, zt = ws.zc + (g.ctrl ? g.ctrl.z : 0);
@@ -437,7 +474,36 @@
   // El aviso va a la altura del pecho, al lado del jugador (a su derecha en pantalla; a la izquierda si
   // no cabe): nunca tapa los pies ni el aro amarillo, y queda donde ya están mirando los ojos.
   // Si el jugador no está en pantalla, vuelve abajo al centro (clase 'bot' sin 'anch').
-  var anchorOn = true, promptW = 0, promptH = 0, prX = -1, prY = -1, _pv = null, _ph = null;
+  var anchorOn = true, promptW = 0, promptH = 0, prX = -1, prY = -1, _pv = null, _ph = null, prSide = 1, prThru = false;
+  // cajas en pantalla de los OTROS atletas y del balón (px CSS, preasignadas): el aviso no debe taparlos en el momento clave
+  var _ob = [], _obN = 0;
+  function obBox(i) { return _ob[i] || (_ob[i] = { l: 0, r: 0, t: 0, b: 0, w: 1 }); }
+  function collectObstacles(g, p, W, H) {
+    _obN = 0;
+    for (var t = 0; t < 2; t++) for (var i = 0; i < 2; i++) {
+      var q = g.teams && g.teams[t] && g.teams[t][i];
+      if (!q || q === p) continue;
+      VB.toThree(q.x, q.y, (q.z || 0) + 0.95, _pv); _pv.project(ctx.camera);
+      if (_pv.z > 1 || _pv.z < -1) continue;
+      VB.toThree(q.x, q.y, (q.z || 0) + 1.95, _ph); _ph.project(ctx.camera);
+      var cx = (_pv.x + 1) * 0.5 * W, cy = (1 - _pv.y) * 0.5 * H, hy = (1 - _ph.y) * 0.5 * H, half = Math.max(10, Math.abs(cy - hy));
+      var o = obBox(_obN++); o.l = cx - half * 0.42; o.r = cx + half * 0.42; o.t = cy - half; o.b = cy + half; o.w = 1;
+    }
+    var bl = g.ball;
+    if (bl) {
+      VB.toThree(bl.x, bl.y, bl.z, _pv); _pv.project(ctx.camera);
+      if (_pv.z < 1 && _pv.z > -1) { var bx = (_pv.x + 1) * 0.5 * W, by = (1 - _pv.y) * 0.5 * H, o2 = obBox(_obN++); o2.l = bx - 14; o2.r = bx + 14; o2.t = by - 14; o2.b = by + 14; o2.w = 1.5; }
+    }
+  }
+  /** Fracción (ponderada) de las cajas de obstáculos que quedaría bajo el aviso en (x, y). */
+  function overlapAt(x, y) {
+    var sum = 0;
+    for (var i = 0; i < _obN; i++) {
+      var o = _ob[i], ix = Math.min(x + promptW, o.r) - Math.max(x, o.l), iy = Math.min(y + promptH, o.b) - Math.max(y, o.t);
+      if (ix > 0 && iy > 0) sum += o.w * (ix * iy) / Math.max(1, (o.r - o.l) * (o.b - o.t));
+    }
+    return sum;
+  }
   function placePrompt(g, p) {
     var cam = ctx.camera, W = ctx.width, H = ctx.height;
     if (!cam || !p || !VB.toThree || !ctx.THREE) return anchorBottom();
@@ -449,17 +515,36 @@
     var sx = (_pv.x + 1) * 0.5 * W, sy = (1 - _pv.y) * 0.5 * H;
     var hy = (1 - _ph.y) * 0.5 * H, body = Math.max(18, Math.abs(sy - hy) * 1.55); // ~ media altura del jugador en px
     var gap = Math.max(26, body * 0.42), m = 12;
-    var x = sx + gap;
-    if (x + promptW > W - m - (ctx.isTouch ? W * 0.22 : 0)) x = sx - gap - promptW; // no cabe a la derecha (o pisa los botones táctiles)
-    x = Math.max(m, Math.min(W - m - promptW, x));
     var y = Math.max(64, Math.min(H - promptH - m, sy - promptH * 0.5));
+    // táctil: la franja derecha ancha solo a la altura de SALTAR/GOLPEAR (abajo); más arriba basta con no pisar ⇄ y la pausa
+    var rEdge = W - m - (ctx.isTouch ? (y + promptH > H * 0.62 ? W * 0.22 : 72) : 0);
+    // Tres sitios junto al jugador controlado (derecha, izquierda, sobre la cabeza): el que menos tape a los demás
+    // atletas y al balón. Con histéresis (el lado actual gana los empates por poco) para que no salte de un lado a otro.
+    collectObstacles(g, p, W, H);
+    var xR = sx + gap, xL = sx - gap - promptW, xT = sx - promptW * 0.5;
+    var yT = Math.max(64, hy - body * 0.55 - promptH);
+    var cR = xR + promptW > rEdge ? 9 : overlapAt(xR, y), cL = xL < m ? 9 : overlapAt(xL, y);
+    var cT = (yT + promptH > hy - 4) ? 9 : overlapAt(Math.max(m, Math.min(W - m - promptW, xT)), yT) + 0.05; // arriba: solo si gana (tapa algo de vista sobre la jugada)
+    var cur = prSide === 1 ? cR : prSide === -1 ? cL : cT, best = prSide, bc = cur - 0.07;
+    if (cR < bc) { best = 1; bc = cR; }
+    if (cL < bc) { best = -1; bc = cL; }
+    if (cT < bc) { best = 0; bc = cT; }
+    if (cR >= 9 && cL >= 9 && cT >= 9) best = xR + promptW > rEdge ? -1 : 1; // nada cabe: como antes
+    if (best !== prSide) { prSide = best; prX = -1; } // cambio de lado: salta (deslizarse cruzaría por encima del propio jugador)
+    var x = prSide === 1 ? xR : prSide === -1 ? xL : xT;
+    if (prSide === 0) y = yT;
+    x = Math.max(m, Math.min(W - m - promptW, x));
     if (!anchorOn) { anchorOn = true; el.prompt.classList.add('anch'); prX = -1; }
     if (prX < 0) { prX = x; prY = y; }
     else { var k = 1 - Math.exp(-16 * Math.max(0.001, ctx.realDt || 0.016)); prX += (x - prX) * k; prY += (y - prY) * k; }
+    // si aun así (en la posición ya suavizada) tapa a otro atleta o al balón, se vuelve translúcido (como el contador y el consejo)
+    var thru = overlapAt(prX, prY) > 0.08;
+    if (thru !== prThru) { prThru = thru; el.prompt.classList.toggle('thru', thru); }
     el.prompt.style.transform = 'translate3d(' + prX.toFixed(1) + 'px,' + prY.toFixed(1) + 'px,0)';
   }
   function anchorBottom() {
     if (anchorOn) { anchorOn = false; el.prompt.classList.remove('anch'); el.prompt.style.transform = ''; prX = -1; }
+    if (prThru) { prThru = false; el.prompt.classList.remove('thru'); }
   }
 
   // =====================================================================
@@ -531,7 +616,13 @@
     var rec = record.played ? '<span><b>' + record.wins + '/' + record.played + '</b>Victorias</span>' + (record.bestStreak ? '<span><b>' + record.bestStreak + '</b>Mejor racha</span>' : '') : '<span><b>¡Estreno!</b>Tu primer partido</span>';
     setHTML(el.menuRecord, 'rec', rec);
   }
+  var restartArm = 0, restartTo = 0;
+  function disarmRestart() {
+    restartArm = 0; clearTimeout(restartTo);
+    if (el.btnRestart && el.btnRestart.classList.contains('arm')) { el.btnRestart.classList.remove('arm'); el.btnRestart.textContent = 'Reiniciar partido'; }
+  }
   function renderPause(g) {
+    disarmRestart();
     el.pS0.textContent = g.score[0]; el.pS1.textContent = g.score[1];
     el.pMid.innerHTML = 'SET ' + g.setNo + '<br>SETS ' + g.sets[0] + '-' + g.sets[1];
   }
@@ -770,11 +861,11 @@
     '<li><b>Antena</b>El balón toca la antena o cruza por fuera de ella.</li>' +
     '<li><b>4 toques</b>Un equipo toca el balón más de 3 veces (el bloqueo no cuenta).</li>' +
     '<li><b>Dobles</b>El mismo jugador toca el balón dos veces seguidas.</li>' +
-    '<li><b>Red</b>Tocar la red con el cuerpo es falta. Si el balón la toca y pasa, el juego sigue.</li>' +
+    '<li><b>Red</b>Tocar la red entre las antenas mientras se juega el balón es falta. Si el balón la toca y pasa, el juego sigue.</li>' +
     '<li><b>Cuerpo</b>Si el balón te da en el cuerpo, cuenta como toque.</li>' +
     '<li><b>Cambio de campo</b>Al acabar cada set y a los 8 puntos del set decisivo.</li>' +
     '<li><b>Sets</b>A 25 puntos con 2 de diferencia; el 3.º, a 15. Gana quien se lleva 2 sets.</li>' +
-    '</ul><p class="tut-rule">Cada jugada da un punto (sistema de punto por jugada). Si la ganas recibiendo, recuperas el saque (<b>cambio de saque</b>) y saca tu compañero.</p>';
+    '</ul><p class="tut-rule">Cada jugada da un punto (sistema de punto por jugada). Si la ganas recibiendo, recuperas el saque (<b>cambio de saque</b>) y sacáis por turnos: saca el jugador de tu equipo que no sacó la última vez (y lo controlas tú).</p>';
 
   var tut = { i: 0, raf: 0, t0: 0, fig: null, seen: {} };
   function tutGo(i) {
@@ -904,6 +995,17 @@
     banner: banner,
     callout: callout,
     isPanelOpen: function () { return !!panel; },
+    /** Mando conectado / desconectado (main.js con Input.poll().padEvent). Al desconectarse jugando con él, input.js pausa:
+     *  la hoja de pausa lo dice ("Mando desconectado") en vez de "Partido en pausa". */
+    padEvent: function (kind) {
+      var k = document.querySelector('#pause .sh-k');
+      if (kind === 'disconnected') {
+        if (k) k.textContent = 'Mando desconectado';
+      } else if (kind === 'connected') {
+        if (k) k.textContent = 'Partido en pausa';
+        if (ctx.state === 'playing') callout('Mando conectado', 0);
+      }
+    },
     init: function (c) {
       ctx = c; loadRecord();
       ['hud', 'banner', 'callout', 'menu', 'pause', 'end', 'panel', 'rotate', 'touchbar', 'prompt', 'promptKey', 'promptText', 'promptBar', 'coach',
@@ -930,7 +1032,14 @@
       on(el.btnResume, function () { ctx.actions.resume(); });
       on(el.btnPControls, function () { openPanel('ctl', 'paused'); });
       on(el.btnPSettings, function () { openPanel('set', 'paused'); });
-      on(el.btnRestart, function () { ctx.actions.restart(); });
+      // Reiniciar en dos pasos (un dedo que se escapa no tira el partido): 1.er toque arma 2 s, el 2.º reinicia. Sin confirm().
+      on(el.btnRestart, function () {
+        if (restartArm > 0 && performance.now() - restartArm < 2000) { disarmRestart(); ctx.actions.restart(); return; }
+        restartArm = performance.now();
+        el.btnRestart.textContent = device() === 'touch' ? 'Toca otra vez para reiniciar' : 'Pulsa otra vez para reiniciar';
+        el.btnRestart.classList.add('arm');
+        clearTimeout(restartTo); restartTo = setTimeout(disarmRestart, 2000);
+      });
       on(el.btnQuit, function () { ctx.actions.toMenu(); });
       el.btnAgain.addEventListener('click', function () { uiSound('start'); ctx.actions.startMatch(); });
       el.btnMenu.addEventListener('click', function () { uiSound('back'); ctx.actions.toMenu(); });
@@ -978,6 +1087,7 @@
     setQuality: function () { if (panel === 'set') renderOpts(); },
     onState: function (s, prev) {
       shown = '';
+      if (s !== 'paused') { var pk = document.querySelector('#pause .sh-k'); if (pk && pk.textContent !== 'Partido en pausa') pk.textContent = 'Partido en pausa'; }
       if (s === 'playing') {
         if (prev !== 'paused') hideBanner();
         if (panel) { panel = null; tutStop(); }
@@ -988,6 +1098,7 @@
     onGameStart: function (g) {
       last = {}; banT = 0; hideBanner(); promptCur = ''; promptHold = 0; // las estadísticas se reinician con 'newMatch'
       coachSeen = {}; guideDone = {}; guideT = 0; el.guide.className = '';
+      tbLabel1 = label1Of(g); // escenas de depuración que empiezan a mitad de jugada (p. ej. dive): no fiarse del valor por defecto
       endHold = 0; ctx.endHold = false; el.skip.hidden = true;
       el.end.classList.remove('win', 'lose');
     },

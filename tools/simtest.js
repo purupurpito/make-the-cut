@@ -5,20 +5,28 @@
  *   1) CPU vs CPU (demo) -> estadísticas de rally, toques, motivos, calidad
  *   2) Autopilot (equipo humano por IA normal) contra cada dificultad
  *   3) Fuzz con entrada humana aleatoria
- *   4) Bots "humanos" que juegan SOLO con la entrada real (mover/golpear/saltar)
- *      con timing perfecto / medio / novato contra Fácil, Normal y Difícil
- *      -> % de puntos y probabilidad estimada de ganar el partido
- *   5) Reglas puntuales (4 toques, dobles, sets, red, antena, saque, bloqueo...)
+ *   4) Bots "humanos" que juegan SOLO con la entrada real (mover/golpear/saltar) con un modelo de jugador
+ *      en tercera persona (reacción lognormal, error de lectura que crece con el vuelo y la distancia,
+ *      malas lecturas, timing con σ por habilidad, inercia del stick): perfecto / bueno / medio / novato
+ *      (primera sesión) contra los 4 niveles -> % de puntos y probabilidad estimada de ganar el partido
+ *   5) Reglas puntuales (4 toques, dobles, sets, red, antena, saque, bloqueo...) y vocabulario del árbitro
  * Sale con código != 0 si hay excepciones o invariantes rotos.
- * Uso: node tools/simtest.js [minutos=20] [seed=12345] [minutosMatriz=30]
+ * Uso: node tools/simtest.js [minutos=20] [seed=12345] [minutosMatriz=20] [semillas=4]
  *   La matriz (dificultades y bots) va en paralelo con worker_threads.
- *   minutosMatriz = minutos de juego por casilla (más = menos ruido; 0 = saltar matriz).
+ *   minutosMatriz = minutos de juego por semilla y casilla (0 = saltar matriz); semillas = partidas por casilla.
+ *   SIMTEST_ONLY=matrix: solo la matriz. MATRIX_FILTER='novato vs easy|medio vs normal': solo esas casillas.
  */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), os = require('os');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const ROOT = path.join(__dirname, '..');
-const MIN = +(process.argv[2] || 20), SEED = +(process.argv[3] || 12345), BOTMIN = +(process.argv[4] != null ? process.argv[4] : 30);
+const MIN = +(process.argv[2] || 20), SEED = +(process.argv[3] || 12345), BOTMIN = +(process.argv[4] != null ? process.argv[4] : 20);
+const NSEED = Math.max(1, +(process.argv[5] || 4)); // semillas por casilla de la matriz (se suman)
+// SIMTEST_ONLY=matrix: solo la matriz (afinado); MATRIX_FILTER=<regex>: solo las casillas cuya etiqueta encaje
+// SIMTEST_ROOKIE=all: el bot novato juega TODOS los partidos con la ayuda de primer partido (medir rookieProf);
+// SIMTEST_ROOKIE=off: ninguno. Por defecto solo el primero, como el juego real (main.js isRookie).
+const ROOKIE_MODE = process.env.SIMTEST_ROOKIE || 'first';
+const ONLY = process.env.SIMTEST_ONLY || '', MFILTER = process.env.MATRIX_FILTER ? new RegExp(process.env.MATRIX_FILTER) : null;
 
 function load() {
   const ctx = { console, Math, Date };
@@ -35,6 +43,16 @@ const fail = m => { failures++; console.error('FALLO:', m); };
 const KNOWN = ['hit', 'block', 'net', 'land', 'point', 'set', 'match', 'gameOver', 'whistle', 'jump', 'switch', 'serveReady',
   'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange'];
 const pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '-';
+// Vocabulario del árbitro (FCVB): cada motivo de punto con sus textos válidos. Un texto nuevo debe pasar por aquí.
+const POINT_TEXTS = {
+  in: ['El balón cae en tu campo', 'El balón cae en el campo rival', 'Saque a la red', 'Balón a la red'],
+  // (out también admite 'Saque a la red'/'Balón a la red': da en la red y cae fuera en el propio campo)
+  out: ['Saque fuera', 'Remate fuera', 'Dejada fuera', 'Recepción fuera', 'Defensa fuera', 'Colocación fuera', 'Balón fuera', 'Toca el bloqueo y sale fuera', 'Le da en el cuerpo y sale fuera', 'Saque a la red', 'Balón a la red'],
+  antenna: ['Balón toca la antena', 'Balón por fuera de la antena'], under: ['Balón por debajo de la red'],
+  double: ['Dobles: el mismo jugador toca dos veces'], four: ['4 toques'], net: ['Toque de red'], block: ['Bloqueo del saque'],
+  attackServe: ['Ataque del saque'], serve: ['Falta de saque: 8 segundos', 'Falta de saque: el balón cae sin golpearlo']
+};
+const badText = new Set();
 
 function checkInvariants(g, tag) {
   const b = g.ball;
@@ -73,13 +91,15 @@ function run(label, opts, seconds, inputFn, quiet) {
         if (e.type === 'block') lastSamePlayer = null; // tras bloqueo se puede volver a tocar
         if (e.type === 'jump' && g.mode === 'serve' && g.serveJump) serveTakeoff.push(e.player.x * S.side(e.player.team));
         if (e.type === 'point') lastSamePlayer = null;
+        if (e.type === 'point' && !(POINT_TEXTS[e.reason] || []).includes(e.text) && !badText.has(e.reason + e.text)) { badText.add(e.reason + e.text); fail(label + ' texto de punto fuera del vocabulario: ' + e.reason + ' "' + e.text + '"'); }
         if (e.type === 'match') { matches++; matchWins[e.team]++; }
         if (e.type === 'set') setsSeen++;
         // cambio automático con balón rápido a < 0,6 s del contacto (la cámara se deslizaría durante la defensa)
         if (e.type === 'switch' && e.auto && !e.reset && preSp > 12 && preT < 0.6 && g.mode === 'rally') lateSw++;
         // remate de la CPU con el humano en el bloqueo: el control no salta al defensor hasta el toque siguiente
         if (e.type === 'hit' && e.kind === 'spike' && e.team === 1 && !g.demo && !g.autopilot) spikeCtl = g.defRole === 'block' ? g.ctrl : null;
-        if (e.type === 'switch' && spikeCtl && e.from === spikeCtl && g.touchTeam === 1) blkSwitch++;
+        // (solo cambios AUTOMÁTICOS: si el jugador pulsa CAMBIAR él mismo tras el remate, es su decisión; el fuzz lo hace al azar)
+        if (e.type === 'switch' && e.auto && spikeCtl && e.from === spikeCtl && g.touchTeam === 1) blkSwitch++;
         if ((e.type === 'hit' && e.team === 0) || e.type === 'block' || e.type === 'point') spikeCtl = null;
       }
       // ningún remate atraviesa el volumen de manos de un bloqueador sin evento de bloqueo
@@ -92,7 +112,8 @@ function run(label, opts, seconds, inputFn, quiet) {
       }
       if (i % 60 === 0 && !checkInvariants(g, label)) break;
       if (opts.demo === false && g.finished) { // partido humano acabado: empezar otro
-        const ng = S.createGame(Object.assign({}, opts, { seed: SEED + i, stats: false }));
+        // como main.js isRookie(): la ayuda del primer partido solo vale para el primero (SIMTEST_ROOKIE=all: en todos, para medirla)
+        const ng = S.createGame(Object.assign({}, opts, { seed: SEED + i, stats: false, rookie: ROOKIE_MODE === 'all' ? opts.rookie : false }));
         ng.stats = g.stats; Object.assign(g, ng); g.stats = ng.stats;
       }
     }
@@ -133,10 +154,29 @@ function setWinProb(p, target) {
 function matchWinProb(p) { const s = setWinProb(p, 25), t = setWinProb(p, 15); return s * s + 2 * s * (1 - s) * t; }
 
 // ================= 4) Bots humanos (solo entrada real) =================
+/* Modelo de jugador humano en TERCERA PERSONA (revisión 3). Antes los bots veían la jugada casi perfecta
+ * (reacción fija, error de posición pequeño y constante): el equilibrio salía demasiado fácil. Ahora:
+ *  react/rlog: reacción tras cada toque ~ lognormal (mediana react, dispersión rlog) + despistes (lapse)
+ *  posErr:     error de lectura del punto de juego (m) que CRECE con el tiempo de vuelo que queda y con la
+ *              distancia al balón y se corrige al acercarse; en profundidad (eje de la cámara) es depth× mayor
+ *  wrong:      prob. de mala lectura (corto/largo al revés) que se corrige tarde (0,3-0,6 s)
+ *  sigma/bias: timing de la pulsación (s); bias > 0 = tiende a pulsar pronto; fast = σ extra con balón rápido
+ *  acc:        cambio máximo del stick por segundo (inercia del pulgar/teclas); stop = holgura al pararse (m)
+ *  jumpOk:     prob. de acordarse de saltar para rematar (novato: a veces ataca desde el suelo)
+ *  block, jumpServe, aim, gap: bloquea, saque en salto, apunta al azar, busca el hueco en el remate
+ *  rookie:     primera sesión (createGame rookie:true: ayuda de Fácil y la CPU saca suave)
+ *  camYaw:     error (grados, σ) del mapeo stick-cámara tras cada cambio de jugador: la cámara se desliza al nuevo
+ *              jugador y el pulgar sigue con la referencia vieja; se corrige en 0,5 s
+ *  netJump:    prob. por ataque rival de ir a la red a "bloquear" (sin saber: deja el campo y salta a destiempo)
+ *  misSwitch:  prob. por trayectoria de pulsar CAMBIAR sin querer (en la colocación rival cambia el rol bloqueo/defensa)
+ * El perfil 'perfecto' es la cota superior (casi sin errores de percepción): sirve para comprobar que la
+ * habilidad cuenta y que Experto se puede ganar. */
 const BOTS = {
-  perfecto: { sigma: 0.02, react: 0.12, posErr: 0.15, block: true, jumpServe: 0.7, aim: 0.8, gap: 0.6 },
-  medio: { sigma: 0.065, react: 0.22, posErr: 0.45, block: true, jumpServe: 0.4, aim: 0.5, gap: 0.3 },
-  novato: { sigma: 0.12, react: 0.32, posErr: 0.8, block: false, jumpServe: 0.1, aim: 0.2, gap: 0 }
+  perfecto: { react: 0.13, rlog: 0.1, lapse: 0, posErr: 0.12, depth: 1.1, wrong: 0, sigma: 0.02, bias: 0, fast: 0, acc: 40, stop: 0.08, jumpOk: 1, block: true, jumpServe: 0.7, aim: 0.8, gap: 0.6 },
+  bueno: { react: 0.2, rlog: 0.2, lapse: 0.02, posErr: 0.45, depth: 1.4, wrong: 0.02, sigma: 0.045, bias: 0.01, fast: 0.3, acc: 12, stop: 0.1, jumpOk: 0.98, block: true, jumpServe: 0.5, aim: 0.6, gap: 0.45 },
+  medio: { react: 0.26, rlog: 0.25, lapse: 0.05, posErr: 0.8, depth: 1.5, wrong: 0.06, sigma: 0.07, bias: 0.02, fast: 0.4, acc: 8, stop: 0.14, jumpOk: 0.93, block: true, jumpServe: 0.3, aim: 0.45, gap: 0.2 },
+  novato: { react: 0.34, rlog: 0.3, lapse: 0.1, posErr: 1.2, depth: 1.6, wrong: 0.12, sigma: 0.11, bias: 0.04, fast: 0.5, acc: 5, stop: 0.2, jumpOk: 0.75, block: false, jumpServe: 0.05, aim: 0.15, gap: 0, rookie: true,
+    camYaw: 22, netJump: 0.1, misSwitch: 0.01 } // solo el novato: medio/bueno/perfecto sin cambios (matriz comparable)
 };
 /** Dirección de apuntado (unitaria, mundo) que manda el remate más lejos de los defensores de la CPU y,
  *  como haría un jugador que mira la jugada, por fuera de las manos del bloqueador rival si está arriba.
@@ -156,13 +196,18 @@ function gapAim(g, p, out) {
 }
 function makeBot(bp, seed) {
   const rng = S._makeRng(seed), gauss = () => (rng() + rng() + rng() + rng() - 2) * 1.732;
-  const mv = [0, 0], aimv = [0, 0], out = { move: mv, hit: false, jump: false, switchPlayer: false };
-  let stamp = -9, lead = 0, jlead = 0, ex = 0, ey = 0, presses = 0, useAim = false, useGap = false, serveWait = 0;
-  const w = {};
+  const mv = [0, 0], want = [0, 0], aimv = [0, 0], out = { move: mv, hit: false, jump: false, switchPlayer: false };
+  let stamp = -9, lead = 0, jlead = 0, eu = 0, ev = 0, presses = 0, useAim = false, useGap = false, serveWait = 0;
+  let react = 0, wrongT = 0, wrongD = 0, jumpOk = true, blockT = 0, blockSeen = -1;
+  let lastCtrl = null, yawE = 0, yawT = 0, naive = false; const mvOut = [0, 0];
+  const w = {}, DT2 = DT;
+  // reacción: lognormal con mediana bp.react (+ despiste ocasional)
+  const sampleReact = () => bp.react * Math.exp(gauss() * bp.rlog) + (rng() < bp.lapse ? 0.2 + rng() * 0.3 : 0);
   return (g) => {
-    const p = g.ctrl, sd = 1; out.hit = out.jump = false; out.move = mv;
+    const p = g.ctrl, sd = 1; out.hit = out.jump = out.switchPlayer = false; out.move = mv;
+    if (p !== lastCtrl) { if (lastCtrl && bp.camYaw) { yawE = gauss() * bp.camYaw * Math.PI / 180; yawT = g.time; } lastCtrl = p; }
     if (g.mode === 'serve') {
-      mv[0] = mv[1] = 0;
+      mv[0] = mv[1] = 0; want[0] = want[1] = 0;
       if (g.server !== p) return out;
       if (g.serveState === 'ready') {
         if (g.serveT < 0.05) serveWait = 0.6 + rng() * 2;
@@ -170,7 +215,7 @@ function makeBot(bp, seed) {
         return out;
       }
       if (stamp !== g.lastTouchT) {
-        stamp = g.lastTouchT; lead = C.WINDUP + gauss() * bp.sigma; presses = 0;
+        stamp = g.lastTouchT; lead = C.WINDUP + bp.bias + gauss() * bp.sigma; presses = 0;
         const a = rng() * 6.283; aimv[0] = Math.cos(a); aimv[1] = Math.sin(a); useAim = rng() < bp.aim;
       }
       S.hitWindow(g, p, w);
@@ -178,40 +223,65 @@ function makeBot(bp, seed) {
       if (presses < 2 && !g.swingLive && w.t <= lead) { out.hit = true; presses++; }
       return out;
     }
-    if (g.mode !== 'rally') { mv[0] = mv[1] = 0; return out; }
-    if (stamp !== g.lastTouchT) {
-      stamp = g.lastTouchT; lead = C.WINDUP + gauss() * bp.sigma; jlead = gauss() * bp.sigma * 0.8; presses = 0;
-      ex = gauss() * bp.posErr * 0.5; ey = gauss() * bp.posErr * 0.5;
+    if (g.mode !== 'rally') { mv[0] = mv[1] = 0; want[0] = want[1] = 0; return out; }
+    const b = g.ball, bsp = Math.hypot(b.vx, b.vy, b.vz);
+    if (stamp !== g.lastTouchT) { // nueva trayectoria: nueva lectura
+      stamp = g.lastTouchT; presses = 0;
+      react = sampleReact();
+      const sg = bp.sigma * (1 + bp.fast * Math.max(0, Math.min(1, (bsp - 9) / 8))); // balón rápido = timing peor
+      lead = C.WINDUP + bp.bias + gauss() * sg; jlead = bp.bias * 0.5 + gauss() * sg * 0.9;
+      eu = gauss(); ev = gauss();
+      wrongD = rng() < bp.wrong ? (rng() < 0.5 ? -1 : 1) * (1.3 + rng() * 1.2) : 0; // corto/largo al revés
+      wrongT = react + 0.3 + rng() * 0.3;
+      jumpOk = rng() < bp.jumpOk;
       const a = rng() * 6.283; aimv[0] = Math.cos(a); aimv[1] = Math.sin(a); useAim = rng() < bp.aim; useGap = rng() < (bp.gap || 0);
+      naive = !bp.block && g.touchTeam === 1 && g.touches === 2 && rng() < (bp.netJump || 0); // "bloqueo" de novato
+      if (bp.misSwitch && rng() < bp.misSwitch) out.switchPlayer = true;
     }
+    const blocks = bp.block || naive || g.defRole === 'block'; // con CAMBIAR en la colocación rival el juego le pide bloquear
     if (g.swingLive && p.z > 0 && (useGap || useAim)) out.move = aimv; // en el aire mantiene la dirección mientras dura el gesto
     const since = g.time - g.lastTouchT, job = g.jobs[0] === p;
     let tx = p.x, ty = p.y;
     const attack = job && g.touchTeam === 0 && g.touches === 2 && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5;
     if (job) {
-      if (attack) { tx = g.pr3.x + 0.35 * sd; ty = g.pr3.y; } else { tx = g.pr1.x + 0.15; ty = g.pr1.y; }
-      tx += ex; ty += ey;
-    } else if (g.defRole === 'dig' && g.touchTeam === 1) { tx = 5.4; ty = Math.max(-2, Math.min(2, -g.pr3.y * 0.3)); } // el juego le da la defensa
-    else if (bp.block && g.touchTeam === 1 && g.touches === 2 && g.pr3.x < 0) { tx = 0.6; ty = g.pr3.y; }
+      const pr = attack ? g.pr3 : g.pr1;
+      if (attack) { tx = pr.x + 0.35 * sd; ty = pr.y; } else { tx = pr.x + 0.15; ty = pr.y; }
+      // error de lectura: crece con el vuelo que queda y la distancia; en profundidad (eje de la cámara) es mayor
+      const dist = Math.hypot(pr.x - p.x, pr.y - p.y), tr = Math.max(0, pr.t);
+      const s = bp.posErr * (0.22 + 0.55 * Math.min(1.6, tr / 1.1) + 0.06 * Math.min(8, dist));
+      tx += eu * s * 0.5 * bp.depth; ty += ev * s * 0.5;
+      if (wrongD && since < wrongT) tx += wrongD;
+    } else if (g.defRole === 'dig' && g.touchTeam === 1 && !naive) { tx = 5.4; ty = Math.max(-2, Math.min(2, -g.pr3.y * 0.3)); } // el juego le da la defensa
+    else if (blocks && g.touchTeam === 1 && g.touches === 2 && g.pr3.x < 0) { tx = 0.6; ty = g.pr3.y + ev * bp.posErr * 0.4; } // lee el ataque con error
     else if (!job) { tx = 6; ty = -g.teams[0][g.ctrl.idx ? 0 : 1].y * 0.5; }
-    if (since >= bp.react && p.z === 0) {
+    // hasta reaccionar sigue con lo que hacía (no se para en seco); luego va al punto leído con inercia del stick
+    if (since >= react && p.z === 0) {
       const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
-      if (d > 0.08) { const f = Math.min(1, d / 0.3); mv[0] = dx / d * f; mv[1] = dy / d * f; } else { mv[0] = mv[1] = 0; }
+      if (d > bp.stop) { const f = Math.min(1, d / 0.3); want[0] = dx / d * f; want[1] = dy / d * f; } else { want[0] = want[1] = 0; }
     }
-    if (job && since >= bp.react * 0.5) {
+    { const k = bp.acc * DT2, ddx = want[0] - mv[0], ddy = want[1] - mv[1], dl = Math.hypot(ddx, ddy);
+      if (dl <= k) { mv[0] = want[0]; mv[1] = want[1]; } else { mv[0] += ddx / dl * k; mv[1] += ddy / dl * k; } }
+    if (job && since >= react * 0.6) {
       S.hitWindow(g, p, w);
-      if (attack && p.z === 0 && w.attack && w.jumpT <= jlead && Math.hypot(tx - ex - p.x, ty - ey - p.y) < 1.3) out.jump = true;
-      const near = Math.hypot(g.ball.x - p.x, g.ball.y - p.y) < 2.6;
-      if (near && !(attack && p.z === 0 && w.jumpT > -0.2) && presses < 2 && !g.swingLive && w.t <= lead) {
+      if (attack && jumpOk && p.z === 0 && w.attack && w.jumpT <= jlead && Math.hypot(g.pr3.x + 0.35 - p.x, g.pr3.y - p.y) < 1.3) out.jump = true;
+      const near = Math.hypot(b.x - p.x, b.y - p.y) < 2.6;
+      if (near && !(attack && jumpOk && p.z === 0 && w.jumpT > -0.2) && presses < 2 && !g.swingLive && w.t <= lead) {
         out.hit = true; presses++;
         if (useGap && p.z > 0.25) { gapAim(g, p, aimv); out.move = aimv; } // remate: busca el hueco
         else if (useAim) out.move = aimv;
       }
     }
-    // bloqueo: salta cuando el rematador rival despega
-    if (bp.block && !job && p.z === 0 && Math.abs(p.x) < 1.2 && g.touchTeam === 1 && g.touches === 2) {
+    // bloqueo: salta cuando VE despegar al rematador rival (con su reacción y su error de timing)
+    if (blocks && !job && p.z === 0 && Math.abs(p.x) < 1.2 && g.touchTeam === 1 && g.touches === 2) {
       const att = g.teams[1].some(q => q.z > 0.35 && q.vz < 1.5 && Math.abs(q.x) < 4);
-      if (att) out.jump = true;
+      if (att && blockSeen !== stamp) { blockSeen = stamp; blockT = g.time + Math.max(0, bp.react * 0.35 + gauss() * bp.sigma * (naive ? 2.4 : 1.2)); }
+      if (att && g.time >= blockT) out.jump = true;
+    }
+    // cámara recién deslizada a otro jugador: el stick va girado yawE (se corrige en 0,5 s)
+    if (yawE && out.move === mv) {
+      const k = 1 - (g.time - yawT) / 0.5;
+      if (k <= 0) yawE = 0;
+      else { const a = yawE * k, c = Math.cos(a), s2 = Math.sin(a); mvOut[0] = mv[0] * c - mv[1] * s2; mvOut[1] = mv[0] * s2 + mv[1] * c; out.move = mvOut; }
     }
     return out;
   };
@@ -220,14 +290,15 @@ function topWhy(w) { return Object.entries(w).sort((a, b) => b[1] - a[1]).slice(
 
 /** Trabajo de una casilla de la matriz (se ejecuta en un worker). */
 function runJob(j) {
-  const opts = j.kind === 'auto' ? { demo: false, autopilot: true, difficulty: j.diff } : { demo: false, difficulty: j.diff, serveClock: true };
-  const r = run(j.label, opts, j.seconds, j.kind === 'bot' ? makeBot(BOTS[j.bot], j.seed) : null, true);
+  const opts = j.kind === 'auto' ? { demo: false, autopilot: true, difficulty: j.diff, seed: j.seed } :
+    { demo: false, difficulty: j.diff, serveClock: true, seed: j.seed, rookie: !!BOTS[j.bot].rookie && ROOKIE_MODE !== 'off' };
+  const r = run(j.label, opts, j.seconds, j.kind === 'bot' ? makeBot(BOTS[j.bot], j.seed * 7 + 3) : null, true);
   return { label: j.label, kind: j.kind, bot: j.bot, diff: j.diff, won0: r.st.won[0], points: r.st.points, med: r.med,
     hits: r.st.hits, how: r.st.how, blocks: r.st.blocks, dives: r.st.dives, misses: r.st.misses, hgrades: r.st.hgrades, why: r.st.why,
     matchWins: r.matchWins, failures };
 }
 function runMatrix(jobs) {
-  const n = Math.max(1, Math.min(jobs.length, (os.cpus().length || 2) - 1, 8)), out = new Array(jobs.length);
+  const n = Math.max(1, Math.min(jobs.length, (os.cpus().length || 2) - 1, 15)), out = new Array(jobs.length);
   let next = 0;
   return new Promise((resolve) => {
     let alive = 0;
@@ -245,8 +316,8 @@ function runMatrix(jobs) {
 
 async function main() {
 // ================= 1) CPU vs CPU =================
-const demo = run('CPU vs CPU (demo, Normal vs Normal)', { demo: true }, MIN * 60);
-{
+if (ONLY !== 'matrix') {
+const demo = run('CPU vs CPU (demo del menú, perfil DIFF.demo)', { demo: true }, MIN * 60);
   const { st, ev, med } = demo;
   if (st.points < MIN * 4.5) fail('muy pocos puntos en demo: ' + st.points);
   if (st.hits.pass < 20 || st.hits.set < 10 || st.hits.spike < 5) fail('faltan pases/colocaciones/remates');
@@ -257,14 +328,22 @@ const demo = run('CPU vs CPU (demo, Normal vs Normal)', { demo: true }, MIN * 60
   if (MIN >= 15 && demo.matches < 1 && demo.setsSeen < 2) fail('ningún partido completo ni dos sets en demo');
   const f = st.won[0] / st.points; if (f < 0.3 || f > 0.7) fail('reparto de puntos desequilibrado en demo ' + f.toFixed(2));
   // remates que acaban en punto (CPU vs CPU): ni todo remate es punto ni la defensa lo saca todo (objetivo ~45-55 %)
+  // Banda 0,38-0,65 para una demo de 20 min (~165 remates: ±3,5σ de muestreo alrededor de 0,515). En carreras más
+  // cortas el ruido crece como 1/√n: la banda se ensancha en la misma proporción (10 min, ~80 remates: 0,32-0,71).
+  // Medido (R6, 105 semillas): 20 min 41-61 %, 10 min 38-65 % con el mismo perfil (σ 3,9 y 5,5 puntos).
   { const sp = st.spikes[0] + st.spikes[1], kr = (st.kills[0] + st.kills[1]) / Math.max(1, sp);
-    if (sp > 40 && (kr < 0.38 || kr > 0.65)) fail('remates que son punto fuera de rango: ' + (100 * kr).toFixed(0) + '%'); else console.log('remates que son punto (demo): ' + (100 * kr).toFixed(0) + '% de ' + sp); }
+    const kh = 0.135 * Math.max(1, Math.sqrt(165 / Math.max(1, sp))), klo = 0.515 - kh, khi = 0.515 + kh;
+    if (sp > 40 && (kr < klo || kr > khi)) fail('remates que son punto fuera de rango: ' + (100 * kr).toFixed(0) + '% (banda ' + (100 * klo).toFixed(0) + '-' + (100 * khi).toFixed(0) + ' % con ' + sp + ' remates)');
+    else console.log('remates que son punto (demo): ' + (100 * kr).toFixed(0) + '% de ' + sp); }
   const wf = Object.entries(st.why); const inPts = wf.filter(([k]) => /cae en/.test(k)).reduce((a, [, v]) => a + v, 0);
-  if (inPts / st.points < 0.55) fail('demasiados puntos por error (no por balón dentro): ' + pct(inPts, st.points));
+  // Media medida 0,72 (40 semillas × 20 min, ~115 puntos). El mínimo 0,55 está a ~4σ binomial con 115 puntos;
+  // en pruebas cortas se abre con √(115/n) para mantener la misma tasa de falso fallo (p. ej. 10 min ≈ 0,48).
+  const ilo = 0.72 - 0.17 * Math.max(1, Math.sqrt(115 / Math.max(1, st.points)));
+  if (inPts / st.points < ilo) fail('demasiados puntos por error (no por balón dentro): ' + pct(inPts, st.points) + ' (mínimo ' + (100 * ilo).toFixed(0) + ' % con ' + st.points + ' puntos)');
 }
 
 // ================= 3) Fuzz: entrada humana aleatoria =================
-{
+if (ONLY !== 'matrix') {
   const rng = S._makeRng(SEED ^ 0xabc), held = [0, 0];
   run('Fuzz humano aleatorio', { demo: false }, 8 * 60, (g, i) => {
     if (i % 30 === 0) { const a = rng() * Math.PI * 2, m = rng() < 0.2 ? 0 : rng(); held[0] = Math.cos(a) * m; held[1] = Math.sin(a) * m; }
@@ -277,18 +356,34 @@ const demo = run('CPU vs CPU (demo, Normal vs Normal)', { demo: true }, MIN * 60
   if (BOTMIN > 0) {
     const jobs = [];
     const LV = VB.DIFF_ORDER; // easy, normal, hard, expert
-    for (const d of LV) jobs.push({ kind: 'auto', diff: d, seconds: BOTMIN * 60, label: 'auto ' + d, seed: SEED });
-    for (const bn of Object.keys(BOTS)) for (const d of LV)
-      jobs.push({ kind: 'bot', bot: bn, diff: d, seconds: BOTMIN * 60, label: `bot ${bn} vs ${d}`, seed: SEED + bn.length * 31 + d.length });
-    const t0 = Date.now(), res = await runMatrix(jobs);
-    for (const r of res) if (r) failures += r.failures;
-    console.log(`\n######## IA compañero (equipo 0) contra cada dificultad  [${BOTMIN} min de juego por casilla, ${((Date.now() - t0) / 1000).toFixed(1)} s en paralelo] ########`);
+    for (let s = 0; s < NSEED; s++) {
+      for (const d of LV) jobs.push({ kind: 'auto', diff: d, seconds: BOTMIN * 60, label: 'auto ' + d, seed: SEED + 1000 * s });
+      for (const bn of Object.keys(BOTS)) for (const d of LV)
+        jobs.push({ kind: 'bot', bot: bn, diff: d, seconds: BOTMIN * 60, label: `bot ${bn} vs ${d}`, seed: SEED + bn.length * 31 + d.length + 1000 * s });
+    }
+    if (MFILTER) for (let i = jobs.length - 1; i >= 0; i--) if (!MFILTER.test(jobs[i].label)) jobs.splice(i, 1);
+    const t0 = Date.now(), raw = await runMatrix(jobs);
+    for (const r of raw) if (r) failures += r.failures;
+    // suma las semillas de cada casilla
+    const cells = new Map();
+    const addObj = (a, b) => { for (const k in b) a[k] = (a[k] || 0) + b[k]; return a; };
+    for (const r of raw) {
+      if (!r) continue;
+      const k = r.kind + ':' + (r.bot || '') + ':' + r.diff, c = cells.get(k);
+      if (!c) { cells.set(k, Object.assign({}, r, { hits: Object.assign({}, r.hits), how: Object.assign({}, r.how), hgrades: Object.assign({}, r.hgrades), why: Object.assign({}, r.why), matchWins: r.matchWins.slice(), meds: [r.med] })); continue; }
+      c.won0 += r.won0; c.points += r.points; c.blocks += r.blocks; c.dives += r.dives; c.misses += r.misses; c.meds.push(r.med);
+      addObj(c.hits, r.hits); addObj(c.how, r.how); addObj(c.hgrades, r.hgrades); addObj(c.why, r.why);
+      c.matchWins[0] += r.matchWins[0]; c.matchWins[1] += r.matchWins[1];
+    }
+    const res = [...cells.values()];
+    for (const c of res) c.med = c.meds.reduce((a, b) => a + b, 0) / c.meds.length;
+    console.log(`\n######## IA compañero (equipo 0) contra cada dificultad  [${NSEED} semillas × ${BOTMIN} min de juego por casilla, ${((Date.now() - t0) / 1000).toFixed(1)} s en paralelo] ########`);
     const diffShare = {};
     for (const r of res.filter(r => r && r.kind === 'auto')) {
       diffShare[r.diff] = r.won0 / r.points;
       console.log(`  vs ${VB.DIFF[r.diff].name.padEnd(8)} puntos IA-compañero ${pct(r.won0, r.points)} (${r.points} pts)  rally mediana ${r.med.toFixed(2)} s  remates ${r.hits.spike} bloqueos ${r.blocks} planchas ${r.dives}  partidos ${r.matchWins.join('-')}  cómo ${JSON.stringify(r.how)}`);
     }
-    if (BOTMIN >= 20 && !(diffShare.easy > diffShare.normal + 0.04 && diffShare.normal > diffShare.hard + 0.02 && diffShare.hard > diffShare.expert + 0.02)) fail('las dificultades no están ordenadas: ' + JSON.stringify(diffShare));
+    if (BOTMIN >= 20 && !MFILTER && !(diffShare.easy > diffShare.normal + 0.04 && diffShare.normal > diffShare.hard + 0.02 && diffShare.hard > diffShare.expert + 0.02)) fail('las dificultades no están ordenadas: ' + JSON.stringify(diffShare));
     console.log('\n######## Bots humanos (solo entrada de mando) contra la CPU ########');
     const botRes = {};
     for (const r of res.filter(r => r && r.kind === 'bot')) {
@@ -298,16 +393,19 @@ const demo = run('CPU vs CPU (demo, Normal vs Normal)', { demo: true }, MIN * 60
         `toques P/B/M ${pct(hg.perfect, ht)}/${pct(hg.good, ht)}/${pct(hg.poor, ht)}  fallos ${r.misses}  rally ${r.med.toFixed(1)} s  ` +
         `partidos ${r.matchWins.join('-')}  ${JSON.stringify(topWhy(r.why))}`);
     }
-    if (BOTMIN >= 20) { // objetivos de diseño (márgenes amplios: son estimaciones estadísticas)
+    if (BOTMIN >= 20 && !MFILTER) { // objetivos de diseño (márgenes amplios: son estimaciones estadísticas)
       // curva de 4 niveles (revisión 2): quien acaba de superar Fácil no pierde casi todos los partidos en Normal
       const rng2 = (k, a, b, why) => { if (!(botRes[k] > a && botRes[k] < b)) fail(why + ' (' + k + ' = ' + (botRes[k] || 0).toFixed(2) + ', objetivo ' + a + '-' + b + ')'); };
-      rng2('medio:normal', 0.53, 0.70, 'bot medio vs Normal: objetivo ~60 % de puntos (~75 % de partidos)');
-      rng2('novato:normal', 0.27, 0.45, 'bot novato vs Normal: objetivo ~35 % de puntos');
-      rng2('medio:hard', 0.38, 0.58, 'bot medio vs Difícil: objetivo ~48 %');
+      // revisión 3 (bots humanos en tercera persona; márgenes = objetivo ± ruido de 4 semillas × 20 min, ~2,5 puntos de %)
+      rng2('novato:easy', 0.40, 0.51, 'novato en su primera sesión vs Fácil: objetivo 45-49 % de puntos (perdona, pero no es automático; gana ~1 de cada 3)');
+      rng2('medio:normal', 0.44, 0.57, 'jugador medio vs Normal: objetivo ~50 % de puntos');
+      rng2('novato:normal', 0.22, 0.42, 'novato vs Normal: objetivo ~33 %');
+      if (!(botRes['medio:easy'] > 0.62)) fail('Fácil no perdona a un jugador medio (' + botRes['medio:easy'].toFixed(2) + ')');
+      if (!(botRes['medio:hard'] < botRes['medio:normal'] - 0.06 && botRes['medio:expert'] < botRes['medio:hard'] - 0.06)) fail('Difícil/Experto no son claramente más difíciles para el jugador medio');
+      if (!(botRes['bueno:expert'] < 0.5)) fail('Experto no exige a un buen jugador');
       if (!(botRes['perfecto:expert'] > 0.5)) fail('bot perfecto no gana a Experto');
-      if (!(botRes['novato:easy'] > 0.4)) fail('el novato no tiene opciones ni en Fácil');
-      if (!(botRes['novato:expert'] < 0.3)) fail('Experto no exige: el novato le gana demasiados puntos');
-      for (const d of LV) if (!(botRes['perfecto:' + d] > botRes['medio:' + d] && botRes['medio:' + d] > botRes['novato:' + d])) fail('la habilidad no se nota contra ' + d);
+      if (!(botRes['novato:expert'] < 0.25)) fail('Experto no exige: el novato le gana demasiados puntos');
+      for (const d of LV) if (!(botRes['perfecto:' + d] > botRes['bueno:' + d] && botRes['bueno:' + d] > botRes['medio:' + d] && botRes['medio:' + d] > botRes['novato:' + d])) fail('la habilidad no se nota contra ' + d);
       for (const bn of Object.keys(BOTS)) for (let i = 1; i < LV.length; i++) if (!(botRes[bn + ':' + LV[i - 1]] > botRes[bn + ':' + LV[i]] - 0.03)) fail('nivel ' + LV[i] + ' no es más difícil que ' + LV[i - 1] + ' para el bot ' + bn);
     }
   }
@@ -323,7 +421,7 @@ function stepUntil(g, type, maxSteps, inputFn) { // avanza hasta ver un evento d
 }
 function rallyAt(g, ball) { g.mode = 'rally'; g.ball.held = null; Object.assign(g.ball, { vx: 0, vy: 0, vz: 0, dip: 0, wobA: 0 }, ball); }
 console.log('');
-{
+if (ONLY !== 'matrix') {
   // 4 toques
   const g = S.createGame({ demo: false, seed: 1 }), p = g.teams[0][0], q = g.teams[0][1];
   rallyAt(g, { x: 3, y: 0, z: 1.5, vz: -1 }); g.touchTeam = 0; g.touches = 3; g.lastPlayer = q; g.lastKind = 'free';
@@ -430,10 +528,11 @@ console.log('');
     if (!gr || !new RegExp('^(' + want + ')$').test(gr)) fail(`timing lead ${lead}: esperado ${want}, obtenido ${gr}`);
     else console.log(`timing pulsando ${(lead * 1000).toFixed(0)} ms antes del ideal -> ${gr} OK`);
   }
-  // timing: lo aprendible. Pulsar al aparecer "¡Golpea ahora!" (t<0,22) + reacción humana (~120-220 ms) no penaliza
+  // timing: lo aprendible. Pulsar al aparecer "¡Golpea ahora!" / el brillo de GOLPEAR (press en (-0,15, 0,24), ui.js e input.js)
+  // + reacción humana (~150-300 ms) no penaliza
   {
     const gradesAt = {};
-    for (const delay of [0, 0.05, 0.1, 0.15, 0.2]) {
+    for (const delay of [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]) {
       const res = {};
       for (let s = 0; s < 12; s++) {
         const gt = S.createGame({ demo: false, seed: 300 + s }), ht = gt.teams[0][0];
@@ -442,7 +541,7 @@ console.log('');
         let shown = -1, pressed = false, gr = 'none'; const w = {};
         for (let i = 0; i < 300; i++) {
           S.hitWindow(gt, ht, w);
-          if (shown < 0 && w.reach && w.t < 0.22 && w.t > -0.06) shown = gt.time;
+          if (shown < 0 && w.reach && w.press < 0.24 && w.press > -0.15) shown = gt.time;
           const h = shown >= 0 && !pressed && gt.time - shown >= delay - 1e-9; if (h) pressed = true;
           S.step(gt, DT, { move: [0, 0], hit: h, jump: false }); const evs = S.drainEvents(gt);
           const hv = evs.find(e => e.type === 'hit' && e.human); if (hv) { gr = hv.grade; break; }
@@ -453,7 +552,8 @@ console.log('');
       gradesAt[delay] = res;
     }
     const ok = (d, k, n) => (gradesAt[d][k] || 0) >= n;
-    if (!(ok(0.1, 'perfect', 9) && ok(0.15, 'perfect', 9) && ok(0.2, 'perfect', 6) && !ok(0, 'perfect', 1)))
+    const okG = (d, n) => (gradesAt[d].perfect || 0) + (gradesAt[d].good || 0) >= n;
+    if (!(ok(0.2, 'perfect', 9) && ok(0.25, 'perfect', 9) && okG(0.15, 9) && okG(0.3, 9) && !ok(0, 'perfect', 1)))
       fail('timing tras el aviso no es aprendible: ' + JSON.stringify(gradesAt));
     else console.log('timing tras "¡Golpea ahora!" (0/50/100/150/200 ms):', Object.values(gradesAt).map(r => JSON.stringify(r)).join(' '), 'OK');
   }
@@ -490,14 +590,61 @@ console.log('');
     }
   }
   console.log('llamada de línea (2 cm fuera = dentro, 8 cm = fuera) OK');
+  // saque / remate que roza la cinta y cae dentro sin que nadie lo toque: ace / kill (no "falta"); el que va a la red
+  // y cae en su propio campo sigue siendo error
+  let ncBad = 0;
+  for (const [kind, want, bx] of [['serve', 'ace', -3], ['spike', 'kill', -3], ['spike', 'error', 2]]) {
+    const gn = S.createGame({ demo: false, seed: 42 });
+    rallyAt(gn, { x: bx, y: 0, z: 0.6, vz: -3 });
+    gn.lastTeam = 0; gn.touchTeam = 0; gn.lastKind = kind; gn.lastShot = kind === 'serve' ? 'float' : 'power'; gn.touches = kind === 'serve' ? 1 : 3;
+    gn.lastPlayer = gn.teams[0][0]; gn.netSince = true; for (const p of gn.players) { p.x = S.side(p.team) * 8.5; p.y = 3; }
+    const pt = stepUntil(gn, 'point', 240).find(e => e.type === 'point'), wt = want === 'error' ? 1 : 0;
+    if (!pt || pt.team !== wt || pt.how !== want) { ncBad++; fail(`balón que roza la red (${kind}, x=${bx}): esperado ${want} para ${wt}, obtenido ${pt && pt.how} para ${pt && pt.team}`); }
+  }
+  if (!ncBad) console.log('saque/remate que roza la cinta y cae dentro = ace/kill OK');
+  // aimPoint y hit() deciden remate/libre con el mismo criterio (aro = golpe real)
+  {
+    let bad = 0;
+    for (const [pz, bz, bx] of [[0.18, C.NET_H + 0.5, 1.5], [0.6, C.NET_H + 0.05, 1.5], [0.6, C.NET_H + 0.5, 4.0], [0.6, C.NET_H + 0.5, 1.5], [0, 2, 3]]) {
+      const ga = S.createGame({ demo: false, seed: 43 }), h = ga.teams[0][0];
+      rallyAt(ga, { x: bx, y: 0, z: bz, vz: -0.5 }); ga.touchTeam = 0; ga.touches = 2; ga.lastTeam = 0; ga.lastPlayer = ga.teams[0][1]; ga.lastKind = 'set';
+      ga.ctrl = h; h.x = bx + 0.3; h.y = 0; h.z = pz; h.vz = 0;
+      const ap = S.aimPoint(ga, {}, null); S._hit(ga, h, null, 0, 'spike');
+      const hv = S.drainEvents(ga).find(e => e.type === 'hit');
+      if (!ap || !hv || ap.kind !== hv.kind) { bad++; fail(`aimPoint/hit discrepan (p.z=${pz}, b.z=${bz.toFixed(2)}, b.x=${bx}): aro ${ap && ap.kind}, golpe ${hv && hv.kind}`); }
+    }
+    if (!bad) console.log('aimPoint y hit() coinciden en remate/libre OK');
+  }
   // ataque del saque rival por encima de la red en zona de ataque = falta (13.3.4)
   {
     const gx = S.createGame({ demo: false, seed: 41 });
     rallyAt(gx, { x: 0.9, y: 0, z: 3.1, vx: 8, vz: -1 }); gx.lastKind = 'serve'; gx.touchTeam = 1; gx.lastTeam = 1; gx.touches = 3; gx.lastPlayer = gx.teams[1][0];
     const h = gx.teams[0][0]; gx.ctrl = h; h.x = 1.2; h.y = 0; h.z = 0.9; h.vz = 0.5;
-    S._hit(gx, h, null, 0, '', null); const pe = S.drainEvents(gx).find(e => e.type === 'point');
-    if (!pe || pe.reason !== 'attackServe' || pe.team !== 1) fail('atacar el saque por encima de la red no es falta'); else console.log('regla ataque del saque OK');
+    for (const q of gx.players) if (q !== h) { q.x = S.side(q.team) * 8; q.y = 3.5; }
+    S._hit(gx, h, null, 0, '', null);
+    const e0 = S.drainEvents(gx), pe = e0.find(e => e.type === 'point') || stepUntil(gx, 'point', 240).find(e => e.type === 'point');
+    if (e0.some(e => e.type === 'point')) fail('ataque del saque pitado en el contacto, antes de que el balón cruce la red');
+    if (!pe || pe.reason !== 'attackServe' || pe.team !== 1) fail('atacar el saque por encima de la red no es falta (al cruzar la red)'); else console.log('regla ataque del saque (pitada al cruzar la red) OK');
   }
+  // ... pero una recepción alta en zona de ataque dirigida al PROPIO campo no es ataque (13.3.4: solo si se completa)
+  {
+    const gx = S.createGame({ demo: false, seed: 5 }), h = gx.teams[0][0];
+    rallyAt(gx, { x: 1.6, y: 0, z: 2.75, vx: -0.5, vz: -1 }); gx.lastKind = 'serve'; gx.touchTeam = 1; gx.lastTeam = 1; gx.touches = 0; gx.lastPlayer = gx.teams[1][0];
+    gx.ctrl = h; h.x = 1.8; h.y = 0; h.z = 0.5;
+    S._hit(gx, h, [1, 0], 0, '', [3, 0]);
+    const all = S.drainEvents(gx).concat(stepUntil(gx, 'hit', 400)), pe = all.find(e => e.type === 'point');
+    if (pe && pe.reason === 'attackServe') fail('recepción alta hacia el propio campo pitada como ataque del saque');
+    else console.log('recepción alta del saque hacia el propio campo: sin falta de ataque OK');
+  }
+  // balón que da en la red y cae FUERA en el propio campo: "a la red", no "fuera" (nunca cruzó)
+  for (const [kind, shot, want] of [['spike', 'power', 'Balón a la red'], ['serve', 'float', 'Saque a la red'], ['set', 'overhead', 'Balón a la red']]) {
+    const gn = S.createGame({ demo: false, seed: 7 }); for (const q of gn.players) { q.x = S.side(q.team) * 8.5; q.y = -3.5; }
+    rallyAt(gn, { x: 0.6, y: 3.5, z: 2.0, vx: -6, vy: 4 });
+    gn.lastTeam = 0; gn.touchTeam = 0; gn.touches = kind === 'serve' ? 0 : kind === 'set' ? 2 : 3; gn.lastKind = kind; gn.lastShot = shot; gn.lastPlayer = gn.teams[0][0];
+    const all = stepUntil(gn, 'point', 900), net = all.some(e => e.type === 'net'), ld = all.find(e => e.type === 'land'), pe = all.find(e => e.type === 'point');
+    if (!net || !ld || ld.inside || !pe || pe.text !== want || pe.team !== 1) fail(`${kind} a la red que cae fuera en su campo: red=${net} bote=${ld && ld.inside} -> ${pe && pe.reason} "${pe && pe.text}"`);
+  }
+  console.log('balón a la red que cae fuera en el propio campo = "Saque/Balón a la red" OK');
   // penetración: no se juega un balón que ya está en el campo rival
   {
     const gp = S.createGame({ demo: false, seed: 42 }), pp = gp.teams[0][0];
@@ -654,6 +801,78 @@ console.log('');
     lead.sort((a, b) => a - b); const med = lead.length ? lead[lead.length >> 1] : 0;
     const msg = 'rol defensivo: ' + lead.length + ' cambios al colocar la CPU (antelación mediana al remate ' + med.toFixed(2) + ' s), ' + after + ' cambios con balón rápido tras el remate de ' + spikes;
     if (lead.length < 5 || med < 0.6 || after) fail(msg); else console.log(msg + ' OK');
+  }
+  // ---------- revisión 3 ----------
+  // antena tocada SIN cruzar la red: falta del último que tocó (8.4.3)
+  {
+    const gA = S.createGame({ demo: false, seed: 90 });
+    rallyAt(gA, { x: 0.12, y: 4.0, z: 2.9, vy: 3.5, vz: 0.5 }); gA.lastTeam = 0; gA.touchTeam = 0; gA.touches = 2; gA.lastKind = 'set'; gA.lastPlayer = gA.teams[0][1];
+    for (const p of gA.players) { p.x = S.side(p.team) * 6; p.y = 0; }
+    const eA = stepUntil(gA, 'point', 240).find(e => e.type === 'point');
+    // tras un bloqueo: el balón que toca el bloqueo y luego la antena es punto del atacante
+    const gB = S.createGame({ demo: false, seed: 91 });
+    rallyAt(gB, { x: -0.15, y: 4.05, z: 3.0, vy: 3, vz: 0.3 }); gB.lastTeam = 1; gB.touchTeam = 1; gB.touches = 0; gB.lastKind = 'block'; gB.lastPlayer = null; gB.atkTeam = 0;
+    for (const p of gB.players) { p.x = S.side(p.team) * 6; p.y = 0; }
+    const eB = stepUntil(gB, 'point', 240).find(e => e.type === 'point');
+    // balón que cruza por encima de la antena con parte del balón por fuera del espacio de paso (8.4.4)
+    const gC = S.createGame({ demo: false, seed: 92 });
+    rallyAt(gC, { x: 0.1, y: 4.4, z: 4.2, vx: -4 }); gC.lastTeam = 0; gC.touchTeam = 0; gC.touches = 1;
+    const eC = stepUntil(gC, 'point', 240).find(e => e.type === 'point');
+    // y uno que cruza alto pero entero por dentro: sigue en juego
+    const gD = S.createGame({ demo: false, seed: 93 });
+    rallyAt(gD, { x: 0.1, y: 4.0, z: 4.2, vx: -4 }); gD.lastTeam = 0; gD.touchTeam = 0; gD.touches = 1; gD.lastKind = 'free';
+    for (const p of gD.players) { p.x = S.side(p.team) * 8.5; p.y = -3; }
+    const eD = stepUntil(gD, 'point', 30).find(e => e.type === 'point');
+    if (!eA || eA.reason !== 'antenna' || eA.team !== 1 || !/toca la antena/.test(eA.text) || !eA.antenna) fail('antena tocada sin cruzar: ' + JSON.stringify(eA && [eA.reason, eA.team, eA.text, eA.antenna]));
+    else if (!eB || eB.reason !== 'antenna' || eB.team !== 0) fail('bloqueo y antena: ' + JSON.stringify(eB && [eB.reason, eB.team]));
+    else if (!eC || eC.reason !== 'antenna' || eC.antenna !== null || !/fuera de la antena/.test(eC.text)) fail('cruce en parte por fuera por encima de la antena: ' + JSON.stringify(eC && [eC.reason, eC.text]));
+    else if (eD) fail('balón alto que cruza por dentro sancionado: ' + eD.text);
+    else console.log('antena sin cruzar, bloqueo + antena, cruce en parte por fuera sobre la antena OK');
+  }
+  // texto del árbitro para el balón fuera según el último toque
+  {
+    const outCase = (kind, shot, prev) => {
+      const go = S.createGame({ demo: false, seed: 95 });
+      rallyAt(go, { x: -5, y: -(C.HW + 0.5), z: 0.5, vz: -3 }); go.lastTeam = 0; go.touchTeam = 0; go.touches = 2; go.lastKind = kind; go.lastShot = shot; go.prevKind = prev;
+      for (const p of go.players) { p.x = S.side(p.team) * 8.5; p.y = 3; }
+      const e = stepUntil(go, 'point', 240).find(x => x.type === 'point'); return e ? e.reason + ':' + e.text : 'nada';
+    };
+    const got = [outCase('serve', 'float', ''), outCase('spike', 'power', 'set'), outCase('free', 'tip', 'set'), outCase('pass', 'forearm', 'serve'), outCase('pass', 'dig', 'spike'), outCase('block', 'tool', 'spike'), outCase('set', 'overhead', 'pass')];
+    const want = ['out:Saque fuera', 'out:Remate fuera', 'out:Dejada fuera', 'out:Recepción fuera', 'out:Defensa fuera', 'out:Toca el bloqueo y sale fuera', 'out:Colocación fuera'];
+    if (got.join('|') !== want.join('|')) fail('textos de balón fuera: ' + got.join(' | ')); else console.log('textos de balón fuera (' + got.map(x => x.slice(4)).join(', ') + ') OK');
+  }
+  // Sim.aimPoint: el saque y el remate van a donde dice la retícula (sin el error de ejecución)
+  {
+    const ga = S.createGame({ demo: false, seed: 96 }); let ok = true, msg = [];
+    S.step(ga, DT, null);
+    if (S.aimPoint(ga, {}) !== null) { ok = false; msg.push('antes del silbato'); }
+    for (let i = 0; i < 120 && !ga.serveAuth; i++) S.step(ga, DT, null);
+    const a1 = S.aimPoint(ga, {}, [-1, 0]), a2 = S.aimPoint(ga, {}, [0, 1]), a0 = S.aimPoint(ga, {});
+    if (!a1 || a1.mode !== 1 || a1.kind !== 'serve' || Math.abs(a1.x + 8.4) > 1e-9 || Math.abs(a2.y - 3.4) > 1e-9 || a0.aimed || a0.x !== -6) { ok = false; msg.push('saque ' + JSON.stringify([a1, a2, a0])); }
+    // saque real apuntado con timing perfecto: el destino del evento hit es el de aimPoint
+    let tossed = false, hitE = null, ap = null;
+    for (let i = 0; i < 600 && !hitE; i++) {
+      const inp = { move: [-0.6, 0.8], hit: false, jump: false };
+      if (ga.serveState === 'ready' && !tossed) { inp.hit = true; tossed = true; }
+      else if (ga.serveState === 'toss' && ga.ball.vz < 0 && S.hitWindow(ga, ga.ctrl).t <= C.WINDUP && !ga.swingLive) { inp.hit = true; ap = Object.assign({}, S.aimPoint(ga, {}, inp.move)); }
+      S.step(ga, DT, inp); hitE = S.drainEvents(ga).find(e => e.type === 'hit');
+    }
+    if (!hitE || !ap || ap.mode !== 2 || Math.hypot(hitE.target[0] - ap.x, hitE.target[1] - ap.y) > 1e-6) { ok = false; msg.push('saque real ' + JSON.stringify([hitE && hitE.target, ap])); }
+    // remate del humano en el aire: hit.target = aimPoint
+    for (const mv of [[-0.5, 0.8], [0.9, -0.3], null]) {
+      const gr = S.createGame({ demo: false, seed: 97 }), h = gr.teams[0][0];
+      rallyAt(gr, { x: 0.9, y: 0.5, z: 3.1, vz: -0.5 }); gr.touchTeam = 0; gr.touches = 2; gr.lastTeam = 0; gr.lastKind = 'set'; gr.lastPlayer = gr.teams[0][1];
+      gr.ctrl = h; h.x = 1.2; h.y = 0.5; h.z = 0.8; h.vz = 0.5;
+      const r = S.aimPoint(gr, {}, mv || [0, 0]);
+      const l = mv ? Math.hypot(mv[0], mv[1]) : 1;
+      S._hit(gr, h, mv ? [mv[0] / l, mv[1] / l] : null, 0, '', null);
+      const e = S.drainEvents(gr).find(x => x.type === 'hit');
+      if (!r || r.kind !== 'spike' || !e || Math.hypot(e.target[0] - r.x, e.target[1] - r.y) > 1e-9) { ok = false; msg.push('remate ' + JSON.stringify([r, e && e.target])); }
+    }
+    // la CPU sacando: no hay retícula
+    const gc2 = S.createGame({ demo: false, seed: 98 }); gc2.serving = 1; S._setupServe(gc2); for (let i = 0; i < 100; i++) S.step(gc2, DT, null);
+    if (gc2.mode === 'serve' && S.aimPoint(gc2, {}) !== null) { ok = false; msg.push('saque de la CPU'); }
+    if (!ok) fail('Sim.aimPoint: ' + msg.join('; ')); else console.log('Sim.aimPoint (saque: vista previa y real, remate con y sin dirección, CPU sin retícula) OK');
   }
   // dificultades: alias en castellano
   if (S.createGame({ difficulty: 'Difícil', seed: 1 }).difficulty !== 'hard' || S.createGame({ difficulty: 'facil', seed: 1 }).difficulty !== 'easy' || S.createGame({ difficulty: 'Experto', seed: 1 }).difficulty !== 'expert') fail('alias de dificultad');

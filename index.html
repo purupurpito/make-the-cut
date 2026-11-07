@@ -112,12 +112,24 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 #touchbar{position:absolute;left:50%;top:calc(14px + var(--st));transform:translateX(-50%);display:flex;align-items:center;gap:6px;
   font-family:var(--display);transition:opacity .25s,transform .35s var(--ease)}
 #touchbar.off{opacity:0;transform:translate(-50%,-10px)}
-#touchbar.dim:not(.off){opacity:.35}
-.tb-lbl{font:800 12px var(--display);letter-spacing:.24em;color:var(--muted);margin-right:4px;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+/* "TOQUES" en su propia pastilla oscura (sobre el público, gris sobre gris no se leía) */
+.tb-lbl{position:relative;display:flex;align-items:center;height:30px;padding:0 11px 0 12px;margin-right:2px;
+  font:800 12px var(--display);letter-spacing:.22em;color:var(--fg2);text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.tb-lbl::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(8,13,24,.86);border:1px solid var(--line);transform:skewX(-12deg);transition:opacity .2s}
 .tb-seg{position:relative;display:flex;align-items:center;gap:7px;height:30px;padding:0 13px 0 6px;background:rgba(8,13,24,.86);border:1px solid var(--line);
-  font-weight:800;font-size:14px;letter-spacing:.12em;color:var(--dim);transform:skewX(-12deg);transition:all .25s var(--ease)}
+  font-weight:800;font-size:14px;letter-spacing:.12em;color:var(--muted);transform:skewX(-12deg);transition:all .25s var(--ease)}
+.tb-seg span{text-shadow:0 1px 3px rgba(0,0,0,.85)}
+/* Balón detrás del contador (.thru; antes .dim, que heredaba el padding de la regla global .dim y hacía saltar la barra):
+   en vez de desvanecerlo entero (a .35 parecía que se había ido), los chips se vuelven
+   casi transparentes y el texto sigue entero con su sombra: se ve el balón a través y se sigue leyendo el toque */
+#touchbar.thru:not(.off) .tb-seg{background:rgba(8,13,24,.16);border-color:rgba(255,255,255,.26);box-shadow:none}
+#touchbar.thru:not(.off) .tb-seg.done{background:rgba(255,110,50,.12)}
+#touchbar.thru:not(.off) .tb-seg.next{background:rgba(40,32,8,.18);box-shadow:0 0 0 1px rgba(255,210,63,.45)}
+#touchbar.thru:not(.off) .tb-seg span{text-shadow:0 1px 2px #000,0 0 6px rgba(0,0,0,.9)}
+#touchbar.thru:not(.off) .tb-seg:not(.next) i{opacity:.75}
+#touchbar.thru:not(.off) .tb-lbl::before{opacity:.2}
 .tb-seg>*{transform:skewX(12deg)}
-.tb-seg i{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;background:rgba(255,255,255,.08);font-size:13px;color:var(--muted)}
+.tb-seg i{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;background:rgba(255,255,255,.1);font-size:13px;color:var(--fg2)}
 .tb-seg.done{color:var(--fg2);background:rgba(255,110,50,.28);border-color:rgba(255,140,70,.5)}
 .tb-seg.done i{background:var(--t0);color:#fff}
 .tb-seg.next{color:#fff;border-color:var(--gold);background:rgba(40,32,8,.82);box-shadow:0 0 0 1px rgba(255,210,63,.4),0 0 22px rgba(255,210,63,.25)}
@@ -148,16 +160,22 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .pr-bar{position:absolute;left:10px;right:10px;bottom:3px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);display:none;overflow:hidden}
 .pr-bar b{display:block;height:100%;background:linear-gradient(90deg,#ffb238,#ff5a2c);transform-origin:0 50%;transform:scaleX(0)}
 #prompt.soon .pr-bar{display:block}
+/* el aviso tapa a otro atleta o al balón (ui.js placePrompt ya elige el lado libre): fondo translúcido, texto con sombra */
+#prompt.thru .pr-in,#prompt.thru.go .pr-in,#prompt.thru.jump.go .pr-in{background:rgba(8,13,24,.32);box-shadow:0 0 0 1px rgba(255,140,80,.35);text-shadow:0 1px 2px #000,0 0 6px rgba(0,0,0,.9)}
+#prompt.thru.jump .pr-in{box-shadow:0 0 0 1px rgba(120,180,255,.4)}
 /* Consejo para principiantes: franja alta bajo el contador de toques (antes iba abajo y tapaba pies y aro) */
 #coach{position:absolute;left:50%;top:calc(52px + var(--st));transform:translateX(-50%);max-width:min(640px,calc(100% - 560px));min-width:min(360px,calc(100% - 32px));box-sizing:border-box;
   padding:6px 14px;border-radius:10px;background:rgba(8,13,24,.84);border:1px solid var(--line);font:500 14px/1.35 var(--ui);color:var(--fg2);text-align:center;
   text-shadow:0 1px 4px rgba(0,0,0,.5);transition:opacity .25s,color .25s}
 #coach.off{opacity:0}
 /* atenuado con un aviso "¡ahora!" en marcha: baja el texto, la pastilla se queda (antes el texto quedaba sin fondo sobre el marcador colgado) */
-#coach.dim{color:rgba(223,230,239,.55)}
-#coach.dim b{color:rgba(255,210,63,.6)}
+#coach.faint{color:rgba(223,230,239,.55)}
+#coach.faint b{color:rgba(255,210,63,.6)}
 #coach b{color:var(--gold);font-weight:700}
 #coach .key{font-size:12px;margin:0 2px}
+/* balón detrás del consejo (.thru, como el contador): pastilla casi transparente y texto con sombra para seguir legible */
+/* translúcida con el balón detrás, pero con fondo suficiente para leerse sobre los LED saturados */
+#coach.thru:not(.off){background:rgba(8,13,24,.38);border-color:rgba(255,255,255,.22);text-shadow:0 1px 2px #000,0 0 4px #000,0 0 10px rgba(0,0,0,.85)}
 
 /* Botones de HUD (escritorio) */
 .hud-btns{position:absolute;right:calc(16px + var(--sr));top:calc(14px + var(--st));display:flex;gap:8px;pointer-events:auto}
@@ -282,6 +300,13 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .mi.primary .mi-s{color:rgba(255,255,255,.85)}
 .mi.primary:hover,.mi.primary:focus-visible,.mi.primary.kf{background:linear-gradient(100deg,#ff7a3e,#ff5a2c 60%,#e34820);box-shadow:0 0 0 3px #fff,0 16px 40px rgba(255,80,30,.45)}
 .mi.primary::before{display:none}
+/* con el foco de teclado/mando en otra opción, JUGAR baja a su contorno: si no, parecía el elegido (lleno naranja) */
+.mlist:has(.mi.kf) .mi.primary:not(.kf){background:rgba(10,16,30,.62);box-shadow:inset 0 0 0 2px rgba(255,106,46,.7)}
+.mlist:has(.mi.kf) .mi.primary:not(.kf) .mi-n{color:var(--dim)}
+.mlist:has(.mi.kf) .mi.primary:not(.kf) .mi-s{color:var(--muted)}
+.mi.kf:not(.primary){background:linear-gradient(100deg,rgba(255,106,46,.34),rgba(22,32,56,.9) 70%);box-shadow:inset 0 0 0 2px #ff7a3e,0 10px 30px rgba(0,0,0,.4)}
+/* Reiniciar armado: segundo toque en 2 s */
+#btnRestart.arm{background:rgba(255,90,44,.22);box-shadow:inset 0 0 0 2px #ff6a2e;color:#ffd9c4;letter-spacing:.04em}
 .mi.primary .go{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center}
 .mi.primary .go svg{width:14px;height:14px;fill:#fff}
 .mi-v{display:flex;align-items:center;gap:8px;font:800 18px var(--display);letter-spacing:.1em;color:var(--gold)}
@@ -502,6 +527,17 @@ h2 span{color:var(--hot)}
   #guide .gd-t{font-size:20px;padding:8px 16px}
   #guide .key{font-size:15px}
 }
+/* teléfonos apaisados: botones de menú y pausa de ≥ 44 px con 6 px de separación (dedo); sin la frase de presentación */
+@media (max-height:420px){
+  .tagline{display:none}
+  .menu-col{gap:8px}
+  .logo{font-size:56px}
+  .mlist{gap:6px}
+  .mi{height:44px}
+  .mi.primary{height:50px}
+  .vlist{gap:6px}
+  .vlist button{min-height:44px;padding:0 18px}
+}
 /* Final en móvil apaisado: resultado y botones a la izquierda, estadísticas a la derecha (los botones siempre a la vista) */
 @media (max-height:560px) and (min-width:600px){
   #end .sheet{max-width:820px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);column-gap:28px;align-items:start}
@@ -540,8 +576,26 @@ h2 span{color:var(--hot)}
 .is-touch #coach{left:50%;right:auto;transform:translateX(-50%);top:calc(40px + var(--st));min-width:0;max-width:calc(100% - 420px);
   padding:4px 12px;font-size:12.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
 .is-touch #coach .key{font-size:10.5px}
+/* móvil apaisado: el aviso junto al jugador más pequeño (el botón GOLPEAR ya late) */
+.is-touch #prompt.anch .pr-in{height:30px;font-size:15px;padding:0 11px 0 4px;gap:6px}
+.is-touch #prompt.anch .key{font-size:11px}
+@media (max-height:420px){
+  /* con el balón detrás del consejo o de la tarjeta guiada, casi desaparecen: la jugada viene de esa franja (campo rival) */
+  .is-touch #coach.thru:not(.off){opacity:.3}
+  /* tarjeta guiada compacta: etiqueta y orden en una sola pastilla baja (antes ocupaba de y≈36 a 100 de 390) */
+  .is-touch #guide{top:calc(38px + var(--st));display:flex;align-items:stretch;white-space:nowrap}
+  .is-touch #guide .gd-k{display:flex;align-items:center;border-radius:10px 0 0 10px;padding:0 9px;font-size:10px;letter-spacing:.14em}
+  .is-touch #guide .gd-t{border-radius:0 10px 10px 0;border-left:0;padding:4px 12px 4px 10px;font-size:15px;gap:6px}
+  .is-touch #guide .key{font-size:11px}
+  .is-touch #guide.thru .gd-k,.is-touch #guide.thru .gd-t{opacity:.3}
+}
+/* teléfonos estrechos (667x375): centrada en el hueco entre el marcador y la pausa (a mitad de pantalla pisaba los puntos) */
+@media (max-height:420px) and (max-width:760px){
+  .is-touch #guide{left:calc(50% + 70px)}
+}
 /* táctil: sin desenfoque de fondo tampoco en el menú (la demo se pinta detrás a ritmo completo) */
-.is-touch .mi{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(10,16,30,.78)}
+.is-touch .mi{-webkit-backdrop-filter:none;backdrop-filter:none}
+.is-touch .mi:not(.primary){background:rgba(10,16,30,.78)}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }

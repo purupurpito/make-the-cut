@@ -4,7 +4,10 @@
  *   se conecta a la pestaña y fija el VIEWPORT EXACTO con Emulation.setDeviceMetricsOverride
  *   (--window-size en Chrome headless de Windows deja ~16x151 px de marco: 1280x720 → 1264x569).
  * - Recoge errores de la página (excepciones, console.error, [VB][ERROR]) y el log de consola.
- * Devuelve { send, evalJs, navigate, shot, setSize, errors, logs, close }.
+ * - Opciones de móvil (perf.js / touchplay.js): dpr (devicePixelRatio), mobile (viewport de móvil; por defecto = touch),
+ *   ua (User-Agent), throttle (Emulation.setCPUThrottlingRate), init (scripts para Page.addScriptToEvaluateOnNewDocument,
+ *   se ejecutan antes que la página: mando falso, contadores…), flags (banderas extra de Chrome).
+ * Devuelve { send, evalJs, navigate, shot, setSize, on, errors, logs, close }.
  */
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path');
@@ -27,7 +30,8 @@ async function open(opts) {
     CH.kill(chrome); try { fs.rmSync(prof, { recursive: true, force: true }); } catch (e) { }
   }
   process.on('exit', close);
-  let ws, id = 0; const pending = new Map(), errors = [], logs = [];
+  let ws, id = 0; const pending = new Map(), errors = [], logs = [], listeners = {};
+  function on(method, fn) { (listeners[method] = listeners[method] || []).push(fn); }
   let target;
   for (let i = 0; i < 75 && !target; i++) {
     await sleep(200);
@@ -39,6 +43,7 @@ async function open(opts) {
   ws.onmessage = ev => {
     const m = JSON.parse(ev.data);
     if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); return; }
+    if (m.method && listeners[m.method]) for (const fn of listeners[m.method]) { try { fn(m.params); } catch (e) { } }
     if (m.method === 'Runtime.exceptionThrown') {
       const d = m.params.exceptionDetails;
       const txt = 'Uncaught ' + (d.exception ? d.exception.description : d.text);
@@ -63,26 +68,37 @@ async function open(opts) {
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception ? r.exceptionDetails.exception.description : r.exceptionDetails.text);
     return r.result && r.result.value;
   }
-  let touch = !!opts.touch;
-  async function setSize(size, t) {
-    const s = parseSize(size); if (t != null) touch = !!t;
-    await send('Emulation.setDeviceMetricsOverride', { width: s.w, height: s.h, deviceScaleFactor: 1, mobile: touch, screenWidth: s.w, screenHeight: s.h });
+  let touch = !!opts.touch, dpr = +opts.dpr || 1, mobile = opts.mobile != null ? !!opts.mobile : touch;
+  async function setSize(size, t, d) {
+    const s = parseSize(size); if (t != null) { touch = !!t; if (opts.mobile == null) mobile = touch; } if (d != null) dpr = +d || 1;
+    const land = s.w >= s.h;
+    await send('Emulation.setDeviceMetricsOverride', { width: s.w, height: s.h, deviceScaleFactor: dpr, mobile, screenWidth: s.w, screenHeight: s.h,
+      screenOrientation: mobile ? { type: land ? 'landscapePrimary' : 'portraitPrimary', angle: land ? 90 : 0 } : undefined });
     await send('Emulation.setTouchEmulationEnabled', { enabled: touch, maxTouchPoints: touch ? 5 : 1 });
   }
   await send('Runtime.enable'); await send('Page.enable'); await send('Log.enable');
+  if (opts.ua) await send('Emulation.setUserAgentOverride', { userAgent: opts.ua, platform: /Android/.test(opts.ua) ? 'Linux armv8l' : undefined });
+  for (const src of [].concat(opts.init || [])) await send('Page.addScriptToEvaluateOnNewDocument', { source: src });
+  if (opts.throttle && +opts.throttle > 1) await send('Emulation.setCPUThrottlingRate', { rate: +opts.throttle });
   await setSize(opts.size, touch);
   async function navigate(query) {
     const loaded = new Promise(r => { const prev = ws.onmessage; ws.onmessage = ev => { prev(ev); try { if (JSON.parse(ev.data).method === 'Page.loadEventFired') { ws.onmessage = prev; r(); } } catch (e) { } }; });
     await send('Page.navigate', { url: CH.pageUrl(ROOT, query) });
     await Promise.race([loaded, sleep(20000)]);
+    // al navegar Chrome puede cambiar de proceso de render y el freno de CPU se pierde: se vuelve a aplicar
+    if (throttle > 1) await send('Emulation.setCPUThrottlingRate', { rate: throttle });
   }
+  let throttle = +opts.throttle || 1;
+  async function setThrottle(rate) { throttle = +rate || 1; await send('Emulation.setCPUThrottlingRate', { rate: throttle }); }
   async function shot(file) {
     const r = await send('Page.captureScreenshot', { format: 'png' });
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, Buffer.from(r.data, 'base64'));
     return file;
   }
-  return { send, evalJs, navigate, shot, setSize, errors, logs, close, sleep };
+  return { send, evalJs, navigate, shot, setSize, setThrottle, on, errors, logs, close, sleep };
 }
 
-module.exports = { open, sleep, parseSize, ROOT };
+// Navegador de un móvil Android de gama media (perf.js, touchplay.js)
+const ANDROID_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 7a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
+module.exports = { open, sleep, parseSize, ROOT, ANDROID_UA };

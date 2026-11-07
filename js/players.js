@@ -65,7 +65,7 @@
    *  jersey = true: la pieza toma la camiseta del atlas (u alrededor, v lineal con la altura de reposo). */
   var JY0 = HIP_H + SPINE_Y - 0.135, JY1 = HIP_H + SPINE_Y + CHEST_Y + 0.306; // alto de la camiseta en reposo
   var BODY_UV_U = 0.5, BODY_UV_V = 0.2; // texel blanco del atlas (piezas de color por vértice)
-  function Geo() { this.p = []; this.n = []; this.c = []; this.u = []; this.si = []; this.i = []; this.k = 0; this.pre = null; this.bone = 0; this.jersey = false; }
+  function Geo() { this.p = []; this.n = []; this.c = []; this.u = []; this.si = []; this.sw = []; this.i = []; this.k = 0; this.pre = null; this.bone = 0; this.jersey = false; this.bone2 = -1; this.w2 = null; }
   Geo.prototype.add = function (geo, hex, x, y, z, rx, ry, rz, sx, sy, sz) {
     var m = new THREE.Matrix4(), q = new THREE.Quaternion(), nm = new THREE.Matrix3(), v = new THREE.Vector3();
     q.setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0));
@@ -73,21 +73,24 @@
     if (this.pre) m.premultiply(this.pre);
     nm.getNormalMatrix(m);
     var P = geo.attributes.position, N = geo.attributes.normal, U = geo.attributes.uv, col = new THREE.Color(hex == null ? 0xffffff : hex), i;
+    var m0 = this.w2 ? m.clone() : null; if (m0 && this.pre) m0.premultiply(new THREE.Matrix4().copy(this.pre).invert());
     for (i = 0; i < P.count; i++) {
+      // piel a dos huesos (w2: peso del segundo hueso según la y LOCAL del vértice; p. ej. la rodillera sobre la rodilla)
+      var w2 = 0; if (m0) { v.fromBufferAttribute(P, i).applyMatrix4(m0); w2 = this.w2(v.y); }
       v.fromBufferAttribute(P, i).applyMatrix4(m); this.p.push(v.x, v.y, v.z);
       if (this.jersey) this.u.push(U ? U.getX(i) : 0, 0.5 + 0.5 * clamp((v.y - JY0) / (JY1 - JY0), 0, 1));
       else this.u.push(BODY_UV_U, BODY_UV_V);
       v.fromBufferAttribute(N, i).applyMatrix3(nm).normalize(); this.n.push(v.x, v.y, v.z);
       this.c.push(col.r, col.g, col.b);
-      this.si.push(this.bone, 0, 0, 0);
+      if (w2 > 0) { this.si.push(this.bone, this.bone2, 0, 0); this.sw.push(1 - w2, w2, 0, 0); }
+      else { this.si.push(this.bone, 0, 0, 0); this.sw.push(1, 0, 0, 0); }
     }
     if (geo.index) for (i = 0; i < geo.index.count; i++) this.i.push(geo.index.getX(i) + this.k);
     else for (i = 0; i < P.count; i++) this.i.push(this.k + i);
     this.k += P.count; geo.dispose(); return this;
   };
   Geo.prototype.build = function () {
-    var g = new THREE.BufferGeometry(), n = this.k, w = new Float32Array(n * 4);
-    for (var i = 0; i < n; i++) w[i * 4] = 1;
+    var g = new THREE.BufferGeometry(), w = new Float32Array(this.sw);
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.p, 3));
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.n, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.c, 3));
@@ -101,20 +104,27 @@
   };
 
   function V2(x, y) { return new THREE.Vector2(x, y); }
+  // ---------- Nivel de detalle (LOD) por calidad ----------
+  // Los segmentos de cada primitiva se escalan con LODK (alta 1, media 0,62, baja 0,42) con un mínimo por pieza.
+  // La malla del atleta se reconstruye (misma piel, mismos huesos) al cambiar de calidad: ver setLod().
+  var LOD_K = [0.42, 0.62, 1], LODK = 1, LODR = 2;
+  function sg(n, mn) { return Math.max(mn || 3, Math.round(n * LODK)); }
   /** Perfil de extremidad (de abajo arriba) para LatheGeometry: cuelga en -Y de 0 a -len. */
   function limbPts(len, r0, r1, bAt, bulge, n) {
-    var pts = [], i, a;
-    for (i = 0; i <= 3; i++) { a = i / 3 * PI / 2; pts.push(V2(Math.sin(a) * r1, -len - Math.cos(a) * r1 * 0.75)); }
+    var pts = [], i, a, nc = LODR === 2 ? 3 : 2;
+    n = sg(n, 3);
+    for (i = 0; i <= nc; i++) { a = i / nc * PI / 2; pts.push(V2(Math.sin(a) * r1, -len - Math.cos(a) * r1 * 0.75)); }
     for (i = 1; i < n; i++) {
       var t = 1 - i / n, d = (t - bAt) / 0.3;
       pts.push(V2(r0 + (r1 - r0) * t + bulge * Math.exp(-d * d), -len * t));
     }
-    for (i = 0; i <= 3; i++) { a = i / 3 * PI / 2; pts.push(V2(Math.cos(a) * r0, Math.sin(a) * r0 * 0.75)); }
+    for (i = 0; i <= nc; i++) { a = i / nc * PI / 2; pts.push(V2(Math.cos(a) * r0, Math.sin(a) * r0 * 0.75)); }
     return pts;
   }
-  function lathe(pts, seg, ps, pl) { return new THREE.LatheGeometry(pts, seg, ps || 0, pl == null ? PI * 2 : pl); }
-  function sph(r, w, h, ps, pl, ts, tl) { return new THREE.SphereGeometry(r, w || 12, h || 8, ps || 0, pl == null ? PI * 2 : pl, ts || 0, tl == null ? PI : tl); }
-  function cyl(rt, rb, h, seg, open) { return new THREE.CylinderGeometry(rt, rb, h, seg || 12, 1, !!open); }
+  function lathe(pts, seg, mn) { return new THREE.LatheGeometry(pts, sg(seg, mn || 8), 0, PI * 2); }
+  function sph(r, w, h, ps, pl, ts, tl) { return new THREE.SphereGeometry(r, sg(w || 12, 6), sg(h || 8, 3), ps || 0, pl == null ? PI * 2 : pl, ts || 0, tl == null ? PI : tl); }
+  function cyl(rt, rb, h, seg, open) { return new THREE.CylinderGeometry(rt, rb, h, sg(seg || 12, 8), 1, !!open); }
+  function torus(r, t, rs, ts) { return new THREE.TorusGeometry(r, t, sg(rs, 3), sg(ts, 8)); }
   function box(w, h, d) { return new THREE.BoxGeometry(w, h, d); }
 
   // Perfiles del tronco (y local de cada hueso) [r, y] de abajo arriba
@@ -225,7 +235,7 @@
   // ---------- Piezas ----------
   function headGeo(g, L, tc) {
     var sk = L.skin, hr = L.hair, s, i;
-    g.add(sph(0.112, 22, 16), sk, 0, 0.1, 0, 0, 0, 0, 0.9, 1.04, 1.0);            // cráneo
+    g.add(new THREE.SphereGeometry(0.112, sg(22, 14), sg(16, 10)), sk, 0, 0.1, 0, 0, 0, 0, 0.9, 1.04, 1.0);            // cráneo
     g.add(sph(0.08, 16, 10), sk, 0, 0.035, 0.035, 0, 0, 0, 1.0, 0.85, 1.0);        // mandíbula
     g.add(sph(0.02, 8, 6), sk, 0, 0.083, 0.113, 0.3, 0, 0, 0.85, 1.4, 1.0);        // nariz
     for (s = -1; s <= 1; s += 2) {
@@ -234,17 +244,17 @@
       g.add(box(0.042, 0.011, 0.014), hr, s * 0.037, 0.141, 0.1, 0, 0, s * -0.12); // cejas
     }
     g.add(box(0.036, 0.007, 0.01), 0x7d3f33, 0, 0.044, 0.112);                     // boca
-    var cap = function (col, rot, sc) { g.add(sph(0.119, 22, 12, 0, PI * 2, 0, PI * 0.5), col, 0, 0.105, -0.006, rot, 0, 0, 0.93 * (sc || 1), 1.06 * (sc || 1), 1.04 * (sc || 1)); };
+    var cap = function (col, rot, sc) { g.add(new THREE.SphereGeometry(0.119, sg(22, 14), sg(12, 6), 0, PI * 2, 0, PI * 0.5), col, 0, 0.105, -0.006, rot, 0, 0, 0.93 * (sc || 1), 1.06 * (sc || 1), 1.04 * (sc || 1)); };
     switch (L.style) {
       case 'curly':
         cap(hr, -0.28);
         var pos = [[0, 0.215, 0.0], [0.05, 0.205, 0.04], [-0.05, 0.205, 0.04], [0.06, 0.2, -0.04], [-0.06, 0.2, -0.04], [0, 0.205, 0.06], [0, 0.2, -0.07], [0.085, 0.165, 0.0], [-0.085, 0.165, 0.0], [0.03, 0.19, 0.085], [-0.03, 0.19, 0.085]];
-        for (i = 0; i < pos.length; i++) g.add(new THREE.IcosahedronGeometry(0.045, 1), hr, pos[i][0], pos[i][1], pos[i][2]);
+        for (i = 0; i < pos.length; i++) g.add(new THREE.IcosahedronGeometry(0.045, LODR === 2 ? 1 : 0), hr, pos[i][0], pos[i][1], pos[i][2]);
         break;
       case 'bun':
         cap(hr, -0.3);
         g.add(sph(0.05, 12, 8), hr, 0, 0.2, -0.085);                                         // moño
-        g.add(new THREE.TorusGeometry(0.106, 0.013, 6, 28), tc.band, 0, 0.142, -0.004, PI / 2 - 0.22, 0, 0, 0.93, 1.04, 1); // cinta
+        g.add(torus(0.106, 0.013, 6, 28), tc.band, 0, 0.142, -0.004, PI / 2 - 0.22, 0, 0, 0.93, 1.04, 1); // cinta
         break;
       case 'buzz':
         cap(hr, -0.18, 0.99);
@@ -257,13 +267,14 @@
   }
   function neckGeo(g, L, tc) {
     g.add(cyl(0.05, 0.057, 0.16, 14), L.skin, 0, 0.33, 0.0);
-    g.add(new THREE.TorusGeometry(0.06, 0.012, 6, 20), tc.trim, 0, 0.29, 0.005, PI / 2 + 0.25, 0, 0, 1.15, 1, 1); // ribete del cuello
+    g.add(torus(0.06, 0.012, 6, 20), tc.trim, 0, 0.29, 0.005, PI / 2 + 0.25, 0, 0, 1.15, 1, 1); // ribete del cuello
   }
   function upperGeo(g, L, tc) {
     g.add(lathe(limbPts(UPPER, 0.065, 0.05, 0.38, 0.01, 7), 14), L.skin);
-    g.add(cyl(0.07, 0.066, 0.14, 14, true), tc.base, 0, -0.06, 0);                 // manga
-    g.add(sph(0.072, 14, 10), tc.base, 0, -0.005, 0, 0, 0, 0, 1, 0.9, 1);           // hombro
-    g.add(cyl(0.0675, 0.0675, 0.016, 14, true), tc.accent, 0, -0.123, 0);           // ribete de manga
+    // manga por fuera del brazo (perfil <= 0,069 m con el bíceps; antes 0,066 abajo: la piel asomaba entre manga y ribete)
+    g.add(cyl(0.0745, 0.0735, 0.14, 14, true), tc.base, 0, -0.06, 0);               // manga
+    g.add(new THREE.SphereGeometry(0.0755, sg(14, 10), sg(10, 7)), tc.base, 0, -0.005, 0, 0, 0, 0, 1, 0.9, 1);          // hombro
+    g.add(cyl(0.075, 0.075, 0.016, 14, true), tc.accent, 0, -0.123, 0);             // ribete de manga
   }
   function foreGeo(g, L, tc, s) {
     // antebrazo con volumen (de ~0,052 m en el codo a ~0,037 m en la muñeca, músculo cerca del codo)
@@ -272,7 +283,7 @@
   }
   /** Mano "manopla": palma ancha y plana, dedos de punta redonda algo abiertos y pulgar marcado.
    *  Plano de la mano = Y-Z del hueso (grosor en X); pulgar hacia +Z. Se lee a distancia (bloqueo, colocación). */
-  function capsule(r, len, cs, rs) { return new THREE.CapsuleGeometry(r, len, cs || 3, rs || 8); }
+  function capsule(r, len, cs, rs) { return new THREE.CapsuleGeometry(r, len, Math.max(1, Math.round((cs || 3) * LODK)), sg(rs || 8, 4)); }
   function handGeo(g, L) {
     g.add(capsule(1, 0.9, 3, 12), L.skin, 0, -0.052, 0.002, 0, 0, 0, 0.0175, 0.029, 0.047);   // palma
     var zs = [-0.03, -0.01, 0.01, 0.029], ls = [0.058, 0.07, 0.072, 0.064];
@@ -284,14 +295,22 @@
   }
   function thighGeo(g, L, tc) {
     g.add(lathe(limbPts(THIGH, 0.09, 0.062, 0.25, 0.012, 8), 14), L.skin);
-    g.add(cyl(0.097, 0.099, 0.22, 16, true), tc.shorts, 0, -0.08, 0);               // pernera
-    g.add(cyl(0.0995, 0.0995, 0.016, 16, true), tc.accent, 0, -0.184, 0);          // ribete
+    // piezas superpuestas con los MISMOS lados que la extremidad (14 → mismo LOD y misma fase de vértices) y holgura
+    // >= 4 mm: con lados distintos los vértices de la piel asomaban entre las caras planas (dientes de sierra en media)
+    g.add(cyl(0.103, 0.1015, 0.22, 14, true), tc.shorts, 0, -0.08, 0);              // pernera (muslo <= 0,097)
+    g.add(cyl(0.1035, 0.1035, 0.016, 14, true), tc.accent, 0, -0.184, 0);          // ribete
   }
-  function shinGeo(g, L, tc) {
+  function kneeW(y) { return sstep(-0.04, 0.035, y) * 0.5; }
+  function shinGeo(g, L, tc, thighBone) {
     g.add(lathe(limbPts(SHIN, 0.062, 0.038, 0.28, 0.013, 8), 14), L.skin);
-    g.add(cyl(0.075, 0.07, 0.12, 16), tc.pad, 0, -0.025, 0.01);                       // rodillera
-    g.add(cyl(0.047, 0.044, 0.16, 12, true), 0xf4f4f2, 0, -SHIN + 0.08, 0);         // calcetín
-    g.add(cyl(0.0475, 0.0475, 0.02, 12, true), tc.base, 0, -SHIN + 0.13, 0);        // franja del calcetín
+    // mismos lados que la pierna (14) y holgura sobre su perfil (rodilla <= 0,07, gemelo bajo <= 0,049): sin dientes de sierra
+    // rodillera elástica: la mitad de arriba sigue al muslo (piel a dos huesos), así al doblar la rodilla la cubre
+    // en vez de dejar asomar el muslo por delante (borde dentado)
+    if (thighBone >= 0) { g.bone2 = thighBone; g.w2 = kneeW; }
+    g.add(cyl(0.078, 0.077, 0.12, 14), tc.pad, 0, -0.025, 0.004);                    // rodillera
+    g.bone2 = -1; g.w2 = null;
+    g.add(cyl(0.0515, 0.0445, 0.16, 14, true), 0xf4f4f2, 0, -SHIN + 0.08, 0);       // calcetín
+    g.add(cyl(0.0525, 0.052, 0.02, 14, true), tc.base, 0, -SHIN + 0.13, 0);         // franja del calcetín
   }
   function shoeGeo(g, tc) {
     g.add(sph(1, 18, 8, 0, PI * 2, 0, PI * 0.5), 0xf4f4f4, 0, -0.056, 0.04, 0, 0, 0, 0.055, 0.07, 0.135); // empeine
@@ -301,11 +320,11 @@
     g.add(box(0.03, 0.006, 0.06), 0x30333a, 0, 0.0, 0.1, -0.5, 0, 0);               // cordones
   }
   function shortsGeo(g, tc) {
-    g.add(lathe(profPts(SHORTS_PROF), 22), tc.shorts, 0, 0, 0, 0, 0, 0, SHORTS_S[0], SHORTS_S[1], SHORTS_S[2]);
+    g.add(lathe(profPts(SHORTS_PROF), 22, 16), tc.shorts, 0, 0, 0, 0, 0, 0, SHORTS_S[0], SHORTS_S[1], SHORTS_S[2]);
   }
   /** Camiseta (abdomen en el hueso spine, pecho en chest): toma la textura del atlas. */
-  function absGeo(g) { g.jersey = true; g.add(lathe(profPts(ABS_PROF), 24), null, 0, 0, 0, 0, 0, 0, ABS_S[0], ABS_S[1], ABS_S[2]); g.jersey = false; }
-  function chestGeo(g) { g.jersey = true; g.add(lathe(profPts(CHEST_PROF), 28), null, 0, 0, 0, 0, 0, 0, CHEST_S[0], CHEST_S[1], CHEST_S[2]); g.jersey = false; }
+  function absGeo(g) { g.jersey = true; g.add(lathe(profPts(ABS_PROF), 24, 16), null, 0, 0, 0, 0, 0, 0, ABS_S[0], ABS_S[1], ABS_S[2]); g.jersey = false; }
+  function chestGeo(g) { g.jersey = true; g.add(lathe(profPts(CHEST_PROF), 28, 18), null, 0, 0, 0, 0, 0, 0, CHEST_S[0], CHEST_S[1], CHEST_S[2]); g.jersey = false; }
 
   // =====================================================================
   //  POSE (estructura plana para mezclar capas)
@@ -316,7 +335,10 @@
   // TWL/TWR: giro de la mano sobre el antebrazo (palma al frente en el bloqueo); SHR: hombros encogidos (0..1)
   // vectores
   var HL = 0, HR = 1, AL = 2, AR = 3, FL = 4, FR = 5, KL = 6, KR = 7, NV = 8;
-  function Pose() { this.s = new Float32Array(NS); this.v = []; for (var i = 0; i < NV; i++) this.v.push(new THREE.Vector3()); this.ra = 14; this.rb = 10; }
+  // Campos que nacen enteros (Smi) y luego reciben doubles: generalizarlos al crear el objeto (ver dblFields en sim.js:
+  // si no, V8 depreca el mapa del rig en mitad del peloteo —primer bloqueo, primera plancha— y desoptimiza todo a la vez).
+  function dblFields(o) { for (var k in o) { var v = o[k]; if (typeof v === 'number' && (v | 0) === v) { o[k] = 0.5; o[k] = v; } } return o; }
+  function Pose() { this.s = new Float32Array(NS); this.v = []; for (var i = 0; i < NV; i++) this.v.push(new THREE.Vector3()); this.ra = 14.5; this.rb = 10.5; this.ra = 14; this.rb = 10; }
   function copyP(dst, src) { dst.s.set(src.s); for (var i = 0; i < NV; i++) dst.v[i].copy(src.v[i]); dst.ra = src.ra; dst.rb = src.rb; }
   function blendP(dst, src, w) {
     if (w <= 0) return; if (w > 1) w = 1;
@@ -326,7 +348,7 @@
   }
 
   // Temporales (sin asignaciones por frame)
-  var T = null, T2 = null, BL, CL, tV, tV2, tV3, mA, mB, mInv, qA, qB, qC, qD, eA, IKx, IKy, IKz, IKm, ZERO3, XAXIS;
+  var T = null, T2 = null, BL, CL, tV, tV2, tV3, mA, mB, mInv, qA, qB, qC, qD, eA, IKx, IKy, IKz, IKm, HC, ZERO3, XAXIS;
 
   // =====================================================================
   //  CONSTRUCCIÓN DEL RIG
@@ -350,7 +372,8 @@
       hitT: -99, hitKind: '', hitC: new THREE.Vector3(), hitQ: 1,
       jumpT: -99, jumpKind: '', landT: -99, blockT: -99, swingT: -99,
       pointT: -99, pointWin: false, celeb: 0, matchEnd: false, mateHF: false,
-      diveT: -99, diveYaw: 0, diveDist: 0, diveEnd: 1.0, tossT: -99, tossJump: false, hitShot: '', hitGrade: ''
+      diveT: -99, diveYaw: 0, diveDist: 0, diveEnd: 1.0, diveUp: 1, diveDz: 0, ozGiven: 0, upBoost: 0,
+      offX: 0, offY: 0, ox0: 0, oy0: 0, lpx: 0, lpy: 0, faceKeep: 0, hasFace: false, yawRate: 0, guard: false, tossT: -99, tossJump: false, hitShot: '', hitGrade: ''
     };
     for (var k = 0; k < 2; k++) {
       var s = k === 0 ? 1 : -1;
@@ -361,18 +384,9 @@
     }
     // ---- UNA malla con piel rígida por hueso: 1 llamada de dibujo + 1 de sombra por atleta
     root.updateMatrixWorld(true);
-    var G = new Geo();
-    function on(b) { G.pre = b.matrixWorld; G.bone = bones.indexOf(b); return G; }
-    shortsGeo(on(pelvis), tc);
-    absGeo(on(spine));
-    chestGeo(on(chest)); neckGeo(G, L, tc);
-    headGeo(on(head), L, tc);
-    for (k = 0; k < 2; k++) {
-      s = k === 0 ? 1 : -1;
-      upperGeo(on(r.up[k]), L, tc); foreGeo(on(r.el[k]), L, tc, s); handGeo(on(r.hand[k]), L);
-      thighGeo(on(r.th[k]), L, tc); shinGeo(on(r.kn[k]), L, tc); shoeGeo(on(r.ft[k]), tc);
-    }
-    var skin = new THREE.SkinnedMesh(G.build(), atlasMaterial(p.num, team));
+    r.bones = bones; r.rest = []; r.geos = [null, null, null]; r.look = L; r.tc = tc;
+    for (k = 0; k < bones.length; k++) r.rest.push(bones[k].matrixWorld.clone()); // pose de reposo (para reconstruir el LOD)
+    var skin = new THREE.SkinnedMesh(rigGeometry(r, LODR), atlasMaterial(p.num, team));
     skin.castShadow = true; skin.receiveShadow = true; skin.name = 'athleteSkin' + id;
     root.add(skin); root.updateMatrixWorld(true);
     skin.bind(new THREE.Skeleton(bones), skin.matrixWorld);
@@ -381,16 +395,76 @@
     // alias públicos para cámara/FX (rigOf)
     r.handL = r.hand[0]; r.handR = r.hand[1]; r.footL = r.ft[0]; r.footR = r.ft[1];
     r.scale = L.h;
+    dblFields(r);
     return r;
+  }
+
+  /** Geometría del atleta para un nivel de detalle (0 baja, 1 media, 2 alta), en la pose de reposo
+   *  guardada (r.rest), así que vale para la misma piel aunque los huesos estén ya posados. Se guarda en r.geos. */
+  function rigGeometry(r, lod) {
+    if (r.geos[lod]) return r.geos[lod];
+    var keepK = LODK, keepR = LODR; LODK = LOD_K[lod]; LODR = lod;
+    var G = new Geo(), L = r.look, tc = r.tc, k, s;
+    function on(b) { var i = r.bones.indexOf(b); G.pre = r.rest[i]; G.bone = i; return G; }
+    try {
+      shortsGeo(on(r.pelvis), tc);
+      absGeo(on(r.spine));
+      chestGeo(on(r.chest)); neckGeo(G, L, tc);
+      headGeo(on(r.head), L, tc);
+      for (k = 0; k < 2; k++) {
+        s = k === 0 ? 1 : -1;
+        upperGeo(on(r.up[k]), L, tc); foreGeo(on(r.el[k]), L, tc, s); handGeo(on(r.hand[k]), L);
+        thighGeo(on(r.th[k]), L, tc); shinGeo(on(r.kn[k]), L, tc, r.bones.indexOf(r.th[k])); shoeGeo(on(r.ft[k]), tc);
+      }
+    } finally { LODK = keepK; LODR = keepR; }
+    return (r.geos[lod] = G.build());
+  }
+  /** Detalle por tamaño en pantalla: un atleta en primer plano (punto, ace, celebración, cámara muy cerca) usa
+   *  la malla completa aunque la calidad sea media/baja; el resto, la de la calidad. Con histéresis (no parpadea).
+   *  Usa la cámara del frame anterior (la cámara se actualiza después de Players). La geometría alta ya está
+   *  preparada desde onGameStart, así que el cambio no construye nada. */
+  var LOD_UP = 0.58, LOD_DOWN = 0.5, LODW = null; // peloteo en 3ª persona: el más cercano ocupa <= ~0,55 del alto
+  function screenLod() {
+    var cam = ctx && ctx.camera;
+    if (!cam || !cam.isPerspectiveCamera) return;
+    if (!LODW) LODW = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    var cp = LODW[0], dir = LODW[1]; cp.setFromMatrixPosition(cam.matrixWorld); cam.getWorldDirection(dir);
+    var tanH = 2 * Math.tan(cam.fov * PI / 360) / (cam.zoom || 1);
+    for (var k = 0; k < rigs.length; k++) {
+      var r = rigs[k], rp = r.root.position, want = LODR;
+      if (LODR < 2) {
+        var dx = rp.x - cp.x, dy = rp.y + 1.0 * r.scale - cp.y, dz = rp.z - cp.z;
+        var ahead = dx * dir.x + dy * dir.y + dz * dir.z;             // profundidad (la altura en pantalla va con ella)
+        var frac = ahead > 0.05 ? 1.85 * r.scale / (ahead * tanH) : 0;
+        if (frac > LOD_DOWN) { // solo si está en el encuadre (no uno pegado a la cámara pero fuera de plano)
+          LODW[2].set(rp.x, rp.y + 1.0 * r.scale, rp.z).project(cam);
+          if (Math.abs(LODW[2].x) > 1.15 || Math.abs(LODW[2].y) > 1.3) frac = 0;
+        }
+        r.lodFrac = frac;
+        var big = frac > (r.lodBig ? LOD_DOWN : LOD_UP);
+        r.lodBig = big; if (big) want = 2;
+      } else r.lodBig = false;
+      var geo = r.geos[want] || (want === LODR ? rigGeometry(r, want) : null);
+      if (geo && r.skin.geometry !== geo) r.skin.geometry = geo;
+    }
+  }
+  /** Cambia el nivel de detalle de todos los atletas construidos (la geometría de cada nivel se crea una vez). */
+  function setLod(lod) {
+    LODR = lod; LODK = LOD_K[lod];
+    for (var key in cache) {
+      var r = cache[key], g = rigGeometry(r, lod);
+      if (r.skin.geometry !== g) r.skin.geometry = g;
+    }
   }
 
   // =====================================================================
   //  CONVERSIONES sim -> espacio cuerpo
   // =====================================================================
   /** Punto de la sim -> espacio del cuerpo del rig (antes de desplazamientos del body). */
+  function toBodyV(r, o, out) { return toBody(r, o.x, o.y, o.z, out); }
   function toBody(r, x, y, z, out) {
     var p = r.p, fx = Math.cos(r.yaw), fy = Math.sin(r.yaw), s = r.scale;
-    var dx = x - p.x, dy = y - p.y;
+    var dx = x - p.x - r.offX, dy = y - p.y - r.offY;
     out.x = (dx * -fy + dy * fx) / s; out.z = (dx * fx + dy * fy) / s; out.y = (z - p.z) / s;
     return out;
   }
@@ -514,14 +588,27 @@
     var i = 1 - a;
     o.set(x, i * i * 0.76 + 2 * i * a * 0.95 + a * a * y1, i * i * -0.56 + 2 * i * a * 0.66 + a * a * z1);
   }
+  /** Mano en el contacto del remate (espacio cuerpo, sin HOP): brazo ESTIRADO desde el hombro derecho (con el tronco
+   *  del contacto: algo girado y adelantado) en la dirección del balón, limitada a delante-arriba del hombro de golpeo.
+   *  Si el balón llega tarde (más bajo), el brazo golpea más por delante en vez de doblarse junto a la cabeza. */
+  var SC = new Float32Array(NS), CT_CY = 0.32;
+  function contactHand(o, Ct, hop) {
+    SC[PP] = 0.1; SC[CP] = 0.2; SC[DROP] = -0.06; SC[PZ] = 0; SC[SHR] = 0;
+    shoulderC(SC);
+    var sx = -SH_X * Math.cos(CT_CY), sz = SHZ + SH_X * Math.sin(CT_CY), sy = SHY, dx = -0.06, dy = 0.9, dz = 0.38;
+    if (Ct) { dx = Ct.x - sx; dy = Ct.y - hop - sy; dz = Ct.z - sz; }
+    var l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+    dx = clamp(dx / l, -0.32, -0.04); dz = clamp(dz / l, 0.24, 0.6); dy = Math.sqrt(Math.max(0.25, 1 - dx * dx - dz * dz));
+    l = Math.sqrt(dx * dx + dy * dy + dz * dz); var L = ARM_R * 0.98 / l;
+    o.set(sx + dx * L, sy + dy * L, sz + dz * L);
+  }
   function attackPose(r, P, tj, sw, ha, Ct) {
     var s = P.s, v = P.v;
     var a1 = sstep(0.0, 0.15, tj), ck = sstep(0.06, 0.26, tj);
     s[DROP] = -0.06; s[PY] = 0; s[PR] = 0;
     s[FYL] = 0.1; s[FYR] = -0.12;
     // punto de contacto (mano): por delante y a la derecha de la cabeza, brazo estirado
-    if (Ct) { tV3.copy(Ct); tV3.y -= s[HOP]; if (tV3.x > -0.1) tV3.x = -0.1; if (tV3.z < 0.3) tV3.z = 0.3; if (tV3.y > 2.26) tV3.y = 2.26; }
-    else tV3.set(-0.16, 2.2, 0.38);
+    contactHand(tV3, Ct, s[HOP]);
     if (ha < 0) {
       var c = ck * (1 - sw), e = sw * sw; // e: el latigazo acelera hacia el contacto
       s[PP] = lerp(0.08, -0.2, c) + 0.06 * e; s[CP] = lerp(0.05, -0.36, c) + 0.2 * e;
@@ -541,7 +628,8 @@
         // arco cúbico: armado -> la mano sube detrás mientras el codo avanza -> por encima del hombro -> contacto
         var u = e, iu = 1 - u, b0 = iu * iu * iu, b1 = 3 * iu * iu * u, b2 = 3 * iu * u * u, b3 = u * u * u;
         var hx = v[HR].x, hy = v[HR].y, hz = v[HR].z;
-        v[HR].set(b0 * hx + b1 * -0.3 + b2 * (tV3.x - 0.06) + b3 * tV3.x,
+        // los puntos de control van por FUERA de la cabeza (lado derecho): la mano sube en arco, no en línea recta
+        v[HR].set(b0 * hx + b1 * -0.38 + b2 * (tV3.x - 0.14) + b3 * tV3.x,
           b0 * hy + b1 * 2.05 + b2 * (tV3.y + 0.1) + b3 * tV3.y,
           b0 * hz + b1 * -0.36 + b2 * (tV3.z - 0.22) + b3 * tV3.z);
         v[AR].lerp(tV2.set(-1, 0.05, -0.3), sstep(0.2, 0.9, sw));
@@ -554,18 +642,19 @@
       s[FPL] = s[FPR] = lerp(0.7, 1.0, c);
       P.ra = sw > 0 ? lerp(24, 70, sw) : 22; P.rb = sw > 0 ? lerp(16, 30, sw) : 16;
     } else {
-      // acompañamiento: arco hacia delante y abajo, cruzando hasta la cadera izquierda
-      var f = sstep(0.0, 0.14, ha), wr = sstep(0.0, 0.06, ha), g1 = 1 - f;
+      // acompañamiento: el brazo SIGUE el latigazo hacia delante y abajo, cruzando hasta la cadera izquierda en ~0,22 s
+      // (sale del contacto con velocidad: curva de salida rápida, la mano nunca vuelve a subir); la izquierda se recoge
+      var x0 = clamp(ha / 0.22, 0, 1), f = 1 - (1 - x0) * (1 - x0), wr = sstep(0.0, 0.06, ha), g1 = 1 - f;
       // latigazo, no "plegado": el pecho se queda bastante erguido (<= ~27º), la cabeza arriba mirando el balón
       s[PP] = lerp(0.08, 0.13, f); s[CP] = lerp(0.16, 0.34, f); s[CY] = lerp(0.32, 0.55, f); s[CR] = -0.07 * f; s[SHR] = 0;
       s[HP] = -0.3; s[LOOK] = 0.55;
       var q0 = g1 * g1, q1 = 2 * g1 * f, q2 = f * f;
-      v[HR].set(q0 * tV3.x + q1 * (tV3.x + 0.06) + q2 * 0.18,
-        q0 * tV3.y + q1 * (tV3.y - 0.42) + q2 * 0.98,
-        q0 * tV3.z + q1 * (tV3.z + 0.42) + q2 * 0.34);
-      setV(v[AR], -1, lerp(0.1, -0.6, f), lerp(-0.3, 0.15, f));
+      v[HR].set(q0 * tV3.x + q1 * (tV3.x + 0.08) + q2 * 0.18,
+        q0 * tV3.y + q1 * (tV3.y - 0.5) + q2 * 0.98,
+        q0 * tV3.z + q1 * (tV3.z + 0.45) + q2 * 0.34);
+      setV(v[AR], lerp(-1, -0.6, f), lerp(0.05, -0.8, f), lerp(-0.3, 0.2, f));
       s[WRR] = lerp(-0.15, 1.0, wr) * (1 - 0.45 * f);
-      setV(v[HL], 0.1, lerp(1.32, 1.2, f), lerp(0.24, 0.16, f)); setV(v[AL], 1, -0.5, -0.1); s[WRL] = 0.2; // izquierda recogida
+      setV(v[HL], 0.1, lerp(1.32, 1.18, f), lerp(0.24, 0.18, f)); setV(v[AL], lerp(1, 0.6, f), lerp(-0.5, -1, f), -0.1); s[WRL] = 0.2; // izquierda recogida
       // piernas: vienen algo delante para caer
       setV(v[FL], 0.13, ANKLE + lerp(0.2, 0.24, f), lerp(0.02, 0.1, f)); setV(v[FR], -0.15, ANKLE + lerp(0.26, 0.28, f), lerp(-0.04, 0.06, f));
       s[FPL] = s[FPR] = lerp(0.8, 0.5, f);
@@ -606,7 +695,7 @@
     var a3 = a2 + s[CP] * 0.55, h = SH_Y + SHR_UP * s[SHR]; y += h * Math.cos(a3); z += h * Math.sin(a3);
     SHY = y; SHZ = z;
   }
-  var SHR_UP = 0.06, ARM_R = UPPER + FORE + PALM;
+  var SHR_UP = 0.06, ARM_R = UPPER + FORE + PALM, ARM_L2 = FORE + PALM;
 
   /** Recepción de antebrazos (plataforma) hacia el punto de contacto Pc (espacio cuerpo). follow: 0..1 acompañamiento.
    *  Brazos RECTOS con las muñecas juntas y los hombros encogidos hacia delante; la altura se busca con las
@@ -614,7 +703,7 @@
    *  (balón alto = plataforma alta con el tronco hacia atrás; nunca manos juntas delante de la cara). */
   function passPose(r, P, Pc, follow) {
     var s = P.s, v = P.v;
-    var hx = Pc.x, hz = Pc.z, dh = Math.hypot(hx, hz) || 1e-3, nx = hx / dh, nz = hz / dh;
+    var hx = Pc.x, hz = Pc.z, dh = Math.sqrt(hx * hx + hz * hz) || 1e-3, nx = hx / dh, nz = hz / dh;
     var reach = clamp((dh - 0.35) / 0.9, 0, 1), low = clamp((1.0 - Pc.y) / 0.7, 0, 1), high = sstep(1.15, 1.6, Pc.y);
     s[PX] = nx * (0.3 + 0.15 * low) * reach; s[PZ] = nz * (0.3 + 0.15 * low) * reach * (1 - 0.5 * high);
     s[DROP] = 0.3 + 0.08 * reach + 0.24 * low - 0.17 * high - 0.12 * follow;   // el acompañamiento sale de las piernas
@@ -623,7 +712,7 @@
     s[HP] = -0.12 - 0.15 * high; s[SHR] = 0.55;
     s[CY] = clamp(Math.atan2(nx, nz) * 0.45, -0.6, 0.6); s[PR] = -nx * 0.12 * reach;
     shoulderC(s);
-    var shx = s[PX], ax = clamp(hx, -1.0, 1.0) - shx, az = Math.max(0.3, hz) - SHZ, hh = Math.hypot(ax, az) || 1e-3;
+    var shx = s[PX], ax = clamp(hx, -1.0, 1.0) - shx, az = Math.max(0.3, hz) - SHZ, hh = Math.sqrt(ax * ax + az * az) || 1e-3;
     var ay = Pc.y - 0.12 - SHY;                                   // los antebrazos van por debajo del centro del balón
     var el = clamp(Math.atan2(ay, hh), -0.85, lerp(-0.34, -0.2, high)) + 0.1 * follow; // ángulo de la plataforma
     var D = ARM_R + 0.02, ce = Math.cos(el) * D;
@@ -688,6 +777,18 @@
     HW.t = t; HW.kind = k; HW.x = b.x + b.vx * t; HW.y = b.y + b.vy * t; HW.z = h; HW.d = Math.hypot(HW.x - p.x, HW.y - p.y);
     HW.attack = false; HW.jumpT = NaN; HW.reach = HW.d < C.REACH; return HW;
   }
+  /** Segundos hasta el contacto REAL previsto de un golpe por arriba en el aire (hitWindow da el instante IDEAL).
+   *  IA: golpea cuando w.t <= -aiTe (desfase muestreado por toque; en el saque -aiServeTe), o antes si baja del salto (p.z < 0,3).
+   *  Humano: el contacto llega con la pulsación; sin pulsar, el brazo se queda armado; pulsado, espera al ideal. */
+  var SWING_T = 0.12;
+  function contactIn(g, p, hw) {
+    var t = hw.t;
+    if (!g.demo && !g.autopilot && p.team === 0 && p === g.ctrl) return g.swingLive ? Math.max(t, 0) : Math.max(t, SWING_T * 0.8);
+    if (g.mode === 'rally' && p.aiTeT === g.lastTouchT) t += p.aiTe || 0;
+    else if (g.mode === 'serve' && g.server === p) t += g.aiServeTe || 0;   // IA sacando: golpea cuando w.t <= -aiServeTe
+    if (p.z > 0.3) { var vz = p.vz, te = (vz + Math.sqrt(vz * vz + 2 * C.G * (p.z - 0.3))) / C.G; if (te < t) t = te; }
+    return t;
+  }
   function timeTo(b, h) { // tiempo hasta que el balón baja a la altura h (0 si ya está por debajo bajando)
     var G = C.G, d = b.z - h;
     if (d <= 0) return b.vz > 0 ? 9 : 0;
@@ -702,8 +803,9 @@
 
   function computeTarget(g, r, dt, snap) {
     var p = r.p, P = r.tgt, b = g.ball, tm = g.time, mode = g.mode, sd = side(p.team);
-    var air = p.z > 0.012, sp = Math.hypot(p.vx, p.vy);
-    toBody(r, b.x, b.y, b.z, BL);
+    var air = p.z > 0.012, sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    r.guard = false; // la mano derecha debe rodear la cabeza (gestos por arriba): ver applyPose
+    toBodyV(r, b, BL);
     var job = mode === 'rally' && g.jobs && g.jobs[p.team] === p;
     var oppAttack = mode === 'rally' && g.touchTeam === 1 - p.team && g.touches >= 1;
     var nearNet = Math.abs(p.x) < 1.7;
@@ -723,7 +825,7 @@
 
     // ---- 2. locomoción
     if (!air) {
-      var vf = r.vf, vl = r.vl, vs = Math.hypot(vf, vl);
+      var vf = r.vf, vl = r.vl, vs = Math.sqrt(vf * vf + vl * vl);
       var turn = Math.abs(r.yawRate || 0) * 0.35;
       var drive = Math.max(vs, turn);
       if (drive > 0.25) {
@@ -739,7 +841,7 @@
     var tossing = mode === 'serve' && g.serveState === 'toss' && g.server === p;
     var hw = null;
     if ((job || tossing) && !recentHit) hw = predictHit(g, p, r);
-    if (hw) toBody(r, hw.x, hw.y, hw.z, CL);
+    if (hw) toBodyV(r, hw, CL);
 
     // ---- 3. aire
     var tj = tm - r.jumpT;
@@ -747,13 +849,14 @@
       copyP(T2, P);
       var zk = clamp(p.z / 1.05, 0, 1);
       if (r.jumpKind === 'attack') {
+        r.guard = true;
         // salto visual algo más alto en el remate (más atlético; no cambia la sim)
         T2.s[HOP] = 0.16 * zk;
         var ha = (r.hitAir && r.hitT >= r.jumpT - 0.02 && hitAge >= 0) ? hitAge : -1, prox = 0, Ct = null;
         if (ha < 0) {
           if (hw && (hw.kind === 'spike' || hw.kind === 'jserve' || hw.kind === 'fserve' || hw.kind === 'free') && hw.d < 1.6) {
-            // latigazo de ~0,15 s hasta el contacto previsto (antes: 0,2 s lineal, se leía como un empujón)
-            prox = clamp(1 - (hw.t - 0.005) / 0.15, 0, 1); Ct = CL;
+            // latigazo de SWING_T hasta el contacto REAL previsto (no el ideal): el armado se mantiene hasta ~0,06 s antes
+            prox = clamp(1 - (contactIn(g, p, hw) - 0.004) / SWING_T, 0, 1); Ct = CL;
           } else if (!hw) { // sin predicción: proximidad del balón al punto de golpeo
             var ddx = BL.x + 0.2, ddy = BL.y - 2.3, ddz = BL.z - 0.3, dd = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
             prox = (1 - sstep(0.25, 0.8, dd)) * (b.vz < 1.5 ? 1 : 0.5); Ct = BL;
@@ -802,7 +905,7 @@
           // golpe por arriba de pie: armar y soltar el brazo al contacto
           var wF = 1 - sstep(0.25, 0.75, ht), sw = 1 - sstep(0.03, 0.22, ht);
           if (wF > 0) {
-            copyP(T2, P);
+            r.guard = true; copyP(T2, P);
             setV(T2.v[HR], -0.3, 1.88, -0.2); setV(T2.v[AR], -1, 0.7, -0.6);
             setV(T2.v[HL], 0.2, 2.1, 0.35); T2.s[CY] = -0.35;
             if (sw > 0) { T2.v[HR].lerp(CL, sw); T2.v[HL].lerp(tV2.set(0.2, 1.6, 0.35), sw); T2.s[CY] = lerp(-0.35, 0.2, sw); T2.ra = 32; }
@@ -851,6 +954,7 @@
         }
       } else if (hk === 'spike' || hk === 'free' || hk === 'serve') {
         var dur = hk === 'serve' ? 0.75 : 0.6;
+        if (hitAge < dur) r.guard = true;
         wOut = 1 - sstep(dur * 0.55, dur, hitAge);
         copyP(T2, P);
         if (hk === 'serve') {
@@ -906,7 +1010,7 @@
 
     // ---- 6. saque: sostener el balón, lanzarlo (toss) y golpear
     if (serving || (tossing && !air)) {
-      copyP(T2, P);
+      r.guard = true; copyP(T2, P);
       var s2 = T2.s, v2 = T2.v, tt = tossing ? tm - r.tossT : -1;
       s2[DROP] = 0.06; s2[PP] = 0.05; s2[CP] = 0.04; s2[CY] = -0.3; s2[LOOK] = 0.45;
       setV(v2[FL], 0.12, ANKLE, 0.2); setV(v2[FR], -0.15, ANKLE, -0.14);
@@ -932,7 +1036,7 @@
         setV(v2[HR], -0.32, 1.95, -0.26); setV(v2[AR], -1, 0.7, -0.6);
         s2[CY] = -0.45; s2[CP] = -0.08; s2[LOOK] = 1;
         if (sw2 > 0) {
-          tV.copy(CL); if (tV.x > -0.1) tV.x = -0.1;
+          tV.copy(CL); if (tV.x > -0.15) tV.x = -0.15;
           var arc = Math.sin(PI * sw2);
           v2[HR].lerp(tV, sw2); v2[HR].x -= 0.1 * arc; v2[HR].y += 0.12 * arc; v2[AR].lerp(tV2.set(-1, 0.2, -0.3), sw2);
           v2[HL].lerp(tV2.set(0.22, 1.25, 0.3), sw2); s2[CY] = lerp(-0.45, 0.25, sw2); s2[CP] = lerp(-0.08, 0.15, sw2);
@@ -944,7 +1048,8 @@
 
     // ---- 7. plancha (balón que cae lejos y no se alcanza)
     var dv = tm - r.diveT, dEnd = r.diveEnd + 0.75;
-    if (dv >= 0 && dv < dEnd) divePose(r, P, dv);
+    var diving = diveActive(r, dv);
+    if (diving) divePose(r, P, dv);
     // plancha cosmética (sin evento dive de la sim): polvo al tocar el suelo con el pecho (~0,18 s)
     if (r.cosDust && dv >= 0.18) {
       r.cosDust = false;
@@ -953,10 +1058,11 @@
 
     // ---- 8. celebración / lamento tras el punto
     var pa = tm - r.pointT;
-    var diving = dv >= 0 && dv < dEnd;
-    if ((mode === 'point' || mode === 'over') && r.pointT > -50 && pa >= 0 && !air && (!diving || dv > dEnd - 0.3)) celebrate(g, r, P, diving ? dv - (dEnd - 0.3) : pa);
+    if ((mode === 'point' || mode === 'over') && r.pointT > -50 && pa >= 0 && !air && (!diving || (dv > dEnd - 0.3 && r.diveUp > 0.6))) celebrate(g, r, P, diving ? Math.max(0, dv - (dEnd - 0.3)) : pa);
   }
 
+  /** Plancha en curso: la ventana dura hasta que se ha levantado del todo (diveUp = 1). */
+  function diveActive(r, dv) { return dv >= 0 && dv < 5 && (dv < r.diveEnd + 0.75 || r.diveUp < 0.999); }
   function divePose(r, P, t) {
     var s = P.s, v = P.v;
     // el evento dive llega en el contacto: el cuerpo ya va lanzado (salida rápida). Hacia ~0,15 s va en
@@ -964,10 +1070,22 @@
     // pecho, se desliza un poco y se queda tumbado mientras la sim lo diga (p.down); luego se levanta.
     var go = sstep(0.0, 0.08, t), down = sstep(0.03, 0.15, t);
     var fly = sstep(0.02, 0.1, t) * (1 - sstep(0.17, 0.28, t));          // fase en el aire
-    var upStart = r.p.down > 0.04 ? Math.max(r.diveEnd, t + r.p.down - 0.05) : r.diveEnd, up = sstep(upStart, upStart + 0.55, t);
-    var lie = down * (1 - up), reach = go * (1 - up), slide = sstep(0.18, 0.5, t);
+    // upBoost: si la sim ya quiere moverlo, se levanta antes (diveOffset); nunca mientras la sim lo tenga en el suelo
+    var upStart = r.p.down > 0.04 ? Math.max(r.diveEnd, t + r.p.down - 0.05) : r.diveEnd - r.upBoost;
+    // levantarse: duración FIJA (GET_T) desde que empieza (antes el inicio se adelantaba frame a frame con upBoost y
+    // se incorporaba en ~0,25 s); el inicio se congela la primera vez que se cumple
+    if (r.upDiveT !== r.diveT) { r.upDiveT = r.diveT; r.upT0 = -1; }
+    if (r.upT0 < 0 && t >= upStart && t > 0.3) r.upT0 = t;
+    var gu = r.upT0 < 0 ? 0 : clamp((t - r.upT0) / GET_T, 0, 1), up = sstep(0, 1, gu);
+    if (gu > 0 && !DB) { DB = new Pose(); GK = new Pose(); }
+    if (gu > 0) copyP(DB, P);                                            // pose de pie (base) a la que llega
+    var lie = down, reach = go, slide = sstep(0.18, 0.5, t);
     var dist = r.diveDist;
-    s[OZ] = lerp(0, dist, go) + 0.12 * slide; s[OX] = 0;
+    // el avance del cuerpo (Dz) pasa del cuerpo a la raíz mientras se levanta (r.offX/offY en diveOffset): se
+    // incorpora DONDE ha caído, sin deslizarse hacia atrás hasta la posición de la sim
+    var Dz = lerp(0, dist, go) + 0.12 * slide;
+    r.diveUp = up; r.diveDz = Dz;
+    s[OZ] = Dz * (1 - up); s[OX] = 0;
     s[LOOK] = 1 - lie * 0.4;
     // tumbado: pelvis casi horizontal (PP*0.6) y tronco recto (CP compensa el reparto de la columna)
     s[PP] = lerp(0.6 * reach, 2.4, lie); s[CP] = lerp(0.5 * reach, -0.92, lie) - 0.1 * fly; s[CY] = 0; s[PY] = 0; s[PR] = 0;
@@ -982,7 +1100,48 @@
     setV(v[FL], 0.18, ANKLE + 0.02 * lie + 0.2 * fly, lerp(0.55 * reach, -0.92, lie)); setV(v[FR], -0.2, ANKLE + 0.04 * lie + 0.26 * fly, lerp(-0.3, -0.97, lie));
     setV(v[KL], 0.1, -lie, 1 - lie); setV(v[KR], -0.1, -lie, 1 - lie);
     s[FPL] = s[FPR] = 1.3 * lie;
-    P.ra = t < 0.3 ? 30 : lerp(18, 10, up); P.rb = t < 0.3 ? 26 : lerp(14, 6, up);
+    P.ra = t < 0.3 ? 30 : 18; P.rb = t < 0.3 ? 26 : 14;
+    if (gu > 0) getUp(P, gu);
+  }
+  /** Levantarse de la plancha (gu 0..1 en GET_T s): tumbado → flexión con los brazos (pecho arriba, manos bajo los
+   *  hombros, rodillas al suelo) → rodilla izquierda delante (zancada con la derecha apoyada, mano en la rodilla) →
+   *  de pie (la pose base). P llega con la pose de tumbado; DB tiene la pose base. */
+  var GET_T = 0.5, DB = null, GK = null;
+  function getUp(P, gu) {
+    var s, v;
+    if (gu < 0.38) {
+      copyP(GK, P); s = GK.s; v = GK.v;
+      s[PP] = 1.75; s[CP] = -0.72; s[DROP] = 0.7; s[HP] = -0.45; s[PZ] = 0.04; s[LOOK] = 0.7; s[WRL] = s[WRR] = -0.9; s[TWR] = 0;
+      setV(v[HL], 0.21, 0.07, 0.5); setV(v[HR], -0.21, 0.07, 0.5); setV(v[AL], 0.6, 0.2, -1); setV(v[AR], -0.6, 0.2, -1);
+      setV(v[FL], 0.15, ANKLE + 0.05, -0.62); setV(v[FR], -0.16, ANKLE + 0.05, -0.66);
+      setV(v[KL], 0.1, -1, 0.2); setV(v[KR], -0.1, -1, 0.2); s[FPL] = s[FPR] = 1.3;
+      GK.ra = 22; GK.rb = 18;
+      blendP(P, GK, sstep(0, 0.38, gu));
+      return;
+    }
+    if (gu < 0.72) {
+      // la flexión de partida
+      s = P.s; v = P.v;
+      s[PP] = 1.75; s[CP] = -0.72; s[DROP] = 0.7; s[HP] = -0.45; s[PZ] = 0.04; s[LOOK] = 0.7; s[WRL] = s[WRR] = -0.9; s[TWR] = 0;
+      setV(v[HL], 0.21, 0.07, 0.5); setV(v[HR], -0.21, 0.07, 0.5); setV(v[AL], 0.6, 0.2, -1); setV(v[AR], -0.6, 0.2, -1);
+      setV(v[FL], 0.15, ANKLE + 0.05, -0.62); setV(v[FR], -0.16, ANKLE + 0.05, -0.66);
+      setV(v[KL], 0.1, -1, 0.2); setV(v[KR], -0.1, -1, 0.2); s[FPL] = s[FPR] = 1.3;
+      lunge(GK, P);
+      blendP(P, GK, sstep(0.38, 0.72, gu));
+      return;
+    }
+    lunge(P, P);
+    blendP(P, DB, sstep(0.72, 1, gu));
+  }
+  /** Zancada de rodillas: pie izquierdo delante plantado, rodilla derecha casi en el suelo, mano izquierda en la rodilla. */
+  function lunge(o, from) {
+    if (o !== from) copyP(o, from);
+    var s = o.s, v = o.v;
+    s[PP] = 0.45; s[CP] = 0.2; s[DROP] = 0.42; s[HP] = -0.2; s[PZ] = 0.02; s[LOOK] = 0.85; s[WRL] = s[WRR] = 0; s[OX] = 0;
+    setV(v[HL], 0.16, 0.62, 0.4); setV(v[HR], -0.26, 0.42, 0.22); setV(v[AL], 1, -0.3, -0.3); setV(v[AR], -1, -0.5, -0.2);
+    setV(v[FL], 0.15, ANKLE, 0.36); setV(v[FR], -0.16, ANKLE + 0.04, -0.5);
+    setV(v[KL], 0.1, 0.3, 1); setV(v[KR], -0.1, -1, 0.15); s[FPL] = 0; s[FPR] = 1.0;
+    o.ra = 20; o.rb = 16;
   }
 
   /** Celebraciones y lamentos (variadas, deterministas). */
@@ -1065,7 +1224,10 @@
   // =====================================================================
   /** Orienta `upper` (hueso que cuelga en -Y) y dobla `lower` (rotación X) para llevar el extremo a (tx,ty,tz),
    *  expresado en el espacio del padre de `upper` relativo a su pivote. pole: hacia dónde apunta el codo/rodilla. */
-  function solveIK(upper, lower, tx, ty, tz, px, py, pz, l1, l2) {
+  // T: extremo; Pv: polo (Vector3). Se pasan vectores y no 8 números: cada número calculado que se pasa a una
+  // función no integrada crea un HeapNumber (basura por frame: 16 llamadas por frame).
+  function solveIK(upper, lower, T, Pv, l1, l2) {
+    var tx = T.x, ty = T.y, tz = T.z, px = Pv.x, py = Pv.y, pz = Pv.z;
     var L = Math.sqrt(tx * tx + ty * ty + tz * tz);
     if (L < 1e-5) { tx = 0; ty = -1; tz = 0; L = 1e-5; }
     var vx = tx / L, vy = ty / L, vz = tz / L;
@@ -1122,9 +1284,11 @@
     for (var k = 0; k < 2; k++) {
       var sh = r.sh[k], sg = k ? -1 : 1;
       sh.position.set(sg * (SH_X - 0.022 * s[SHR]), SH_Y + SHR_UP * s[SHR], SH_Z);
-      tV.copy(v[HL + k]).applyMatrix4(mInv); tV.x -= sh.position.x; tV.y -= sh.position.y; tV.z -= sh.position.z;
+      tV.copy(v[HL + k]);
+      if (k === 1 && r.guard) headClear(tV);
+      tV.applyMatrix4(mInv); tV.x -= sh.position.x; tV.y -= sh.position.y; tV.z -= sh.position.z;
       tV2.copy(v[AL + k]).applyQuaternion(qB);
-      solveIK(r.up[k], r.el[k], tV.x, tV.y, tV.z, tV2.x, tV2.y, tV2.z, UPPER, FORE + PALM);
+      solveIK(r.up[k], r.el[k], tV, tV2, UPPER, ARM_L2);
       eA.set(s[WRL + k], s[TWL + k], 0, 'YXZ'); r.hand[k].quaternion.setFromEuler(eA);
     }
     // piernas
@@ -1133,7 +1297,7 @@
       var hp = r.hip[k];
       tV.copy(v[FL + k]).applyMatrix4(mB); tV.x -= hp.position.x; tV.y -= hp.position.y; tV.z -= hp.position.z;
       tV2.copy(v[KL + k]).applyQuaternion(qC);
-      solveIK(r.th[k], r.kn[k], tV.x, tV.y, tV.z, tV2.x, tV2.y, tV2.z, THIGH, SHIN);
+      solveIK(r.th[k], r.kn[k], tV, tV2, THIGH, SHIN);
       // pie plano respecto al cuerpo (con puntera y giro)
       qD.copy(r.pelvis.quaternion).multiply(r.th[k].quaternion).multiply(r.kn[k].quaternion).invert();
       eA.set(s[FPL + k], s[FYL + k], 0, 'YXZ'); qA.setFromEuler(eA);
@@ -1141,13 +1305,29 @@
     }
   }
 
+  /** La mano derecha (espacio cuerpo) rodea la cabeza en los gestos por arriba: si cae dentro de un cilindro
+   *  alrededor de la cabeza (r = 0,25 m, de la barbilla a un palmo por encima), se aparta hacia fuera y a la
+   *  derecha con una transición suave. Así el trayecto armado → contacto es un arco y no roza la cabeza. */
+  var HEAD_R = 0.25;
+  function headClear(h) {
+    HC.set(0, NECK_Y + 0.1, 0.012).applyMatrix4(mA);   // centro de la cabeza (mA: cuerpo <- pecho)
+    var dy = h.y - HC.y, band = sstep(-0.3, -0.16, dy) * (1 - sstep(0.2, 0.34, dy));
+    if (band <= 0) return;
+    var dx = h.x - HC.x, dz = h.z - HC.z, d = Math.sqrt(dx * dx + dz * dz), R = HEAD_R * band;
+    if (d >= R) return;
+    var nx, nz;
+    if (d < 1e-4) { nx = -1; nz = 0; } else { nx = dx / d; nz = dz / d; }
+    if (nx > -0.35) { nx = -0.35; var nl = Math.sqrt(nx * nx + nz * nz); nx /= nl; nz /= nl; } // siempre hacia el lado del brazo
+    h.x = HC.x + nx * R; h.z = HC.z + nz * R;
+  }
+
   /** Cabeza: mira al balón (limitado), más ajustes de la pose. */
   function aimHead(r, g, dt, snap) {
     var s = r.cur.s, b = g.ball;
-    toBody(r, b.x, b.y, b.z, tV);
+    toBodyV(r, b, tV);
     tV.x -= r.body.position.x; tV.y -= r.body.position.y; tV.z -= r.body.position.z;
     tV.applyMatrix4(mInv); // en espacio del pecho
-    var dx = tV.x, dy = tV.y - NECK_Y - 0.1, dz = tV.z, h = Math.hypot(dx, dz);
+    var dx = tV.x, dy = tV.y - NECK_Y - 0.1, dz = tV.z, h = Math.sqrt(dx * dx + dz * dz);
     var yaw = clamp(Math.atan2(dx, dz), -1.25, 1.25), pitch = clamp(-Math.atan2(dy, Math.max(0.05, h)), -0.95, 0.55);
     if (dz < -0.1) yaw *= 0.6;
     var w = s[LOOK];
@@ -1163,12 +1343,12 @@
   function desiredYaw(g, r) {
     var p = r.p, b = g.ball, sd = side(p.team), net = sd > 0 ? PI : 0;
     var tm = g.time;
-    if (tm - r.diveT >= 0 && tm - r.diveT < r.diveEnd + 0.75) return r.diveYaw;
+    if (diveActive(r, tm - r.diveT)) return r.diveYaw;
     if (g.mode === 'point' || g.mode === 'over') {
       if (tm - r.pointT >= 0 && r.pointWin && r.celeb === 2 && r.mateHF && !r.matchEnd) {
         var m = VB.Sim.other(g, p); return Math.atan2(m.y - p.y, m.x - p.x) - 0.35;
       }
-      return r.faceKeep != null ? r.faceKeep : r.yaw;
+      return r.hasFace ? r.faceKeep : r.yaw;
     }
     if (g.mode === 'serve' && g.serving === p.team) return net;
     var dx = b.x - p.x, dy = b.y - p.y;
@@ -1206,7 +1386,7 @@
     BL = new THREE.Vector3(); CL = new THREE.Vector3(); tV = new THREE.Vector3(); tV2 = new THREE.Vector3(); tV3 = new THREE.Vector3();
     mA = new THREE.Matrix4(); mB = new THREE.Matrix4(); mInv = new THREE.Matrix4();
     qA = new THREE.Quaternion(); qB = new THREE.Quaternion(); qC = new THREE.Quaternion(); qD = new THREE.Quaternion(); eA = new THREE.Euler();
-    IKx = new THREE.Vector3(); IKy = new THREE.Vector3(); IKz = new THREE.Vector3(); IKm = new THREE.Matrix4(); ZERO3 = new THREE.Vector3(); XAXIS = new THREE.Vector3(1, 0, 0);
+    IKx = new THREE.Vector3(); IKy = new THREE.Vector3(); IKz = new THREE.Vector3(); IKm = new THREE.Matrix4(); HC = new THREE.Vector3(); ZERO3 = new THREE.Vector3(); XAXIS = new THREE.Vector3(1, 0, 0);
   }
 
   function rigFor(p) {
@@ -1217,7 +1397,8 @@
   }
   function resetRig(r) {
     r.inited = false; r.hitT = r.jumpT = r.landT = r.blockT = r.swingT = r.pointT = r.diveT = r.tossT = -99;
-    r.hitKind = ''; r.hitShot = ''; r.hitGrade = ''; r.jumpKind = ''; r.faceKeep = null; r.yawRate = 0; r.vf = r.vl = 0;
+    r.hitKind = ''; r.hitShot = ''; r.hitGrade = ''; r.jumpKind = ''; r.hasFace = false; r.yawRate = 0; r.vf = r.vl = 0;
+    r.diveUp = 1; r.diveDz = 0; r.ozGiven = 0; r.upBoost = 0; r.offX = r.offY = r.ox0 = r.oy0 = 0; r.lpx = r.p.x; r.lpy = r.p.y;
   }
 
   /** Tipo de salto: remate (o saque en salto) / bloqueo. */
@@ -1262,6 +1443,49 @@
     }
   }
 
+  /** Desfase visual (mundo, coords de sim) de la raíz tras una plancha: el avance del cuerpo pasa a la raíz al
+   *  levantarse; mientras está en el suelo o levantándose, la raíz no sigue a la sim (sin deslizarse tumbado); si la
+   *  sim ya lo mueve, se levanta antes. Después el desfase se recupera "corriendo" (<= 3 m/s, con zancada). */
+  function diveOffset(g, r, dt, snap) {
+    var p = r.p;
+    r.ox0 = r.offX; r.oy0 = r.offY;
+    if (snap) { r.lpx = p.x; r.lpy = p.y; return; }
+    var dv = g.time - r.diveT, active = diveActive(r, dv);
+    var mx = p.x - r.lpx, my = p.y - r.lpy; r.lpx = p.x; r.lpy = p.y;
+    if (active) {
+      var cx = Math.cos(r.diveYaw), cy = Math.sin(r.diveYaw), want = r.diveDz * r.diveUp, dl = (want - r.ozGiven) * r.scale;
+      r.ozGiven = want; r.offX += cx * dl; r.offY += cy * dl;
+      if (dv > 0.22 && r.diveUp < 0.999) {
+        r.offX -= mx; r.offY -= my;                                    // tumbado/levantándose: la raíz se queda
+        var sp = Math.sqrt(mx * mx + my * my) / dt;
+        // se levanta antes (en ~0,3 s en vez de 0,55 s), nunca mientras la sim lo tenga en el suelo
+        if (sp > 0.3 && !(p.down > 0.04)) r.upBoost = Math.min(r.diveEnd - 0.2, r.upBoost + dt * 0.8);
+        return;
+      }
+    }
+    // recuperación: el desfase se reduce (exponencial) con la velocidad VISUAL limitada a max(4 m/s, la de la sim)
+    if (r.offX === 0 && r.offY === 0) return;
+    var dk = kf(4, dt), ox = r.offX * (1 - dk), oy = r.offY * (1 - dk);
+    var vx = mx + ox - r.offX, vy = my + oy - r.offY, vl = Math.sqrt(vx * vx + vy * vy), ml = Math.sqrt(mx * mx + my * my);
+    var cap = Math.max(4 * dt, ml * 1.05);
+    if (vl > cap) { var f = cap / vl; ox = r.offX + vx * f - mx; oy = r.offY + vy * f - my; }
+    if (ox * ox + oy * oy < 1e-4) { ox = 0; oy = 0; }
+    r.offX = ox; r.offY = oy;
+  }
+
+  /** Plancha cosmética (el balón cae dentro y nadie llegó): solo si se lee como un intento real: a distancia de
+   *  plancha (1,3-2,8 m), con tiempo de reacción (>= 0,4 s desde el último toque), sin haber tocado él el balón,
+   *  sin alejarse de él y con el balón por delante o a un lado (nadie se tira hacia atrás). */
+  function cosmeticDiveOk(g, r, e, bd, tm) {
+    var q = r.p;
+    if (bd < 1.3 || bd > 2.8 || q.down > 0 || tm - r.diveT < 1.5) return false;
+    if (tm - r.hitT < 0.6 || tm - r.landT < 0.25) return false;
+    if (g.lastTouchT != null && tm - g.lastTouchT < 0.4) return false;
+    var ux = (e.x - q.x) / bd, uy = (e.y - q.y) / bd;
+    if (q.vx * ux + q.vy * uy < -0.6) return false;
+    return Math.cos(r.yaw) * ux + Math.sin(r.yaw) * uy > -0.3;
+  }
+
   function onEvent(g, e) {
     var r, tm = e.t != null ? e.t : g.time;
     if (e.player && e.player.id != null) r = byId[e.player.id];
@@ -1284,16 +1508,18 @@
         // plancha de la sim: el cuerpo se lanza en la dirección dada y queda en el suelo p.down s
         if (!r) return;
         r.diveT = tm; r.diveEnd = Math.max(0.5, (r.p.down || 0.9) - 0.05); r.diveDist = 0.15 / r.scale;
+        r.diveUp = 0; r.ozGiven = 0; r.upBoost = 0;
         r.diveYaw = e.dir ? Math.atan2(e.dir[1], e.dir[0]) : r.yaw;
         break;
       case 'block': if (r) { r.blockT = tm; lastBlocker = r; } break;
       case 'swing': if (r) r.swingT = tm; break;
       case 'serveReady':
-        for (var i = 0; i < rigs.length; i++) { rigs[i].diveT = -99; rigs[i].pointT = -99; rigs[i].faceKeep = null; rigs[i].cosDust = false; }
+        for (var i = 0; i < rigs.length; i++) { rigs[i].diveT = -99; rigs[i].pointT = -99; rigs[i].hasFace = false; rigs[i].cosDust = false; rigs[i].diveUp = 1; rigs[i].offX = rigs[i].offY = 0; rigs[i].ozGiven = 0; rigs[i].upBoost = 0; }
         lastBlocker = null;
         break;
       case 'land':
-        // plancha del defensor más cercano si el balón cae dentro de su campo y no llegó
+        // plancha del defensor más cercano si el balón cae dentro de su campo y no llegó, SOLO si se lee como
+        // un intento real (cosmeticDiveOk)
         if (!e.inside) return;
         var best = null, bd = 9;
         for (var j = 0; j < rigs.length; j++) {
@@ -1301,9 +1527,10 @@
           var d = Math.hypot(e.x - q.x, e.y - q.y);
           if (d < bd) { bd = d; best = rigs[j]; }
         }
-        if (best && bd > 0.9 && bd < 3.4 && !(best.p.down > 0) && tm - best.diveT > 1.5) {
+        if (best && cosmeticDiveOk(g, best, e, bd, tm)) {
           best.diveT = tm - 0.12; best.diveEnd = 1.05; best.cosDust = true; best.diveYaw = Math.atan2(e.y - best.p.y, e.x - best.p.x);
-          best.diveDist = clamp(bd - 1.1, 0.2, 1.2) / best.scale;
+          // las manos (≈1,55 m por delante de los pies, tumbado) acaban junto al balón
+          best.diveDist = clamp(bd - 1.55, 0, 1.2) / best.scale; best.diveUp = 0; best.ozGiven = 0; best.upBoost = 0;
         }
         break;
       case 'point':
@@ -1312,7 +1539,7 @@
           var rr = rigs[k], pp = rr.p;
           rr.pointT = tm; rr.pointWin = pp.team === won; rr.matchEnd = !!e.matchWon;
           rr.celeb = (sum + pp.idx * 2 + (e.setWon ? 1 : 0)) % 3;
-          rr.faceKeep = rr.yaw;
+          rr.faceKeep = rr.yaw; rr.hasFace = true;
           var mate = VB.Sim.other(g, pp);
           rr.mateHF = Math.hypot(mate.x - pp.x, mate.y - pp.y) < 3.2;
           // los dos del equipo ganador comparten el choque de manos
@@ -1339,8 +1566,11 @@
       markerCone.rotation.x = PI; ctx.scene.add(markerCone);
     },
     setQuality: function (q) {
-      // cada atleta es UNA malla con piel (1 dibujo + 1 sombra): en calidad baja solo se baja el filtrado
-      var aniso = !q || q.rank > 0 ? 4 : 1;
+      // cada atleta es UNA malla con piel (1 dibujo + 1 sombra); la calidad elige el nivel de detalle
+      // de la malla (alta ~10k, media ~4k, baja ~2k triángulos por atleta) y el filtrado del atlas
+      var rank = q && q.rank != null ? q.rank : 2;
+      setLod(rank);
+      var aniso = rank > 0 ? 4 : 1;
       for (var k in cache) { var m = cache[k].skin.material.map; if (m && m.anisotropy !== aniso) { m.anisotropy = aniso; m.needsUpdate = true; } }
     },
     onGameStart: function (g) {
@@ -1349,6 +1579,10 @@
       for (var j = 0; j < g.players.length; j++) {
         var r = rigFor(g.players[j]); resetRig(r);
         rigs.push(r); byId[g.players[j].id] = r; groupRoot.add(r.root);
+        // la calidad adaptativa solo baja: el nivel inferior se prepara ya (el paso a menos calidad no espera a la geometría)
+        if (LODR > 0) rigGeometry(r, LODR - 1);
+        // primeros planos (screenLod): la malla completa también preparada, para no construirla en mitad de la jugada
+        if (LODR < 2) rigGeometry(r, 2);
       }
     },
     /** Rig de un jugador de la simulación (para cámara/FX).
@@ -1372,7 +1606,6 @@
         if (paused && r.inited) continue; // pausa: se mantiene la pose
         var snap = !r.inited || dt <= 0;
         // posición y orientación
-        VB.toThree(p.x, p.y, p.z, r.root.position);
         var want = desiredYaw(g, r);
         if (snap) { r.yaw = want; r.yawRate = 0; }
         else {
@@ -1383,13 +1616,18 @@
         r.root.rotation.y = Math.atan2(Math.cos(r.yaw), -Math.sin(r.yaw));
         // velocidad en ejes del cuerpo (suavizada)
         var fx = Math.cos(r.yaw), fy = Math.sin(r.yaw);
-        var vf = p.vx * fx + p.vy * fy, vl = p.vx * -fy + p.vy * fx;
+        // la velocidad VISUAL incluye la del desfase de la plancha (si lo recupera corriendo, los pies no patinan)
+        var vx = p.vx, vy = p.vy;
+        if (!snap) { vx += (r.offX - r.ox0) / dt; vy += (r.offY - r.oy0) / dt; }
+        var vf = vx * fx + vy * fy, vl = vx * -fy + vy * fx;
         if (p.z > 0.01) { vf = 0; vl = 0; }
         if (snap) { r.vf = vf; r.vl = vl; } else { var kv = kf(14, dt); r.vf += (vf - r.vf) * kv; r.vl += (vl - r.vl) * kv; }
         if (!snap) r.clock += dt;
         syncFromSim(g, r);
         computeTarget(g, r, dt, snap);
         dampPose(r, dt, snap);
+        diveOffset(g, r, dt, snap);
+        var rp = r.root.position; rp.x = p.x + r.offX; rp.y = p.z; rp.z = -(p.y + r.offY); // = VB.toThree (sin HeapNumbers)
         applyPose(r);
         // compresión del brazo que golpea (0,06 s tras el remate)
         var ha = g.time - r.hitT, sq = (r.hitAir && ha >= 0 && ha < 0.06 && r.hitShot !== 'tip') ? Math.sin(ha / 0.06 * PI) : 0;
@@ -1397,6 +1635,7 @@
         aimHead(r, g, dt, snap);
         r.inited = true;
       }
+      screenLod();
       // marcador del jugador controlado
       var show = !g.demo && ctx.state !== 'menu' && g.ctrl;
       marker.visible = markerCone.visible = !!show;

@@ -26,44 +26,93 @@ Un flujo multiagente (guion en `tools/workflow/voley-3d.workflow.js`) con estas 
 4. **Review ×2** — 5 críticos (visual, jugabilidad+reglas, cámara, técnico, primer jugador) +
    arregladores por propietario + integración. ✅ (2 rondas)
 5. **Final QA** ✅ (6-nov-2026, PC de casa)
+6. **Pendientes** ✅ (7-nov-2026, PC de casa): cierre de lo que quedaba por owner + integración.
+7. **Verificación ×2** ✅ (7-nov-2026, PC de casa): verificadores por área → arreglos por owner → integración (dos rondas).
+8. **Final QA 2** ✅ (7-nov-2026, PC de casa): todas las pruebas, capturas y medidas finales; sin cambios de código.
 
-## Estado (6-nov-2026, tras Final QA, PC de casa con RTX 3060 Ti)
+## Estado (7-nov-2026, tras el Final QA 2, PC de casa con RTX 3060 Ti)
 
-Todas las fases del guion están hechas: Foundation, Build (los 6 especialistas, incluida la pasada
-corta de cierre de `players`, `arena`, `camera_input` y `ui_main`), Integrate, Review 1 y Review 2,
-cada una con su integración, y Final QA. El detalle de cada fase está en `notes/informes-build.md` y en el log
-de cada `notes/<owner>.md`. Las capturas usan la GPU real (ANGLE D3D11, ~160 fps en headless); con
-`GL=swiftshader` vuelven al modo software.
+El juego está completo y todas las fases del guion están hechas (Foundation, Build, Integrate, Review ×2, Final QA, Pendientes,
+Verificación ×2 y Final QA 2). Lo que hizo cada ronda está en `notes/informes-build.md` y en el log de cada `notes/<owner>.md`.
+El Final QA 2 no encontró nada roto y no cambió código. Logs y capturas en `tools/out/` (`qa2_*.log`, `final2/`).
 
-**Comprobado en Final QA (ejecutado, no supuesto):**
-- `node tools/simtest.js` completo (con la matriz de dificultad) → "TODO OK", sale con 0. Incluye las
-  comprobaciones de reglas: 4 toques, dobles, bloqueo sin toque, sets a 25 y 15 con 2 de diferencia,
-  red, antena, por debajo de la red, 8 s, bloqueo del saque, cambio de campo y los 4 niveles.
-- `node --check` de todos los `js/*.js` y `tools/*.js` → sin errores.
-- `tools/console.sh all` a 1280×720 y `TOUCH=1 tools/console.sh all 844 390` → las 19 escenas sin errores JS.
-- `node tools/drive.js 1280 720 40` y `node tools/drive.js 844 390 25` → "TODO OK". Prueban, con el teclado real:
-  menú con la demo, elección tutorial/jugar, saque en dos pulsaciones, puntos jugados, toques del humano y pausa/reanudar.
-- Capturas en `tools/out/final/1280/` y `tools/out/final/844/` (menú, saque, peloteo, remate, bloqueo,
-  punto, ace, punto de set, final, tutorial, saque en salto, plancha, cambio). Todas miradas: la escena 3D
-  completa, el HUD y los textos en castellano están bien.
-- Restricciones de Artifact: `index.html` empieza por `<title>Voley 3D</title>`, sin doctype/html/head/body
-  ni módulos; en ejecución por `file://` solo se pide three.js 0.149.0 de cdnjs y Google Fonts
-  (`performance.getEntriesByType('resource')`). Sin alert/confirm/prompt/print, y `localStorage` siempre
-  dentro de try/catch.
-- Coste de render en `rally` a 1280×720: alta 78 draw calls / 1,17 M triángulos (pixelRatio 2), media 71 / 0,56 M
-  (1,5), baja 51 / 0,34 M (1).
+### Comprobado en el Final QA 2 (ejecutado, no supuesto)
 
-**Sin comprobar o pendiente:**
-- Rendimiento en un móvil real: solo se ha medido en el PC con GPU. Falta comprobar que llega a 60 fps
-  y que la calidad adaptativa baja bien en un móvil medio.
-- Mando físico y táctil real: solo se ha probado el táctil emulado (DevTools) y la lógica del mando en código.
-- Audio: está verificado con un arnés en node y sin errores en la página, pero nadie lo ha escuchado en esta pasada.
-- El equilibrio de dificultad sale de bots (notes/informes-build.md §sim): falta probarlo con jugadores reales.
-- Detalles visuales menores: la etiqueta "TOQUES" se lee poco sobre el público. La escena `dive` congela con el
-  balón cerca de la cámara y no se ve bien al jugador que se tira.
-- Opcional, de sim: `Sim.aimPoint`, antena tocada sin cruzar, texto de sim para 'out'. Opcional, de
-  cámara/arena: plano de transición durante `courtChange`.
-- Publicación como Artifact: todavía no se ha publicado (se ha comprobado que cumple las restricciones).
+- **Simulación y reglas**: `node tools/simtest.js` completo → «TODO OK», sale con 0. Cubre 4 toques, doble contacto, el bloqueo que no
+  cuenta como toque, sets a 25 y tie-break a 15 con 2 de diferencia, red, antena (8.4.3/8.4.4), paso por debajo de la red, 8 s, bloqueo
+  y ataque del saque, cambio de campo, textos del árbitro (lista cerrada) y los 4 niveles.
+- **Equilibrio** (matriz de simtest: bots con modelo de jugador en 3.ª persona; % de puntos del humano, P(partido) estimada):
+
+  | jugador \ CPU | Fácil | Normal | Difícil | Experto |
+  |---|---|---|---|---|
+  | perfecto | 94,1 % (≈100 %) | 82,0 % (≈100 %) | 77,1 % (≈100 %) | 57,7 % (≈94 %) |
+  | bueno | 83,9 % (≈100 %) | 68,8 % (≈100 %) | 57,2 % (≈92 %) | 39,2 % (≈2 %) |
+  | medio | 74,2 % (≈100 %) | 53,0 % (≈73 %) | 40,1 % (≈2 %) | 23,7 % (≈0 %) |
+  | novato | 46,8 % (≈26 %) | 33,9 % (≈0 %) | 18,5 % (≈0 %) | 12,0 % (≈0 %) |
+
+  Escalera limpia en las dos direcciones. El novato en Fácil gana más o menos 1 partido de cada 4 y el medio en Normal casi 3 de cada 4.
+- **Consola**: `tools/console.sh all 1280 720` y `TOUCH=1 tools/console.sh all 844 390` → las 19 escenas sin errores JS ni de WebGL.
+- **Partidas reales**:
+  - `node tools/drive.js` (teclado): menú con demo, tutorial/jugar, saque en dos pulsaciones, puntos, toques del humano y pausa.
+  - `node tools/touchplay.js` (multitáctil real con `Input.dispatchTouchEvent`): joystick, GOLPEAR, SALTAR, ⇄, pausa/ajustes, «Gira el
+    móvil» en vertical y salida al menú.
+  - `node tools/padplay.js` (mando falso de mapeo estándar): vibración, glifos, Start/B/Select, y desconexión → pausa «Mando desconectado»
+    → reconexión.
+  - Las tres → «TODO OK».
+- **Rendimiento** (`node tools/perf.js`, móvil emulado: CPU ×4, dpr 2,75, táctil, partido en vivo 20 s por nivel; CPU del PC al 49-56 %,
+  medida válida; «objetivos cumplidos» en los dos tamaños):
+
+  | tamaño | nivel | fps | p5 fps | draw calls | triángulos | pixelRatio | sombra |
+  |---|---|---|---|---|---|---|---|
+  | 844×390 | auto (→ media) | 89,9 | 81,3 | 46 | 196 k | 1,25 | 1024 |
+  | 844×390 | alta | 87,6 | 54,9 | 46 | 1,14 M | 1,5 | 2048 |
+  | 844×390 | media | 88,1 | 55,2 | 46 | 200 k | 1,25 | 1024 |
+  | 844×390 | baja | 91,4 | 55,2 | 34 | 81 k | 1 | 512 |
+  | 667×375 | alta | 90,9 | 54,9 | 46 | 1,12 M | 1,5 | 2048 |
+  | 667×375 | media | 93,1 | 55,2 | 46 | 198 k | 1,25 | 1024 |
+  | 667×375 | baja | 102,5 | 82,0 | 34 | 82 k | 1 | 512 |
+
+  JS ~7 ms por frame, montón plano (~7-9 MB), ~50 recolecciones menores y 8 mayores en 20 s. En escritorio, a 1280×720 en alta, las
+  escenas en juego van a 164-165 fps (tope del headless).
+- **Audio** (`node tools/audiotest.js` → «TODO OK»):
+  - Mezcla: 37 de 37 escenarios dentro de su objetivo LUFS ±1,5. Hay 2 filas informativas (cama de público con saque local −1,1 y
+    peloteo largo en punto de set +2,3, que sube a propósito).
+  - Partido de 60 s renderizado en Chrome: −18,6 LUFS integrados, pico real −3,7 dBTP (−2,3 en el clímax), 0 muestras recortadas,
+    balance L-R 0,15 LU, máximo 8 voces y 0 fuentes descartadas. El silbato queda ≥ 14,2 dB sobre la grada en su banda.
+  - Robustez: 5 de 5.
+- **Capturas** en `tools/out/final2/1280/` (alta) y `tools/out/final2/844/` (táctil, baja): menú, saque, peloteo, remate, bloqueo,
+  punto, final y tutorial. Todas miradas: escena 3D completa, HUD, controles táctiles, guía de toques y textos en castellano bien.
+  En baja el público y las vallas se simplifican, pero se ve bien.
+- **Restricciones de Artifact**:
+  - En estático: `index.html` empieza por `<title>Voley 3D</title>`, sin doctype/html/head/body ni `type="module"`. Lleva 10 scripts
+    clásicos más three.js 0.149.0 de cdnjs, y Google Fonts. Sin alert/confirm/prompt/print/fetch/XHR, sin import/export.
+    `localStorage` solo dentro de try/catch (6 sitios). `node --check` de todos los `js/*.js` y `tools/*.js` sin errores.
+    `sim.js`/`ai.js` sin DOM ni THREE.
+  - En ejecución por `file://` (menú y partido en vivo): los únicos orígenes pedidos son `cdnjs.cloudflare.com` y `fonts.googleapis.com`.
+    Antes de un gesto no hay AudioContext (`VB.Audio.contextState()` = `'none'`).
+
+### Solo lo puede comprobar una persona con un dispositivo real
+
+1. **Rendimiento y temperatura en un móvil de verdad.** Un móvil medio en horizontal, unos 10 minutos: fluidez, si la calidad automática
+   baja y se queda estable, y si calienta. El PC emula la CPU, pero no la GPU ni la tasa de relleno de un móvil.
+2. **Táctil con los dedos.** Tamaño y alcance de joystick y botones, pulgares que tapan el balón, y las zonas seguras de muesca y barra
+   de gestos en iPhone y Android.
+3. **Mando físico.** Uno estándar (Xbox o PlayStation) y, si hay, uno no estándar (el mapeo es heurístico). Hay que comprobar la
+   vibración y la deriva del stick.
+4. **Escuchar el audio** con auriculares y con el altavoz del móvil. Incluye `scuff`/`slide`, que tras quitarles el DC solo se han medido.
+5. **Sensación de juego y dificultad** con personas reales. La matriz sale de bots: hay que comprobar si Fácil es fácil para alguien
+   que nunca ha jugado y si el tiempo de golpeo se siente justo.
+6. **Decisión de Ferran como árbitro.** Faltan los textos propuestos en `notes/sim.md` §R5.5 («Ataque sobre el saque», «Retraso en el
+   saque (8 s)», «Doble contacto»). Si se aceptan, hay que cambiarlos a la vez en sim.js, `POINT_TEXTS` de simtest, `REASON` de
+   arena.js y el tutorial de ui.js.
+7. **Publicarlo como Artifact** y abrirlo en claude.ai (escritorio y móvil). Cumple las restricciones, pero no se ha publicado.
+
+### Deuda técnica conocida (no bloquea)
+
+- Basura por frame ~1,9-2,1 MB/s, sobre todo three.js en el render. El montón está plano.
+- Deprecaciones de mapa en los objetos de evento de sim (unos 40-80 por punto); se dejan como están.
+- Por emulación, el p5 de alta y media se queda en ~55 fps (ft95 ~18 ms): es el ritmo de frames del headless, no tirones (≤ 3 frames
+  de > 33 ms en 20 s).
 
 ## Cómo seguir en casa
 
@@ -84,6 +133,7 @@ de cada `notes/<owner>.md`. Las capturas usan la GPU real (ANGLE D3D11, ~160 fps
 ## Pruebas
 
 - `node tools/simtest.js` — simulación CPU contra CPU + jugador con teclas al azar. Debe acabar sin errores.
+- `node tools/perf.js`, `touchplay.js`, `padplay.js`, `touchtest.js`, `padtest.js`, `courttest.js`, `audiotest.js`, `drive.js` — ver CONTRACT.md §6.
 - `tools/shot.sh <escena> <ancho> <alto> <salida.png>` — captura. Escenas: `?debug=menu|serve|rally|spike|block|point|switch|mobile|end` (ver `CONTRACT.md`).
 - `tools/console.sh` — errores de consola.
 - `tools/out/` no se sube (capturas y logs); se regenera.

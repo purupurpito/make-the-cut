@@ -2,7 +2,7 @@
  * VOLEY 3D — js/ai.js   (owner: sim)
  * IA de los jugadores (ambos equipos; en el humano, el compañero no
  * controlado). Pura: sin DOM/THREE. Depende de VB.Sim (js/sim.js).
- * La fuerza de cada equipo sale de g.prof[team] (VB.DIFF: easy/normal/hard):
+ * La fuerza de cada equipo sale de g.prof[team] (VB.DIFF: easy/normal/hard/expert, mate, demo):
  * reacción, velocidad, precisión del timing, bloqueo, defensa, potencia.
  * ===================================================================== */
 (function () {

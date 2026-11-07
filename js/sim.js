@@ -72,10 +72,18 @@
    * tercera persona. 'normal' es ahora un nivel intermedio; el Normal anterior pasa a 'hard' (Difícil) y el
    * Difícil anterior a 'expert' (Experto). */
   var DIFF = VB.DIFF = {
-    easy:   { name: 'Fácil',   react: 0.30, speed: 0.82, timing: 0.11,  err: 1.6,  block: 0.12, dig: 0.24, recv: 0.70, spike: 13.5, jserve: 12.0, jumpServe: 0.00, tip: 0.04, aimNoise: 4.0, netErr: 0.06,  blockReact: 0.18, atkErr: 0.14, srvErr: 0.15, seam: 0.00, srvNoise: 1.6, float: 0.75 },
-    normal: { name: 'Normal',  react: 0.155, speed: 0.92, timing: 0.06, err: 1.0,  block: 0.34, dig: 0.45, recv: 0.86, spike: 15.8, jserve: 14.8, jumpServe: 0.14, tip: 0.10, aimNoise: 1.6, netErr: 0.025, blockReact: 0.085, atkErr: 0.10, srvErr: 0.11, seam: 0.12, srvNoise: 1.3, float: 0.78 },
-    hard:   { name: 'Difícil', react: 0.12, speed: 0.95, timing: 0.045, err: 0.85, block: 0.42, dig: 0.51, recv: 0.90, spike: 16.6, jserve: 16.0, jumpServe: 0.20, tip: 0.12, aimNoise: 1.0, netErr: 0.015, blockReact: 0.06, atkErr: 0.08, srvErr: 0.10, seam: 0.2, srvNoise: 1.2, float: 0.8 },
+    easy:   { name: 'Fácil',   react: 0.30, speed: 0.82, timing: 0.11,  err: 1.35, block: 0.12, dig: 0.27, recv: 0.72, spike: 13.5, jserve: 12.0, jumpServe: 0.00, tip: 0.04, aimNoise: 4.0, netErr: 0.06,  blockReact: 0.18, atkErr: 0.11, srvErr: 0.12, seam: 0.00, srvNoise: 1.6, float: 0.75 },
+    normal: { name: 'Normal',  react: 0.18, speed: 0.90, timing: 0.07, err: 1.1,  block: 0.30, dig: 0.42, recv: 0.83, spike: 15.4, jserve: 14.0, jumpServe: 0.08, tip: 0.08, aimNoise: 1.9, netErr: 0.03, blockReact: 0.10, atkErr: 0.105, srvErr: 0.12, seam: 0.08, srvNoise: 1.4, float: 0.76 },
+    hard:   { name: 'Difícil', react: 0.13, speed: 0.94, timing: 0.05,  err: 0.9,  block: 0.40, dig: 0.48, recv: 0.89, spike: 16.2, jserve: 15.6, jumpServe: 0.18, tip: 0.12, aimNoise: 1.1, netErr: 0.018, blockReact: 0.065, atkErr: 0.09, srvErr: 0.10, seam: 0.18, srvNoise: 1.2, float: 0.8 },
     expert: { name: 'Experto', react: 0.06, speed: 1.00, timing: 0.028, err: 0.55, block: 0.55, dig: 0.61, recv: 0.95, spike: 19.0, jserve: 18.0, jumpServe: 0.70, tip: 0.15, aimNoise: 0.4, netErr: 0.005, blockReact: 0.04, atkErr: 0.05, srvErr: 0.07, seam: 0.75, srvNoise: 0.6, float: 1.0 },
+    // demo del menú (CPU vs CPU), perfil propio (R6). Antes era el Difícil de la revisión 2 congelado (dig 0,51,
+    // block 0,42, tip 0,12, atkErr 0,08, spike 16,6), valores afinados con el modelo de defensa de la revisión 1. La
+    // revisión 2 (bloqueo geométrico con 'touch'/'soft' jugables, contacto con el cuerpo) alarga la defensa CPU vs CPU:
+    // con esos valores la demo bajó de 48 % a 43 % de remates punto y quedó en el filo entre peloteos de 1 y 2 ataques
+    // (mediana 5 u 8 s según la semilla). Solo la demo: defensa base 0,37, remate 17,4 m/s, más bloqueo directo (0,58),
+    // más error de ataque (0,15) y pocas dejadas (0,04; se defienden siempre). Medido (105 semillas × 20 min):
+    // mediana 5,0 s, 52 % de remates punto, 5,7 puntos/min. Ver notes/sim.md §R6.
+    demo:   { name: 'Demo',    react: 0.12, speed: 0.95, timing: 0.045, err: 0.85, block: 0.58, dig: 0.37, recv: 0.90, spike: 17.4, jserve: 16.0, jumpServe: 0.20, tip: 0.04, aimNoise: 1.0, netErr: 0.015, blockReact: 0.06, atkErr: 0.15, srvErr: 0.10, seam: 0.2, srvNoise: 1.2, float: 0.8 },
     // compañero IA del humano (y equipo 0 en autopilot): nivel fijo, el peso del partido lo lleva el humano
     mate:   { name: 'Compañero', react: 0.16, speed: 0.92, timing: 0.065, err: 1.0, block: 0.30, dig: 0.56, recv: 0.85, spike: 16.0, jserve: 14.5, jumpServe: 0.35, tip: 0.10, aimNoise: 1.6, netErr: 0.02, blockReact: 0.09, atkErr: 0.05, srvErr: 0.08, seam: 0.4, srvNoise: 1.0, float: 1.0 }
   };
@@ -132,7 +140,7 @@
 
   // ---------- Entidades ----------
   function mkPlayer(team, num, idx) {
-    return {
+    return dblFields({
       id: team * 2 + idx, team: team, idx: idx, num: num,
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, // vx,vy = velocidad real del último paso (para animación)
       anim: 0,        // >0 mientras dura un gesto de golpeo/brazos arriba (s)
@@ -147,7 +155,7 @@
       lastAction: '', // 'pass'|'set'|'spike'|'free'|'serve'|'block'|'swing'|'jump'|'toss'|'dive'
       actionT: 99,    // segundos desde lastAction
       onGround: true
-    };
+    });
   }
 
   /** Crea un partido nuevo.
@@ -165,13 +173,17 @@
       demo: !!opts.demo,
       autopilot: !!opts.autopilot,
       difficulty: diff,
-      // demo del menú: CPU vs CPU de nivel Difícil (el Normal de antes: peloteos largos y vistosos)
-      prof: opts.demo ? [DIFF.hard, DIFF.hard] : [DIFF.mate, rookieProf(DIFF[diff], opts.rookie && (diff === 'easy' || diff === 'normal'))], // equipo 0: compañero IA de nivel fijo
+      // demo del menú: CPU vs CPU con el perfil DIFF.demo (peloteos vistosos con ritmo de partido real, ver R6)
+      prof: opts.demo ? [DIFF.demo, DIFF.demo] : [DIFF.mate, rookieProf(DIFF[diff], opts.rookie && (diff === 'easy' || diff === 'normal'), diff)], // equipo 0: compañero IA de nivel fijo
       // ayuda de timing del humano (VB.TIMING): el primer partido usa la de Fácil
       tm: opts.demo ? TIMING.hard : (opts.rookie && (diff === 'easy' || diff === 'normal') ? TIMING.easy : TIMING[diff]),
       defRole: '',             // rol del humano mientras ataca la CPU: '' | 'dig' (defiende) | 'block' (bloquea) — ver updateDefense
       recvRisk: 0,             // dificultad (0..1+) del último saque para el receptor (ver serveRisk)
       courtSwap3: false,       // ya se cambió de campo a los 8 puntos del 3er set
+      antennaHit: null,        // {x,y,z} donde el balón tocó la antena en este punto (null si no)
+      atkServe: null,          // {team, player}: toque por encima de la red sobre el saque rival en zona de ataque; es falta
+                               // (13.3.4) solo si se COMPLETA como ataque: el balón cruza la red o lo toca el rival
+      aimIn: [0, 0], aimOn: false, // dirección de apuntado de la entrada del último paso (mundo, normalizada)
       rng: makeRng(opts.seed != null ? opts.seed : (Date.now() & 0x7fffffff)),
       time: 0,                 // tiempo de juego acumulado (s)
       teams: teams,
@@ -212,22 +224,39 @@
         serves: [0, 0], aces: [0, 0], spikes: [0, 0], kills: [0, 0], stuffPts: [0, 0], faults: {}, body: 0, courtChanges: 0
       } : null
     };
+    dblFields(g); dblFields(g.ball); dblFields(g.pr1); dblFields(g.pr3); dblFields(g.rally);
     g.server = teams[0][0];
     newGame(g);
     return g;
   }
 
-  /** Primer partido (opts.rookie): la CPU saca más suave (sin saque en salto, flotante con menos baile). */
-  function rookieProf(pr, on) {
+  /** Primer partido (opts.rookie): la CPU saca más suave (sin saque en salto, flotante con menos baile).
+   *  En Normal además remata algo más lento y menos fino, defiende y bloquea menos. En Fácil (ya blando de por sí)
+   *  solo cambia el saque, que además falla menos: los puntos regalados por saques a la red no enseñan nada.
+   *  Medido con el bot 'novato' de simtest (ver notes/sim.md): con los extras de peloteo también en Fácil el novato
+   *  ganaba el 51-53 % de los puntos; así, 47-48 % (gana ~1 de cada 3 partidos). */
+  function rookieProf(pr, on, diff) {
     if (!on) return pr;
     var o = {}; for (var k in pr) o[k] = pr[k];
     o.jumpServe = 0; o.float = pr.float * 0.6; o.seam = pr.seam * 0.4; o.srvSoft = 0.4; o.name = pr.name;
+    if (diff === 'easy') { o.srvErr = pr.srvErr * 0.65; return o; }
+    o.spike = pr.spike * 0.9; o.atkErr = pr.atkErr * 1.4; o.aimNoise = pr.aimNoise * 1.25; o.dig = pr.dig * 0.8; o.block = pr.block * 0.5;
     return o;
   }
 
+  /** ¿Toque por encima de la red en salto (remate o dejada)? Lo comparten hit() y aimPoint() para que el aro
+   *  de apuntado prediga el mismo tipo de golpe que luego se ejecuta. */
+  function isAttackContact(p, b) { return p.z > 0.25 && Math.abs(b.x) < 3.8 && b.z > C.NET_H + 0.1; }
+
   function other(g, p) { var t = g.teams[p.team]; return t[0] === p ? t[1] : t[0]; }
   function isHuman(g, p) { return !g.demo && !g.autopilot && p.team === 0 && p === g.ctrl; }
-  function emit(g, e) { e.t = g.time; g.events.push(e); return e; }
+  // Representación de campos en V8 (integración, ronda 2 de verificación): un campo numérico que nace entero (Smi: 0, -1, 99)
+  // y luego recibe un double obliga a V8 a generalizar el mapa del objeto y deprecar todo su árbol de transiciones; eso,
+  // en mitad del peloteo (primer bloqueo, primera plancha…), desoptimizaba de golpe el código caliente de TODOS los módulos
+  // (notes/camera_input.md, ronda 2). Pasar cada campo entero por un double al crear el objeto hace esa generalización aquí,
+  // al crear el partido, y una sola vez por sitio. La semántica no cambia (mismo valor; simtest da la misma salida).
+  function dblFields(o) { for (var k in o) { var v = o[k]; if (typeof v === 'number' && (v | 0) === v) { o[k] = 0.5; o[k] = v; } } return o; }
+  function emit(g, e) { e.t = g.time; dblFields(e); g.events.push(e); return e; }
   function rnd(g, a) { return (g.rng() * 2 - 1) * a; }
   function gauss(g) { return (g.rng() + g.rng() + g.rng() + g.rng() - 2) * 1.732; } // ~N(0,1)
 
@@ -397,10 +426,11 @@
     if (g.touchTeam === t && g.lastPlayer === p) { fault(g, t, 'double', 'Dobles: el mismo jugador toca dos veces', p); return; }
     var count = g.touchTeam === t ? g.touches + 1 : 1;
     if (count > 3) { fault(g, t, 'four', '4 toques', p); return; }
-    // Regla 13.3.4: atacar el saque rival en zona de ataque con el balón entero por encima de la red
-    if (shot !== 'body' && g.lastKind === 'serve' && g.lastTeam !== t && p.z > 0.25 && b.z - 0.1 > C.NET_H && Math.abs(b.x) < C.ATTACK) {
-      fault(g, t, 'attackServe', 'Ataque del saque', p); return;
-    }
+    // Regla 13.3.4: atacar el saque rival en zona de ataque con el balón entero por encima de la red. El golpe solo
+    // es falta cuando se COMPLETA como ataque (el balón cruza entero el plano de la red o lo toca el rival): una
+    // recepción alta dirigida al propio campo no lo es. Se anota aquí y se pita en stepBall/checkBlock.
+    var atkSrv = shot !== 'body' && g.lastKind === 'serve' && g.lastTeam !== t && p.z > 0.25 && b.z - 0.1 > C.NET_H && Math.abs(b.x) < C.ATTACK;
+    g.atkServe = atkSrv ? { team: t, player: p } : null;
     var human = isHuman(g, p), mate = other(g, p);
     te = te || 0; shot = shot || '';
     var d = Math.hypot(b.x - p.x, b.y - p.y), inSp = fastInFor(g);
@@ -428,7 +458,7 @@
       q = Math.min(q, 0.12); grade = 'poor';
       g.hardIn = false; g.digOk = true;
       if (g.stats) g.stats.body++;
-    } else if (p.z > 0.25 && Math.abs(b.x) < 3.8 && b.z > C.NET_H + 0.1) {
+    } else if (isAttackContact(p, b)) {
       if (shot === 'tip') { // dejada: suave, corta, por encima del bloqueo
         at = tgt || [-sd * (1.6 + (aim ? clamp(-sd * aim[0], -0.3, 1) : 0.3)), clamp(aim ? p.y + aim[1] * 2.6 : -p.y, -3.8, 3.8)];
         er = (0.25 + 0.9 * (1 - q)) * mul;
@@ -549,6 +579,7 @@
       if (!inBlockVol(q, b)) continue;
       g.blockCD = 0.5; g.blockBy = q;
       if (g.lastKind === 'serve') { fault(g, q.team, 'block', 'Bloqueo del saque', q); return; }
+      if (g.atkServe) { fault(g, g.atkServe.team, 'attackServe', 'Ataque del saque', g.atkServe.player); return; } // lo toca el rival: ataque completado
       var human = isHuman(g, q), prof = g.prof[q.team], kindB;
       var qb = blockQ(q), hands = b.z > q.z + BLK_HANDS, hw = hands ? blockHalfW(qb) : BLK_BODY;
       var pw = clamp((b.speed - 11) / 8, 0, 1), spike = g.lastKind === 'spike';
@@ -658,9 +689,15 @@
     b.spin += dt * (b.wobA ? 0.5 : 9 + b.dip);
     if ((px > 0) !== (b.x > 0)) {
       var ay = Math.abs(b.y);
-      if (b.z < C.NET_LOW - C.BR) { fault(g, g.lastTeam, 'under', 'Pasa por debajo de la red'); return; }
-      if (ay > C.HW - C.BR && ay <= C.HW + C.BR && b.z < C.ANT_TOP + C.BR) { fault(g, g.lastTeam, 'antenna', 'Balón toca la antena'); return; }
-      if (ay > C.HW) { fault(g, g.lastTeam, 'antenna', 'Pasa por fuera de la antena'); return; }
+      if (b.z < C.NET_LOW - C.BR) { fault(g, g.lastTeam, 'under', 'Balón por debajo de la red'); return; }
+      if (ay > C.HW - C.BR && ay <= C.HW + C.BR && b.z < C.ANT_TOP + C.BR) {
+        g.antennaHit = { x: 0, y: (b.y < 0 ? -1 : 1) * (C.HW + ANT_Y), z: clamp(b.z, C.NET_LOW, C.ANT_TOP) };
+        fault(g, g.lastTeam, 'antenna', 'Balón toca la antena'); return;
+      }
+      if (ay > C.HW) { fault(g, g.lastTeam, 'antenna', 'Balón por fuera de la antena'); return; }
+      // por encima de la antena: el espacio de paso sigue la prolongación imaginaria de las antenas hasta el techo
+      // (regla 8.4.4). Un balón que cruza en parte por fuera de ella es falta aunque su centro vaya por dentro.
+      if (ay > C.HW - C.BR && b.z >= C.ANT_TOP + C.BR) { fault(g, g.lastTeam, 'antenna', 'Balón por fuera de la antena'); return; }
       if (b.z < C.NET_H + C.BR) { // red
         var tape = b.z > C.NET_H - 0.06;
         if (tape && b.z > C.NET_H + 0.02 && g.rng() < 0.55) { // en la cinta y pasa (balón "de red")
@@ -671,7 +708,10 @@
         g.netSince = true;
         emit(g, { type: 'net', x: 0, y: b.y, z: b.z, tape: tape });
       }
+      // ataque del saque completado: el balón cruza entero el plano de la red (también tras pasar por la cinta)
+      if (g.atkServe && (px > 0) !== (b.x > 0)) { fault(g, g.atkServe.team, 'attackServe', 'Ataque del saque', g.atkServe.player); return; }
     }
+    if (checkAntenna(g)) return;
     checkBlock(g);
     if (g.mode === 'rally') checkBody(g, dt);
     if (b.z <= C.BR && g.mode === 'rally') {
@@ -679,15 +719,48 @@
       b.vz = Math.abs(b.vz) * 0.45; b.vx *= 0.5; b.vy *= 0.5; b.dip = 0; b.wobA = 0;
     }
   }
+  /* Antena tocada SIN cruzar la red (regla 8.4.3: el balón que toca la antena es "fuera"). Antes solo se
+   * pitaba al cruzar el plano de la red por fuera del espacio de paso; un balón que daba en la antena y volvía
+   * a su campo seguía en juego. Antena: varilla vertical en x = 0, y = ±(HW + ANT_Y), de la parte baja de la red
+   * (NET_LOW) a ANT_TOP (80 cm sobre la red), radio ANT_R. Falta del último equipo que tocó el balón (con un
+   * bloqueo, del bloqueador: el balón que toca el bloqueo y luego la antena es punto del atacante). */
+  var ANT_R = 0.01, ANT_Y = 0.005;
+  function checkAntenna(g) {
+    var b = g.ball;
+    if (g.mode !== 'rally' || Math.abs(b.x) > C.BR + ANT_R || b.z < C.NET_LOW - C.BR || b.z > C.ANT_TOP + C.BR + ANT_R) return false;
+    var dy = Math.abs(b.y) - (C.HW + ANT_Y), dz = b.z > C.ANT_TOP ? b.z - C.ANT_TOP : 0; // por encima: contra la punta
+    if (b.x * b.x + dy * dy + dz * dz > (C.BR + ANT_R) * (C.BR + ANT_R)) return false;
+    g.antennaHit = { x: b.x, y: (b.y < 0 ? -1 : 1) * (C.HW + ANT_Y), z: Math.min(b.z, C.ANT_TOP) };
+    fault(g, g.lastTeam, 'antenna', 'Balón toca la antena');
+    return true;
+  }
+
+  /** Texto del árbitro para un balón fuera, según el último toque (vocabulario FCVB): "Saque fuera",
+   *  "Remate fuera", "Recepción fuera"... El equipo ya lo dice el marcador (antes: "La CPU manda el balón fuera"). */
+  function outText(g) {
+    var k = g.lastKind, sh = g.lastShot;
+    if (k === 'serve') return 'Saque fuera';
+    if (k === 'block') return 'Toca el bloqueo y sale fuera';
+    if (sh === 'body') return 'Le da en el cuerpo y sale fuera';
+    if (sh === 'tip') return 'Dejada fuera';
+    if (k === 'spike') return 'Remate fuera';
+    if (k === 'pass') return g.prevKind === 'serve' ? 'Recepción fuera' : 'Defensa fuera';
+    if (k === 'set') return 'Colocación fuera';
+    return 'Balón fuera';
+  }
+
   function land(g) {
     var b = g.ball;
     // el balón toca el suelo justo debajo de su centro: dentro si esa huella toca la línea (las líneas son parte del campo)
     var inside = Math.abs(b.x) <= C.HL + C.IN_TOL && Math.abs(b.y) <= C.HW + C.IN_TOL, st = b.x > 0 ? 0 : 1;
     g.lastLand = { x: b.x, y: b.y, inside: inside, t: g.time }; // primer bote (lo lee la cámara en escenas congeladas)
     emit(g, { type: 'land', x: b.x, y: b.y, inside: inside, team: st, speed: Math.abs(b.vz) });
-    if (inside && st === g.lastTeam && g.netSince) point(g, 1 - st, 'in', g.lastKind === 'serve' ? 'Saque a la red' : 'Balón a la red');
+    var netTxt = g.lastKind === 'serve' ? 'Saque a la red' : 'Balón a la red';
+    if (inside && st === g.lastTeam && g.netSince) point(g, 1 - st, 'in', netTxt);
     else if (inside) point(g, 1 - st, 'in', st === 0 ? 'El balón cae en tu campo' : 'El balón cae en el campo rival');
-    else point(g, 1 - g.lastTeam, 'out', g.lastKind === 'serve' ? 'Saque fuera' : (g.lastTeam === 0 ? 'Tu balón sale fuera' : 'La CPU manda el balón fuera'));
+    // da en la red y cae fuera en el propio campo: nunca cruzó, el árbitro canta "a la red", no "fuera"
+    else if (st === g.lastTeam && g.netSince) point(g, 1 - g.lastTeam, 'out', netTxt);
+    else point(g, 1 - g.lastTeam, 'out', outText(g));
   }
   function fault(g, t, reason, text, p) { point(g, 1 - t, reason, text, p); }
 
@@ -701,7 +774,9 @@
     emit(g, { type: 'whistle', reason: 'point' });
     // cómo se ganó (para UI/público): ace, kill (remate), tip (dejada), block, error, free
     var how = 'error', b = g.ball;
-    if (reason === 'in' && g.lastTeam === w && !g.netSince) {
+    // (sin mirar g.netSince: un saque o remate que roza la cinta y cae dentro sin que nadie lo toque es ace/kill legal;
+    //  el balón 'a la red' que cae en su propio campo ya tiene lastTeam !== w)
+    if (reason === 'in' && g.lastTeam === w) {
       how = g.lastKind === 'serve' ? 'ace' : g.lastKind === 'block' ? 'block' : g.lastKind === 'spike' ? 'kill' : g.lastShot === 'tip' ? 'tip' : 'free';
     } else if ((reason === 'out' || reason === 'in') && g.lastKind === 'block' && g.lastTeam !== w && !g.netSince) how = 'kill'; // block-out / remate que pasa tocando el bloqueo
     // el rival tocó una sola vez el ataque/saque y no lo salvó (recepción/defensa desviada): mérito del que atacó/sacó
@@ -714,6 +789,7 @@
     var ev = emit(g, { type: 'point', team: w, reason: reason, text: text, how: how, score: [g.score[0], g.score[1]],
       sideout: sideout, rallyTime: g.rally.t, rallyHits: g.rally.hits, setWon: false, matchWon: false, player: p || null,
       lastKind: g.lastKind, lastShot: g.lastShot });
+    if (reason === 'antenna') ev.antenna = g.antennaHit ? [g.antennaHit.x, g.antennaHit.y, g.antennaHit.z] : null; // null = por fuera de la antena
     if (g.stats) g.stats.how[how] = (g.stats.how[how] || 0) + 1;
     if (sideout) { // cambio de saque: rota el sacador del equipo que recupera el saque
       g.serving = w; g.serverIdx[w] = (g.serverIdx[w] + 1) % 2;
@@ -898,7 +974,7 @@
       p.onGround = true; p.lastAction = ''; p.actionT = 99; p.jvx = p.jvy = p.lvx = p.lvy = 0; p.down = 0; p.cool = 0;
       p.shot = ''; p.aiTeT = -1;
     }
-    g.lastLand = null;
+    g.lastLand = null; g.antennaHit = null; g.atkServe = null;
     g.server = sv; g.serveState = 'ready'; g.serveJump = false; g.serveClock = C.SERVE_CLOCK; g.serveT = 0; g.tossT = 0;
     b.held = sv; b.vx = b.vy = b.vz = 0; b.dip = 0; b.wobA = 0;
     g.touchTeam = -1; g.touches = 0; g.lastPlayer = null; g.lastTeam = t; g.jobs[0] = g.jobs[1] = null; g.lastKind = ''; g.lastShot = '';
@@ -1106,6 +1182,7 @@
     if (ml > 1) { mx /= ml; my /= ml; ml = 1; }
     var aim = null;
     if (ml > 0.2) { _aim[0] = mx / ml; _aim[1] = my / ml; aim = _aim; }
+    g.aimOn = !!aim; if (aim) { g.aimIn[0] = aim[0]; g.aimIn[1] = aim[1]; } // para aimPoint (UI/FX)
     var i, p;
 
     if (g.mode === 'point' || g.mode === 'over') {
@@ -1191,6 +1268,51 @@
     g.events.length = 0; return out;
   }
 
+  /** Destino previsto del golpe del HUMANO con la dirección actual (para la retícula de apuntado de FX/UI).
+   *  Mismas fórmulas que doServe (sin objetivo de IA) y hit (remate attackTarget dd 6, dejada, balón libre
+   *  dd 6,5), SIN el error aleatorio de ejecución. move: [wx,wy] opcional (entrada de mundo de este frame); si
+   *  no se pasa, la del último paso de la sim (g.aimIn) o, sin dirección, la que se dio durante el gesto.
+   *  Devuelve out = {x, y, kind:'serve'|'spike'|'tip'|'free', mode: 1 (vista previa: saque aún sin lanzar) |
+   *  2 (activo), aimed (hay dirección), spread (m: dispersión con un toque 'perfect'), spreadPoor (con 'poor')}
+   *  o null si ahora no toca apuntar (CPU sacando, sin ataque propio, demo/autopilot). Sin asignaciones si se
+   *  pasa out. */
+  var _ap = { x: 0, y: 0, kind: '', mode: 0, aimed: false, spread: 0, spreadPoor: 0 }, _apA = [0, 0];
+  function aimPoint(g, out, move) {
+    if (g.demo || g.autopilot) return null;
+    out = out || _ap;
+    var a = null, b = g.ball, p, sd, tx, ty, kind, mode;
+    if (move && move.length >= 2) {
+      var ml = Math.hypot(move[0], move[1]);
+      if (ml > 0.2) { _apA[0] = move[0] / ml; _apA[1] = move[1] / ml; a = _apA; }
+    } else if (g.aimOn) a = g.aimIn;
+    if (!a && g.swingLive && g.swingHasAim) a = g.swingAim;
+    if (g.mode === 'serve') {
+      p = g.server; if (!p || p.team !== 0) return null;
+      mode = g.serveState === 'toss' ? 2 : (g.serveAuth ? 1 : 0); if (!mode) return null;
+      sd = side(p.team); tx = -sd * 6; ty = 0;
+      if (a) { tx += a[0] * 2.4; ty += a[1] * 3.4; }
+      tx = -sd * clamp(-sd * tx, 2, 8.4); ty = clamp(ty, -4, 4); kind = 'serve';
+      out.spread = 0.3 + 1.3 * 0.05; out.spreadPoor = 0.3 + 1.3 * 0.55; // flotante (el salto: algo más)
+      if (g.serveJump) { out.spread = 0.3 + 1.5 * 0.05; out.spreadPoor = 0.3 + 1.5 * 0.55; }
+    } else if (g.mode === 'rally') {
+      p = g.ctrl;
+      if (!p || p.team !== 0 || g.touchTeam !== 0 || g.touches !== 2 || b.x < -0.2 || b.x > 4.5) return null;
+      mode = 2; sd = side(p.team);
+      var air = isAttackContact(p, b);
+      if (air && g.swingShot === 'tip') {
+        kind = 'tip';
+        tx = -sd * (1.6 + (a ? clamp(-sd * a[0], -0.3, 1) : 0.3)); ty = clamp(a ? p.y + a[1] * 2.6 : -p.y, -3.8, 3.8);
+        out.spread = 0.25 + 0.9 * 0.05; out.spreadPoor = 0.25 + 0.9 * 0.55;
+      } else {
+        var at = attackTarget(p, a, air ? 6 : 6.5); tx = at[0]; ty = at[1];
+        kind = air ? 'spike' : 'free';
+        out.spread = air ? 0.25 + 1.5 * 0.05 : 0.35 + 1.4 * 0.05; out.spreadPoor = air ? 0.25 + 1.5 * 0.55 : 0.35 + 1.4 * 0.55;
+      }
+    } else return null;
+    out.x = tx; out.y = ty; out.kind = kind; out.mode = mode; out.aimed = !!a;
+    return out;
+  }
+
   /** Objetivo útil para el HUD/aro: dónde jugará el balón el equipo humano. */
   function focusPoint(g) {
     return (g.touchTeam === 0 && g.touches === 2) ? g.pr3 : g.pr1;
@@ -1201,7 +1323,7 @@
     predict: predict, predictLanding: predictLanding, focusPoint: focusPoint,
     canReach: canReach, other: other, isHuman: isHuman, side: side, clamp: clamp,
     // añadidos (opcionales)
-    hitWindow: hitWindow, predictKind: predictKind, canDive: canDive, timingQ: timingQ, gradeOf: gradeOf,
+    hitWindow: hitWindow, aimPoint: aimPoint, predictKind: predictKind, canDive: canDive, timingQ: timingQ, gradeOf: gradeOf,
     normDiff: normDiff, DIFF: DIFF, TIMING: TIMING,
     // internos expuestos para la IA y los tests
     _hit: hit, _jump: jump, _dive: dive, _diveMiss: diveMiss, _humanJump: humanJump, _holdPos: holdPos, _stepPlayer: stepPlayer, _emit: emit, _rnd: rnd, _gauss: gauss,

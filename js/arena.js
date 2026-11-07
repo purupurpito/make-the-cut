@@ -249,6 +249,25 @@
   }
   function padTexture() { padCv = canvas(256, 512); drawPad(padCv); padTex = texOf(padCv); return padTex; }
   function padRedraw() { if (padCv) { drawPad(padCv); padTex.needsUpdate = true; } }
+  /** Matriz de colocación: posición en coords de sim + giro Y (three). */
+  function xfAt(sx, sy, sz, ry) { var m = new THREE.Matrix4(); _e.set(0, ry || 0, 0, 'YXZ'); _q.setFromEuler(_e); _s.set(1, 1, 1); VB.toThree(sx, sy, sz, _p); return m.compose(_p, _q, _s); }
+  /** Copias de una geometría (position/normal/uv, indexada) transformadas por cada matriz, en una sola geometría. */
+  function mergeXf(geo, mats) {
+    var pa = geo.attributes.position, na = geo.attributes.normal, ua = geo.attributes.uv, ia = geo.index.array, P = [], N = [], U = [], I = [];
+    for (var k = 0; k < mats.length; k++) {
+      _m3.getNormalMatrix(mats[k]); var off = k * pa.count;
+      for (var v = 0; v < pa.count; v++) {
+        _v.fromBufferAttribute(pa, v).applyMatrix4(mats[k]); P.push(_v.x, _v.y, _v.z);
+        _v.fromBufferAttribute(na, v).applyMatrix3(_m3).normalize(); N.push(_v.x, _v.y, _v.z);
+        if (ua) U.push(ua.getX(v), ua.getY(v));
+      }
+      for (var j = 0; j < ia.length; j++) I.push(ia[j] + off);
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+    if (ua) g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+    g.setIndex(I); g.computeBoundingSphere(); geo.dispose(); return g;
+  }
   function buildNet(S) {
     var grp = new THREE.Group(), top = C.NET_H;
     var geo = new THREE.PlaneGeometry(NET_W, NET_HH, NSX, NSY);
@@ -276,20 +295,20 @@
     // antenas (diámetro exagerado ligeramente para que se lean a distancia)
     var antTex = stripeTexture(18, '#e0262f', '#f7f5f0');
     var antMat = new THREE.MeshStandardMaterial({ map: antTex, roughness: 0.4, envMapIntensity: 0.6 });
-    var antGeo = new THREE.CylinderGeometry(0.013, 0.013, 1.8, 10);
-    for (var a = -1; a <= 1; a += 2) {
-      var ant = new THREE.Mesh(antGeo, antMat);
-      ant.position.copy(VB.toThree(0.03, a * (C.HW + 0.006), top - NET_HH + 0.9, new THREE.Vector3())); ant.castShadow = true; casters.push(ant); grp.add(ant);
-    }
+    var antGeo = new THREE.CylinderGeometry(0.013, 0.013, 1.8, 10), antX = [];
+    for (var a = -1; a <= 1; a += 2) antX.push(xfAt(0.03, a * (C.HW + 0.006), top - NET_HH + 0.9, 0));
+    // las 2 antenas en 1 malla (y los 2 postes y las 2 protecciones): 3 dibujos (+3 en sombras) menos
+    var ant = new THREE.Mesh(mergeXf(antGeo, antX), antMat); ant.castShadow = true; ant.name = 'antennas'; casters.push(ant); grp.add(ant);
     // postes a 1 m de las laterales (y = ±5.5) con protección acolchada
     var postMat = new THREE.MeshStandardMaterial({ color: '#c7ccd3', metalness: 0.75, roughness: 0.3 });
     var padMat = new THREE.MeshStandardMaterial({ map: padTexture(), roughness: 0.75, envMapIntensity: 0.5 });
     var postGeo = new THREE.CylinderGeometry(0.05, 0.05, top + 0.2, 16), padGeo = new THREE.CylinderGeometry(0.17, 0.17, 1.95, 24);
+    var postX = [], padX = [];
+    for (var p0 = -1; p0 <= 1; p0 += 2) { postX.push(xfAt(0, p0 * (C.HW + 1), (top + 0.2) / 2, 0)); padX.push(xfAt(0, p0 * (C.HW + 1), 0.975, p0 > 0 ? Math.PI : 0)); }
+    var post = new THREE.Mesh(mergeXf(postGeo, postX), postMat); post.castShadow = true; post.name = 'posts'; casters.push(post); grp.add(post);
+    var pad = new THREE.Mesh(mergeXf(padGeo, padX), padMat); pad.castShadow = true; pad.name = 'pads'; casters.push(pad); grp.add(pad);
     for (var p = -1; p <= 1; p += 2) {
       var py = p * (C.HW + 1);
-      var post = new THREE.Mesh(postGeo, postMat); post.position.copy(VB.toThree(0, py, (top + 0.2) / 2, new THREE.Vector3())); post.castShadow = true; casters.push(post); grp.add(post);
-      var pad = new THREE.Mesh(padGeo, padMat); pad.position.copy(VB.toThree(0, py, 0.975, new THREE.Vector3())); pad.castShadow = true; casters.push(pad);
-      pad.rotation.y = p > 0 ? Math.PI : 0; grp.add(pad);
       // base y tensor
       S.sbox(0.7, 0.7, 0.04, 0, py, 0.02, col('#2b323c'));
       S.sbox(0.12, 0.08, 0.18, 0.12, py, 1.95, col('#3a424e'));
@@ -403,25 +422,39 @@
     }
     var P = { root: grp, upper: upper, head: head, armR: arm(-1), armL: arm(1), tR: { x: 0, z: -0.1 }, tL: { x: 0, z: 0.1 }, hold: 0, flag: null,
       ph: rnd() * 6.283, restR: { x: o.seated ? -0.75 : 0.06, z: -0.1 }, restL: { x: o.seated ? -0.75 : 0.06, z: 0.1 } };
-    // piel: geometría de cada pieza llevada al espacio del grupo con la pose de reposo de su hueso
-    grp.updateMatrixWorld(true);
+    // UNA sola SkinnedMesh para TODOS los oficiales (ver finalizeOfficials): 1 dibujo y 1 textura de huesos por
+    // frame en vez de 6 (+ 4 mallas de banderas). La bandera del juez de línea va en la piel, pegada al hueso del brazo.
     var bones = [rootBone, upper, head, P.armR, P.armL];
-    var sm = new THREE.SkinnedMesh(skinMerge(parts, bones), personMat); sm.castShadow = true; sm.name = 'official';
-    grp.add(sm); grp.updateMatrixWorld(true); sm.bind(new THREE.Skeleton(bones)); officials.push(sm);
-    P.armR.rotation.z = -0.1; P.armL.rotation.z = 0.1;
     if (o.flag) {
-      var fcv = canvas(64, 64), fg = fcv.getContext('2d');
-      for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) { fg.fillStyle = (i + j) % 2 ? '#ffd23f' : '#e0262f'; fg.fillRect(i * 16, j * 16, 16, 16); }
-      var fl = new THREE.Group(); fl.position.set(0, -0.6, 0.02); P.armR.add(fl);
-      var stick = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.5, 6), stickMat || (stickMat = new THREE.MeshStandardMaterial({ color: '#2a2f38', roughness: 0.6 })));
-      stick.position.y = -0.2; fl.add(stick);
-      var fm = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), new THREE.MeshStandardMaterial({ map: texOf(fcv), side: THREE.DoubleSide, roughness: 0.8 }));
-      fm.position.set(-0.17, -0.3, 0); fl.add(fm); P.flag = fl; // paño hacia fuera del cuerpo: se ve de frente desde la pista
+      var FB = new Builder(), dark = col('#2a2f38'), fy = col('#ffd23f'), fr = col('#e0262f');
+      FB.geo(new THREE.CylinderGeometry(0.009, 0.009, 0.5, 6), 0, -0.8, 0.02, dark);   // palo (mano -> abajo)
+      for (var fi = 0; fi < 4; fi++) for (var fj = 0; fj < 4; fj++)                   // paño a cuadros, hacia fuera del cuerpo
+        FB.box(0.085, 0.085, 0.004, -0.34 + (fi + 0.5) * 0.085, -0.73 - (fj + 0.5) * 0.085, 0.02, (fi + fj) % 2 ? fy : fr);
+      parts.push({ g: FB.build(), b: 3 });
+      P.flag = true;
     }
+    offBatch.push({ parts: parts, bones: bones, P: P });
     root.add(grp);
     return P;
   }
-  var stickMat = null;
+  var offBatch = [];
+  /** Fusiona a todos los oficiales (ya colocados) en una SkinnedMesh con un esqueleto común (5 huesos por persona).
+   *  La geometría queda en coordenadas de mundo con la pose de reposo; la malla cuelga de `root` (identidad). */
+  function finalizeOfficials() {
+    if (!offBatch.length) return;
+    root.updateMatrixWorld(true);
+    var allParts = [], allBones = [];
+    for (var i = 0; i < offBatch.length; i++) {
+      var B = offBatch[i];
+      for (var j = 0; j < B.parts.length; j++) allParts.push({ g: B.parts[j].g, b: B.parts[j].b + allBones.length });
+      for (var k = 0; k < B.bones.length; k++) allBones.push(B.bones[k]);
+    }
+    var sm = new THREE.SkinnedMesh(skinMerge(allParts, allBones), personMat);
+    sm.castShadow = true; sm.name = 'officials'; sm.frustumCulled = false; // repartidos por todo el pabellón
+    root.add(sm); sm.updateMatrixWorld(true); sm.bind(new THREE.Skeleton(allBones)); officials.push(sm);
+    for (var m = 0; m < offBatch.length; m++) { offBatch[m].P.armR.rotation.z = -0.1; offBatch[m].P.armL.rotation.z = 0.1; }
+    offBatch.length = 0;
+  }
   /** Fusiona piezas {g (BufferGeometry indexada con position/normal/color), b (índice de hueso)} en una geometría con
    *  skinIndex/skinWeight rígidos; cada pieza se transforma con la matriz (pose de reposo) de su hueso. */
   function skinMerge(parts, bones) {
@@ -494,48 +527,95 @@
     var J1 = makePerson(lj); placePerson(J1, C.HL + 1.4, -(C.HW + 1.4), 0, -0.7, 0.7); J1.lines = [0, -1]; judges.push(J1);
     lj.skin = '#8d5a3b'; lj.hair = '#111111';
     var J2 = makePerson(lj); placePerson(J2, -(C.HL + 1.4), C.HW + 1.4, 0, 0.7, -0.7); J2.lines = [1, 1]; judges.push(J2);
+    finalizeOfficials();
+  }
+  /* Animación de los oficiales casi SIN basura por frame. Llamada una vez por frame, updateOfficials tardaba en subir de
+   * nivel en V8 (baseline/Maglev): ahí cada double que cruza una llamada (damp(), getters/setters de Euler,
+   * Math.max/min/hypot) se encajona en un HeapNumber nuevo (~55 KB/s medidos). Por eso: estado propio en números planos
+   * (P.st), factores de amortiguado una vez por frame (OFK), trabajo en funciones pequeñas llamadas 5-7 veces por frame
+   * (se optimizan antes), sin getters de three, y las rotaciones se escriben en los campos _x/_y/_z del Euler (three
+   * r149, versión fijada) seguidas de UNA llamada quaternion.setFromEuler (solo argumentos objeto), y solo si el valor
+   * ha cambiado de verdad (brazos en reposo = cero escrituras). */
+  var TAU = Math.PI * 2, OFF_EPS = 2e-5;
+  function angWrap(a) { return a - TAU * Math.round(a / TAU); }
+  function damp(a, b, rate, dt) { return a + (b - a) * (1 - Math.exp(-rate * dt)); }
+  /** Estado plano de un oficial (se crea en el primer frame, ya colocado y con el esqueleto montado). */
+  function offState(P) {
+    if (P.st) return P.st;
+    P.head.getWorldPosition(_v);
+    var hr = P.head.rotation, ar = P.armR.rotation, al = P.armL.rotation, ur = P.upper.rotation;
+    P.st = { hx: _v.x, hy: _v.y, hz: _v.z, ry: P.root.rotation.y, yaw: hr.y, pitch: hr.x,
+      rx: ar.x, rz: ar.z, lx: al.x, lz: al.z, ux: ur.x, uz: ur.z };
+    return P.st;
   }
   /** Respiración y balanceo del peso (tiempo real: también en pausa/congelado se ven vivos). */
-  function breathe(P) {
-    var t = ctx.time + P.ph;
-    P.upper.scale.y = 1 + Math.sin(t * 1.6) * 0.007;
-    P.upper.rotation.z = Math.sin(t * 0.37) * 0.018;
-    P.upper.rotation.x = 0.02 + Math.sin(t * 0.23) * 0.01;
+  var SIN_N = 1024, SIN_T = new Float64Array(SIN_N + 1);
+  for (var si = 0; si <= SIN_N; si++) SIN_T[si] = Math.sin(si / SIN_N * Math.PI * 2);
+  /** seno por tabla con interpolación (error < 5e-6): aritmética pura, sin llamadas que encajonen el resultado. */
+  function tsin(a) {
+    var f = a / TAU; f -= Math.floor(f); f *= SIN_N; var i = f | 0; f -= i;
+    return SIN_T[i] + (SIN_T[i + 1] - SIN_T[i]) * f;
   }
-  function angWrap(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
-  function damp(a, b, rate, dt) { return a + (b - a) * (1 - Math.exp(-rate * dt)); }
+  function breathe(P, S) {
+    var t = ctx.time + P.ph, u = P.upper, e = u.rotation;
+    u.scale.y = 1 + tsin(t * 1.6) * 0.007;
+    S.uz = tsin(t * 0.37) * 0.018; S.ux = 0.02 + tsin(t * 0.23) * 0.01;
+    e._x = S.ux; e._z = S.uz; u.quaternion.setFromEuler(e, false);
+  }
+  /** Brazos: amortigua hacia el objetivo con el factor ya calculado; escribe en three solo si se mueven. */
+  function armsTo(P, S, kf, rzx) {
+    var ax = P.tR.x - S.rx, az = P.tR.z + rzx - S.rz, bx = P.tL.x - S.lx, bz = P.tL.z - S.lz;
+    if (ax > OFF_EPS || ax < -OFF_EPS || az > OFF_EPS || az < -OFF_EPS) {
+      S.rx += ax * kf; S.rz += az * kf; var r = P.armR.rotation; r._x = S.rx; r._z = S.rz; P.armR.quaternion.setFromEuler(r, false);
+    }
+    if (bx > OFF_EPS || bx < -OFF_EPS || bz > OFF_EPS || bz < -OFF_EPS) {
+      S.lx += bx * kf; S.lz += bz * kf; var l = P.armL.rotation; l._x = S.lx; l._z = S.lz; P.armL.quaternion.setFromEuler(l, false);
+    }
+  }
+  function headTo(P, S, yaw, pitch, kf) {
+    var dy = (yaw - S.yaw) * kf, dp = (pitch - S.pitch) * kf;
+    if (dy > OFF_EPS || dy < -OFF_EPS || dp > OFF_EPS || dp < -OFF_EPS) {
+      S.yaw += dy; S.pitch += dp; var e = P.head.rotation; e._x = S.pitch; e._y = S.yaw; P.head.quaternion.setFromEuler(e, false);
+    }
+  }
+  // datos del frame compartidos por refStep/judgeStep (sin pasar doubles como argumentos)
+  var OFK = new Float64Array(8); // 0..2 balón (three) · 3 k6 · 4 k7 · 5 k9 · 6 k10 · 7 dt
+  /** Árbitros y anotadores: cabeza que sigue al balón, señales con los brazos, respiración. Funciones pequeñas y
+   *  llamadas 5-7 veces por frame: V8 las optimiza enseguida (en baseline cada operación con doubles asigna). */
+  function refStep(P) {
+    var S = offState(P), dt = OFK[7];
+    var dx = OFK[0] - S.hx, dy = OFK[1] - S.hy - 0.12, dz = OFK[2] - S.hz;
+    var yaw = angWrap(Math.atan2(dx, dz) - S.ry);
+    yaw = yaw > 1.25 ? 1.25 : yaw < -1.25 ? -1.25 : yaw;
+    var pitch = -Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)); pitch = pitch > 0.5 ? 0.5 : pitch < -0.6 ? -0.6 : pitch;
+    headTo(P, S, yaw, pitch, OFK[4]);
+    if (P.hold > 0) P.hold -= dt; else { P.tR.x = P.restR.x; P.tR.z = P.restR.z; P.tL.x = P.restL.x; P.tL.z = P.restL.z; }
+    breathe(P, S);
+    armsTo(P, S, OFK[5], 0);
+  }
+  /** Jueces de línea: brazo de la bandera (con meneo para la antena) y cabeza hacia el balón. */
+  function judgeStep(J) {
+    var S = offState(J), dt = OFK[7];
+    if (J.hold > 0) J.hold -= dt; else { J.tR.x = J.restR.x; J.tR.z = J.restR.z; J.tL.x = J.restL.x; J.tL.z = J.restL.z; }
+    breathe(J, S);
+    var wave = 0; if (J.waving > 0) { wave = tsin(ctx.time * 14) * 0.5; J.waving -= dt; }
+    armsTo(J, S, OFK[6], wave);
+    var jy = angWrap(Math.atan2(OFK[0] - S.hx, OFK[2] - S.hz) - S.ry); jy = jy > 1.3 ? 1.3 : jy < -1.3 ? -1.3 : jy;
+    headTo(J, S, jy, S.pitch, OFK[3]);
+  }
   function updateOfficials(g, dt, rdt) {
-    var b = g.ball, tb = _v2; VB.toThree(b.x, b.y, b.z, tb);
-    var k = rdt > 0 ? rdt : 0;
-    for (var i = 0; i < refs.length; i++) {
-      var P = refs[i], hp = P.head;
-      P.head.getWorldPosition(_v);
-      var dx = tb.x - _v.x, dy = tb.y - _v.y - 0.12, dz = tb.z - _v.z;
-      var yaw = angWrap(Math.atan2(dx, dz) - P.root.rotation.y);
-      yaw = Math.max(-1.25, Math.min(1.25, yaw));
-      var pitch = -Math.atan2(dy, Math.hypot(dx, dz)); pitch = Math.max(-0.6, Math.min(0.5, pitch));
-      hp.rotation.y = damp(hp.rotation.y, yaw, 7, k); hp.rotation.x = damp(hp.rotation.x, pitch, 7, k);
-      if (P.hold > 0) P.hold -= dt; else { P.tR.x = P.restR.x; P.tR.z = P.restR.z; P.tL.x = P.restL.x; P.tL.z = P.restL.z; }
-      breathe(P);
-      P.armR.rotation.x = damp(P.armR.rotation.x, P.tR.x, 9, k); P.armR.rotation.z = damp(P.armR.rotation.z, P.tR.z, 9, k);
-      P.armL.rotation.x = damp(P.armL.rotation.x, P.tL.x, 9, k); P.armL.rotation.z = damp(P.armL.rotation.z, P.tL.z, 9, k);
-    }
-    for (var j = 0; j < judges.length; j++) {
-      var J = judges[j];
-      if (J.hold > 0) J.hold -= dt; else { J.tR.x = J.restR.x; J.tR.z = J.restR.z; J.tL.x = J.restL.x; J.tL.z = J.restL.z; }
-      breathe(J);
-      var wave = J.waving > 0 ? Math.sin(ctx.time * 14) * 0.5 : 0; if (J.waving > 0) J.waving -= dt;
-      J.armR.rotation.x = damp(J.armR.rotation.x, J.tR.x, 10, k); J.armR.rotation.z = damp(J.armR.rotation.z, J.tR.z + wave, 10, k);
-      J.armL.rotation.x = damp(J.armL.rotation.x, J.tL.x, 10, k); J.armL.rotation.z = damp(J.armL.rotation.z, J.tL.z, 10, k);
-      J.head.getWorldPosition(_v);
-      var ddx = tb.x - _v.x, ddz = tb.z - _v.z;
-      var jy = Math.max(-1.3, Math.min(1.3, angWrap(Math.atan2(ddx, ddz) - J.root.rotation.y)));
-      J.head.rotation.y = damp(J.head.rotation.y, jy, 6, k);
-    }
+    var b = g.ball, k = rdt > 0 ? rdt : 0;
+    OFK[0] = b.x; OFK[1] = b.z; OFK[2] = -b.y; // VB.toThree en línea
+    OFK[3] = 1 - Math.exp(-6 * k); OFK[4] = 1 - Math.exp(-7 * k); OFK[5] = 1 - Math.exp(-9 * k); OFK[6] = 1 - Math.exp(-10 * k); OFK[7] = dt;
+    for (var i = 0; i < refs.length; i++) refStep(refs[i]);
+    for (var j = 0; j < judges.length; j++) judgeStep(judges[j]);
     // 2.º árbitro: se coloca hacia el lado del equipo receptor durante el saque
     if (R2 && g.mode === 'serve') {
-      var recv = 1 - (g.serving === 1 ? 1 : 0), want = (recv === 0 ? 1 : -1) * 0.7;
-      R2.sim.x = damp(R2.sim.x, want, 2, k); VB.toThree(R2.sim.x, R2.sim.y, R2.sim.z, R2.root.position);
+      var recv = 1 - (g.serving === 1 ? 1 : 0), want = (recv === 0 ? 1 : -1) * 0.7, dxr = (want - R2.sim.x) * (1 - Math.exp(-2 * k));
+      if (dxr > OFF_EPS || dxr < -OFF_EPS) {
+        R2.sim.x += dxr; R2.root.position.x = R2.sim.x; // toThree: x -> x (y, z de R2 no cambian)
+        if (R2.st) R2.st.hx += dxr;                    // la cabeza se desplaza con él (la rotación del cuerpo no cambia)
+      }
     }
   }
   /** Señales oficiales: el 1.er árbitro extiende el brazo hacia el equipo que sacará. */
@@ -801,7 +881,7 @@
         }
         for (var x = -LATX + 0.3 + SEAT_W / 2; x < LATX - 0.3; x += SEAT_W) {
           if (inAisle(x, aislesL)) continue;
-          seats[mi].push({ x: x + (rnd() - 0.5) * 0.06, y: s * (y0 + 0.42), z: top + 0.46, fx: 0, fy: -s });
+          seats[mi].push({ x: x + (rnd() - 0.5) * 0.06, y: s * (y0 + 0.42), z: top + 0.46, fx: 0, fy: -s, row: r });
         }
       }
       var yb = SY0 + ROWS_L * ROW_D, tb = 0.5 + ROWS_L * ROW_H;
@@ -833,7 +913,7 @@
         }
         for (var y = -ENDY + 0.3 + SEAT_W / 2; y < ENDY - 0.3; y += SEAT_W) {
           if (inAisle(y, aislesE)) continue;
-          seats[me].push({ x: e * (x0 + 0.42), y: y + (rnd() - 0.5) * 0.06, z: top2 + 0.46, fx: -e, fy: 0 });
+          seats[me].push({ x: e * (x0 + 0.42), y: y + (rnd() - 0.5) * 0.06, z: top2 + 0.46, fx: -e, fy: 0, row: r2 });
         }
       }
       var xb = SX0 + ROWS_E * ROW_D, tb2 = 0.5 + ROWS_E * ROW_H;
@@ -845,6 +925,170 @@
     }
     return seats;
   }
+  /* ---------------------------------------------------------------------
+   * PÚBLICO IMPOSTOR (calidad media: filas lejanas; baja: toda la grada)
+   * Cada aficionado es un cartel de 2 triángulos orientado a la cámara (eje vertical) que muestra una figura
+   * pintada en un atlas de lienzo: 4 posturas (manos en el regazo, brazos arriba, aplauso, brazos cruzados)
+   * x 2 peinados. El atlas guarda MÁSCARAS (R camiseta, G piel, B pelo, resto = pantalón; A = silueta) en la
+   * mitad de arriba y el SOMBREADO en la de abajo: los colores de cada persona son los mismos que los de la
+   * versión 3D (atributos por instancia) y la animación (alegría, ola, tensión, botes) usa los mismos uniformes.
+   * Una sola malla instanciada para las 4 gradas (1 dibujo, ~2 triángulos por persona); la densidad y el
+   * "solo filas lejanas" se resuelven en el vértice (aImp = [aleatorio, ¿fila cercana?]).
+   * --------------------------------------------------------------------- */
+  var NEAR_L = 4, NEAR_E = 3;           // filas "cercanas" (3D en calidad media) en laterales / fondos
+  var IMP_W = 0.875, IMP_Y0 = -0.45, IMP_H = 1.75, IMP_CW = 64, IMP_CH = 128; // cartel (m) y celda del atlas (px)
+  var IMP_LIGHT = [0.5, 0.5]; // [baja, media]
+  var _m4i = null, imp = { mesh: null, U: null, cv: null, tex: null };
+  /** Figura sentada de frente en la celda (ox, oy). mode 'mask' = colores de máscara, 'shade' = grises. */
+  function drawImpFigure(g, ox, oy, pose, variant, mode) {
+    var P = IMP_CH / IMP_H, cx = ox + IMP_CW / 2;
+    function X(x) { return cx + x * P; }
+    function Y(y) { return oy + (IMP_Y0 + IMP_H - y) * P; }
+    var M = mode === 'mask';
+    var SH = M ? { shirt: '#ff0000', skin: '#00ff00', hair: '#0000ff', pants: '#000000', shoe: '#000000' }
+      : { shirt: '#d6d6d6', skin: '#e8e8e8', hair: '#a8a8a8', pants: '#9a9a9a', shoe: '#5a5a5a' };
+    function limb(x0, y0, x1, y1, w, col) { g.strokeStyle = col; g.lineWidth = w * P; g.lineCap = 'round'; g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke(); }
+    function ell(x, y, rx, ry, col) { g.fillStyle = col; g.beginPath(); g.ellipse(X(x), Y(y), rx * P, ry * P, 0, 0, 6.2832); g.fill(); }
+    var longHair = variant === 1;
+    // piernas: muslos en escorzo (hacia la cámara), espinillas y zapatillas
+    for (var s = -1; s <= 1; s += 2) {
+      limb(s * 0.09, 0.02, s * 0.1, -0.06, 0.15, SH.pants);
+      limb(s * 0.1, -0.08, s * 0.105, -0.37, 0.105, SH.pants);
+      ell(s * 0.105, -0.405, 0.068, 0.04, SH.shoe);
+    }
+    // melena por detrás (peinado largo)
+    if (longHair) {
+      g.fillStyle = SH.hair; g.beginPath();
+      g.moveTo(X(-0.105), Y(0.93)); g.quadraticCurveTo(X(-0.15), Y(0.75), X(-0.13), Y(0.6)); g.lineTo(X(0.13), Y(0.6));
+      g.quadraticCurveTo(X(0.15), Y(0.75), X(0.105), Y(0.93)); g.closePath(); g.fill();
+    }
+    // tronco con hombros redondeados
+    g.fillStyle = SH.shirt; g.beginPath();
+    g.moveTo(X(-0.155), Y(-0.02)); g.quadraticCurveTo(X(-0.14), Y(0.24), X(-0.178), Y(0.47));
+    g.quadraticCurveTo(X(-0.215), Y(0.6), X(-0.075), Y(0.648)); g.lineTo(X(0.075), Y(0.648));
+    g.quadraticCurveTo(X(0.215), Y(0.6), X(0.178), Y(0.47)); g.quadraticCurveTo(X(0.14), Y(0.24), X(0.155), Y(-0.02));
+    g.closePath(); g.fill();
+    // cuello y cabeza
+    g.fillStyle = SH.skin; g.fillRect(X(-0.045), Y(0.735), 0.09 * P, 0.13 * P);
+    ell(0, 0.862, 0.094, 0.114, SH.skin);
+    ell(-0.093, 0.858, 0.018, 0.028, SH.skin); ell(0.093, 0.858, 0.018, 0.028, SH.skin); // orejas
+    // pelo: casquete (corto) o casquete + flequillo lateral (largo)
+    g.save(); g.beginPath(); g.ellipse(X(0), Y(0.866), 0.101 * P, 0.122 * P, 0, 0, 6.2832); g.clip();
+    g.fillStyle = SH.hair; g.fillRect(X(-0.12), Y(1.02), 0.24 * P, (1.02 - (longHair ? 0.88 : 0.905)) * P);
+    if (longHair) { g.fillRect(X(-0.12), Y(0.95), 0.035 * P, 0.15 * P); g.fillRect(X(0.085), Y(0.95), 0.035 * P, 0.15 * P); }
+    g.restore();
+    // brazos: manga (camiseta) + antebrazo y mano (piel)
+    var A;
+    if (pose === 1) A = [[0.3, 0.84, 0.34, 1.16], [0.3, 0.84, 0.34, 1.16]];          // brazos arriba
+    else if (pose === 2) A = [[0.235, 0.35, 0.035, 0.53], [0.235, 0.35, 0.035, 0.53]]; // aplauso
+    else if (pose === 3) A = [[0.225, 0.33, -0.075, 0.37], [0.225, 0.33, -0.085, 0.41]]; // brazos cruzados
+    else A = [[0.24, 0.32, 0.125, 0.12], [0.24, 0.32, 0.125, 0.12]];                 // manos en el regazo
+    for (var a = 0; a < 2; a++) {
+      var sd = a ? 1 : -1, e = A[a], ex = sd * e[0], ey = e[1], hx = sd * e[2], hy = e[3];
+      var shx = sd * 0.198, shy = 0.565, mx = shx + (ex - shx) * 0.55, my = shy + (ey - shy) * 0.55;
+      limb(ex, ey, hx, hy, 0.068, SH.skin);
+      limb(shx, shy, ex, ey, 0.072, SH.skin);
+      limb(shx, shy, mx, my, 0.088, SH.shirt);
+      ell(hx, hy, 0.038, 0.042, SH.skin);
+    }
+    if (!M) {
+      // sombreado: luz de arriba a la izquierda, piernas en la sombra de la fila de delante, rasgos de la cara
+      g.save(); g.globalCompositeOperation = 'source-atop';
+      var gx = g.createLinearGradient(X(-0.25), 0, X(0.25), 0); gx.addColorStop(0, 'rgba(255,255,255,0.10)'); gx.addColorStop(0.5, 'rgba(0,0,0,0)'); gx.addColorStop(1, 'rgba(0,0,0,0.26)');
+      g.fillStyle = gx; g.fillRect(ox, oy, IMP_CW, IMP_CH);
+      var gy = g.createLinearGradient(0, Y(0.3), 0, Y(-0.45)); gy.addColorStop(0, 'rgba(0,0,0,0)'); gy.addColorStop(1, 'rgba(0,0,0,0.45)');
+      g.fillStyle = gy; g.fillRect(ox, Y(0.3), IMP_CW, IMP_CH);
+      g.fillStyle = 'rgba(0,0,0,0.30)'; g.fillRect(X(-0.15), Y(0.03), 0.3 * P, 0.03 * P);          // cintura
+      g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(X(-0.045), Y(0.75), 0.09 * P, 0.035 * P);       // sombra de la barbilla
+      g.fillStyle = 'rgba(30,20,10,0.75)';
+      g.fillRect(X(-0.05), Y(0.885), 0.026 * P, 0.02 * P); g.fillRect(X(0.024), Y(0.885), 0.026 * P, 0.02 * P); // ojos
+      g.fillStyle = 'rgba(60,25,20,0.45)'; g.fillRect(X(-0.03), Y(0.815), 0.06 * P, 0.012 * P);     // boca
+      g.restore();
+    }
+  }
+  function impAtlas() {
+    var cv = canvas(IMP_CW * 4, IMP_CH * 4), g = cv.getContext('2d');
+    for (var v = 0; v < 2; v++) for (var p = 0; p < 4; p++) {
+      drawImpFigure(g, p * IMP_CW, v * IMP_CH, p, v, 'mask');
+      drawImpFigure(g, p * IMP_CW, (v + 2) * IMP_CH, p, v, 'shade');
+    }
+    return cv;
+  }
+  var IMP_VS = [
+    'attribute vec4 aAnim; attribute vec3 aSkin; attribute vec3 aHair; attribute vec3 aPants; attribute vec2 aImp;',
+    'uniform float uTime; uniform vec2 uCheer; uniform vec2 uCheerAge; uniform vec2 uWave; uniform float uTension;',
+    'uniform float uDens; uniform float uSkipNear;',
+    'varying vec2 vUv; varying vec3 vShirt; varying vec3 vSkin; varying vec3 vHair; varying vec3 vPants;',
+    '#include <fog_pars_vertex>',
+    'float vbCheer(){ float dly = fract(aAnim.x * 0.731) * 0.42; vec2 ch = uCheer * smoothstep(vec2(dly), vec2(dly + 0.2), uCheerAge);',
+    ' float c = aAnim.z < 0.25 ? ch.x : (aAnim.z > 0.75 ? ch.y : max(ch.x, ch.y) * 0.55); return c * aAnim.y; }',
+    'float vbWave(){ float wd = abs(fract(aAnim.w - uWave.x + 0.5) - 0.5); return uWave.y * smoothstep(0.045, 0.0, wd); }',
+    'void main(){',
+    ' if (aImp.x >= uDens || (uSkipNear > 0.5 && aImp.y > 0.5)) { gl_Position = vec4(0.0, 0.0, -2.0, 1.0); return; }',
+    ' vec3 ip = instanceMatrix[3].xyz; float sx = length(instanceMatrix[0].xyz), sy = length(instanceMatrix[1].xyz);',
+    ' float cheer = vbCheer(); float act = max(cheer, vbWave());',
+    ' float clap = uTension * (1.0 - act) * step(0.5, fract(uTime * 2.2 + aAnim.x));',
+    ' float pv = fract(aAnim.x * 5.17);',
+    ' float frame = act * 1.4 > 0.45 ? 1.0 : (clap > 0.5 ? 2.0 : ((pv > 0.55 && pv < 0.9) ? 3.0 : 0.0));',
+    ' float row = fract(aAnim.x * 3.7) > 0.62 ? 1.0 : 0.0;',
+    ' vec2 q = uv; if (fract(aAnim.x * 1.93) > 0.5) q.x = 1.0 - q.x;',
+    ' vUv = vec2((frame + q.x) * 0.25, 1.0 - (row + 1.0 - q.y) * 0.25);',
+    ' float bob = sin(uTime * (1.1 + aAnim.y * 0.7) + aAnim.x) * 0.012 + uTension * sin(uTime * 4.0 + aAnim.x) * 0.02;',
+    ' float hop = abs(sin(uTime * 8.0 + aAnim.x)) * 0.17 * cheer;',
+    ' float rise = smoothstep(0.05, 0.6, act) * 0.36;',
+    ' vec3 tc = cameraPosition - ip; vec3 rt = normalize(vec3(tc.z, 0.0, -tc.x) + vec3(1e-4, 0.0, 0.0));',
+    ' float sway = sin(uTime * 0.55 + aAnim.x * 2.0) * 0.024 * position.y;',
+    ' vec3 wp = ip + rt * ((position.x * ' + IMP_W.toFixed(4) + ' + sway) * sx) + vec3(0.0, (' + IMP_Y0.toFixed(3) + ' + position.y * ' + IMP_H.toFixed(3) + ') * sy + bob + hop + rise, 0.0);',
+    ' vec3 cc = vec3(1.0);',
+    '#ifdef USE_INSTANCING_COLOR',
+    ' cc = instanceColor.xyz;',
+    '#endif',
+    ' float rowK = clamp((ip.y - 1.3) / 6.0, 0.0, 1.0); float dk = 1.0 - rowK * 0.32;',
+    ' vShirt = mix(cc, vec3(dot(cc, vec3(0.299, 0.587, 0.114))), rowK * 0.4) * dk;',
+    ' vSkin = mix(aSkin, vec3(dot(aSkin, vec3(0.299, 0.587, 0.114))), rowK * 0.4) * dk;',
+    ' vHair = aHair * dk; vPants = aPants * dk;',
+    ' vec4 mvPosition = viewMatrix * vec4(wp, 1.0); gl_Position = projectionMatrix * mvPosition;',
+    '#include <fog_vertex>',
+    '}'].join('\n');
+  var IMP_FS = [
+    'uniform sampler2D uAtlas; uniform vec3 uLight;',
+    'varying vec2 vUv; varying vec3 vShirt; varying vec3 vSkin; varying vec3 vHair; varying vec3 vPants;',
+    '#include <fog_pars_fragment>',
+    'void main(){',
+    ' vec4 m = texture2D(uAtlas, vUv);',
+    ' if (m.a < 0.3) discard;',
+    ' float s = texture2D(uAtlas, vUv - vec2(0.0, 0.5)).r;',
+    ' float pw = clamp(1.0 - m.r - m.g - m.b, 0.0, 1.0);',
+    ' vec3 c = (m.r * vShirt + m.g * vSkin + m.b * vHair + pw * vPants) * s * uLight;',
+    ' gl_FragColor = vec4(c, 1.0);',
+    '#include <tonemapping_fragment>',
+    '#include <encodings_fragment>',
+    '#include <fog_fragment>',
+    '}'].join('\n');
+  function buildImpostors(IM) {
+    var n = IM.imp.length / 2; if (!n) return;
+    imp.cv = impAtlas();
+    imp.tex = new THREE.CanvasTexture(imp.cv); // máscaras y sombreado son DATOS (sin sRGB)
+    imp.tex.generateMipmaps = true; imp.tex.minFilter = THREE.LinearMipmapLinearFilter;
+    imp.U = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uAtlas: { value: null }, uLight: { value: new THREE.Vector3(1, 1, 1) },
+      uDens: { value: 1 }, uSkipNear: { value: 0 } }]);
+    imp.U.uAtlas.value = imp.tex;
+    for (var k in crowdU) imp.U[k] = crowdU[k]; // mismos uniformes de animación que el público 3D (objetos compartidos)
+    var mat = new THREE.ShaderMaterial({ uniforms: imp.U, vertexShader: IMP_VS, fragmentShader: IMP_FS, fog: true });
+    var geo = new THREE.PlaneGeometry(1, 1); geo.translate(0, 0.5, 0);
+    geo.setAttribute('aAnim', new THREE.InstancedBufferAttribute(new Float32Array(IM.anim), 4));
+    geo.setAttribute('aSkin', new THREE.InstancedBufferAttribute(new Float32Array(IM.skin), 3));
+    geo.setAttribute('aHair', new THREE.InstancedBufferAttribute(new Float32Array(IM.hair), 3));
+    geo.setAttribute('aPants', new THREE.InstancedBufferAttribute(new Float32Array(IM.pants), 3));
+    geo.setAttribute('aImp', new THREE.InstancedBufferAttribute(new Float32Array(IM.imp), 2));
+    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 4, 0), 45);
+    var mesh = new THREE.InstancedMesh(geo, mat, n);
+    mesh.instanceMatrix.array.set(IM.mat);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(IM.col), 3);
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.frustumCulled = false; mesh.visible = false; mesh.name = 'crowdImp';
+    root.add(mesh); imp.mesh = mesh;
+  }
   // bolsas de afición visitante (coords de sim): grupos compactos de azul en la grada rival
   var AWAY_POCKETS = [[-12, -15.5, 4.2], [-22, 15, 3.6], [-21.5, 4.5, 3.4], [6, 16.5, 2.6]];
   var crowdGeos = { hi: null, lo: null }, flagMesh = null;
@@ -854,11 +1098,18 @@
     var c = new THREE.Color();
     var flagSeats = [];
     crowdHeads.length = 0;
+    var IM = { mat: [], col: [], anim: [], skin: [], hair: [], pants: [], imp: [] }; // datos del público "impostor" (todas las gradas)
+    function shuffle(l) { for (var i = l.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), t = l[i]; l[i] = l[j]; l[j] = t; } }
     for (var m = 0; m < 4; m++) {
-      var list = seats[m];
-      // mezcla aleatoria (para que `count` reducido quite gente repartida) y aforo ~88 %
-      for (var i = list.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), t = list[i]; list[i] = list[j]; list[j] = t; }
-      var n = Math.floor(list.length * 0.88);
+      // filas cercanas primero y lejanas después, cada grupo barajado (para que `count` reducido quite gente
+      // repartida) y aforo ~88 %. En calidad media la malla 3D dibuja solo las cercanas (count = cercanas) y las
+      // lejanas van como impostores; en baja todo es impostor; en alta, todo 3D como siempre.
+      var nearRows = m < 2 ? NEAR_L : NEAR_E, nearL = [], farL = [];
+      for (var si = 0; si < seats[m].length; si++) (seats[m][si].row < nearRows ? nearL : farL).push(seats[m][si]);
+      shuffle(nearL); shuffle(farL);
+      var nn = Math.floor(nearL.length * 0.88), nf = Math.floor(farL.length * 0.88);
+      var list = nearL.slice(0, nn).concat(farL.slice(0, nf));
+      var n = nn + nf;
       var anim = new Float32Array(n * 4), skin = new Float32Array(n * 3), hair = new Float32Array(n * 3), pants = new Float32Array(n * 3), acc = new Float32Array(n * 4);
       var mesh = new THREE.InstancedMesh(crowdGeos.hi, mat, n);
       var minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9, minz = 1e9, maxz = -1e9;
@@ -889,6 +1140,14 @@
         var yaw = Math.atan2(st.fx, -st.fy);
         VB.toThree(st.x, st.y, st.z, _p); _e.set(0, yaw + (rnd() - 0.5) * 0.25, 0); _q.setFromEuler(_e); _s.set(sw, sh, (sw + 1) / 2);
         _m.compose(_p, _q, _s); mesh.setMatrixAt(k, _m);
+        // impostor: misma persona (colores, animación), cartel orientado a cámara en el shader
+        _q.identity(); _s.set(sw, sh, 1); _m4i.compose(_p, _q, _s);
+        for (var me4 = 0; me4 < 16; me4++) IM.mat.push(_m4i.elements[me4]);
+        mesh.getColorAt(k, c); IM.col.push(c.r, c.g, c.b);
+        IM.anim.push(anim[k * 4], anim[k * 4 + 1], anim[k * 4 + 2], anim[k * 4 + 3]);
+        IM.skin.push(skin[k * 3], skin[k * 3 + 1], skin[k * 3 + 2]); IM.hair.push(hair[k * 3], hair[k * 3 + 1], hair[k * 3 + 2]);
+        IM.pants.push(pants[k * 3], pants[k * 3 + 1], pants[k * 3 + 2]);
+        IM.imp.push(rnd(), k < nn ? 1 : 0);
         if (_p.x < minx) minx = _p.x; if (_p.x > maxx) maxx = _p.x; if (_p.y < miny) miny = _p.y; if (_p.y > maxy) maxy = _p.y; if (_p.z < minz) minz = _p.z; if (_p.z > maxz) maxz = _p.z;
         if (k % 23 === 0) crowdHeads.push(_p.x, _p.y + 0.95, _p.z);
         // banderas: algunos aficionados de equipo, a partir de la 3.ª fila
@@ -907,12 +1166,13 @@
       });
       mesh.geometry = lods.hi;
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      mesh.userData.full = n; mesh.userData.lods = lods; mesh.name = 'crowd' + m;
+      mesh.userData.full = n; mesh.userData.near = nn; mesh.userData.lods = lods; mesh.name = 'crowd' + m;
       // r149 crea los InstancedMesh con frustumCulled = false; la esfera (mundo, +1,5 m para botes/brazos/ola)
       // es correcta: la grada que queda detrás de la cámara deja de dibujarse
       mesh.frustumCulled = true;
       root.add(mesh); crowdMeshes.push(mesh);
     }
+    buildImpostors(IM);
     // banderas
     if (flagSeats.length) {
       var fg = flagGeometry(), fn = flagSeats.length;
@@ -947,7 +1207,7 @@
     { name: 'SALT·9', fg: '#ffffff', bg: ['#0e1118', '#252b38'], deco: 'dots' },
     { name: 'VOLEY 3D', fg: '#0e1118', bg: ['#ffd23f', '#ffb03d'], deco: 'ball' }
   ];
-  var led = { cv: null, tex: null, mcv: null, mtex: null, mats: [], msgT: 0, msgOn: false, refl: [] }, ledReflMeshes = [];
+  var led = { cv: null, tex: null, mcv: null, mtex: null, mat: null, mesh: null, reflMat: null, refl: null, msgT: 0, msgOn: false, scrollT: 0 };
   function drawDeco(g, kind, x, y, h, color) {
     g.save(); g.strokeStyle = color; g.fillStyle = color; g.lineWidth = h * 0.08;
     if (kind === 'flake') { for (var i = 0; i < 3; i++) { g.save(); g.translate(x, y); g.rotate(i * Math.PI / 3); g.beginPath(); g.moveTo(-h * 0.32, 0); g.lineTo(h * 0.32, 0); g.stroke(); g.restore(); } }
@@ -974,19 +1234,21 @@
     }
     // la rejilla de píxeles LED la pinta el shader (ledMaterial): en el canvas producía moiré al mipmapear
   }
-  function drawMsg(cv, text, color) {
+  /** Mensaje LED que se repite a lo largo de la valla. both = flechas a los dos lados (cambio de campo: <<< TEXTO >>>). */
+  function drawMsg(cv, text, color, both) {
     var g = cv.getContext('2d'), W = cv.width, H = cv.height;
     var gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, color); gr.addColorStop(1, '#0b0f18');
     g.fillStyle = '#0b0f18'; g.fillRect(0, 0, W, H);
     g.fillStyle = gr; g.globalAlpha = 0.85; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
     g.font = 'italic 900 ' + Math.round(H * 0.66) + 'px ' + FONT; g.textBaseline = 'middle'; g.textAlign = 'left';
-    var unit = g.measureText(text).width + H * 2.2, n = Math.ceil(W / unit);
+    var unit = g.measureText(text).width + H * (both ? 3.6 : 2.2), n = Math.ceil(W / unit);
     unit = W / n; // repetición exacta: la textura enlaza sin costura
     for (var i = 0; i < n; i++) {
       var x = i * unit;
-      g.fillStyle = '#ffffff'; g.fillText(text, x + H * 0.6, H * 0.55);
+      g.fillStyle = '#ffffff'; g.fillText(text, x + H * (both ? 1.9 : 0.6), H * 0.55);
       g.fillStyle = 'rgba(255,255,255,0.75)';
       for (var c = 0; c < 3; c++) { var cx = x + unit - H * 1.35 + c * H * 0.32; g.beginPath(); g.moveTo(cx, H * 0.25); g.lineTo(cx + H * 0.18, H * 0.5); g.lineTo(cx, H * 0.75); g.lineTo(cx + H * 0.08, H * 0.5); g.closePath(); g.fill(); }
+      if (both) for (var c2 = 0; c2 < 3; c2++) { var lx = x + H * 1.35 - c2 * H * 0.32; g.beginPath(); g.moveTo(lx, H * 0.25); g.lineTo(lx - H * 0.18, H * 0.5); g.lineTo(lx, H * 0.75); g.lineTo(lx - H * 0.08, H * 0.5); g.closePath(); g.fill(); }
     }
   }
   /* Material LED común (vallas, videomarcadores, marcador colgado). Una sola textura por lienzo,
@@ -1020,50 +1282,83 @@
     return m;
   }
   function ledTex(cv) { var t = texOf(cv); t.wrapS = THREE.RepeatWrapping; return t; }
+  /* Vallas LED fusionadas: TODAS las vallas (4 de suelo, frontal de la mesa y 4 anillos de grada) son UNA malla
+   * con UN material (antes 9 mallas y 9 materiales: 9 dibujos) y sus 4 reflejos en el suelo otra (antes 4).
+   * Lo que antes eran uniformes por valla (repetición de marcas y de mensaje, fase, velocidad de desplazamiento,
+   * retícula de LEDs) va en atributos por vértice; el desplazamiento es fract(velocidad * scrollT), con
+   * scrollT acumulado en JS (x6 durante un mensaje) y envuelto en 500 (todas las velocidades x 500 son enteras). */
+  var LEDM_VS = [
+    'attribute vec4 aLed; attribute vec2 aCells; uniform float msg; uniform float scrollT;',
+    'varying vec2 vUv; varying float vU; varying vec2 vCells;',
+    '#include <fog_pars_vertex>',
+    'void main(){ vUv = uv; vCells = aCells;',
+    ' float rep = msg > 0.5 ? aLed.y : aLed.x; float ph = msg > 0.5 ? 0.0 : aLed.z;',
+    ' vU = uv.x * rep + ph + fract(aLed.w * scrollT);',
+    ' vec4 mvPosition = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mvPosition;',
+    '#include <fog_vertex>',
+    '}'].join('\n');
+  var LEDM_FS = [
+    'uniform sampler2D map; uniform float boost; uniform float dotK;',
+    'varying vec2 vUv; varying float vU; varying vec2 vCells;',
+    '#include <fog_pars_fragment>',
+    'void main(){',
+    ' vec2 uv = vec2(vU, vUv.y);',
+    ' vec3 c = texture2D(map, uv).rgb;',
+    ' vec2 gc = uv * vCells; vec2 fw = fwidth(gc);',
+    ' float fade = (1.0 - smoothstep(0.16, 0.36, max(fw.x, fw.y))) * dotK;',
+    ' vec2 f = abs(fract(gc) - 0.5);',
+    ' float d = smoothstep(0.5, 0.3, max(f.x, f.y * 1.15));',
+    ' c *= mix(1.0, 0.42 + 0.72 * d, fade);',
+    ' gl_FragColor = vec4(c * boost, 1.0);',
+    '#include <encodings_fragment>',
+    '#include <fog_fragment>',
+    '}'].join('\n');
+  var LEDR_VS = 'attribute vec4 aLed; uniform float msg; uniform float scrollT; varying vec2 vUv; varying float vU;' +
+    'void main(){ vUv = uv; float rep = msg > 0.5 ? aLed.y : aLed.x; float ph = msg > 0.5 ? 0.0 : aLed.z;' +
+    ' vU = uv.x * rep + ph + fract(aLed.w * scrollT); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+  var LEDR_FS = 'uniform sampler2D map; uniform float k; varying vec2 vUv; varying float vU;' +
+    'void main(){ vec3 c = texture2D(map, vec2(vU, 1.0 - vUv.y * 0.9)).rgb; float f = pow(1.0 - vUv.y, 2.2); gl_FragColor = vec4(c * c * f * k, 1.0); }';
+  /** Acumulador de una malla fusionada de vallas: plano (len x h) colocado con (pos, giro) + atributos por valla. */
+  function LedBatch() { this.P = []; this.U = []; this.L = []; this.Cc = []; this.I = []; this.n = 0; }
+  LedBatch.prototype.add = function (len, h, pos, rx, ry, a4, cells) {
+    var g = new THREE.PlaneGeometry(len, h), pa = g.attributes.position, ua = g.attributes.uv, ia = g.index.array;
+    _e.set(rx, ry, 0, 'YXZ'); _q.setFromEuler(_e); _s.set(1, 1, 1); _m.compose(pos, _q, _s);
+    for (var v = 0; v < pa.count; v++) {
+      _v.fromBufferAttribute(pa, v).applyMatrix4(_m); this.P.push(_v.x, _v.y, _v.z); this.U.push(ua.getX(v), ua.getY(v));
+      this.L.push(a4[0], a4[1], a4[2], a4[3]); this.Cc.push(cells[0], cells[1]);
+    }
+    for (var j = 0; j < ia.length; j++) this.I.push(ia[j] + this.n);
+    this.n += pa.count; g.dispose();
+  };
+  LedBatch.prototype.build = function () {
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(this.P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(this.U, 2));
+    g.setAttribute('aLed', new THREE.Float32BufferAttribute(this.L, 4)); g.setAttribute('aCells', new THREE.Float32BufferAttribute(this.Cc, 2));
+    g.setIndex(this.I); g.computeBoundingSphere(); return g;
+  };
   /** Valla LED. (cx,cy) centro en sim, len a lo largo, normal hacia la pista (nx,ny).
    *  Las de suelo van inclinadas hacia atrás (-0.16 rad) dentro de una carcasa inclinada igual:
-   *  la pantalla queda 1,5 cm por delante de su cara frontal (antes quedaba medio enterrada). */
-  function ledBoard(S, cx, cy, len, nx, ny, h, z0, speed, rows) {
+   *  la pantalla queda 1,5 cm por delante de su cara frontal (antes quedaba medio enterrada).
+   *  refl: añade su reflejo falso en el suelo brillante (tira aditiva con degradado). */
+  function ledBoard(S, cx, cy, len, nx, ny, h, z0, speed, rows, refl) {
     var meterPerSeg = h * (led.cv.width / BRANDS.length) / led.cv.height;
     var repB = len / (meterPerSeg * BRANDS.length), repM = len / (h * led.mcv.width / led.mcv.height);
     var cellsY = Math.round(h / 0.016), cellsX = Math.round(cellsY * led.cv.width / led.cv.height);
-    var mat = ledMaterial(led.tex, repB, cellsX, cellsY);
-    mat.uniforms.phase.value = rnd();
-    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(len, h), mat);
-    var ry = Math.atan2(nx, -ny), rx = rows ? 0 : -0.16;
-    mesh.rotation.order = 'YXZ'; mesh.rotation.y = ry; mesh.rotation.x = rx;
+    var ry = Math.atan2(nx, -ny), rx = rows ? 0 : -0.16, pos = new THREE.Vector3();
     _e.set(rx, ry, 0, 'YXZ'); _v.set(0, 1, 0).applyEuler(_e); _v2.set(0, 0, 1).applyEuler(_e);
-    if (rows) VB.toThree(cx + nx * 0.07, cy + ny * 0.07, z0 + h / 2, mesh.position);
+    if (rows) VB.toThree(cx + nx * 0.07, cy + ny * 0.07, z0 + h / 2, pos);
     else {
       // borde inferior a 12 cm por delante de la línea de vallas; el centro sube por el plano inclinado
-      VB.toThree(cx + nx * 0.12, cy + ny * 0.12, z0, mesh.position); mesh.position.addScaledVector(_v, h / 2);
+      VB.toThree(cx + nx * 0.12, cy + ny * 0.12, z0, pos); pos.addScaledVector(_v, h / 2);
       var d = 0.32, w = len + 0.1, hh = h + 0.14;
       // carcasa: misma inclinación, cara frontal 1,5 cm detrás de la pantalla
-      S.box(w, hh, d, mesh.position.x - _v2.x * (d / 2 + 0.015), mesh.position.y - _v2.y * (d / 2 + 0.015) - 0.02, mesh.position.z - _v2.z * (d / 2 + 0.015), col('#0a0d12'), ry, rx);
+      S.box(w, hh, d, pos.x - _v2.x * (d / 2 + 0.015), pos.y - _v2.y * (d / 2 + 0.015) - 0.02, pos.z - _v2.z * (d / 2 + 0.015), col('#0a0d12'), ry, rx);
       // remate superior iluminado (filo de luz fría) y zócalo
-      S.box(w, 0.035, d + 0.02, mesh.position.x - _v2.x * (d / 2) + _v.x * (hh / 2), mesh.position.y + _v.y * (hh / 2) - 0.02, mesh.position.z - _v2.z * (d / 2) + _v.z * (hh / 2), col('#1a2230'), ry, rx);
+      S.box(w, 0.035, d + 0.02, pos.x - _v2.x * (d / 2) + _v.x * (hh / 2), pos.y + _v.y * (hh / 2) - 0.02, pos.z - _v2.z * (d / 2) + _v.z * (hh / 2), col('#1a2230'), ry, rx);
     }
-    root.add(mesh);
-    var L = { mat: mat, repB: repB, repM: repM, phaseB: mat.uniforms.phase.value, scroll: 0, speed: speed, refl: null, mesh: mesh };
-    led.mats.push(L);
-    return L;
-  }
-  /** Reflejo falso de la valla en el suelo brillante (tira aditiva con degradado). Comparte uniformes con la valla. */
-  function ledReflection(cx, cy, len, nx, ny, L) {
-    var U = L.mat.uniforms;
-    var m = new THREE.ShaderMaterial({
-      uniforms: { map: U.map, rep: U.rep, phase: U.phase, scroll: U.scroll, k: { value: 0.22 } },
-      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: 'uniform sampler2D map; uniform float rep; uniform float phase; uniform float scroll; uniform float k; varying vec2 vUv;' +
-        'void main(){ vec3 c = texture2D(map, vec2(vUv.x * rep + phase + scroll, 1.0 - vUv.y * 0.9)).rgb; float f = pow(1.0 - vUv.y, 2.2);' +
-        ' gl_FragColor = vec4(c * c * f * k, 1.0); }',
-      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
-    });
-    var p = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.6), m);
-    p.rotation.order = 'YXZ'; p.rotation.y = Math.atan2(nx, -ny); p.rotation.x = -Math.PI / 2;
-    VB.toThree(cx + nx * 0.92, cy + ny * 0.92, 0.004, p.position);
-    p.renderOrder = 1; root.add(p); led.refl.push(m); L.refl = m; ledReflMeshes.push(p);
-    return p;
+    var a4 = [repB, repM, rnd(), speed], cells = [cellsX, cellsY];
+    led.batch.add(len, h, pos, rx, ry, a4, cells);
+    if (refl) { VB.toThree(cx + nx * 0.92, cy + ny * 0.92, 0.004, pos); led.rbatch.add(len, 1.6, pos, -Math.PI / 2, ry, a4, cells); }
   }
   function buildLED(S) {
     var hi = !ctx.isMobile;
@@ -1071,11 +1366,12 @@
     led.mcv = canvas(hi ? 2048 : 1024, hi ? 128 : 64); drawMsg(led.mcv, 'PALAU DEL MAR', '#146a86');
     // UNA textura por lienzo para todas las vallas (antes 9 copias de 4096x128 con mipmaps, ~25 MB)
     led.tex = ledTex(led.cv); led.mtex = ledTex(led.mcv);
+    led.batch = new LedBatch(); led.rbatch = new LedBatch();
     var h = 0.86;
-    ledReflection(0, BY, 2 * FZX, 0, -1, ledBoard(S, 0, BY, 2 * FZX, 0, -1, h, 0.04, 0.012));
-    ledReflection(0, -BY, 2 * FZX, 0, 1, ledBoard(S, 0, -BY, 2 * FZX, 0, 1, h, 0.04, -0.012));
-    ledReflection(BX, 0, 2 * FZY, -1, 0, ledBoard(S, BX, 0, 2 * FZY, -1, 0, h, 0.04, 0.016));
-    ledReflection(-BX, 0, 2 * FZY, 1, 0, ledBoard(S, -BX, 0, 2 * FZY, 1, 0, h, 0.04, -0.016));
+    ledBoard(S, 0, BY, 2 * FZX, 0, -1, h, 0.04, 0.012, false, true);
+    ledBoard(S, 0, -BY, 2 * FZX, 0, 1, h, 0.04, -0.012, false, true);
+    ledBoard(S, BX, 0, 2 * FZY, -1, 0, h, 0.04, 0.016, false, true);
+    ledBoard(S, -BX, 0, 2 * FZY, 1, 0, h, 0.04, -0.016, false, true);
     // frontal de la mesa del anotador
     ledBoard(S, 0, C.HW + 3.6 - 0.36, 2.7, 0, -1, 0.62, 0.06, 0.02, true);
     // anillos LED en lo alto de las gradas (ribbon boards)
@@ -1085,26 +1381,31 @@
     var xb = SX0 + ROWS_E * ROW_D, tb2 = 0.5 + ROWS_E * ROW_H;
     ledBoard(S, xb, 0, 2 * ENDY + 0.8, -1, 0, 0.7, tb2 + 0.8, 0.008, true);
     ledBoard(S, -xb, 0, 2 * ENDY + 0.8, 1, 0, 0.7, tb2 + 0.8, -0.008, true);
+    // uniformes compartidos por vallas y reflejos (mismos objetos)
+    var U = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { map: { value: null }, msg: { value: 0 }, scrollT: { value: 0 }, boost: { value: 0.95 }, dotK: { value: 1 } }]);
+    U.map.value = led.tex;
+    led.mat = new THREE.ShaderMaterial({ uniforms: U, vertexShader: LEDM_VS, fragmentShader: LEDM_FS, fog: true, toneMapped: false });
+    led.mat.extensions.derivatives = true;
+    led.mesh = new THREE.Mesh(led.batch.build(), led.mat); led.mesh.name = 'ledBoards'; led.mesh.frustumCulled = false; root.add(led.mesh);
+    led.reflMat = new THREE.ShaderMaterial({ uniforms: { map: U.map, msg: U.msg, scrollT: U.scrollT, k: { value: 0.22 } }, vertexShader: LEDR_VS, fragmentShader: LEDR_FS,
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+    led.refl = new THREE.Mesh(led.rbatch.build(), led.reflMat); led.refl.name = 'ledRefl'; led.refl.renderOrder = 1; led.refl.frustumCulled = false; root.add(led.refl);
+    led.batch = led.rbatch = null;
   }
-  function ledMessage(text, color, dur) {
-    drawMsg(led.mcv, text, color);
+  function ledMessage(text, color, dur, both) {
+    drawMsg(led.mcv, text, color, both);
     led.mtex.needsUpdate = true; // una sola subida por mensaje (antes 8)
     led.msgT = dur; setLedMode(true);
   }
   function setLedMode(on) {
     if (led.msgOn === on) return; led.msgOn = on;
-    for (var i = 0; i < led.mats.length; i++) {
-      var L = led.mats[i], U = L.mat.uniforms;
-      U.map.value = on ? led.mtex : led.tex; U.rep.value = on ? L.repM : L.repB; U.phase.value = on ? 0 : L.phaseB;
-    }
+    if (!led.mat) return;
+    led.mat.uniforms.map.value = on ? led.mtex : led.tex; led.mat.uniforms.msg.value = on ? 1 : 0;
   }
   function updateLED(dt) {
-    if (led.msgT > 0) { led.msgT -= dt; if (led.msgT <= 0) setLedMode(false); }
-    var sp = led.msgOn ? 6 : 1;
-    for (var i = 0; i < led.mats.length; i++) {
-      var L = led.mats[i];
-      L.scroll = (L.scroll + L.speed * sp * dt) % 1; L.mat.uniforms.scroll.value = L.scroll;
-    }
+    if (led.msgT > 0) { led.msgT -= dt; if (led.msgT <= 0) { if (led.next) { var ln = led.next; led.next = null; ledMessage(ln[0], ln[1], ln[2], ln[3]); } else setLedMode(false); } }
+    led.scrollT = (led.scrollT + dt * (led.msgOn ? 6 : 1)) % 500;
+    if (led.mat) led.mat.uniforms.scrollT.value = led.scrollT;
   }
 
   /* =====================================================================
@@ -1133,6 +1434,19 @@
     fitFont(g, SB.msg, 'italic 900', bh * (SB.msgSub ? 0.46 : 0.6), W * 0.92);
     g.fillText(SB.msg, mid, by + bh * (SB.msgSub ? 0.38 : 0.52));
     if (SB.msgSub) { g.fillStyle = SB.msgCol; fitFont(g, SB.msgSub, '800', bh * 0.22, W * 0.9); g.fillText(SB.msgSub, mid, by + bh * 0.77); }
+    if (SB.msgIcon === 'swap') { // cambio de campo: dos flechas opuestas a cada lado del texto
+      var tw = Math.min(W * 0.92, g.measureText(SB.msg).width), ay = by + bh * (SB.msgSub ? 0.38 : 0.52), s = bh * 0.11;
+      g.font = 'italic 900 ' + Math.round(bh * (SB.msgSub ? 0.46 : 0.6)) + 'px ' + FONT; tw = Math.min(W * 0.92, g.measureText(SB.msg).width);
+      g.fillStyle = SB.msgCol;
+      for (var sd = -1; sd <= 1; sd += 2) {
+        var ax = mid + sd * (tw / 2 + s * 2.2);
+        if (ax - s * 1.6 < 0 || ax + s * 1.6 > W) continue;
+        g.beginPath(); g.moveTo(ax - s * 1.5, ay - s * 0.55); g.lineTo(ax + s * 0.6, ay - s * 0.55); g.lineTo(ax + s * 0.6, ay - s * 1.1); g.lineTo(ax + s * 1.6, ay - s * 0.3);
+        g.lineTo(ax + s * 0.6, ay + s * 0.5); g.lineTo(ax + s * 0.6, ay - s * 0.05); g.lineTo(ax - s * 1.5, ay - s * 0.05); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(ax + s * 1.5, ay + s * 0.35); g.lineTo(ax - s * 0.6, ay + s * 0.35); g.lineTo(ax - s * 0.6, ay - s * 0.2); g.lineTo(ax - s * 1.6, ay + s * 0.6);
+        g.lineTo(ax - s * 0.6, ay + s * 1.4); g.lineTo(ax - s * 0.6, ay + s * 0.85); g.lineTo(ax + s * 1.5, ay + s * 0.85); g.closePath(); g.fill();
+      }
+    }
   }
   /** Videomarcador de fondo (ancho, 8:3). */
   function drawScoreWide(cv) {
@@ -1218,7 +1532,7 @@
       var EB = new Builder();
       EB.sbox(0.05, 14.6, 0.06, e * (HALL_X - 0.64), 0, SCR_Z - 2.95, col('#ff7a45'));
       EB.sbox(0.05, 14.6, 0.06, e * (HALL_X - 0.64), 0, SCR_Z + 2.95, col('#7fc8ff'));
-      screens.vis.push({ mats: [m], strip: stripMesh(EB), x: e * (HALL_X - 0.63), y: 0, half: 7, z0: SCR_Z - 2.98, z1: SCR_Z + 2.98, v: 1 });
+      screens.vis.push({ mats: [m], strip: stripMesh(EB), x: e * (HALL_X - 0.63), y: 0, half: 7, z0: SCR_Z - 2.98, z1: SCR_Z + 2.98, v: 1, w: -1, top: null, bot: null });
     }
     // marcador central colgado (4 caras)
     var hz = 11.4, hw = 4.2, hh = 2.36, hd = 4.2; // caja cuadrada: las 4 caras con la proporción de la textura (16:9)
@@ -1253,7 +1567,7 @@
       var ec = col(ez > 0 ? '#7fc8ff' : '#ff7a45'), zz = hz + ez * (hh / 2 + 0.1);
       HB.sbox(hw + 0.24, 0.05, 0.05, 0, eg * (hd / 2 + 0.11), zz, ec); HB.sbox(0.05, hd + 0.24, 0.05, eg * (hw / 2 + 0.11), 0, zz, ec);
     }
-    screens.vis.push({ mats: [hm], strip: stripMesh(HB), x: 0, y: 0, half: 0, z0: hz - hh / 2 - 0.15, z1: hz + hh / 2 + 0.15, v: 1 });
+    screens.vis.push({ mats: [hm], strip: stripMesh(HB), x: 0, y: 0, half: 0, z0: hz - hh / 2 - 0.15, z1: hz + hh / 2 + 0.15, v: 1, w: -1, top: null, bot: null });
     for (var c = -1; c <= 1; c += 2) for (var d = -1; d <= 1; d += 2) S.sbox(0.03, 0.03, HALL_H - hz - hh / 2, c * 1.5, d * 1.5, (HALL_H + hz + hh / 2) / 2, col('#2a2f38'));
   }
   /** Pantallas cortadas por el borde superior: si menos de ~70 % de su alto queda bajo la franja del HUD
@@ -1265,21 +1579,25 @@
     var cam = ctx.camera, k = 1 - Math.exp(-7 * rdt);
     for (var i = 0; i < screens.vis.length; i++) {
       var S = screens.vis[i], want = 1;
-      VB.toThree(S.x, S.y, S.z1, _v); VB.toThree(S.x, S.y, S.z0, _v2);
+      if (!S.top) { S.top = VB.toThree(S.x, S.y, S.z1, new THREE.Vector3()); S.bot = VB.toThree(S.x, S.y, S.z0, new THREE.Vector3()); } // fijos: una vez
+      _v.copy(S.top); _v2.copy(S.bot);
       _p.copy(_v).applyMatrix4(cam.matrixWorldInverse);
       if (_p.z < -0.5) {
         _v.project(cam); _v2.project(cam);
         var yt = _v.y, yb = _v2.y, inX = Math.abs(_v.x) < 1.3;
         if (inX && yt > VIS_TOP && yt > yb) {
-          var frac = (VIS_TOP - Math.max(yb, -1)) / (yt - yb);
-          frac = Math.max(0, Math.min(1, frac));
-          var u = Math.max(0, Math.min(1, (frac - 0.5) / 0.3)); want = u * u * (3 - 2 * u);
+          var frac = (VIS_TOP - (yb > -1 ? yb : -1)) / (yt - yb);
+          frac = frac < 0 ? 0 : frac > 1 ? 1 : frac;
+          var u = (frac - 0.5) / 0.3; u = u < 0 ? 0 : u > 1 ? 1 : u; want = u * u * (3 - 2 * u);
         }
       }
       S.v += (want - S.v) * (rdt > 0 ? k : 1);
-      var mv = 0.02 + 0.98 * S.v;
-      for (var m = 0; m < S.mats.length; m++) S.mats[m].uniforms.vis.value = mv;
-      S.strip.material.color.setScalar(0.02 + 0.98 * S.v);
+      var mv = 0.02 + 0.98 * S.v, dw = mv - S.w;
+      if (dw > 1e-4 || dw < -1e-4) { // asentada: sin escribir uniformes cada frame (cada double nuevo es un HeapNumber)
+        S.w = mv;
+        for (var m = 0; m < S.mats.length; m++) S.mats[m].uniforms.vis.value = mv;
+        S.strip.material.color.setScalar(mv);
+      }
     }
   }
   /** Fundido en la franja superior de la pantalla (NDC y 0,72 -> 0,98) para brillos del techo (halos de los
@@ -1306,7 +1624,7 @@
     SB.tag = g.mode === 'over' || g.pendingSet ? '' : g.matchPoint >= 0 ? 'PUNTO DE PARTIDO' : g.setPoint >= 0 ? 'PUNTO DE SET' : '';
     SB.dirty = true;
   }
-  function screenMsg(text, sub, color, dur) { SB.msg = text; SB.msgSub = sub || ''; SB.msgCol = color; SB.msgT = dur; SB.dirty = true; screens.flash = 1; }
+  function screenMsg(text, sub, color, dur, icon) { SB.msg = text; SB.msgSub = sub || ''; SB.msgCol = color; SB.msgT = dur; SB.msgIcon = icon || ''; SB.dirty = true; screens.flash = 1; }
 
   /* =====================================================================
    * TECHO, PAREDES, CERCHAS, FOCOS, HACES DE LUZ, BANDEROLAS
@@ -1425,6 +1743,7 @@
   /* =====================================================================
    * LUCES Y MAPA DE ENTORNO
    * ===================================================================== */
+  var FILL_I = 0.38, RIM_I = 0.3; // intensidades de relleno y contraluz (setQuality las pone a 0 en baja en el móvil)
   function buildLights(q) {
     hemi = new THREE.HemisphereLight(0xfff1e0, 0x1a2230, 0.32); root.add(hemi);
     keyLight = new THREE.DirectionalLight(0xfff0dc, 1.55);
@@ -1433,11 +1752,11 @@
     var sc = keyLight.shadow.camera; sc.left = -18; sc.right = 18; sc.top = 13; sc.bottom = -13; sc.near = 8; sc.far = 55;
     keyLight.shadow.mapSize.set(q.shadowSize, q.shadowSize); keyLight.shadow.bias = -0.0005; keyLight.shadow.normalBias = 0.025;
     root.add(keyLight); root.add(keyLight.target);
-    fillLight = new THREE.DirectionalLight(0xb9d2ff, 0.38); VB.toThree(-10, 12, 14, fillLight.position); root.add(fillLight);
+    fillLight = new THREE.DirectionalLight(0xb9d2ff, FILL_I); VB.toThree(-10, 12, 14, fillLight.position); root.add(fillLight);
     // contraluz cálido desde el fondo rival: perfila a los jugadores vistos de espaldas.
     // Alto (~52°) y suave: más bajo coincide con el ángulo rasante de la cámara de juego y su
     // reflejo especular lava medio campo rival (y el bloom lo convierte en una mancha blanca).
-    rimLight = new THREE.DirectionalLight(0xffd2a0, 0.3); VB.toThree(-14, 4, 20, rimLight.position); root.add(rimLight);
+    rimLight = new THREE.DirectionalLight(0xffd2a0, RIM_I); VB.toThree(-14, 4, 20, rimLight.position); root.add(rimLight);
   }
   function buildEnvironment() {
     try {
@@ -1604,7 +1923,7 @@
     ctx.renderFn = active ? renderPost : (was ? null : ctx.renderFn);
     // con post, los emisivos superan 1.0 (HDR) y el bloom los recoge
     var boost = active ? 1.55 : 1.0;
-    for (var i = 0; i < led.mats.length; i++) led.mats[i].mat.uniforms.boost.value = boost * 0.95;
+    if (led.mat) led.mat.uniforms.boost.value = boost * 0.95;
     // pantallas de marcador: poco por encima de 1 (a 1,55 las cifras blancas se volvían manchas de bloom)
     screens.base = active ? 1.12 : 1.0;
     for (var j = 0; j < screens.mats.length; j++) screens.mats[j].uniforms.boost.value = screens.base;
@@ -1614,13 +1933,23 @@
 
   // ---------- Estado runtime ----------
   var emissiveMesh = null;
-  var RT = { cheerT: [0, 0], cheerAge: [9, 9], look: 1, cheerMax: [1, 1], waveAmp: 0, waveX: 0, waveT: 0, menuWave: 18, tension: 0 };
+  var RT = { cheerT: [0, 0], cheerAge: [9, 9], look: 1, cheerMax: [1, 1], waveAmp: 0, waveX: 0, waveT: 0, menuWave: 18, tension: 0, ccT: 0 };
   /** Arranca la alegría de un equipo; si ya estaba saltando no reinicia el escalonado. */
   function startCheer(t, sec) { if (RT.cheerT[t] < 0.3) RT.cheerAge[t] = 0; RT.cheerT[t] = sec; }
   function teamName(t, g) { return g && g.demo ? (t === 0 ? 'LOCAL' : 'VISITA') : (t === 0 ? 'TÚ' : 'CPU'); }
   var REASON = { 'in': 'DENTRO', out: 'FUERA', antenna: 'ANTENA', 'double': 'DOBLES', four: '4 TOQUES', net: 'TOQUE DE RED',
     serve: 'FALTA DE SAQUE', under: 'BAJO LA RED', block: 'BLOQUEO DEL SAQUE', attackServe: 'ATAQUE DEL SAQUE' };
   var HOW = { ace: '¡ACE!', kill: 'REMATE', tip: 'DEJADA', block: 'BLOQUEO' };
+  /** Subtítulo del videomarcador: cómo se ganó; el balón que el rival no pasa de la red no es «DENTRO». */
+  function pointSub(e) {
+    var net = !!(e.text && /a la red/i.test(e.text));
+    if (e.reason === 'in' || (e.reason === 'out' && net)) {
+      if (e.reason === 'in' && HOW[e.how]) return HOW[e.how];
+      if (net) return e.lastKind === 'serve' ? 'SAQUE A LA RED' : 'BALÓN A LA RED';
+    }
+    return REASON[e.reason] || '';
+  }
+  var CC_COL = '#f2c14e'; // dorado del cambio de campo
 
   function onEvents(g, events) {
     for (var i = 0; i < events.length; i++) {
@@ -1641,10 +1970,11 @@
           flRate = Math.max(flRate, e.matchWon ? 30 : 12);
           if (!e.setWon && !e.matchWon) {
             ledMessage('PUNTO · ' + teamName(w, g), TEAMC[w], 2.6);
-            screenMsg('PUNTO ' + teamName(w, g), (e.reason === 'in' && HOW[e.how]) || REASON[e.reason] || '', TEAMC[w], 2.4);
+            screenMsg('PUNTO ' + teamName(w, g), pointSub(e), TEAMC[w], 2.4);
           }
           refSignal(e, g);
-          if (e.reason === 'antenna') judgeSignal(0, g.ball.y, false, true);
+          // antena: el juez del lado del contacto real (point.antenna) o, si cruzó por fuera, el del lado del balón
+          if (e.reason === 'antenna') judgeSignal(0, e.antenna ? e.antenna[1] : g.ball.y, false, true);
           break;
         case 'land': judgeSignal(e.x, e.y, e.inside, false); break;
         case 'whistle': // autorización del saque: silbato + brazo hacia el equipo que saca
@@ -1668,10 +1998,18 @@
             if (!led.msgOn) ledMessage('¡BLOQUEO!', TEAMC[e.team], 1.4);
           }
           break;
-        case 'courtChange': // reglas 18.2.1 / 18.2.2: encadenado tras el mensaje de SET / PUNTO de los videomarcadores
-          var ccm = ['CAMBIO DE CAMPO', e.why === 'eight' ? 'SET DECISIVO · 8 PUNTOS' : 'FIN DEL SET ' + e.setNo, '#f2c14e', e.why === 'eight' ? 1.6 : 1.2];
-          if (SB.msgT > 0 && SB.msg) { SB.next = ccm; SB.msgT = Math.min(SB.msgT, e.why === 'eight' ? 1.3 : 2.6); } else screenMsg(ccm[0], ccm[1], ccm[2], ccm[3]);
+        case 'courtChange': { // reglas 18.2.1 / 18.2.2: momento de "cambio de campo" en todo el pabellón
+          var eight = e.why === 'eight', ccDur = (e.pause || (eight ? 1.4 : 1.0)) + (eight ? 2.4 : 2.2);
+          // videomarcadores y marcador colgado: encadenado tras el mensaje de SET / PUNTO, con icono de intercambio
+          var ccm = ['CAMBIO DE CAMPO', eight ? 'SET DECISIVO · 8 PUNTOS' : 'FIN DEL SET ' + e.setNo, CC_COL, eight ? 2.4 : 2.6, 'swap'];
+          if (SB.msgT > 0 && SB.msg) { SB.next = ccm; SB.msgT = Math.min(SB.msgT, eight ? 1.3 : 2.6); } else screenMsg(ccm[0], ccm[1], ccm[2], ccm[3], ccm[4]);
+          // vallas LED: "<<< CAMBIO DE CAMPO >>>" en dorado, también encadenado al mensaje en curso
+          var lcm = ['CAMBIO DE CAMPO', CC_COL, eight ? 2.6 : 3.0, true];
+          if (led.msgOn && led.msgT > 0) { led.next = lcm; led.msgT = Math.min(led.msgT, eight ? 1.3 : 2.4); } else ledMessage(lcm[0], lcm[1], lcm[2], lcm[3]);
+          // público: aplauso de reconocimiento (sin saltos) y unos flashes
+          RT.ccT = ccDur; flRate = Math.max(flRate, 8);
           break;
+        }
         case 'netTouch': // un jugador toca la red: la malla vibra (más suave que un balonazo)
           netRip.a = 0.08; netRip.t = 0; netRip.y = e.y || 0; netRip.dir = e.player && e.player.x < 0 ? 1 : -1;
           break;
@@ -1706,7 +2044,7 @@
     init: function (c) {
       ctx = c; THREE = c.THREE; C = VB.C;
       _m = new THREE.Matrix4(); _m3 = new THREE.Matrix3(); _q = new THREE.Quaternion(); _e = new THREE.Euler(); _v = new THREE.Vector3();
-      _v2 = new THREE.Vector3(); _s = new THREE.Vector3(); _p = new THREE.Vector3(); _sz = new THREE.Vector2(); UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
+      _v2 = new THREE.Vector3(); _s = new THREE.Vector3(); _p = new THREE.Vector3(); _sz = new THREE.Vector2(); UNIT_BOX = new THREE.BoxGeometry(1, 1, 1); _m4i = new THREE.Matrix4();
       root = new THREE.Group(); root.name = 'arena'; ctx.scene.add(root);
       var fogc = new THREE.Color(0x0a0f18);
       ctx.scene.fog = new THREE.Fog(fogc, 34, 95);
@@ -1743,7 +2081,7 @@
     },
     onGameStart: function (g) {
       RT.cheerT[0] = RT.cheerT[1] = 0; RT.waveAmp = 0; RT.waveT = 0; netRip.t = 9; led.msgT = 0; setLedMode(false);
-      SB.msgT = 0; SB.msg = ''; SB.next = null; scoreFromGame(g);
+      SB.msgT = 0; SB.msg = ''; SB.next = null; led.next = null; RT.ccT = 0; scoreFromGame(g);
     },
     onState: function (s) { if (s === 'menu') RT.menuWave = 6; },
     setQuality: function (q) {
@@ -1759,22 +2097,34 @@
       var dens = q.crowdDensity == null ? 1 : q.crowdDensity;
       // LOD del público: detallada en alta; en media solo la grada de fondo detrás del sacador humano (crowd2, la que
       // sale de cerca en saque/repetición; las laterales y el fondo rival se ven a distancia de juego); baja: sencilla
+      // media: la malla 3D solo dibuja las filas cercanas (van primero en cada grada) y las lejanas son impostores;
+      // baja: toda la grada en impostores (1 dibujo, ~2 triángulos por persona)
       for (var i = 0; i < crowdMeshes.length; i++) {
-        var cmh = crowdMeshes[i]; cmh.count = Math.max(1, Math.floor(cmh.userData.full * dens));
+        var cmh = crowdMeshes[i], ud = cmh.userData;
+        cmh.visible = q.rank >= 1 || !imp.mesh;
+        cmh.count = Math.max(1, Math.floor((q.rank === 1 && imp.mesh ? ud.near : ud.full) * dens));
         var crowdLv = q.rank >= 2 || (q.rank === 1 && !ctx.isMobile && cmh.name === 'crowd2') ? 'hi' : 'lo';
-        if (cmh.userData.lods) cmh.geometry = cmh.userData.lods[crowdLv];
+        if (ud.lods) cmh.geometry = ud.lods[crowdLv];
+      }
+      if (imp.mesh) {
+        imp.mesh.visible = q.rank < 2;
+        imp.U.uDens.value = dens; imp.U.uSkipNear.value = q.rank === 1 ? 1 : 0;
+        // luz equivalente a la del público 3D (Lambert) en cada calidad (en baja no hay relleno ni contraluz)
+        imp.U.uLight.value.setScalar(q.rank >= 1 ? IMP_LIGHT[1] : IMP_LIGHT[0]);
       }
       if (flagMesh) flagMesh.visible = q.rank >= 1;
       for (var c = 0; c < cones.length; c++) cones[c].visible = q.rank >= 1;
       if (coneMat) coneMat.uniforms.k.value = q.rank >= 2 ? 0.04 : 0.032;
       if (flashes) flashes.visible = q.rank >= 1;
-      for (var r = 0; r < led.refl.length; r++) led.refl[r].uniforms.k.value = q.rank >= 1 ? 0.22 : 0.15;
       // calidad baja = recortar CPU de verdad (en móvil el coste está en el propio render de three, no en la GPU):
       // sin reflejos falsos de las vallas (4 dibujos) y sin luces de relleno/contraluz (2 luces menos en cada
       // material iluminado: menos uniformes y menos trabajo por fragmento); la hemisférica compensa.
-      for (var r2 = 0; r2 < ledReflMeshes.length; r2++) ledReflMeshes[r2].visible = q.rank >= 1;
-      if (fillLight) fillLight.visible = q.rank >= 1;
-      if (rimLight) rimLight.visible = q.rank >= 1;
+      if (led.refl) led.refl.visible = q.rank >= 1;
+      // en el móvil, el mismo NÚMERO de luces en todos los niveles (intensidad 0 en vez de ocultarlas): cambiar el número
+      // de luces direccionales recompila todos los materiales iluminados (parón de ~1,6 s con CPU ×10 al bajar de calidad)
+      var keepLights = !!ctx.isMobile;
+      if (fillLight) { fillLight.visible = keepLights || q.rank >= 1; fillLight.intensity = q.rank >= 1 ? FILL_I : 0; }
+      if (rimLight) { rimLight.visible = keepLights || q.rank >= 1; rimLight.intensity = q.rank >= 1 ? RIM_I : 0; }
       if (hemi) hemi.intensity = q.rank >= 1 ? 0.32 : 0.52;
       setPost(wantPost(q));
     },
@@ -1797,10 +2147,11 @@
       if (RT.waveT > 0) { RT.waveT -= rdt; RT.waveX = (RT.waveX + rdt * 0.11) % 1; }
       var wa = RT.waveT > 0 ? Math.min(1, RT.waveT / 1.5) : 0;
       crowdU.uWave.value.set(RT.waveX, wa);
-      var tens = (g.matchPoint >= 0 || g.setPoint >= 0) && g.mode !== 'over' ? 1 : 0;
+      if (RT.ccT > 0) RT.ccT = Math.max(0, RT.ccT - rdt);
+    var tens = ((g.matchPoint >= 0 || g.setPoint >= 0) && g.mode !== 'over') || RT.ccT > 0 ? 1 : 0;
       RT.tension += (tens - RT.tension) * Math.min(1, rdt * 2); crowdU.uTension.value = RT.tension;
       updateLED(rdt);
-      if (SB.msgT > 0) { SB.msgT -= rdt; if (SB.msgT <= 0) { SB.dirty = true; if (SB.next) { var nx = SB.next; SB.next = null; screenMsg(nx[0], nx[1], nx[2], nx[3]); } } }
+      if (SB.msgT > 0) { SB.msgT -= rdt; if (SB.msgT <= 0) { SB.dirty = true; if (SB.next) { var nx = SB.next; SB.next = null; screenMsg(nx[0], nx[1], nx[2], nx[3], nx[4]); } } }
       if (SB.dirty) redrawScreens();
       if (screens.flash > 0) {
         screens.flash = Math.max(0, screens.flash - rdt * 1.5);
@@ -1821,6 +2172,10 @@
     cheer: function (team, sec) { startCheer(team === 1 ? 1 : 0, sec || 2); },
     /** Lanza la ola en la grada. */
     wave: function (sec) { RT.waveT = sec || 8; },
+    /** Segundos que quedan del "momento" de cambio de campo (0 = no hay). Para camera.js / ui.js. */
+    courtChangeT: function () { return RT.ccT; },
+    /** Puntos de interés del pabellón (coords de sim) para planos de cámara: marcador colgado, videomarcadores. */
+    landmarks: { scoreHung: { x: 0, y: 0, z: 11.4 }, screenPos: { x: HALL_X - 0.63, y: 0, z: SCR_Z }, screenNeg: { x: -(HALL_X - 0.63), y: 0, z: SCR_Z } },
     /** ¿Post-proceso activo? */
     postActive: function () { return !!post && ctx.renderFn === renderPost; },
     /** Solo depuración (tools/eval.js): uniformes del público, oficiales, etc. */

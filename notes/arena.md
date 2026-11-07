@@ -113,3 +113,115 @@ Aplicadas (ver log). Pendiente: `Sim.aimPoint` (anotado en notes/sim.md §5).
   players) y golpe apagado sin destello para `hit.shot:'body'`. arena.js: "CAMBIO DE CAMPO" en los videomarcadores encadenado tras
   el mensaje de SET/PUNTO (`SB.next`); la etiqueta PUNTO DE SET/PARTIDO del marcador colgado se borra al acabar el set
   (`g.pendingSet`; antes seguía durante la pausa entre sets).
+
+## 8. Rendimiento móvil + cambio de campo (arena, 7-nov-2026)
+Medido con scripts propios en `tools/out/arena-perf/` (perf.js = fps/coste con DPR y `Emulation.setCPUThrottlingRate`,
+trace.js = GC y duración de los rAF, brk.js = triángulos por objeto). Escena `debug=rally&live=1&quality=X`, táctil, 844×390,
+DPR 2,75, CPU ×4. Capturas antes/después en `tools/out/arena-perf/` (before-*, m1-*, f-*, close-*, cc1/cc2).
+
+| | antes | después |
+|---|---|---|
+| móvil baja: dibujos / triángulos | 46 / 327k | 35 / 81k |
+| móvil media: dibujos / triángulos | 66 / 502k | 48 / 199k |
+| escritorio alta (1280×720): dibujos / triángulos | 79 / 1,17 M | 54 / 1,17 M (mismo aspecto) |
+| móvil baja ×4: fps / ms JS+tarea por frame | 64 / 14,7 | 85 / 10,8 |
+| móvil media ×4: fps / ms JS+tarea por frame | 59 / 16,1 | 81 / 12,0 |
+
+Traza de 30 s de peloteo (×4): rAF p95 11,5 ms (baja) / 15,4 ms (media); 11 GC menores + 1 mayor (≈1-14 ms), montón plano
+(+2 MB que se recogen). arena/fx no asignan por frame (muestreo de HeapProfiler).
+- **Público impostor** (`crowdImp`): cada aficionado = cartel de 2 triángulos orientado a cámara con una figura de un atlas
+  de lienzo (máscaras camiseta/piel/pelo/pantalón + sombreado; 4 posturas × 2 peinados). Mismos colores y animación (alegría,
+  ola, tensión/aplauso, botes) que el 3D. Media: filas cercanas (4 laterales / 3 fondos) en 3D y el resto impostor; baja: todo
+  impostor; alta: todo 3D como antes. 1 dibujo para las 4 gradas. Las gradas 3D ordenan filas cercanas primero (`userData.near`).
+- **Fusiones estáticas** (mismo material, mismo aspecto): 9 vallas LED → 1 malla (`ledBoards`, repetición/fase/velocidad/retícula
+  en atributos; desplazamiento `fract(v·scrollT)`), 4 reflejos → 1 (`ledRefl`), 6 oficiales + 2 banderas → 1 SkinnedMesh con
+  esqueleto común (`officials`; 1 textura de huesos por frame en vez de 6), antenas/postes/protecciones 6 → 3.
+- **Sombras**: en baja solo jugadores (utillaje, postes, oficiales fuera); mapa 1024 en media / 512 en baja (lo fija main.js).
+- **Post-proceso**: solo alta de escritorio (media y baja sin `renderFn`).
+- **fx.js**: pools por calidad (chispas 220/150/90, polvo 96/72/40, confeti 520/360/200; `setDrawRange`), además de `qScale`.
+- **Cambio de campo** (`courtChange`): videomarcadores y marcador colgado "CAMBIO DE CAMPO" con icono de intercambio (encadenado
+  tras SET/PUNTO), vallas "<<< CAMBIO DE CAMPO >>>" en dorado (encadenado al mensaje LED en curso), público aplaudiendo
+  (tensión) y flashes durante la pausa. Comprobado inyectando el evento (`tools/out/arena-perf/cc1.png`, `cc2.png`).
+- API nueva (opcional): `VB.Arena.courtChangeT()` (s que quedan del momento; 0 = no hay), `VB.Arena.landmarks`
+  (`scoreHung`, `screenPos`, `screenNeg`, coords de sim) para planos de cámara.
+- Calidad adaptativa: con `debug=rally&live=1&aq=1`, 915×412, CPU ×12 baja de media a baja y arena pasa a 36 dibujos / 79k.
+
+## 9. Peticiones (7-nov-2026)
+- camera_input (notes/camera_input.md): plano de transición durante `courtChange` usando `VB.Arena.courtChangeT()` y
+  `VB.Arena.landmarks.scoreHung` (p. ej. subir la mirada al marcador colgado mientras `courtChangeT() > 0`).
+- ui_main: al bajar de calidad hay un parón de ~1-2 s con CPU ×12 (recompilado por el cambio de tipo de sombra + estreno del
+  programa del público impostor en escritorio). Si `ctx.prewarm` precompila, incluir `crowdImp` (visible en media/baja).
+
+## 10. Peticiones de ui_main (7-nov-2026, rendimiento móvil medido con `tools/perf.js`)
+- **Parón al bajar de calidad en el móvil (prioridad alta)**: `setQuality` hace `fillLight.visible = q.rank >= 1` y
+  `rimLight.visible = …`. Cambiar el NÚMERO de luces cambia `NUM_DIR_LIGHTS` en todos los materiales iluminados y three r149
+  los recompila todos de golpe: con CPU ×10 (`node tools/perf.js 844x390 30 auto 10`) la bajada media→baja da una tarea larga
+  de **1,6 s** (programas 38 → 52). La parte de main.js ya está quitada (en el móvil la sombra es PCF en todos los niveles, ya no
+  cambia de tipo). Propuesta: en el móvil (`ctx.isMobile`) no cambiar la visibilidad, solo la intensidad:
+  ```js
+  var keepLights = ctx.isMobile; // mismo número de luces en todos los niveles: bajar de calidad no recompila
+  if (fillLight) { fillLight.visible = keepLights || q.rank >= 1; fillLight.intensity = q.rank >= 1 ? FILL_I : 0; }
+  if (rimLight)  { rimLight.visible  = keepLights || q.rank >= 1; rimLight.intensity  = q.rank >= 1 ? RIM_I : 0; }
+  ```
+  (guardar `FILL_I`/`RIM_I` al crear las luces). Una luz a intensidad 0 cuesta unas pocas instrucciones por píxel; el parón
+  de 0,6-1,6 s en pleno peloteo se nota mucho más. Lo mismo para cualquier otro `visible` de luz por calidad.
+- **Asignaciones por frame** (`ALLOC=1 node tools/perf.js 844x390 15 medium 1`, KB/s a ~160 fps): `updateFlashes` (arena.js ~1752)
+  176 KB/s con `Math.random()` (cada número es un HeapNumber nuevo si se guarda en un campo no-double); `updateOfficials` (~541)
+  73 KB/s; `fx.js update` (~524) 250-290 KB/s. Si se puede, un generador propio sobre un `Float32Array`/entero (p. ej. xorshift
+  en un entero de 32 bits) y reutilizar objetos temporales.
+- Hecho por ui_main: el material de profundidad de sombras compartido cambiaba de programa 4 veces por frame (mallas con esqueleto
+  de jugadores/oficiales e instanciadas alternando con normales). main.js pone `customDepthMaterial` por variante a todas las
+  `SkinnedMesh` e `InstancedMesh` (función `fixShadowDepth`, tras `onGameStart` y `setQuality`). Si arena crea casters nuevos
+  más tarde, llamar a `VB.ctx.fixShadowDepth()` (expuesto) o ponerles el suyo.
+
+## Aplicado (log, integración de pendientes)
+- 7-nov-2026 (integración de pendientes): §10 parón al bajar de calidad en el móvil: `setQuality` deja `fillLight`/`rimLight` visibles en el móvil (`ctx.isMobile`) y pone
+  su intensidad a 0 en baja (`FILL_I`/`RIM_I` guardadas al crearlas). Escritorio igual que antes. Medido: `perf.js 844x390 30 auto 10`
+  baja media→baja con 33 programas (antes 38 → 52) y tarea larga máxima 470 ms (antes 1,6 s); forzar baja en móvil emulado: 32 → 32
+  programas, siguiente frame 12 ms. Mismo aspecto en baja (capturas `tools/out/int3/m844/`).
+- 7-nov-2026 (integración de pendientes): petición de sim (antena): el juez de línea que agita la bandera es el del lado del contacto real (`point.antenna[1]`) o, si cruzó
+  por fuera, el del lado del balón. La vibración de una sola antena no se hace: las antenas son ahora una única malla fusionada.
+- 7-nov-2026 (integración de pendientes): fx.js `aimTarget` llama a `Sim.aimPoint(g, out, ctx.simMove)` (entrada del mismo frame). La retícula no se escala con `spread` (opcional, no aplicado).
+- NO aplicado (opcional): asignaciones en `updateFlashes`/`updateOfficials`/`fx update`. No hay objetos ni literales por frame; lo medido son
+  números encajonados de V8 en código aún no optimizado (~1 KB/frame). §9 precalentado de `crowdImp`: el precalentado por defecto solo sube
+  texturas (`r.compile` de three r149 no compila objetos ocultos); en escritorio bajar de alta ya recompila por el cambio de tipo de sombra, así
+  que el programa del impostor es marginal; en el móvil el impostor ya es visible desde el principio.
+
+## Aplicado (log, ronda 1 de arreglos)
+- 7-nov-2026: videomarcador tras un error de red del rival. `point` con `reason 'in'` + `how 'error'` + texto «Saque a la red» / «Balón a la red»
+  ya no pone «DENTRO»: pone «SAQUE A LA RED» / «BALÓN A LA RED» (`pointSub(e)`). Comprobado con sim real (6 partidos demo, 600 s cada uno):
+  19 de 19 errores de red con el subtítulo correcto; el resto de subtítulos no cambian.
+- 7-nov-2026: basura por frame. `updateOfficials` reescrito: estado plano por oficial (`P.st`), factores de amortiguado una vez por frame
+  (`OFK`), funciones pequeñas `refStep`/`judgeStep`, escritura directa en `Euler._x/_y/_z` + una sola `quaternion.setFromEuler` y solo si
+  el valor cambia (brazos en reposo = 0 escrituras), seno por tabla en la respiración. `screenVis`: vectores fijos precalculados y uniformes
+  `vis` escritos solo si cambian. fx.js: el aro amarillo guarda en caché `Sim.hitWindow` (42 % menos llamadas, aro exacto con |press| < 0,5 s).
+  Medido con `ALLOC=1 node tools/perf.js 844x390 15 low 4 2.75` (2 veces): arena.js 201 → 66/115 KB/s, y `updateOfficials` sale del top 25
+  (antes 73 KB/s). Con WARM 40 s (`tools/out/alloc-arena.js`): `updateOfficials` 32–55 → unos 12 KB/s.
+- PARA ui_main (tools/perf.js) y para todos (dato medido): V8 sube de nivel por NÚMERO DE LLAMADAS (Maglev tras ~400 llamadas, TurboFan tras ~3000).
+  Una función que se llama una vez por frame sigue en baseline unos 6 s y en Maglev hasta ~45 s, y en baseline CADA operación con doubles asigna
+  un HeapNumber. Comprobado con `--js-flags=--allow-natives-syntax` + `%GetOptimizationStatus` (`tools/out/optstat.js`): a 12 s con CPU ×4,
+  `FX.update`, `Arena.update` y `Sim.hitWindow` estaban en baseline; a 40 s, en Maglev/TurboFan. Con WARM=4, `perf.js ALLOC=1` mide sobre todo
+  esa fase de arranque. Propuesta: medir el presupuesto de asignaciones con `WARM=45`.
+- NO aplicado: «fog/lights uniform churn». En baja solo hay 2 luces activas (hemi + key; fill/rim a intensidad 0) y 27 materiales con niebla.
+  `refreshFogUniforms`/`refreshMaterialUniforms`/`setup` son de three r149 y se ejecutan en cada cambio de programa o material. Quitar la niebla
+  de materiales cercanos cambia los shaders y el aspecto del fondo. No compensa para unos 80 KB/s.
+
+## Aplicado (log, integración ronda 1 de verificación, 7-nov-2026)
+- Petición de sim R4.1: `pointSub` también con `reason 'out'` + texto «a la red» → «SAQUE/BALÓN A LA RED» (antes «FUERA»). Con 'out' no se
+  consulta `HOW`. Comprobado en node con los 6 casos (in/out × red/ace/fuera/net).
+- Tu propuesta para perf.js: `WARM` por defecto 45 s con `ALLOC=1`/`RETAIN=1` (4 s sin ellos). CONTRACT §6 al día.
+- CONTRACT: nota de `Euler._x/_y/_z` válida solo para three r149 (queda en este fichero; three está fijado).
+
+## Aplicado (ronda 2 de verificación, 7-nov-2026) — polvo de plancha
+- fx.js `dustAt(x, y, n, spread, dirx, diry, push, back, fwd)`: con dirección, el polvo se reparte por la LÍNEA DEL CUERPO
+  (de piernas a pecho, nunca cabeza/manos), a ras de suelo (z 0,02-0,06, vz 0,06-0,22), sale hacia los lados y algo
+  hacia delante; vida 0,22-0,4 s; alfa pico ~0,42·s; tono serrín (0.88, 0.72, 0.52); sprite 0.42 (antes 0.75, blanco,
+  vz hasta 0,95 y vida 0,7-1,3 s: el "halo" blanco sobre la cabeza). `VB.FX.dust` (players.js) y el evento `dive` usan
+  back 1,5 / fwd 0,1 desde su punto de referencia (≈ pecho). Firma pública de `VB.FX.dust` sin cambios.
+  Comprobado: tools/out/arena-dust/cmp.png (antes/después), cmp3.png (evento dive inyectado en cámara lenta), cmp4.png
+  (ruta cosmética y calidad baja).
+
+## Aplicado (log, integración ronda 2 de verificación, 7-nov-2026)
+- fx.js: los pools de chispas, polvo y confeti se crean con `dblFields` (campos enteros generalizados a double al crearlos: la primera ráfaga de la
+  partida deprecaba el mapa de las chispas, `addSpark` L161 + `update` L701, dentro de una desoptimización en masa). Mismos valores.
+- Polvo de plancha (ronda 2): visto en `debug=dive` (alta y baja) y en la escena viva; nada pendiente.

@@ -22,11 +22,28 @@
   var ballPivot, ball, ballMat, ballShadow, dropLine, marker, markerMat, focusRing, focusMat, focusFill, ballOutline;
   var aimRet, aimMat, aim = { a: 0, x: -6, y: 0, tx: -6, ty: 0, on: false, live: false, kill: 0 }, aimOut = { x: 0, y: 0 };
   var hwOut = { t: 0, press: 0 }, focusVis = false;
+  // caché de hitWindow para el aro amarillo: la trayectoria es balística entre toques, así que «press» baja 1:1 con el
+  // tiempo de sim. Se recalcula si cambia el balón (toque, red; la flotación del saque solo lo mece), el jugador, los
+  // toques o si salta; cada 0,1 s; y en cada frame cerca del instante de pulsar (|press| < 0,5 s: ahí el relleno es la
+  // señal de timing y es exacto). Medido (tools/out/hwcache.js, 60 s): 42 % menos llamadas, error del aro p95 2,6 %.
+  var hwC = { press: 1.2, t: -1, p: null, vx: 0, vy: 0, touch: -1, tc: -1 };
+  function focusPress(g, p) {
+    var b = g.ball, age = g.time - hwC.t;
+    if (hwC.p === p && hwC.touch === g.lastTouchT && Math.abs(b.vx - hwC.vx) + Math.abs(b.vy - hwC.vy) < 0.6 && age >= 0 && age < 0.1 &&
+        Math.abs(hwC.press - age) > 0.5 && !(p.z > 0 || p.vz > 0) && g.touches === hwC.tc) return hwC.press - age;
+    var press = 1.2, hw = Sim.hitWindow(g, p, hwOut);
+    if (hw && isFinite(hw.press)) press = hw.press;
+    hwC.press = press; hwC.t = g.time; hwC.p = p; hwC.vx = b.vx; hwC.vy = b.vy; hwC.touch = g.lastTouchT; hwC.tc = g.touches;
+    return press;
+  }
   var AIM_N = 30, aimArc = null; // arco punteado balón -> objetivo (se lee aunque el campo rival salga aplastado)
   var YEL = [1, 0.76, 0.04]; // "aro amarillo" = dónde tienes que jugar el balón (focusRing)
   var spinQ, squashQ, tmpQ, tv, tv2, tv3, axis, UPV;
   var spin = { rate: 0, sign: 1, wob: 0 }, squash = { t: 0, k: 0 }, heat = 0;
   var SQ_MAX = 0.095; // (1 + k/2) / (1 - k) ≈ 1,15: el balón se deforma sin dejar de leerse como balón
+  // Campos de las partículas que nacen enteros (Smi) y luego reciben doubles: se generalizan al crear el pool (ver dblFields
+  // en sim.js; si no, V8 depreca el mapa con la primera ráfaga de la partida y desoptimiza todo a la vez).
+  function dblFields(o) { for (var k in o) { var v = o[k]; if (typeof v === 'number' && (v | 0) === v) { o[k] = 0.5; o[k] = v; } } return o; }
   var land = { x: 0, y: 0, z: 0, t: 0 };
   var qScale = 1; // factor de partículas por calidad
 
@@ -138,9 +155,12 @@
   var TN = 24, trail, tPts, tCols, tPos, trailA = 0, trailCol = null, trailW = 0.16, trailN = 0;
   var CONF_N = 520, conf, confD = [], confAlive = 0;
   var DUST_N = 96, dust, du = [], duHead = 0, duAlive = 0; // polvo (mezcla normal, no aditiva)
+  // Pools reservados al máximo (alta) y limitados por calidad: las partículas se reparten en [0, cap) y solo se
+  // dibuja/actualiza ese tramo (drawRange). Media 70 %, baja ~40 % (además de qScale, que reduce cada ráfaga).
+  var spCap = SPARK_N, duCap = DUST_N, confCap = CONF_N;
 
   function addSpark(x, y, z, vx, vy, vz, life, r, g, b, grav) {
-    var s = sp[spHead]; spHead = (spHead + 1) % SPARK_N;
+    var s = sp[spHead]; spHead = (spHead + 1) % spCap;
     s.x = x; s.y = y; s.z = z; s.vx = vx; s.vy = vy; s.vz = vz; s.life = life; s.max = life; s.r = r; s.g = g; s.b = b; s.grav = grav;
   }
   function burstAt(x, y, z, n, power, r, g, b, up, grav) {
@@ -152,15 +172,25 @@
     }
     spAlive = 1;
   }
-  /** Polvo de parquet (coords de sim): nube baja que se expande y se desvanece. */
-  function dustAt(x, y, n, spread, dirx, diry, push) {
+  /** Polvo de parquet (coords de sim): velo bajo, a ras de suelo, que sale de debajo del cuerpo y se apaga en ~0,3 s.
+   *  (x, y) es el punto de referencia; con dirección (dirx, diry) las partículas se reparten a lo largo de la línea del
+   *  cuerpo tumbado, de x - dir·back (piernas) a x + dir·fwd (pecho), nunca en la cabeza ni en las manos. Salen sobre
+   *  todo hacia los lados (lo que el cuerpo aparta al deslizarse) y un poco hacia delante (push). */
+  function dustAt(x, y, n, spread, dirx, diry, push, back, fwd) {
     n = Math.max(2, Math.round(n * qScale));
+    var dl = Math.sqrt(dirx * dirx + diry * diry), ux = dl > 1e-4 ? dirx / dl : 0, uy = dl > 1e-4 ? diry / dl : 0;
+    back = back || 0; fwd = fwd || 0;
     for (var i = 0; i < n; i++) {
-      var d = du[duHead]; duHead = (duHead + 1) % DUST_N;
-      var a = Math.random() * 6.283, v = spread * (0.3 + Math.random() * 0.7), f = push * (0.4 + Math.random() * 0.8);
-      d.x = x + Math.cos(a) * 0.15; d.y = y + Math.sin(a) * 0.15; d.z = 0.05 + Math.random() * 0.12;
-      d.vx = Math.cos(a) * v + dirx * f; d.vy = Math.sin(a) * v + diry * f; d.vz = 0.35 + Math.random() * 0.6;
-      d.life = d.max = 0.7 + Math.random() * 0.6; d.s = 0.5 + Math.random() * 0.5;
+      var d = du[duHead]; duHead = (duHead + 1) % duCap;
+      var u = fwd - Math.random() * (back + fwd), side = Math.random() < 0.5 ? -1 : 1;
+      var a = Math.random() * 6.283, r0 = 0.06 + Math.random() * 0.1, v = spread * (0.35 + Math.random() * 0.65), f = push * (0.2 + Math.random() * 0.6);
+      d.x = x + ux * u + Math.cos(a) * r0; d.y = y + uy * u + Math.sin(a) * r0; d.z = 0.02 + Math.random() * 0.04;
+      if (dl > 1e-4) { // perpendicular a la línea del cuerpo (con algo de dispersión) + deslizamiento hacia delante
+        var pj = (Math.random() - 0.5) * 0.7;
+        d.vx = (-uy * side + ux * pj) * v + ux * f; d.vy = (ux * side + uy * pj) * v + uy * f;
+      } else { d.vx = Math.cos(a) * v; d.vy = Math.sin(a) * v; }
+      d.vz = 0.06 + Math.random() * 0.16;
+      d.life = d.max = 0.22 + Math.random() * 0.18; d.s = 0.55 + Math.random() * 0.45;
     }
     duAlive = 1;
   }
@@ -264,7 +294,7 @@
       mode = 2;
     } else return 0;
     if (Sim.aimPoint) {
-      var r = Sim.aimPoint(g, out);
+      var r = Sim.aimPoint(g, out, ctx.simMove); // entrada de MUNDO de este mismo frame (sin ella, la del último paso)
       if (!r) return 0;
       if (r !== out && r.x != null) { out.x = r.x; out.y = r.y; }
       return mode;
@@ -304,7 +334,7 @@
     n = Math.round(n * (qScale > 0.6 ? 1 : 0.5));
     var palette = team === 0 ? [[1, 0.36, 0.2], [1, 0.62, 0.22], [1, 0.82, 0.25], [1, 1, 1]] : [[0.25, 0.55, 1], [0.5, 0.75, 1], [1, 0.82, 0.25], [1, 1, 1]];
     var start = confAlive;
-    for (var i = 0; i < n && confAlive < CONF_N; i++) {
+    for (var i = 0; i < n && confAlive < confCap; i++) {
       var d = confD[confAlive++], cannon = i % 3 === 0;
       if (cannon) { // cañones desde las esquinas de la pista
         var cx = (i % 2 ? 1 : -1) * 10, cy = (i % 4 < 2 ? 1 : -1) * 6;
@@ -433,7 +463,7 @@
 
       // chispas
       var sPos = new Float32Array(SPARK_N * 3), sCol = new Float32Array(SPARK_N * 3);
-      for (var j = 0; j < SPARK_N; j++) { sp.push({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, r: 1, g: 1, b: 1, grav: 9 }); sPos[j * 3 + 1] = -50; }
+      for (var j = 0; j < SPARK_N; j++) { sp.push(dblFields({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, r: 1, g: 1, b: 1, grav: 9 })); sPos[j * 3 + 1] = -50; }
       var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sPos, 3)); sg.setAttribute('color', new THREE.BufferAttribute(sCol, 3));
       sparks = new THREE.Points(sg, new THREE.PointsMaterial({ size: 0.13, map: radialTex([[0, 'rgba(255,255,255,1)'], [0.35, 'rgba(255,255,255,0.6)'], [1, 'rgba(255,255,255,0)']], 64),
         vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
@@ -468,20 +498,37 @@
       }
       // polvo de parquet (plancha, aterrizajes): Points con alfa por vértice y mezcla normal
       var dPos = new Float32Array(DUST_N * 3), dCol = new Float32Array(DUST_N * 4);
-      for (var dI = 0; dI < DUST_N; dI++) { du.push({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s: 1 }); dPos[dI * 3 + 1] = -50; }
+      for (var dI = 0; dI < DUST_N; dI++) { du.push(dblFields({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s: 1 })); dPos[dI * 3 + 1] = -50; }
       var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dPos, 3)); dg.setAttribute('color', new THREE.BufferAttribute(dCol, 4));
-      dust = new THREE.Points(dg, new THREE.PointsMaterial({ size: 0.75, map: radialTex([[0, 'rgba(255,255,255,0.9)'], [0.45, 'rgba(255,255,255,0.35)'], [1, 'rgba(255,255,255,0)']], 64),
+      dust = new THREE.Points(dg, new THREE.PointsMaterial({ size: 0.42, map: radialTex([[0, 'rgba(255,255,255,0.75)'], [0.4, 'rgba(255,255,255,0.3)'], [1, 'rgba(255,255,255,0)']], 64),
         vertexColors: true, transparent: true, depthWrite: false }));
       dust.frustumCulled = false; dust.renderOrder = 4; dust.visible = false; root.add(dust);
       // confeti
       conf = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.075, 0.12), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false }), CONF_N);
-      for (var q = 0; q < CONF_N; q++) { confD.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, ax: 1, ay: 0, az: 0, ang: 0, spin: 0, ph: 0, life: 0 }); conf.setColorAt(q, tv.set(1, 1, 1)); }
+      for (var q = 0; q < CONF_N; q++) { confD.push(dblFields({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, ax: 1, ay: 0, az: 0, ang: 0, spin: 0, ph: 0, life: 0 })); conf.setColorAt(q, tv.set(1, 1, 1)); }
       conf.instanceMatrix.setUsage(THREE.DynamicDrawUsage); conf.count = 0; conf.visible = false; conf.frustumCulled = false; root.add(conf);
       this.setQuality(c.quality);
     },
-    setQuality: function (q) { qScale = !q ? 1 : q.rank >= 2 ? 1 : q.rank === 1 ? 0.75 : 0.45; },
+    setQuality: function (q) {
+      var r = !q ? 2 : q.rank;
+      qScale = r >= 2 ? 1 : r === 1 ? 0.75 : 0.45;
+      spCap = r >= 2 ? SPARK_N : r === 1 ? 150 : 90;
+      duCap = r >= 2 ? DUST_N : r === 1 ? 72 : 40;
+      confCap = r >= 2 ? CONF_N : r === 1 ? 360 : 200;
+      // lo que quede fuera del tramo nuevo se apaga y deja de dibujarse
+      if (sparks) {
+        var pa = sparks.geometry.attributes.position.array;
+        for (var i = spCap; i < SPARK_N; i++) { sp[i].life = 0; pa[i * 3 + 1] = -50; }
+        spHead %= spCap; sparks.geometry.setDrawRange(0, spCap); sparks.geometry.attributes.position.needsUpdate = true;
+      }
+      if (dust) {
+        for (var d = duCap; d < DUST_N; d++) du[d].life = 0;
+        duHead %= duCap; dust.geometry.setDrawRange(0, duCap);
+      }
+      if (conf && confAlive > confCap) { confAlive = confCap; conf.count = confAlive; }
+    },
     onGameStart: function () {
-      trailA = 0; heat = 0; squash.t = 0; spin.rate = 0;
+      trailA = 0; heat = 0; squash.t = 0; spin.rate = 0; hwC.p = null;
       for (var i = 0; i < SPARK_N; i++) sp[i].life = 0;
       for (var dI = 0; dI < DUST_N; dI++) du[dI].life = 0;
       for (var f = 0; f < FLASH_N; f++) { flashPool[f].t = 0; flashPool[f].s.visible = false; }
@@ -494,7 +541,7 @@
     /** Partículas en coordenadas de simulación (interfaz del contrato). */
     burst: function (x, y, z, n, power) { burstAt(x, y, z, n, power, 1, 0.92, 0.7, 1, 9); },
     /** Polvo de la tarima (coords de sim), p. ej. planchas cosméticas de players.js. */
-    dust: function (x, y, n, dirx, diry) { dustAt(x, y, n || 22, 0.9, dirx || 0, diry || 0, 2.4); },
+    dust: function (x, y, n, dirx, diry) { dustAt(x, y, n || 22, 0.75, dirx || 0, diry || 0, 0.6, 1.5, 0.1); },
     /** Confeti del color de un equipo (opcional). */
     confetti: function (team, n) { confetti(team === 1 ? 1 : 0, n || 400); },
     /** Malla del balón (opcional, para otros módulos). */
@@ -560,7 +607,7 @@
         focusRing.position.x = fp.x; focusRing.position.z = -fp.y;
         // se cierra hasta el instante de PULSAR (hitWindow.press) y se rellena en ese momento
         var press = 1.2;
-        if (Sim.hitWindow) { var hw = Sim.hitWindow(g, g.jobs[0], hwOut); if (hw && isFinite(hw.press)) press = hw.press; }
+        if (Sim.hitWindow) press = focusPress(g, g.jobs[0]);
         var pk = clampN(press / 1.1, 0, 1), fsz = 0.72 + pk * 0.78 + Math.sin(ctx.time * 7) * 0.025 * pk;
         focusRing.scale.set(fsz, fsz, fsz);
         var now = clampN(1 - Math.abs(press) / 0.22, 0, 1);
@@ -615,7 +662,7 @@
       // ---- chispas ----
       if (spAlive) {
         var pa = sparks.geometry.attributes.position.array, ca = sparks.geometry.attributes.color.array, alive = 0;
-        for (var j = 0; j < SPARK_N; j++) {
+        for (var j = 0; j < spCap; j++) {
           var q = sp[j];
           if (q.life > 0) {
             if (dt > 0) {
@@ -634,16 +681,16 @@
       // ---- polvo ----
       if (duAlive) {
         var dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array, dAlive = 0;
-        for (var dI = 0; dI < DUST_N; dI++) {
+        for (var dI = 0; dI < duCap; dI++) {
           var D = du[dI];
           if (D.life > 0) {
             if (dt > 0) {
               D.life -= dt; var ddr = 1 - 3.2 * dt; D.vx *= ddr; D.vy *= ddr; D.vz = D.vz * (1 - 2 * dt) - 0.25 * dt;
               D.x += D.vx * dt; D.y += D.vy * dt; D.z = Math.max(0.04, D.z + D.vz * dt);
             }
-            var lk = Math.max(0, D.life / D.max), al = Math.min(1, (1 - lk) * 6) * Math.sqrt(lk) * 0.7 * D.s;
+            var lk = Math.max(0, D.life / D.max), al = Math.min(1, (1 - lk) * 8) * lk * 0.42 * D.s;
             dp[dI * 3] = D.x; dp[dI * 3 + 1] = D.z; dp[dI * 3 + 2] = -D.y;
-            dc[dI * 4] = 0.97; dc[dI * 4 + 1] = 0.9; dc[dI * 4 + 2] = 0.8; dc[dI * 4 + 3] = al; dAlive++;
+            dc[dI * 4] = 0.88; dc[dI * 4 + 1] = 0.72; dc[dI * 4 + 2] = 0.52; dc[dI * 4 + 3] = al; // serrín de parquet, tono cálido dAlive++;
           } else if (dp[dI * 3 + 1] !== -50) { dp[dI * 3 + 1] = -50; dc[dI * 4 + 3] = 0; }
         }
         dust.geometry.attributes.position.needsUpdate = true; dust.geometry.attributes.color.needsUpdate = true;
@@ -761,8 +808,8 @@
         }
         case 'dive': { // plancha: polvo de parquet que sale hacia delante + onda en el suelo
           var dx = e.dir ? e.dir[0] : 0, dy = e.dir ? e.dir[1] : 0, px = e.player ? e.player.x : e.x, py = e.player ? e.player.y : e.y;
-          dustAt(px + dx * 0.6, py + dy * 0.6, 22, 0.9, dx, dy, 2.4);
-          rippleAt(px + dx * 0.6, py + dy * 0.6, 1.3, 0.45, 0.95, 0.88, 0.75, 0.3);
+          dustAt(px + dx * 0.7, py + dy * 0.7, 22, 0.75, dx, dy, 0.6, 1.5, 0.1); // a lo largo del cuerpo (piernas→pecho)
+          rippleAt(px + dx * 0.3, py + dy * 0.3, 1.3, 0.45, 0.95, 0.88, 0.75, 0.3);
           break;
         }
         case 'net':
@@ -783,13 +830,13 @@
           if ((e.speed || 0) > 2.5) rippleAt(e.x, e.y, 0.9, 0.45, 1, 1, 1, 0.4);
           break;
         case 'landPlayer':
-          if (e.player) { rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.3); dustAt(e.player.x, e.player.y, 5, 0.7, 0, 0, 0); }
+          if (e.player) { rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.3); dustAt(e.player.x, e.player.y, 5, 0.6, 0, 0, 0); }
           break;
         case 'set':
           confetti(e.team === 1 ? 1 : 0, 160);
           break;
         case 'match':
-          confetti(e.team === 1 ? 1 : 0, CONF_N);
+          confetti(e.team === 1 ? 1 : 0, confCap);
           break;
       }
     }
