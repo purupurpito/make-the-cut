@@ -347,15 +347,58 @@
     if (prev !== s) for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onState', s, prev);
   }
 
-  function tryFullscreen() {
-    if (!isTouch || ctx.debug) return;
+  // ---------- Pantalla completa ----------
+  // Táctil: se pide sola en el primer toque y al empezar cada partido. Botón en el menú (y en el HUD de escritorio), tecla F.
+  // iPhone (Safari sin API de pantalla completa para páginas): aviso de «Compartir → Añadir a pantalla de inicio»; instalada
+  // (manifest de tools/build-pages.js, display: fullscreen) ya no hay barra de direcciones.
+  var isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  function isFs() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  function fsApi() { var d = document.documentElement; return !!(d.requestFullscreen || d.webkitRequestFullscreen); }
+  function standalone() {
+    try { return navigator.standalone === true || matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches; } catch (e) { return false; }
+  }
+  function enterFs() {
     try {
-      var d = document.documentElement, p = d.requestFullscreen && d.requestFullscreen({ navigationUI: 'hide' });
-      if (p && p.then) p.then(function () {
-        try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () { }); } catch (e) { }
-      }).catch(function () { });
+      var d = document.documentElement, p = d.requestFullscreen ? d.requestFullscreen({ navigationUI: 'hide' }) : d.webkitRequestFullscreen && d.webkitRequestFullscreen();
+      var lock = function () { try { if (isTouch && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () { }); } catch (e) { } };
+      if (p && p.then) p.then(lock).catch(function () { }); else lock();
     } catch (e) { }
   }
+  function exitFs() { try { var p = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen && document.webkitExitFullscreen(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
+  var fsTipT = 0;
+  function showFsTip() {
+    var t = document.getElementById('fsTip'); if (!t) return;
+    t.innerHTML = 'En iPhone, para jugar sin la barra de direcciones: <b>Compartir</b> → <b>Añadir a pantalla de inicio</b> y abre el juego desde el icono.';
+    t.hidden = false; clearTimeout(fsTipT); fsTipT = setTimeout(function () { t.hidden = true; }, 7000);
+  }
+  function toggleFs() { if (isFs()) exitFs(); else if (fsApi()) enterFs(); else if (isIOS) showFsTip(); }
+  function tryFullscreen() { if (isTouch && !ctx.debug && !standalone() && !isFs() && fsApi()) enterFs(); }
+  function syncFs() {
+    var fs = isFs(), can = !ctx.debug && !standalone() && (fsApi() || isIOS);
+    document.documentElement.classList.toggle('is-fs', fs);
+    var b = document.getElementById('btnFs'); if (b) b.hidden = !can || fs;
+    var h = document.getElementById('btnHudFs'); if (h) h.hidden = !can || isTouch;
+  }
+  (function initFs() {
+    var b = document.getElementById('btnFs'), h = document.getElementById('btnHudFs');
+    if (b) b.addEventListener('click', function (e) { e.stopPropagation(); toggleFs(); });
+    if (h) h.addEventListener('click', function (e) { e.stopPropagation(); toggleFs(); h.blur(); });
+    document.addEventListener('fullscreenchange', syncFs); document.addEventListener('webkitfullscreenchange', syncFs);
+    window.addEventListener('keydown', function (e) {
+      if ((e.code === 'KeyF' || e.key === 'f' || e.key === 'F') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !(ctx.introLeft > 0)) toggleFs();
+    });
+    // táctil: el primer toque en cualquier parte ya pone la pantalla completa (necesita un gesto del usuario)
+    var first = function () { window.removeEventListener('pointerup', first, true); tryFullscreen(); };
+    if (isTouch) window.addEventListener('pointerup', first, true);
+    // doble toque: sin zoom aunque el navegador ignore user-scalable=no (Safari): el 2.º toque rápido fuera de un control no hace nada
+    var lastTE = 0;
+    document.addEventListener('touchend', function (e) {
+      var t = e.target, now = e.timeStamp || 0;
+      if (now - lastTE < 320 && e.cancelable && !(t && t.closest && t.closest('button,a,input,[role=button],[data-opt]'))) e.preventDefault();
+      lastTE = now;
+    }, { passive: false });
+    syncFs();
+  })();
 
   // ---------- Entrada -> mundo ----------
   var simIn = { move: [0, 0], hit: false, jump: false, switchPlayer: false };

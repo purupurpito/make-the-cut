@@ -244,6 +244,10 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - Textos del tutorial: «1r toque», «círculo», «se hace más pequeño», sin la explicación de la defensa ni la falta «Cuerpo».
 - Consejos del partido solo hasta la 1a victoria; luego se apagan (ajuste `coachTips`, Ajustes · Juego · Consejos).
 - Partido rápido: selector de puntos por set (11/15/21/25) en el menú.
+- Móvil: sin zoom por doble toque (el `<meta name="viewport">` quedaba en el `<body>` de la versión de Pages y los móviles lo
+  ignoraban; tools/build-pages.js ahora lo sube al `<head>`) y pantalla completa: sola en el primer toque y al empezar partido,
+  botón en el menú, botón en el HUD de escritorio y tecla F. En iPhone (sin API) aviso de «Añadir a pantalla de inicio":
+  Pages lleva manifest (display: fullscreen, horizontal) e iconos (`pages/`).
 
 ## Cómo seguir en casa
 

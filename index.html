@@ -317,6 +317,23 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .hud-btns{position:absolute;right:calc(16px + var(--sr));top:calc(14px + var(--st));display:flex;gap:8px;pointer-events:auto}
 .hud-btns button{width:42px;height:42px;padding:0;border-radius:12px;background:rgba(8,13,24,.72);box-shadow:inset 0 0 0 1px var(--line2);display:flex;align-items:center;justify-content:center}
 .hud-btns button svg{width:18px;height:18px;fill:var(--fg)}
+/* Pantalla completa: botón del menú (bajo «En directo»), botón del HUD en escritorio y aviso de iPhone (Añadir a pantalla de inicio) */
+.fs-btn{position:absolute;right:calc(24px + var(--sr));top:calc(62px + var(--st));display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;
+  border:0;border-radius:12px;background:rgba(8,13,24,.72);box-shadow:inset 0 0 0 1px var(--line2);color:var(--fg);font:700 15px var(--ui);cursor:pointer;z-index:2}
+.fs-btn[hidden]{display:none}
+.fs-btn:hover{background:rgba(20,30,50,.85)}
+.fs-btn svg,#btnHudFs svg{width:18px;height:18px;fill:none!important;stroke:var(--fg);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+#btnHudFs[hidden]{display:none}
+#btnHudFs .fs-out{display:none}
+.is-fs #btnHudFs .fs-in{display:none}
+.is-fs #btnHudFs .fs-out{display:flex}
+#btnHudFs span{display:flex}
+#fsTip{position:absolute;left:50%;bottom:calc(18px + var(--sbm));transform:translateX(-50%);max-width:calc(100% - 32px);box-sizing:border-box;padding:12px 16px;
+  border-radius:14px;background:rgba(8,13,24,.92);box-shadow:inset 0 0 0 1px var(--line2);color:var(--fg);font:600 15px/1.35 var(--ui);text-align:center;z-index:90;pointer-events:none}
+#fsTip[hidden]{display:none}
+#fsTip b{color:var(--gold)}
+/* paneles con scroll: sin zoom por doble toque (el resto ya tiene touch-action:none desde body) */
+.sheet{touch-action:pan-x pan-y}
 .is-touch .hud-btns{display:none}
 
 /* Banner central */
@@ -1182,6 +1199,7 @@ h2 span{color:var(--hot)}
     <div id="prompt" class="off"><div class="pr-in"><span class="pr-kw"><svg class="pr-ring" id="promptRing" aria-hidden="true"><rect class="tr" pathLength="100"/><rect class="fi" pathLength="100"/></svg><span class="key" id="promptKey">ESPACIO</span></span><span class="pr-hg" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="sand" d="M8.6 5.2h6.8c0 2.2-1.6 3.6-3.4 5-1.8-1.4-3.4-2.8-3.4-5zM12 15.6c1.4.9 3 2 3.2 3.4H8.8c.2-1.4 1.8-2.5 3.2-3.4z"/><path d="M6.5 3h11M6.5 21h11M8 3.2c0 4.2 4 6 4 8.8S8 16.6 8 20.8M16 3.2c0 4.2-4 6-4 8.8s4 4.6 4 8.8"/></svg></span><span id="promptText">¡Golpea!</span><i class="pr-bar"><b id="promptBar"></b><u class="pr-notch"></u></i></div></div>
 
     <div class="hud-btns">
+      <button id="btnHudFs" aria-label="Pantalla completa" title="Pantalla completa (F)" hidden><span class="fs-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span><span class="fs-out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></span></button>
       <button id="btnHudMute" aria-label="Sonido"><svg viewBox="0 0 24 24" id="icoSound"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="#f7f2ea" stroke-width="2" stroke-linecap="round"/></svg></button>
       <button id="btnHudPause" aria-label="Pausa"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
     </div>
@@ -1198,9 +1216,11 @@ h2 span{color:var(--hot)}
   </div></div>
   <div id="touch" hidden></div>
 
+  <div id="fsTip" role="status" hidden></div>
   <!-- ================= MENÚ ================= -->
   <div id="menu" class="screen intro" hidden>
     <div class="live">EN DIRECTO · DEMO</div>
+    <button class="fs-btn" id="btnFs" data-ui hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Pantalla completa</span></button>
     <div class="menu-col">
       <div class="brand">
         <p class="kicker">Palau del Mar · 2 contra 2</p>
