@@ -32,7 +32,7 @@ Proyecto personal. Este documento es la ley para los 6 especialistas que trabaja
   API r149: `outputEncoding`/`sRGBEncoding`, `CapsuleGeometry` disponible, `THREE.ColorManagement.legacyMode = false` (lo pone main.js:
   los hex de materiales son sRGB; **toda textura de color de canvas debe llevar `tex.encoding = THREE.sRGBEncoding`**).
 - Cero peticiones de red en tiempo de ejecución salvo three.js y Google Fonts. Texturas procedurales (canvas) o data URIs.
-- `index.html` sin `<!doctype>/<html>/<head>/<body>`; empieza por `<title>Voley 3D</title>`. Debe funcionar en `file://` y como Artifact.
+- `index.html` sin `<!doctype>/<html>/<head>/<body>`; empieza por `<title>Make the Cut</title>`. Debe funcionar en `file://` y como Artifact.
 - Sim (`sim.js`, `ai.js`) pura: sin DOM, sin THREE, sin `window` salvo vía el objeto VB
   (`var root = (typeof window!=='undefined')?window:globalThis; var VB = root.VB = root.VB || {}`).
 - Rendimiento: 60 fps objetivo en móvil medio. Sin asignaciones por frame en bucles calientes (reutiliza Vector3/objetos),

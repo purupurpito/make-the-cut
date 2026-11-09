@@ -1914,7 +1914,7 @@
     { name: 'PALAU DEL MAR', fg: '#ffffff', bg: ['#0b3a4f', '#146a86'], deco: 'wave' },
     { name: 'TERRA', fg: '#ffd23f', bg: ['#2a1a0d', '#4a2f17'], deco: 'leaf' },
     { name: 'SALT·9', fg: '#ffffff', bg: ['#0e1118', '#252b38'], deco: 'dots' },
-    { name: 'VOLEY 3D', fg: '#0e1118', bg: ['#ffd23f', '#ffb03d'], deco: 'ball' }
+    { name: 'MAKE THE CUT', fg: '#0e1118', bg: ['#ffd23f', '#ffb03d'], deco: 'ball' }
   ];
   var led = { cv: null, tex: null, mcv: null, mtex: null, mat: null, mesh: null, reflMat: null, refl: null, msgT: 0, msgOn: false, scrollT: 0, scrollM: 0, w: 0, pend: null };
   function drawDeco(g, kind, x, y, h, color) {

@@ -984,7 +984,7 @@
   }
   function showFatal(msg, soft) {
     var d = document.getElementById('fatal');
-    if (d) { d.innerHTML = '<b>Voley 3D</b><span></span>'; d.lastChild.textContent = msg; d.hidden = false; d.classList.toggle('soft', !!soft); }
+    if (d) { d.innerHTML = '<b>Make the Cut</b><span></span>'; d.lastChild.textContent = msg; d.hidden = false; d.classList.toggle('soft', !!soft); }
     if (bootEl) bootEl.hidden = true;
   }
   VB.boot = boot;
