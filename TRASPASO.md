@@ -205,16 +205,33 @@ Detalle por owner en `notes/<owner>.md` («Pulido ola 3» y el log «Aplicado �
 - Por emulación, el p5 de alta y media se queda en ~55 fps (ft95 ~18 ms): es el ritmo de frames del headless, no tirones (≤ 3 frames
   de > 33 ms en 20 s).
 
-## Pendiente (pedido por Ferran)
+## Backlog por sprints (pedido por Ferran)
 
-- **[PENDIENTE] Modo de un solo jugador controlado**: poder jugar controlando solo a un jugador (por ejemplo, ser el colocador)
-  y que la IA lleve al compañero en todos sus toques, en vez de que el control pase solo a quien da el siguiente toque.
-  Pedido el 9-nov-2026; aún sin diseñar ni empezar.
-- **Gráficos cartoonish**: cambio de dirección artística a estilo dibujo animado (pedido el 8-nov-2026; sin empezar).
-- **Consejos del partido** (hecho el 9-nov-2026): se ven hasta ganar el 1r partido; luego se apagan solos (ajuste `coachTips`)
-  y se reactivan en Ajustes · Juego · Consejos. Quien ya había ganado antes de este cambio empieza con ellos apagados.
-- **Textos**: el 9-nov-2026 Ferran revisó el tutorial: «1r toque» (sin punto), «círculo» en vez de «aro amarillo»,
-  «se hace más pequeño», sin la explicación de la defensa y sin la falta «Cuerpo». El resto de textos y botones los revisará más adelante.
+Desde el 9-nov-2026 el proyecto va por **sprints**: cada tarea se hace solo cuando Ferran la pide, para controlar el gasto
+de tokens. Nada de flujos largos encadenados sin preguntar. Lo de abajo está apuntado, NO empezado.
+
+### To-do
+- **Remate apuntado con diana según el timing** (9-nov-2026). Hoy ya se apunta en 5 zonas con la dirección durante el salto
+  y sale una diana naranja pequeña y tardía (`Sim.aimPoint`, `fx.js aimTarget`). Lo pedido:
+  1. Que se vea: diana grande y visible desde el inicio del salto (o la colocación) y consejo «Apunta con…» en el 3r toque.
+  2. Mira libre por todo el campo rival (stick/flechas mientras subes), en vez de 5 zonas fijas.
+  3. El tamaño de la diana depende del timing: timing perfecto = diana exacta donde apuntas; peor timing = diana más grande
+     (más dispersión).
+  4. Un remate perfecto hace la defensa más difícil: el círculo de golpeo del defensor rival es más pequeño (ventana más justa).
+  Ojo: es un cambio de jugabilidad; hay que reequilibrar la defensa de la CPU (simtest) y repasar el táctil.
+- **Modo de un solo jugador controlado** (9-nov-2026): controlar solo a un jugador (por ejemplo, el colocador) y que la IA
+  lleve al compañero en todos sus toques, en vez de que el control pase a quien da el siguiente toque. Sin diseñar.
+- **Gráficos cartoonish** (8-nov-2026): cambio de dirección artística a estilo dibujo animado. Sin empezar.
+- **Más modos de juego**: el selector de puntos por set es la base de «Partido rápido»; los modos nuevos irán al lado.
+- **Textos**: Ferran revisará el resto de textos y botones (lista numerada A–D que se le pasó el 9-nov-2026).
+  Pregunta abierta: ¿«3.er» → «3r» y «2.º» → «2º»?
+- **Pulido profundo pausado**: el flujo de pulido se paró a mitad (oleadas 1-2 subidas en 94ba33d); falta la oleada 3,
+  su verificación y el QA final. Solo si Ferran lo pide.
+
+### Hecho (9-nov-2026)
+- Textos del tutorial: «1r toque», «círculo», «se hace más pequeño», sin la explicación de la defensa ni la falta «Cuerpo».
+- Consejos del partido solo hasta la 1a victoria; luego se apagan (ajuste `coachTips`, Ajustes · Juego · Consejos).
+- Partido rápido: selector de puntos por set (11/15/21/25) en el menú.
 
 ## Cómo seguir en casa
 
