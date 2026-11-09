@@ -1192,7 +1192,7 @@ h2 span{color:var(--hot)}
   <div id="intro" aria-live="polite"><div class="in-card">
     <p class="in-k"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 2c3 3 4 7 3 11M4 7c4 0 8 2 10 6M3 15c4 2 9 1 12-2" fill="none" stroke="currentColor" stroke-width="2"/></svg>Palau del Mar<span>Vóley · 2 contra 2</span></p>
     <div class="in-vs"><div class="in-t t0"><b>TÚ</b><small>+ compañero</small></div><div class="in-x">vs</div><div class="in-t t1"><b>CPU</b><small>Pareja rival</small></div></div>
-    <div class="in-meta"><span class="in-chip" id="introDiff">Nivel Normal</span><span>Al mejor de 3 sets</span><span class="in-srv" id="introSrv">Sacas tú</span></div>
+    <div class="in-meta"><span class="in-chip" id="introDiff">Nivel Normal</span><span id="introFmt">Al mejor de 3 sets</span><span class="in-srv" id="introSrv">Sacas tú</span></div>
     <p class="in-skip" id="introHint">Pulsa cualquier tecla para empezar ya</p>
     <i class="in-bar"><b></b></i>
   </div></div>
@@ -1213,9 +1213,10 @@ h2 span{color:var(--hot)}
       <nav class="mlist" data-nav aria-label="Menú principal">
         <button class="mi primary" id="btnPlay"><span class="mi-n">01</span><span>Jugar<br><span class="mi-s" id="playSub">Partido · Al mejor de 3 sets</span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
         <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">02</span><span>Dificultad</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Más fácil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span></span><span class="arr" data-d="1" aria-label="Más difícil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="btnTut"><span class="mi-n">03</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
-        <button class="mi" id="btnControls"><span class="mi-n">04</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
-        <button class="mi" id="btnSettings"><span class="mi-n">05</span><span>Ajustes</span><span class="mi-s"></span></button>
+        <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-n">03</span><span>Puntos por set</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="btnTut"><span class="mi-n">04</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
+        <button class="mi" id="btnControls"><span class="mi-n">05</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
+        <button class="mi" id="btnSettings"><span class="mi-n">06</span><span>Ajustes</span><span class="mi-s"></span></button>
       </nav>
     </div>
     <div class="menu-foot">

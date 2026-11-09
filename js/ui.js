@@ -335,7 +335,7 @@
   function cacheEls() {
     ['hud', 'banner', 'callout', 'menu', 'pause', 'end', 'panel', 'rotate', 'touchbar', 'prompt', 'promptKey', 'promptText', 'promptBar', 'promptRing', 'coach',
       'pS0', 'pS1', 'pMid', 'endTitle', 'endKicker', 'endS0', 'endS1', 'endSets', 'endStats', 'endRecord',
-      'btnPlay', 'optDiff', 'btnTut', 'btnControls', 'btnSettings', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
+      'btnPlay', 'optDiff', 'optPts', 'ptsVal', 'btnTut', 'btnControls', 'btnSettings', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
       'btnAgain', 'btnMenu', 'btnPanelBack', 'btnTutPrev', 'btnTutNext', 'btnHudPause', 'btnHudMute', 'icoSound',
       'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord',
       'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack'].forEach(function (k) { el[k] = $(k); });
@@ -348,7 +348,7 @@
     el.veil = $('veil'); el.vp = $('vpulse');
     el.rl = $('rally'); el.rlN = $('rallyN');
     el.wipe = $('wipe'); el.wpBand = el.wipe.firstChild;
-    el.intro = $('intro'); el.introDiff = $('introDiff'); el.introSrv = $('introSrv'); el.introHint = $('introHint');
+    el.intro = $('intro'); el.introDiff = $('introDiff'); el.introFmt = $('introFmt'); el.introSrv = $('introSrv'); el.introHint = $('introHint');
     el.off = $('offArrow'); el.offNum = $('offNum'); el.offRot = el.off.firstChild;
     el.pnCtl = $('pnCtl'); el.pKick = document.querySelector('#pause .sh-k');
     el.stamp = $('stamp'); el.stampIn = el.stamp.firstChild; el.stampT = $('stampT'); el.stampS = $('stampS'); el.sr = $('srLive');
@@ -511,6 +511,8 @@
     }
   }
 
+  /** Puntos del set decisivo (3.º): min(15, puntos por set del partido). */
+  function decT(g) { return Math.min(15, (g && g.points) || 25); }
   function onEvents(g, events) {
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
@@ -520,7 +522,7 @@
       switch (e.type) {
         case 'newMatch':
           if (ctx.introLeft > 0 || introUI.on) break;           // la tarjeta de presentación ya lo dice (UI-14)
-          banner('Set 1', 'Al mejor de 3 sets · ' + (g.serving === 0 ? 'Sacas tú' : 'Saca la CPU'), '', 'neutral', BAN.info, 'newSet');
+          banner('Set 1', 'Al mejor de 3 sets · a ' + (g.points || 25) + ' · ' + (g.serving === 0 ? 'Sacas tú' : 'Saca la CPU'), '', 'neutral', BAN.info, 'newSet');
           break;
         case 'point': {
           var me = e.team === 0, k = e._uiKind;
@@ -596,15 +598,15 @@
           break;
         case 'courtChange':
           // reglas 18.2.1 / 18.2.2: cuando la cámara pasa al plano 'court' (grúa); se va antes de que la grúa acabe (ccU = 1)
-          pendCourt = { t2: e.why === 'eight' ? 'Set decisivo · 8 puntos' : 'Fin del ' + (ORD[e.setNo] || e.setNo + '.º') + ' set', dur: e.why === 'eight' ? 1.6 : 1.9, rt: ctx.time };
+          pendCourt = { t2: e.why === 'eight' ? 'Set decisivo · ' + Math.ceil(decT(g) / 2) + ' puntos' : 'Fin del ' + (ORD[e.setNo] || e.setNo + '.º') + ' set', dur: e.why === 'eight' ? 1.6 : 1.9, rt: ctx.time };
           // fin de set: «Set N» entra en la bajada de la grúa, en cuanto se va «Cambio de campo» (no al empezar el saque)
-          courtNext = e.why === 'set' && e.sets ? { n: e.setNo + 1, sub: e.setNo + 1 === 3 ? 'Set decisivo · a 15 puntos' : 'Sets ' + e.sets[0] + '-' + e.sets[1] } : null;
+          courtNext = e.why === 'set' && e.sets ? { n: e.setNo + 1, sub: e.setNo + 1 === 3 ? 'Set decisivo · a ' + decT(g) + ' puntos' : 'Sets ' + e.sets[0] + '-' + e.sets[1] } : null;
           break;
         case 'newSet':
           courtNext = null;
           if (newSetShown === e.setNo) { newSetShown = 0; break; } // ya salió en la bajada de la grúa
           newSetShown = 0;
-          banner('Set ' + e.setNo, e.setNo === 3 ? 'Set decisivo · a 15 puntos' : 'Sets ' + g.sets[0] + '-' + g.sets[1], '', 'neutral', BAN.info, 'newSet');
+          banner('Set ' + e.setNo, e.setNo === 3 ? 'Set decisivo · a ' + decT(g) + ' puntos' : 'Sets ' + g.sets[0] + '-' + g.sets[1], '', 'neutral', BAN.info, 'newSet');
           break;
         case 'gameOver':
           showEnd(e);
@@ -648,6 +650,7 @@
     var di = optIndex('difficulty'), nm = g && VB.DIFF && VB.DIFF[g.difficulty] && VB.DIFF[g.difficulty].name;
     el.introDiff.textContent = 'Nivel ' + (nm || OPT.difficulty.labels[di]);
     el.introSrv.textContent = g && g.serving === 1 ? 'Saca la CPU' : 'Sacas tú';
+    if (el.introFmt) el.introFmt.textContent = 'Al mejor de 3 sets · a ' + ((g && g.points) || 25);
     var d = device();
     el.introHint.innerHTML = d === 'touch' ? 'Toca para empezar ya' : d === 'gamepad' ? padKey('a') + 'para empezar ya' : 'Pulsa cualquier tecla para empezar ya';
     el.intro.className = ''; void el.intro.offsetWidth; el.intro.className = 'show';
@@ -2021,6 +2024,8 @@
     muted: { vals: [false, true], labels: ['Sí', 'No'] },
     quality: { vals: ['auto', 'high', 'medium', 'low'], labels: ['Auto', 'Alta', 'Media', 'Baja'] },
     showHelp: { vals: [true, false], labels: ['Sí', 'No'] },
+    // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS); el set decisivo va a min(15, puntos)
+    setPoints: { vals: [11, 15, 21, 25], labels: ['11', '15', '21', '25'] },
     coachTips: { vals: [true, false], labels: ['Sí', 'No'] },
     // Accesibilidad (UI-16)
     camStable: { vals: [true, false], labels: ['Sí', 'No'] },
@@ -2057,11 +2062,14 @@
   }
   function uiSound2(kind, a) { try { if (VB.Audio && VB.Audio.ui) VB.Audio.ui(kind, a); } catch (e) { } }
   /** Flechas de la dificultad: ‹/› sin dar la vuelta (en Fácil, ‹ no hace nada salvo un rebote). */
-  function stepDiff(d) {
-    var o = OPT.difficulty, i = optIndex('difficulty'), j = Math.max(0, Math.min(o.vals.length - 1, i + d));
-    if (j === i) { restartAnim(el.diffVal.parentNode, d < 0 ? 'sl-r' : 'sl-l'); uiSound2('arrowEdge', d); return; }
-    changeOpt('difficulty', 0, j, d);
+  function stepDiff(d) { stepOpt('difficulty', d, el.diffVal); }
+  /** Flechas de una fila del menú con valor (dificultad, puntos por set): sin dar la vuelta, rebote en los extremos. */
+  function stepOpt(k, d, valEl) {
+    var o = OPT[k], i = optIndex(k), j = Math.max(0, Math.min(o.vals.length - 1, i + d));
+    if (j === i) { restartAnim(valEl.parentNode, d < 0 ? 'sl-r' : 'sl-l'); uiSound2('arrowEdge', d); return; }
+    changeOpt(k, 0, j, d);
   }
+  var lastPtsI = -1;
   var lastDiffI = -1;
   function renderOpts() {
     var segs = document.querySelectorAll('[data-seg]');
@@ -2091,7 +2099,16 @@
     var ars = el.optDiff.querySelectorAll('.arr');
     if (ars.length === 2) { ars[0].classList.toggle('end', di === 0); ars[1].classList.toggle('end', di === OPT.difficulty.vals.length - 1); }
     for (var n = 0; n < el.diffLvl.children.length; n++) el.diffLvl.children[n].classList.toggle('on', n <= di);
-    el.playSub.textContent = 'Partido · ' + OPT.difficulty.labels[di] + ' · Al mejor de 3 sets';
+    // menú: puntos por set (misma fila que la dificultad, sin barras de nivel)
+    var pi = optIndex('setPoints');
+    if (el.ptsVal.textContent !== OPT.setPoints.labels[pi]) {
+      el.ptsVal.textContent = OPT.setPoints.labels[pi];
+      if (lastPtsI >= 0) { var pv = el.ptsVal.parentNode; pv.classList.remove('sl-l', 'sl-r'); void pv.offsetWidth; pv.classList.add(pi > lastPtsI ? 'sl-r' : 'sl-l'); }
+    }
+    lastPtsI = pi;
+    var pas = el.optPts.querySelectorAll('.arr');
+    if (pas.length === 2) { pas[0].classList.toggle('end', pi === 0); pas[1].classList.toggle('end', pi === OPT.setPoints.vals.length - 1); }
+    el.playSub.textContent = 'Partido rápido · ' + OPT.difficulty.labels[di] + ' · Sets a ' + OPT.setPoints.vals[pi];
   }
 
   // ---------- Tutorial ----------
@@ -2389,7 +2406,12 @@
         if (a) { var d = +a.getAttribute('data-d'); stepDiff(d); restartAnim(a, 'hit'); }
         else changeOpt('difficulty', 1);
       });
-      var arrs = el.optDiff.querySelectorAll('.arr');
+      el.optPts.addEventListener('click', function (ev) {
+        var a = ev.target && ev.target.closest ? ev.target.closest('[data-d]') : null;
+        if (a) { stepOpt('setPoints', +a.getAttribute('data-d'), el.ptsVal); restartAnim(a, 'hit'); }
+        else changeOpt('setPoints', 1);
+      });
+      var arrs = document.querySelectorAll('#optDiff .arr, #optPts .arr');
       for (var ai = 0; ai < arrs.length; ai++) arrs[ai].addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') uiSound2('arrowHover', +this.getAttribute('data-d') || 1); });
       on(el.btnTut, function () { openPanel('tut', 'menu'); });
       on(el.btnControls, function () { openPanel('ctl', 'menu'); });

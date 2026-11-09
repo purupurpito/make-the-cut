@@ -164,6 +164,10 @@
    *          difficulty:'easy'|'normal'|'hard' (también 'facil','dificil'): nivel de la CPU,
    *          serveClock:bool (regla de 8 s para el saque humano, por defecto true),
    *          stats:bool } */
+  /** Puntos por set que se pueden elegir (Partido rápido). */
+  var SET_POINTS = [11, 15, 21, 25];
+  /** Puntos para ganar el set en curso: g.points, y el set decisivo (3.º) a min(15, g.points). */
+  function setTarget(g) { var p = g.points || 25; return g.setNo === 3 ? Math.min(15, p) : p; }
   function createGame(opts) {
     opts = opts || {};
     var teams = [[mkPlayer(0, 7, 0), mkPlayer(0, 11, 1)], [mkPlayer(1, 3, 0), mkPlayer(1, 9, 1)]];
@@ -180,7 +184,9 @@
       tm: opts.demo ? TIMING.hard : (opts.rookie && (diff === 'easy' || diff === 'normal') ? TIMING.easy : TIMING[diff]),
       defRole: '',             // rol del humano mientras ataca la CPU: '' | 'dig' (defiende) | 'block' (bloquea) — ver updateDefense
       recvRisk: 0,             // dificultad (0..1+) del último saque para el receptor (ver serveRisk)
-      courtSwap3: false,       // ya se cambió de campo a los 8 puntos del 3er set
+      courtSwap3: false,       // ya se cambió de campo a mitad del set decisivo (a los 8 si va a 15)
+      // puntos por set (Partido rápido: 11 | 15 | 21 | 25); el set decisivo va a min(15, points). Ver setTarget
+      points: SET_POINTS.indexOf(+opts.points) >= 0 ? +opts.points : 25,
       antennaHit: null,        // {x,y,z} donde el balón tocó la antena en este punto (null si no)
       atkServe: null,          // {team, player}: toque por encima de la red sobre el saque rival en zona de ataque; es falta
                                // (13.3.4) solo si se COMPLETA como ataque: el balón cruza la red o lo toca el rival
@@ -1016,9 +1022,9 @@
       if (p) g.stats.faults[reason] = (g.stats.faults[reason] || 0) + 1;
     }
     // ¿cierra el set / el partido? ¿cambio de campo a los 8 del set decisivo? (se decide aquí para que el evento lo lleve)
-    var tgt = g.setNo === 3 ? 15 : 25, a = g.score[0], bb = g.score[1];
+    var tgt = setTarget(g), a = g.score[0], bb = g.score[1], half = Math.ceil(tgt / 2);
     var setWon = g.score[w] >= tgt && g.score[w] - g.score[1 - w] >= 2, matchWon = setWon && g.sets[w] === 1;
-    var eight = !setWon && g.setNo === 3 && !g.courtSwap3 && g.score[w] === 8 && g.score[1 - w] < 8;
+    var eight = !setWon && g.setNo === 3 && !g.courtSwap3 && g.score[w] === half && g.score[1 - w] < half;
     // contexto (SIM-01): racha en el set, punto de set/partido salvado, defensas de remate del peloteo
     if (g.streakTeam === w) g.streakN++; else { g.streakTeam = w; g.streakN = 1; }
     var saved = g.setPoint === 1 - w, digs = g.rally.digs;
@@ -1248,7 +1254,7 @@
     g.ctrl = t === 0 ? sv : g.teams[0][0]; endSwing(g); g.swingLock = 0; g.defRole = '';
     g.rally.t = 0; g.rally.hits = 0; g.rally.digs = 0;
     // ¿Punto de set / punto de partido?
-    var tgt = g.setNo === 3 ? 15 : 25;
+    var tgt = setTarget(g);
     g.setPoint = -1; g.matchPoint = -1;
     for (var k = 0; k < 2; k++) {
       if (g.score[k] >= tgt - 1 && g.score[k] - g.score[1 - k] >= 1) { g.setPoint = k; if (g.sets[k] === 1) g.matchPoint = k; }
@@ -1596,7 +1602,7 @@
   }
 
   VB.Sim = {
-    createGame: createGame, step: step, drainEvents: drainEvents,
+    createGame: createGame, step: step, drainEvents: drainEvents, setTarget: setTarget, SET_POINTS: SET_POINTS,
     predict: predict, predictLanding: predictLanding, focusPoint: focusPoint,
     canReach: canReach, other: other, isHuman: isHuman, side: side, clamp: clamp,
     // añadidos (opcionales)

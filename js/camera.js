@@ -1707,7 +1707,7 @@
   function clinchDetect(g) {
     if (CL.on || g.demo || g.mode !== 'rally' || ctx.state !== 'playing') { CLW.why = 1; return; }
     // punto de set: del marcador (como setupServe; así vale también si el marcador cambió durante el peloteo)
-    var tgt = g.setNo === 3 ? 15 : 25, spT = -1;
+    var tgt = VB.Sim && VB.Sim.setTarget ? VB.Sim.setTarget(g) : (g.setNo === 3 ? 15 : 25), spT = -1;
     for (var st = 0; st < 2; st++) if (g.score[st] >= tgt - 1 && g.score[st] - g.score[1 - st] >= 1) spT = st;
     if (spT < 0) { CLW.why = 9; return; }
     var b = g.ball, S0 = VB.Sim;
