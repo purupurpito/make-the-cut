@@ -245,7 +245,7 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 ### Hecho (9-nov-2026)
 - **Nombre del juego: «Make the Cut»** (sin exclamación; elegido por Ferran el 9-nov-2026; doble sentido: el *cut shot* del vóley y «pasar el corte»,
   ganarse la plaza, como en el modo Carrera). Cambiado en título, logos (menú y telón), rótulo del pabellón, aviso de girar el móvil
-  y nombre de la app instalable. El repo y la URL siguen como `voley-3d` para no romper el enlace compartido.
+  y nombre de la app instalable. Repo renombrado a `purupurpito/make-the-cut` (GitHub redirige el repo antiguo); web en https://purupurpito.github.io/make-the-cut/. La URL antigua de Pages (/voley-3d/) da 404 salvo que se cree la redirección en el repo `purupurpito.github.io`.
   Marcas (revisado en TMview/OMPI el 9-nov-2026): nadie tiene «Make the Cut» para videojuegos (clases 9/28/41 de juegos).
   Única marca viva cercana: FR 4948864 «Make The Cut» (INPI, particular de París; clases 35, 41 solo formación/información
   de entretenimiento, 42 desarrollo de software para terceros; solicitada 26-3-2023, registrada 7-7-2023, vence 26-3-2033).
@@ -281,7 +281,7 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 
 ## Cómo seguir en casa
 
-1. `git clone https://github.com/purupurpito/voley-3d.git && cd voley-3d`
+1. `git clone https://github.com/purupurpito/make-the-cut.git && cd voley-3d`
 2. Abrir Claude Code en esa carpeta y decir: "sigue con el TRASPASO.md".
 3. Claude debe relanzar desde la fase pendiente. La reanudación automática del flujo no sirve entre
    PCs, así que: copiar `tools/workflow/voley-3d.workflow.js`, quitar las fases ya hechas (Foundation
@@ -320,4 +320,4 @@ cámara. Teclado, mando y táctil (móvil en horizontal). Reglas y vocabulario c
 ## Cuentas
 
 Repo público en **purupurpito** (cuenta personal), publicado en GitHub Pages:
-https://purupurpito.github.io/voley-3d/ (se despliega solo en cada push a main con .github/workflows/pages.yml).
+https://purupurpito.github.io/make-the-cut/ (se despliega solo en cada push a main con .github/workflows/pages.yml).
