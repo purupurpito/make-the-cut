@@ -145,6 +145,7 @@
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, // vx,vy = velocidad real del último paso (para animación)
       anim: 0,        // >0 mientras dura un gesto de golpeo/brazos arriba (s)
       cool: 0,        // enfriamiento tras tocar
+      st: null, prof: null, ak: null, // atributos 1-99, perfil de IA y multiplicadores (applyAttrs; null = perfil del equipo)
       bd: 0, bdT: 0.1,// temporizador de salto al bloqueo (IA)
       jvx: 0, jvy: 0, // deriva horizontal en el aire (impulso del despegue)
       lvx: 0, lvy: 0, // impulso de la plancha
@@ -256,10 +257,53 @@
       } : null
     };
     dblFields(g); dblFields(g.ball); dblFields(g.pr1); dblFields(g.pr3); dblFields(g.rally);
+    applyAttrs(g, opts.attrs);
     g.server = g.ctrl;
     newGame(g);
     return g;
   }
+
+  /* ---------- Estadísticas de jugador (atributos 1-99, ver notes/diseno-6v6-carrera.md §2) ----------
+   * opts.attrs = [[st n.º 7, st n.º 11], [st n.º 3, st n.º 9]] (cualquiera puede faltar). Un jugador sin atributos usa el
+   * perfil de su equipo tal cual (g.prof[team]); con atributos, p.prof = statProf(perfil del equipo, st). 50 en todo = neutro
+   * (idéntico al perfil base), así que sin opts.attrs la sim no cambia ni gasta azar. Al humano le llegan por p.ak:
+   * ventanas de timing por toque, velocidad de remate/saque, dispersión de la diana, salto y carrera. */
+  var ATTR_KEYS = VB.ATTR_KEYS = ['jump', 'speed', 'react', 'recv', 'dig', 'set', 'spike', 'ctl', 'block', 'serve'];
+  function sAt(st, k) { var v = st && st[k]; return v == null || !isFinite(v) ? 0.5 : clamp((+v - 1) / 98, 0, 1); }
+  function statProf(base, st) {
+    var o = {}; for (var k in base) o[k] = base[k];
+    var f = function (k) { return sAt(st, k); };
+    o.speed = base.speed * (0.9 + 0.2 * f('speed'));
+    o.react = Math.max(0.03, base.react + 0.10 * (0.5 - f('react')));
+    o.blockReact = Math.max(0.02, base.blockReact + 0.06 * (0.5 - f('react')));
+    o.timing = base.timing * (1.25 - 0.5 * f('ctl'));
+    o.recv = clamp(base.recv + 0.12 * (f('recv') - 0.5), 0.4, 0.98);
+    o.dig = clamp(base.dig + 0.2 * (f('dig') - 0.5), 0.1, 0.8);
+    o.block = clamp(base.block + 0.25 * (f('block') - 0.5), 0.05, 0.75);
+    o.spike = base.spike + 4 * (f('spike') - 0.5);
+    o.atkErr = base.atkErr * (1.4 - 0.8 * f('ctl'));
+    o.err = base.err * (1.2 - 0.4 * f('set'));
+    o.jserve = base.jserve + 3.5 * (f('serve') - 0.5);
+    o.srvErr = base.srvErr * (1.4 - 0.8 * f('serve'));
+    o.jumpServe = clamp(base.jumpServe + 0.5 * (f('serve') - 0.5), 0, 0.9);
+    return o;
+  }
+  /** Multiplicadores del humano (y de la física de todos) a partir de los atributos; 50 en todo = 1. */
+  function attrK(st) {
+    var f = function (k) { return sAt(st, k); }, w = function (k) { return 0.88 + 0.24 * f(k); };
+    return { jump: 0.94 + 0.12 * f('jump'), speed: 0.92 + 0.16 * f('speed'), wRecv: w('recv'), wDig: w('dig'), wSet: w('set'),
+      wAtk: w('ctl'), wSrv: w('serve'), wBlk: w('block'), spike: 4 * (f('spike') - 0.5), serve: 3 * (f('serve') - 0.5),
+      spread: 1.2 - 0.4 * f('ctl') };
+  }
+  function applyAttrs(g, attrs) {
+    if (!attrs || g.demo) return;
+    for (var t = 0; t < 2; t++) for (var i = 0; i < 2; i++) {
+      var st = attrs[t] && attrs[t][i]; if (!st) continue;
+      var p = g.teams[t][i], c = {}; for (var j = 0; j < ATTR_KEYS.length; j++) c[ATTR_KEYS[j]] = clamp(Math.round(+st[ATTR_KEYS[j]] || 50), 1, 99);
+      p.st = c; p.prof = statProf(g.prof[t], c); p.ak = attrK(c);
+    }
+  }
+  function profOf(g, p) { return (p && p.prof) || g.prof[p.team]; }
 
   /** Primer partido (opts.rookie): la CPU saca más suave (sin saque en salto, flotante con menos baile).
    *  En Normal además remata algo más lento y menos fino, defiende y bloquea menos. En Fácil (ya blando de por sí)
@@ -460,7 +504,7 @@
    *  te: desfase con el momento ideal (s). shot: '' | 'tip' | 'dive'.
    *  tgt: [x,y] destino explícito (IA) o null para usar aim. */
   function hit(g, p, aim, te, shot, tgt) {
-    var t = p.team, sd = side(t), b = g.ball, prof = g.prof[t];
+    var t = p.team, sd = side(t), b = g.ball, prof = profOf(g, p);
     var inKind = g.lastKind, inShot = g.lastShot, inPrev = g.prevKind; // lo que llega (para contar defensas de remate)
     if (g.touchTeam === t && g.lastPlayer === p) { fault(g, t, 'double', 'Dobles: el mismo jugador toca dos veces', p); return; }
     var count = g.touchTeam === t ? g.touches + 1 : 1;
@@ -475,6 +519,10 @@
     if (human && count === 1 && g.digTight) te *= 1.5; // A3: tras un remate perfecto rival la ventana es más justa
     var d = Math.hypot(b.x - p.x, b.y - p.y), inSp = fastInFor(g);
     var hardIn = g.lastKind === 'spike' || (g.lastKind === 'serve' && inSp > 13);
+    if (human && p.ak) { // atributos: ventana de timing del toque (recepción/defensa, colocación, ataque) ±12 %
+      var wk = isAttackContact(p, b) ? p.ak.wAtk : count === 2 ? p.ak.wSet : g.lastKind === 'serve' ? p.ak.wRecv : p.ak.wDig;
+      te /= wk;
+    }
     // calidad: timing x distancia x dificultad de lo que llega
     var q = timingQ(te);
     q *= 1 - 0.3 * clamp((d / C.REACH - 0.55) / 0.45, 0, 1);
@@ -507,12 +555,12 @@
       } else { // remate
         var free3 = human && !tgt && g.aim3.on; // A1: mira libre del humano
         at = tgt || (free3 ? [g.aim3.x, g.aim3.y] : attackTarget(p, aim, 6));
-        var spd = human ? 13.5 + 5.5 * q : prof.spike * (0.82 + 0.18 * q);
+        var spd = human ? 13.5 + 5.5 * q + (p.ak ? p.ak.spike : 0) : prof.spike * (0.82 + 0.18 * q);
         power = clamp((spd - 11) / 8, 0, 1);
         er = (0.25 + 1.5 * (1 - q)) * mul;
         dip = C.G * (0.15 + 0.3 * q); // liftado: el balón "cae" más
         if (free3) { // A2: dispersión según el timing, uniforme en un círculo de radio spikeSpread(q) (mismo gasto de azar)
-          var sr = spikeSpread(q) * Math.sqrt(g.rng()), sa = g.rng() * 6.2832;
+          var sr = spikeSpread(q) * (p.ak ? p.ak.spread : 1) * Math.sqrt(g.rng()), sa = g.rng() * 6.2832;
           v = launchDirect(o, at[0] + sr * Math.cos(sa), at[1] + sr * Math.sin(sa), C.BR, spd, C.G + dip); // bota justo en la diana
         } else v = launchDirect(o, at[0] + rnd(g, er), at[1] + rnd(g, er), 0, spd, C.G + dip);
         if (q < 0.45 && g.rng() < (0.48 - q) * 0.75) v[2] -= 1.4 + g.rng(); // a la red
@@ -633,7 +681,7 @@
       g.blockCD = 0.5; g.blockBy = q;
       if (g.lastKind === 'serve') { fault(g, q.team, 'block', 'Bloqueo del saque', q); return; }
       if (g.atkServe) { fault(g, g.atkServe.team, 'attackServe', 'Ataque sobre el saque', g.atkServe.player); return; } // lo toca el rival: ataque completado
-      var human = isHuman(g, q), prof = g.prof[q.team], kindB;
+      var human = isHuman(g, q), prof = profOf(g, q), kindB;
       var qb = blockQ(q), hands = b.z > q.z + BLK_HANDS, hw = hands ? blockHalfW(qb) : BLK_BODY;
       var pw = clamp((b.speed - 11) / 8, 0, 1), spike = g.lastKind === 'spike';
       var cen = 1 - clamp(Math.abs(b.y - q.y) / hw, 0, 1);              // 1 = balón en el centro de las manos
@@ -666,7 +714,7 @@
         g.hardIn = true; g.digOk = g.rng() < 0.2 * (1 - qb);
         g.atkTeam = q.team; g.atkHow = 'block'; g.atkHits = g.rally.hits; g.atkHuman = human; g.atkGrade = gradeOf(qb);
       } else if (kindB === 'touch') { // el remate sigue vivo pero frenado: la defensa IA lo saca más que un remate limpio
-        var dpb = g.prof[q.team];
+        var dpb = profOf(g, q);
         g.hardIn = true; g.digOk = g.rng() < clamp(0.08 + dpb.dig * 1.0, 0, 0.85);
       }
       q.lastAction = 'block'; q.actionT = 0; q.shot = kindB; q.grade = gradeOf(qb);
@@ -1214,7 +1262,7 @@
   // ---------- Jugadores ----------
   function jump(g, p, jvx, jvy) {
     if (p.z === 0 && p.vz === 0 && p.down <= 0) {
-      p.vz = C.JUMP_V; p.onGround = false; p.lastAction = 'jump'; p.actionT = 0;
+      p.vz = C.JUMP_V * (p.ak ? p.ak.jump : 1); p.onGround = false; p.lastAction = 'jump'; p.actionT = 0;
       if (jvx == null) { // impulso: parte de la velocidad de carrera, limitado
         jvx = p.vx * 0.3; jvy = p.vy * 0.3;
         var jl = Math.hypot(jvx, jvy); if (jl > 0.6) { jvx *= 0.6 / jl; jvy *= 0.6 / jl; }
@@ -1232,7 +1280,7 @@
     var ox = p.x, oy = p.y;
     if (p.down > 0) { p.down -= dt; mx = my = 0; }
     if (air) { p.x += p.jvx * dt; p.y += p.jvy * dt; }
-    else { p.x += mx * C.SPEED * dt; p.y += my * C.SPEED * dt; }
+    else { var spk = p.ak && isHuman(g, p) ? p.ak.speed : 1; p.x += mx * C.SPEED * spk * dt; p.y += my * C.SPEED * spk * dt; }
     if (p.lvx || p.lvy) { // impulso de la plancha
       p.x += p.lvx * dt; p.y += p.lvy * dt; var k = Math.max(0, 1 - 7 * dt); p.lvx *= k; p.lvy *= k;
       if (Math.abs(p.lvx) + Math.abs(p.lvy) < 0.05) p.lvx = p.lvy = 0;
@@ -1416,14 +1464,15 @@
     }
     g.lastTouchT = g.time;
     sv.lastAction = 'toss'; sv.actionT = 0; sv.anim = 0.3;
-    if (!isHuman(g, sv)) { var pr = g.prof[sv.team]; g.aiServeTe = clamp(gauss(g) * pr.timing * 0.9, -0.25, 0.2); } // tope tardío 0,2: con 0,25 la ventana de alcance (canReach, ~-0,23 s) se cerraba antes y la CPU dejaba caer su propio lanzamiento
+    if (!isHuman(g, sv)) { var pr = profOf(g, sv); g.aiServeTe = clamp(gauss(g) * pr.timing * 0.9, -0.25, 0.2); } // tope tardío 0,2: con 0,25 la ventana de alcance (canReach, ~-0,23 s) se cerraba antes y la CPU dejaba caer su propio lanzamiento
     emit(g, { type: 'toss', player: sv, team: sv.team, jump: g.serveJump, human: isHuman(g, sv) });
   }
 
   function doServe(g, sv, aim, te, tgt) {
-    var sd = side(sv.team), b = g.ball, prof = g.prof[sv.team], human = isHuman(g, sv);
+    var sd = side(sv.team), b = g.ball, prof = profOf(g, sv), human = isHuman(g, sv);
     b.held = null;
     te = te || 0;
+    if (human && sv.ak) te /= sv.ak.wSrv;
     var q = timingQ(te), grade = gradeOf(q), mul = human ? 1 : prof.err, v, power, er, tx, ty;
     if (tgt) { tx = tgt[0]; ty = tgt[1]; }
     else {
@@ -1432,7 +1481,7 @@
       tx = -sd * clamp(-sd * tx, 2, 8.4); ty = clamp(ty, -4, 4);
     }
     if (g.serveJump) { // saque en salto: potente y con liftado
-      var spd = human ? 12.5 + 5 * q : prof.jserve * (0.86 + 0.14 * q);
+      var spd = human ? 12.5 + 5 * q + (sv.ak ? sv.ak.serve : 0) : prof.jserve * (0.86 + 0.14 * q);
       er = (0.3 + 1.5 * (1 - q)) * mul; power = clamp((spd - 10) / 8, 0, 1);
       b.dip = C.G * (0.12 + 0.25 * q);
       v = launchDirect(b, tx + rnd(g, er), ty + rnd(g, er), 0, spd, C.G + b.dip);
@@ -1526,7 +1575,7 @@
         if (g.cpuTossIn >= 0) g.cpuTossIn = g.timer > 0 ? g.timer : 0;
         if (g.serveAuth && g.opts.serveClock !== false) g.serveClock -= dt; // el reloj de 8 s corre para todos (la CPU lanza antes de 4,5 s)
         ritualStep(g, sv);
-        if (g.timer <= 0 && g.serveAuth) toss(g, sv, g.rng() < g.prof[sv.team].jumpServe);
+        if (g.timer <= 0 && g.serveAuth) toss(g, sv, g.rng() < profOf(g, sv).jumpServe);
       }
     } else { // balón en el aire
       g.tossT += dt;
@@ -1752,8 +1801,9 @@
         out.spread = 0.25 + 0.9 * 0.05; out.spreadPoor = 0.25 + 0.9 * 0.55;
       } else if (g.aim3.on && (air || p.z > 0)) { // A1/A2: mira libre; el radio es la dispersión si golpeara AHORA
         tx = g.aim3.x; ty = g.aim3.y; kind = 'spike';
-        out.spread = spikeSpread(0.95); out.spreadPoor = spikeSpread(0.3);
-        out.spreadNow = spikeSpread(qNow(g, p));
+        var spk2 = p.ak ? p.ak.spread : 1;
+        out.spread = spikeSpread(0.95) * spk2; out.spreadPoor = spikeSpread(0.3) * spk2;
+        out.spreadNow = spikeSpread(qNow(g, p)) * spk2;
         out.x = tx; out.y = ty; out.kind = kind; out.mode = mode; out.aimed = true;
         return out;
       } else {
@@ -1797,7 +1847,7 @@
     // ritual del sacador CPU (SIM-04)
     ritualAt: ritualAt,
     // remate apuntado (A2) y challenge (B2)
-    spikeSpread: spikeSpread, canChallenge: canChallenge, challenge: challenge, lineDist: lineDist, refErrP: refErrP,
+    statProf: statProf, attrK: attrK, profOf: profOf, ATTR_KEYS: ATTR_KEYS, spikeSpread: spikeSpread, canChallenge: canChallenge, challenge: challenge, lineDist: lineDist, refErrP: refErrP,
     _land: land, _point: point
   };
 })();

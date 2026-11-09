@@ -335,7 +335,7 @@
   function cacheEls() {
     ['hud', 'banner', 'callout', 'menu', 'pause', 'end', 'panel', 'rotate', 'touchbar', 'prompt', 'promptKey', 'promptText', 'promptBar', 'promptRing', 'coach',
       'pS0', 'pS1', 'pMid', 'endTitle', 'endKicker', 'endS0', 'endS1', 'endSets', 'endStats', 'endRecord',
-      'btnPlay', 'optDiff', 'optPts', 'ptsVal', 'optCtrl', 'ctrlVal', 'btnTut', 'btnControls', 'btnSettings', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
+      'btnPlay', 'optDiff', 'optPts', 'ptsVal', 'optCtrl', 'ctrlVal', 'btnTut', 'btnControls', 'btnSettings', 'btnSquad', 'squadSub', 'sqBody', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
       'btnAgain', 'btnMenu', 'btnPanelBack', 'btnTutPrev', 'btnTutNext', 'btnHudPause', 'btnHudMute', 'icoSound',
       'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord',
       'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack'].forEach(function (k) { el[k] = $(k); });
@@ -1921,6 +1921,37 @@
     setText(el.ctlSub, 'ctls', d === 'gamepad' ? 'Mando conectado' : d === 'touch' ? 'Táctil' : 'Teclado · mando');
     var rec = record.played ? '<span><b>' + record.wins + '/' + record.played + '</b>Victorias</span>' + (record.bestStreak ? '<span><b>' + record.bestStreak + '</b>Mejor racha</span>' : '') : '<span><b>Estreno</b>Primer partido</span>';
     setHTML(el.menuRecord, 'rec', rec);
+    if (el.squadSub && VB.Prog) {
+      var sq = VB.Prog.get().a, pt = sq[0].pts + sq[1].pts;
+      setText(el.squadSub, 'sqs', pt ? pt + (pt === 1 ? ' punto de mejora' : ' puntos de mejora') : 'Nv ' + sq[0].lvl + ' · Nv ' + sq[1].lvl);
+      el.btnSquad.classList.toggle('has-pts', pt > 0);
+    }
+  }
+  // ---------- Jugadores: estadísticas y mejoras (js/prog.js) ----------
+  function renderSquad(upKey) {
+    if (!el.sqBody || !VB.Prog) return;
+    var P = VB.Prog, d = P.get(), html = '';
+    d.a.forEach(function (a, i) {
+      var nd = P.need(a.lvl);
+      html += '<div class="sq-card"><div class="sq-top"><span class="sq-num">' + a.num + '</span><span class="sq-name">N.º ' + a.num + '<small>' + a.role + ' · Nivel ' + a.lvl + ' · ' + a.matches + (a.matches === 1 ? ' partido' : ' partidos') + '</small></span>' +
+        '<span class="sq-ovr">' + P.ovr(a.st) + '<small>MEDIA</small></span></div>' +
+        '<div class="sq-xp"><span class="trk"><i style="width:' + Math.round(100 * a.xp / nd) + '%"></i></span>' + a.xp + ' / ' + nd + ' XP</div>' +
+        '<div class="sq-pts' + (a.pts ? ' has' : '') + '">Puntos de mejora: <b>' + a.pts + '</b></div>';
+      P.GROUPS.forEach(function (gr) {
+        html += '<p class="sq-g">' + gr[0] + '</p>';
+        gr[1].forEach(function (k) {
+          var v = a.st[k], c = P.cost(v), can = v < P.MAX && a.pts >= c;
+          html += '<div class="sq-r' + (upKey === i + ':' + k ? ' up' : '') + '" title="' + P.HINT[k] + '"><span>' + P.LABEL[k] + '</span><span class="bar"><i style="width:' + v + '%"></i></span><b>' + v + '</b>' +
+            '<button data-i="' + i + '" data-up="' + k + '"' + (can ? '' : ' disabled') + ' aria-label="Mejorar ' + P.LABEL[k] + ' del ' + a.num + ' (' + c + (c === 1 ? ' punto' : ' puntos') + ')"><i>+</i><small>' + (v >= P.MAX ? 'máx' : c + ' pt') + '</small></button></div>';
+        });
+      });
+      html += '</div>';
+    });
+    var foc = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute('data-up') ? document.activeElement : null;
+    var fk = foc ? foc.getAttribute('data-i') + ':' + foc.getAttribute('data-up') : upKey;
+    el.sqBody.innerHTML = html;
+    if (fk) { var nb = el.sqBody.querySelector('button[data-i="' + fk.split(':')[0] + '"][data-up="' + fk.split(':')[1] + '"]'); if (nb && !nb.disabled) focusEl(nb, true); }
+    renderMenu();
   }
   var restartArm = 0, restartTo = 0;
   function disarmRestart() {
@@ -1985,6 +2016,14 @@
     if (!win && alt >= 0) rec += '<span class="new">¿Te cuesta? Prueba el nivel <b>' + OPT.difficulty.labels[alt] + '</b></span>';
     el.btnAgainAlt.hidden = alt < 0;
     if (alt >= 0) { el.btnAgainAlt.textContent = 'Revancha en ' + OPT.difficulty.labels[alt]; el.btnAgainAlt.setAttribute('data-d', OPT.difficulty.vals[alt]); }
+    if (!ctx.debug && VB.Prog && ctx.game && !ctx.game.autopilot) {
+      var dfk = ctx.game.difficulty, perP = [stats.p[0], stats.p[1]];
+      var aw = VB.Prog.award(perP, { win: win, setsWon: e.sets ? e.sets[0] : 0, difficulty: dfk }), sqa = VB.Prog.get().a, xh = '';
+      aw.forEach(function (r, i) {
+        xh += '<span>N.º ' + sqa[i].num + ': <b>+' + r.xp + ' XP</b>' + (r.lvlUp ? ' <span class="lv">¡NIVEL ' + r.lvl + '! +' + r.pts + ' PT</span>' : '') + '</span>';
+      });
+      rec += '<div class="end-xp">' + xh + '</div>';
+    }
     el.endRecord.innerHTML = rec;
     // MVP de cada equipo (UI-11). UI-18: una tabla pequeña: un solo rótulo «MVP», la cabecera «Ataque · Bloqueo · Saque» una vez y en
     // cada fila el dorsal, los puntos (la cifra grande) y su desglose; el lector de pantalla oye la frase entera (aria-label).
@@ -2068,7 +2107,7 @@
   //  PANELES: tutorial, controles, ajustes
   // =====================================================================
   // (UI-18: el antetítulo da contexto, nunca repite el título ni las pestañas)
-  var PANELS = { tut: ['pnTut', 'Tutorial', 'Cómo se juega'], ctl: ['pnCtl', 'Botones y gestos', 'Controles'], set: ['pnSet', 'Se guardan en este navegador', 'Ajustes'], first: ['pnFirst', 'Antes de empezar', 'Primer partido'] };
+  var PANELS = { tut: ['pnTut', 'Tutorial', 'Cómo se juega'], ctl: ['pnCtl', 'Botones y gestos', 'Controles'], set: ['pnSet', 'Se guardan en este navegador', 'Ajustes'], first: ['pnFirst', 'Antes de empezar', 'Primer partido'], squad: ['pnSquad', 'Estadísticas y mejoras', 'Jugadores'] };
   var firstAsked = false;
   /** JUGAR desde el menú: la primera vez (sin partidos ni tutorial) ofrece ver el tutorial o jugar ya. */
   function play() {
@@ -2092,9 +2131,10 @@
     if (name === 'tut') { tutGo(0); }
     if (name === 'ctl') { ctlView = device(); renderCtl(); }
     if (name === 'set') renderOpts();
+    if (name === 'squad') renderSquad();
     var psh = el.panel.querySelector('.sheet');
     psh.classList.toggle('first', name === 'first');
-    psh.classList.toggle('wide', name === 'set');
+    psh.classList.toggle('wide', name === 'set' || name === 'squad');
     psh.scrollTop = 0;
     shown = '';
     syncScreens(ctx.game);
@@ -2105,7 +2145,7 @@
     if (!panel) return false;
     var was = panel; panel = null; tutStop();
     shown = ''; syncScreens(ctx.game);
-    focusLayer(ctx.state === 'menu' ? (was === 'tut' ? el.btnTut : was === 'ctl' ? el.btnControls : was === 'first' ? el.btnPlay : el.btnSettings) : null);
+    focusLayer(ctx.state === 'menu' ? (was === 'squad' ? el.btnSquad : was === 'tut' ? el.btnTut : was === 'ctl' ? el.btnControls : was === 'first' ? el.btnPlay : el.btnSettings) : null);
     return true;
   }
 
@@ -2622,6 +2662,13 @@
       on(el.btnTut, function () { openPanel('tut', 'menu'); });
       on(el.btnControls, function () { openPanel('ctl', 'menu'); });
       on(el.btnSettings, function () { openPanel('set', 'menu'); });
+      if (el.btnSquad) on(el.btnSquad, function () { openPanel('squad', 'menu'); });
+      if (el.sqBody) el.sqBody.addEventListener('click', function (ev) {
+        var b = ev.target && ev.target.closest ? ev.target.closest('button[data-up]') : null;
+        if (!b || b.disabled || !VB.Prog) return;
+        var i = +b.getAttribute('data-i'), k = b.getAttribute('data-up');
+        if (VB.Prog.bump(i, k, 1)) { uiSound('click'); renderSquad(i + ':' + k); } else uiSound2('optHover');
+      });
       on(el.btnResume, function () { ctx.actions.resume(); });
       on(el.btnPControls, function () { openPanel('ctl', 'paused'); });
       on(el.btnPSettings, function () { openPanel('set', 'paused'); });

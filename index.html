@@ -1261,13 +1261,49 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 /* teléfonos apaisados (≤ 420 px de alto): filas de 44 px (dedo) y «Cómo se juega» + «Controles» juntas en una fila de dos
    botones, para que las 7 opciones quepan a 844×390 y 667×375 (backlog del modo Uno: antes 7 filas de 42 px) */
 @media (max-height:420px){
-  #menu .mlist{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px 6px}
+  #menu .mlist{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px 6px}
   #menu .mlist>.mi{grid-column:1/-1;height:44px}
   #menu .mlist>.mi.primary{height:48px}
-  #menu .mlist>#btnTut,#menu .mlist>#btnControls{grid-column:auto;grid-template-columns:minmax(0,1fr);padding:0 10px;text-align:center;font-size:18px}
-  #menu .mlist>#btnTut .mi-n,#menu .mlist>#btnControls .mi-n,#menu .mlist>#btnTut .mi-s,#menu .mlist>#btnControls .mi-s{display:none}
-  #menu .mlist>#btnTut:hover,#menu .mlist>#btnControls:hover,#menu .mlist>#btnTut.kf,#menu .mlist>#btnControls.kf{padding-left:10px}
+  #menu .mlist>#btnTut,#menu .mlist>#btnControls,#menu .mlist>#btnSettings{grid-column:auto;grid-template-columns:minmax(0,1fr);padding:0 6px;text-align:center;font-size:16px}
+  #menu .mlist>#btnTut .mi-n,#menu .mlist>#btnControls .mi-n,#menu .mlist>#btnSettings .mi-n,#menu .mlist>#btnTut .mi-s,#menu .mlist>#btnControls .mi-s,#menu .mlist>#btnSettings .mi-s{display:none}
+  #menu .mlist>#btnTut:hover,#menu .mlist>#btnControls:hover,#menu .mlist>#btnSettings:hover,#menu .mlist>#btnTut.kf,#menu .mlist>#btnControls.kf,#menu .mlist>#btnSettings.kf{padding-left:6px}
 }
+
+/* ---- Jugadores: estadísticas y mejoras (js/prog.js) ---- */
+.sq{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:640px){.sq{grid-template-columns:minmax(0,1fr)}}
+.sq-card{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:var(--cel-a);box-shadow:0 0 0 2px var(--tk),0 4px 0 var(--tk)}
+.sq-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px}
+.sq-num{display:grid;place-items:center;width:46px;height:46px;border-radius:12px;background:var(--t0);color:#fff;font:900 26px var(--display);text-shadow:var(--ring2);box-shadow:0 0 0 2px var(--tk)}
+.sq-name{font:800 20px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--fg)}
+.sq-name small{display:block;margin-top:3px;font:600 13px var(--ui);letter-spacing:0;text-transform:none;color:var(--muted)}
+.sq-ovr{text-align:center;font:900 30px/1 var(--display);color:var(--gold);text-shadow:var(--ring2)}
+.sq-ovr small{display:block;font:800 10px var(--display);letter-spacing:.2em;color:var(--muted);text-shadow:none}
+.sq-xp{display:flex;align-items:center;gap:8px;font:700 12.5px var(--ui);color:var(--muted)}
+.sq-xp .trk{flex:1;height:8px;border-radius:5px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.sq-xp .trk i{display:block;height:100%;background:var(--t0)}
+.sq-pts{font:800 14px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--fg2)}
+.sq-pts b{color:var(--gold);font-size:18px}
+.sq-pts.has b{animation:sqPulse 1.2s ease-in-out infinite}
+@keyframes sqPulse{50%{color:#fff}}
+.sq-g{margin:4px 0 0;font:800 11px var(--display);letter-spacing:.3em;text-transform:uppercase;color:var(--amber)}
+.sq-r{display:grid;grid-template-columns:minmax(0,7.2em) minmax(0,1fr) 2.2em 40px;align-items:center;gap:8px;min-height:30px}
+.sq-r span{font:700 14px var(--ui);color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-r .bar{height:9px;border-radius:5px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.sq-r .bar i{display:block;height:100%;background:var(--t1)}
+.sq-r b{text-align:right;font:900 17px var(--display);color:var(--fg);font-variant-numeric:tabular-nums}
+.sq-r button{height:30px;padding:0;border-radius:9px;font:900 15px var(--display);background:var(--t0);color:#fff;box-shadow:0 0 0 2px var(--tk);line-height:1}
+.sq-r button i{display:block;font:900 19px/15px var(--ui);font-style:normal;text-shadow:none}
+.sq-r button small{display:block;font:700 9px/1 var(--ui);opacity:.85}
+.sq-r button:disabled{background:rgba(255,255,255,.08);color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
+.sq-r button.kf,.sq-r button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+.sq-r.up b{animation:sqUp .5s var(--spring)}
+@keyframes sqUp{40%{transform:scale(1.5);color:var(--gold)}}
+.sq-note{margin:12px 0 0;color:var(--dim-text);font-size:12.5px}
+.end-xp{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
+.end-xp span{font:700 13px var(--ui);color:var(--fg2)}
+.end-xp b{color:var(--gold)}
+.end-xp .lv{color:#fff;background:var(--t0);padding:1px 7px;border-radius:7px;box-shadow:0 0 0 2px var(--tk);font:900 13px var(--display);letter-spacing:.06em}
 
 /* ---- marcador: tarjeta de cómic ---- */
 .sb{filter:none}
@@ -1533,9 +1569,10 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
         <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">02</span><span>Dificultad</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Más fácil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span></span><span class="arr" data-d="1" aria-label="Más difícil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
         <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-n">03</span><span>Puntos por set</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
         <button class="mi" id="optCtrl" data-opt="ctrlMode"><span class="mi-n">04</span><span>Control</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Control anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ctrlVal">Los dos</b></span><span class="arr" data-d="1" aria-label="Control siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="btnTut"><span class="mi-n">05</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
-        <button class="mi" id="btnControls"><span class="mi-n">06</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
-        <button class="mi" id="btnSettings"><span class="mi-n">07</span><span>Ajustes</span><span class="mi-s"></span></button>
+        <button class="mi" id="btnSquad"><span class="mi-n">05</span><span>Jugadores</span><span class="mi-s" id="squadSub">Estadísticas y mejoras</span></button>
+        <button class="mi" id="btnTut"><span class="mi-n">06</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
+        <button class="mi" id="btnControls"><span class="mi-n">07</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
+        <button class="mi" id="btnSettings"><span class="mi-n">08</span><span>Ajustes</span><span class="mi-s"></span></button>
       </nav>
     </div>
     <div class="menu-foot">
@@ -1621,6 +1658,11 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
         <dl class="ctl" id="ctlGrid" role="tabpanel"></dl>
         <p class="ctl-note"><b>Arriba</b> es siempre hacia la red · el control pasa solo a quien da el siguiente toque · mantén una dirección al golpear para apuntar.</p>
       </div>
+      <div id="pnSquad" hidden>
+        <!-- Estadísticas de tus jugadores (js/prog.js): nivel, experiencia, puntos de mejora y los 10 atributos con «+» -->
+        <div class="sq" id="sqBody" data-nav></div>
+        <p class="sq-note">Ganas experiencia en cada partido (más si ganas, si puntúas y cuanto más alto es el nivel). Cada nivel da 3 puntos de mejora. Las mejoras son definitivas.</p>
+      </div>
       <div id="pnSet" hidden>
         <!-- UI-21: grupos Audio · Imagen · Juego · Accesibilidad; dos columnas en cuanto hay anchura (móvil apaisado incluido) y, si aun
              así no cabe, desvanecido abajo (.has-more). La dificultad está en el menú (una sola fila en todo el juego). -->
@@ -1701,6 +1743,7 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js"></script>
 <script src="js/sim.js"></script>
 <script src="js/ai.js"></script>
+<script src="js/prog.js"></script>
 <script src="js/arena.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/players.js"></script>

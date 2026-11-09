@@ -212,6 +212,11 @@ Desde el 9-nov-2026 el proyecto va por **sprints**, para controlar el gasto de t
 Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apuntado, NO empezado.
 
 ### To-do
+- **Prioridad nueva de Ferran (9-nov-2026): modo Carrera ANTES del 6v6, y solo en 2v2** («luego adaptarlo al 6v6 no debería ser
+  tan difícil»). Orden: estadísticas + mejora (hecho, ver Hecho) → Carrera 2v2 (liga, calendario, ofertas, progresión; el plan del
+  §3 de `notes/diseno-6v6-carrera.md` sin la parte de 6v6) → 6v6 después.
+- **Mapa de playa** (pedido de Ferran, 9-nov-2026): una segunda sede, de vóley playa (arena, cielo, sin pabellón). Pendiente de diseñar:
+  ¿solo escenario o también reglas de playa (pista 16×8, sin rotación de campo cada 7 puntos, etc.)?
 - **Modo 6v6** (9-nov-2026): llevar el juego de 2 contra 2 a 6 contra 6. Campo más grande (pista reglamentaria de 18×9 m
   con 6 por equipo), rotaciones y posiciones. Cambiar de jugador será poco habitual, así que el primer modo 6v6 será
   **controlando solo a un jugador** (ya existe: «Control: Uno», con elección del n.º 7 o el n.º 11). Se mantiene todo el motor de toques y reglas,
@@ -248,7 +253,15 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     en un móvil real (¿compite con los atletas naranjas en algún plano?).
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
-### Hecho (9-nov-2026)
+### Hecho
+- **Estadísticas de jugador y sistema de mejora** (9-nov-2026): 10 atributos 1-99 por atleta (Salto, Velocidad, Reacción, Recepción,
+  Defensa, Bloqueo, Colocación, Potencia, Control, Saque). En la sim (`createGame({attrs})`): perfil de IA por jugador (`statProf`) y,
+  al humano, ventanas de timing por toque ±12 %, velocidad de remate/saque, tamaño de la diana, salto ±6 % y carrera ±8 %; 50 = neutro
+  (simtest comprueba que sin atributos / con 50 en todo la sim es idéntica, y la monotonía: equipo CPU con 15/50/85 gana 31/41/48 % de
+  los puntos). Progresión en `js/prog.js`: tus dos atletas empiezan con media 40 (el 7 atacante, el 11 universal), ganan experiencia
+  en cada partido (base + puntos propios + victoria + sets, × dificultad), 3 puntos de mejora por nivel, coste 1/2/3/4 según el valor
+  (<50/<65/<80/resto), mejoras definitivas. Panel «Jugadores» en el menú (05) y experiencia en la hoja final. La CPU no lleva atributos
+  (juega con el perfil de su nivel). Pendiente: atributos de la CPU por rival (para Carrera) y opción de reiniciar la progresión. (9-nov-2026)
 - **Gráficos cartoonish** (sprint del 9-nov-2026): sombreado por bandas (`VB.TOON`: rampa de 3 pasos y contorno de tinta #1d1530 por
   casco invertido en atletas, balón, postes, utillaje y oficiales; apagado en calidad baja), paleta saturada (parquet cálido y plano,
   gradas con bloques de color), atletas caricaturescos con caras expresivas y squash & stretch, FX de dibujo (estrellas, explosión de

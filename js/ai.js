@@ -23,7 +23,7 @@
   var _t2 = [0, 0];
   /** Elige la zona libre del campo rival (lejos de los defensores), con ruido según dificultad. */
   function openSpot(g, p, minDepth, out, atk) {
-    var sd = side(p.team), opp = g.teams[1 - p.team], pr = g.prof[p.team], best = -1e9;
+    var sd = side(p.team), opp = g.teams[1 - p.team], pr = (p.prof || g.prof[p.team]), best = -1e9;
     out = out || _t2;
     // remate (atk): con un bloqueador rival arriba, evitar las líneas que cruzan la red por sus manos.
     // Cuanto mejor la IA (menos aimNoise), mejor "lee" el bloqueo y remata por fuera de él.
@@ -53,7 +53,7 @@
   /** Destino del saque de la IA. Según el perfil: a la zona libre (entre receptores, `seam`) o a por un
    *  receptor con ruido (`srvNoise`); el fácil saca casi siempre "a las manos". */
   function serveTarget(g, sv) {
-    var pr = g.prof[sv.team], sd = side(sv.team), opp = g.teams[1 - sv.team];
+    var pr = (sv.prof || g.prof[sv.team]), sd = side(sv.team), opp = g.teams[1 - sv.team];
     if (g.rng() < (pr.seam != null ? pr.seam : 1)) return openSpot(g, sv, 4, _t2).slice();
     var q = opp[g.rng() < 0.5 ? 0 : 1], n = pr.srvNoise != null ? pr.srvNoise : 1;
     var depth = clamp(Math.abs(q.x) + S._rnd(g, 1.4), 4.2, 8.2);
@@ -71,7 +71,7 @@
     }
     if (p.down > 0) tl = Math.max(tl, p.down + 0.05);
     var d = Math.max(0, Math.hypot(px - x, py - y) - 0.45);
-    return tl + d / (C.SPEED * g.prof[p.team].speed);
+    return tl + d / (C.SPEED * (p.prof || g.prof[p.team]).speed);
   }
   function airLand(g, p) { // s hasta que aterriza (0 en el suelo)
     return (p.z > 0 || p.vz > 0) ? (p.vz + Math.sqrt(p.vz * p.vz + 2 * C.G * Math.max(0, p.z))) / C.G : 0;
@@ -179,7 +179,7 @@
   var _w = { t: 0, d: 0, dz: 0, reach: false, kind: '', zc: 0, x: 0, y: 0, z: 0, active: false, canReach: false };
 
   function aiJump(g, p) {
-    var sd = side(p.team), pr = g.prof[p.team];
+    var sd = side(p.team), pr = (p.prof || g.prof[p.team]);
     var jvx = p.vx * 0.3, jvy = p.vy * 0.3, jl = Math.hypot(jvx, jvy);
     if (jl > 0.6) { jvx *= 0.6 / jl; jvy *= 0.6 / jl; }
     // corrige la deriva hacia la red (salvo despiste ocasional)
@@ -190,7 +190,7 @@
 
   /** Un paso de IA para el jugador p (mueve, salta, golpea). */
   function update(g, p, dt) {
-    var t = p.team, sd = side(t), pr = g.prof[t], mx = 0, my = 0, b = g.ball;
+    var t = p.team, sd = side(t), pr = p.prof || g.prof[t], mx = 0, my = 0, b = g.ball;
     // balón que esta IA "no va a sacar" (dado de defensa/recepción en contra): lee tarde y va lenta.
     // Se ve el fallo (llega tarde, se tira y no llega, o la toca y sale desviada); nunca se queda quieta.
     // (g.digOk solo es false tras un remate/saque/toque de bloqueo que el dado de defensa/recepción da por perdido)

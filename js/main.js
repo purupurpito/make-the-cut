@@ -300,7 +300,7 @@
     tryFullscreen();
     ctx.frozen = false;
     // present (SIM-03): en los partidos de verdad la pausa del punto se alarga en los momentos grandes (y se puede recortar)
-    setGame(Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: isRookie(), present: !opts.autopilot, points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: opts.ctrl || Q.ctrl || ctx.settings.ctrlMode, ctrlIdx: ctrlIdxOf(opts) }));
+    setGame(Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: isRookie(), present: !opts.autopilot, points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: opts.ctrl || Q.ctrl || ctx.settings.ctrlMode, ctrlIdx: ctrlIdxOf(opts), attrs: !opts.autopilot && !Q.debug && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null }));
     setState('playing');
     // los jugadores se reconstruyen en onGameStart: sube sus texturas/programas antes del primer frame
     // (sin pintar: aquí no hay telón que tape los objetos ocultos)

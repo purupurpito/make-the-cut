@@ -1592,6 +1592,25 @@ if (ONLY !== 'matrix') {
 }
 
 
+  // ---------- Estadísticas de jugador (opts.attrs): neutro = idéntico; más atributos = más puntos ----------
+  {
+    const f0 = failures, ev = [], all = v => { const o = {}; for (const k of S.ATTR_KEYS) o[k] = v; return o; };
+    const play = (attrs, sd, secs) => { const g = S.createGame({ seed: sd, autopilot: true, difficulty: 'normal', attrs }), w = [0, 0], sig = [];
+      for (let i = 0; i < secs * 120 && g.mode !== 'over'; i++) { S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+        for (const e of ev) if (e.type === 'point') { w[e.team]++; sig.push(e.team + e.reason); } }
+      return { w, sig: sig.join(',') }; };
+    // (a) 50 en todo = sin atributos (misma secuencia de puntos con la misma semilla)
+    for (const sd of [11, 222]) { const a = play(null, sd, 240), b = play([[all(50), all(50)], [all(50), all(50)]], sd, 240);
+      if (a.sig !== b.sig) fail('atributos neutros cambian la sim (semilla ' + sd + ')'); }
+    // (b) monotonía: el equipo CPU con 85 en todo gana más puntos que con 50, y con 15 menos
+    const pct = v => { let w = 0, n = 0; for (let sd = 1; sd <= 12; sd++) { const r = play(v == null ? null : [null, [all(v), all(v)]], 900 + sd, 300); w += r.w[1]; n += r.w[0] + r.w[1]; } return w / Math.max(1, n); };
+    const lo = pct(15), mid = pct(null), hi = pct(85);
+    if (!(hi > mid + 0.03 && lo < mid - 0.03)) fail('atributos sin efecto claro: 15→' + lo.toFixed(3) + ' 50→' + mid.toFixed(3) + ' 85→' + hi.toFixed(3));
+    // (c) multiplicadores del humano a 50 = 1 (spike/serve son sumandos: 0)
+    const k = S.attrK(all(50)); for (const n in k) { const want = n === 'spike' || n === 'serve' ? 0 : 1; if (Math.abs(k[n] - want) > 1e-9) fail('attrK(50).' + n + ' = ' + k[n]); }
+    if (failures === f0) console.log('estadísticas de jugador OK · % puntos CPU con atributos 15/50/85: ' + [lo, mid, hi].map(x => (x * 100).toFixed(1)).join(' / '));
+  }
+
   console.log(failures ? `\n${failures} FALLOS` : '\nTODO OK');
   process.exit(failures ? 1 : 0);
 }
