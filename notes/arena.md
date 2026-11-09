@@ -482,3 +482,20 @@ contacto, `ik.js` = IK numérico de los brazos de makePerson, `cpucost.js`/`crew
 - **Cambio del lead en arena.js (rendimiento, primer punto en el móvil)**: `warmMsgFonts()` (al construir y otra vez en `document.fonts.ready`) crea de antemano, en un lienzo de 8×8, las tallas de letra del mensaje del videomarcador (`drawMsgOverlay`: italic 900 a `bh·0,46`/`bh·0,6`, 800 a `bh·0,22`, en el ancho y el colgado) y la de las vallas (`drawMsg`, italic 900 a `H·0,66`), y da forma a sus textos (PUNTO/SET + equipo, HOW, REASON, mensajes de las vallas). Medido con `tools/out/w4lead/trace3.js` (partido real, 844×390 dpr 2,75 CPU ×4): en el primer punto `measureText` de `fitFont` era ~65 muestras (~45 ms) de un frame de 155-163 ms; ahora no aparece o 5 muestras, frame del primer punto 89-118 ms (3 tomas). Sin dibujos ni texturas nuevas.
 - ARN-02 y la señal de antena vistos en las capturas `tools/out/w4lead/hi/*.png` (alta 1280×720) y `lo/*.png` (baja 844×390).
 - Verificado en el árbol integrado: simtest completo + barrido `simtest <10|20> <1..25> 0` 50/50 TODO OK; console.sh 19 escenas (1280×720 y 844×390 táctil) sin errores; drive, touchplay, padplay (estándar y DualSense) y audiotest completo TODO OK; perf 844×390 ×4 «objetivos cumplidos» (ver TRASPASO).
+
+## Sprint 9-nov-2026 tarde: remate apuntado (A4) y challenge (B6)
+- **A4 (fx.js)**: la retícula del remate sale desde el despegue cuando `g.aim3.on` (antes: `hp.z >= 0,12` y balón sobre la red) y va a
+  `g.aim3.x/y` (o lo que devuelva `Sim.aimPoint`). Su RADIO = `out.spreadNow` (mín. 0,25 m, tope 2,2 m; `AIM_R1` = 0,584 m es el radio del
+  aro de `aimTex` a escala 1), suavizado 22/s. Con dispersión ≤ ~0,25 m pasa de naranja a amarillo dorado y late más rápido (≤ 0,12 m).
+  Disco tenue del mismo radio debajo (`aimFill`, celda de `fillTex`). Con mira libre la retícula sigue el punto sin retardo (la sim ya lo suaviza).
+  Saque: sin cambios. `g.digTight === true` → el aro de golpeo (`focusRing`) entero ×0,7 (`DIG_TIGHT`; las escalas relativas de las 3 capas no
+  cambian: sigue cerrándose en press = 0). `_dbg().ringD` devuelve ya el diámetro ×0,7.
+- **B6 (fx.js)**: durante `g.review` (y 2,2 s tras el resultado) huella del balón en (x, y) con borde nítido (`revTex`, celda 7 del atlas; radio
+  `C.BR` hacia la línea y +18 % a lo largo) y la línea más cercana (fondo |x| = HL o lateral |y| = HW, 5 cm por dentro) resaltada en cian con
+  halo (`revLine` celda 6 blanca, `revGlow` con `fillTex`). La huella aparece a `review.t` 0,55-0,9 s, blanca; con `challengeResult` se tiñe
+  verde (dentro) / rojo (fuera) según `truthIn`. El evento `challenge` borra las marcas del bote (llevan la llamada del árbitro).
+  Todo va en el lote `floorDecals`: **0 dibujos nuevos** (N de instancias 17 → 21).
+- **B6 (arena.js)**: evento `challenge` → 1.er árbitro: silbato + `POSE.chal` (los dos índices dibujan un rectángulo, vaivén 9, 2,6 s;
+  `R1.sig = 'challenge'`), vallas «VIDEO CHALLENGE», pantallas «CHALLENGE / REVISIÓN · equipo», la grada deja de animar.
+  `challengeResult` → marcador desde `g` (`scoreFromGame`), pantallas «IN|OUT · x,x cm» + «PUNTO equipo» / «SE MANTIENE», brazo hacia el
+  equipo que gana el punto; si se anula, ánimo de ese lado y reacción del banquillo. «VIDEO CHALLENGE» añadido a `warmMsgFonts`.

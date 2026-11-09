@@ -940,6 +940,7 @@
     blockUp: [-2.95, -0.18, 0, 0.05, -1.5],   // falta de bloqueo: los dos brazos en vertical, palmas al frente
     srvUp:   [-1.78, -0.25, 0, 0.04, 1.6],    // balón no lanzado/soltado: brazo extendido que sube, palma hacia arriba
     beckon:  [-0.38, -1.22, 0, 0.25, -1.3],   // autorización del saque: la mano indica la dirección del saque
+    chal:    [-1.2, -0.28, 0, 1.3, -1.4],     // challenge aceptado: los dos índices delante de la cara dibujan la pantalla (vaivén 9)
     // jueces de línea (brazo derecho = bandera)
     flagDn:  [-0.72, -0.18, 0, 0.0, 0],       // dentro: bandera hacia el suelo
     flagUp:  [0.0, -2.95, 0, 0.0, 0],         // fuera: bandera arriba
@@ -990,6 +991,12 @@
     if (s) seq.push(s);
     R1.seq = seq; R1.seqT = 0; R1.seqI = 0; R1.sig = sig || '';
   }
+  /** B6: challenge aceptado. Silbato y la señal de revisión por vídeo (dibuja la pantalla con los dos índices) mientras dura. */
+  function refChallenge() {
+    if (!R1) return;
+    R1.seq = [step(0.3, 26, POSE.whistle, null, F_FIST, F_REL), step(2.6, 10, POSE.chal, POSE.chal, F_POINT, F_POINT, 9)];
+    R1.seqT = 0; R1.seqI = 0; R1.sig = 'challenge';
+  }
   /** Autorización del saque: silbato + la mano indica la dirección del saque (gesto propio, no el del punto). */
   function refAuthorize(team) {
     if (!R1) return;
@@ -1008,7 +1015,8 @@
     best.seqT = 0; best.seqI = 0; best.sig = antenna ? 'antenna' : touched ? 'touched' : inside ? 'in' : 'out';
   }
   /** Objetivos del frame a partir de la secuencia (o reposo). Vaivenes: 1 = roce de la palma, 2 = falta de ataque (dos
-   *  golpes hacia abajo), 3 = la mano que indica el saque, 4 = bandera agitada, 5 = roce sobre la bandera. */
+   *  golpes hacia abajo), 3 = la mano que indica el saque, 4 = bandera agitada, 5 = roce sobre la bandera,
+   *  9 = los dos índices dibujan un rectángulo (señal de revisión por vídeo / challenge). */
   var _tR = new Float64Array(5), _tL = new Float64Array(5);
   function seqTargets(P, dt) {
     var R = P.restR, L = P.restL, st = null;
@@ -1032,6 +1040,11 @@
     else if (st.osc === 5) { w = tsin(u * 16); _tL[0] += w * 0.12; }
     else if (st.osc === 6) { w = tsin(u * 27 + P.ph) * 0.3; _tR[1] += w; _tL[1] -= w; _tR[3] -= w * 0.4; _tL[3] -= w * 0.4; }
     else if (st.osc === 7) { w = 0.5 + 0.5 * tsin(u * 13); _tR[0] -= w * 0.3; _tR[3] -= w * 0.7; }
+    else if (st.osc === 9) { // rectángulo: seno «cuadrado» (saturado) en abducción y flexión, desfasados 1/4 de vuelta, en espejo
+      w = tsin(u * 5.5) * 1.8; w = w > 1 ? 1 : w < -1 ? -1 : w;
+      var w2 = tsin(u * 5.5 + 1.571) * 1.8; w2 = w2 > 1 ? 1 : w2 < -1 ? -1 : w2;
+      _tR[1] -= w * 0.26; _tL[1] += w * 0.26; _tR[0] += w2 * 0.16; _tL[0] += w2 * 0.16;
+    }
     else if (st.osc === 8) { w = tsin(u * 6 + P.ph); _tR[1] += w * 0.22; _tL[1] += w * 0.22; _tR[3] += (0.5 + 0.5 * tsin(u * 11)) * 0.4; }
     return st;
   }
@@ -2409,7 +2422,7 @@
       }
       if (led.mcv) {                                                    // mensajes de las vallas (drawMsg)
         g.font = 'italic 900 ' + Math.round(led.mcv.height * 0.66) + 'px ' + FONT;
-        var lm = ['PUNTO DE PARTIDO', 'PUNTO DE SET', '¡BLOQUEO!', '¡VICTORIA!', 'FIN DEL PARTIDO'];
+        var lm = ['PUNTO DE PARTIDO', 'PUNTO DE SET', '¡BLOQUEO!', '¡VICTORIA!', 'FIN DEL PARTIDO', 'VIDEO CHALLENGE'];
         for (var q = 0; q < names.length; q++) lm.push('PUNTO · ' + names[q], 'SET · ' + names[q]);
         for (var m = 0; m < lm.length; m++) { g.measureText(lm[m]); g.fillText(lm[m], 0, 4); }
       }
@@ -3011,6 +3024,24 @@
           else if (e.signal === 'touched' && g.lastLand) judgeSignal(g.lastLand.x, g.lastLand.y, false, false, true);
           break;
         case 'land': judgeSignal(e.x, e.y, e.inside, false); break;
+        case 'challenge': { // B6: revisión por vídeo. Señal del 1.er árbitro, rótulos en las pantallas y la grada se calla
+          var ct = e.team === 1 ? 1 : 0;
+          refChallenge();
+          ledMessage('VIDEO CHALLENGE', TEAMC[ct], 4.5);
+          screenMsg('CHALLENGE', 'REVISIÓN · ' + teamName(ct, g), TEAMC[ct], 4.6);
+          RT.cheerT[0] = Math.min(RT.cheerT[0], 0); RT.cheerT[1] = Math.min(RT.cheerT[1], 0);
+          break;
+        }
+        case 'challengeResult': { // IN/OUT con los cm; si se anula, punto para el que lo pidió (marcador desde g)
+          var chT = e.team === 1 ? 1 : 0, cmv = Math.abs(+e.dist || 0) * 100, chW = e.overturned ? chT : 1 - chT;
+          var chH = (e.truthIn ? 'IN' : 'OUT') + ' · ' + cmv.toFixed(1).replace('.', ',') + ' cm';
+          scoreFromGame(g);
+          screenMsg(chH, e.overturned ? 'PUNTO ' + teamName(chW, g) : 'SE MANTIENE', TEAMC[chW], 3.2);
+          ledMessage(e.overturned ? 'PUNTO · ' + teamName(chW, g) : chH, TEAMC[chW], 3);
+          if (e.overturned) { startCheer(chW, 2.6); RT.cheerMax[chW] = 1; crewReact(chW, true, 'point'); }
+          if (R1) { R1.seq = [sideStep(1.2, 12, POSE.side, chW, F_OPEN)]; R1.seqT = 0; R1.seqI = 0; R1.sig = 'challengeResult'; }
+          break;
+        }
         case 'whistle': // autorización del saque: silbato + brazo hacia el equipo que saca
           if (e.reason === 'serve') refAuthorize(g.serving === 1 ? 1 : 0);
           break;

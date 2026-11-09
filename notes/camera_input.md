@@ -895,3 +895,26 @@ Spike (escena `spike` 1280×720 low): en el árbol actual el aviso de toques va 
 - SIM-03: texto de la línea 345 corregido (4,0 s al ganar un set).
 - **Petición a ui_main (pre-pintar la cortinilla) — evaluada, no se aplica**: la traza (`tools/out/w4lead/trace2.js`) muestra que el hueco de 65-77 ms del primer corte de `debug=rally&live=1` NO es la cinta: es el primer raster (flush de GPU de 40-65 ms) del HUD del saque (`#prompt`, `#touch`, `#coach`, SALTAR), que esa escena nunca ha pintado antes porque empieza a mitad de peloteo. Pre-pintar la cinta (opacidad 0,002, los dos colores) no lo cambia (68/64 ms frente a 76/77). En el partido real el HUD del saque ya se pinta al empezar (bajo la presentación) y el primer corte punto → saque no tiene hueco (`tools/out/w4lead/rmatch.js`: 0 frames > 40 ms en el corte; el único tirón es el del primer punto, que se ha recortado desde arena.js, ver notes/arena.md).
 - Verificado en el árbol integrado: simtest completo + barrido `simtest <10|20> <1..25> 0` 50/50 TODO OK; console.sh 19 escenas (1280×720 y 844×390 táctil) sin errores; drive, touchplay, padplay (estándar y DualSense) y audiotest completo TODO OK; perf 844×390 ×4 «objetivos cumplidos» (ver TRASPASO).
+
+## Sprint 9-nov-2026 — Challenge (B4 entrada, B5 cámara de revisión)
+
+`js/input.js` (B4):
+- Nueva intención de pulso `challenge` en `VB.Input.poll()` (flanco, una vez aunque se mantenga): teclado **V** (`KeyV`, reserva `v`),
+  mando **LT/L2** (botón 6 del mapeo estándar y del DirectInput genérico; analógico, cuenta > 0,5). XInput no estándar: los
+  gatillos son ejes sin mapeo fiable, sin challenge por mando (queda V o el botón táctil de la UI). `it.any` lo incluye.
+- `VB.Input.glyph(action, dev?, fam?)` → texto: `glyph('challenge')` = «V» / «LT» (fam `'ps'`: «L2») / «CHALLENGE» (touch).
+  `VB.Input.glyphs()` → tabla `{challenge:{keyboard,gamepad,ps,touch}}` para el panel de controles.
+- `VB.Input.pressChallenge()`: pulso que sale en el siguiente poll (por si la UI prefiere pasar por la entrada; el botón táctil
+  puede llamar directamente a `ctx.actions.challenge()`).
+- `_debug().stats.out.chal` cuenta los pulsos. tools/padtest.js: 2 comprobaciones nuevas (LT a medias no; LT = un flanco).
+
+`js/camera.js` (B5):
+- Plano `'review'` (`getShot()`), con prioridad sobre los demás mientras `g.review` tenga `x`,`y` numéricos (lectura defensiva,
+  sin demo). Entra por CORTE (`markCut(prev,'review','replay')`): cámara en la prolongación de la línea más cercana al bote
+  (banda: del lado del fondo; fondo: hacia el centro), baja de 5,4 m a 1,25 m y de 5,6 a 2,9 m de la marca durante el 55 % de
+  `g.review.dur` (según `g.review.t`), FOV 42→27, mirando a ras de suelo entre la marca y la línea (línea vertical en el centro).
+- Cámara estable / reduced-motion: bajada corta (2,9→1,25 m), más suave, sin temblor (se corta el que hubiera y `shake()` se ignora).
+- Al acabar (`g.review = null`) sale por corte: a `'point'` (replanificado) con `kind 'replay'`, al saque con `kind 'serve'` y
+  `from 'point'` (la cortinilla de ui.js lo trata como la salida normal del punto), o al final con `'over'`.
+- `heroShot()` devuelve null durante la revisión (players no orienta la celebración a la cámara del héroe).
+- Medido (1280×720, revisión simulada): giro máx. ~34°/s (combinado) con y sin Cámara estable; 0 errores JS.

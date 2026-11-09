@@ -386,7 +386,11 @@ const PLAN = {
   uiTick: { target: -29, desc: 'end-sheet count-up ticks (the whole 600 ms train; under the hover -28)' },
   uiLock: { target: -25, desc: 'count-up end: the numbers lock ("clac")' },
   mvp: { target: -19, desc: 'MVP reveal sting (as soft as the presentation sting: it lands on the tail of the match sting)' },
-  endUi: { target: -19, desc: 'final de partido: the whole end-sheet UI layer (ticks + lock + MVP sting)' }
+  endUi: { target: -19, desc: 'final de partido: the whole end-sheet UI layer (ticks + lock + MVP sting)' },
+  // sprint challenge (B8): bench-tablet horn, tense murmur during the review, reaction to the result
+  horn: { target: -17, desc: 'challenge horn (fills the hall like the whistle, just under it)' },
+  reviewBed: { target: -21, desc: 'tense murmur during the video review (+5 dB over the calm bed, no excitement layer)' },
+  reactBig: { target: -18, desc: 'reaction to an overturned call (louder than a normal point reaction)' }
 };
 /** The end-sheet count-up of ui.js (UI-11: 600 ms, cubic ease-out, one rAF per frame) with AUD-08 wired as notes/ui_main.md asks:
  *  ui('count', u) on every frame where a displayed number changes, and on the last frame (u = 1). Returns [[t, u], ...] (s from
@@ -475,6 +479,14 @@ const SCEN = [
   { id: 'crowd bed (rally, 4 hits)', cat: 'bed', update: 'rally', only: ['murmur', 'excite'] },
   { id: 'crowd bed (home serve)', cat: 'bed', update: 'serveCalm', only: ['murmur', 'excite'], info: true },
   { id: 'crowd bed (long rally, set point)', cat: 'bed', update: 'hot', only: ['murmur', 'excite'], info: true },
+  { id: 'challenge: bocina', cat: 'horn', only: ['horn'], ev: [{ type: 'challenge', team: 0, x: 4, y: 4.4 }] },
+  { id: 'challenge: murmullo de la revisión', cat: 'reviewBed', update: 'review', only: ['murmur', 'excite'] },
+  { id: 'challenge: se anula (a favor local)', cat: 'reactBig', only: ['roar', 'applause', 'bombo'], ev: [{ type: 'challengeResult', team: 0, overturned: true, dist: -0.02, truthIn: false, calledIn: true, x: 4, y: 4.4, left: [2, 2] }] },
+  // sim (B2): al anular, el punto corregido se pita en el mismo frame que challengeResult; sin doble reacción sigue en -18
+  { id: 'challenge: punto corregido + resultado', cat: 'reactBig', only: ['roar', 'applause', 'bombo', 'groan', 'ooh'], ev: [{ type: 'point', team: 0, reason: 'in', how: 'kill', rallyHits: 4, lastKind: 'spike', highlight: 0.35 }, { type: 'challengeResult', team: 0, overturned: true, dist: 0.02, truthIn: true, calledIn: false, x: 4, y: 4.4, left: [2, 2] }] },
+  { id: 'challenge: se anula (en contra)', cat: 'reactBig', only: ['groan', 'applause'], ev: [{ type: 'challengeResult', team: 1, overturned: true, dist: 0.01, truthIn: true, calledIn: false, x: -4, y: 4.4, left: [2, 2] }] },
+  { id: 'challenge: se mantiene (local)', cat: 'react', only: ['groan', 'applause'], ev: [{ type: 'challengeResult', team: 0, overturned: false, dist: 0.04, truthIn: true, calledIn: true, x: 4, y: 4.4, left: [1, 2] }] },
+  { id: 'challenge: se mantiene (CPU)', cat: 'react', only: ['roar', 'applause'], ev: [{ type: 'challengeResult', team: 1, overturned: false, dist: -0.04, truthIn: false, calledIn: false, x: -4, y: 4.4, left: [2, 1] }] },
   { id: 'crowd bed (set-point serve, HP)', cat: 'bed', update: 'sp', only: ['murmur', 'excite'], info: true }
 ];
 function seeded(seed) { let s = seed >>> 0 || 1; return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
@@ -512,6 +524,7 @@ async function mixReport(file) {
         if (sc.update === 'rally') { gs.mode = 'rally'; gs.rally = { t: 4, hits: 4 }; }
         if (sc.update === 'hot') { gs.mode = 'rally'; gs.rally = { t: 12, hits: 12 }; gs.setPoint = 0; }
         if (sc.update === 'serveCalm') { gs.mode = 'serve'; gs.serving = 0; }
+        if (sc.update === 'review') { gs.mode = 'point'; gs.review = { team: 0, t: 2.25, dur: 4.5, x: 4, y: 4.4, dist: 0.02, truthIn: true, calledIn: false, overturned: true }; }
         if (sc.update === 'serve' || sc.update === 'mp' || sc.update === 'sp') {
           gs.mode = 'serve'; gs.serving = 0;
           A.handle([{ type: 'serveReady', team: 0, player: P0, setPoint: sc.update === 'sp' ? 0 : -1, matchPoint: sc.update === 'mp' ? 0 : -1 }], gs);
@@ -520,7 +533,7 @@ async function mixReport(file) {
         else for (let f = 0; f < 600; f++) { A.update(gs, dt); C.currentTime += dt; }
       }
       const news = mock.started.slice(mark);
-      const isBed = sc.cat === 'bed';
+      const isBed = sc.cat === 'bed' || sc.cat === 'reviewBed';
       const pick = isBed ? mock.started.filter(s => s.src.loop && sc.only.includes(nameOfBuf(A, s.src.buffer))) : news.filter(s => !s.cancelled && (!sc.only || sc.only.includes(nameOfBuf(A, s.src.buffer))));
       n0 += pick.length;
       if (!pick.length) continue;
@@ -539,7 +552,7 @@ async function mixReport(file) {
     const lu = energies.length ? M.LU(energies.reduce((a, c) => a + c, 0) / energies.length) : -120;
     const tgt = PLAN[sc.cat].target;
     rows.push({ id: sc.id, cat: sc.cat, target: tgt, lufs: r1(lu), delta: r1(lu - tgt), pass: Math.abs(lu - tgt) <= 1.5 || !!sc.info, info: !!sc.info,
-      peak: r1(M.db(pk)), balance: bal.length ? r1(bal.filter(isFinite).reduce((a, c) => a + c, 0) / bal.length) : 0, voices: n0 / (sc.cat === 'bed' ? 1 : (sc.tries || 6)) });
+      peak: r1(M.db(pk)), balance: bal.length ? r1(bal.filter(isFinite).reduce((a, c) => a + c, 0) / bal.length) : 0, voices: n0 / (sc.cat === 'bed' || sc.cat === 'reviewBed' ? 1 : (sc.tries || 6)) });
   }
   return rows;
 }

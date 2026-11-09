@@ -819,3 +819,34 @@ pausa rutinaria de la demo).
 - SIM-03: aplicados los textos exactos: CONTRACT §4.2 `VB.HOLD` `set 4.0` (y la frase de las pausas: «4,0 s (set…; antes 3,4, cambiado por CAM-09)»), notes/camera_input.md:345 y notes/ui_main.md:324. La aceptación de SIM-03 pasa a «hold = `VB.HOLD.set` = 4,0». SIM-03 queda completo.
 - CONTRACT: regla de `checkBody` para la IA, `TEAM_GAP`/`dodgeOwnBall` y la nueva comprobación de simtest (la IA no comete `double`/`four`).
 - simtest completo (semilla por defecto) TODO OK (calibración en 20 partidos de demo, 2.029 puntos; determinismo OK); barrido 1..25 × (10 y 20 min) 50/50 TODO OK.
+
+## Sprint 9-nov-2026: remate apuntado (A1-A3) y error arbitral + challenge (B1-B3) — sim
+Todo en coordenadas de simulación; equipo 0 = humano. Nada de lo nuevo cambia `g.mode` (no hay mode 'review').
+- **A1 mira libre** `g.aim3 = {on, x, y}`: `on` solo con el humano atacando el 3.er toque de su equipo y EN EL AIRE (`p.z > 0`,
+  `touchTeam 0`, `touches 2`, modo 'rally'). Al despegar arranca en `attackTarget(p, null, 6)` (diagonal); la dirección de mundo de
+  `input.move` la mueve a 11 m/s (`updateAim3`), limitada a |x| 1,4..8,3 del lado rival y |y| <= 3,9. El remate (no la dejada) del
+  humano va a `g.aim3` y bota justo en la diana (`launchDirect` con `tz = C.BR`). Se apaga al golpear y en cada punto.
+- **A2** `VB.Sim.spikeSpread(q)` = 1,7·(1−q)^1,2 (con q >= 0,9 como mucho 1−q): 0,9 → 0,10; 0,78 → 0,28; 0,5 → 0,74; 0,2 → 1,30 m.
+  Error del remate del humano con mira: uniforme en un círculo de ese radio (mismas 2 llamadas a `g.rng` que antes). La IA, igual.
+  `aimPoint(g,out)` con la mira activa devuelve `x,y = g.aim3`, `kind 'spike'` y **`out.spreadNow`** = spikeSpread de la calidad que
+  tendría si pulsara AHORA (o la del gesto ya en curso; `qNow`: timing de `hitWindow` × distancia, como `hit`). Sin mira, `spreadNow`
+  es un valor medio (spread..spreadPoor).
+- **A3** remate 'perfect': si el atacante es el humano, la IA rival defiende con `dig × 0,8`; si ataca la CPU contra el humano,
+  `g.digTight = true` hasta el siguiente toque/bloqueo/punto y el 1r toque del humano usa `te × 1,5`. FX: aro ×0,7 con `g.digTight`.
+- **B1** `land()`: `dist = VB.Sim.lineDist(x,y)` = min(HL+IN_TOL−|x|, HW+IN_TOL−|y|) (> 0 dentro; dentro ⇔ dist >= 0, el criterio de
+  siempre). `VB.REF_ERR` {<2 cm 35 %, <5 cm 15 %, <=10 cm 5 %}; solo se tira el dado (g.rng) si cantar al revés cambia el ganador.
+  El punto se da según lo cantado; el evento `land` lleva `inside` = lo cantado y añade `dist`, `truthIn`.
+  `g.call = {x, y, dist, truthIn, calledIn, wrong, team (perdió el punto), t, alt, used}` del último punto (null si no hubo bote).
+- **B2** `g.challenges = [2,2]` (se reinicia en `nextSet`/`newGame`), `VB.CHAL` (window 7, dur 4,5, CPU…). `VB.Sim.canChallenge(g,t)` → s de
+  ventana (0 si no: sin bote, ya pedido, no perdió el punto, sin challenges, revisión en curso, partido terminado o ya en 'rally').
+  `VB.Sim.challenge(g,t)` → bool; `g.review = {team, t, dur, x, y, dist, truthIn, calledIn, overturned}`; durante la revisión `step`
+  solo avanza `review.t`, `g.time` y los jugadores (reloj del punto/saque parado; `skipHold` no actúa). Al acabar: acertado → se
+  restaura la instantánea previa al punto (marcador, sets, set nº, saque, setScores, racha, punto de set/partido, challenges…) y se
+  vuelve a pitar el punto con la llamada correcta (`point` normal: eventos `point`/`sideout`/`set`/`match` de nuevo, pausa nueva);
+  fallado → se pierde uno, y si se pidió ya en 'serve' se rehace el saque (`setupServe`). Eventos `challenge` y `challengeResult`
+  (`left`). Funciona aunque el set siguiente ya hubiera empezado (la pausa del set es < 7 s).
+- **B3** la CPU (equipo 1; los dos en demo/autopilot) decide al acabar el punto: |dist| < 5 cm → 60 %, hasta 10 cm → 3 %, más lejos
+  nunca; lo pide a los 1,5-3 s (`g.cpuChal`). Medido en simtest: 95/154 = 62 %.
+- simtest: nuevas comprobaciones «remate apuntado» y «error arbitral / challenge»; la «llamada de línea» comprueba `truthIn` (lo cantado
+  puede llevar error B1); el recuento propio de racha/punto de set ignora el punto anulado; `KNOWN` con los 2 eventos nuevos; el bot lleva
+  la mira con el stick hacia el punto que antes elegía con la dirección (sin eso el bot perfecto bajaba de ~56 % a 43 % contra Experto).

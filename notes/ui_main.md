@@ -1079,3 +1079,22 @@ Pruebas y capturas en `tools/out/w4/` (no se suben). Interfaces de CONTRACT inta
 - **Cambio del lead en index.html (fuentes)**: tras las 4 caras que espera el arranque, se piden SIN esperar las demás que usa la UI (Barlow Condensed 800/700 cursiva, 600, 500, 900; Barlow 400/500/700). Antes, Barlow 500/700 (el #coach del aviso de los 8 s) se bajaban la primera vez que salía ese texto a mitad de partido y Chrome volvía a maquetar todo: frame de 55-82 ms (Layout 53 ms con CPU ×4). Ahora llegan bajo el telón: 49-52 ms (Layout 27 ms). Comprobado: todas las caras latinas «loaded» a los 7 s.
 - Petición de camera_input (pre-pintar la cortinilla): evaluada y no aplicada; ver notes/camera_input.md (el hueco es del HUD del saque en `debug=rally`, no aparece en el partido real).
 - Verificado en el árbol integrado: simtest completo + barrido `simtest <10|20> <1..25> 0` 50/50 TODO OK; console.sh 19 escenas (1280×720 y 844×390 táctil) sin errores; drive, touchplay, padplay (estándar y DualSense) y audiotest completo TODO OK; perf 844×390 ×4 «objetivos cumplidos» (ver TRASPASO).
+
+## Sprint remate apuntado + challenge — ui_main (9-nov-2026, PC de casa): A5 y B7
+Pruebas y capturas en `tools/out/chal/` (no se suben). Solo añadidos opcionales.
+- **A5**: `aim3(g, p)` (lee `g.aim3.on`; sin él, humano en el aire en su lado). Consejo del 3.er toque en el aire: escritorio
+  «3.er toque · Apunta con <glifo> y golpea con <glifo> en lo alto», táctil «Apunta con el joystick». Tutorial paso 4: mira libre
+  y timing perfecto = exacto a la diana (texto acortado: 0 px de desborde a 844×390, 667×375, 1280×720, 1024×768).
+- **B7**: contador `#sbChal` (2 iconos, `g.challenges[0]`) en la franja del marcador tras SET. `#chal` (botón, FUERA de `#hud`, z 6 > `#touch`)
+  arriba a la derecha bajo los botones del HUD/pausa: ventana `Sim.canChallenge(g,0) > 0` → «Challenge · V» / LT (L2 en PlayStation) /
+  «CHALLENGE» táctil, cuenta atrás y barra; `pointerdown` → `ctx.actions.challenge()`. Con `g.review`: «REVISIÓN · Challenge · TÚ/CPU»
+  y barra `review.t/dur`. Eventos: `challenge` (CPU → callout «La CPU pide challenge»), `challengeResult` → banner «IN»/«OUT» +
+  «N,N cm de la línea · Punto para ti/la CPU» o «Se mantiene · te queda(n)…»; `#srLive` lo anuncia. Paso 6: fila «Challenge».
+  Controles (`ctlRows`): V / LT·L2 / botón CHALLENGE.
+- **main.js**: `ctx.actions.challenge()` → `Sim.challenge(ctx.game, 0)` (solo en `'playing'`; llama `VB.UI.onChallenge` opcional);
+  `it.challenge` (VB.Input.poll) → `ctx.actions.challenge()` fuera de la tarjeta de presentación.
+- Medido: 844×390 táctil `#chal` 690,70-828,114; pausa 787,15-829,57; ⇄ 783,215-829,261; marcador 16,14-202,99 → sin solape;
+  `elementFromPoint` en su centro = el botón (encima de `#touch`). E2E `debug=serve` con `g.call` inyectada: V → `g.review`, rótulo
+  REVISIÓN, a los 4,5 s `challenges` 2→1, icono apagado, banner «IN · 1,2 cm… Se mantiene · te queda 1 challenge».
+### Para el integrador (CONTRACT)
+- §4.1 `actions.challenge()`; §4.4 `VB.UI.onChallenge(g, team)` (opcional, hoy no definida). `placeT3` aún no cuenta `#chal` como zona prohibida.

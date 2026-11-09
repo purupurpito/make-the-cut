@@ -482,6 +482,34 @@
     }
     return edges(normalize([d], 0.8), sr, 0.0004, 0.006);
   }
+  /** Bocina del challenge (B8): el pitido de la tableta del banquillo que suena en el pabellón al pedir la revisión.
+   *  Dos dientes de sierra limitados en banda (polyBLEP) a 233 y 277 Hz, un poco desafinados (batido), con formante de
+   *  metal a ~1,3 kHz, entrada con un pequeño «scoop» de tono, 0,8 s sostenidos y salida de 90 ms. Algo de saturación. */
+  function* genHorn(rng, sr) {
+    var dur = 0.82, rel = 0.09, n = Math.ceil((dur + rel) * sr), d = new Float32Array(n);
+    var lp = new Biq('lp', 2600, 0.7, sr), lp2 = new Biq('lp', 2600, 0.7, sr), fm = new Biq('bp', 1300, 1.4, sr), hp = new Biq('hp', 120, 0.7, sr);
+    var fA = 233 * (1 + (rng() - 0.5) * 0.01), fB = 277 * (1 + (rng() - 0.5) * 0.01), fC = fA * 1.004;
+    var Z = new Float64Array(3); // estado entre tramos: 0 pA · 1 pB · 2 pC (fase 0..1)
+    for (var i0 = 0; i0 < n; i0 += CH) {
+      var i1 = i0 + CH < n ? i0 + CH : n, pA = Z[0], pB = Z[1], pC = Z[2];
+      for (var i = i0; i < i1; i++) {
+        var t = i / sr, att = Math.min(1, t / 0.018), env = att * att * (3 - 2 * att);
+        if (t > dur) env *= Math.max(0, 1 - (t - dur) / rel);
+        env *= 0.92 + 0.08 * Math.min(1, t / 0.3);
+        var bend = 0.96 + 0.04 * Math.min(1, t / 0.05), y = 0, dt, ph;
+        // tres osciladores de sierra polyBLEP (sin alias): A, B y C (= A desafinado)
+        dt = fA * bend / sr; pA += dt; if (pA >= 1) pA -= 1; ph = pA;
+        y += 2 * ph - 1 - (ph < dt ? (ph / dt) * (2 - ph / dt) - 1 : ph > 1 - dt ? ((ph - 1) / dt) * ((ph - 1) / dt + 2) + 1 : 0);
+        dt = fB * bend / sr; pB += dt; if (pB >= 1) pB -= 1; ph = pB;
+        y += 0.85 * (2 * ph - 1 - (ph < dt ? (ph / dt) * (2 - ph / dt) - 1 : ph > 1 - dt ? ((ph - 1) / dt) * ((ph - 1) / dt + 2) + 1 : 0));
+        dt = fC * bend / sr; pC += dt; if (pC >= 1) pC -= 1; ph = pC;
+        y += 0.5 * (2 * ph - 1 - (ph < dt ? (ph / dt) * (2 - ph / dt) - 1 : ph > 1 - dt ? ((ph - 1) / dt) * ((ph - 1) / dt + 2) + 1 : 0));
+        d[i] = hp.p(lp2.p(lp.p(Math.tanh((y * 0.45 + fm.p(y) * 0.9) * 1.3)))) * env;
+      }
+      Z[0] = pA; Z[1] = pB; Z[2] = pC; yield 0;
+    }
+    return edges(normalize([dcBlock(d, sr)], 0.8), sr, 0.002, 0.03);
+  }
 
   /** Celebración (contactos cosméticos de players, PLY-07 -> eventos 'fx:*' de main.js): choque de manos 'slap' (dos palmas
    *  planas que se encuentran: chasquido seco a 1-3 kHz con un cuerpo hueco de ~190 Hz) y choque de puños 'fist' (sordo: ruido
@@ -1096,6 +1124,7 @@
     reg(k, (k === 'bombo' || k === 'beat') ? 1 : k === 'slamSub' ? 2 : 3, 'full', function (rng, sr) { return impact(IMPACTS[k], rng, sr); });
   });
   reg('tick', 1, 'full', genTick);
+  reg('horn', 1, 'full', genHorn);
   reg('sub', 1, 'full', genSub);
   reg('slap', 3, 'full', function (rng, sr) { return genSlap('slap', rng, sr); });
   reg('fist', 2, 'full', function (rng, sr) { return genSlap('fist', rng, sr); });
@@ -1148,7 +1177,7 @@
     setWin: 2.7, setLose: 5.4, matchWin: 1.5, matchLose: 4.8, perfect: 7.7, click: 5.2, back: 4.3, start: -2.6, hover: 11,
     spikeHero: 2.8, blockHero: 3.3, sub: 0, slamSub: 0, tick: 8.6, slap: 9.8, fist: 10.4,
     handclap: 11.2, chest: 4.9, dribble: 1.4, wipe: -1.6, introSwell: -2.4, introSting: -0.3,
-    cntTick: -1.8, cntLock: 0, arwHover: 7.9, optHover: 8.5, stepUp: -3.5, stepDown: -3.4, arwEdge: 3, tglOn: -2.6, tglOff: 0.7, optSel: -0.5, mvpWin: 1.6, mvpLose: 1.8
+    cntTick: -1.8, cntLock: 0, arwHover: 7.9, optHover: 8.5, stepUp: -3.5, stepDown: -3.4, arwEdge: 3, tglOn: -2.6, tglOff: 0.7, optSel: -0.5, mvpWin: 1.6, mvpLose: 1.8, horn: -1.8
   });
 
 
@@ -1934,6 +1963,45 @@
       if (u > 0 || e.setWon) rplay('applause', 0.2 + 0.35 * u + (e.setWon ? 0.1 : 0), 1.0 + pre);
     }
   }
+  /* Challenge (B8). 'challenge' {team, x, y}: bocina de la tableta (bus de efectos, mucho envío a la reverb: llena el
+   * pabellón como el silbato) y un «uuuh» de expectación suave. Mientras dura la revisión (g.review, o REVIEW_MAX s desde
+   * el evento si la sim no expone g.review) la grada se queda en un murmullo tenso que sube poco a poco (+5 → +8 dB sobre
+   * el lecho normal) y el ánimo se apaga. 'challengeResult' {team, overturned}: reacción según a quién favorece la decisión
+   * (equipo 0 = local): si se anula el punto, la reacción es grande (ovación con bombo, o lamento fuerte); si se mantiene,
+   * aplauso o lamento moderado. */
+  var frame = { cr: false, big: false }; // eventos del frame en curso (handle): hay resultado de challenge / punto de set o partido
+  var REVIEW_MAX = 6, REV_MUR = 1.78, REV_MUR_UP = 0.73, rev = { on: false, t0: -9, until: 0, team: -1, n: 0, res: 0, last: null };
+  function onChallenge(e) {
+    rev.on = true; rev.t0 = now(); rev.until = rev.t0 + REVIEW_MAX; rev.team = e.team | 0; rev.n++; rev.last = null;
+    if (demo) return;
+    play('horn', 0.6, null, null, 1, 0.4, 0, null);
+    rplay('ooh', 0.26, 0.55, 0.96);
+  }
+  function onChallengeResult(e) {
+    var team = e.team | 0, over = !!e.overturned, home = over ? team === 0 : team !== 0, big = over;
+    rev.on = false; rev.until = 0; rev.res++;
+    rev.last = { team: team, overturned: over, home: home, t: now() };
+    if (frame.big) return; // el punto corregido cierra el set o el partido: manda su reacción (ovación de set/partido)
+    react.h = big ? 0.8 : 0.4; react.team = home ? 0 : 1; react.layers = 0; react.chant = 0; react.t = now();
+    if (demo) { rplay('applause', 0.2, 0.2); return; }
+    if (home) {
+      if (big) { rplay('roar', 0.6, 0.08); rplay('roar', 0.3, 0.75, 0.95); rplay('bombo', 0.3, 0.2); rplay('bombo', 0.25, 0.62); rplay('applause', 0.4, 0.6); }
+      else { rplay('roar', 0.38, 0.1); rplay('applause', 0.38, 0.45); }
+    } else {
+      if (big) { rplay('groan', 1.2, 0.08); rplay('applause', 0.3, 1.2); }
+      else { rplay('groan', 0.8, 0.1, 1.04); rplay('applause', 0.32, 0.9); }
+    }
+  }
+  /** 0..1 durante la revisión (avance de g.review.t / dur), -1 sin revisión. */
+  function reviewNow(g) {
+    var r = g && g.review;
+    if (r && typeof r === 'object') { var du = +r.dur > 0 ? +r.dur : 4.5; return clamp((+r.t || 0) / du, 0, 1); }
+    if (g && r === null) { rev.on = false; return -1; } // la sim expone g.review y ya no hay revisión
+    if (rev.on && now() < rev.until) return clamp((now() - rev.t0) / 4.5, 0, 1);
+    rev.on = false;
+    return -1;
+  }
+
   /** Racha local ≥ 3: palmas al unísono con bombo tras la ovación, en la rejilla de 0,42 s de las palmas del saque. Solo
    *  hasta poco antes de `serveReady` (point.hold); allí las palmas del saque local siguen la misma rejilla sin hueco. */
   function chant(hold, streak) {
@@ -2143,7 +2211,11 @@
         if (e.reason === 'point') whistle(longWhistle ? 'whistleEnd' : 'whistleLong', demo ? 0.35 : 0.55, 0);
         else { whistle('whistle', demo ? 0.3 : 0.5, 0); if (intro.on) introEnd('whistle'); } // el 1.er pitido suelta la presentación
         break;
-      case 'point': crowdReact(e, g); break;
+      case 'point': // un punto corregido por el challenge (mismo frame o < 0,5 s tras el resultado) ya tiene su reacción
+        if (!e.setWon && !e.matchWon && (frame.cr || (rev.last && now() - rev.last.t < 0.5))) break;
+        crowdReact(e, g); break;
+      case 'challenge': onChallenge(e); break;
+      case 'challengeResult': onChallengeResult(e); break;
       case 'courtChange': // cambio de campo (18.2.1 / 18.2.2): silbato corto tras el del punto
         if (!demo) whistle('whistle', 0.32, e.why === 'eight' ? 1.0 : 2.7, 1.03);
         break;
@@ -2241,7 +2313,8 @@
       return { slowRate: slowRate, lowT: lowT, tension: tension, tickNext: tickNext, duck: N.duck ? N.duck.gain.value : 1, crowdHp: N.crowdHp ? N.crowdHp.frequency.value : 0,
         react: react, intro: { on: intro.on, t0: intro.t0, left: intro.on ? Math.max(0, intro.until - t) : 0 }, pool: pool.length, poolFree: free, voices: voicesNow(),
         bed: N.murG ? N.murG.gain.value : 0, chant: { t0: chantT0, n: chantN, until: chantUntil },
-        crowd: N.crowd ? N.crowd.gain.value : 0, endFocus: endFocus, count: { on: cnt.on, n: cnt.n }, stingTeam: stingTeam };
+        crowd: N.crowd ? N.crowd.gain.value : 0, endFocus: endFocus, count: { on: cnt.on, n: cnt.n }, stingTeam: stingTeam,
+        review: { on: rev.on, n: rev.n, res: rev.res, team: rev.team, last: rev.last, mur: REV_MUR } };
     },
     /** OPCIONAL (UI-14): estado de la presentación → {active, t (s desde que empezó; -1 sin presentación)}. */
     introInfo: function () { return { active: intro.on, t: intro.t0 > 0 ? now() - intro.t0 : -1 }; },
@@ -2333,7 +2406,7 @@
       endFocus = false; cnt.on = false; if (!(g && g.demo)) stingTeam = -1;
       demo = !!(g && g.demo); stingDone = false; excite = 0; exciteBoost = 0; lastSpikeTeam = -1; rallyDigs = 0; chantN = 0; chantUntil = 0;
       if (demo && intro.on) introEnd('menu');
-      serveTeam = -1; tension = 0; clapNext = 0; tickNext = 0; cancelTick(); lowT = 0;
+      serveTeam = -1; tension = 0; clapNext = 0; tickNext = 0; cancelTick(); lowT = 0; rev.on = false; rev.until = 0;
       for (var i = 0; i < 8; i++) { pvx[i] = pvy[i] = 0; scd[i] = 0.5; }
       applyVolumes(false);
     },
@@ -2369,7 +2442,12 @@
     handle: function (events, g) {
       if (!events || !events.length) return;
       var longWh = false, i, e;
-      for (i = 0; i < events.length; i++) { e = events[i]; if (e && e.type === 'point' && (e.setWon || e.matchWon)) longWh = true; }
+      frame.cr = false; frame.big = false;
+      for (i = 0; i < events.length; i++) {
+        e = events[i]; if (!e) continue;
+        if (e.type === 'point' && (e.setWon || e.matchWon)) { longWh = true; frame.big = true; }
+        if (e.type === 'challengeResult') frame.cr = true;
+      }
       for (i = 0; i < events.length; i++) {
         e = events[i]; if (!e || typeof e.type !== 'string') continue;
         try { handleOne(e, g, longWh); } catch (err) { }
@@ -2402,6 +2480,9 @@
         else if (g.mode === 'over') tgt = 0.45;
         if (g.matchPoint >= 0 || g.setPoint >= 0) tgt += 0.12;
       }
+      // challenge (B8): durante la revisión el ánimo se apaga y queda el murmullo tenso (abajo, × REV_MUR)
+      var rv = !demo ? reviewNow(g) : -1;
+      if (rv >= 0) tgt = 0.1;
       exciteBoost = Math.max(0, exciteBoost - dt * 0.35);
       tossHush = Math.max(0, tossHush - dt);
       tgt = Math.min(1, tgt + exciteBoost);
@@ -2413,7 +2494,7 @@
       // presentación (AUD-06): el lecho se agacha bajo la tarjeta (-7 dB, entra en ~0,3 s) y vuelve en ~1 s al soltarla
       if (intro.on && t > intro.until) introEnd('timeout');
       var ducked = intro.on && t < intro.t0 + INTRO_DUCK, bd = ducked ? INTRO_BED : 1, btc = ducked ? 0.3 : t < intro.relUntil ? 0.45 : 0;
-      setParam(N.murG.gain, 'mur', Math.round((0.32 + 0.1 * (1 - excite)) * (tossHush > 0 ? 0.6 : 1) * bd * LEVEL_LIN.murmur * 400) / 400, btc || (tossHush > 0 ? 0.25 : 0.2));
+      setParam(N.murG.gain, 'mur', Math.round((0.32 + 0.1 * (1 - excite)) * (tossHush > 0 ? 0.6 : 1) * bd * (rv >= 0 ? REV_MUR + REV_MUR_UP * rv : 1) * LEVEL_LIN.murmur * 400) / 400, rv >= 0 ? 0.35 : btc || (tossHush > 0 ? 0.25 : 0.2));
       setParam(N.excG.gain, 'exc', Math.round(Math.max(0, excite - 0.12) * 0.75 * bd * LEVEL_LIN.excite * 400) / 400, btc || 0.15);
       var vn = voicesNow(); if (vn > stats.voicesMax) stats.voicesMax = vn;
       setParam(N.crowdTone.frequency, 'bright', Math.round(1500 + excite * 5000), 0.2);

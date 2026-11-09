@@ -44,7 +44,7 @@ const DT = 1 / C.SIM_HZ;
 let failures = 0;
 const fail = m => { failures++; console.error('FALLO:', m); };
 const KNOWN = ['hit', 'block', 'net', 'land', 'point', 'set', 'match', 'gameOver', 'whistle', 'jump', 'switch', 'serveReady',
-  'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange', 'dribble'];
+  'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange', 'dribble', 'challenge', 'challengeResult'];
 const pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '-';
 // Vocabulario del árbitro (FCVB): cada motivo de punto con sus textos válidos. Un texto nuevo debe pasar por aquí.
 const POINT_TEXTS = {
@@ -205,7 +205,12 @@ function run(label, opts, seconds, inputFn, quiet) {
         // campos de presentación del punto (SIM-01/02/03), contrastados con un recuento propio
         if (e.type === 'newSet' || e.type === 'newMatch') { pf.streakT = -1; pf.streakN = 0; }
         if (e.type === 'serveReady') { pf.setPoint = e.setPoint; pf.matchPoint = e.matchPoint; }
+        // challenge (B2): el punto anulado se vuelve a pitar; el recuento propio vuelve al de antes de ese punto
+        if (e.type === 'challenge') pf.rev = true;
+        if (e.type === 'challengeResult') pf.rev = false;
         if (e.type === 'point') {
+          if (pf.rev && pf.prev) { Object.assign(pf, pf.prev); pf.rev = false; }
+          pf.prev = { streakT: pf.streakT, streakN: pf.streakN, setPoint: pf.setPoint, matchPoint: pf.matchPoint };
           if (pf.streakT === e.team) pf.streakN++; else { pf.streakT = e.team; pf.streakN = 1; }
           const eight = evs.some(x => x.type === 'courtChange' && x.why === 'eight');
           const bad = pointFieldIssues(e, g, { streak: pf.streakN, setPoint: pf.setPoint, matchPoint: pf.matchPoint, eight });
@@ -361,7 +366,7 @@ function makeBot(bp, seed) {
   const mv = [0, 0], want = [0, 0], aimv = [0, 0], out = { move: mv, hit: false, jump: false, switchPlayer: false };
   let stamp = -9, lead = 0, jlead = 0, eu = 0, ev = 0, presses = 0, useAim = false, useGap = false, serveWait = 0;
   let react = 0, wrongT = 0, wrongD = 0, jumpOk = true, blockT = 0, blockSeen = -1;
-  let lastCtrl = null, yawE = 0, yawT = 0, naive = false; const mvOut = [0, 0];
+  let lastCtrl = null, yawE = 0, yawT = 0, naive = false; const mvOut = [0, 0], aimSt = [0, 0];
   const w = {}, DT2 = DT;
   // reacción: lognormal con mediana bp.react (+ despiste ocasional)
   const sampleReact = () => bp.react * Math.exp(gauss() * bp.rlog) + (rng() < bp.lapse ? 0.2 + rng() * 0.3 : 0);
@@ -439,6 +444,16 @@ function makeBot(bp, seed) {
       if (att && blockSeen !== stamp) { blockSeen = stamp; blockT = g.time + Math.max(0, bp.react * 0.35 + gauss() * bp.sigma * (naive ? 2.4 : 1.2)); }
       if (att && g.time >= blockT) out.jump = true;
     }
+    // remate con mira libre (A1): en el aire lleva la mira (g.aim3) hacia el punto que quiere (hueco o dirección elegida,
+    // con el mismo mapeo de antes: centro a 5 m + dir * (3 ; 3,7)); sin apuntar suelta el stick (diagonal por defecto)
+    if (g.aim3 && g.aim3.on && g.ctrl === p) {
+      if (useGap || useAim) {
+        if (useGap) gapAim(g, p, aimv);
+        const tx = Math.max(-8.3, Math.min(-1.4, -5 + aimv[0] * 3)), ty = Math.max(-3.9, Math.min(3.9, aimv[1] * 3.7));
+        const dx = tx - g.aim3.x, dy = ty - g.aim3.y, d = Math.hypot(dx, dy), f = d > 1e-6 ? Math.min(1, d / 0.25) / d : 0;
+        aimSt[0] = dx * f; aimSt[1] = dy * f; out.move = aimSt;
+      } else { aimSt[0] = aimSt[1] = 0; out.move = aimSt; }
+    }
     // cámara recién deslizada a otro jugador: el stick va girado yawE (se corrige en 0,5 s)
     if (yawE && out.move === mv) {
       const k = 1 - (g.time - yawT) / 0.5;
@@ -467,7 +482,12 @@ function runHlMatch(j) {
         if (e.type === 'newSet' || e.type === 'newMatch') { pf.streakT = -1; pf.streakN = 0; }
         if (e.type === 'serveReady') { pf.setPoint = e.setPoint; pf.matchPoint = e.matchPoint; if (g.ritual.on) bounces += g.ritual.bounces; }
         if (e.type === 'dribble') { dribbles++; trace.push('d' + e.n + '/' + e.of + '@' + e.speed); }
+        // challenge (B2): el punto anulado se vuelve a pitar; el recuento propio vuelve al de antes de ese punto
+        if (e.type === 'challenge') pf.rev = true;
+        if (e.type === 'challengeResult') pf.rev = false;
         if (e.type === 'point') {
+          if (pf.rev && pf.prev) { Object.assign(pf, pf.prev); pf.rev = false; }
+          pf.prev = { streakT: pf.streakT, streakN: pf.streakN, setPoint: pf.setPoint, matchPoint: pf.matchPoint };
           if (pf.streakT === e.team) pf.streakN++; else { pf.streakT = e.team; pf.streakN = 1; }
           const eight = evs.some(x => x.type === 'courtChange' && x.why === 'eight');
           const bad = pointFieldIssues(e, g, { streak: pf.streakN, setPoint: pf.setPoint, matchPoint: pf.matchPoint, eight });
@@ -864,7 +884,7 @@ if (ONLY !== 'matrix') {
       rallyAt(gl, axis === 'y' ? { x: -5, y: -(C.HW + off), z: 0.6, vz: -3 } : { x: -(C.HL + off), y: 0, z: 0.6, vz: -3 });
       gl.lastTeam = 0; gl.touchTeam = 0; gl.lastKind = 'spike'; gl.touches = 3; for (const p of gl.players) { p.x = S.side(p.team) * 8.5; p.y = 3; }
       const ld = stepUntil(gl, 'land', 240).find(e => e.type === 'land');
-      if (!ld || ld.inside !== inside) fail(`línea ${axis} a ${off} m: inside=${ld && ld.inside}`);
+      if (!ld || ld.truthIn !== inside) fail(`línea ${axis} a ${off} m: truthIn=${ld && ld.truthIn}`); // (lo cantado, ld.inside, puede llevar error arbitral B1)
     }
   }
   console.log('llamada de línea (2 cm fuera = dentro, 8 cm = fuera) OK');
@@ -1355,6 +1375,176 @@ if (ONLY !== 'matrix') {
     const bad = res.filter(r => !r[1]);
     if (bad.length) fail('ritual del sacador CPU: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
     else console.log('ritual del sacador CPU (sin gastar azar, determinista, estilo por jugador ' + res[1][2] + ', punto de set, balón puro y continuo, humano sin ritual, demo corta) OK');
+  }
+  // A1/A2: remate apuntado (mira libre g.aim3 en el aire y dispersión según el timing, Sim.spikeSpread)
+  {
+    const res = [];
+    // spikeSpread: monótona decreciente y con los valores del contrato
+    { let mono = true, prev = 1e9; for (let q = 0; q <= 1.0001; q += 0.01) { const s = S.spikeSpread(q); if (s > prev + 1e-12) mono = false; prev = s; }
+      const v = [0.9, 0.78, 0.5, 0.2].map(q => S.spikeSpread(q));
+      res.push(['spikeSpread monótona y calibrada', mono && v[0] <= 0.1 && Math.abs(v[1] - 0.3) < 0.06 && Math.abs(v[2] - 0.75) < 0.08 && Math.abs(v[3] - 1.3) < 0.1, v.map(x => x.toFixed(3))]); }
+    // la mira empieza en la diagonal al despegar y la dirección la mueve (~11 m/s) dentro del campo rival
+    const setup = (seed, hz) => {
+      const g = S.createGame({ demo: false, seed }), h = g.teams[0][0], m = g.teams[0][1];
+      rallyAt(g, { x: 1.2, y: 0.5, z: 4.6, vz: 0 }); g.touchTeam = 0; g.touches = 2; g.lastTeam = 0; g.lastPlayer = m; g.lastKind = 'set';
+      g.ctrl = h; h.x = 1.5; h.y = 0.5; h.z = hz; h.vz = 2.5; m.x = 6; m.y = -2;
+      for (const q of g.teams[1]) { q.x = -8; q.y = q.idx ? 4.5 : -4.5; }
+      return g;
+    };
+    { const g = setup(61, 0.3); S.step(g, DT, { move: [0, 0], hit: false, jump: false });
+      const d0 = [g.aim3.x, g.aim3.y], on0 = g.aim3.on;
+      for (let i = 0; i < 24; i++) S.step(g, DT, { move: [-1, 0], hit: false, jump: false }); // 0,2 s hacia el fondo
+      const dx = g.aim3.x - d0[0];
+      for (let i = 0; i < 120; i++) S.step(g, DT, { move: [0, 1], hit: false, jump: false }); // hasta la lateral
+      res.push(['mira libre: empieza en la diagonal y se mueve', on0 && Math.abs(d0[0] + 6) < 0.01 && Math.abs(d0[1] + 1.6) < 0.01 && dx < -1.8 && dx > -2.6 &&
+        (!g.aim3.on || (g.aim3.y <= 3.9 + 1e-9 && g.aim3.x <= -1.4 && g.aim3.x >= -8.3)), [on0, d0, dx.toFixed(2), g.aim3.y.toFixed(2)]]); }
+    { const g = S.createGame({ demo: false, seed: 62 }); S.step(g, DT, null); res.push(['mira libre apagada fuera del ataque', !g.aim3.on, g.aim3.on]); }
+    // el remate cae en la diana: perfecto <= ~0,25 m; tarde 0,12 s claramente más disperso
+    const errAt = (te) => {
+      const errs = [];
+      for (let k = 0; k < 24; k++) {
+        const g = setup(100 + k, 0.6); g.ball.z = C.NET_H + 0.6; g.ball.x = 1.4; g.ball.y = 0.5; g.ball.vz = -0.5;
+        const h = g.ctrl; h.x = 1.6; h.y = 0.5; h.z = 0.6; h.vz = 0.3;
+        g.aim3.on = true; g.aim3.x = -(3 + (k % 5)); g.aim3.y = -3 + (k % 7);
+        const tx = g.aim3.x, ty = g.aim3.y;
+        S._hit(g, h, null, te, ''); const hv = S.drainEvents(g).find(e => e.type === 'hit');
+        if (!hv || hv.kind !== 'spike') { errs.push(99); continue; }
+        const ld = S.predictLanding(g, {}); // bote previsto (la defensa de la CPU podría tocarlo antes)
+        errs.push(ld ? Math.hypot(ld.x - tx, ld.y - ty) : 99);
+      }
+      return errs;
+    };
+    { const ep = errAt(0), el = errAt(0.12), mp = ep.reduce((a, b) => a + b) / ep.length, ml = el.reduce((a, b) => a + b) / el.length;
+      res.push(['remate a la diana (perfecto exacto, tarde disperso)', Math.max(...ep) < 0.3 && mp < 0.15 && ml > mp + 0.15, [mp.toFixed(3), Math.max(...ep).toFixed(3), ml.toFixed(3)]]); }
+    // aimPoint usa la mira y da spreadNow
+    { const g = setup(63, 0.3); S.step(g, DT, null); const ap = S.aimPoint(g, {}, null);
+      res.push(['aimPoint con la mira y spreadNow', ap && ap.kind === 'spike' && ap.x === g.aim3.x && ap.y === g.aim3.y && ap.spreadNow >= 0 && ap.spreadNow <= 1.75, ap && [ap.x, ap.y, ap.spreadNow]]); }
+    // A3: remate perfecto de la CPU contra el humano -> g.digTight; el humano defiende con te x1,5
+    { const g = S.createGame({ demo: false, seed: 64 }), c = g.teams[1][0];
+      rallyAt(g, { x: -1.4, y: 0, z: C.NET_H + 0.6, vz: -0.5 }); g.touchTeam = 1; g.touches = 2; g.lastTeam = 1; g.lastPlayer = g.teams[1][1]; g.lastKind = 'set';
+      c.x = -1.6; c.y = 0; c.z = 0.6; S._hit(g, c, null, 0, ''); const t1 = g.digTight;
+      const g2 = S.createGame({ demo: false, seed: 64 }), c2 = g2.teams[1][0];
+      rallyAt(g2, { x: -1.4, y: 0, z: C.NET_H + 0.6, vz: -0.5 }); g2.touchTeam = 1; g2.touches = 2; g2.lastTeam = 1; g2.lastPlayer = g2.teams[1][1]; g2.lastKind = 'set';
+      c2.x = -1.6; c2.y = 0; c2.z = 0.6; S._hit(g2, c2, null, 0.2, ''); const t2 = g2.digTight;
+      // defensa del humano con desfase 0,04: con digTight la calidad es la de 0,06
+      const g3 = S.createGame({ demo: false, seed: 65 }), h = g3.teams[0][0];
+      rallyAt(g3, { x: 5, y: 0, z: 0.8, vx: 8, vz: -3 }); g3.touchTeam = 1; g3.touches = 3; g3.lastTeam = 1; g3.lastKind = 'spike'; g3.lastPlayer = g3.teams[1][0];
+      g3.ctrl = h; h.x = 5.2; h.y = 0; h.z = 0; g3.digTight = true; S._hit(g3, h, null, 0.04, ''); const hv = S.drainEvents(g3).find(e => e.type === 'hit');
+      res.push(['defensa más justa tras remate perfecto', t1 && !t2 && hv && Math.abs(hv.timing - 0.06) < 1e-9 && !g3.digTight, [t1, t2, hv && hv.timing]]); }
+    const bad = res.filter(r => !r[1]);
+    if (bad.length) fail('remate apuntado: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+    else console.log('remate apuntado (spikeSpread ' + res[0][2].join('/') + ', mira libre, error perfecto/tarde ' + res[3][2].join('/') + ' m, aimPoint, digTight) OK');
+  }
+  // B1-B3: error arbitral en botes justos y challenge
+  {
+    const res = [];
+    // bote del remate de team (0: cae en el campo de la CPU; 1: en el del humano) con la huella a dist m de la línea lateral
+    const landAt = (seed, dist, team, pre) => {
+      const g = S.createGame({ demo: false, seed });
+      if (pre) pre(g);
+      const sx = team === 0 ? -1 : 1, y = -(C.HW + C.IN_TOL - dist);
+      rallyAt(g, { x: sx * 5, y, z: 0.6, vz: -3 });
+      g.lastTeam = team; g.touchTeam = team; g.lastKind = 'spike'; g.lastShot = 'power'; g.touches = 3; g.lastPlayer = g.teams[team][0];
+      for (const p of g.players) { p.x = S.side(p.team) * 8.5; p.y = 3; }
+      const ev = stepUntil(g, 'point', 240);
+      return { g, ld: ev.find(e => e.type === 'land'), pt: ev.find(e => e.type === 'point') };
+    };
+    // tasa de error por banda; nunca con |dist| > 0,10
+    { const bands = [[0, 0.02, 0.25, 0.45], [0.02, 0.05, 0.08, 0.23], [0.05, 0.1, 0.01, 0.1], [0.105, 0.3, 0, 0]], rates = [];
+      let ok = true, fieldsOk = true;
+      for (const [a, bnd, lo, hi] of bands) {
+        let n = 0, w = 0;
+        for (let k = 0; k < 500; k++) {
+          const d = (a + (bnd - a) * ((k * 0.618034) % 1)) * (k % 2 ? 1 : -1);
+          const r = landAt(1000 + k, d, k % 4 < 2 ? 0 : 1); const c = r.g.call; n++;
+          if (!c || Math.abs(c.dist - d) > 0.03 || c.truthIn !== (c.dist >= 0) || c.calledIn !== r.ld.inside || c.wrong !== (c.calledIn !== c.truthIn) || c.team !== 1 - r.pt.team) fieldsOk = false;
+          if (c && c.wrong) w++;
+        }
+        rates.push((w / n).toFixed(3)); if (w / n < lo || w / n > hi) ok = false;
+      }
+      res.push(['error arbitral por bandas (0-2, 2-5, 5-10, >10 cm)', ok && fieldsOk, [rates, fieldsOk]]); }
+    // sin bote no hay llamada
+    { const g = S.createGame({ demo: false, seed: 5 }), p = g.teams[0][0], q = g.teams[0][1];
+      rallyAt(g, { x: 3, y: 0, z: 1.5, vz: -1 }); g.touchTeam = 0; g.touches = 3; g.lastPlayer = q; g.lastKind = 'free'; S._hit(g, p, null);
+      res.push(['sin bote: g.call null y sin challenge', g.call === null && S.canChallenge(g, 0) === 0, g.call]); }
+    // busca un bote mal cantado contra el humano (fuera por 1 cm, cantado dentro)
+    const findWrong = (pre, wantWrong, dist) => { for (let s = 1; s < 3000; s++) { const r = landAt(s, dist == null ? -0.01 : dist, 1, pre); if (r.g.call && r.g.call.wrong === wantWrong) return r; } return null; };
+    const review = (g, team) => { const ev = []; for (let i = 0; i < 120 * 6; i++) { S.step(g, DT, null); ev.push(...S.drainEvents(g)); if (ev.some(e => e.type === 'challengeResult')) break; } return ev; };
+    // acertado: anula el punto y lo conserva
+    { const r = findWrong(null, true), g = r.g, s0 = g.score.slice(), w0 = 1 - g.call.team;
+      const left = S.canChallenge(g, 0), cpuNo = S.canChallenge(g, 1) === 0, ok = S.challenge(g, 0), rv = g.review && Object.assign({}, g.review);
+      const ev = review(g, 0), cr = ev.find(e => e.type === 'challengeResult'), ch = S.drainEvents(g);
+      res.push(['challenge acertado anula el punto', left > 6.9 && cpuNo && ok && rv && rv.overturned && rv.dur === 4.5 && cr && cr.overturned && g.review === null &&
+        g.score[0] === s0[0] + 1 && g.score[1] === s0[1] - 1 && g.challenges[0] === 2 && cr.left[0] === 2 && w0 === 1 && S.canChallenge(g, 0) === 0 && S.canChallenge(g, 1) === 0 &&
+        ev.some(e => e.type === 'point' && e.team === 0), [left, s0, g.score, g.challenges]]); }
+    // acertado en punto de set, pedido cuando ya ha empezado el set siguiente: el set vuelve atrás
+    { const pre = g => { g.score = [23, 24]; g.serving = 1; };
+      const r = findWrong(pre, true), g = r.g; const setW = r.pt.setWon;
+      for (let i = 0; i < 120 * 4.2 && g.setNo === 1; i++) { S.step(g, DT, null); S.drainEvents(g); } // la pausa del set acaba: nuevo set
+      const mid = [g.setNo, g.sets.slice(), g.score.slice(), g.mode], left = S.canChallenge(g, 0), ok = S.challenge(g, 0);
+      const ev = review(g, 0), cr = ev.find(e => e.type === 'challengeResult');
+      const after = [g.setNo, g.sets.slice(), g.score.slice(), g.setScores.length, g.pendingSet, g.serving];
+      for (let i = 0; i < 120 * 4 && g.mode !== 'serve'; i++) { S.step(g, DT, null); S.drainEvents(g); }
+      res.push(['challenge acertado en punto de set (el set vuelve atrás)', setW && mid[0] === 2 && left > 0 && ok && cr && cr.overturned &&
+        after[0] === 1 && after[1][0] === 0 && after[1][1] === 0 && after[2][0] === 24 && after[2][1] === 24 && after[3] === 0 && !after[4] && after[5] === 0 &&
+        g.mode === 'serve' && g.setNo === 1 && g.server.team === 0, [mid, after, g.mode]]); }
+    // fallado: se mantiene y gasta uno; con 0 ya no se puede
+    { const r1 = findWrong(null, false, 0.01), g = r1.g, s0 = g.score.slice();
+      const ok = S.challenge(g, 0), cr = review(g, 0).find(e => e.type === 'challengeResult');
+      const keep = g.score[0] === s0[0] && g.score[1] === s0[1] && g.challenges[0] === 1 && cr && !cr.overturned && cr.left[0] === 1;
+      g.challenges[0] = 0; const r2 = landAt(77, 0.2, 1, gg => { gg.challenges = [0, 2]; });
+      res.push(['challenge fallado gasta uno', ok && keep && S.canChallenge(r2.g, 0) === 0 && !S.challenge(r2.g, 0), [s0, g.score, g.challenges]]); }
+    // ventana de 7 s y fin de la ventana al sacar
+    { const r = landAt(9, 0.2, 1), g = r.g; S.drainEvents(g);
+      for (let i = 0; i < 120; i++) S.step(g, DT, null);
+      const l1 = S.canChallenge(g, 0); const t0 = g.time; g.time = r.g.call.t + 7.01; const l2 = S.canChallenge(g, 0); g.time = t0;
+      for (let i = 0; i < 120 * 8 && g.mode !== 'rally'; i++) { S.step(g, DT, null); S.drainEvents(g); }
+      res.push(['ventana de 7 s (y se cierra al sacar)', Math.abs(l1 - 6) < 0.02 && l2 === 0 && g.mode === 'rally' && S.canChallenge(g, 0) === 0, [l1, l2, g.mode]]); }
+    // la CPU pide challenge con criterio (~60 % con |dist| < 5 cm si el árbitro se equivocó, ~7 % si acertó; tras 1,5-3 s)
+    { let n = 0, asked = 0, dOk = true, accepted = 0, good = 0;
+      for (let s = 1; s <= 300; s++) {
+        const r = landAt(5000 + s, (s % 2 ? 1 : -1) * 0.03, 0), g = r.g; if (!g.call || g.call.team !== 1) continue; n++;
+        const t0 = g.call.t;
+        for (let i = 0; i < 120 * 3.2; i++) { S.step(g, DT, null); const ev = S.drainEvents(g); const ch = ev.find(e => e.type === 'challenge');
+          if (ch) { asked++; if (ch.team !== 1) dOk = false; const dt = g.time - t0; if (dt < 1.5 - 1e-6 || dt > 3.01) dOk = false; break; } }
+        if (g.review) { if (g.review.overturned) good++; review(g, 1); accepted++; }
+      }
+      // y rara vez con un bote lejos de la línea (> 10 cm: nunca)
+      let far = 0; for (let s = 1; s <= 60; s++) { const r = landAt(7000 + s, 0.4, 0); for (let i = 0; i < 120 * 3.2; i++) { S.step(r.g, DT, null); if (S.drainEvents(r.g).some(e => e.type === 'challenge')) { far++; break; } } }
+      res.push(['la CPU pide challenge', n > 100 && asked / n > 0.08 && asked / n < 0.4 && good / asked > 0.5 && dOk && far === 0 && accepted === asked, [n, asked, good, far]]); }
+    const bad = res.filter(r => !r[1]);
+    if (bad.length) fail('error arbitral / challenge: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+    else console.log('error arbitral (tasas ' + res[0][2][0].join('/') + ') y challenge (acertado, punto de set, fallado, ventana 7 s, CPU ' + res[6][2][1] + '/' + res[6][2][0] + ') OK');
+  }
+  // modo «controlar 1 jugador» (createGame({ctrl:'one'})): el humano (bot 'bueno') lleva siempre al mismo jugador y la IA al
+  // compañero en todo (toques, saque, bloqueo). g.ctrl no cambia nunca, el compañero toca y saca, pasa/coloca al humano, la IA
+  // no comete dobles ni 4 toques y los partidos (a 11) terminan. Por defecto sigue 'both'.
+  {
+    const f0 = failures, sum = { mate: 0, mateServe: 0, mateSet: 0, human: 0, matches: 0, pts: 0 };
+    if (S.createGame({ seed: 1 }).ctrlMode !== 'both' || S.createGame({ seed: 1, ctrl: 'x' }).ctrlMode !== 'both') fail('ctrlMode por defecto no es both');
+    for (let s = 1; s <= 4; s++) {
+      const g = S.createGame({ demo: false, seed: 9100 + s, difficulty: 'normal', ctrl: 'one', points: 11 }), bot = makeBot(BOTS.bueno, s * 7 + 3);
+      const me = g.ctrl, mate = S.other(g, me), ev = [];
+      let ctrlBad = 0, sw = 0, aiFault = 0, lastT0 = null;
+      if (g.ctrlMode !== 'one') fail('ctrl:one no guarda g.ctrlMode');
+      for (let i = 0; i < 120 * 60 * 30 && !g.finished; i++) {
+        S.step(g, DT, bot(g)); ev.length = 0; S.drainEvents(g, ev);
+        if (g.ctrl !== me) ctrlBad++;
+        for (const e of ev) {
+          if (e.type === 'switch') sw++;
+          else if (e.type === 'hit' && e.team === 0) {
+            if (e.player === mate) { if (e.kind === 'serve') sum.mateServe++; else sum.mate++; }
+            else { sum.human++; if (lastT0 && lastT0.player === mate && lastT0.kind !== 'serve' && e.kind !== 'serve') sum.mateSet++; }
+            lastT0 = e;
+          } else if (e.type === 'hit') lastT0 = null;
+          else if (e.type === 'point') { sum.pts++; if ((e.reason === 'double' || e.reason === 'four') && e.team === 1 && g.lastPlayer === mate) aiFault++; lastT0 = null; }
+        }
+      }
+      if (g.finished) sum.matches++;
+      if (ctrlBad || sw || aiFault) fail('modo uno (semilla ' + (9100 + s) + '): ctrl cambiado ' + ctrlBad + ' pasos, ' + sw + ' switch, ' + aiFault + ' dobles/4 toques del compañero IA');
+    }
+    if (sum.matches < 4 || sum.mate < 40 || sum.mateServe < 8 || sum.mateSet < 15 || sum.human < 40) fail('modo uno: ' + JSON.stringify(sum));
+    else if (failures === f0) console.log('modo controlar 1 jugador OK ' + JSON.stringify(sum));
   }
 }
 

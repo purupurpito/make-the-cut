@@ -212,25 +212,18 @@ Desde el 9-nov-2026 el proyecto va por **sprints**, para controlar el gasto de t
 Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apuntado, NO empezado.
 
 ### To-do
-- **Remate apuntado con diana según el timing** (9-nov-2026). Hoy ya se apunta en 5 zonas con la dirección durante el salto
-  y sale una diana naranja pequeña y tardía (`Sim.aimPoint`, `fx.js aimTarget`). Lo pedido:
-  1. Que se vea: diana grande y visible desde el inicio del salto (o la colocación) y consejo «Apunta con…» en el 3r toque.
-  2. Mira libre por todo el campo rival (stick/flechas mientras subes), en vez de 5 zonas fijas.
-  3. El tamaño de la diana depende del timing: timing perfecto = diana exacta donde apuntas; peor timing = diana más grande
-     (más dispersión).
-  4. Un remate perfecto hace la defensa más difícil: el círculo de golpeo del defensor rival es más pequeño (ventana más justa).
-  Ojo: es un cambio de jugabilidad; hay que reequilibrar la defensa de la CPU (simtest) y repasar el táctil.
-- **Modo de un solo jugador controlado** (9-nov-2026): controlar solo a un jugador (por ejemplo, el colocador) y que la IA
-  lleve al compañero en todos sus toques, en vez de que el control pase a quien da el siguiente toque. Sin diseñar.
 - **Gráficos cartoonish** (8-nov-2026): cambio de dirección artística a estilo dibujo animado. Sin empezar.
 - **Modo 6v6** (9-nov-2026): llevar el juego de 2 contra 2 a 6 contra 6. Campo más grande (pista reglamentaria de 18×9 m
   con 6 por equipo), rotaciones y posiciones. Cambiar de jugador será poco habitual, así que el primer modo 6v6 será
   **controlando solo a un jugador** (enlaza con el to-do anterior). Se mantiene todo el motor de toques y reglas, que ya funciona bien.
 - **Posiciones y estadísticas de jugador** (para el 6v6): colocador, opuesto, central, receptor, líbero; atributos (salto,
   remate, recepción, saque, bloqueo, velocidad…) que influyan en la sim.
-- **Error arbitral en botes justos + challenge** (9-nov-2026): con el balón muy cerca de la línea, probabilidad de que el árbitro
-  se equivoque, sin avisar. El jugador puede pedir **challenge**: 2 por set, fallar le hace perder uno (como la FIVB).
-  Reglamento FIVB revisado y propuesta de diseño en `notes/challenge-fivb.md`.
+- **Pendiente del sprint remate apuntado + challenge** (9-nov-2026, menores):
+  - Tras un challenge fallado la cámara de punto puede quedar detrás de la red y la malla cruza el cartel «OUT» (se lee, queda sucio).
+  - Tras un punto anulado, la etiqueta junto al marcador dice «REMATE» (coherente, pero el cartel anterior decía «Remate fuera»).
+  - El error arbitral casi no se ve jugando (30 partidas con piloto: 23 botes a <= 10 cm, 1 mal cantado). Si Ferran quiere verlo
+    más, subir `VB.REF_ERR` (p1/p2/p3) o ampliar d1-d3.
+  - Sin probar a mano: diana con mando y en táctil, estrechez de `digTight`, LT/L2 (solo padtest).
 - **Modo Carrera** (9-nov-2026, el que más ilusión le hace a Ferran; el más largo): un jugador con estadísticas bajas que se
   inscribe en equipos modestos, recibe ofertas de equipos mejores, mejora sus estadísticas y acaba jugando VNL, Olimpiadas, etc.
   Depende del 6v6, del modo de un solo jugador y de las posiciones/estadísticas.
@@ -241,6 +234,21 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   su verificación y el QA final. Solo si Ferran lo pide.
 
 ### Hecho (9-nov-2026)
+- Selector «Control: Los dos / Uno» en el menú (ajuste `ctrlMode`, `createGame({ctrl})`, `g.ctrlMode`). En modo Uno el humano lleva
+  siempre a `teams[0][0]` y la IA al compañero (toques, posición, defensa/bloqueo y su saque); sin cambio de jugador ni botón ⇄.
+  El bloqueo se reparte de forma dinámica durante la colocación de la CPU (sim.js `updateDefense`): si el humano sube a la red,
+  el compañero se echa atrás; si se va al fondo (>3,2 m), sube el compañero. Pendiente: panel de Controles y tutorial siguen
+  mencionando «⇄ Cambiar jugador» en modo Uno; no se puede elegir a cuál de los dos controlar; filas del menú táctil a 42 px.
+- **Remate apuntado**: mira libre en el aire por el campo rival (`g.aim3`), dispersión según el timing (`Sim.spikeSpread`,
+  perfecto = exacto a la diana), diana grande desde el despegue con radio = dispersión, defensa más justa tras remate perfecto
+  (`g.digTight`, aro ×0.7), consejo «Apunta con…» (legible aunque el balón pase por detrás) y tutorial paso 4.
+- **Error arbitral + challenge** (`notes/challenge-fivb.md`): llamadas al revés en botes a <= 10 cm (`VB.REF_ERR`, `g.call`),
+  2 challenges por set (`Sim.canChallenge`/`Sim.challenge`, ventana de 7 s, fallar gasta uno), revisión de 4,5 s con plano de
+  tele, huella y línea resaltada, señal del árbitro, bocina y público, V / LT / botón táctil CHALLENGE, contador junto al marcador.
+  Arreglos finales: la ventana que cruza al set siguiente usa los challenges del set de la llamada (no se puede pedir sin quedar
+  ninguno ni gasta uno del set nuevo); la CPU pide sobre todo cuando el árbitro se equivocó (~60 %) y rara vez si acertó (~7 %);
+  en el punto de partido la ventana dura los 7 s (saltar la pausa renuncia); el plano de revisión de un bote de banda cerca de la
+  red se pone entre la red y la marca (el poste ya no tapa el plano).
 - Textos del tutorial: «1r toque», «círculo», «se hace más pequeño», sin la explicación de la defensa ni la falta «Cuerpo».
 - Consejos del partido solo hasta la 1a victoria; luego se apagan (ajuste `coachTips`, Ajustes · Juego · Consejos).
 - Partido rápido: selector de puntos por set (11/15/21/25) en el menú.

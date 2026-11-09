@@ -24,8 +24,15 @@
   // Los planos miden 1 m: el aro de outlinedRingTex(104) mide 0,8125 m de diámetro y la diana de targetTex 0,875 m.
   var FR_D0 = 0.8, FR_D1 = 2.6, FR_T = 0.9, FR_RING = 0.8125, FR_TGT = 0.875, FR_ON = 0.24, FR_OFF = -0.15;
   var ballBs = 1, ballRim = null; // escala del balón por legibilidad (ARN-06) y uniforme del brillo de borde
-  var aimRet, aimMat, aim = { a: 0, x: -6, y: 0, tx: -6, ty: 0, on: false, live: false, kill: 0 }, aimOut = { x: 0, y: 0 };
+  var aimRet, aimMat, aim = { a: 0, x: -6, y: 0, tx: -6, ty: 0, on: false, live: false, kill: 0 }, aimOut = { x: 0, y: 0, spreadNow: -1 };
   var hwOut = { t: 0, press: 0 }, focusVis = false;
+  // A4 (remate apuntado): la retícula del remate mide lo que dice Sim.aimPoint().spreadNow (dispersión si pulsaras AHORA).
+  // AIM_R1 = radio (m) del aro de aimTex con escala 1 (88/128 de un plano de 1,7 m); mínimo visible AIM_RMIN, tope AIM_RMAX.
+  var AIM_R1 = 0.584, AIM_RMIN = 0.25, AIM_RMAX = 2.2, AIM_OR = null, AIM_OK = null, aimR = { r: 0.5, on: false, p: 0 };
+  var DIG_TIGHT = 0.7; // g.digTight: el aro de golpeo del defensor humano se ve más pequeño tras un remate perfecto
+  // B6 (challenge): huella del bote + línea resaltada durante g.review (3 calcomanías más en el lote del suelo, 0 dibujos)
+  var aimFill = null; // A4: zona de dispersión del remate (disco tenue bajo la retícula, en el lote de calcomanías)
+  var revFill = null, revLine = null, revGlow = null, rv = { on: false, hold: 0, x: 0.5, y: 0.5, res: -1, a: 0.5, k: 0.5, sx: 0.5, sy: 0.5 };
   // caché de hitWindow para el aro amarillo: la trayectoria es balística entre toques, así que «press» baja 1:1 con el
   // tiempo de sim. Se recalcula si cambia el balón (toque, red; la flotación del saque solo lo mece), el jugador, los
   // toques o si salta; cada 0,1 s; y en cada frame cerca del instante de pulsar (|press| < 0,5 s: ahí el relleno es la
@@ -125,6 +132,15 @@
       for (var k = 0; k < 4; k++) { var a = k * Math.PI / 2 + Math.PI / 4; g.beginPath(); g.moveTo(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); g.lineTo(128 + Math.cos(a) * (r - 30), 128 + Math.sin(a) * (r - 30)); g.stroke(); }
     }
     draw(10, 'rgba(10,6,0,0.75)'); draw(0, '#ffffff');
+    return tex(cv);
+  }
+  /** Huella del balón para la revisión del challenge (B6): disco lleno de borde NÍTIDO con filo oscuro (el borde es lo que se
+   *  mide contra la línea; el relleno suave de las marcas del bote lo emborronaba). r = 118/128 del plano. */
+  function revTex() {
+    var cv = canvas(256, 256), g = cv.getContext('2d');
+    g.fillStyle = 'rgba(255,255,255,0.62)'; g.beginPath(); g.arc(128, 128, 114, 0, 6.283); g.fill();
+    g.strokeStyle = 'rgba(14,10,4,0.85)'; g.lineWidth = 8; g.beginPath(); g.arc(128, 128, 114, 0, 6.283); g.stroke();
+    g.strokeStyle = '#ffffff'; g.lineWidth = 3; g.beginPath(); g.arc(128, 128, 109, 0, 6.283); g.stroke();
     return tex(cv);
   }
   /** Onda de choque: filo brillante fino con un halo interior muy tenue que cae a 0 (nada de disco gris). */
@@ -285,7 +301,7 @@
     }
     g.fillStyle = '#ffffff'; g.fillRect(2 * DEC_CELL, DEC_CELL, DEC_CELL, DEC_CELL); // celda 6: blanco liso (línea de altura)
     var at = tex(cv);
-    var N = MARK_N * 2 + RIP_N + 3, geo = new THREE.PlaneGeometry(1, 1);
+    var N = MARK_N * 2 + RIP_N + 7, geo = new THREE.PlaneGeometry(1, 1);
     var inst = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({
       uniforms: { map: { value: at } }, transparent: true, depthWrite: false, toneMapped: false,
       vertexShader: 'attribute vec4 aCol; attribute vec2 aCell; varying vec4 vCol; varying vec2 vUv;\n' +
@@ -301,8 +317,8 @@
     for (var m = 0; m < MARK_N; m++) decOrder.push(markPool[m].m);
     for (var r = 0; r < MARK_N; r++) decOrder.push(markPool[r].r);
     for (var p = 0; p < RIP_N; p++) decOrder.push(ripPool[p].m);
-    decOrder.push(marker, aimRet);
-    // lado del plano de cada malla (marcador 1,15 m, retícula 1,7 m; el resto 1 m): el lote usa un plano de 1 m
+    decOrder.push(marker, aimFill, aimRet, revGlow, revLine, revFill);
+    // lado del plano de cada malla (marcador 1,15 m, retícula 1,7 m; el resto 1 m; la huella de revisión lleva su escala): el lote usa un plano de 1 m
     for (var z = 0; z < decOrder.length; z++) decSz.push(decOrder[z].geometry.parameters.width || 1);
     decM = new THREE.Matrix4(); decV = new THREE.Vector3(); decP = new THREE.Vector3(); decQ = new THREE.Quaternion(); decY = new THREE.Vector3(0, 1, 0);
   }
@@ -431,15 +447,20 @@
       mode = g.serveState === 'toss' ? 2 : (g.serveAuth ? 1 : 0);
       if (!mode) return 0;
     } else if (g.mode === 'rally') {
-      var hp = g.ctrl;
-      if (!hp || hp.team !== 0 || hp.z < 0.12 || g.touchTeam !== 0 || g.touches !== 2) return 0;
-      if (b.x < -0.2 || b.x > 4.5 || b.z < C.NET_H) return 0;
-      mode = 2;
+      var hp = g.ctrl, a3 = g.aim3;
+      if (a3 && a3.on) mode = 2; // A1: mira libre de sim (atacante humano en el aire en el 3.er toque), desde el despegue
+      else {
+        if (!hp || hp.team !== 0 || hp.z < 0.05 || g.touchTeam !== 0 || g.touches !== 2) return 0;
+        if (b.x < -0.2 || b.x > 4.5 || b.z < 1.6) return 0;
+        mode = 2;
+      }
     } else return 0;
+    out.spreadNow = -1;
     if (Sim.aimPoint) {
       var r = Sim.aimPoint(g, out, ctx.simMove); // entrada de MUNDO de este mismo frame (sin ella, la del último paso)
       if (!r) return 0;
-      if (r !== out && r.x != null) { out.x = r.x; out.y = r.y; }
+      if (r !== out && r.x != null) { out.x = r.x; out.y = r.y; if (r.spreadNow != null) out.spreadNow = r.spreadNow; }
+      if (g.mode === 'rally' && g.aim3 && g.aim3.on && isFinite(g.aim3.x) && isFinite(g.aim3.y)) { out.x = g.aim3.x; out.y = g.aim3.y; }
       return mode;
     }
     a = aimDir(g);
@@ -452,10 +473,58 @@
       if (a) { tx = -5 + a[0] * 3.0; ty = a[1] * 3.7; }
       tx = -clampN(-tx, 1.4, 8.3); ty = clampN(ty, -3.9, 3.9);
     }
+    if (g.mode === 'rally' && g.aim3 && g.aim3.on && isFinite(g.aim3.x) && isFinite(g.aim3.y)) { tx = g.aim3.x; ty = g.aim3.y; }
     out.x = tx; out.y = ty;
     return mode;
   }
 
+  // ---------- Revisión del challenge (B6) ----------
+  /** Línea más cercana al bote (x, y) en coords de sim: la de fondo (|x| = HL) o la lateral (|y| = HW). Coloca la línea
+   *  resaltada encima de la línea pintada (5 cm, por DENTRO de las medidas, como arena.js) y la huella con el radio del balón
+   *  hacia la línea (el borde de la huella es el del balón: lo que mide dist), algo alargada a lo largo de la línea. */
+  function placeReview(x, y) {
+    var dEnd = C.HL - Math.abs(x), dSide = C.HW - Math.abs(y), L = 0.05, LEN = 2.6, end = Math.abs(dEnd) <= Math.abs(dSide);
+    var fs = 2 * C.BR * 128 / 114; // plano de la huella: el disco de revTex mide 114/128
+    revFill.position.x = x; revFill.position.z = -y; revFill.rotation.z = 0;
+    revLine.rotation.z = 0; revGlow.rotation.z = 0;
+    if (end) {
+      var lx = (x >= 0 ? 1 : -1) * (C.HL - L / 2), ly = clampN(y, -C.HW + LEN / 2 - 0.4, C.HW - LEN / 2 + 0.4);
+      revLine.position.x = lx; revLine.position.z = -ly; revLine.scale.set(L + 0.012, LEN, 1);
+      revGlow.position.x = lx; revGlow.position.z = -ly; revGlow.scale.set(0.3, LEN * 1.15, 1);
+      rv.sx = fs; rv.sy = fs * 1.18; // radio del balón en x (hacia la línea de fondo), 18 % más a lo largo
+    } else {
+      var sy = (y >= 0 ? 1 : -1) * (C.HW - L / 2), sx = clampN(x, -C.HL + LEN / 2 - 0.4, C.HL - LEN / 2 + 0.4);
+      revLine.position.x = sx; revLine.position.z = -sy; revLine.scale.set(LEN, L + 0.012, 1);
+      revGlow.position.x = sx; revGlow.position.z = -sy; revGlow.scale.set(LEN * 1.15, 0.3, 1);
+      rv.sx = fs * 1.18; rv.sy = fs;
+    }
+  }
+  /** Huella + línea resaltada mientras dura g.review (y ~2 s más tras el resultado, del color de la verdad: verde dentro,
+   *  rojo fuera). La huella aparece cuando la cámara ya ha bajado (~0,7 s). Lee g.review con guardas: sin él no hace nada. */
+  function updateReview(g, rdt) {
+    var R = g.review;
+    if (R && isFinite(R.x) && isFinite(R.y)) {
+      if (!rv.on || R.x !== rv.x || R.y !== rv.y) { rv.x = R.x; rv.y = R.y; rv.res = -1; placeReview(R.x, R.y); }
+      rv.on = true; rv.hold = 2.2;
+      rv.k = clampN(((R.t || 0) - 0.55) / 0.35, 0, 1); // aparición de la huella
+    } else if (rv.on) {
+      rv.hold -= rdt; rv.k = 1;
+      if (rv.hold <= 0) rv.on = false;
+    }
+    rv.a = rv.on ? Math.min(1, rv.a + rdt * 5, rv.hold / 0.5) : 0;
+    var vis = rv.a > 0.01;
+    revFill.visible = revLine.visible = revGlow.visible = vis;
+    if (!vis) return;
+    var pul = 0.5 + 0.5 * Math.sin(ctx.time * 6);
+    revLine.material.opacity = rv.a * (0.7 + 0.25 * pul);
+    revGlow.material.opacity = rv.a * (0.2 + 0.1 * pul);
+    var k = rv.k, pop = k < 1 ? 1 + 0.35 * (1 - k) : 1;
+    revFill.scale.set(rv.sx * pop, rv.sy * pop, 1);
+    revFill.material.opacity = rv.a * 0.95 * k;
+    if (rv.res === 1) revFill.material.color.setRGB(0.2, 1, 0.35);
+    else if (rv.res === 0) revFill.material.color.setRGB(1, 0.25, 0.18);
+    else revFill.material.color.setRGB(0.95, 0.95, 1);
+  }
   /** Arco punteado del balón al objetivo, pasando por encima de la red (vista previa de la dirección, no física). */
   function updateAimArc(b, tx, ty, a) {
     var pa = aimArc.geometry.attributes.position.array, ca = aimArc.geometry.attributes.color.array;
@@ -734,6 +803,7 @@
       // retícula de apuntado en el campo rival (saque y remate del humano)
       aimMat = new THREE.MeshBasicMaterial({ map: aimTex(), transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
       aimMat.color.set('#ff6326'); // (setRGB es LINEAL con ColorManagement: (1,0.5,0.24) salía color melocotón pálido)
+      AIM_OR = aimMat.color.clone(); AIM_OK = new THREE.Color('#ffe23a'); // naranja → amarillo dorado cuando el timing va a ser perfecto
       aimRet = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), aimMat);
       aimRet.rotation.x = -Math.PI / 2; aimRet.position.y = 0.019; aimRet.renderOrder = 4; aimRet.visible = false; aimRet.name = 'aimRet'; // (decals)
       // puntos opacos con filo oscuro (mezcla normal: el aditivo desaparecía sobre la tarima clara)
@@ -792,7 +862,16 @@
         mr.rotation.x = -Math.PI / 2; mr.position.y = 0.0155; mr.visible = false; mr.renderOrder = 3; mr.name = 'markRim'; // (decals)
         markPool.push({ m: mm, r: mr, t: 0, d: 1, s: 0.5, stretch: 1 });
       }
-      buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map]);
+      // B6: revisión del challenge. Celda 6 del atlas = blanco liso (línea resaltada), celda 7 = huella nítida.
+      var whiteTex = tex(canvas(4, 4)); whiteTex.image.getContext('2d').fillStyle = '#fff'; whiteTex.image.getContext('2d').fillRect(0, 0, 4, 4);
+      var rvMk = function (map, y, ro, name) {
+        var o = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: map, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }));
+        o.rotation.x = -Math.PI / 2; o.position.y = y; o.visible = false; o.renderOrder = ro; o.name = name; return o; // (decals)
+      };
+      revGlow = rvMk(markTex, 0.0158, 3, 'revGlow'); revLine = rvMk(whiteTex, 0.0162, 3, 'revLine'); revFill = rvMk(revTex(), 0.0166, 3, 'revMark');
+      aimFill = rvMk(markTex, 0.0185, 4, 'aimFill');
+      revGlow.material.color.setRGB(0.25, 0.85, 1); revLine.material.color.setRGB(0.55, 0.95, 1);
+      buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map, whiteTex, revFill.material.map]);
       // polvo de parquet (plancha, aterrizajes): Points con alfa por vértice y mezcla normal
       var dPos = new Float32Array(DUST_N * 3), dCol = new Float32Array(DUST_N * 4);
       for (var dI = 0; dI < DUST_N; dI++) { du.push(dblFields({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s: 1 })); dPos[dI * 3 + 1] = -50; }
@@ -833,6 +912,7 @@
       for (var w = 0; w < WAVE_N; w++) { wavePool[w].t = 0; wavePool[w].s.visible = false; }
       for (var r = 0; r < RIP_N; r++) { ripPool[r].t = 0; ripPool[r].m.visible = false; }
       for (var m = 0; m < MARK_N; m++) { markPool[m].t = 0; markPool[m].m.visible = false; markPool[m].r.visible = false; }
+      aimR.on = false; aimFill.visible = false; rv.on = false; rv.hold = 0; rv.a = 0; revFill.visible = revLine.visible = revGlow.visible = false;
       aim.a = 0; aim.on = false; aimRet.visible = false; aimArc.visible = false; focusRing.visible = false;
       confAlive = 0; conf.count = 0; conf.visible = false;
     },
@@ -924,7 +1004,10 @@
         if (Sim.hitWindow) press = focusPress(g, g.jobs[0]);
         // aro móvil: diámetro LINEAL en press (2,6 m a 0,9 s -> diana a 0 s); antes de 0,9 s espera a 2,6 m apareciendo
         var fd = FR_D0 + (FR_D1 - FR_D0) * clampN(press / FR_T, 0, 1), fsc = fd / FR_RING;
-        focusRing.scale.set(fsc, fsc, fsc); focusD = fd;
+        // A3/A4: tras un remate perfecto (g.digTight) el aro del defensor humano se ve ×0,7 entero (diana, relleno y aro móvil a la vez:
+        // las escalas relativas de uS no cambian, así que el aro sigue cerrándose justo en press = 0)
+        var tight = g.digTight === true ? DIG_TIGHT : 1;
+        focusRing.scale.set(fsc * tight, fsc * tight, fsc * tight); focusD = fd * tight;
         var fIn = clampN((FR_T + 0.55 - press) / 0.55, 0, 1), fLate = clampN((-press + FR_OFF) / 0.2, 0, 1);
         // escalas relativas al plano (que lleva la del aro): diana FR_D0/FR_TGT, relleno FR_D0·1,12
         focusU.uS.value.set(1, fsc / (FR_D0 / FR_TGT), fsc / (FR_D0 * 1.12));
@@ -952,10 +1035,18 @@
       }
       // ---- retícula de apuntado (saque / remate del humano) ----
       var am = aimTarget(g, aimOut), rdt = ctx.realDt || 0;
+      // A4: en el remate con spreadNow, el RADIO de la diana = dispersión si pulsaras ahora (mín. AIM_RMIN): se encoge hacia el
+      // momento perfecto y crece si te pasas. Saque (o sim sin spreadNow): como antes.
+      var spr = am === 2 && g.mode === 'rally' && typeof aimOut.spreadNow === 'number' && aimOut.spreadNow >= 0 && isFinite(aimOut.spreadNow) ? aimOut.spreadNow : -1;
+      if (spr >= 0) {
+        var rt = clampN(spr, AIM_RMIN, AIM_RMAX);
+        if (!aimR.on) aimR.r = rt;
+        aimR.on = true; aimR.r += (rt - aimR.r) * (1 - Math.exp(-22 * rdt)); aimR.p = spr <= 0.12 ? 1 : 0;
+      } else if (!am) aimR.on = aimR.on && aim.a > 0.01; else aimR.on = false;
       if (am) {
         if (!aim.on) { aim.x = aimOut.x; aim.y = aimOut.y; }
         aim.on = true; aim.tx = aimOut.x; aim.ty = aimOut.y;
-        var ka = 1 - Math.exp(-16 * rdt); aim.x += (aim.tx - aim.x) * ka; aim.y += (aim.ty - aim.y) * ka;
+        var ka = g.aim3 && g.aim3.on ? 1 : 1 - Math.exp(-16 * rdt); aim.x += (aim.tx - aim.x) * ka; aim.y += (aim.ty - aim.y) * ka;
         aim.a = Math.min(am === 2 ? 1 : 0.5, aim.a + rdt * 5);
         if (aim.a > (am === 2 ? 1 : 0.5)) aim.a = am === 2 ? 1 : 0.5;
       } else {
@@ -965,14 +1056,28 @@
       aimRet.visible = aim.a > 0.01;
       if (aimRet.visible) {
         aimRet.position.x = aim.x; aimRet.position.z = -aim.y;
-        var asz = 1 + (1 - Math.min(1, aim.a * 2)) * 0.35 + Math.sin(ctx.time * 5) * 0.03;
+        var asz;
+        if (aimR.on) { // remate apuntado: tamaño = dispersión; dorado y latido rápido cuando va a ir exacto
+          asz = aimR.r / AIM_R1 * (1 + Math.sin(ctx.time * (aimR.p ? 14 : 5)) * (aimR.p ? 0.05 : 0.025));
+          aimMat.color.copy(AIM_OR).lerp(AIM_OK, clampN((0.45 - aimR.r) / 0.2, 0, 1));
+          aimMat.opacity = 0.97 * aim.a;
+        } else {
+          asz = 1 + (1 - Math.min(1, aim.a * 2)) * 0.35 + Math.sin(ctx.time * 5) * 0.03;
+          aimMat.color.copy(AIM_OR); aimMat.opacity = 0.9 * aim.a;
+        }
         aimRet.scale.set(asz, asz, asz); aimRet.rotation.z = -ctx.time * 0.6;
-        aimMat.opacity = 0.9 * aim.a;
+        aimFill.visible = aimR.on;
+        if (aimR.on) { // disco del radio de la dispersión (el relleno de fillTex llega a ~0,9 del plano)
+          var fz = 2 * aimR.r / 0.9; aimFill.position.x = aim.x; aimFill.position.z = -aim.y; aimFill.scale.set(fz, fz, 1);
+          aimFill.material.color.copy(aimMat.color); aimFill.material.opacity = 0.26 * aim.a;
+        }
       }
       // arco: solo con el apuntado activo (balón lanzado / en el aire para rematar)
+      if (!aimRet.visible) aimFill.visible = false;
       aimArc.visible = aimRet.visible && aim.on && am === 2 && !b.held;
       if (aimArc.visible) updateAimArc(b, aim.x, aim.y, aim.a);
 
+      updateReview(g, rdt);
       updateTrail(dt);
 
       // ---- chispas ----
@@ -1148,6 +1253,14 @@
           break;
         case 'landPlayer':
           if (e.player) { rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.3); dustAt(e.player.x, e.player.y, 5, 0.6, 0, 0, 0); }
+          break;
+        case 'challenge': // B6: empieza la revisión; las marcas del bote (con la llamada del árbitro) se quitan: manda la huella
+          for (var cm = 0; cm < MARK_N; cm++) { markPool[cm].t = 0; markPool[cm].m.visible = false; markPool[cm].r.visible = false; }
+          rv.res = -1;
+          break;
+        case 'challengeResult': // la huella se tiñe con la verdad (verde dentro / rojo fuera) y queda ~2 s
+          rv.res = e.truthIn ? 1 : 0;
+          if (!rv.on && isFinite(e.x) && isFinite(e.y)) { rv.x = e.x; rv.y = e.y; placeReview(e.x, e.y); rv.on = true; rv.k = 1; rv.hold = 2.2; }
           break;
         case 'set': // set: un poco en el plano + los cañones de las esquinas
           confettiInFrame(e.team === 1 ? 1 : 0, Math.round(70 * (qScale > 0.6 ? 1 : 0.7)));

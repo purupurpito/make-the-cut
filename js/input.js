@@ -6,11 +6,11 @@
  * main.js las convierte a mundo con VB.CameraRig.getBasis().
  *
  * Teclado: flechas / WASD (por código físico: vale en AZERTY/QWERTZ),
- *   Espacio o J golpear/sacar, K o X saltar, C cambiar, P/Esc pausa, M sonido.
+ *   Espacio o J golpear/sacar, K o X saltar, C cambiar, V challenge, P/Esc pausa, M sonido.
  *   Sin auto‑repetición (e.repeat se ignora) y con prioridad a la última
  *   tecla pulsada si se aprietan dos opuestas (izq+der).
  * Mando (mapeo estándar): stick izq./cruceta mover, A golpear, B o X saltar,
- *   RB/LB/Y cambiar, Start pausa, Select sonido. Zona muerta radial (medida
+ *   RB/LB/Y cambiar, LT (L2) challenge, Start pausa, Select sonido. Zona muerta radial (medida
  *   desde el reposo de cada mando: la deriva de un stick gastado no mueve ni
  *   roba el control al dedo/teclado) con reescalado y respuesta suave.
  *   Vibración en los toques propios. Mapeo no
@@ -30,7 +30,7 @@
   'use strict';
   var VB = window.VB = window.VB || {};
   var ctx = null;
-  var it = { mx: 0, my: 0, hit: false, jump: false, switchPlayer: false, pause: false, mute: false, any: false,
+  var it = { mx: 0, my: 0, hit: false, jump: false, switchPlayer: false, pause: false, mute: false, challenge: false, any: false,
              confirm: false, device: 'keyboard', hitHeld: false, jumpHeld: false, padEvent: '' };
 
   // ---------------- Teclado ----------------
@@ -38,12 +38,12 @@
   var CODE = {
     ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
     ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
-    Space: 'hit', KeyJ: 'hit', KeyK: 'jump', KeyX: 'jump', KeyC: 'switch',
+    Space: 'hit', KeyJ: 'hit', KeyK: 'jump', KeyX: 'jump', KeyC: 'switch', KeyV: 'challenge',
     KeyP: 'pause', Escape: 'pause', KeyM: 'mute', Enter: 'confirm', NumpadEnter: 'confirm'
   };
   var KEY = {
     arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down',
-    ' ': 'hit', spacebar: 'hit', j: 'hit', k: 'jump', x: 'jump', c: 'switch', p: 'pause', escape: 'pause', esc: 'pause', m: 'mute', enter: 'confirm'
+    ' ': 'hit', spacebar: 'hit', j: 'hit', k: 'jump', x: 'jump', c: 'switch', v: 'challenge', p: 'pause', escape: 'pause', esc: 'pause', m: 'mute', enter: 'confirm'
   };
   var down = {};          // acción -> número de teclas físicas que la mantienen
   var held = {};          // código -> acción (para soltar bien aunque cambie el layout)
@@ -171,10 +171,14 @@
   }
   function padBtn(p, i) { var b = p.buttons && p.buttons[i]; return !!(b && (b.pressed || b.value > 0.5)); }
   // botones (mapeo estándar W3C): 0 A, 1 B, 2 X, 3 Y, 4 LB, 5 RB, 8 Select, 9 Start, 12-15 cruceta
-  var PB = { hit: [0], jump: [1, 2], sw: [4, 5, 3], pause: [9], mute: [8] };
-  var PB_X = { hit: [0], jump: [1, 2], sw: [3, 4, 5], pause: [7], mute: [6] };    // no estándar, <= 11 botones (XInput)
-  var PB_D = { hit: [0], jump: [1, 2], sw: [3, 4, 5], pause: [9], mute: [8] };    // no estándar, DirectInput genérico
-  var padNow = { hit: false, jump: false, sw: false, pause: false, mute: false };
+  // challenge (B4): gatillo izquierdo LT/L2 = botón 6 del mapeo estándar (analógico: cuenta por encima de 0,5). En XInput no
+  // estándar los gatillos son ejes (sin mapeo fiable): ahí no hay challenge por mando (teclado V o botón táctil).
+  var PB = { hit: [0], jump: [1, 2], sw: [4, 5, 3], pause: [9], mute: [8], chal: [6] };
+  var PB_X = { hit: [0], jump: [1, 2], sw: [3, 4, 5], pause: [7], mute: [6], chal: [] };    // no estándar, <= 11 botones (XInput)
+  var PB_D = { hit: [0], jump: [1, 2], sw: [3, 4, 5], pause: [9], mute: [8], chal: [6] };    // no estándar, DirectInput genérico (L2)
+  var padNow = { hit: false, jump: false, sw: false, pause: false, mute: false, chal: false };
+  // glifos de texto por acción (los usa la UI en avisos y en el panel de controles)
+  var GLYPHS = { challenge: { keyboard: 'V', gamepad: 'LT', ps: 'L2', touch: 'CHALLENGE' } };
   function anyBtn(p, list) { for (var i = 0; i < list.length; i++) if (padBtn(p, list[i])) return true; return false; }
   // cruceta de un mando no estándar por el eje hat (axes[9]): -1 arriba … +1 arriba-izq. en pasos de 2/7; reposo ~1,29
   var HATX = [0, 1, 1, 1, 0, -1, -1, -1], HATY = [1, 1, 0, -1, -1, -1, 0, 1], hat = { x: 0, y: 0 };
@@ -189,12 +193,12 @@
   }
 
   // ---------------- Táctil ----------------
-  var T = { lastTouch: 0, idle: false, see: [false, false, false], rects: null, rectAt: -1, joy: null, ox: 0, oy: 0, jx: 0, jy: 0, R: 58, hit: false, jump: false, pause: false, sw: false,
+  var T = { lastTouch: 0, idle: false, see: [false, false, false], rects: null, rectAt: -1, joy: null, ox: 0, oy: 0, jx: 0, jy: 0, R: 58, hit: false, jump: false, pause: false, sw: false, chal: false,
             hitDown: false, jumpDown: false, used: false, shown: false, lastLabel: '', lastReady: null, lastServe: null,
             touchN: 0, touchEvT: 0, lastW: 0, lastH: 0, lastRing: -2, lastCue: false, dead: false };
   var el = {};
   // estadística/diagnóstico (VB.Input._debug(): pruebas táctiles y de mando con eventos reales vía DevTools)
-  var stats = { press: { hit: 0, jump: 0, sw: 0, pause: 0 }, out: { hit: 0, jump: 0, sw: 0, pause: 0, confirm: 0 }, slide: 0, lost: 0, adopt: 0,
+  var stats = { press: { hit: 0, jump: 0, sw: 0, pause: 0 }, out: { hit: 0, jump: 0, sw: 0, pause: 0, confirm: 0, chal: 0 }, slide: 0, lost: 0, adopt: 0,
                 promote: 0, resets: 0, padLost: 0, padPause: 0 };
   // punteros táctiles activos: pointerId -> { role:'joy'|'hit'|'jump'|'sw'|'pause'|'none', x, y, touch }
   var ptrs = {}, nPtr = 0, cnt = { hit: 0, jump: 0, sw: 0, pause: 0 };
@@ -550,7 +554,10 @@
     if (dead !== T.dead) { T.dead = dead; el.root.classList.toggle('dead', dead); }
     // nuestro saque: sacador humano, tanto con el balón en la mano ('ready') como lanzado ('toss')
     var sv = g.server || (g.ball && g.ball.held) || null;
-    var myServe = g.mode === 'serve' && !!sv && sv.team === 0 && !g.demo && !g.autopilot;
+    var myServe = g.mode === 'serve' && !!sv && sv.team === 0 && !g.demo && !g.autopilot && (g.ctrlMode !== 'one' || sv === g.ctrl);
+    // modo «controlar 1 jugador» (sim g.ctrlMode 'one'): no hay cambio de jugador, fuera el botón ⇄
+    var swHide = g.ctrlMode === 'one';
+    if (swHide !== T.swHide) { T.swHide = swHide; el.sw.style.display = swHide ? 'none' : ''; }
     var tossing = myServe && g.serveState === 'toss';
     var label = myServe ? 'SACAR' : 'GOLPEAR';
     if (label !== T.lastLabel) { T.lastLabel = label; el.hitLabel.textContent = label; el.hit.setAttribute('aria-label', label === 'SACAR' ? 'Sacar' : 'Golpear'); }
@@ -686,7 +693,19 @@
       buildTouch();
     },
     /** Limpia pulsaciones al cambiar de estado (p. ej. el Espacio que pulsa "Jugar" no saca). */
-    onState: function () { for (var ek in edge) edge[ek] = false; T.hit = T.jump = T.pause = T.sw = false; },
+    onState: function () { for (var ek in edge) edge[ek] = false; T.hit = T.jump = T.pause = T.sw = false; T.chal = false; },
+    /** OPCIONAL (B4/B7): glifo de texto de una acción para el dispositivo dado ('keyboard'|'gamepad'|'touch'; por defecto el
+     *  activo). fam = 'ps' para mandos PlayStation. Hoy solo 'challenge': «V» / «LT» (PS: «L2») / «CHALLENGE». '' si no hay. */
+    glyph: function (action, dev, fam) {
+      var t = GLYPHS[action]; if (!t) return '';
+      var d = dev || it.device || 'keyboard';
+      if (d === 'gamepad' && fam === 'ps' && t.ps) return t.ps;
+      return t[d] || t.keyboard || '';
+    },
+    /** OPCIONAL: tabla de glifos { acción: { keyboard, gamepad, ps, touch } } (para el panel de controles). */
+    glyphs: function () { return GLYPHS; },
+    /** OPCIONAL: pulso de challenge desde fuera (p. ej. un botón táctil propio de la UI): sale en el siguiente poll(). */
+    pressChallenge: function () { T.chal = true; },
     resize: function (w, h) {
       w = w || (ctx && ctx.width) || 0; h = h || (ctx && ctx.height) || 0;
       // cambio de orientación (o de tamaño > 30 %) con dedos puestos: se suelta todo. Si solo cambia un poco
@@ -722,6 +741,7 @@
       var mx = axis('left', 'right'), my = axis('down', 'up');
       if (mx && my) { mx *= 0.7071; my *= 0.7071; }
       var hit = !!edge.hit, jump = !!edge.jump, sw = !!edge['switch'], pause = !!edge.pause, mute = !!edge.mute, confirm = !!edge.confirm;
+      var chal = !!edge.challenge || T.chal; T.chal = false;
       var hitHeld = isDown('hit'), jumpHeld = isDown('jump');
       for (var ek in edge) edge[ek] = false; // sin asignar un objeto nuevo por frame
       // --- táctil (y de pantalla hacia abajo => my negativo)
@@ -765,24 +785,24 @@
         if (!std && !dx && !dy && readHat(p, pad.idx)) { dx = hat.x; dy = hat.y; }
         if (dx || dy) { var dl = Math.hypot(dx, dy); mx = dx / dl; my = dy / dl; used = true; }
         padNow.hit = anyBtn(p, map.hit); padNow.jump = anyBtn(p, map.jump); padNow.sw = anyBtn(p, map.sw);
-        padNow.pause = anyBtn(p, map.pause); padNow.mute = anyBtn(p, map.mute);
-        var pv = pad.prev[pad.idx] || (pad.prev[pad.idx] = [false, false, false, false, false]);   // (una vez por mando)
+        padNow.pause = anyBtn(p, map.pause); padNow.mute = anyBtn(p, map.mute); padNow.chal = anyBtn(p, map.chal);
+        var pv = pad.prev[pad.idx] || (pad.prev[pad.idx] = [false, false, false, false, false, false]);   // (una vez por mando)
         if (padNow.hit && !pv[0]) hit = true; if (padNow.jump && !pv[1]) jump = true; if (padNow.sw && !pv[2]) sw = true;
-        if (padNow.pause && !pv[3]) pause = true; if (padNow.mute && !pv[4]) mute = true;
+        if (padNow.pause && !pv[3]) pause = true; if (padNow.mute && !pv[4]) mute = true; if (padNow.chal && !pv[5]) chal = true;
         if ((padNow.hit && !pv[0]) || (padNow.pause && !pv[3])) confirm = true;
-        if (padNow.hit || padNow.jump || padNow.sw || padNow.pause || padNow.mute) used = true;
+        if (padNow.hit || padNow.jump || padNow.sw || padNow.pause || padNow.mute || padNow.chal) used = true;
         hitHeld = hitHeld || padNow.hit; jumpHeld = jumpHeld || padNow.jump;
-        pv[0] = padNow.hit; pv[1] = padNow.jump; pv[2] = padNow.sw; pv[3] = padNow.pause; pv[4] = padNow.mute;
+        pv[0] = padNow.hit; pv[1] = padNow.jump; pv[2] = padNow.sw; pv[3] = padNow.pause; pv[4] = padNow.mute; pv[5] = padNow.chal;
         if (used) it.device = 'gamepad';
       }
       // mando activo desconectado en pleno partido: pausa (una vez; si ya está en pausa, nada)
       if (pad.pendPause) { pad.pendPause = false; if (ctx.state === 'playing' && !pause) { pause = true; stats.padPause++; } }
       var l = Math.hypot(mx, my); if (l > 1) { mx /= l; my /= l; }
       it.mx = mx; it.my = my; it.hit = hit; it.jump = jump; it.switchPlayer = sw; it.pause = pause; it.mute = mute;
-      it.confirm = confirm; it.hitHeld = hitHeld; it.jumpHeld = jumpHeld;
+      it.confirm = confirm; it.hitHeld = hitHeld; it.jumpHeld = jumpHeld; it.challenge = chal;
       it.padEvent = pad.event; pad.event = '';
-      it.any = hit || jump || sw || pause || mute || confirm || mx !== 0 || my !== 0;
-      if (hit) stats.out.hit++; if (jump) stats.out.jump++; if (sw) stats.out.sw++; if (pause) stats.out.pause++; if (confirm) stats.out.confirm++;
+      it.any = hit || jump || sw || pause || mute || confirm || chal || mx !== 0 || my !== 0;
+      if (hit) stats.out.hit++; if (jump) stats.out.jump++; if (sw) stats.out.sw++; if (pause) stats.out.pause++; if (confirm) stats.out.confirm++; if (chal) stats.out.chal++;
 
       // --- overlay táctil: en partido, en horizontal, si se está jugando con el dedo
       var touchy = T.used || ctx.isTouch;

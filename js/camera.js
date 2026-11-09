@@ -242,6 +242,7 @@
   /** Elige el plano según el estado del partido. */
   function pickShot(g) {
     if (!g || g.demo || ctx.state === 'menu') return 'menu';
+    if (reviewOn(g)) return 'review';   // (revisión del challenge, B5: manda sobre el resto mientras dure)
     if (INTRO.on && g.mode === 'serve') return 'intro';   // (presentación del partido, UI-14)
     if (CL.on) return 'clinch';   // (cierre de set/partido, CAM-09)
     if (CW.on && g.mode === 'serve') return 'cutaway';   // (sacador rival antes del lanzamiento, CAM-14)
@@ -1657,6 +1658,52 @@
    * sobre el campo rival, que recorre la banda hasta detrás de nuestro equipo bajando de 7,2 a 6,3 m y girando ~85°
    * (<= 45-53°/s; tope del rig 60°/s). Al empezar el saque, la grúa baja deslizando (1,4 s) al plano del saque: sin corte.
    * El ritmo se ajusta a la pausa real (sim: 3,6 s de juego tras el set con ×0,5 los primeros 0,8 s reales; 3,3 s a los 8). */
+  /* ---------------- REVISIÓN DEL CHALLENGE (B5) ----------------
+   * Mientras sim publica g.review = {x, y, t, dur, ...} (coords de simulación), corte a un plano «de tele»: la cámara se
+   * coloca en la prolongación de la línea más cercana al bote y baja sobre la marca mirando a lo largo de la línea (la línea
+   * queda vertical en el centro y la huella a un lado). Con Cámara estable (o reduced-motion) la bajada es corta y lenta.
+   * Al acabar (g.review = null) vuelve por corte al flujo normal (punto o saque). Lectura defensiva: sin x/y válidos, nada. */
+  var RV = { cutIn: false, cutOut: false, x: 0, y: 0, lx: 0, ly: 0, ax: 1, ay: 0, k: 0 };
+  function reviewOn(g) {
+    var r = g && g.review;
+    return !!(r && typeof r.x === 'number' && typeof r.y === 'number' && r.x === r.x && r.y === r.y && !g.demo);
+  }
+  /** Línea más cercana al bote y lado desde el que se mira (una vez al entrar). */
+  function reviewPlan(g) {
+    var r = g.review, C0 = VB.C || {}, HL = C0.HL || 9, HW = C0.HW || 4.5;
+    var x = mn(mx(r.x, -HL - 3), HL + 3), y = mn(mx(r.y, -HW - 3), HW + 3);
+    RV.x = x; RV.y = y;
+    var sy = y >= 0 ? 1 : -1, sx = x >= 0 ? 1 : -1;
+    if (Math.abs(HW - Math.abs(y)) <= Math.abs(HL - Math.abs(x))) {
+      // banda: la línea va a lo largo de x; cámara en su prolongación, del lado del fondo (lejos de la red)
+      RV.lx = x; RV.ly = sy * HW; RV.ax = sx; RV.ay = 0;
+      // bote cerca de la red: mirando hacia ella el poste (y su protección) tapaba medio plano; la cámara se pone entre
+      // la red y la marca mirando hacia el fondo (el poste queda detrás)
+      if (Math.abs(x) >= 1.6 && Math.abs(x) < 4.5) RV.ax = -sx;
+    } else {
+      // fondo: la línea va a lo largo de y; cámara en su prolongación, hacia el centro de la pista (dentro del pabellón)
+      RV.lx = sx * HL; RV.ly = y; RV.ax = 0; RV.ay = -sy;
+    }
+  }
+  function reviewShot(g) {
+    var r = g.review, dur = mx(1, +r.dur || 4.5), t = mx(0, +r.t || 0), calm = comfort();
+    // bajada: ~55 % de la revisión (confort: más corta en recorrido y algo más lenta al empezar)
+    var k = smooth01(t / (dur * (calm ? 0.45 : 0.55)));
+    RV.k = k;
+    var d0 = calm ? 4.2 : 5.6, d1 = 2.9, z0 = calm ? 2.9 : 5.4, z1 = 1.25;
+    var dist = d0 + (d1 - d0) * k, h = z0 + (z1 - z0) * k;
+    if (RV.ax && RV.ax * RV.x < 0) { // del lado de la red: sin cruzarla (a >= 0,9 m de ella); lo que falta de distancia, en altura
+      var room = mx(0.7, Math.abs(RV.x) - 0.9);
+      if (dist > room) { h += (dist - room) * 0.55; dist = room; }
+    }
+    // posición: sobre la prolongación de la línea (coordenada lateral = la de la línea), a 'dist' de la marca
+    if (RV.ax) { D.x = RV.x + RV.ax * dist; D.y = RV.ly; }
+    else { D.x = RV.lx; D.y = RV.y + RV.ay * dist; }
+    D.z = h;
+    // mira: entre la marca y la línea (las dos en cuadro), a ras de suelo
+    A.x = RV.x * 0.6 + (RV.ax ? RV.x : RV.lx) * 0.4; A.y = RV.y * 0.6 + (RV.ax ? RV.ly : RV.y) * 0.4; A.z = 0.04;
+    K.fovWant = fovFor(42 + (27 - 42) * k, 12, 20);
+  }
   var CC = { on: false, t: 0, why: '', start: 1.45, len: 2.4, cut: false, u: 0 };
   // pausa del set recortada por el jugador (SIM-03 skipHold) antes de que la grúa acabe: la vuelta al saque es por CORTE
   // (deslizar desde el plano de reacción o desde media grúa barría media pista en diagonal alrededor de la red)
@@ -2367,6 +2414,7 @@
     if (s === 'menu') menuShot(g);
     else if (s === 'point') pointShot(g);
     else if (s === 'court') courtShot(g);
+    else if (s === 'review') reviewShot(g);
     else if (s === 'clinch') clinchShot(g);
     else if (s === 'cutaway') cutawayShot(g);
     else if (s === 'intro') introShot(g);
@@ -2396,6 +2444,14 @@
     if (GAMEPLAY[to] && !GAMEPLAY[from]) settleSmoothers = true;
     if (SHOTS[to] && SHOTS[to].wide && !(SHOTS[from] && SHOTS[from].wide)) K.wideT = 0;
     // cierre de set/partido (CAM-09): sus cortes los hace update (CL.cutNow); al salir: grúa / final / punto como siempre, saque por corte
+    // revisión del challenge (B5): entra y sale por CORTE (como la tele); al volver al punto, se replanifica su plano
+    if (to === 'review') { reviewPlan(g); RV.cutIn = true; K.blendT = 0; FT.on = false; if (comfort()) K.shakeT = 0; return; }
+    if (from === 'review') {
+      RV.cutOut = true; K.blendT = 0;
+      if (to === 'point') { K.pointT = 0; planPoint(g, pointHow || inferHow(g), pointPlayer); PF.backLock = false; PF.backCut = true; }
+      if (GAMEPLAY[to]) settleSmoothers = true;
+      return;
+    }
     if (to === 'clinch') { K.blendT = 0; return; }
     if (to === 'intro') { K.blendT = 0; INTRO.cutIn = true; return; }   // (del menú a la grúa: corte limpio, sin cruzar el pabellón volando)
     if (from === 'intro') { K.blendT = 0; INTRO.cut = true; return; }
@@ -2839,7 +2895,7 @@
       var calm = comfort(), lp = 40, ly = 70;
       if (shot === 'serveThem') ly = 50;
       else if (shot === 'serveUs' && K.blendT > 0) ly = 55;   // vuelta deslizada desde el plano del punto
-      else if (shot === 'point' || shot === 'over' || shot === 'court') lp = ly = 60;
+      else if (shot === 'point' || shot === 'over' || shot === 'court' || shot === 'review') lp = ly = 60;
       else if (shot === 'clinch') lp = ly = CL.phase === 'track' ? 80 : 60;
       else if (shot === 'cutaway' || shot === 'intro') lp = ly = 60;
       else if (shot === 'menu' || shot === '') lp = ly = 25;
@@ -3143,7 +3199,7 @@
     },
     onGameStart: function (g) {
       slow.t = 0; if (ctx) ctx.timeScale = 1; readBounds();
-      sw.active = false; K.shakeT = 0; K.shakeA = 0; K.kick = 0; ant.x = ant.y = antV.x = antV.y = 0; CC.on = false; CC.cut = false;
+      sw.active = false; K.shakeT = 0; K.shakeA = 0; K.kick = 0; ant.x = ant.y = antV.x = antV.y = 0; CC.on = false; CC.cut = false; RV.cutIn = RV.cutOut = false;
       K.hsT = 0; K.hsE = 0; K.punchA = 0; FB.on = false; HS.on = false; FT.on = false; K.ftU = 0; K.ftW = 0; CL.on = false; CL.phase = ''; CL.cutNow = false; CL.abortCut = false; CW.on = false; CW.cutIn = false; CW.cutOut = false; INTRO.on = false; INTRO.cut = false; backPending = false; cutCheck = false; settleSmoothers = false; spikeTeam = -1; pointEv = null;
       if (!g) return;
       // del menú (o de una partida anterior) a un partido nuevo: transición larga y suave
@@ -3177,6 +3233,7 @@
     /** Temblor: amplitud en metros (0,03-0,15) y duración en s. */
     shake: function (amount, dur) {
       amount = +amount || 0; if (amount <= 0) return;
+      if (shot === 'review' && comfort()) return;   // (revisión del challenge con Cámara estable: sin sacudidas)
       if (amount >= K.shakeA * Math.pow(K.shakeT / (K.shakeDur || 1), 2)) { K.shakeA = amount; K.shakeDur = mx(0.05, dur || 0.3); K.shakeT = K.shakeDur; K.shakeRoll = 0.35; }
     },
     /** Cámara lenta: escala `scale` durante `realSeconds` reales; vuelve a 1 con suavidad en `easeOut` s (opcional). */
@@ -3220,7 +3277,7 @@
      *  {heroId, mateId, team, camX, camY (sitio de la cámara, sim), hx, hy (sitio del héroe), heroYaw (rad, sim: de cara a la
      *  cámara, abierto hacia el compañero), conv (el compañero va a su sitio), mx, my (sitio del compañero; NaN si no va),
      *  mateYaw, t (g.time del plan)}. Solo cambia la cámara si VB.Players.heroShotAware === true. No modificar. */
-    heroShot: function () { var g = ctx && ctx.game; return HS.on && g && (g.mode === 'point') ? HS : null; },
+    heroShot: function () { var g = ctx && ctx.game; return HS.on && g && (g.mode === 'point') && !reviewOn(g) ? HS : null; },
     /** Ejes de la cámara de juego en el plano del suelo (coordenadas de simulación). */
     getBasis: function () { return basis; },
     /** OPCIONAL (depuración / tests): plano actual y datos de encuadre. */
@@ -3391,6 +3448,8 @@
       svcPrewarm(g);
       // CORTES DE PLANO deliberados: el rig queda asentado en el plano nuevo (settle) y se anotan (cutN / lastCut)
       if (CC.cut) { CC.cut = false; settle(g); markCut(prevShot, shot, 'court'); }
+      if (RV.cutIn) { RV.cutIn = false; if (shot === 'review') { settle(g); markCut(prevShot, 'review', 'replay'); } }
+      if (RV.cutOut) { RV.cutOut = false; if (shot !== 'review') { settle(g); markCut('point', shot, (shot === 'serveUs' || shot === 'serveThem') ? 'serve' : shot === 'over' ? 'over' : 'replay'); } }
       if (CL.abortCut) { CL.abortCut = false; settle(g); markCut('clinch', shot, 'clinch'); }
       // (el corte que SALE del punto es el de vuelta al saque, 'serve': cortinilla de UI-13 y rótulos con él; la vuelta a la cámara de
       // recepción es un corte seco dentro del saque, 'cutaway')
@@ -3434,7 +3493,7 @@
           resetVel(); outInit = true; K.outYaw = K.fbYaw1; K.outPitch = K.fbPitch1; K.blendT = 0;
         }
       } else {
-        var c = SHOTS[shot], baseSmooth = c ? c.smooth : (shot === 'menu' ? 1.0 : shot === 'over' ? 0.9 : shot === 'court' ? 0.14 : shot === 'clinch' ? 0.12 : shot === 'cutaway' ? 0.2 : shot === 'intro' ? 0.35 : 0.6);
+        var c = SHOTS[shot], baseSmooth = c ? c.smooth : (shot === 'menu' ? 1.0 : shot === 'over' ? 0.9 : shot === 'court' ? 0.14 : shot === 'review' ? (calm ? 0.3 : 0.2) : shot === 'clinch' ? 0.12 : shot === 'cutaway' ? 0.2 : shot === 'intro' ? 0.35 : 0.6);
         // ajuste del jugador (Ajustes > cámara): 0,5 lenta … 1,5 rápida
         if (c) { var sens = mn(mx(+(ctx.settings && ctx.settings.camSens) || 1, 0.5), 1.5); baseSmooth /= sens; }
         if (c && calm) baseSmooth *= 1.6;

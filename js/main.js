@@ -66,7 +66,7 @@
     // móvil; input.js), hudScale (1 | 1,15 | 1,3: tamaño del HUD y de las hojas; ui.js), softFlash (destellos suaves; arena/fx/ui)
     // coachTips: consejos del partido (franja de arriba). Se ven hasta la primera victoria: ui.js los apaga al ganar el 1r partido
     // y se pueden volver a encender en Ajustes · Juego.
-    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, camSens: 1, sfxVol: 1, musicVol: 0.75,
+    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, ctrlMode: 'both', camSens: 1, sfxVol: 1, musicVol: 0.75,
       camStable: false, rumble: true, hudScale: 1, softFlash: false };
     var saved = false;
     var o = null;
@@ -87,6 +87,7 @@
     s.musicVol = Math.max(0, Math.min(1, isFinite(+s.musicVol) ? +s.musicVol : 0.75));
     if ([1, 1.15, 1.3].indexOf(s.hudScale) < 0) s.hudScale = 1;
     if ([11, 15, 21, 25].indexOf(s.setPoints) < 0) s.setPoints = 25;   // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS)
+    if (s.ctrlMode !== 'one') s.ctrlMode = 'both';                      // control: los dos jugadores o solo uno (sim: g.ctrlMode)
     if (Q.diff && DIFFS.indexOf(Q.diff) >= 0) s.difficulty = Q.diff;
     return s;
   }
@@ -290,7 +291,7 @@
     tryFullscreen();
     ctx.frozen = false;
     // present (SIM-03): en los partidos de verdad la pausa del punto se alarga en los momentos grandes (y se puede recortar)
-    setGame(Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: isRookie(), present: !opts.autopilot, points: opts.points || +Q.points || ctx.settings.setPoints }));
+    setGame(Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: isRookie(), present: !opts.autopilot, points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: opts.ctrl || Q.ctrl || ctx.settings.ctrlMode }));
     setState('playing');
     // los jugadores se reconstruyen en onGameStart: sube sus texturas/programas antes del primer frame
     // (sin pintar: aquí no hay telón que tape los objetos ocultos)
@@ -340,6 +341,13 @@
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', ctx.settings, k);
   };
   ctx.actions.toggleMute = function () { ctx.actions.setSetting('muted', !ctx.settings.muted); };
+  // Challenge (B7): pide revisión de la última llamada de línea para el humano (equipo 0). true si sim la acepta
+  ctx.actions.challenge = function () {
+    if (ctx.state !== 'playing' || !ctx.game || !Sim.challenge) return false;
+    var ok = false; try { ok = !!Sim.challenge(ctx.game, 0); } catch (e) { reportError('Sim.challenge', e); }
+    if (ok) call('UI', 'onChallenge', ctx.game, 0);
+    return ok;
+  };
 
   function setState(s) {
     var prev = ctx.state; ctx.state = s;
@@ -452,6 +460,7 @@
         if (!call('UI', 'back') && (ctx.state === 'playing' || ctx.state === 'paused')) ctx.actions.togglePause();
       }
       if (it.mute) ctx.actions.toggleMute();
+      if (it.challenge && ctx.state === 'playing' && !(intro.left > 0)) ctx.actions.challenge(); // B4: V / LT
       if (it.any) call('Audio', 'unlock');
       if (ctx.state !== 'playing') {
         var st0 = ctx.state;

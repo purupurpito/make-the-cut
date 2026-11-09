@@ -335,7 +335,7 @@
   function cacheEls() {
     ['hud', 'banner', 'callout', 'menu', 'pause', 'end', 'panel', 'rotate', 'touchbar', 'prompt', 'promptKey', 'promptText', 'promptBar', 'promptRing', 'coach',
       'pS0', 'pS1', 'pMid', 'endTitle', 'endKicker', 'endS0', 'endS1', 'endSets', 'endStats', 'endRecord',
-      'btnPlay', 'optDiff', 'optPts', 'ptsVal', 'btnTut', 'btnControls', 'btnSettings', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
+      'btnPlay', 'optDiff', 'optPts', 'ptsVal', 'optCtrl', 'ctrlVal', 'btnTut', 'btnControls', 'btnSettings', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
       'btnAgain', 'btnMenu', 'btnPanelBack', 'btnTutPrev', 'btnTutNext', 'btnHudPause', 'btnHudMute', 'icoSound',
       'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord',
       'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack'].forEach(function (k) { el[k] = $(k); });
@@ -352,6 +352,7 @@
     el.off = $('offArrow'); el.offNum = $('offNum'); el.offRot = el.off.firstChild;
     el.pnCtl = $('pnCtl'); el.pKick = document.querySelector('#pause .sh-k');
     el.stamp = $('stamp'); el.stampIn = el.stamp.firstChild; el.stampT = $('stampT'); el.stampS = $('stampS'); el.sr = $('srLive');
+    el.chal = $('chal'); el.chalK = el.chal ? el.chal.firstChild : null; el.chalKey = $('chalKey'); el.chalN = $('chalN'); el.chalBar = $('chalBar'); el.sbChal = $('sbChal');
   }
   function device() {
     var d = ctx.inputDevice || 'keyboard';
@@ -385,6 +386,11 @@
   /** Glifo HTML de un botón del mando ('a' golpear, 'b'/'x' saltar, 'y' cambiar). */
   var PADN = { '✕': 'equis', '○': 'círculo', '□': 'cuadrado', '△': 'triángulo' };
   function padKey(r) { var k = padSet()[r]; return '<span class="key pad ' + k[0] + '"' + (PADN[k[1]] ? ' aria-label="' + PADN[k[1]] + '"' : '') + '>' + k[1] + '</span>'; }
+  /** A5: el humano está en el aire en su 3.er toque (mira libre g.aim3 de sim; de reserva, saltando en su lado). */
+  function aim3(g, p) {
+    if (g.aim3) return !!g.aim3.on;
+    return !!p && p.z > 0.2 && p.x > 0;
+  }
   function G() {
     var d = device();
     if (d === 'gamepad' && padFam() === 'ps') {
@@ -392,6 +398,46 @@
       return GLYPH_PS;
     }
     return GLYPH[d] || GLYPH.keyboard;
+  }
+
+  // =====================================================================
+  //  CHALLENGE (B7): contador junto al marcador, botón con la ventana de 7 s y rótulo de revisión
+  //  Lee VB.Sim.canChallenge(g, 0), g.challenges y g.review (todo opcional: sin sim de challenge no se ve nada)
+  // =====================================================================
+  var chal = { key: '', cnt: '', n: '', bar: -1 };
+  function srSay(t) { if (el.sr) { el.sr.textContent = ''; el.sr.textContent = t; } }
+  function chalTick(g) {
+    if (!el.chal) return;
+    var live = !g.demo && (ctx.state === 'playing' || ctx.state === 'paused') && !(ctx.introLeft > 0);
+    // contador (2 iconos): challenges que te quedan en el set
+    var ck = live && g.challenges ? String(g.challenges[0]) : '';
+    if (chal.cnt !== ck) {
+      chal.cnt = ck; el.sbChal.hidden = !ck;
+      var ic = el.sbChal.children; for (var i = 0; i < ic.length; i++) ic[i].className = +ck > i ? 'on' : '';
+      if (ck) el.sbChal.setAttribute('aria-label', 'Challenges: ' + ck);
+    }
+    var rv = live ? g.review : null, left = 0;
+    if (live && !rv && ctx.state === 'playing' && VB.Sim && VB.Sim.canChallenge) { try { left = +VB.Sim.canChallenge(g, 0) || 0; } catch (e) { left = 0; } }
+    var dv = device(), mode = rv ? 'rev' : left > 0 ? 'win' : '';
+    var key = mode + '|' + dv + padFam() + '|' + (rv ? rv.team : '');
+    if (chal.key !== key) {
+      chal.key = key; chal.n = null; chal.bar = -1;
+      el.chal.className = mode ? 'show ' + mode + (dv === 'touch' ? ' tch' : '') : '';
+      if (mode === 'win') {
+        el.chalK.textContent = dv === 'touch' ? 'CHALLENGE' : 'Challenge';
+        el.chalKey.textContent = dv === 'touch' ? '' : dv === 'gamepad' ? (padFam() === 'ps' ? 'L2' : 'LT') : 'V';
+        el.chal.setAttribute('aria-label', 'Pedir challenge');
+      } else if (mode === 'rev') {
+        el.chalK.textContent = 'REVISIÓN';
+        el.chalKey.textContent = 'Challenge · ' + (rv.team === 0 ? 'TÚ' : 'CPU');
+        el.chal.setAttribute('aria-label', 'Revisión del challenge');
+      }
+    }
+    if (!mode) return;
+    var n = mode === 'win' ? String(Math.ceil(left)) : '', fr = mode === 'win' ? Math.min(1, left / 7) : Math.min(1, (rv.t || 0) / (rv.dur || 4.5));
+    if (chal.n !== n) { chal.n = n; el.chalN.textContent = n; el.chalN.hidden = !n; }
+    fr = Math.round(fr * 100) / 100;
+    if (chal.bar !== fr) { chal.bar = fr; el.chalBar.style.transform = 'scaleX(' + fr + ')'; }
   }
 
   // =====================================================================
@@ -602,6 +648,18 @@
           // fin de set: «Set N» entra en la bajada de la grúa, en cuanto se va «Cambio de campo» (no al empezar el saque)
           courtNext = e.why === 'set' && e.sets ? { n: e.setNo + 1, sub: e.setNo + 1 === 3 ? 'Set decisivo · a ' + decT(g) + ' puntos' : 'Sets ' + e.sets[0] + '-' + e.sets[1] } : null;
           break;
+        case 'challenge':
+          if (e.team === 1) callout('La CPU pide challenge', 1, null, 2.4);
+          srSay(e.team === 1 ? 'La CPU pide challenge.' : 'Challenge pedido. Revisión.');
+          break;
+        case 'challengeResult': {
+          var cm = (Math.abs(e.dist || 0) * 100).toFixed(1).replace('.', ','), io = e.truthIn ? 'IN' : 'OUT';
+          var who = e.team === 0 ? 'ti' : 'la CPU', ph = e.overturned ? 'Punto para ' + who : 'Se mantiene';
+          if (!e.overturned && e.team === 0 && e.left) ph += e.left[0] === 1 ? ' · te queda 1 challenge' : e.left[0] ? ' · te quedan ' + e.left[0] : ' · sin challenges';
+          banner(io, cm + ' cm de la línea · ' + ph, '', e.overturned ? (e.team === 0 ? 'win' : 'lose') : 'neutral', 3.2, 'challenge');
+          srSay(io + ', a ' + cm + ' centímetros. ' + ph.replace(' · ', ', ') + '. Tú ' + g.score[0] + ', CPU ' + g.score[1] + '.');
+          break;
+        }
         case 'newSet':
           courtNext = null;
           if (newSetShown === e.setNo) { newSetShown = 0; break; } // ya salió en la bajada de la grúa
@@ -1324,6 +1382,7 @@
 
   function hud(g, dt) {
     var demo = g.demo;
+    chalTick(g);
     setText(el.sbSet, 'set', demo ? 'DEMO' : ('SET ' + g.setNo + (g.setNo === 3 ? ' · A 15' : '')));
     setText(el.name0, 'n0', demo ? 'ROJO' : 'TÚ'); setText(el.name1, 'n1', demo ? 'AZUL' : 'CPU');
     setText(el.pts0, 'p0', g.score[0]); setText(el.pts1, 'p1', g.score[1]);
@@ -1393,6 +1452,9 @@
     if (last.tbDim !== tbDim) { last.tbDim = tbDim; el.touchbar.classList.toggle('thru', tbDim); }
     if (el.guide.classList.contains('thru') !== guideThru) el.guide.classList.toggle('thru', guideThru);
     if (last.coachThru !== coachThru) { last.coachThru = coachThru; el.coach.classList.toggle('thru', coachThru); }
+    // con la mira libre (3.er toque en el aire) el consejo es la instrucción clave: translúcido, pero legible
+    var aimOn = !!(g.aim3 && g.aim3.on);
+    if (last.coachAim !== aimOn) { last.coachAim = aimOn; el.coach.classList.toggle('aimtip', aimOn); }
     // ---- aviso contextual + consejo ----
     var help = ctx.settings.showHelp !== false, gl = G(), touchDev = device() === 'touch';
     // consejos (franja de arriba): ajuste propio, Ajustes · Juego · Consejos (se apaga solo al ganar el 1r partido)
@@ -1400,7 +1462,8 @@
     var pk = '', ptext = '', pcls = '', coach = '', progress = 0, clockF = -1;
     var p = g.ctrl, humanSide = playing && (!g.autopilot || ctx.debug) && !(ctx.introLeft > 0) && !introUI.quiet;
     if (humanSide && p) {
-      var sv = g.server || (g.ball.held || null), myServe = g.mode === 'serve' && sv && sv.team === 0;
+      var one = g.ctrlMode === 'one'; // modo «controlar 1 jugador»: sin cambio de jugador; el compañero IA saca y toca solo
+      var sv = g.server || (g.ball.held || null), myServe = g.mode === 'serve' && sv && sv.team === 0 && (!one || sv === p);
       var tossed = g.serveState ? g.serveState === 'toss' : !g.ball.held;
       if (myServe && !tossed && g.serveAuth === false) {
         // antes del silbato del árbitro no se puede sacar (regla)
@@ -1439,7 +1502,8 @@
         // basta el aviso "¡Golpea ahora!" junto al jugador
         coach = '';
       } else if (g.mode === 'serve') {
-        coach = tips ? (touchDev ? 'Saca la CPU · a recibir' : 'Saca la CPU · prepárate para la <b>recepción</b>') : '';
+        coach = !tips ? '' : sv && sv.team === 0 ? 'Saca tu compañero' // modo uno: saca la IA de tu equipo
+          : (touchDev ? 'Saca la CPU · a recibir' : 'Saca la CPU · prepárate para la <b>recepción</b>');
       } else if (g.mode === 'rally') {
         var w = VB.Sim && VB.Sim.hitWindow ? hw(g, p) : null;
         var wpr = w ? (w.press === w.press && w.press != null ? w.press : w.t) : 9;
@@ -1458,17 +1522,20 @@
           // (el contador de toques ya dice recepción/colocación/ataque)
           if (nt === 1) coach = 'Al círculo y ' + gl.hit;
           else if (nt === 2) coach = 'Bajo el balón y ' + gl.hit;
-          else if (nt === 3) coach = gl.jump + ' y ' + gl.hit + ' arriba';
-          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump : '<b>Defiende</b> el círculo · ' + gl.sw + ' bloqueas tú';
+          else if (nt === 3) coach = aim3(g, p) ? 'Apunta con ' + gl.aim : gl.jump + ' y ' + gl.hit + ' arriba';
+          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump : '<b>Defiende</b> el círculo' + (one ? '' : ' · ' + gl.sw + ' bloqueas tú');
         } else if (tips) {
           if (nt === 1) coach = '1r toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al círculo y pulsa ' + gl.hit;
           else if (nt === 2) coach = '2.º toque · <b>Colocación</b>: ponte bajo el balón y pulsa ' + gl.hit;
-          else if (nt === 3) coach = '3.er toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
+          else if (nt === 3) coach = aim3(g, p) ? '3.er toque · <b>Apunta con ' + gl.aim + '</b> y golpea con ' + gl.hit + ' en lo alto'
+            : '3.er toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
           else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? 'La CPU va a atacar: frente al atacante, ' + gl.jump + ' para <b>bloquear</b>'
-            : 'La CPU va a atacar: <b>defiende</b> el círculo · tu compañero bloquea · ' + gl.sw + ' para bloquear tú';
+            : 'La CPU va a atacar: <b>defiende</b> el círculo · tu compañero bloquea' + (one ? '' : ' · ' + gl.sw + ' para bloquear tú');
         }
+        // modo uno: el siguiente toque es del compañero IA (no del humano): solo prepararse
+        if (tips && one && nt > 0 && g.jobs && g.jobs[0] && g.jobs[0] !== p) coach = nt === 2 ? 'Coloca tu compañero · prepárate para atacar' : 'Juega tu compañero · colócate';
         if (bodyTipT > 0 && tips && !touchDev) coach = 'Pulsa ' + gl.hit + ' antes de que llegue el balón';
-        if (guideOn(g)) guideCheck(g, p, w, nt, gl);
+        if (guideOn(g) && !(one && g.jobs && g.jobs[0] && g.jobs[0] !== p)) guideCheck(g, p, w, nt, gl);
       }
     }
     if (!help && pcls.indexOf('go') >= 0) { pk = ''; } // sin ayudas: solo el aviso de saque
@@ -1992,12 +2059,12 @@
     if (dv === 'gamepad') {
       var P = padSet();
       return [[S('Stick') + S('Cruceta'), 'Moverse'], [padKey('a'), 'Golpear · sacar'], [padKey('b') + padKey('x'), 'Saltar <small>(en el aire: dejada)</small>'],
-        [padKey('y') + S(P.lb) + S(P.rb), 'Cambiar jugador'], [S(P.start), 'Pausa'], [S(P.select), 'Sonido'], [padKey('a') + padKey('b'), 'Menús: aceptar · volver']];
+        [padKey('y') + S(P.lb) + S(P.rb), 'Cambiar jugador'], [S(P.start), 'Pausa'], [S(P.select), 'Sonido'], [S(padFam() === 'ps' ? 'L2' : 'LT'), 'Challenge <small>(7 s tras el punto)</small>'], [padKey('a') + padKey('b'), 'Menús: aceptar · volver']];
     }
     if (dv === 'touch') return [[S('Joystick') + '<small>mitad izquierda</small>', 'Moverse'], [T('Golpear'), 'Golpear <small>(SACAR en el saque)</small>'],
-      [T('Saltar', 1), 'Saltar <small>(en el aire: dejada)</small>'], [S('⇄'), 'Cambiar jugador'], [S('II'), 'Pausa']];
+      [T('Saltar', 1), 'Saltar <small>(en el aire: dejada)</small>'], [S('⇄'), 'Cambiar jugador'], [S('CHALLENGE'), 'Challenge <small>(7 s tras el punto)</small>'], [S('II'), 'Pausa']];
     return [[K('W') + K('A') + K('S') + K('D') + '<small>o</small>' + K('↑') + K('←') + K('↓') + K('→'), 'Moverse'], [K('Espacio') + K('J'), 'Golpear · sacar'],
-      [K('K') + K('X'), 'Saltar <small>(en el aire: dejada)</small>'], [K('C'), 'Cambiar jugador'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
+      [K('K') + K('X'), 'Saltar <small>(en el aire: dejada)</small>'], [K('C'), 'Cambiar jugador'], [K('V'), 'Challenge <small>(7 s tras el punto)</small>'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
   }
   function renderCtl() {
     var cur = device(), tabs = el.pnCtl ? el.pnCtl.querySelectorAll('.ctl-tab') : [];
@@ -2026,6 +2093,8 @@
     showHelp: { vals: [true, false], labels: ['Sí', 'No'] },
     // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS); el set decisivo va a min(15, puntos)
     setPoints: { vals: [11, 15, 21, 25], labels: ['11', '15', '21', '25'] },
+    // control: los dos jugadores (el control pasa a quien toca) o solo uno (la IA lleva al compañero; sim: g.ctrlMode)
+    ctrlMode: { vals: ['both', 'one'], labels: ['Los dos', 'Uno'] },
     coachTips: { vals: [true, false], labels: ['Sí', 'No'] },
     // Accesibilidad (UI-16)
     camStable: { vals: [true, false], labels: ['Sí', 'No'] },
@@ -2070,6 +2139,7 @@
     changeOpt(k, 0, j, d);
   }
   var lastPtsI = -1;
+  var lastCtrlI = -1;
   var lastDiffI = -1;
   function renderOpts() {
     var segs = document.querySelectorAll('[data-seg]');
@@ -2108,7 +2178,16 @@
     lastPtsI = pi;
     var pas = el.optPts.querySelectorAll('.arr');
     if (pas.length === 2) { pas[0].classList.toggle('end', pi === 0); pas[1].classList.toggle('end', pi === OPT.setPoints.vals.length - 1); }
-    el.playSub.textContent = 'Partido rápido · ' + OPT.difficulty.labels[di] + ' · Sets a ' + OPT.setPoints.vals[pi];
+    // menú: control (los dos / uno), misma fila que los puntos
+    var ci = optIndex('ctrlMode');
+    if (el.ctrlVal.textContent !== OPT.ctrlMode.labels[ci]) {
+      el.ctrlVal.textContent = OPT.ctrlMode.labels[ci];
+      if (lastCtrlI >= 0) { var cv = el.ctrlVal.parentNode; cv.classList.remove('sl-l', 'sl-r'); void cv.offsetWidth; cv.classList.add(ci > lastCtrlI ? 'sl-r' : 'sl-l'); }
+    }
+    lastCtrlI = ci;
+    var cas = el.optCtrl.querySelectorAll('.arr');
+    if (cas.length === 2) { cas[0].classList.toggle('end', ci === 0); cas[1].classList.toggle('end', ci === OPT.ctrlMode.vals.length - 1); }
+    el.playSub.textContent = 'Partido rápido · ' + OPT.difficulty.labels[di] + ' · Sets a ' + OPT.setPoints.vals[pi] + (OPT.ctrlMode.vals[ci] === 'one' ? ' · Controlas 1' : '');
   }
 
   // ---------- Tutorial ----------
@@ -2196,7 +2275,7 @@
         players: [{ t: 0, x: 1.3, y: -2.4, you: 1, lbl: '3' }, { t: 0, x: 1.8, y: 1.2 }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }],
         segs: [{ a: [1.8, 1.2, 2.3], b: [1.05, -2.4, 3.15], apex: 5.3, dur: 1.15 }, { a: [1.05, -2.4, 3.15], b: [-6.2, 2.8, 0.2], dur: 0.38, who: 0, spike: 1 }],
         ring: [1.3, -2.4], jump: [[0, 0.62, 1.05]], swing: [[0, 1.05, 0.25]] },
-      text: function (g) { return 'En el 3.er toque ponte bajo la colocación, pulsa ' + g.jump + ' para <b>saltar</b> y ' + g.hit + ' en lo alto: <b>remate</b>. Sin dirección va en diagonal; con ' + g.aim + ' eliges la zona: arriba, al fondo; abajo, corta; izquierda o derecha, hacia esa línea.'; },
+      text: function (g) { return 'En el 3.er toque ponte bajo la colocación, pulsa ' + g.jump + ' para <b>saltar</b> y ' + g.hit + ' en lo alto: <b>remate</b>. En el aire, mueve la <b>diana</b> por el campo rival con ' + g.aim + '; con <b>timing perfecto</b>, el remate va exacto a ella.'; },
       rule: 'En el aire, ' + '<b>Saltar</b> otra vez hace una <b>dejada</b>. Si golpeas el 3.er toque sin saltar, el balón pasa en globo (<b>balón libre</b>).' },
     { step: 'Paso 5 de 6', title: 'El bloqueo', fig: {
         players: [{ t: 0, x: 0.6, y: 1.4, you: 1, lbl: 'TÚ' }, { t: 0, x: 6, y: -1.5 }, { t: 1, x: -1.3, y: 1.4 }, { t: 1, x: -2, y: -2.5 }],
@@ -2215,6 +2294,7 @@
     '<li><b>Dobles</b>El mismo jugador toca el balón dos veces seguidas.</li>' +
     '<li><b>Falta de saque: 8 segundos</b>Tras el silbato del árbitro tienes 8 segundos para sacar.</li>' +
     '<li><b>Ataque sobre el saque</b>No se puede rematar ni bloquear el saque rival por encima de la red.</li>' +
+    '<li><b>Challenge</b>¿Bote justo mal cantado? Pide revisión en 7 s. 2 por set; si fallas, gastas uno.</li>' +
     '<li><b>Cambio de campo</b>Al acabar cada set y a los 8 puntos del set decisivo.</li>' +
     '<li><b>Sets</b>A 25 puntos con 2 de diferencia; el 3.º, a 15. Gana quien se lleva 2 sets.</li>' +
     '</ul><p class="tut-rule">Cada jugada da un punto (sistema de punto por jugada). Si la ganas recibiendo, recuperas el saque (<b>cambio de saque</b>) y sacáis por turnos: saca el jugador de tu equipo que no sacó la última vez (y lo controlas tú).</p>';
@@ -2397,6 +2477,11 @@
       if (ctx.debug) el.menu.classList.remove('intro'); // en depuración no hay relevo desde el telón
 
       function on(b, fn) { b.addEventListener('click', function (ev) { click(); fn(ev); }); }
+      // B7: botón CHALLENGE (táctil, ratón); por encima de #touch para que el toque no llegue al joystick
+      if (el.chal) el.chal.addEventListener('pointerdown', function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        if (ctx.actions && ctx.actions.challenge) ctx.actions.challenge();
+      });
       el.btnPlay.addEventListener('click', play);
       el.btnFirstTut.addEventListener('click', function () { click(); openPanel('tut', 'menu'); });
       el.btnFirstPlay.addEventListener('click', function () { uiSound('start'); goMatch(); });
@@ -2411,7 +2496,12 @@
         if (a) { stepOpt('setPoints', +a.getAttribute('data-d'), el.ptsVal); restartAnim(a, 'hit'); }
         else changeOpt('setPoints', 1);
       });
-      var arrs = document.querySelectorAll('#optDiff .arr, #optPts .arr');
+      el.optCtrl.addEventListener('click', function (ev) {
+        var a = ev.target && ev.target.closest ? ev.target.closest('[data-d]') : null;
+        if (a) { stepOpt('ctrlMode', +a.getAttribute('data-d'), el.ctrlVal); restartAnim(a, 'hit'); }
+        else changeOpt('ctrlMode', 1);
+      });
+      var arrs = document.querySelectorAll('#optDiff .arr, #optPts .arr, #optCtrl .arr');
       for (var ai = 0; ai < arrs.length; ai++) arrs[ai].addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') uiSound2('arrowHover', +this.getAttribute('data-d') || 1); });
       on(el.btnTut, function () { openPanel('tut', 'menu'); });
       on(el.btnControls, function () { openPanel('ctl', 'menu'); });

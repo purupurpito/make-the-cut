@@ -137,6 +137,29 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .sb-top{display:flex;align-items:stretch;height:22px;font-weight:800;font-size:12.5px;letter-spacing:.2em;text-transform:uppercase}
 .sb-venue{display:flex;align-items:center;gap:6px;padding:0 10px 0 9px;background:#f7f2ea;color:#0b1220;border-radius:8px 0 0 0}
 .sb-venue svg{width:13px;height:13px}
+.sb-chal{display:flex;align-items:center;gap:5px;padding:0 10px 0 9px;margin-left:4px;background:var(--glass2);border:1px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0}
+.sb-chal[hidden]{display:none}
+.sb-chal i{width:13px;height:9px;border-radius:2px;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);position:relative}
+.sb-chal i.on{background:#ffd23f;box-shadow:0 0 6px rgba(255,210,63,.6)}
+.sb-chal i::after{content:"";position:absolute;right:-3px;top:2px;border:2.5px solid transparent;border-left:3px solid rgba(255,255,255,.18);border-right:0}
+.sb-chal i.on::after{border-left-color:#ffd23f}
+/* Challenge (B7): botón con la ventana de 7 s, rótulo REVISIÓN. Fuera de #hud: por encima de #touch (z 5) para recibir el toque */
+#chal{position:absolute;right:calc(16px + var(--sr));top:calc(18px + 52px * var(--hs,1) + var(--st));z-index:6;display:none;align-items:center;gap:8px;
+  height:40px;padding:0 12px 0 14px;border:0;border-radius:12px;background:rgba(8,13,24,.9);box-shadow:inset 0 0 0 1.5px #ffd23f,0 6px 18px rgba(0,0,0,.35);
+  color:#ffe7a0;font:800 16px/1 var(--display);letter-spacing:.1em;cursor:pointer;pointer-events:auto;overflow:hidden;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#chal.show{display:flex;animation:fadeUp .25s var(--ease) both}
+#chal .ch-key{font:700 13px/1 var(--ui);letter-spacing:0;color:#0b1220;background:#ffd23f;border-radius:6px;padding:4px 7px}
+#chal .ch-key:empty{display:none}
+#chal .ch-n{font-size:18px;color:#fff;min-width:16px;text-align:right;font-variant-numeric:tabular-nums}
+#chal .ch-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.12)}
+#chal .ch-bar b{display:block;height:100%;width:100%;background:#ffd23f;transform-origin:0 50%}
+#chal.tch{height:44px;padding:0 16px}
+#chal.rev{cursor:default;pointer-events:none;color:#fff;box-shadow:inset 0 0 0 1.5px #ff5a2c,0 6px 18px rgba(0,0,0,.35)}
+#chal.rev .ch-k{animation:chPulse 1s ease-in-out infinite}
+#chal.rev .ch-bar b{background:#ff5a2c}
+#chal.rev .ch-key{background:transparent;color:#ffc8a8;font:600 13px/1 var(--ui);padding:0}
+@keyframes chPulse{50%{opacity:.45}}
+#app.end-on #chal,#app.intro-on #chal{display:none}
 .sb-set{display:flex;align-items:center;padding:0 12px;background:var(--glass2);color:var(--gold);border-radius:0 8px 0 0;border:1px solid var(--line);border-left:0;border-bottom:0}
 .sb-body{background:linear-gradient(180deg,rgba(14,22,40,.95),rgba(8,13,24,.95));border:1px solid var(--line);border-radius:0 12px 12px 12px;overflow:hidden;min-width:236px}
 .sb-row{position:relative;display:grid;grid-template-columns:7px 1fr 18px 30px 52px;align-items:center;gap:8px;height:40px;padding-right:12px}
@@ -285,6 +308,8 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 /* y casi se apaga (en todas las pantallas, no solo en el móvil): en el remate rival del 1.er toque guiado el balón pasaba justo
    bajo el texto de la pastilla a 1280×720, en el momento en que el defensor más necesita leerlo (verificación ola 3) */
 #coach.thru:not(.off){opacity:.28;transition:opacity .14s,color .25s}
+/* mira libre del remate: el consejo «Apunta con…» no se apaga sobre la cinta LED (revisión visual) */
+#coach.thru.aimtip:not(.off){opacity:.82;background:rgba(8,13,24,.62)}
 
 /* Sello de calidad del golpe (UI-09): sale del punto de contacto, sube ~30 px y se funde en 0,6 s (ui.js: posición por
    frame en #stamp, subida y fundido con Web Animations en .st-in: solo transform/opacidad). PERFECTO dorado, BIEN blanco. */
@@ -653,7 +678,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .mi-v .arr[data-d="-1"]:hover svg{transform:translateX(-2px)}
 .mi-v .arr[data-d="1"]:hover svg{transform:translateX(2px)}
 .mi-v .arr.end svg{opacity:.3}
-.is-touch .mi-v .arr{width:46px}
+.is-touch .mi-v .arr{width:46px;margin:-2px 0} /* zona táctil >= 44 px de alto sin agrandar la fila */
 .mv-val{display:flex;align-items:center;gap:8px;overflow:hidden;padding:0 2px}
 .mi-v b{min-width:80px;text-align:center;font-weight:800;display:inline-block}
 .mv-val.sl-l b{animation:valL .26s var(--ease)}
@@ -932,6 +957,11 @@ h2 span{color:var(--hot)}
   .tut{grid-template-columns:1fr}
   .tut-fig{aspect-ratio:16/8}
 }
+/* 7 filas en el menú (desde la fila «Control»): a 720 px de alto la última fila pisaba la ayuda de teclas de abajo */
+@media (max-height:780px){
+  .mlist{gap:5px}
+  .mi{height:50px}
+}
 @media (max-height:560px){
   .sb{--sbs:.78}
   /* UI-19: con el marcador al 78 %, la franja de arriba y el historial siguen a 12 px reales */
@@ -1018,11 +1048,13 @@ h2 span{color:var(--hot)}
   /* (letter-spacing 0: la de .sb-top se hereda ya resuelta a px y los 13 caracteres invisibles ensanchaban la pestaña ~30 px en blanco) */
   .sb-venue{font-size:0;letter-spacing:0;gap:0;padding:0 6px}
   .tagline{display:none}
+  /* 7 filas desde la fila «Control»: sin el antetítulo y filas de 42 px con 4 px de separación para que quepan a 390 px de alto */
+  #menu .kicker{display:none}
   .menu-col{gap:8px}
-  .logo{font-size:56px}
-  .mlist{gap:6px}
-  .mi{height:44px}
-  .mi.primary{height:50px}
+  .logo{font-size:50px}
+  .mlist{gap:4px}
+  .mi{height:42px}
+  .mi.primary{height:46px}
   .vlist{gap:6px}
   .vlist button{min-height:44px;padding:0 18px}
 }
@@ -1126,6 +1158,7 @@ h2 span{color:var(--hot)}
 @media (max-height:420px){
   /* con el balón detrás del consejo o de la tarjeta guiada, casi desaparecen: la jugada viene de esa franja (campo rival) */
   .is-touch #coach.thru:not(.off){opacity:.3}
+  .is-touch #coach.thru.aimtip:not(.off){opacity:.82}
   /* tarjeta guiada compacta: etiqueta y orden en una sola pastilla baja (antes ocupaba de y≈36 a 100 de 390) */
   .is-touch #guide{top:calc(38px + var(--st));display:flex;align-items:stretch;white-space:nowrap}
   .is-touch #guide .gd-k{display:flex;align-items:center;border-radius:10px 0 0 10px;padding:0 9px;font-size:10px;letter-spacing:.14em}
@@ -1168,6 +1201,7 @@ h2 span{color:var(--hot)}
       <div class="sb-top">
         <span class="sb-venue"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 2c3 3 4 7 3 11M4 7c4 0 8 2 10 6M3 15c4 2 9 1 12-2" fill="none" stroke="currentColor" stroke-width="2"/></svg>PALAU DEL MAR</span>
         <span class="sb-set" id="sbSet">SET 1</span>
+        <span class="sb-chal" id="sbChal" hidden title="Challenges que te quedan"><i></i><i></i></span>
       </div>
       <div class="sb-bw">
       <div id="pbug" aria-live="polite"><b id="pbT"></b><span id="pbS" hidden></span><em id="pbX" hidden></em></div>
@@ -1204,6 +1238,7 @@ h2 span{color:var(--hot)}
       <button id="btnHudPause" aria-label="Pausa"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
     </div>
   </div>
+  <button id="chal" type="button" tabindex="-1" aria-label="Pedir challenge"><span class="ch-k">CHALLENGE</span><span class="ch-key" id="chalKey">V</span><b class="ch-n" id="chalN">7</b><i class="ch-bar"><b id="chalBar"></b></i></button>
   <div id="banner" aria-live="polite"><div class="bn-rib"><div id="bn1"></div></div><div id="bn2"></div><div id="bn3" hidden></div></div>
   <div id="guide" aria-live="polite"><div class="gd-k" id="guideK">PRIMER TOQUE</div><div class="gd-t" id="guideT"></div></div>
   <div id="skip" hidden></div>
@@ -1234,9 +1269,10 @@ h2 span{color:var(--hot)}
         <button class="mi primary" id="btnPlay"><span class="mi-n">01</span><span>Jugar<br><span class="mi-s" id="playSub">Partido · Al mejor de 3 sets</span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
         <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">02</span><span>Dificultad</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Más fácil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span></span><span class="arr" data-d="1" aria-label="Más difícil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
         <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-n">03</span><span>Puntos por set</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="btnTut"><span class="mi-n">04</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
-        <button class="mi" id="btnControls"><span class="mi-n">05</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
-        <button class="mi" id="btnSettings"><span class="mi-n">06</span><span>Ajustes</span><span class="mi-s"></span></button>
+        <button class="mi" id="optCtrl" data-opt="ctrlMode"><span class="mi-n">04</span><span>Control</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Los dos jugadores"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ctrlVal">Los dos</b></span><span class="arr" data-d="1" aria-label="Un jugador"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="btnTut"><span class="mi-n">05</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
+        <button class="mi" id="btnControls"><span class="mi-n">06</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
+        <button class="mi" id="btnSettings"><span class="mi-n">07</span><span>Ajustes</span><span class="mi-s"></span></button>
       </nav>
     </div>
     <div class="menu-foot">

@@ -163,6 +163,7 @@
    *          pero la cámara/HUD son de partido), seed:int,
    *          difficulty:'easy'|'normal'|'hard' (también 'facil','dificil'): nivel de la CPU,
    *          serveClock:bool (regla de 8 s para el saque humano, por defecto true),
+   *          ctrl:'both'|'one' (controlar a los dos jugadores o solo a uno; g.ctrlMode, por defecto 'both'),
    *          stats:bool } */
   /** Puntos por set que se pueden elegir (Partido rápido). */
   var SET_POINTS = [11, 15, 21, 25];
@@ -177,6 +178,9 @@
       opts: opts,
       demo: !!opts.demo,
       autopilot: !!opts.autopilot,
+      // control del humano: 'both' = el control pasa a quien da el siguiente toque; 'one' = siempre el mismo jugador
+      // (teams[0][0]) y la IA lleva al compañero en todo, saque incluido
+      ctrlMode: opts.ctrl === 'one' ? 'one' : 'both',
       difficulty: diff,
       // demo del menú: CPU vs CPU con el perfil DIFF.demo (peloteos vistosos con ritmo de partido real, ver R6)
       prof: opts.demo ? [DIFF.demo, DIFF.demo] : [DIFF.mate, rookieProf(DIFF[diff], opts.rookie && (diff === 'easy' || diff === 'normal'), diff)], // equipo 0: compañero IA de nivel fijo
@@ -236,6 +240,10 @@
       present: !!opts.present, hold: 0,
       streakTeam: -1, streakN: 0, // racha de puntos seguidos en el set (SIM-01)
       atkHuman: false, atkGrade: '', // quién/cómo fue el último ataque o saque (para 'kill perfecto del humano')
+      // remate apuntado (A1-A3): mira libre del humano en el aire en el 3.er toque; defensa más justa tras remate perfecto
+      aim3: dblFields({ on: false, x: 0.5, y: 0.5 }), digTight: false,
+      // error arbitral + challenge (B1-B3): llamada del último bote, challenges por set, revisión en curso, petición de la CPU
+      call: null, challenges: [2, 2], review: null, cpuChal: null, _pendCall: null, _snap: null,
       events: [],              // cola de eventos del paso (main.js la vacía cada frame)
       stats: opts.stats ? {
         hits: { pass: 0, set: 0, spike: 0, free: 0, serve: 0 }, blocks: 0, points: 0, why: {}, rallies: [],
@@ -289,6 +297,13 @@
     return Math.max(0.05, 0.5 - 0.45 * (a - C.W_GOOD) / 0.2);
   }
   function gradeOf(q) { return q >= 0.78 ? 'perfect' : q >= 0.45 ? 'good' : 'poor'; }
+  /** Dispersión (m, radio) del remate del HUMANO según la calidad q: perfecto (q >= 0,9) casi exacto (<= 0,1 m),
+   *  0,78 ~0,28, 0,5 ~0,74, 0,2 ~1,3. Monótona decreciente. */
+  function spikeSpread(q) {
+    q = clamp(q || 0, 0, 1);
+    var s = 1.7 * Math.pow(1 - q, 1.2);
+    return q >= 0.9 ? Math.min(s, 1 - q) : s;
+  }
 
   // ---------- Física del balón ----------
   function gEff(b) { return C.G + (b.dip || 0); }
@@ -454,6 +469,7 @@
     g.atkServe = atkSrv ? { team: t, player: p } : null;
     var human = isHuman(g, p), mate = other(g, p);
     te = te || 0; shot = shot || '';
+    if (human && count === 1 && g.digTight) te *= 1.5; // A3: tras un remate perfecto rival la ventana es más justa
     var d = Math.hypot(b.x - p.x, b.y - p.y), inSp = fastInFor(g);
     var hardIn = g.lastKind === 'spike' || (g.lastKind === 'serve' && inSp > 13);
     // calidad: timing x distancia x dificultad de lo que llega
@@ -486,12 +502,16 @@
         v = launchSafe(o, at[0] + rnd(g, er), at[1] + rnd(g, er), 0, Math.max(b.z + 0.45, C.NET_H + 0.9));
         kind = 'free'; power = 0.1;
       } else { // remate
-        at = tgt || attackTarget(p, aim, 6);
+        var free3 = human && !tgt && g.aim3.on; // A1: mira libre del humano
+        at = tgt || (free3 ? [g.aim3.x, g.aim3.y] : attackTarget(p, aim, 6));
         var spd = human ? 13.5 + 5.5 * q : prof.spike * (0.82 + 0.18 * q);
         power = clamp((spd - 11) / 8, 0, 1);
         er = (0.25 + 1.5 * (1 - q)) * mul;
         dip = C.G * (0.15 + 0.3 * q); // liftado: el balón "cae" más
-        v = launchDirect(o, at[0] + rnd(g, er), at[1] + rnd(g, er), 0, spd, C.G + dip);
+        if (free3) { // A2: dispersión según el timing, uniforme en un círculo de radio spikeSpread(q) (mismo gasto de azar)
+          var sr = spikeSpread(q) * Math.sqrt(g.rng()), sa = g.rng() * 6.2832;
+          v = launchDirect(o, at[0] + sr * Math.cos(sa), at[1] + sr * Math.sin(sa), C.BR, spd, C.G + dip); // bota justo en la diana
+        } else v = launchDirect(o, at[0] + rnd(g, er), at[1] + rnd(g, er), 0, spd, C.G + dip);
         if (q < 0.45 && g.rng() < (0.48 - q) * 0.75) v[2] -= 1.4 + g.rng(); // a la red
         else if (!human && g.rng() < prof.atkErr) aiError(g, o, v, spd, sd, C.G + dip);   // error no forzado de la IA
         kind = 'spike'; sub = 'power';
@@ -503,8 +523,11 @@
       var dp = g.prof[1 - t];
       if (kind === 'spike') {
         g.digMargin = digMargin(g, 1 - t, o, v, C.G + dip);
-        g.digOk = g.rng() < dp.dig * clamp(1.55 - 0.9 * power, 0.3, 1.25) * clamp(1.21 + 1.3 * g.digMargin, 0.35, 1.7);
-      } else g.digOk = true;
+        // A3: remate perfecto del humano -> la IA rival defiende peor (x0,8); remate perfecto contra el humano -> g.digTight
+        var tightK = human && grade === 'perfect' ? 0.8 : 1;
+        g.digOk = g.rng() < dp.dig * tightK * clamp(1.55 - 0.9 * power, 0.3, 1.25) * clamp(1.21 + 1.3 * g.digMargin, 0.35, 1.7);
+        g.digTight = grade === 'perfect' && 1 - t === 0 && !g.demo && !g.autopilot;
+      } else { g.digOk = true; g.digTight = false; }
     } else if (count === 3) {
       at = tgt || attackTarget(p, aim, 6.5);
       er = (0.35 + 1.4 * (1 - q)) * mul;
@@ -540,6 +563,8 @@
       g.hardIn = false; g.digOk = true;
     }
     b.vx = v[0]; b.vy = v[1]; b.vz = v[2]; b.dip = dip; b.wobA = 0;
+    if (kind !== 'spike') g.digTight = false;
+    g.aim3.on = false;
     g.prevKind = g.lastKind;
     g.lastKind = kind; g.lastShot = sub; g.lastTouchT = g.time; g.netSince = false;
     if (kind === 'spike' || (kind === 'free' && sub === 'tip')) {
@@ -632,7 +657,7 @@
       }
       b.dip = 0; b.wobA = 0; b.speed = Math.hypot(b.vx, b.vy, b.vz);
       // El toque de bloqueo no cuenta como uno de los 3 toques del equipo
-      g.touchTeam = q.team; g.touches = 0; g.lastPlayer = null; g.lastTeam = q.team; q.anim = 0.3; g.prevKind = g.lastKind; g.lastKind = 'block';
+      g.touchTeam = q.team; g.touches = 0; g.lastPlayer = null; g.lastTeam = q.team; q.anim = 0.3; g.prevKind = g.lastKind; g.lastKind = 'block'; g.digTight = false;
       g.lastShot = kindB; g.lastTouchT = g.time; g.hardIn = false; g.digOk = true; g.netSince = false;
       if (kindB === 'stuff') { // el atacante casi nunca la salva
         g.hardIn = true; g.digOk = g.rng() < 0.2 * (1 - qb);
@@ -942,18 +967,38 @@
     return 'Balón fuera';
   }
 
+  /* ---------- Error arbitral (B1) ----------
+   * Distancia firmada (m) del borde de la huella del balón a la línea más cercana (> 0 dentro): dentro <=> dist >= 0,
+   * igual que el criterio de siempre de land() (C.IN_TOL). Con |dist| <= 0,10 el árbitro puede cantar al revés (REF_ERR),
+   * sin avisar. Gasta g.rng solo en esos botes justos. */
+  var REF_ERR = VB.REF_ERR = { d1: 0.02, p1: 0.35, d2: 0.05, p2: 0.15, d3: 0.10, p3: 0.05 };
+  function lineDist(x, y) { return Math.min(C.HL + C.IN_TOL - Math.abs(x), C.HW + C.IN_TOL - Math.abs(y)); }
+  function refErrP(dist) { var a = Math.abs(dist); return a < REF_ERR.d1 ? REF_ERR.p1 : a < REF_ERR.d2 ? REF_ERR.p2 : a <= REF_ERR.d3 ? REF_ERR.p3 : 0; }
+  /** [ganador, motivo, texto] del punto de un bote según lo que se cante (inside). */
+  function landOutcome(g, inside, st) {
+    var netTxt = g.lastKind === 'serve' ? 'Saque a la red' : 'Balón a la red';
+    if (inside && st === g.lastTeam && g.netSince) return [1 - st, 'in', netTxt];
+    if (inside) return [1 - st, 'in', st === 0 ? 'El balón cae en tu campo' : 'El balón cae en el campo rival'];
+    // da en la red y cae fuera en el propio campo: nunca cruzó, el árbitro canta "a la red", no "fuera"
+    if (st === g.lastTeam && g.netSince) return [1 - g.lastTeam, 'out', netTxt];
+    return [1 - g.lastTeam, 'out', outText(g)];
+  }
   function land(g) {
     var b = g.ball;
     // el balón toca el suelo justo debajo de su centro: dentro si esa huella toca la línea (las líneas son parte del campo)
-    var inside = Math.abs(b.x) <= C.HL + C.IN_TOL && Math.abs(b.y) <= C.HW + C.IN_TOL, st = b.x > 0 ? 0 : 1;
+    var dist = lineDist(b.x, b.y), truthIn = dist >= 0, st = b.x > 0 ? 0 : 1;
+    var oT = landOutcome(g, truthIn, st), calledIn = truthIn, oC = oT, oW = landOutcome(g, !truthIn, st);
+    // B1: solo si cantar al revés cambia el punto (un balón que no cruzó la red da el mismo punto dentro o fuera)
+    var pe = refErrP(dist);
+    if (pe > 0 && oW[0] !== oT[0] && g.rng() < pe) { calledIn = !truthIn; oC = oW; }
+    var inside = calledIn;
     g.lastLand = { x: b.x, y: b.y, inside: inside, t: g.time }; // primer bote (lo lee la cámara en escenas congeladas)
-    emit(g, { type: 'land', x: b.x, y: b.y, inside: inside, team: st, speed: Math.abs(b.vz) });
-    var netTxt = g.lastKind === 'serve' ? 'Saque a la red' : 'Balón a la red';
-    if (inside && st === g.lastTeam && g.netSince) point(g, 1 - st, 'in', netTxt);
-    else if (inside) point(g, 1 - st, 'in', st === 0 ? 'El balón cae en tu campo' : 'El balón cae en el campo rival');
-    // da en la red y cae fuera en el propio campo: nunca cruzó, el árbitro canta "a la red", no "fuera"
-    else if (st === g.lastTeam && g.netSince) point(g, 1 - g.lastTeam, 'out', netTxt);
-    else point(g, 1 - g.lastTeam, 'out', outText(g));
+    emit(g, { type: 'land', x: b.x, y: b.y, inside: inside, team: st, speed: Math.abs(b.vz), dist: dist, truthIn: truthIn });
+    // alt = lo que se pitaría con la llamada contraria (para anular el punto tras un challenge acertado)
+    g._pendCall = { x: b.x, y: b.y, dist: dist, truthIn: truthIn, calledIn: calledIn, wrong: calledIn !== truthIn, team: 1 - oC[0], t: g.time,
+      alt: calledIn !== truthIn ? oT : oW, used: oW[0] === oT[0] };
+    point(g, oC[0], oC[1], oC[2]);
+    cpuChallengeDecide(g);
   }
   function fault(g, t, reason, text, p, sig) { point(g, 1 - t, reason, text, p, sig); }
 
@@ -1002,7 +1047,10 @@
   /** Asigna punto. reason: 'in'|'out'|'antenna'|'under'|'double'|'four'|'net'|'serve'|'block'|'attackServe'.
    *  sig: señal del árbitro explícita (solo la falta de saque: 'delay8' | 'serveFault'). */
   function point(g, w, reason, text, p, sig) {
-    if (g.mode !== 'rally' && g.mode !== 'serve') return;
+    if (g.mode !== 'rally' && g.mode !== 'serve') { g._pendCall = null; return; }
+    // B2: llamada de este punto (solo si acaba en bote) e instantánea del estado previo para poder anularlo
+    g.call = g._pendCall; g._pendCall = null; g.cpuChal = null; g.digTight = false; g.aim3.on = false;
+    if (g.call) { g.call.team = 1 - w; g.call.t = g.time; g.call.setNo = g.setNo; g._snap = snapOf(g); } else g._snap = null;
     g.score[w]++; g.mode = 'point'; g.ball.held = null; endSwing(g);
     var sideout = w !== g.serving;
     if (g.stats) { g.stats.points++; g.stats.won[w]++; g.stats.how = g.stats.how || {}; g.stats.why[text] = (g.stats.why[text] || 0) + 1; g.stats.rallies.push(g.rally.t); }
@@ -1075,13 +1123,81 @@
   /** Saltar la pausa del punto (SIM-03). En 'point'/'over', pasados HOLD.skipAfter (0,8 s) de la pausa, la recorta a
    *  HOLD.skipTo (0,3 s) como mucho; nunca a menos: el silbato, el cambio de campo y la vuelta al saque siguen su
    *  orden. Devuelve true si se ha aceptado (también si ya quedaban menos de 0,3 s). Sin efecto en 'serve'/'rally'
-   *  ni con el partido ya terminado (gameOver emitido). Puro: solo toca g.timer. */
+   *  ni con el partido ya terminado (gameOver emitido). Solo toca g.timer (y, en 'over', renuncia al challenge pendiente). */
   function skipHold(g) {
+    if (g.review) return false;
     if ((g.mode !== 'point' && g.mode !== 'over') || g.finished || !(g.timer > 0)) return false;
     if (g.hold - g.timer < HOLD.skipAfter) return false;
     if (g.timer > HOLD.skipTo) g.timer = HOLD.skipTo;
+    if (g.mode === 'over' && g.call) g.call.waived = true; // saltar el final del partido renuncia al challenge pendiente
     return true;
   }
+  /* ---------- Challenge (B2/B3, notes/challenge-fivb.md) ----------
+   * 2 por set (g.challenges), solo dentro/fuera de un bote; ventana de CHAL.window s desde el punto y hasta que se saca la
+   * siguiente jugada. Acertado: se conserva y el punto pasa al otro equipo (instantánea previa al punto); fallado: se pierde.
+   * Durante la revisión (g.review) la simulación queda en espera sin cambiar g.mode. */
+  var CHAL = VB.CHAL = { window: 7, dur: 4.5, perSet: 2, cpuNear: 0.05, cpuP: 0.6, cpuFarP: 0.25, cpuRightP: 0.07, cpuWrongP: 0.02, cpuMin: 1.5, cpuMax: 3 };
+  function snapOf(g) {
+    return { score: g.score.slice(), sets: g.sets.slice(), setNo: g.setNo, serving: g.serving, serverIdx: g.serverIdx.slice(),
+      setScores: g.setScores.map(function (s) { return s.slice(); }), streakTeam: g.streakTeam, streakN: g.streakN, courtSwap3: g.courtSwap3,
+      pendingSet: g.pendingSet, setPoint: g.setPoint, matchPoint: g.matchPoint, challenges: g.challenges.slice(), lastPoint: g.lastPoint };
+  }
+  /** Challenges que le quedaban a team en el set de la llamada c (si ya empezó el set siguiente, los de la instantánea). */
+  function chalLeft(g, c, team) {
+    if (c.setNo === undefined || c.setNo === g.setNo) return g.challenges[team];
+    return g._snap ? g._snap.challenges[team] : 0;
+  }
+  /** s que quedan de ventana para que team pida challenge (0 si no puede). */
+  function canChallenge(g, team) {
+    var c = g.call;
+    if (!c || c.used || g.review || g.finished || c.team !== team || !(chalLeft(g, c, team) > 0)) return 0;
+    if (g.mode !== 'point' && g.mode !== 'over' && g.mode !== 'serve') return 0; // en 'rally' ya se ha sacado
+    var left = CHAL.window - (g.time - c.t);
+    return left > 0 ? left : 0;
+  }
+  function challenge(g, team) {
+    if (!(canChallenge(g, team) > 0)) return false;
+    var c = g.call; c.used = true; g.cpuChal = null;
+    g.review = dblFields({ team: team, t: 0, dur: CHAL.dur, x: c.x, y: c.y, dist: c.dist, truthIn: c.truthIn, calledIn: c.calledIn, overturned: c.wrong });
+    endSwing(g);
+    emit(g, { type: 'challenge', team: team, x: c.x, y: c.y });
+    return true;
+  }
+  function endReview(g) {
+    var r = g.review, c = g.call; g.review = null;
+    if (r.overturned && g._snap) {
+      var s = g._snap, wOld = 1 - c.team;
+      g.score = s.score; g.sets = s.sets; g.setNo = s.setNo; g.serving = s.serving; g.serverIdx = s.serverIdx; g.setScores = s.setScores;
+      g.streakTeam = s.streakTeam; g.streakN = s.streakN; g.courtSwap3 = s.courtSwap3; g.pendingSet = s.pendingSet;
+      g.setPoint = s.setPoint; g.matchPoint = s.matchPoint; g.challenges = s.challenges; g.lastPoint = s.lastPoint;
+      if (g.stats) { g.stats.points--; g.stats.won[wOld]--; }
+      if (g.mode === 'serve') { endRitual(g); endSwing(g); g.serveState = 'ready'; }
+      g.ball.held = null; if (g.lastLand) g.lastLand.t = g.time; // mismo bote (landSide del punto nuevo)
+      // se vuelve a pitar el punto con la llamada correcta (marcador, saque, set/partido y pausas como un punto normal)
+      g.mode = 'rally';
+      point(g, c.alt[0], c.alt[1], c.alt[2]);
+      g.call = c; c.used = true; c.calledIn = c.truthIn; c.wrong = false; c.team = 1 - c.alt[0]; g._snap = null;
+    } else {
+      // se gasta del set de la llamada: si ya empezó el siguiente, ese set ya está cerrado y el nuevo conserva los suyos
+      if (c.setNo === undefined || c.setNo === g.setNo) g.challenges[r.team] = Math.max(0, g.challenges[r.team] - 1);
+      else if (g._snap) g._snap.challenges[r.team] = Math.max(0, g._snap.challenges[r.team] - 1);
+      if ((g.mode === 'point' || g.mode === 'over') && g.timer < 1) g.timer = 1; // un respiro antes del saque
+      else if (g.mode === 'serve') { endRitual(g); endSwing(g); setupServe(g); } // se vuelve a autorizar el saque desde el principio
+    }
+    emit(g, { type: 'challengeResult', team: r.team, overturned: r.overturned, dist: r.dist, truthIn: r.truthIn, calledIn: r.calledIn,
+      x: r.x, y: r.y, left: [g.challenges[0], g.challenges[1]] });
+  }
+  /** B3: la CPU decide si pide challenge al acabar el punto (gasta azar solo con un bote a <= 10 cm de la línea). */
+  function cpuChallengeDecide(g) {
+    var c = g.call; if (!c || c.used) return;
+    var t = c.team, ai = t === 1 || g.demo || g.autopilot;
+    if (!ai || !(g.challenges[t] > 0) || Math.abs(c.dist) > REF_ERR.d3) return;
+    // la CPU "lo ha visto": pide sobre todo cuando el árbitro se equivocó; con la llamada bien hecha, muy rara vez
+    var near = Math.abs(c.dist) < CHAL.cpuNear;
+    var pr = c.wrong ? (near ? CHAL.cpuP : CHAL.cpuFarP) : (near ? CHAL.cpuRightP : CHAL.cpuWrongP);
+    if (g.rng() < pr) g.cpuChal = { team: t, at: g.time + CHAL.cpuMin + g.rng() * (CHAL.cpuMax - CHAL.cpuMin) };
+  }
+
   /** Cambio de campo (reglas 18.2.1 y 18.2.2). Es PRESENTACIÓN: el humano sigue en x > 0 (controles relativos
    *  a la cámara); la UI muestra el aviso y arena/cámara pueden escenificarlo. */
   function courtChange(g, why) {
@@ -1251,7 +1367,8 @@
     g.touchTeam = -1; g.touches = 0; g.lastPlayer = null; g.lastTeam = t; g.jobs[0] = g.jobs[1] = null; g.lastKind = ''; g.lastShot = '';
     g.hardIn = false; g.digOk = true; g.prevKind = ''; g.atkTeam = -1; g.atkHow = '';
     var prevCtrl = g.ctrl;
-    g.ctrl = t === 0 ? sv : g.teams[0][0]; endSwing(g); g.swingLock = 0; g.defRole = '';
+    if (g.ctrlMode !== 'one') g.ctrl = t === 0 ? sv : g.teams[0][0]; // modo 'one': el humano sigue con su jugador (si saca el compañero, saca la IA)
+    endSwing(g); g.swingLock = 0; g.defRole = '';
     g.rally.t = 0; g.rally.hits = 0; g.rally.digs = 0;
     // ¿Punto de set / punto de partido?
     var tgt = setTarget(g);
@@ -1385,7 +1502,7 @@
 
   function stepServe(g, dt, input, mx, my, aim, human) {
     var sv = g.server, b = g.ball, sd = side(sv.team), i, p;
-    var hs = human && sv.team === 0; // saca el humano
+    var hs = human && sv.team === 0 && sv === g.ctrl; // saca el humano (modo 'one': solo si saca su jugador)
     g.serveT += dt;
     if (!g.serveAuth && g.serveT >= g.whistleAt) { g.serveAuth = true; emit(g, { type: 'whistle', reason: 'serve' }); } // autorización del saque
     if (g.serveState === 'ready') {
@@ -1433,12 +1550,14 @@
   function nextSet(g) {
     g.pendingSet = false; g.setNo++; g.score = [0, 0]; g.serving = (g.setNo - 1) % 2; g.courtSwap3 = false;
     g.streakTeam = -1; g.streakN = 0; // la racha es dentro del set
+    g.challenges = [CHAL.perSet, CHAL.perSet]; // los challenges no se acumulan entre sets
     g.serverIdx = g.serving === 0 ? [0, 1] : [1, 0];
     emit(g, { type: 'newSet', setNo: g.setNo });
   }
   function newGame(g) {
     g.score = [0, 0]; g.sets = [0, 0]; g.setNo = 1; g.serving = 0; g.serverIdx = [0, 1]; g.setScores = [];
     g.pendingSet = false; g.finished = false; g.lastPoint = null; g.courtSwap3 = false;
+    g.challenges = [CHAL.perSet, CHAL.perSet]; g.call = null; g.review = null; g.cpuChal = null; g._snap = null; g._pendCall = null;
     g.streakTeam = -1; g.streakN = 0;
     emit(g, { type: 'newMatch', demo: g.demo, difficulty: g.difficulty });
     setupServe(g);
@@ -1468,12 +1587,22 @@
     g.aimOn = !!aim; if (aim) { g.aimIn[0] = aim[0]; g.aimIn[1] = aim[1]; } // para aimPoint (UI/FX)
     var i, p;
 
+    if (g.review) { // B2: revisión en curso: todo en espera (el reloj del punto no corre)
+      g.review.t += dt;
+      for (i = 0; i < 4; i++) stepPlayer(g, g.players[i], dt, 0, 0);
+      if (g.mode === 'point' || g.mode === 'over') stepBall(g, dt);
+      if (g.review.t >= g.review.dur) endReview(g);
+      return;
+    }
+    if (g.cpuChal && g.time >= g.cpuChal.at) { var cc = g.cpuChal; g.cpuChal = null; if (challenge(g, cc.team)) return; }
+
     if (g.mode === 'point' || g.mode === 'over') {
       for (i = 0; i < 4; i++) stepPlayer(g, g.players[i], dt, 0, 0);
       stepBall(g, dt); g.timer -= dt;
       if (g.timer <= 0) {
         if (g.mode === 'over') {
           if (g.demo) { newGame(g); }
+          else if (!(g.call && g.call.waived) && (canChallenge(g, 0) > 0 || canChallenge(g, 1) > 0 || g.cpuChal)) g.timer = 0; // B2: la ventana dura sus 7 s también en el punto de partido
           else if (!g.finished) { g.finished = true; emit(g, { type: 'gameOver', team: g.sets[0] > g.sets[1] ? 0 : 1, sets: [g.sets[0], g.sets[1]], setScores: g.setScores.slice() }); }
         } else { if (g.pendingSet) nextSet(g); setupServe(g); }
       }
@@ -1492,7 +1621,9 @@
       //  - balón rápido a menos de 0,6 s del contacto: un cambio ahí metería toda la ventana de defensa
       //    dentro del deslizamiento de la cámara. Juega el compañero IA y el control pasa en el siguiente toque.
       var fastLate = Math.hypot(b.vx, b.vy, b.vz) > 12 && g.pr1.t < 0.6;
-      if (g.jobs[0] && g.jobs[0] !== g.ctrl) {
+      if (g.ctrlMode === 'one') {
+        // modo 'one': nunca cambia el control; el compañero IA juega sus toques (AI.update)
+      } else if (g.jobs[0] && g.jobs[0] !== g.ctrl) {
         if (!(g.defRole === 'block' && g.touchTeam === 1) && !fastLate) { emit(g, { type: 'switch', from: g.ctrl, to: g.jobs[0], auto: true }); g.ctrl = g.jobs[0]; endSwing(g); }
       } else if (!g.jobs[0] && input.switchPlayer && human) {
         var o2 = other(g, g.ctrl); emit(g, { type: 'switch', from: g.ctrl, to: o2, auto: false }); g.ctrl = o2; endSwing(g);
@@ -1507,6 +1638,7 @@
       }
       if (hp.z > 0) stepPlayer(g, hp, dt, 0, 0);
       else { var am = assistMove(g, hp, mx, my); stepPlayer(g, hp, dt, am[0], am[1]); }
+      updateAim3(g, hp, dt, mx, my);
       if (input.hit && g.mode === 'rally') startSwing(g, hp, '');
       if (g.mode === 'rally') processSwing(g, hp, aim);
       if (g.lastTouchT === g.time && g.mode === 'rally') refreshPred(g); // la IA de este paso ya ve el balón nuevo
@@ -1514,6 +1646,18 @@
     for (i = 0; i < 4; i++) { p = g.players[i]; if (p !== hp && g.mode === 'rally') AI.update(g, p, dt); }
     for (i = 0; i < 2 && g.mode === 'rally'; i++) stepBall(g, dt / 2);
     refreshPred(g);
+  }
+
+  /** A1: mira libre del remate. Atacante humano del 3.er toque en el aire: g.aim3 empieza en el objetivo por defecto
+   *  (diagonal) y la dirección (mundo) lo mueve a AIM3_SPEED m/s dentro del campo rival. Fuera de ese caso, off. */
+  var AIM3_SPEED = 11;
+  function updateAim3(g, p, dt, mx, my) {
+    var a = g.aim3, on = g.mode === 'rally' && p.team === 0 && p.z > 0 && g.touchTeam === 0 && g.touches === 2;
+    if (!on) { a.on = false; return; }
+    var sd = side(p.team);
+    if (!a.on) { var d0 = attackTarget(p, null, 6); a.x = d0[0]; a.y = d0[1]; a.on = true; }
+    a.x = -sd * clamp(-sd * (a.x + mx * AIM3_SPEED * dt), 1.4, 8.3);
+    a.y = clamp(a.y + my * AIM3_SPEED * dt, -3.9, 3.9);
   }
 
   /** Predicciones de cruce (g.pr1 a 1 m, g.pr3 a 3 m) al día con el balón al FINAL del paso: lo que lee la
@@ -1534,7 +1678,18 @@
   function updateDefense(g) {
     if (g.mode !== 'rally' || g.touchTeam !== 1 || g.lastKind === 'serve') { g.defRole = ''; return false; }
     var setPhase = g.touches === 2 && g.ball.x < 0 && g.pr3.x < -0.2 && g.pr3.x > -4.2;
-    if (setPhase && !g.defRole) {
+    if (setPhase && g.ctrlMode === 'one') {
+      // modo 'one': sin cambio de control; bloquea el que esté más cerca de la red (el humano o su compañero IA).
+      // El reparto se REVISA durante la colocación de la CPU: si el humano sube a la red (o salta cerca de ella), el
+      // compañero IA se echa atrás a defender; si el humano se va al fondo, el compañero sube a bloquear. Con histéresis
+      // (diferencia clara de posición) y congelado en el último tramo (sin tiempo para recolocarse) o con el compañero en el aire.
+      var hc1 = g.ctrl, hm1 = other(g, hc1), hx = Math.abs(hc1.x), mx1 = Math.abs(hm1.x);
+      if (!g.defRole) g.defRole = hx <= mx1 ? 'block' : 'dig';
+      else if (g.pr3.t > 0.35 && hm1.z <= 0) {
+        if (g.defRole === 'dig' && ((hx < 1.3 && hx < mx1 + 0.3) || hx < mx1 - 0.8 || (hc1.z > 0 && hx < 2))) g.defRole = 'block';
+        else if (g.defRole === 'block' && hc1.z <= 0 && hx > 3.2 && hx > mx1 - 0.5) g.defRole = 'dig';
+      }
+    } else if (setPhase && !g.defRole) {
       g.defRole = 'dig';
       var c = g.ctrl, m = other(g, c);
       if (Math.abs(c.x) < Math.abs(m.x)) { // el humano está más cerca de la red: defiende el otro, bloquea la IA
@@ -1559,7 +1714,7 @@
    *  2 (activo), aimed (hay dirección), spread (m: dispersión con un toque 'perfect'), spreadPoor (con 'poor')}
    *  o null si ahora no toca apuntar (CPU sacando, sin ataque propio, demo/autopilot). Sin asignaciones si se
    *  pasa out. */
-  var _ap = { x: 0, y: 0, kind: '', mode: 0, aimed: false, spread: 0, spreadPoor: 0 }, _apA = [0, 0];
+  var _ap = { x: 0, y: 0, kind: '', mode: 0, aimed: false, spread: 0, spreadPoor: 0, spreadNow: 0 }, _apA = [0, 0];
   function aimPoint(g, out, move) {
     if (g.demo || g.autopilot) return null;
     out = out || _ap;
@@ -1570,7 +1725,7 @@
     } else if (g.aimOn) a = g.aimIn;
     if (!a && g.swingLive && g.swingHasAim) a = g.swingAim;
     if (g.mode === 'serve') {
-      p = g.server; if (!p || p.team !== 0) return null;
+      p = g.server; if (!p || p.team !== 0 || p !== g.ctrl) return null; // modo 'one': no apunta el saque del compañero IA
       mode = g.serveState === 'toss' ? 2 : (g.serveAuth ? 1 : 0); if (!mode) return null;
       sd = side(p.team); tx = -sd * 6; ty = 0;
       if (a) { tx += a[0] * 2.4; ty += a[1] * 3.4; }
@@ -1586,6 +1741,12 @@
         kind = 'tip';
         tx = -sd * (1.6 + (a ? clamp(-sd * a[0], -0.3, 1) : 0.3)); ty = clamp(a ? p.y + a[1] * 2.6 : -p.y, -3.8, 3.8);
         out.spread = 0.25 + 0.9 * 0.05; out.spreadPoor = 0.25 + 0.9 * 0.55;
+      } else if (g.aim3.on && (air || p.z > 0)) { // A1/A2: mira libre; el radio es la dispersión si golpeara AHORA
+        tx = g.aim3.x; ty = g.aim3.y; kind = 'spike';
+        out.spread = spikeSpread(0.95); out.spreadPoor = spikeSpread(0.3);
+        out.spreadNow = spikeSpread(qNow(g, p));
+        out.x = tx; out.y = ty; out.kind = kind; out.mode = mode; out.aimed = true;
+        return out;
       } else {
         var at = attackTarget(p, a, air ? 6 : 6.5); tx = at[0]; ty = at[1];
         kind = air ? 'spike' : 'free';
@@ -1593,7 +1754,17 @@
       }
     } else return null;
     out.x = tx; out.y = ty; out.kind = kind; out.mode = mode; out.aimed = !!a;
+    out.spreadNow = out.spread + (out.spreadPoor - out.spread) * 0.5;
     return out;
+  }
+
+  /** Calidad que tendría el golpe del humano si pulsara AHORA (o la del gesto en curso), como en processSwing/hit. */
+  var _wq = {};
+  function qNow(g, p) {
+    var w = hitWindow(g, p, _wq), t0 = g.swingLive ? g.swingT0 : g.time;
+    var te = t0 + C.WINDUP - (g.time + w.t);
+    var q = timingQ(te) * (1 - 0.3 * clamp((w.d / C.REACH - 0.55) / 0.45, 0, 1));
+    return clamp(q, 0, 1);
   }
 
   /** Objetivo útil para el HUD/aro: dónde jugará el balón el equipo humano. */
@@ -1615,6 +1786,9 @@
     // presentación del punto (SIM-01/03)
     skipHold: skipHold, highlightOf: highlightOf, clutchOf: clutchOf,
     // ritual del sacador CPU (SIM-04)
-    ritualAt: ritualAt
+    ritualAt: ritualAt,
+    // remate apuntado (A2) y challenge (B2)
+    spikeSpread: spikeSpread, canChallenge: canChallenge, challenge: challenge, lineDist: lineDist, refErrP: refErrP,
+    _land: land, _point: point
   };
 })();

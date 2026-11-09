@@ -595,3 +595,18 @@ sigue igual). Secciones nuevas del informe: **2d** (AUD-08, modelo), **2e** (jer
 ## Aplicado (log, integración de los arreglos tras la verificación de la ola 3, 9-nov-2026, PC de casa)
 - Sin peticiones pendientes para audio. `node tools/audiotest.js` completo en el árbol integrado → TODO OK (parte 6: 7 tics, clac en el último frame, MVP 1, flechas y Ajustes, en 1280×720 y 844×390 táctil).
 - Aviso: con el cuadro vivo de players, `debug=point|ace` re-emiten el `point` en bucle: los sonidos de `fx:highfive` y familia suenan en cada vuelta (como en juego).
+
+## Sprint remate apuntado + challenge (B8, 9-nov-2026)
+- **Bocina** `horn` (nuevo en el catálogo, 1 variante, síntesis en el Worker como el resto): dos sierras polyBLEP a 233/277 Hz + una
+  desafinada, formante a 1,3 kHz, 0,8 s + 90 ms de salida. Suena con el evento `challenge` (bus de efectos, envío 0,4 a la reverb)
+  junto a un «uuuh» suave de expectación (0,55 s). Mezcla: -17 LUFS (justo bajo el silbato -16), LEVEL `horn: -1.8`.
+- **Revisión**: mientras `g.review` (o, si la sim no lo expone, hasta 6 s tras el evento) el ánimo se apaga (emoción objetivo 0,1) y el
+  murmullo sube de ×1,78 a ×2,51 según `g.review.t / dur` (+5 → +8 dB): -20,7 LUFS a mitad de revisión (objetivo -21; lecho normal -26).
+  `g.review === null` corta el murmullo al momento.
+- **Resultado** `challengeResult {team, overturned}`: se calcula a quién favorece (equipo 0 = local). Anulado: reacción grande (-18:
+  ovación con bombo y aplauso, o lamento fuerte). Se mantiene: moderada (-20: ovación corta + aplauso, o lamento). Si en el mismo
+  frame llega el `point` corregido (la sim lo pita antes del `challengeResult`), el `point` no lanza su reacción (sin doble capa); si ese
+  punto cierra set o partido, manda la reacción del `point` y la del challenge no suena.
+- API (opcional, pruebas): `_debug().review` → `{on, n, res, team, last:{team, overturned, home, t}, mur}`. No se expone nada más.
+- `tools/audiotest.js`: categorías `horn` (-17), `reviewBed` (-21, se mide como lecho), `reactBig` (-18) y 7 escenarios «challenge: …»
+  en la parte 2 (incluido el punto corregido + resultado en el mismo frame).
