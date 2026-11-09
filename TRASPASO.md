@@ -207,8 +207,9 @@ Detalle por owner en `notes/<owner>.md` («Pulido ola 3» y el log «Aplicado �
 
 ## Backlog por sprints (pedido por Ferran)
 
-Desde el 9-nov-2026 el proyecto va por **sprints**: cada tarea se hace solo cuando Ferran la pide, para controlar el gasto
-de tokens. Nada de flujos largos encadenados sin preguntar. Lo de abajo está apuntado, NO empezado.
+Desde el 9-nov-2026 el proyecto va por **sprints**, para controlar el gasto de tokens. Ferran abre un sprint
+(«ponte a hacer los to-do») y se trabaja el backlog hasta donde se llegue. Dentro del sprint se pueden encadenar flujos largos.
+Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apuntado, NO empezado.
 
 ### To-do
 - **Remate apuntado con diana según el timing** (9-nov-2026). Hoy ya se apunta en 5 zonas con la dirección durante el salto
