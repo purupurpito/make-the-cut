@@ -281,7 +281,7 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 
 ## Cómo seguir en casa
 
-1. `git clone https://github.com/purupurpito/make-the-cut.git && cd voley-3d`
+1. `git clone https://github.com/purupurpito/make-the-cut.git && cd make-the-cut`
 2. Abrir Claude Code en esa carpeta y decir: "sigue con el TRASPASO.md".
 3. Claude debe relanzar desde la fase pendiente. La reanudación automática del flujo no sirve entre
    PCs, así que: copiar `tools/workflow/voley-3d.workflow.js`, quitar las fases ya hechas (Foundation
