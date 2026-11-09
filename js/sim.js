@@ -164,6 +164,7 @@
    *          difficulty:'easy'|'normal'|'hard' (también 'facil','dificil'): nivel de la CPU,
    *          serveClock:bool (regla de 8 s para el saque humano, por defecto true),
    *          ctrl:'both'|'one' (controlar a los dos jugadores o solo a uno; g.ctrlMode, por defecto 'both'),
+   *          ctrlIdx:0|1 (modo 'one': a quién lleva el humano, 0 = teams[0][0] dorsal 7, 1 = teams[0][1] dorsal 11; g.ctrlIdx),
    *          stats:bool } */
   /** Puntos por set que se pueden elegir (Partido rápido). */
   var SET_POINTS = [11, 15, 21, 25];
@@ -179,8 +180,10 @@
       demo: !!opts.demo,
       autopilot: !!opts.autopilot,
       // control del humano: 'both' = el control pasa a quien da el siguiente toque; 'one' = siempre el mismo jugador
-      // (teams[0][0]) y la IA lleva al compañero en todo, saque incluido
+      // (teams[0][ctrlIdx]) y la IA lleva al compañero en todo, saque incluido
       ctrlMode: opts.ctrl === 'one' ? 'one' : 'both',
+      // modo 'one': jugador del humano (0 = dorsal 7, 1 = dorsal 11); en 'both' siempre 0 (el control empieza en teams[0][0])
+      ctrlIdx: opts.ctrl === 'one' && +opts.ctrlIdx === 1 ? 1 : 0,
       difficulty: diff,
       // demo del menú: CPU vs CPU con el perfil DIFF.demo (peloteos vistosos con ritmo de partido real, ver R6)
       prof: opts.demo ? [DIFF.demo, DIFF.demo] : [DIFF.mate, rookieProf(DIFF[diff], opts.rookie && (diff === 'easy' || diff === 'normal'), diff)], // equipo 0: compañero IA de nivel fijo
@@ -218,7 +221,7 @@
       serveT: 0, tossT: 0, jumpAt: 0, aiServeTe: 0, serveAuth: false, whistleAt: 0.7, // serveAuth: ya ha pitado el saque
       touchTeam: -1, touches: 0, lastPlayer: null, lastTeam: -1, lastKind: '', lastShot: '',
       lastTouchT: 0,           // g.time del último contacto (toque, bloqueo, saque)
-      ctrl: teams[0][0],       // jugador que controla el humano
+      ctrl: teams[0][opts.ctrl === 'one' && +opts.ctrlIdx === 1 ? 1 : 0], // jugador que controla el humano (g.ctrlIdx)
       jobs: [null, null],      // quién de cada equipo va al balón
       pr1: { x: 0, y: 0, z: 0, t: 0 }, pr3: { x: 0, y: 0, z: 0, t: 0 }, // predicciones de cruce a 1 m y 3 m
       blockOff: [0, 0], timer: 0, blockCD: 0,
@@ -253,7 +256,7 @@
       } : null
     };
     dblFields(g); dblFields(g.ball); dblFields(g.pr1); dblFields(g.pr3); dblFields(g.rally);
-    g.server = teams[0][0];
+    g.server = g.ctrl;
     newGame(g);
     return g;
   }
@@ -971,7 +974,10 @@
    * Distancia firmada (m) del borde de la huella del balón a la línea más cercana (> 0 dentro): dentro <=> dist >= 0,
    * igual que el criterio de siempre de land() (C.IN_TOL). Con |dist| <= 0,10 el árbitro puede cantar al revés (REF_ERR),
    * sin avisar. Gasta g.rng solo en esos botes justos. */
-  var REF_ERR = VB.REF_ERR = { d1: 0.02, p1: 0.35, d2: 0.05, p2: 0.15, d3: 0.10, p3: 0.05 };
+  // Calibrado 9-nov-2026 (antes p 0.35/0.15/0.05): en partido casi no se veía (ver notes/sim.md, «error arbitral visible»).
+  // La banda sigue en <= 10 cm; un árbitro solo, sin jueces de línea, con la huella a 1-2 cm de la línea es casi una moneda.
+  // Es el error BASE (Partido rápido, sin modificador); los niveles de competición futuros lo escalarán.
+  var REF_ERR = VB.REF_ERR = { d1: 0.02, p1: 0.45, d2: 0.05, p2: 0.30, d3: 0.10, p3: 0.15 };
   function lineDist(x, y) { return Math.min(C.HL + C.IN_TOL - Math.abs(x), C.HW + C.IN_TOL - Math.abs(y)); }
   function refErrP(dist) { var a = Math.abs(dist); return a < REF_ERR.d1 ? REF_ERR.p1 : a < REF_ERR.d2 ? REF_ERR.p2 : a <= REF_ERR.d3 ? REF_ERR.p3 : 0; }
   /** [ganador, motivo, texto] del punto de un bote según lo que se cante (inside). */
@@ -1552,10 +1558,13 @@
     g.streakTeam = -1; g.streakN = 0; // la racha es dentro del set
     g.challenges = [CHAL.perSet, CHAL.perSet]; // los challenges no se acumulan entre sets
     g.serverIdx = g.serving === 0 ? [0, 1] : [1, 0];
+    if (g.ctrlIdx) g.serverIdx[0] = 1 - g.serverIdx[0]; // modo 'one' con el n.º 11: el orden de saque del equipo 0, en espejo
     emit(g, { type: 'newSet', setNo: g.setNo });
   }
   function newGame(g) {
     g.score = [0, 0]; g.sets = [0, 0]; g.setNo = 1; g.serving = 0; g.serverIdx = [0, 1]; g.setScores = [];
+    // modo 'one' con el n.º 11 (ctrlIdx 1): orden de saque en espejo, así el jugador del humano saca primero como con el n.º 7
+    if (g.ctrlIdx) g.serverIdx[0] = 1;
     g.pendingSet = false; g.finished = false; g.lastPoint = null; g.courtSwap3 = false;
     g.challenges = [CHAL.perSet, CHAL.perSet]; g.call = null; g.review = null; g.cpuChal = null; g._snap = null; g._pendCall = null;
     g.streakTeam = -1; g.streakN = 0;

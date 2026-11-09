@@ -31,16 +31,103 @@
   var SEAT_W = 0.56;
 
   // Paleta (identidad "Palau del Mar": arena cálida + azul Mediterráneo)
+  // CARTOON (9-nov-2026): colores planos y saturados; la pista sigue siendo cálida y la zona libre azul (legibilidad).
   var PAL = {
-    court: '#db9e5c', courtEdge: '#cd9254', courtAttack: '#bf7d47', free: '#1c5676', surround: '#101822',
-    line: '#fbf7ef', outer: '#0a0f17', wall: '#0d131d', step: '#151d29', stepTop: '#1b2533',
-    seatA: '#28323c', seatB: '#2f3a46', seatC: '#874a39', barrier: '#0f1722', steel: '#2a3240', truss: '#20262f'
+    court: '#f7c470', courtEdge: '#efb862', courtAttack: '#f0b05e', free: '#1f8fd0', freeHi: '#29a0de', surround: '#263a78',
+    line: '#ffffff', outer: '#231d4a', wall: '#2c2a66', step: '#38377a', stepTop: '#434386',
+    seatA: '#e8504a', seatB: '#2fb6c9', seatC: '#ffc93c', barrier: '#2a2560', steel: '#4a4f8a', truss: '#3d3c78'
   };
+  // asientos por bloques de colores (grada de dibujo: cada bloque entre pasillos de un color)
+  var SEAT_BLOCKS = ['#e8504a', '#ffb43c', '#2fb6c9', '#5a7dff', '#ff7aa8', '#7ad36a'];
   var TEAMC = ['#ff5b3a', '#3f8cff'];
 
   // Utilidades reutilizables (nada de `new` por frame)
   var _m, _m3, _q, _e, _v, _v2, _s, _p, _col, UNIT_BOX;
   function col(hex) { return new THREE.Color(hex); }
+
+  /* =====================================================================
+   * VB.TOON (contrato del sprint cartoon): sombreado por bandas y contorno de «tinta».
+   *   gradientMap: DataTexture de 3 pasos (sombra / media / luz) para MeshToonMaterial. El toon de three la muestrea con
+   *     u = dot(N, L) * 0,5 + 0,5; 10 texels: N·L < 0 → sombra, 0..0,4 → media, > 0,4 → luz. Filtro NEAREST: bandas duras.
+   *   ink: color de la tinta (#1d1530). shadow: tono de las sombras (#2b2547; la hemisférica ya las tiñe de violeta).
+   *   outline(mesh, m): casco invertido (caras traseras empujadas por la normal) que comparte geometría (y esqueleto o
+   *     instancias) con `mesh`, colgado como hijo. Grosor = max(m metros, ~TOON_PX px de pantalla): se lee igual cerca y
+   *     lejos. Devuelve la malla; en calidad baja queda oculta (y se vuelve a ver al subir de calidad). Sin sombras.
+   *   toonMat(params): MeshToonMaterial con el gradientMap ya puesto (params como los de three).
+   *   enabled: false en calidad baja (contornos ocultos). Coste: 1 dibujo por contorno visible.
+   * ===================================================================== */
+  var TOON_PX = 1.8, toonU = null, toonList = [], toonMats = {};
+  function makeToon(T) {
+    if (VB.TOON && VB.TOON.gradientMap) return VB.TOON;
+    var lv = [46, 46, 46, 46, 46, 140, 140, 255, 255, 255], d = new Uint8Array(lv.length * 4); // lineal: 0,18 · 0,55 · 1
+    for (var i = 0; i < lv.length; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = lv[i]; d[i * 4 + 3] = 255; }
+    var gm = new T.DataTexture(d, lv.length, 1, T.RGBAFormat);
+    gm.minFilter = gm.magFilter = T.NearestFilter; gm.generateMipmaps = false; gm.needsUpdate = true;
+    toonU = { uInkPx: { value: 0.0025 }, uInk: { value: new T.Color(0x1d1530) } };
+    // o (opcional; integración con players): max = tope en metros, k = multiplicador del grosor en píxeles, ow = atributo
+    // `ow` por vértice (0..1, peso del contorno: la cara, los ribetes y los cordones llevan 0; manos, orejas y nariz menos)
+    function inkMat(th, o) {
+      o = o || {};
+      var mx = o.max > 0 ? o.max : 10, kk = o.k > 0 ? o.k : 1, ow = !!o.ow;
+      var k = th.toFixed(4) + '|' + mx.toFixed(4) + '|' + kk.toFixed(3) + (ow ? 'w' : ''); if (toonMats[k]) return toonMats[k];
+      var m = new T.MeshBasicMaterial({ color: 0x1d1530, side: T.BackSide });
+      if (ow) m.defines = { VB_OW: 1 };
+      m.onBeforeCompile = function (sh) {
+        sh.uniforms.uInkPx = toonU.uInkPx; sh.uniforms.uInk = toonU.uInk; sh.uniforms.uInkTh = { value: th };
+        sh.uniforms.uInkMax = { value: mx }; sh.uniforms.uInkK = { value: kk };
+        // después del esqueleto: profundidad y normal de la pose actual (con USE_SKINNING objectNormal ya va deformada)
+        sh.vertexShader = 'uniform float uInkPx; uniform float uInkTh; uniform float uInkMax; uniform float uInkK;\n#ifdef VB_OW\nattribute float ow;\n#endif\n' +
+          sh.vertexShader.replace('#include <skinning_vertex>',
+          '#include <skinning_vertex>\n#ifdef USE_SKINNING\n vec3 vbIn = objectNormal;\n#else\n vec3 vbIn = normal;\n#endif\n' +
+          ' vec4 vbIp = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\n vbIp = instanceMatrix * vbIp;\n#endif\n' +
+          ' float vbIz = max(0.3, -(modelViewMatrix * vbIp).z);\n float vbIw = min(uInkMax, max(uInkTh, vbIz * uInkPx * uInkK));\n' +
+          '#ifdef VB_OW\n vbIw *= ow;\n#endif\n transformed += normalize(vbIn) * vbIw;');
+        sh.fragmentShader = 'uniform vec3 uInk;\n' + sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( uInk, opacity );');
+      };
+      m.customProgramCacheKey = function () { return ow ? 'vb-toon-ink-w' : 'vb-toon-ink'; };
+      toonMats[k] = m; return m;
+    }
+    VB.TOON = {
+      gradientMap: gm, ink: 0x1d1530, shadow: 0x2b2547, enabled: true, px: TOON_PX,
+      toonMat: function (p) { var m = new T.MeshToonMaterial(p || {}); m.gradientMap = gm; return m; },
+      /** outline(mesh, m, opts): opts opcional { max: tope en metros, k: multiplicador del grosor en píxeles }. Si la
+       *  geometría trae el atributo `ow` (atletas de players) se usa como peso por vértice. Un solo contorno para todo. */
+      outline: function (mesh, th, opts) {
+        if (!mesh || !mesh.geometry || !mesh.geometry.attributes.normal) return null;
+        var mat = inkMat(Math.max(0, +th || 0), { max: opts && opts.max, k: opts && opts.k, ow: !!mesh.geometry.attributes.ow }), o;
+        if (mesh.isSkinnedMesh) { o = new T.SkinnedMesh(mesh.geometry, mat); o.bindMode = mesh.bindMode; o.bind(mesh.skeleton, mesh.bindMatrix); }
+        else if (mesh.isInstancedMesh) {
+          o = new T.InstancedMesh(mesh.geometry, mat, mesh.count); o.instanceMatrix = mesh.instanceMatrix;
+          o.onBeforeRender = function () { o.count = mesh.count; };
+        } else o = new T.Mesh(mesh.geometry, mat);
+        o.name = (mesh.name || 'mesh') + ':ink'; o.castShadow = false; o.receiveShadow = false;
+        o.frustumCulled = mesh.frustumCulled; o.renderOrder = mesh.renderOrder; o.visible = VB.TOON.enabled;
+        o.userData.inkRank = 1;
+        o.userData.inkOf = mesh; mesh.add(o); toonList.push(o);
+        return o;
+      },
+      /** Quita un contorno de la lista (p. ej. players al reconstruir los atletas tras cambiar la equipación). */
+      drop: function (o) { var i = toonList.indexOf(o); if (i >= 0) toonList.splice(i, 1); if (o && o.parent) o.parent.remove(o); },
+      /** Llamado por arena (setQuality): contornos fuera en calidad baja. */
+      setQuality: function (q) {
+        var rk = !q ? 2 : q.rank, on = rk >= 1; VB.TOON.enabled = on; VB.TOON.rank = rk;
+        // userData.inkRank: calidad mínima de ese contorno (1 = media, 2 = solo alta); userData.inkOn === false lo apaga
+        for (var i = 0; i < toonList.length; i++) { var ud = toonList[i].userData; toonList[i].visible = on && rk >= (ud.inkRank || 1) && ud.inkOn !== false; }
+      },
+      /** Por frame (arena): grosor mínimo en píxeles según el fov y el alto del lienzo. */
+      frame: function (cam, h) {
+        if (!cam || !h) return;
+        // INTEGRACIÓN: el color de la tinta se crea al cargar arena.js, ANTES de que main.js ponga
+        // ColorManagement.legacyMode = false; sin esto quedaba en sRGB sin linealizar y la tinta salía lavanda (#6a5a90)
+        if (!toonU.lin) { toonU.uInk.value.set(0x1d1530); toonU.lin = true; }
+        var px = TOON_PX * Math.max(0.75, Math.min(1.6, h / 720));
+        toonU.uInkPx.value = px * 2 * Math.tan(cam.fov * Math.PI / 360) / h;
+      },
+      _list: toonList
+    };
+    return VB.TOON;
+  }
+  if (window.THREE) { try { makeToon(window.THREE); } catch (e) { } }
 
   // Aleatorio con semilla: el pabellón se ve igual en cada carga
   var _seed = 20261106;
@@ -142,47 +229,51 @@
     function rect(x0, y0, x1, y1) { g.fillRect(X(x0), Y(y1), (x1 - x0) * ppm, (y1 - y0) * ppm); }
     _seed = 77001;
     g.fillStyle = PAL.surround; g.fillRect(0, 0, W, H);
-    // zona libre con leve degradado (más clara hacia la pista: luz de TV)
-    var gr = g.createRadialGradient(X(0), Y(0), 2 * ppm, X(0), Y(0), 17 * ppm);
-    gr.addColorStop(0, '#22668a'); gr.addColorStop(1, '#174a68');
-    g.fillStyle = gr; rect(-FZX, -FZY, FZX, FZY);
-    // pista y zonas de ataque
-    var gc = g.createLinearGradient(X(-9), 0, X(9), 0);
-    gc.addColorStop(0, PAL.courtEdge); gc.addColorStop(0.5, PAL.court); gc.addColorStop(1, PAL.courtEdge);
-    g.fillStyle = gc; rect(-C.HL, -C.HW, C.HL, C.HW);
+    // CARTOON: colores planos. Zona libre de un azul limpio (sin degradado de «luz de TV») con un anillo algo más claro
+    g.fillStyle = PAL.free; rect(-FZX, -FZY, FZX, FZY);
+    g.fillStyle = PAL.freeHi; rect(-C.HL - 1.6, -C.HW - 1.6, C.HL + 1.6, C.HW + 1.6);
+    // pista y zonas de ataque (planas)
+    g.fillStyle = PAL.court; rect(-C.HL, -C.HW, C.HL, C.HW);
     g.fillStyle = PAL.courtAttack; rect(-C.ATTACK, -C.HW, C.ATTACK, C.HW);
 
-    // tablas de 7.5 cm a lo largo, con juntas al tresbolillo y variación de tono
+    // tablas anchas (15 cm) con 3 tonos de bloque, juntas finas de tinta y alguna veta dibujada (trazo curvo sencillo).
+    // Sin ruido fino: a distancia de juego se lee como un parquet de dibujo animado, no como una foto.
     g.save(); g.beginPath(); g.rect(X(-FZX), Y(FZY), 2 * FZX * ppm, 2 * FZY * ppm); g.clip();
-    var pw = 0.075 * ppm;
-    for (var py = Y(FZY); py < Y(-FZY); py += pw) {
-      var x = X(-FZX) - rnd() * 1.6 * ppm;
+    var pw = 0.15 * ppm, TONES = ['rgba(255,240,205,0.10)', 'rgba(0,0,0,0)', 'rgba(120,50,0,0.07)'];
+    var row = 0;
+    for (var py = Y(FZY); py < Y(-FZY); py += pw, row++) {
+      var x = X(-FZX) - rnd() * 2.4 * ppm;
       while (x < X(FZX)) {
-        // ARN-10: tablas de 1,8-3,6 m con tono ±0,16 (antes 0,9-2,4 m y ±0,04: a distancia de juego la tarima era lisa)
-        var len = (1.8 + rnd() * 1.8) * ppm, a = (rnd() - 0.5) * 0.32;
-        g.fillStyle = a > 0 ? 'rgba(255,236,210,' + a.toFixed(3) + ')' : 'rgba(30,14,0,' + (-a).toFixed(3) + ')';
-        g.fillRect(x, py, len, pw);
-        g.fillStyle = 'rgba(0,0,0,0.13)'; g.fillRect(x, py, Math.max(1, ppm * 0.012), pw);
+        var len = (2.2 + rnd() * 2.2) * ppm, tk = Math.floor(rnd() * 3);
+        g.fillStyle = TONES[tk]; g.fillRect(x, py, len, pw);
+        g.fillStyle = 'rgba(70,30,10,0.22)'; g.fillRect(x, py, Math.max(1, ppm * 0.014), pw);
+        // veta: un arco suave dentro de la tabla (1 de cada 3)
+        if (rnd() < 0.34) {
+          var vx0 = x + len * (0.2 + rnd() * 0.3), vl = len * (0.25 + rnd() * 0.3), vy = py + pw * (0.3 + rnd() * 0.4);
+          g.strokeStyle = 'rgba(120,55,15,0.16)'; g.lineWidth = Math.max(1, ppm * 0.012);
+          g.beginPath(); g.moveTo(vx0, vy); g.quadraticCurveTo(vx0 + vl * 0.5, vy - pw * 0.28, vx0 + vl, vy); g.stroke();
+        }
         x += len;
       }
-      g.fillStyle = 'rgba(0,0,0,0.07)'; g.fillRect(X(-FZX), py, 2 * FZX * ppm, Math.max(1, ppm * 0.01));
+      g.fillStyle = 'rgba(70,30,10,0.16)'; g.fillRect(X(-FZX), py, 2 * FZX * ppm, Math.max(1, ppm * 0.012));
     }
-    // veta fina (patrón estirado a lo largo)
-    var gv = canvas(512, 96), gg = gv.getContext('2d');
-    for (var i = 0; i < 1400; i++) {
-      gg.fillStyle = rnd() < 0.55 ? 'rgba(40,20,5,' + (0.04 + rnd() * 0.07).toFixed(3) + ')' : 'rgba(255,245,230,' + (0.03 + rnd() * 0.05).toFixed(3) + ')';
-      gg.fillRect(rnd() * 512, rnd() * 96, 8 + rnd() * 70, 1);
+    // brillo de barniz de dibujo: 2 franjas diagonales claras y planas sobre la pista (reflejo «pintado»)
+    g.save(); g.beginPath(); g.rect(X(-C.HL), Y(C.HW), 2 * C.HL * ppm, 2 * C.HW * ppm); g.clip();
+    g.fillStyle = 'rgba(255,250,235,0.10)';
+    for (var gl = -1; gl <= 1; gl += 2) {
+      var gx = X(gl * 4.6);
+      g.beginPath(); g.moveTo(gx - 0.6 * ppm, Y(C.HW)); g.lineTo(gx + 0.5 * ppm, Y(C.HW)); g.lineTo(gx - 1.9 * ppm, Y(-C.HW)); g.lineTo(gx - 3.0 * ppm, Y(-C.HW)); g.fill();
+      g.beginPath(); g.moveTo(gx + 0.9 * ppm, Y(C.HW)); g.lineTo(gx + 1.2 * ppm, Y(C.HW)); g.lineTo(gx - 1.2 * ppm, Y(-C.HW)); g.lineTo(gx - 1.5 * ppm, Y(-C.HW)); g.fill();
     }
-    g.globalAlpha = 0.32; g.fillStyle = g.createPattern(gv, 'repeat'); g.fillRect(0, 0, W, H); g.globalAlpha = 1;
-    // brillo del barniz a lo largo de las tablas (ARN-10): bandas anchas y suaves en el sentido de la veta, muy tenues
-    var gs = g.createLinearGradient(0, Y(C.HW), 0, Y(-C.HW));
-    gs.addColorStop(0, 'rgba(255,244,225,0)'); gs.addColorStop(0.3, 'rgba(255,244,225,0.05)'); gs.addColorStop(0.42, 'rgba(255,244,225,0)');
-    gs.addColorStop(0.62, 'rgba(255,244,225,0.035)'); gs.addColorStop(0.8, 'rgba(255,244,225,0)'); gs.addColorStop(1, 'rgba(255,244,225,0.025)');
-    g.fillStyle = gs; rect(-C.HL, -C.HW, C.HL, C.HW);
     g.restore();
+    g.restore();
+    // filo de tinta alrededor de la pista (por FUERA de las líneas: no cambia la geometría reglamentaria)
+    g.fillStyle = 'rgba(29,21,48,0.55)'; var ik = 0.035;
+    rect(-C.HL - ik, C.HW, C.HL + ik, C.HW + ik); rect(-C.HL - ik, -C.HW - ik, C.HL + ik, -C.HW);
+    rect(-C.HL - ik, -C.HW, -C.HL, C.HW); rect(C.HL, -C.HW, C.HL + ik, C.HW);
 
     // logotipos del pabellón en la zona libre (se leen desde la cámara de juego)
-    g.save(); g.fillStyle = 'rgba(255,255,255,0.13)'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.save(); g.fillStyle = 'rgba(255,255,255,0.22)'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.font = '900 ' + Math.round(1.05 * ppm) + 'px ' + FONT;
     for (var s = -1; s <= 1; s += 2) {
       g.save(); g.translate(X(s * 12.6), Y(0)); g.rotate(-Math.PI / 2); g.fillText('PALAU DEL MAR', 0, 0); g.restore();
@@ -193,7 +284,7 @@
     g.fillText('· VALÈNCIA ·', X(0), Y(-8.35));
     g.restore();
     // ondas decorativas sutiles en las esquinas de la zona libre
-    g.save(); g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 0.06 * ppm;
+    g.save(); g.strokeStyle = 'rgba(255,255,255,0.10)'; g.lineWidth = 0.08 * ppm;
     for (var cx = -1; cx <= 1; cx += 2) for (var k = 0; k < 4; k++) {
       g.beginPath(); g.arc(X(cx * 15.5), Y(9.5), (1.4 + k * 0.6) * ppm, 0, Math.PI * 2); g.stroke();
     }
@@ -227,10 +318,11 @@
     var floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * TX, 2 * TY),
       // rugosidad 0.6: con menos, el reflejo del foco principal y de las lámparas del mapa de entorno
       // forma una mancha que el bloom revienta en blanco justo detrás del jugador (visto en rally/block).
-      floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.6, metalness: 0, envMapIntensity: LT[2].env }));
+      // CARTOON: toon (bandas duras, sin especular ni reflejos de entorno): la tarima es plana y luminosa
+      floorMat = VB.TOON.toonMat({ map: floorTex }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; floor.name = 'floor'; root.add(floor);
     var outer = new THREE.Mesh(new THREE.PlaneGeometry(2 * HALL_X + 2, 2 * HALL_Y + 2),
-      new THREE.MeshStandardMaterial({ color: PAL.outer, roughness: 0.85, envMapIntensity: 0.3 }));
+      VB.TOON.toonMat({ color: PAL.outer }));
     outer.rotation.x = -Math.PI / 2; outer.position.y = -0.006; outer.receiveShadow = true; outer.name = 'outerFloor'; root.add(outer);
   }
 
@@ -265,6 +357,12 @@
     bandAt(C.HW - 0.05); bandAt(-C.HW);
     // cuerdas de los extremos
     g.fillStyle = '#e8e4da'; g.fillRect(0, 0, 3, Ht); g.fillRect(Wd - 3, 0, 3, Ht);
+    // CARTOON (arreglos finales): contorno de tinta pintado en la propia textura (la red es un plano: el casco invertido no
+    // sirve). Filo de las dos bandas y de los extremos, ~2,5 cm (~1,5-2 px a 1280×720 desde la cámara de juego): 0 dibujos más
+    var iw = Math.max(2, Math.round(0.025 * ppm));
+    g.fillStyle = '#1d1530';
+    g.fillRect(0, 0, Wd, iw); g.fillRect(0, top - iw, Wd, iw); g.fillRect(0, Ht - bot, Wd, iw); g.fillRect(0, Ht - iw, Wd, iw);
+    g.fillRect(0, 0, iw, Ht); g.fillRect(Wd - iw, 0, iw, Ht);
     var t = texOf(cv); t.anisotropy = Math.min(16, ctx.renderer.capabilities.getMaxAnisotropy()); return t;
   }
   var padCv = null, padTex = null;
@@ -345,10 +443,10 @@
     var tex = netTexture();
     // Dos mallas de una sola cara (delante/detrás) que comparten geometría: three r149 con un material
     // transparente DoubleSide cambia side y pone needsUpdate DOS veces por frame (recalcula el programa).
-    var netOpts = { map: tex, transparent: true, side: THREE.FrontSide, roughness: 0.85, depthWrite: false, alphaTest: 0.04, envMapIntensity: 0.4 };
-    var mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial(netOpts));
+    var netOpts = { map: tex, transparent: true, side: THREE.FrontSide, depthWrite: false, alphaTest: 0.04 };
+    var mesh = new THREE.Mesh(geo, VB.TOON.toonMat(netOpts));
     netOpts.side = THREE.BackSide;
-    var meshB = new THREE.Mesh(geo, new THREE.MeshStandardMaterial(netOpts));
+    var meshB = new THREE.Mesh(geo, VB.TOON.toonMat(netOpts));
     mesh.rotation.y = meshB.rotation.y = Math.PI / 2; mesh.position.copy(VB.toThree(0, 0, top - NET_HH / 2, new THREE.Vector3())); meshB.position.copy(mesh.position);
     mesh.renderOrder = meshB.renderOrder = 1; mesh.name = 'netFront'; meshB.name = 'netBack'; grp.add(mesh); grp.add(meshB);
     net = { mesh: mesh, base: Float32Array.from(geo.attributes.position.array) };
@@ -372,18 +470,12 @@
     var postGeo = new THREE.CylinderGeometry(0.05, 0.05, top + 0.2, 16), padGeo = new THREE.CylinderGeometry(0.17, 0.17, 1.95, 24);
     var postX = [], padX = [];
     for (var p0 = -1; p0 <= 1; p0 += 2) { postX.push(xfAt(0, p0 * (C.HW + 1), (top + 0.2) / 2, 0)); padX.push(xfAt(0, p0 * (C.HW + 1), 0.975, p0 > 0 ? Math.PI : 0)); }
-    var poleMat = new THREE.MeshStandardMaterial({ map: poleAtlas(), roughness: 1, metalness: 1, envMapIntensity: 1 });
-    poleMat.onBeforeCompile = function (sh) {
-      sh.vertexShader = 'attribute vec3 aPbr; varying vec3 vPbr;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n vPbr = aPbr;');
-      sh.fragmentShader = 'varying vec3 vPbr;\n' + sh.fragmentShader
-        .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = vPbr.x;')
-        .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = vPbr.y;')
-        .replace('#include <envmap_physical_pars_fragment>', '#define envMapIntensity (vPbr.z)\n#include <envmap_physical_pars_fragment>');
-    };
-    poleMat.customProgramCacheKey = function () { return 'vb-pole-pbr'; };
+    // CARTOON: toon con el atlas (aPbr queda en la geometría por compatibilidad; el toon no lo usa) + contorno de tinta
+    var poleMat = VB.TOON.toonMat({ map: poleAtlas() });
     // [geometría, matrices, zona del atlas en u (u0, u1), rugosidad, metal, reflejos]: los valores de los 3 materiales de antes
     var poles = mergePbr([[antGeo, antX, 0.56, 0.70, 0.4, 0, 0.6], [postGeo, postX, 0.86, 0.90, 0.3, 0.75, 1], [padGeo, padX, 0, 0.5, 0.75, 0, 0.5]]);
     var pole = new THREE.Mesh(poles, poleMat); pole.castShadow = true; pole.name = 'poles'; casters.push(pole); grp.add(pole);
+    VB.TOON.outline(pole, 0.012);
     for (var p = -1; p <= 1; p += 2) {
       var py = p * (C.HW + 1);
       // base y tensor
@@ -640,7 +732,7 @@
     P.sim = { x: sx, y: sy, z: sz };
   }
   function buildOfficials(S, E) {
-    personMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, envMapIntensity: 0.5 });
+    personMat = VB.TOON.toonMat({ vertexColors: true });
     var ref = { shirt: '#1a2540', collar: '#f1efe8', pants: '#14171c', skin: '#d9a77f', hair: '#2a1c12', badge: '#f4f2ec', badgeMark: '#c4532f', fingers: true };
     // Silla del 1.er árbitro (junto al poste del lado -y), plataforma a 1.25 m (ARN-16): mismo acolchado que las protecciones
     // de los postes (azul marino, banda naranja abajo y filete amarillo arriba), aristas achaflanadas, barandilla acolchada con
@@ -1130,10 +1222,12 @@
   var SHIRTS = {
     t0: ['#ff5b3a', '#ff7a3d', '#ff9a3d', '#e8642c', '#ffb13d', '#e0a86a', '#d98f52'],
     t1: ['#3f8cff', '#2c63d6', '#5a95e6', '#1f4fb8'],
-    n: ['#2e2e31', '#3a3835', '#4a4744', '#56524d', '#34383c', '#5e5a55', '#6b665f', '#463d36', '#3b3f3a', '#4d3a3a', '#7d786f', '#2a2f36'],
+    // CARTOON (arreglos finales): los neutros dejan de ser grises/marrones oscuros casi realistas y pasan a colores de bloque
+    // alegres pero algo apagados (no compiten con los equipos ni con la pista); mismo número de entradas (misma secuencia)
+    n: ['#3d3a6b', '#2f8f83', '#c9a23a', '#8a4f9e', '#4a6fa8', '#d0705a', '#5f9a4a', '#a8486a', '#3e7f9a', '#b58a4a', '#7d74b8', '#2f5a6a'],
     nLight: ['#cbc6ba', '#aea795', '#bcc0c6']
   };
-  var SHIRT_DESAT = 0.25, SHIRT_DESAT_TEAM = 0.30;
+  var SHIRT_DESAT = 0.08, SHIRT_DESAT_TEAM = 0.1; // CARTOON: público más saturado (antes 0,25 / 0,30)
   var PRESS_SHIRTS = ['#2a2d33', '#3b3f46', '#1f2a3d', '#cfd2d6', '#4a4f57', '#e2e0da', '#263445'];
   var HAIRS = ['#1a120c', '#2b1b10', '#3d2716', '#5a3a20', '#7a5532', '#a8814f', '#18181a', '#8f8f8f', '#cfc0a0', '#26150c'];
   var PANTS = ['#1f2a3d', '#2e4466', '#1a1b1f', '#3b3f46', '#6b5f4a', '#2a2a2a', '#40506a'];
@@ -1216,9 +1310,9 @@
    * (x0,5 desde ~2 m hasta 7,5 m de altura: las 3 primeras filas a plena luz) y con la distancia a la pista, y pierde algo
    * de saturación. uCrowdLight = multiplicador global para la iluminación «de puntuación» (ARN-08). Compartido por el
    * público 3D, los impostores y las banderas (mismo valor en los tres). */
-  var CROWD_FALL_GLSL = 'float vbCrowdFall(vec3 ip){ float f = mix(1.0, 0.42, smoothstep(1.6, 5.4, ip.y));' +
+  var CROWD_FALL_GLSL = 'float vbCrowdFall(vec3 ip){ float f = mix(1.0, 0.6, smoothstep(1.6, 5.4, ip.y));' +
     ' f *= mix(1.0, 0.8, smoothstep(17.0, 30.0, length(ip.xz))); return f * uCrowdLight; }' +
-    ' vec3 vbCrowdTone(vec3 c, vec3 ip){ float k = smoothstep(1.3, 7.3, ip.y); return mix(c, vec3(dot(c, vec3(0.299, 0.587, 0.114))), 0.33 + k * 0.3) * vbCrowdFall(ip); }';
+    ' vec3 vbCrowdTone(vec3 c, vec3 ip){ float k = smoothstep(1.3, 7.3, ip.y); return mix(c, vec3(dot(c, vec3(0.299, 0.587, 0.114))), 0.12 + k * 0.22) * vbCrowdFall(ip); }'; // CARTOON: antes 0,33 + k·0,3 y caída a 0,42
   // bruma del pabellón sobre la grada (perspectiva aérea): comprime contraste y saturación de lo lejano. En el fragmento,
   // tras la codificación: uHazeC es LINEAL y pasa por linearToOutputTexel, así la bruma es la misma pintando a pantalla
   // (salida sRGB) que al destino del post-proceso (salida lineal); vHazeD = profundidad de vista.
@@ -1237,10 +1331,22 @@
     ' float c = aAnim.z < 0.25 ? ch.x : (aAnim.z > 0.75 ? ch.y : max(ch.x, ch.y) * 0.55); return c * aAnim.y; }',
     'float vbWave(){ float wd = abs(fract(aAnim.w - uWave.x + 0.5) - 0.5); return uWave.y * smoothstep(0.045, 0.0, wd) * step(0.2, aAnim.y); }' // prensa (energía < 0,2): sin ola
   ].join('\n');
+  var crowdGm = null;
+  function crowdRamp() {
+    if (crowdGm) return crowdGm;
+    var lv = [128, 128, 128, 128, 128, 200, 200, 255, 255, 255], d = new Uint8Array(lv.length * 4);
+    for (var i = 0; i < lv.length; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = lv[i]; d[i * 4 + 3] = 255; }
+    crowdGm = new THREE.DataTexture(d, lv.length, 1, THREE.RGBAFormat);
+    crowdGm.minFilter = crowdGm.magFilter = THREE.NearestFilter; crowdGm.generateMipmaps = false; crowdGm.needsUpdate = true;
+    return crowdGm;
+  }
   function crowdMaterial() {
     crowdU = { uTime: { value: 0 }, uCheer: { value: new THREE.Vector2() }, uCheerAge: { value: new THREE.Vector2(9, 9) }, uWave: { value: new THREE.Vector2() },
       uTension: { value: 0 }, uBall: { value: new THREE.Vector3(0, 3, 0) }, uLook: { value: 1 }, uCrowdLight: { value: 1 }, uHaze: { value: 0.34 }, uHazeC: { value: new THREE.Vector3(0.0041, 0.0046, 0.0059) } };
-    var m = new THREE.MeshLambertMaterial({ vertexColors: true, color: 0xc8c8c8 }); // grada algo más oscura que la pista (look TV)
+    // CARTOON (arreglos finales): sombreado por bandas (MeshToonMaterial) en vez de Lambert suave; rampa propia más clara que la
+    // de los atletas (0,5 · 0,78 · 1): de cerca se leen bloques de color planos sin que la grada se oscurezca ni compita con la pista
+    var m = new THREE.MeshToonMaterial({ vertexColors: true, color: 0xc8c8c8 });
+    m.gradientMap = crowdRamp();
     m.onBeforeCompile = function (sh) {
       for (var k in crowdU) sh.uniforms[k] = crowdU[k];
       sh.vertexShader = CROWD_GLSL_HEAD + '\n' + sh.vertexShader
@@ -1311,7 +1417,7 @@
         ' diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.18, fk);',
         '}'].join('\n'));
     };
-    m.customProgramCacheKey = function () { return 'vb-crowd-6'; };
+    m.customProgramCacheKey = function () { return 'vb-crowd-7'; };
     return m;
   }
   /* Banderas de la grada (ARN-02): atlas de 8 banderas ORIGINALES de peña (4 locales en naranja/arena/marino, 4 visitantes en
@@ -1521,7 +1627,8 @@
   }
   function buildStands(S, E) {
     var stepA = col(PAL.step), stepT = col(PAL.stepTop), seatA = col(PAL.seatA), seatB = col(PAL.seatB), seatC = col(PAL.seatC);
-    var barrier = col(PAL.barrier), cove = col('#ffcf9a'), aisle = col('#2a3546'), wall = col('#0f1620'), aisleLight = col('#7fc8ff');
+    var barrier = col(PAL.barrier), cove = col('#ffcf9a'), aisle = col('#4d4c8e'), wall = col(PAL.wall), aisleLight = col('#7fc8ff');
+    var blocks = SEAT_BLOCKS.map(col); // CARTOON: color de bloque (entre pasillos), sin tocar la secuencia aleatoria del público
     var seats = [[], [], [], []];
     var aislesL = [-21, -14, -7, 0, 7, 14, 21], aislesE = [-5.6, 0, 5.6];
     function inAisle(v, list) { for (var i = 0; i < list.length; i++) if (Math.abs(v - list[i]) < 0.55) return true; return false; }
@@ -1558,7 +1665,7 @@
         var bx0 = -LATX + 0.3;
         for (var ai = 0; ai <= aislesL.length; ai++) {
           var bx1 = ai < aislesL.length ? aislesL[ai] - 0.55 : LATX - 0.3;
-          var sc = rowC((r === 4 || r === 5) ? seatC : (r > 9 ? seatB : seatA), r);
+          var sc = rowC(blocks[(ai + (s > 0 ? 0 : 3) + (r > 9 ? 1 : 0)) % blocks.length], r);
           if (bx1 - bx0 > 0.4) {
             var bseg = r < VOM_ROWS ? vomCut(bx0, bx1) : [[bx0, bx1]];
             if (s > 0 && r < PRESS_ROWS && r % 2 === 0) bseg = pressCut(bseg);
@@ -1601,7 +1708,7 @@
         var by0 = -ENDY + 0.3;
         for (var aj = 0; aj <= aislesE.length; aj++) {
           var by1 = aj < aislesE.length ? aislesE[aj] - 0.55 : ENDY - 0.3;
-          var sc2 = rowC((r2 === 4 || r2 === 5) ? seatC : (r2 > 8 ? seatB : seatA), r2);
+          var sc2 = rowC(blocks[(aj + (e > 0 ? 1 : 4) + (r2 > 8 ? 1 : 0)) % blocks.length], r2);
           if (by1 - by0 > 0.4) {
             S.sbox(0.42, by1 - by0, 0.08, e * (x0 + 0.36), (by0 + by1) / 2, top2 + 0.42, sc2);
             S.sbox(0.06, by1 - by0, 0.42, e * (x0 + 0.62), (by0 + by1) / 2, top2 + 0.66, sc2);
@@ -2508,12 +2615,12 @@
     '  vec2 e = smoothstep(vec2(0.0), fw * 1.2 + 0.015, f) * smoothstep(vec2(0.0), fw * 1.2 + 0.015, 1.0 - f);',
     '  float seamK = 1.0 - smoothstep(0.12, 0.45, max(fw.x, fw.y));',
     '  float seam = mix(1.0, 0.5 + 0.5 * e.x * e.y, seamK);',
-    '  float tone = 0.9 + 0.2 * vbHash(id);',
     '  vec2 pq = vW.xz * 9.0; vec2 pf = abs(fract(pq) - 0.5); vec2 pw = fwidth(pq); float pk = 1.0 - smoothstep(0.08, 0.3, max(pw.x, pw.y));',
     '  float perf = mix(1.0, 0.82 + 0.18 * smoothstep(0.12, 0.22, max(pf.x, pf.y)), pk);',
     '  float r2 = vW.x * vW.x / 520.0 + vW.z * vW.z / 300.0;',
-    '  float lit = 0.28 + 0.72 * exp(-r2);',
-    '  c = vec3(0.034, 0.040, 0.052) * lit * tone * seam * perf * house;',
+    '  float lit = 0.45 + 0.55 * exp(-r2);',
+    // CARTOON: techo luminoso (azul violáceo de dibujo, no casi negro); paneles con tono por bloque más marcado
+    '  c = vec3(0.13, 0.15, 0.36) * lit * (0.82 + 0.36 * step(0.5, vbHash(id))) * seam * perf * house;',
     ' } else if (vK > 1.5) {',
     '  float y = vW.y;',
     '  float strip = smoothstep(9.55, 9.67, y) * (1.0 - smoothstep(10.03, 10.15, y));',
@@ -2551,7 +2658,7 @@
         quad(F[f][1], F[f][2], F[f][3], F[f][4], cc, 0);
       }
     }
-    var X = HALL_X, Z = HALL_Y, H = HALL_H, wall = new THREE.Color('#141c28'), wallE = new THREE.Color('#121925'), deck = new THREE.Color(1, 1, 1);
+    var X = HALL_X, Z = HALL_Y, H = HALL_H, wall = new THREE.Color('#2e3272'), wallE = new THREE.Color('#2a2d68'), deck = new THREE.Color(1, 1, 1);
     // paredes (caras hacia dentro)
     quad([-X, 0, -Z], [X, 0, -Z], [X, H, -Z], [-X, H, -Z], wall, 2);
     quad([X, 0, Z], [-X, 0, Z], [-X, H, Z], [X, H, Z], wall, 2);
@@ -2560,7 +2667,7 @@
     // cubierta (mira hacia abajo)
     quad([-X, H - 0.02, -Z], [X, H - 0.02, -Z], [X, H - 0.02, Z], [-X, H - 0.02, Z], deck, 1);
     // pasarela técnica perimetral a 17,2 m (rejilla, barandillas, montantes, larguero y péndolas hasta las cerchas)
-    var cy0 = 17.2, AX = 17.2, AZ = 12.6, W = 1.0, steel = '#2b3542', grate = '#232b36';
+    var cy0 = 17.2, AX = 17.2, AZ = 12.6, W = 1.0, steel = '#555a9a', grate = '#3f4380';
     var sides = [[0, -AZ, 2 * AX + W, 0], [0, AZ, 2 * AX + W, 0], [-AX, 0, 2 * AZ - W, 1], [AX, 0, 2 * AZ - W, 1]];
     for (var si = 0; si < 4; si++) {
       var S4 = sides[si], along = S4[3] === 0, L = S4[2];
@@ -2598,7 +2705,7 @@
   }
   function buildHall(S, E) {
     buildShell(); // paredes + techo + pasarela + altavoces (ARN-09): 1 malla sin luces, en el sitio de la caja negra de antes
-    var pil = col('#141b26'), strip = col('#3d6f9a'), warm = col('#ffb878');
+    var pil = col('#26296a'), strip = col('#5ec8ff'), warm = col('#ffb878');
     // pilastras y tiras de luz verticales en paredes laterales
     for (var x = -27; x <= 27; x += 6) for (var s = -1; s <= 1; s += 2) {
       S.sbox(1.0, 0.6, HALL_H, x, s * (HALL_Y - 0.3), HALL_H / 2, pil);
@@ -2686,7 +2793,7 @@
     var bg = new THREE.BufferGeometry();
     bg.setAttribute('position', new THREE.Float32BufferAttribute(bP, 3)); bg.setAttribute('normal', new THREE.Float32BufferAttribute(bN, 3));
     bg.setAttribute('uv', new THREE.Float32BufferAttribute(bU, 2)); bg.setIndex(bI); bg.computeBoundingSphere();
-    var bmesh = new THREE.Mesh(bg, new THREE.MeshStandardMaterial({ map: banner.tex, roughness: 0.9, side: THREE.DoubleSide, envMapIntensity: 0.3 }));
+    var bmesh = new THREE.Mesh(bg, VB.TOON.toonMat({ map: banner.tex, side: THREE.DoubleSide }));
     bmesh.name = 'banners'; root.add(bmesh);
     // nombre del pabellón en la pared lateral opuesta (letras retroiluminadas)
     var nc = canvas(2048, 256), ng = nc.getContext('2d');
@@ -2705,15 +2812,18 @@
    * contraluz, así que cada nivel compensa con la principal y la hemisférica para que la pista quede igual.
    * key = principal (sombras), hemi = cielo/suelo, fill = relleno frío, rim = contraluz cálido, env = reflejos del suelo. */
   var LT = [
-    { key: 1.42, hemi: 0.36, fill: 0, rim: 0, env: 0.6, floor: 1.11 },
-    { key: 1.26, hemi: 0.22, fill: 0.25, rim: 0.22, env: 0.6, floor: 1.09 },
-    { key: 1.42, hemi: 0.24, fill: 0.25, rim: 0.22, env: 0.6, floor: 1.05 }
+    // CARTOON: `floor` = tinte del toon de la tarima (sin especular ni entorno, a 1 lavaba la pista con el ACES; 0,6-0,7
+    // deja el naranja saturado). Las luces no cambian (los atletas se ajustan contra ellas).
+    { key: 1.42, hemi: 0.36, fill: 0, rim: 0, env: 0.6, floor: 0.68 },
+    { key: 1.26, hemi: 0.22, fill: 0.25, rim: 0.22, env: 0.6, floor: 0.72 },
+    { key: 1.42, hemi: 0.24, fill: 0.25, rim: 0.22, env: 0.6, floor: 0.64 }
   ];
   var FILL_I = LT[2].fill, RIM_I = LT[2].rim; // (setQuality las pone a 0 en baja en el móvil)
   var floorMat = null;
   function buildLights(q) {
     // suelo de la hemisférica oscuro y frío: el rebote no levanta las sombras de los jugadores
-    hemi = new THREE.HemisphereLight(0xfff1e0, 0x0d1118, LT[2].hemi); root.add(hemi);
+    // CARTOON: cielo lavanda y suelo violeta (#2b2547 aclarado): lo que no ve la principal queda violáceo, no negro
+    hemi = new THREE.HemisphereLight(0xd6d0ff, 0x5a4f8c, LT[2].hemi); root.add(hemi);
     keyLight = new THREE.DirectionalLight(0xfff0dc, LT[2].key);
     VB.toThree(7, -9, 26, keyLight.position); keyLight.target.position.set(0, 0, 0);
     keyLight.castShadow = !!q.shadows;
@@ -3143,12 +3253,12 @@
   // ---------- Interfaz del módulo ----------
   VB.Arena = {
     init: function (c) {
-      ctx = c; THREE = c.THREE; C = VB.C;
+      ctx = c; THREE = c.THREE; C = VB.C; makeToon(THREE);
       _m = new THREE.Matrix4(); _m3 = new THREE.Matrix3(); _q = new THREE.Quaternion(); _e = new THREE.Euler(); _v = new THREE.Vector3();
       _v2 = new THREE.Vector3(); _s = new THREE.Vector3(); _p = new THREE.Vector3(); _sz = new THREE.Vector2(); UNIT_BOX = new THREE.BoxGeometry(1, 1, 1); _m4i = new THREE.Matrix4();
       root = new THREE.Group(); root.name = 'arena'; ctx.scene.add(root);
-      var fogc = new THREE.Color(0x0a0f18);
-      ctx.scene.fog = new THREE.Fog(fogc, 34, 95);
+      var fogc = new THREE.Color(0x1d1a44); // CARTOON: niebla violeta (antes casi negra)
+      ctx.scene.fog = new THREE.Fog(fogc, 38, 100);
       ctx.scene.background = fogc;
       var S = new Builder(), E = new Builder(), SC = new Builder();
       buildFloor();
@@ -3165,10 +3275,13 @@
       buildLights(c.quality || { shadows: true, shadowSize: 2048 });
       buildFlashes();
       // fusión estática: 1 malla iluminada + 1 emisiva
-      var sm = new THREE.Mesh(S.build(), standDim(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05, envMapIntensity: 0.45 })));
+      var sm = new THREE.Mesh(S.build(), standDim(VB.TOON.toonMat({ vertexColors: true })));
       sm.receiveShadow = true; sm.castShadow = false; sm.name = 'static'; root.add(sm);
       // utillaje junto a la pista (cinta, postes, silla, mesa): sí proyecta sombra
       var scm = new THREE.Mesh(SC.build(), sm.material); scm.castShadow = true; scm.receiveShadow = true; scm.name = 'props'; root.add(scm); casters.push(scm);
+      VB.TOON.outline(scm, 0.008); // silla, mesa, cinta de la red, bancos: tinta (media/alta)
+      // oficiales: 44 k triángulos más con contorno → solo en alta (en media el presupuesto es de 350 k)
+      for (var oi = 0; oi < officials.length; oi++) { var oo = VB.TOON.outline(officials[oi], 0.006); if (oo) { oo.userData.inkRank = 2; oo.visible = (VB.TOON.rank == null ? 2 : VB.TOON.rank) >= 2; } }
       emissiveMesh = new THREE.Mesh(E.build(), emissiveScreens(topFade(new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, fog: false }), 'vb-emis-top-scr')));
       emissiveScreensAttr(emissiveMesh.geometry);
       emissiveMesh.name = 'emissive'; root.add(emissiveMesh);
@@ -3239,7 +3352,8 @@
       if (fillLight) { fillLight.visible = keepLights || q.rank >= 1; fillLight.intensity = q.rank >= 1 ? L.fill : 0; }
       if (rimLight) { rimLight.visible = keepLights || q.rank >= 1; rimLight.intensity = MOOD.rimBase = q.rank >= 1 ? L.rim : 0; }
       if (hemi) hemi.intensity = L.hemi;
-      if (floorMat) { floorMat.envMapIntensity = L.env; floorMat.color.setScalar(L.floor); } // tinte de la tarima por nivel (ARN-01: pista ≥ 189 en todos)
+      if (floorMat) floorMat.color.setScalar(L.floor); // tinte de la tarima por nivel (ARN-01: pista ≥ 189 en todos)
+      if (VB.TOON) VB.TOON.setQuality(q); // contornos de tinta fuera en baja
       setPost(wantPost(q)); haloScale();
     },
     resize: function () { postResize(); },
@@ -3248,6 +3362,7 @@
       if (!g) return;
       if (events && events.length) onEvents(g, events);
       var rdt = ctx.realDt || 0;
+      if (VB.TOON) VB.TOON.frame(ctx.camera, ctx.height || 720);
       // público: alegría por equipo, ola, tensión en punto de set/partido
       for (var t = 0; t < 2; t++) { if (RT.cheerT[t] > 0) RT.cheerT[t] = Math.max(0, RT.cheerT[t] - rdt); }
       crowdU.uTime.value = ctx.time;

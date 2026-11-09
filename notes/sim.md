@@ -850,3 +850,24 @@ Todo en coordenadas de simulación; equipo 0 = humano. Nada de lo nuevo cambia `
 - simtest: nuevas comprobaciones «remate apuntado» y «error arbitral / challenge»; la «llamada de línea» comprueba `truthIn` (lo cantado
   puede llevar error B1); el recuento propio de racha/punto de set ignora el punto anulado; `KNOWN` con los 2 eventos nuevos; el bot lleva
   la mira con el stick hacia el punto que antes elegía con la dirección (sin eso el bot perfecto bajaba de ~56 % a 43 % contra Experto).
+
+## Sprint cartoon (9-nov-2026): elegir jugador en «Control: Uno» y error arbitral visible — sim
+- **`createGame({ctrl:'one', ctrlIdx:0|1})`** (contrato del sprint): el humano lleva `teams[0][ctrlIdx]` (0 = n.º 7, por defecto;
+  1 = n.º 11) y la IA al otro en todo (toques, posición, su saque y el bloqueo dinámico de `updateDefense`, que ya trabaja con
+  `g.ctrl`/`other()` sin suponer el índice). Queda en `g.ctrlIdx` (0 fuera del modo 'one' o con un valor que no sea 0/1; acepta '1').
+  Con el n.º 11 el orden de saque del equipo 0 va en espejo (`newGame`/`nextSet`: `serverIdx[0]` invertido), así el jugador del
+  humano saca primero en el 1.er set, igual que con el n.º 7. En modo 'both' nada cambia (el control empieza y vuelve a `teams[0][0]`).
+  main.js debe pasar `ctrlIdx: ctx.settings.ctrlPlayer` (pendiente de ui_main).
+- **Error arbitral visible**: `VB.REF_ERR` p1/p2/p3 de 0,35/0,15/0,05 a **0,45/0,30/0,15**; las bandas siguen en <2 / <5 / <=10 cm
+  (verosímil: un árbitro solo, sin jueces de línea, con la huella a 1-2 cm es casi una moneda). Es el error BASE = Partido rápido sin
+  modificador (concepto de TRASPASO); los niveles de competición futuros lo escalarán sobre esto.
+  Medido (bots bueno/medio contra Fácil/Normal/Difícil, 80 partidos, `refmeasure` ad hoc): 7070 botes, 49 a <= 10 cm, pero solo
+  **7 decisivos** (balón que cruzó la red; los demás son recepciones/defensas que caen en el propio campo, donde cantar al revés da el
+  mismo punto y no se tira el dado). Estimado sobre esos 7: ~1 mala llamada cada ~80 partidos antes y ~1 cada ~45 ahora (casi el
+  doble, pero sigue siendo raro).
+  El límite real no es la probabilidad sino lo poco que caen ataques/saques a <= 10 cm de la línea (objetivos de la CPU y
+  `attackTarget` hasta 3,9 m de lateral y 8,3 m de fondo, ~10 cm por dentro). Para verlo más sin salir de los 10 cm habría que
+  acercar a las líneas los objetivos de saque/remate de la CPU (cambia el equilibrio: más fuera de la CPU), no tocado.
+  simtest: bandas esperadas 0,35-0,55 / 0,22-0,38 / 0,09-0,21 / 0 (medido 0,436/0,272/0,158/0); la CPU pide challenge 34/156.
+- simtest «modo controlar 1 jugador»: comprobaciones de `ctrlIdx` (por defecto, 1, fuera de modo uno, valor raro, saque inicial) y 6
+  partidos (4 con el n.º 7, 2 con el n.º 11) contando toques, saques y bloqueos del compañero IA (mínimos también para el n.º 11).

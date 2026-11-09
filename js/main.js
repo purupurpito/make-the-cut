@@ -66,7 +66,7 @@
     // móvil; input.js), hudScale (1 | 1,15 | 1,3: tamaño del HUD y de las hojas; ui.js), softFlash (destellos suaves; arena/fx/ui)
     // coachTips: consejos del partido (franja de arriba). Se ven hasta la primera victoria: ui.js los apaga al ganar el 1r partido
     // y se pueden volver a encender en Ajustes · Juego.
-    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', camSens: 1, sfxVol: 1, musicVol: 0.75,
+    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, camSens: 1, sfxVol: 1, musicVol: 0.75,
       camStable: false, rumble: true, hudScale: 1, softFlash: false };
     var saved = false;
     var o = null;
@@ -90,6 +90,7 @@
     // equipación: solo colores de las paletas de ui.js (OPT.kit*) y diseños conocidos
     if (['diag', 'liso', 'franjas', 'rayas'].indexOf(s.kitPattern) < 0) s.kitPattern = 'diag';   // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS)
     if (s.ctrlMode !== 'one') s.ctrlMode = 'both';                      // control: los dos jugadores o solo uno (sim: g.ctrlMode)
+    if (s.ctrlPlayer !== 1) s.ctrlPlayer = 0;                           // modo Uno: 0 = teams[0][0] (n.º 7), 1 = teams[0][1] (n.º 11); sim: ctrlIdx
     if (Q.diff && DIFFS.indexOf(Q.diff) >= 0) s.difficulty = Q.diff;
     return s;
   }
@@ -285,6 +286,11 @@
   // a startMatch a los ~2,5 s; con el menú, la cortinilla ya espera sola) espera a que acabe (como mucho hasta los 9 s): si no, el
   // ensayo se cortaba y el primer uso de la tarjeta de presentación o del aviso del saque costaba un frame de 45-70 ms.
   var startWait = null;
+  /** Modo «Control: Uno»: a cuál de los dos controla el humano (0 = teams[0][0], 1 = teams[0][1]); opts.ctrlIdx > &ctrlidx= > ajuste. */
+  function ctrlIdxOf(opts) {
+    var v = opts && opts.ctrlIdx != null ? +opts.ctrlIdx : Q.ctrlidx != null ? +Q.ctrlidx : ctx.settings.ctrlPlayer;
+    return v === 1 ? 1 : 0;
+  }
   ctx.actions.startMatch = function (opts) {
     opts = opts || {};
     // (solo partidos humanos: los de autopilot —herramientas de medida— empiezan al momento, como siempre)
@@ -294,7 +300,7 @@
     tryFullscreen();
     ctx.frozen = false;
     // present (SIM-03): en los partidos de verdad la pausa del punto se alarga en los momentos grandes (y se puede recortar)
-    setGame(Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: isRookie(), present: !opts.autopilot, points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: opts.ctrl || Q.ctrl || ctx.settings.ctrlMode }));
+    setGame(Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: isRookie(), present: !opts.autopilot, points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: opts.ctrl || Q.ctrl || ctx.settings.ctrlMode, ctrlIdx: ctrlIdxOf(opts) }));
     setState('playing');
     // los jugadores se reconstruyen en onGameStart: sube sus texturas/programas antes del primer frame
     // (sin pintar: aquí no hay telón que tape los objetos ocultos)

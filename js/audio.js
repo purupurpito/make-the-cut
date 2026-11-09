@@ -511,6 +511,48 @@
     return edges(normalize([dcBlock(d, sr)], 0.8), sr, 0.002, 0.03);
   }
 
+  /* Capas «de dibujo animado» (sprint cartoon, 9-nov-2026). Se suman, bajas, al golpe de siempre (que no cambia): le dan el
+   * carácter de dibujo sin volverlo de juguete. Todas salen del mismo generador (dos senos con envolvente de tono + ruido
+   * filtrado opcional):
+   *  - pop:   «bonk» redondo bajo cada toque (una octava que cae en ~12 ms); el tipo de toque cambia el tono (playbackRate).
+   *  - whack: «¡zas!» del remate: seno que cae de ~950 a 150 Hz en 9 ms + palmada de ruido a 1,9 kHz.
+   *  - zip:   zumbido de las «líneas de velocidad» de un remate fuerte: silbido que baja de 2,6 a 0,7 kHz con ruido que lo sigue.
+   *  - boing: muelle sutil del balón que rebota en el bloqueo o en la red: 175 → 200 Hz con vibrato de 12,5 Hz que se apaga
+   *           y armónicos 2.º y 3.º (se oye en un altavoz pequeño). */
+  var TOON = {
+    pop: { dur: 0.13, f0: 640, f1: 250, pt: 0.012, ad: 0.032, att: 0.0015, hr: 1.5, ha: 0.3, hd: 0.015, h3: 0, na: 0, nf: 2000, nq: 1, nd: 0.01, vf: 0, va: 0, vd: 1, sw: 0, peak: 0.8 },
+    whack: { dur: 0.2, f0: 950, f1: 150, pt: 0.009, ad: 0.05, att: 0.001, hr: 2.02, ha: 0.25, hd: 0.012, h3: 0, na: 0.9, nf: 1900, nq: 1.2, nd: 0.011, vf: 0, va: 0, vd: 1, sw: 0, peak: 0.85 },
+    zip: { dur: 0.26, f0: 2600, f1: 700, pt: 0.11, ad: 1, att: 0, hr: 1.5, ha: 0.12, hd: 0.08, h3: 0, na: 0.55, nf: 0, nq: 3, nd: 1, vf: 0, va: 0, vd: 1, sw: 1, peak: 0.6 },
+    boing: { dur: 0.55, f0: 175, f1: 200, pt: 0.06, ad: 0.17, att: 0.002, hr: 2, ha: 0.7, hd: 0.14, h3: 0.42, na: 0, nf: 2000, nq: 1, nd: 0.01, vf: 12.5, va: 0.2, vd: 0.2, sw: 0, peak: 0.75 }
+  };
+  function* genToon(kind, rng, sr) {
+    var o = TOON[kind], n = Math.ceil(o.dur * sr), d = new Float32Array(n), rs = rng.st;
+    var j = 1 + (rng() - 0.5) * 0.08, f0 = o.f0 * j, f1 = o.f1 * j, hr = o.hr, ha = o.ha, h3 = o.h3, na = o.na, nf = o.nf, nq = o.nq;
+    var vf = TAU * o.vf / sr, va = o.va, sw = o.sw, nAtt = Math.max(1, (o.att * sr) | 0);
+    var kP = Math.exp(-1 / (o.pt * sr)), kA = Math.exp(-1 / (o.ad * sr)), kH = Math.exp(-1 / (o.hd * sr)), kN = Math.exp(-1 / (o.nd * sr)), kV = Math.exp(-1 / (o.vd * sr));
+    var nb = new Biq('bp', nf || f0, nq, sr);
+    // estado entre tramos: 0 ph · 1 ph2 · 2 eP · 3 eA · 4 eH · 5 eN · 6 eV
+    var Z = new Float64Array(7); Z[2] = 1; Z[3] = 1; Z[4] = 1; Z[5] = 1; Z[6] = 1;
+    for (var i0 = 0; i0 < n; i0 += CH) {
+      var i1 = i0 + CH < n ? i0 + CH : n, ph = Z[0], ph2 = Z[1], eP = Z[2], eA = Z[3], eH = Z[4], eN = Z[5], eV = Z[6];
+      for (var i = i0; i < i1; i++) {
+        var f = (f1 + (f0 - f1) * eP) * (1 + va * Math.sin(vf * i) * eV); eP *= kP; eV *= kV;
+        ph += TAU * f / sr; ph2 += TAU * f * hr / sr;
+        var u = i / n, env;
+        if (sw) { env = Math.sin(Math.PI * u); env *= Math.sqrt(env); }
+        else { var a = i < nAtt ? i / nAtt : 1; env = a * a * (3 - 2 * a) * eA; eA *= kA; }
+        var y = (Math.sin(ph) + ha * eH * Math.sin(ph2) + h3 * eH * Math.sin(3 * ph)) * env; eH *= kH;
+        if (na > 0) {
+          if (!nf && (i & 31) === 0) nb.set('bp', f, nq, sr);
+          y += nb.p(rnd(rs) * 2 - 1) * na * (sw ? env : eN * (i < nAtt ? i / nAtt : 1)); eN *= kN;
+        }
+        d[i] = y;
+      }
+      Z[0] = ph; Z[1] = ph2; Z[2] = eP; Z[3] = eA; Z[4] = eH; Z[5] = eN; Z[6] = eV; yield 0;
+    }
+    return edges(normalize([dcBlock(d, sr)], o.peak), sr, 0.0008, kind === 'boing' ? 0.06 : 0.015);
+  }
+
   /** Celebración (contactos cosméticos de players, PLY-07 -> eventos 'fx:*' de main.js): choque de manos 'slap' (dos palmas
    *  planas que se encuentran: chasquido seco a 1-3 kHz con un cuerpo hueco de ~190 Hz) y choque de puños 'fist' (sordo: ruido
    *  filtrado por debajo de 1 kHz y golpe de 120 Hz, sin brillo). Cortos (< 70 ms) y secos: la reverb del pabellón pone el aire. */
@@ -1092,6 +1134,11 @@
     mvpWin: { dur: 2.0, peak: 0.7, fade: 0.5, n: [['air', 0.1, 0.5, 0.3],
       ['ep', 'D3', 0.6, 0.9, 0.16], ['ep', 'D4', 0.6, 0.8, 0.12], ['ep', 'Fs4', 0.61, 0.8, 0.11], ['ep', 'A4', 0.62, 0.8, 0.11], ['boom', 0.6, 0.1],
       ['bell', 'D6', 0.6, 0.2, 0.35], ['bell', 'Fs6', 0.636, 0.17, 0.65], ['bell', 'A6', 0.672, 0.15, 0.4], ['bell', 'D7', 0.708, 0.12, 0.6]] },
+    // Sprint cartoon: «¡PAM!» del remate perfecto del humano (la onomatopeya de fx/ui). Golpe de metal corto en Re mayor, como
+    // un acorde de orquesta de dibujo animado, con un platillo pequeño (sin bombo: el sub del perfecto ya pone el grave) y tres destellos de campana que suben (el
+    // destello «perfecto» en grande). ~1 s; entra 160 ms tras el chasquido, ya sobre su cola: encima del contacto sumaba pico (medido).
+    pamSting: { dur: 1.2, peak: 0.7, fade: 0.35, n: [['c', ['D4', 'Fs4', 'A4', 'D5'], 0, 0.1, 0.3], ['b', 'D3', 0, 0.1, 0.4], ['crash', 0, 0.08],
+      ['bell', 'D6', 0.05, 0.16, 0.35], ['bell', 'A6', 0.11, 0.13, 0.65], ['bell', 'D7', 0.17, 0.1, 0.5]] },
     mvpLose: { dur: 1.7, peak: 0.6, fade: 0.45, n: [['air', 0.15, 0.45, 0.2],
       ['ep', 'B3', 0.6, 0.8, 0.13], ['ep', 'D4', 0.61, 0.75, 0.11], ['ep', 'Fs4', 0.62, 0.75, 0.11],
       ['bell', 'Fs5', 0.6, 0.13, 0.4], ['bell', 'B5', 0.645, 0.11, 0.6], ['bell', 'D6', 0.69, 0.09, 0.5]] }
@@ -1141,6 +1188,10 @@
   reg('whoosh', 2, 'full', genWhoosh);
   reg('slide', 2, 'full', genSlide);
   reg('perfect', 1, 'full', genPerfect);
+  reg('toonPop', 3, 'full', function (rng, sr) { return genToon('pop', rng, sr); });
+  reg('toonWhack', 2, 'full', function (rng, sr) { return genToon('whack', rng, sr); });
+  reg('toonZip', 2, 'full', function (rng, sr) { return genToon('zip', rng, sr); });
+  reg('boing', 2, 'full', function (rng, sr) { return genToon('boing', rng, sr); });
   ['click', 'hover', 'back', 'start'].forEach(function (k) { reg(k, 1, 'full', function (rng, sr) { return genUi(k, rng, sr); }); });
   Object.keys(UI2).forEach(function (k) { reg(k, k === 'cntTick' ? 2 : 1, 'full', function (rng, sr) { return genUi2(k, rng, sr); }); });
   ['murmur', 'excite', 'groan', 'ooh', 'applause', 'palmas'].forEach(function (k) { reg(k, 1, 'low', CROWD[k]); });
@@ -1151,9 +1202,9 @@
   /** Orden de generación: primero lo que suena antes (interfaz, silbato, toques), luego grada y música. */
   // la presentación (introSting/introSwell) suena nada más pulsar JUGAR y la cortinilla en el primer punto: van justo detrás del silbato
   // AUD-08: los de los menús (flechas, interruptores) justo tras la interfaz; los de la hoja final (tics, MVP) al final
-  var PRIORITY = ['click', 'hover', 'start', 'back', 'arwHover', 'optHover', 'stepUp', 'stepDown', 'arwEdge', 'tglOn', 'tglOff', 'optSel', 'cntTick', 'whistle', 'introSting', 'introSwell', 'serve', 'pass', 'set', 'spike', 'land', 'whistleLong', 'free', 'block', 'net',
-    'ir', 'murmur', 'bounce', 'dribble', 'wipe', 'slam', 'spikeHero', 'blockHero', 'sub', 'slamSub', 'tick', 'netTape', 'squeak', 'feet', 'scuff', 'whoosh', 'roar', 'applause', 'groan', 'excite', 'ooh',
-    'whistleEnd', 'slide', 'perfect', 'slap', 'fist', 'handclap', 'chest', 'palmas', 'bombo', 'beat', 'setWin', 'setLose', 'matchWin', 'matchLose', 'cntLock', 'mvpWin', 'mvpLose'];
+  var PRIORITY = ['click', 'hover', 'start', 'back', 'arwHover', 'optHover', 'stepUp', 'stepDown', 'arwEdge', 'tglOn', 'tglOff', 'optSel', 'cntTick', 'whistle', 'introSting', 'introSwell', 'serve', 'pass', 'set', 'spike', 'land', 'whistleLong', 'free', 'block', 'net', 'toonPop', 'toonWhack',
+    'ir', 'murmur', 'bounce', 'dribble', 'wipe', 'slam', 'spikeHero', 'blockHero', 'sub', 'slamSub', 'tick', 'netTape', 'boing', 'toonZip', 'squeak', 'feet', 'scuff', 'whoosh', 'roar', 'applause', 'groan', 'excite', 'ooh',
+    'whistleEnd', 'slide', 'perfect', 'pamSting', 'slap', 'fist', 'handclap', 'chest', 'palmas', 'bombo', 'beat', 'setWin', 'setLose', 'matchWin', 'matchLose', 'cntLock', 'mvpWin', 'mvpLose'];
   Object.keys(CATALOG).forEach(function (k) { if (PRIORITY.indexOf(k) < 0) PRIORITY.push(k); });
 
   /* ---------- Plan de mezcla ----------
@@ -1177,7 +1228,8 @@
     setWin: 2.7, setLose: 5.4, matchWin: 1.5, matchLose: 4.8, perfect: 7.7, click: 5.2, back: 4.3, start: -2.6, hover: 11,
     spikeHero: 2.8, blockHero: 3.3, sub: 0, slamSub: 0, tick: 8.6, slap: 9.8, fist: 10.4,
     handclap: 11.2, chest: 4.9, dribble: 1.4, wipe: -1.6, introSwell: -2.4, introSting: -0.3,
-    cntTick: -1.8, cntLock: 0, arwHover: 7.9, optHover: 8.5, stepUp: -3.5, stepDown: -3.4, arwEdge: 3, tglOn: -2.6, tglOff: 0.7, optSel: -0.5, mvpWin: 1.6, mvpLose: 1.8, horn: -1.8
+    cntTick: -1.8, cntLock: 0, arwHover: 7.9, optHover: 8.5, stepUp: -3.5, stepDown: -3.4, arwEdge: 3, tglOn: -2.6, tglOff: 0.7, optSel: -0.5, mvpWin: 1.6, mvpLose: 1.8, horn: -1.8,
+    toonPop: 3.4, toonWhack: 2, toonZip: -5.9, boing: 2.6, pamSting: 2.1
   });
 
 
@@ -1214,7 +1266,7 @@
                 deferred: 0, lateDrop: 0, lateMax: 0, ticks: 0, worker: 'none', workerMs: 0, workerHi: -1, bumped: 0, missed: {},
                 // AUD-05: contactos de celebración y botes del ritual recibidos / que sonaron; tiras del pool usadas / pool lleno;
                 // máximo de voces simultáneas (ranuras ocupadas, sin lechos). AUD-06/07: presentaciones, cortinillas, reacciones.
-                fxIn: 0, fxOut: 0, dribIn: 0, dribOut: 0, pooled: 0, poolFull: 0, voicesMax: 0, intro: 0, wipe: 0, react: 0 }; // missed: nombre -> veces que se pidió sin buffer (y no se pudo aplazar) // ticks: "toc" del reloj de saque programados · aplazados (sin buffer aún), descartados por llegar tarde, retraso máx. (ms)
+                fxIn: 0, fxOut: 0, dribIn: 0, dribOut: 0, pooled: 0, poolFull: 0, voicesMax: 0, intro: 0, wipe: 0, react: 0, toon: 0, pam: 0 }; // missed: nombre -> veces que se pidió sin buffer (y no se pudo aplazar) // ticks: "toc" del reloj de saque programados · aplazados (sin buffer aún), descartados por llegar tarde, retraso máx. (ms)
   var stingDone = false, beatNext = 0, clapNext = 0, clapBeat = 0, serveWait = 0, serveTeam = -1;
   /* Tensión del saque: 2 = punto de partido (latido 0,9 s, ganancia 1), 1 = punto de set (latido 1,0 s, ×0,6), 0 = nada.
    * El latido para en cuanto el sacador lanza (el gesto resuelve la tensión). */
@@ -1264,9 +1316,9 @@
   // pulido ola 3: también el resto de sonidos de juego (plancha, toc del reloj de saque, refuerzos del golpe perfecto, celebración,
   // latido, cortinilla): sin Worker o con la CSP bloqueándolo, la cola los dejaba detrás de la grada y la música y en los
   // primeros 20 s se pedían sin buffer (medido: missed {slide:1}). Solo grada y música quedan para la segunda pasada.
-  var CORE = ['click', 'start', 'whistle', 'dribble', 'set', 'feet', 'serve', 'whoosh', 'pass', 'spike', 'land', 'whistleLong', 'free', 'block', 'net', 'bounce',
+  var CORE = ['click', 'start', 'whistle', 'dribble', 'set', 'toonPop', 'feet', 'serve', 'whoosh', 'pass', 'spike', 'toonWhack', 'land', 'whistleLong', 'free', 'block', 'net', 'boing', 'bounce',
     'scuff', 'squeak', 'slam', 'netTape', 'slide', 'hover', 'back', 'slap', 'handclap', 'tick', 'perfect', 'sub', 'spikeHero', 'blockHero', 'slamSub',
-    'fist', 'chest', 'beat', 'wipe'];
+    'fist', 'chest', 'beat', 'wipe', 'toonZip'];
   /* Un sonido de grada o música aplazado (bump: ovación de bienvenida, reacción del público) pasa al frente de la cola,
    * pero DETRÁS de los sonidos de juego de la primera pasada que aún falten (coreAhead). Antes iba delante de todo: la
    * ovación (roar + applause, ~90 ms de síntesis en escritorio, 0,4-1 s troceados en un móvil lento) dejaba sin buffer
@@ -1656,7 +1708,7 @@
                 setWin: 1.5, setLose: 1.5, matchWin: 2.5, matchLose: 2.5, start: 0.3, click: 0.2,
                 introSting: 0.6, introSwell: 1.2, wipe: 0.1,
                 // AUD-08: confirmaciones de menú (tarde, no valen: 0,15 s), el clac final de la cuenta y la revelación del MVP
-                stepUp: 0.15, stepDown: 0.15, tglOn: 0.15, tglOff: 0.15, optSel: 0.15, arwEdge: 0.15, cntLock: 0.05, mvpWin: 0.4, mvpLose: 0.4 }; // presentación tarde: sin firma pasado 0,6 s; cortinilla: o en su corte o nada
+                stepUp: 0.15, stepDown: 0.15, tglOn: 0.15, tglOff: 0.15, optSel: 0.15, arwEdge: 0.15, cntLock: 0.05, mvpWin: 0.4, mvpLose: 0.4, pamSting: 0.15 }; // presentación tarde: sin firma pasado 0,6 s; cortinilla: o en su corte o nada
   var deferred = [], urgent = false;
   function deferPlay(name, gain, px, py, rate, send, delay, bus, wh) {
     if (!AC || !genStarted || !Object.prototype.hasOwnProperty.call(DEFER, name)) return false;
@@ -1848,12 +1900,45 @@
     duckCrowd(-4 * w, 0.06);
     play('sub', punchCap('sub', SUB_G * w, null, null, SUB_CEIL * w), null, null, jit(0.03), 0, SUB_DELAY, 'punch');
   }
+  /* ---------- Capas de dibujo animado (sprint cartoon) ----------
+   * Bajo el golpe de siempre: «bonk» en los toques, «¡zas!» y zumbido de velocidad en el remate, muelle en los rebotes de
+   * bloqueo y red, «¡PAM!» del remate perfecto. Por el bus de efectos (el del golpe: se panoramizan con él) y sin envío de
+   * reverb apreciable (son «de dibujo», secos). ctx.settings.toonSfx === false (o setToon(false)) las quita todas;
+   * ctx.settings.onoma === false / onomatopoeia === false quita solo el «¡PAM!» propio (si fx emite el evento, suena igual). */
+  var toonOn = true, pamT = -9;
+  function toonAllowed() { var st = vctx && vctx.settings; return toonOn && !(st && st.toonSfx === false); }
+  function toon(name, gain, x, y, rate, delay) {
+    if (!toonAllowed()) return null;
+    var src = play(name, gain * (demo ? 0.5 : 1), x, y, rate, 0.04, delay);
+    if (src) stats.toon++;
+    return src;
+  }
+  /** Capa del golpe según el toque. Remate: «¡zas!» (más flojo en el perfecto: el chasquido va por el bus de refuerzo con techo
+   *  de pico y el «¡PAM!» ya lo marca) y, si es fuerte (potencia ≥ 0,65 o ≥ 19 m/s), el zumbido de velocidad 15 ms después. */
+  function toonHit(k, shot, hg, pw, sp, perf, x, y) {
+    if (k === 'spike' || (k === 'serve' && shot === 'jump')) {
+      var js = k === 'serve';
+      toon('toonWhack', hg * (0.8 + 0.3 * pw) * (perf ? 0.4 : 1) * (js ? 0.8 : 1), x, y, jit(0.05) * (1.04 - 0.08 * pw), 0);
+      if (pw >= 0.65 || sp >= 19) toon('toonZip', 0.5 + 0.3 * clamp(Math.max(pw, (sp - 15) / 10), 0, 1), x, y, jit(0.06) * (0.95 + 0.1 * pw), 0.015);
+    } else if (k === 'set' || shot === 'tip') toon('toonPop', 0.5 * hg, x, y, jit(0.05) * 1.38, 0);     // dedos: «pip» más agudo
+    else if (k === 'serve') toon('toonPop', 0.55 * hg, x, y, jit(0.05) * 1.12, 0);
+    else if (k === 'free') toon('toonPop', 0.55 * hg, x, y, jit(0.05) * (shot === 'overhead' ? 1.2 : 0.92), 0);
+    else toon('toonPop', 0.6 * hg * (shot === 'shank' ? 0.8 : 1), x, y, jit(0.05) * (shot === 'shank' ? 0.8 : 1), 0); // recepción
+  }
+  function pamWanted() { var st = vctx && vctx.settings; return !(st && (st.onoma === false || st.onomatopoeia === false)); }
+  /** «¡PAM!»: una vez por remate (un evento de fx que llegue después, en < 0,4 s, no lo repite). */
+  function pam(delay) {
+    if (!toonAllowed() || !live() || now() - pamT < 0.4) return false;
+    pamT = now() + (delay || 0);
+    if (play('pamSting', 0.9, null, null, 1, 0.1, delay || 0, 'music')) { stats.pam++; return true; }
+    return false;
+  }
   function onHit(e, g) {
     var k = e.kind, q = isFinite(e.quality) ? e.quality : 1, sp = isFinite(e.speed) ? e.speed : 8, x = e.x, y = e.y;
     var hg = e.human ? 1 : 0.92, shot = e.shot || '', pw = isFinite(e.power) ? clamp(e.power, 0, 1) : 0.5;
     var perf = !!e.human && e.grade === 'perfect';
     // el balón da en el cuerpo sin gesto (sim shot 'body'): golpe sordo, más apagado que un 'shank'
-    if (shot === 'body') { play('free', 0.5 * hg, x, y, jit(0.1) * 0.7, 0.1); lastSpikeTeam = -1; return; }
+    if (shot === 'body') { play('free', 0.5 * hg, x, y, jit(0.1) * 0.7, 0.1); toon('toonPop', 0.6, x, y, jit(0.06) * 0.72, 0); lastSpikeTeam = -1; return; }
     switch (k) {
       case 'serve':
         if (shot === 'jump') { // saque en salto: casi un remate; perfecto → refuerzo ligero
@@ -1892,7 +1977,10 @@
     // toque perfecto del jugador humano: destello muy discreto (más presente en remate y saque)
     // En remate y saque el destello entra 45 ms tarde, ya sobre la cola del chasquido: es una campana (picos de seno) y
     // encima del contacto sumaba 0,21 de pico a la salida (medido en Chrome) sin sumar sonoridad; detrás, se oye mejor.
-    if (e.human && e.grade === 'perfect' && !demo) {
+    toonHit(k, shot, hg, pw, sp, perf, x, y);
+    // sprint cartoon: el remate perfecto del humano (la onomatopeya «¡PAM!» de fx/ui) lleva su golpe de metal en vez del destello
+    if (perf && k === 'spike' && shot !== 'tip' && !demo && toonAllowed() && pamWanted()) pam(0.16);
+    else if (e.human && e.grade === 'perfect' && !demo) {
       var big = k === 'spike' || k === 'serve';
       play('perfect', big ? 0.16 : 0.12, null, null, k === 'spike' ? 1.06 : 1, 0.1, big ? 0.045 : 0, 'music');
     }
@@ -2168,6 +2256,8 @@
           play('blockHero', punchCap('blockHero', 1.0, evx(e), evy(e), PUNCH_CEIL_BLOCK), evx(e), evy(e), jit(0.06) * 0.95, 0.36, 0, 'punch');
         } else play('block', stuff ? 1.0 : res === 'tool' ? 0.8 : 0.6, evx(e), evy(e), jit(0.06) * (stuff ? 0.95 : 1.08), stuff ? 0.36 : 0.25);
         play('net', stuff ? 0.3 : 0.18, 0, e.y, jit(0.1), 0.05, 0.01);
+        // muelle del balón que rebota en las manos del bloqueo (sutil; en el directo más grave y más bajo: manda el golpe)
+        toon('boing', stuff ? 0.35 : res === 'tool' ? 0.5 : 0.6, evx(e), evy(e), jit(0.05) * (stuff ? 0.85 : res === 'tool' ? 0.95 : 1.06), 0.02);
         if (!demo) {
           if (stuff && e.team === 0) play('roar', 0.6, null, null, jit(0.06), 0, 0.08, 'crowd');
           else if (stuff || res === 'tool') playGap('ooh', 1, 0.5, null, null, jit(0.06), 0, 0.05, 'crowd');
@@ -2189,7 +2279,12 @@
         break;
       case 'netTouch': play('net', 0.8, evx(e), evy(e), jit(0.1) * 0.9, 0.15); break;
       case 'miss': if (!demo) playGap('whoosh', 0.2, 0.3, evx(e), evy(e), jit(0.1) * 0.85, 0); break;
-      case 'net': play(e.tape ? 'netTape' : 'net', e.tape ? 0.85 : 0.7, 0, e.y, jit(0.1), 0.15); break;
+      case 'net':
+        play(e.tape ? 'netTape' : 'net', e.tape ? 0.85 : 0.7, 0, e.y, jit(0.1), 0.15);
+        toon('boing', e.tape ? 0.45 : 0.5, 0, e.y, jit(0.05) * (e.tape ? 1.2 : 0.9), 0.015); // la red lo devuelve: muelle sutil
+        break;
+      // onomatopeya de fx (sprint cartoon; nombre aún sin fijar en el contrato: se aceptan los tres). Sin fx, el remate perfecto ya lo lanza.
+      case 'fx:onoma': case 'fx:pam': case 'onoma': if (!demo && e.team !== 1) pam(0); break;
       case 'land': {
         var s = isFinite(e.speed) ? e.speed : 4, slam = (g && g.lastKind === 'spike') || s > 13;
         play(slam ? 'slam' : 'land', clamp(0.45 + s * 0.06, 0.5, 1.05), e.x, e.y, jit(0.06) * (slam ? 0.95 : 1), slam ? 0.45 : 0.3);
@@ -2314,8 +2409,12 @@
         react: react, intro: { on: intro.on, t0: intro.t0, left: intro.on ? Math.max(0, intro.until - t) : 0 }, pool: pool.length, poolFree: free, voices: voicesNow(),
         bed: N.murG ? N.murG.gain.value : 0, chant: { t0: chantT0, n: chantN, until: chantUntil },
         crowd: N.crowd ? N.crowd.gain.value : 0, endFocus: endFocus, count: { on: cnt.on, n: cnt.n }, stingTeam: stingTeam,
-        review: { on: rev.on, n: rev.n, res: rev.res, team: rev.team, last: rev.last, mur: REV_MUR } };
+        review: { on: rev.on, n: rev.n, res: rev.res, team: rev.team, last: rev.last, mur: REV_MUR },
+        toon: { on: toonAllowed(), n: stats.toon, pam: stats.pam, pamT: pamT } };
     },
+    /** OPCIONAL (sprint cartoon): activa / quita las capas de dibujo animado (bonk, zas, zumbido, muelle, «¡PAM!»). Por defecto,
+     *  activas; ctx.settings.toonSfx === false también las quita. */
+    setToon: function (on) { toonOn = on !== false; return toonOn; },
     /** OPCIONAL (UI-14): estado de la presentación → {active, t (s desde que empezó; -1 sin presentación)}. */
     introInfo: function () { return { active: intro.on, t: intro.t0 > 0 ? now() - intro.t0 : -1 }; },
     /** OPCIONAL: voces sonando ahora (ranuras ocupadas; los lechos en bucle no cuentan). */

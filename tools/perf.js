@@ -16,7 +16,8 @@
  *   no es válida (CPU del PC anfitrión > HOSTMAX % de media durante el nivel; 80 por defecto).
  * Cada nivel mide también la CPU del PC anfitrión (os.cpus, todas las CPU): con el PC cargado los fps caen a la mitad (39 vs 86
  *   fps el mismo comando con 93-99 % frente a 50-72 %), así que la tabla y el JSON la llevan y avisan.
- * Objetivos (CONTRACT §2 y TRASPASO): medium/low ≥ 55 fps; low ≤ 150k triángulos y ≤ 60 draw calls; medium ≤ 350k triángulos;
+ * Objetivos (CONTRACT §2 y TRASPASO): medium/low ≥ 55 fps; low ≤ 150k triángulos y ≤ 35 draw calls de pico (ARN-12; antes
+ *   solo ≤ 60); medium ≤ 350k triángulos;
  *   heap estable (sin crecimiento sostenido) y pocas recolecciones.
  */
 'use strict';
@@ -238,7 +239,7 @@ async function runLevel(page, level) {
     const lv = r.endLevel;
     if ((r.level === 'medium' || r.level === 'low' || r.level === 'auto') && r.fps < 55) issues.push(`${r.level}: ${r.fps} fps < 55` + (r.valid ? '' : ` (CPU del PC ${r.hostCpu} %: no válido)`));
     if (lv === 'low' && r.triMaxK > 150) issues.push(`${r.level}: ${r.triMaxK}k triángulos > 150k en baja`);
-    if (lv === 'low' && r.callsMax > 60) issues.push(`${r.level}: ${r.callsMax} draw calls > 60 en baja`);
+    if (lv === 'low' && r.callsMax > 35) issues.push(`${r.level}: ${r.callsMax} draw calls de pico > 35 en baja (ARN-12)`);
     if (lv === 'medium' && r.triMaxK > 350) issues.push(`${r.level}: ${r.triMaxK}k triángulos > 350k en media`);
     // umbral 2 MB: los búferes de medida (~0,4 MB) y el calentamiento de cachés de V8/three (0,4-1 MB, no crece con el tiempo:
     // 20 s → 0,4-1,1 MB, 60 s → 0,9 MB) aparecen como retenidos sin ser una fuga

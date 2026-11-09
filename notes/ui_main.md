@@ -1098,3 +1098,34 @@ Pruebas y capturas en `tools/out/chal/` (no se suben). Solo añadidos opcionales
   REVISIÓN, a los 4,5 s `challenges` 2→1, icono apagado, banner «IN · 1,2 cm… Se mantiene · te queda 1 challenge».
 ### Para el integrador (CONTRACT)
 - §4.1 `actions.challenge()`; §4.4 `VB.UI.onChallenge(g, team)` (opcional, hoy no definida). `placeT3` aún no cuenta `#chal` como zona prohibida.
+
+## Sprint cartoon — ui_main (9-nov-2026, PC de casa)
+Capturas: `tools/out/cartoon/antes/` y `tools/out/cartoon/despues/` (no se suben).
+- **Restyle cartoon** (index.html, bloque «DIRECCIÓN CARTOON» al final del CSS): tinta `#1d1530` (`--tk`), paneles violeta planos con
+  2 bandas (`--cel`), contornos y sombras desplazadas duras SOLO con box-shadow/colores de bordes ya existentes (cero cambios de
+  medidas: placeT3, zonas prohibidas y hudFit miden lo mismo), texto grueso con contorno (`--ring1/2/3` = text-shadow).
+  Cubre botones, teclas (crema con tinta), menú, logotipo, marcador, pestaña, aviso corto, contador de toques, aviso del jugador,
+  consejo, tarjeta guiada, sello, indicador de borde, challenge, banner (cinta OPACA), tarjeta de presentación, cortinilla, hojas
+  (pausa, final, paneles), ajustes, controles, tutorial (figuras planas con contorno), telón. Los `.thru` siguen translúcidos.
+  Sin efectos caros nuevos (nada de filtros salvo el sello PERFECTO y la flecha del indicador, ya con capa propia).
+- **Acento de equipo = equipación** (contrato): ui.js `kitTick()` lee `VB.Players.kitColors()` (con guarda) en init, onSettings,
+  onGameStart y cada 32 frames y pone en `#app` `--k0/--k1` (franja/chip; el negro se aclara), `--k0d/--k1d` (fondo con texto blanco,
+  luminancia ≤ 0,2), `--k0l/--k1l` (texto sobre panel oscuro), `--k0rgb/--k1rgb`. Lo usan chip y sets del marcador, destello de
+  fila, pestaña, aviso corto c0/c1, contador de toques, insignia de borde, banner win/lose, tarjeta de presentación, cortinilla,
+  pulso de impacto, pausa, final (sets, barras, MVP) y las figuras del tutorial (`kitUI`). Lo de marca (JUGAR, botones) sigue naranja.
+- **Control: Uno con elección de jugador** (contrato): fila «Control» con 3 valores virtuales: Los dos / Uno · n.º 7 / Uno · n.º 11
+  (dorsales de `teams[0][i].num`). `ctrlSel(i)` → ajustes `ctrlMode` + `ctrlPlayer` (nuevo en main.js, 0|1, validado). main.js
+  `ctrlIdxOf(opts)` → `createGame({ctrlIdx})` (`opts.ctrlIdx` > `&ctrlidx=` > ajuste). Subtítulo de JUGAR: «· Solo el n.º N».
+- **Modo Uno sin «Cambiar jugador»**: Controles quita la fila (teclado C, mando Y/LB/RB, táctil ⇄) y cambia la nota; tutorial
+  pasos 3 y 5 y el párrafo del paso 6 con textos propios (`oneMode()`: en partido manda `g.ctrlMode`, en el menú el ajuste).
+- **Menú táctil (≤ 420 px de alto)**: filas de 44 px (JUGAR 48) y «Cómo se juega» + «Controles» en una fila de dos botones (solo
+  CSS, el orden de navegación no cambia). Medido: 844×390 lista hasta y = 370; 667×375 hasta 362; sin desbordes.
+- **Muestras de Equipación en táctil**: objetivo de 32×32 px (20 + 2×6); ≤ 820 px de ancho la fila pasa a rótulo arriba y muestras
+  debajo (medido 32×32 sin desbordar a 844×390 y 667×375).
+- **Punto anulado por challenge**: `onEvents` mira si el lote trae `challengeResult` con `overturned`; el `point` re-pitado no saca
+  pestaña («REMATE») ni cinta (lo dice el banner IN/OUT) y `untally()` descuenta de las estadísticas de la hoja final el punto anulado
+  (antes contaba los dos).
+- **«OUT» cruzado por la red**: el banner de la UI era translúcido en los bordes de la cinta (gradiente a transparente, 0,92); ahora
+  es opaco con contorno. Si lo que se cruza es el rótulo 3D (`screenMsg` de arena en el marcador colgado) con la cámara de punto
+  detrás de la red, es de arena/camera_input, no de la UI.
+Pruebas: simtest TODO OK; console.sh all sin errores JS; perf «objetivos cumplidos» (844×390 auto 81,5 fps); touchplay TODO OK.

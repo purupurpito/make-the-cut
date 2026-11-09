@@ -212,21 +212,19 @@ Desde el 9-nov-2026 el proyecto va por **sprints**, para controlar el gasto de t
 Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apuntado, NO empezado.
 
 ### To-do
-- **Gráficos cartoonish** (8-nov-2026): cambio de dirección artística a estilo dibujo animado. Sin empezar.
 - **Modo 6v6** (9-nov-2026): llevar el juego de 2 contra 2 a 6 contra 6. Campo más grande (pista reglamentaria de 18×9 m
   con 6 por equipo), rotaciones y posiciones. Cambiar de jugador será poco habitual, así que el primer modo 6v6 será
-  **controlando solo a un jugador** (enlaza con el to-do anterior). Se mantiene todo el motor de toques y reglas, que ya funciona bien.
+  **controlando solo a un jugador** (ya existe: «Control: Uno», con elección del n.º 7 o el n.º 11). Se mantiene todo el motor de toques y reglas,
+  que ya funciona bien. **Diseño hecho:** [`notes/diseno-6v6-carrera.md`](notes/diseno-6v6-carrera.md) (solo diseño, nada empezado).
 - **Posiciones y estadísticas de jugador** (para el 6v6): colocador, opuesto, central, receptor, líbero; atributos (salto,
-  remate, recepción, saque, bloqueo, velocidad…) que influyan en la sim.
+  remate, recepción, saque, bloqueo, velocidad…) que influyan en la sim. Diseño en [`notes/diseno-6v6-carrera.md`](notes/diseno-6v6-carrera.md).
 - **Pendiente del sprint remate apuntado + challenge** (9-nov-2026, menores):
-  - Tras un challenge fallado la cámara de punto puede quedar detrás de la red y la malla cruza el cartel «OUT» (se lee, queda sucio).
-  - Tras un punto anulado, la etiqueta junto al marcador dice «REMATE» (coherente, pero el cartel anterior decía «Remate fuera»).
   - El error arbitral casi no se ve jugando (30 partidas con piloto: 23 botes a <= 10 cm, 1 mal cantado). Si Ferran quiere verlo
     más, subir `VB.REF_ERR` (p1/p2/p3) o ampliar d1-d3.
   - Sin probar a mano: diana con mando y en táctil, estrechez de `digTight`, LT/L2 (solo padtest).
 - **Modo Carrera** (9-nov-2026, el que más ilusión le hace a Ferran; el más largo): un jugador con estadísticas bajas que se
   inscribe en equipos modestos, recibe ofertas de equipos mejores, mejora sus estadísticas y acaba jugando VNL, Olimpiadas, etc.
-  Depende del 6v6, del modo de un solo jugador y de las posiciones/estadísticas.
+  Depende del 6v6, del modo de un solo jugador y de las posiciones/estadísticas. Diseño en [`notes/diseno-6v6-carrera.md`](notes/diseno-6v6-carrera.md).
 - **Error arbitral y challenge por nivel de competición** (concepto de Ferran, 9-nov-2026; para Carrera y modos futuros):
   | Competición | Error arbitral | Challenge |
   |---|---|---|
@@ -241,8 +239,29 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   Pregunta abierta: ¿«3.er» → «3r» y «2.º» → «2º»?
 - **Pulido profundo pausado**: el flujo de pulido se paró a mitad (oleadas 1-2 subidas en 94ba33d); falta la oleada 3,
   su verificación y el QA final. Solo si Ferran lo pide.
+- **Pendiente del sprint cartoon** (9-nov-2026, menores, nada roto):
+  - El contorno de tinta del escenario (postes, silla del árbitro, mesa, árbitros) existe pero casi no se ve sobre las piezas azul marino
+    o negras; si se quiere más «dibujo», aclarar esas piezas o subir el grosor de `props`/`poles` (cuesta 0 dibujos, ya están en la lista).
+  - Camiseta negra: ahora se aclara a pizarra (#383c4a) en pista y la franja del marcador usa el color de los detalles; la CPU pasa a
+    blanca con ella (antes seguía azul). Si Ferran quiere el negro puro, revisar `setKit` (players.js).
+  - Público: sombreado por bandas y colores de bloque; se ha comprobado en planos de punto, peloteo (alta y baja) y táctil, pero no a mano
+    en un móvil real (¿compite con los atletas naranjas en algún plano?).
+  - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho (9-nov-2026)
+- **Gráficos cartoonish** (sprint del 9-nov-2026): sombreado por bandas (`VB.TOON`: rampa de 3 pasos y contorno de tinta #1d1530 por
+  casco invertido en atletas, balón, postes, utillaje y oficiales; apagado en calidad baja), paleta saturada (parquet cálido y plano,
+  gradas con bloques de color), atletas caricaturescos con caras expresivas y squash & stretch, FX de dibujo (estrellas, explosión de
+  cómic, nubes de polvo, líneas de velocidad, «¡PAM!» en el remate perfecto, que respeta «Destellos suaves» y se apaga en baja) y UI
+  de cómic (tipografía con contorno, paneles con borde y sombra desplazada). Arreglos finales: el público 3D pasa a sombreado por
+  bandas con colores de bloque (antes casi realista en los planos de punto); la red lleva contorno de tinta pintado en la textura;
+  en baja las estrellas sustituyen a chispas y destellos (pico de 37 → 35 dibujos, ARN-12; perf.js ahora exige ≤ 35 de pico en
+  baja, antes ≤ 60); el consejo se vuelve translúcido también si tapa a un jugador (táctil, remate rival); camiseta negra legible.
+- **Pendientes resueltos en el sprint cartoon**: modo Uno con elección de jugador (n.º 7 / n.º 11, `ctrlIdx`, ajuste `ctrlPlayer`) y sin
+  «⇄ Cambiar jugador» en Controles ni en el tutorial; filas del menú táctil a 44 px; muestras de Equipación de 32×32 px en el móvil;
+  acento de equipo en la UI = color de la equipación (`--k0`/`--k1`, marcador «TÚ», tutorial); tras un punto anulado ya no sale la
+  etiqueta «REMATE»; el cartel «OUT» de la UI es opaco con contorno (la red ya no lo ensucia). simtest prueba además que el humano
+  bloquea en modo Uno (n.º 7 y n.º 11) sin que el compañero IA salte a la vez.
 - **Nombre del juego: «Make the Cut»** (sin exclamación; elegido por Ferran el 9-nov-2026; doble sentido: el *cut shot* del vóley y «pasar el corte»,
   ganarse la plaza, como en el modo Carrera). Cambiado en título, logos (menú y telón), rótulo del pabellón, aviso de girar el móvil
   y nombre de la app instalable. Repo renombrado a `purupurpito/make-the-cut` (GitHub redirige el repo antiguo); web en https://purupurpito.github.io/make-the-cut/. La URL antigua de Pages (/voley-3d/) da 404 salvo que se cree la redirección en el repo `purupurpito.github.io`.
@@ -255,12 +274,12 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - Equipación personalizable (Ajustes · Equipación): color de camiseta (8), detalles (6), pantalón (5) y diseño (Diagonal, Liso,
   Franjas, Rayas). players.js `setKit` deriva los tonos (dorsal oscuro en camisetas claras) y la CPU cambia a una equipación
   alternativa (roja, verde o blanca) si la suya se parece a la tuya. Vista previa en vivo sobre la demo del menú.
-  Pendiente: las muestras de color son pequeñas en el móvil (~21 px); la UI (marcador, tutorial) sigue con el naranja/azul.
+  ~~Pendiente: muestras pequeñas en el móvil; UI con el naranja/azul~~ (resuelto en el sprint cartoon: 32×32 px y acento = equipación).
 - Selector «Control: Los dos / Uno» en el menú (ajuste `ctrlMode`, `createGame({ctrl})`, `g.ctrlMode`). En modo Uno el humano lleva
   siempre a `teams[0][0]` y la IA al compañero (toques, posición, defensa/bloqueo y su saque); sin cambio de jugador ni botón ⇄.
   El bloqueo se reparte de forma dinámica durante la colocación de la CPU (sim.js `updateDefense`): si el humano sube a la red,
-  el compañero se echa atrás; si se va al fondo (>3,2 m), sube el compañero. Pendiente: panel de Controles y tutorial siguen
-  mencionando «⇄ Cambiar jugador» en modo Uno; no se puede elegir a cuál de los dos controlar; filas del menú táctil a 42 px.
+  el compañero se echa atrás; si se va al fondo (>3,2 m), sube el compañero. ~~Pendiente: «⇄ Cambiar jugador» en Controles y tutorial;
+  elegir a cuál controlar; filas táctiles a 42 px~~ (resuelto en el sprint cartoon).
 - **Remate apuntado**: mira libre en el aire por el campo rival (`g.aim3`), dispersión según el timing (`Sim.spikeSpread`,
   perfecto = exacto a la diana), diana grande desde el despegue con radio = dispersión, defensa más justa tras remate perfecto
   (`g.digTight`, aro ×0.7), consejo «Apunta con…» (legible aunque el balón pase por detrás) y tutorial paso 4.

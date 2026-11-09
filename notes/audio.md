@@ -610,3 +610,33 @@ sigue igual). Secciones nuevas del informe: **2d** (AUD-08, modelo), **2e** (jer
 - API (opcional, pruebas): `_debug().review` → `{on, n, res, team, last:{team, overturned, home, t}, mur}`. No se expone nada más.
 - `tools/audiotest.js`: categorías `horn` (-17), `reviewBed` (-21, se mide como lecho), `reactBig` (-18) y 7 escenarios «challenge: …»
   en la parte 2 (incluido el punto corregido + resultado en el mismo frame).
+
+## Sprint cartoon (9-nov-2026): audio de dibujo animado
+Capas nuevas que se SUMAN, bajas, al golpe de siempre (los golpes, el banco previo y su mezcla no cambian): dan el carácter de dibujo
+sin volverlo de juguete. Todo sintetizado (generador `genToon`, dos senos con envolvente de tono + ruido filtrado; «¡PAM!» como partitura).
+| sonido | qué es | cuándo | nivel (LUFS) |
+|---|---|---|---|
+| `toonPop` (3) | «bonk» redondo, octava que cae en 12 ms | cada toque: recepción ×1, colocación/dejada ×1,38 («pip»), saque flotante ×1,12, balón libre ×0,92 (de dedos ×1,2), `shank` ×0,8, balón en el cuerpo ×0,72 | -25 (7 LU bajo el toque) |
+| `toonWhack` (2) | «¡zas!»: seno 950 → 150 Hz en 9 ms + palmada de ruido a 1,9 kHz | remate y saque en salto (×0,8); en el perfecto ×0,4 (manda el chasquido del bus de refuerzo) | -21 (7 LU bajo el remate) |
+| `toonZip` (2) | zumbido de «líneas de velocidad» 2,6 → 0,7 kHz | remate / saque en salto fuerte (potencia ≥ 0,65 o ≥ 19 m/s), 15 ms tras el golpe | -24 |
+| `boing` (2) | muelle sutil 175 → 200 Hz, vibrato de 12,5 Hz que se apaga, armónicos 2.º-3.º | `block` (toque ×0,6, block-out ×0,5, directo ×0,35 y más grave) y `net` (red ×0,5, cinta ×0,45 más agudo) | -24 (≥ 6 LU bajo la red) |
+| `pamSting` (1, partitura) | golpe de metal en Re mayor + platillo pequeño + tres campanas que suben (sin bombo) | remate perfecto del humano (no dejada), 160 ms tras el chasquido, bus de música; sustituye al destello `perfect` en ese caso | -21 (≥ 6 LU bajo el remate, ≥ 3 LU bajo la ráfaga de set) |
+- Sin reverb apreciable (envío 0,04: «de dibujo», secos). En demo, a la mitad y sin «¡PAM!».
+- **Onomatopeya (lectura defensiva)**: el contrato no fija aún un evento de fx. Audio lanza el «¡PAM!» por sí mismo con la misma condición
+  que el pulso de ui.js (`hit` `spike`, `grade 'perfect'`, humano) y además acepta `fx:onoma` / `fx:pam` / `onoma` (equipo ≠ 1): una sola vez por
+  remate (< 0,4 s entre ambos no se repite). Si fx acaba emitiendo su evento, no hace falta tocar nada.
+- **Interruptores**: `ctx.settings.toonSfx === false` o `VB.Audio.setToon(false)` quitan todas las capas (vuelve el destello `perfect`);
+  `ctx.settings.onoma === false` / `onomatopoeia === false` quitan solo el «¡PAM!» propio (si fx emite el evento, suena). Ninguno existe hoy
+  en Ajustes: por defecto todo activo. No dependen de la calidad gráfica (el audio no cuesta GPU; 5 sonidos cortos más en el banco).
+- API (opcional): `VB.Audio.setToon(on)`, `stats.toon` (capas que sonaron), `stats.pam`, `_debug().toon` → `{on, n, pam, pamT}`. `CORE` (primera
+  pasada sin Worker) incluye `toonPop, toonWhack, boing, toonZip`; `pamSting` es música (DEFER 0,15 s).
+- `tools/audiotest.js`: categorías `toon` -25, `toonHit` -21, `toonZip` -24, `toonBoing` -24, `stinger` -21; 8 escenarios «cartoon: …» en la
+  parte 2 (también pasan por el barrido de pico real AUD-09), 9 relaciones nuevas en la 2e y una prueba en la 2b (qué capa suena con cada
+  evento, interruptores, «¡PAM!» sin repetir con el evento de fx, CPU sin «¡PAM!», demo).
+- Medidas (`node tools/audiotest.js --json tools/out/aud-cartoon/final.json` → TODO OK; log en tools/out/aud-cartoon/full.log): los 8 escenarios
+  en objetivo, 9/9 relaciones nuevas; barrido AUD-09 peor -1,5 dBTP («uuuh» de defensa a 3 m; remate perfecto entero con «¡PAM!» -1,7);
+  AUD-01 remate perfecto a la salida -1,9 dBTP (con el «¡PAM!» a 70 ms llegaba a -0,6/-0,9: por eso entra a 160 ms y sin bombo);
+  partido de 60 s -19,0 LUFS (-0,2 LU frente a la referencia); arranque en frío sin Worker / CSP: missed {} (con `toonPop` al final de
+  `CORE` se perdía 1: va justo tras `set`). simtest TODO OK; console.sh all sin errores JS.
+- Pendiente para integración: si fx/ui ponen la onomatopeya como evento, usar uno de `fx:onoma` / `fx:pam` / `onoma` (con `team`); si se
+  añade un ajuste para quitarla, llamarlo `onoma` (audio ya lo lee). WAV de cada sonido nuevo en tools/out/audio/<nombre>.wav.

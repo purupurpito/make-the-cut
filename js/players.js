@@ -1,6 +1,6 @@
 /* =====================================================================
  * VOLEY 3D — js/players.js   (owner: players)
- * Atletas estilizados hechos con primitivas + animación procedural.
+ * Atletas estilizados (estilo cartoon: toon + contorno de tinta) hechos con primitivas + animación procedural.
  *
  * MODELO (espacio "cuerpo": mira a +Z, +X es su IZQUIERDA, +Y arriba,
  * origen en el suelo entre los pies). Atleta de ~1,93 m (escala 1).
@@ -33,6 +33,8 @@
   var HIP_H = 1.042, HIP_W = 0.1, THIGH = 0.481, SHIN = 0.481, ANKLE = 0.08;
   var SPINE_Y = 0.079, CHEST_Y = 0.179, SH_X = 0.2, SH_Y = 0.235, SH_Z = -0.01;
   var UPPER = 0.3, FORE = 0.27, PALM = 0.075, NECK_Y = 0.37;
+  // CARTOON (sprint cartoon): cabeza y manos algo caricaturescas (escala del hueso; la geometría se construye en la pose de reposo ya escalada)
+  var HEAD_K = 1.13, HAND_K = 1.14;
 
   // ---------- Aspecto ----------
   // Equipos (colores alineados con la UI: --hot/--amber y --blue/--sky)
@@ -74,6 +76,9 @@
     var sh = typeof st.kitShorts === 'number' ? st.kitShorts : TEAM0_DEF.shorts;
     var pat = st.kitPattern || 'diag';
     var light = lumHex(shirt) > 0.62;
+    // CARTOON (arreglos finales): una camiseta casi negra se fundía con la tinta del contorno y con el uniforme negro de los
+    // árbitros; se aclara a pizarra (#383c4a con el negro de la paleta) para que el contorno y los pliegues se lean
+    if (lumHex(shirt) < 0.18) shirt = mixHex(shirt, 0x5a5f78, 0.4);
     var t0 = { base: shirt, top: mixHex(shirt, 0xffffff, 0.14), accent: acc, dark: light ? 0x20242e : mixHex(shirt, 0x000000, 0.62),
       trim: light ? 0x20242e : 0xffffff, shorts: sh, sole: acc, band: acc, pad: 0x1d1f26, pattern: pat, numFill: light ? '#20242e' : '#ffffff' };
     var best = CPU_KITS[0], bd = -1;
@@ -87,6 +92,7 @@
     TEAMS[0] = t0; TEAMS[1] = best; TEAMS._sig = sig; kitSig++;
     for (var key in cache) {   // fuera los atletas construidos con la equipación anterior (texturas y mallas)
       var r = cache[key];
+      if (r.ink && VB.TOON && VB.TOON.drop) VB.TOON.drop(r.ink);   // integración: el contorno vive en la lista de VB.TOON
       try { if (r.skin && r.skin.material) { if (r.skin.material.map) r.skin.material.map.dispose(); r.skin.material.dispose(); } for (var gi in r.geos) if (r.geos[gi] && r.geos[gi].dispose) r.geos[gi].dispose(); } catch (e) { }
       delete cache[key];
     }
@@ -94,10 +100,10 @@
   }
   // Por id de jugador: piel, pelo, peinado, escala de altura
   var LOOKS = [
-    { skin: 0xdba27a, hair: 0x2a1a10, style: 'crop', h: 1.0 },
-    { skin: 0x8a5638, hair: 0x14100e, style: 'curly', h: 1.03 },
+    { skin: 0xdba27a, hair: 0x3a2416, style: 'crop', h: 1.0 },   // CARTOON: pelos algo más claros (se separan de la tinta del contorno)
+    { skin: 0x8a5638, hair: 0x2b1d17, style: 'curly', h: 1.03 },
     { skin: 0xc68a5f, hair: 0x4b2a18, style: 'bun', h: 0.985 },
-    { skin: 0xf0c6a4, hair: 0x1a1512, style: 'buzz', h: 1.04 }
+    { skin: 0xf0c6a4, hair: 0x2e2420, style: 'buzz', h: 1.04 }
   ];
 
   var rigs = [], byId = [], cache = {}, lastBlocker = null;
@@ -120,7 +126,7 @@
    *  jersey = true: la pieza toma la camiseta del atlas (u alrededor, v lineal con la altura de reposo). */
   var JY0 = HIP_H + SPINE_Y - 0.135, JY1 = HIP_H + SPINE_Y + CHEST_Y + 0.306; // alto de la camiseta en reposo
   var BODY_UV_U = 0.5, BODY_UV_V = 0.2, SKIN_UV_V = 0.12, EYE_UV_V = 0.04; // texel blanco del atlas (piezas de color por vértice); la piel en v = 0,12
-  function Geo() { this.p = []; this.n = []; this.c = []; this.u = []; this.si = []; this.sw = []; this.i = []; this.k = 0; this.pre = null; this.bone = 0; this.jersey = false; this.bone2 = -1; this.w2 = null; this.skinHex = -1; this.uvv = -1; }
+  function Geo() { this.p = []; this.n = []; this.c = []; this.u = []; this.si = []; this.sw = []; this.i = []; this.k = 0; this.pre = null; this.bone = 0; this.jersey = false; this.bone2 = -1; this.w2 = null; this.skinHex = -1; this.uvv = -1; this.o = []; this.owk = 1; }
   Geo.prototype.add = function (geo, hex, x, y, z, rx, ry, rz, sx, sy, sz) {
     var m = new THREE.Matrix4(), q = new THREE.Quaternion(), nm = new THREE.Matrix3(), v = new THREE.Vector3();
     q.setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0));
@@ -137,7 +143,7 @@
       if (this.jersey) this.u.push(U ? U.getX(i) : 0, 0.5 + 0.5 * clamp((v.y - JY0) / (JY1 - JY0), 0, 1));
       else this.u.push(BODY_UV_U, this.uvv >= 0 ? this.uvv : skin ? SKIN_UV_V : BODY_UV_V);
       v.fromBufferAttribute(N, i).applyMatrix3(nm).normalize(); this.n.push(v.x, v.y, v.z);
-      this.c.push(col.r, col.g, col.b);
+      this.c.push(col.r, col.g, col.b); this.o.push(this.owk);
       if (w2 > 0) { this.si.push(this.bone, this.bone2, 0, 0); this.sw.push(1 - w2, w2, 0, 0); }
       else { this.si.push(this.bone, 0, 0, 0); this.sw.push(1, 0, 0, 0); }
     }
@@ -153,6 +159,7 @@
     g.setAttribute('uv', new THREE.Float32BufferAttribute(this.u, 2));
     g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(this.si, 4));
     g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(w, 4));
+    g.setAttribute('ow', new THREE.Float32BufferAttribute(this.o, 1));   // peso del contorno de tinta (outlineMesh)
     g.setIndex(this.i);
     // esfera amplia: la piel no recalcula límites (salto, plancha, brazos arriba)
     g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 1.0, 0.2), 2.3);
@@ -215,12 +222,8 @@
   /** Camiseta: u alrededor (0 = delante, .25 izquierda, .5 espalda, .75 derecha); filas 0-255 de arriba (cuello) abajo (bajo). */
   function paintJersey(g, tc) {
     var W = 512, H = 256;
-    var gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, hexCss(tc.top)); gr.addColorStop(1, hexCss(tc.base));
-    g.fillStyle = gr; g.fillRect(0, 0, W, H);
-    // trama sublimada muy sutil
-    g.globalAlpha = 0.07; g.strokeStyle = '#ffffff'; g.lineWidth = 2;
-    for (var x = -H; x < W + H; x += 14) { g.beginPath(); g.moveTo(x, H); g.lineTo(x + H * 0.6, 0); g.stroke(); }
-    g.globalAlpha = 1;
+    // CARTOON: color plano (sin degradado ni trama sublimada: el sombreado toon ya da el volumen)
+    g.fillStyle = hexCss(tc.base); g.fillRect(0, 0, W, H);
     function wrap(fn) { fn(0); fn(W); fn(-W); }
     // paneles laterales (bajo el brazo) en color de acento (o blancos) con filo oscuro
     [0.25, 0.75].forEach(function (u) {
@@ -289,8 +292,9 @@
   function atlasMaterial(num, team) {
     var cv = canvas(512, 512), tc = TEAMS[team]; paintAtlas(cv, tc, num);
     var t = texOf(cv);
-    var m = new THREE.MeshStandardMaterial({ map: t, vertexColors: true, roughness: 0.56, metalness: 0.0 });
-    addRim(m, 0xfff1e0, 0.17);
+    // CARTOON: material toon (bandas de luz duras con el gradientMap de VB.TOON, sin especular) en vez del estándar
+    var m = new THREE.MeshToonMaterial({ map: t, vertexColors: true, gradientMap: toon().gradientMap });
+    addToon(m);
     // con la fuente de la UI cargada, se redibuja (sin peticiones nuevas: la carga la propia UI)
     try {
       if (document.fonts && document.fonts.load) document.fonts.load('italic 900 100px "Barlow Condensed"').then(function () { paintAtlas(cv, tc, num); t.needsUpdate = true; }).catch(function () { });
@@ -298,38 +302,128 @@
     return m;
   }
 
-  /** Brillo de contorno (luz de retransmisión a contraluz): barato, en el propio shader estándar. */
-  // PIEL (PLY-17): difusa envolvente (la luz "da la vuelta" al terminador con un tono cálido de dispersión bajo la piel) y
-  // contorno cálido algo más fuerte: la piel oscura conserva la forma en contraluz. La piel se reconoce por su v del atlas
-  // (SKIN_UV_V, zona blanca): mismo programa para los 4 atletas (no cambia el número de programas).
-  var SKIN_WRAP = 0.42;
-  var LIGHTS_SKIN = null;
-  function skinLightsChunk() {
-    if (LIGHTS_SKIN) return LIGHTS_SKIN;
-    var src = THREE.ShaderChunk.lights_physical_pars_fragment, a = 'reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseColor );';
-    if (src.indexOf(a) < 0) return (LIGHTS_SKIN = src);
-    LIGHTS_SKIN = 'float vbSkin = 0.0;\n' + src.replace(a,
-      '{ float vbN = dot( geometry.normal, directLight.direction ); float vbL = saturate( vbN );\n' +
-      '  float vbWr = saturate( ( vbN + ' + SKIN_WRAP.toFixed(2) + ' ) / ' + (1 + SKIN_WRAP).toFixed(2) + ' );\n' +
-      '  vec3 vbD = vec3( vbL ) + ( vbWr - vbL ) * vec3( 0.95, 0.62, 0.5 );\n' +
-      '  reflectedLight.directDiffuse += mix( irradiance, vbD * directLight.color, vbSkin ) * BRDF_Lambert( material.diffuseColor ); }');
-    return LIGHTS_SKIN;
+  // =====================================================================
+  //  ESTILO CARTOON (sprint cartoon, 9-nov-2026)
+  // =====================================================================
+  // VB.TOON (CONTRATO DEL SPRINT): { gradientMap: DataTexture de 3 pasos, ink: 0x1d1530, outline(mesh, m) }. Lo crea arena;
+  // si aún no existe cuando se construye el primer atleta, players crea uno compatible y lo publica (VB.TOON.own = 'players').
+  // Los atletas usan SIEMPRE su propio contorno con piel (outlineMesh): un casco genérico no seguiría a los huesos.
+  var INK = 0x1d1530, TOON_OWN = null, QRANK = 2;
+  // grosor del contorno: ~OUT_PX px a 720 de alto (proporcional al alto de la imagen: igual a 1280×720 y a 844×390),
+  // limitado en metros (los del fondo no se vuelven manchas; en primer plano no pasa de un trazo fino)
+  var OUT_PX = 2.4, OUT_MAX = 0.04, OUT_MIN = 0.0025;
+  function toonGradient() {
+    // 3 pasos (sombra, medio tono, luz): RGBA de 3 texeles, filtro NEAREST (bandas duras), sin mipmaps
+    var v = [64, 158, 255], d = new Uint8Array(12);
+    for (var i = 0; i < 3; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v[i]; d[i * 4 + 3] = 255; }
+    var t = new THREE.DataTexture(d, 3, 1, THREE.RGBAFormat);
+    t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
+    return t;
   }
-  function addRim(mat, hex, k) {
-    var col = new THREE.Color(hex).multiplyScalar(k);
+  function toon() {
+    var T = VB.TOON;
+    if (T && T.gradientMap) return T;
+    if (!TOON_OWN) TOON_OWN = { gradientMap: toonGradient(), ink: INK, outline: function (mesh, th) { return outlineMesh(mesh, th); }, own: 'players' };
+    if (!VB.TOON) VB.TOON = TOON_OWN;
+    return TOON_OWN;
+  }
+  /** Sombreado toon de los atletas (onBeforeCompile; mismo programa para los 4: customProgramCacheKey):
+   *  - luz directa en bandas (gradientMap) y luz ambiente teñida de azul violáceo (sombras de color, no negras);
+   *    la piel tiñe su sombra hacia un tono cálido (se lee también la piel oscura);
+   *  - contraluz en banda dura (brillo de borde de dibujo animado) y ojos con algo de luz propia.
+   *  La piel y los ojos se reconocen por su v del atlas (SKIN_UV_V / EYE_UV_V, zona blanca). */
+  var SHADE = [0.1, 0.075, 0.2], SHADE_SKIN = [0.17, 0.08, 0.1];
+  // Solo la luz principal (la más fuerte) va en bandas; relleno y contraluz (débiles) suman un Lambert suave a medias: con
+  // todas en bandas la cara se llenaba de manchas (cada luz añade su escalón). Mezcla suave por intensidad (sin saltos en la penumbra).
+  var TOON_CHUNK = null;
+  function toonLightsChunk() {
+    if (TOON_CHUNK) return TOON_CHUNK;
+    var src = THREE.ShaderChunk.lights_toon_pars_fragment, a = 'vec3 irradiance = getGradientIrradiance( geometry.normal, directLight.direction ) * directLight.color;';
+    if (src.indexOf(a) < 0) return (TOON_CHUNK = src);
+    return (TOON_CHUNK = src.replace(a, 'float vbL = dot( directLight.color, vec3( 0.2126, 0.7152, 0.0722 ) );\n' +
+      '\tvec3 vbB = getGradientIrradiance( geometry.normal, directLight.direction );\n' +
+      '\tvec3 vbS = vec3( 0.6 * saturate( dot( geometry.normal, directLight.direction ) ) );\n' +
+      '\tvec3 irradiance = mix( vbS, vbB, smoothstep( 1.2, 2.4, vbL ) ) * directLight.color;'));
+  }
+  function addToon(mat) {
+    var rim = new THREE.Color(0xfff1e0).multiplyScalar(0.13);
     mat.onBeforeCompile = function (sh) {
-      sh.uniforms.uRim = { value: col };
-      sh.fragmentShader = 'uniform vec3 uRim;\n' + sh.fragmentShader
-        .replace('#include <lights_physical_pars_fragment>', skinLightsChunk())
+      sh.uniforms.uRim = { value: rim };
+      sh.uniforms.uShade = { value: new THREE.Vector3(SHADE[0], SHADE[1], SHADE[2]) };
+      sh.uniforms.uShadeSkin = { value: new THREE.Vector3(SHADE_SKIN[0], SHADE_SKIN[1], SHADE_SKIN[2]) };
+      sh.fragmentShader = 'uniform vec3 uRim;\nuniform vec3 uShade;\nuniform vec3 uShadeSkin;\nfloat vbSkin = 0.0;\n' + sh.fragmentShader
+        .replace('#include <lights_toon_pars_fragment>', toonLightsChunk())
         .replace('#include <color_fragment>', '#include <color_fragment>\nfloat vbEye = 0.0;\n#ifdef USE_UV\n  vbSkin = 1.0 - step( 0.03, abs( vUv.y - ' + SKIN_UV_V.toFixed(2) + ' ) );\n' +
           '  vbEye = 1.0 - step( 0.02, abs( vUv.y - ' + EYE_UV_V.toFixed(2) + ' ) );\n#endif')
         .replace('#include <output_fragment>',
-          'float vbRim = 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);\n' +
-          'outgoingLight += uRim * (vbRim * vbRim * vbRim) * mix( vec3( 1.0 ), vec3( 1.5, 1.12, 0.82 ), vbSkin );\n' +
-          'outgoingLight += diffuseColor.rgb * 0.3 * vbEye;\n' +      // ojos: algo de luz propia (se leen también en sombra)
+          'outgoingLight += diffuseColor.rgb * mix( uShade, uShadeSkin, vbSkin );\n' +
+          'float vbRim = 1.0 - clamp( dot( normal, normalize( vViewPosition ) ), 0.0, 1.0 );\n' +
+          'outgoingLight += uRim * smoothstep( 0.74, 0.79, vbRim ) * mix( vec3( 1.0 ), vec3( 1.3, 1.08, 0.86 ), vbSkin );\n' +
+          'outgoingLight += diffuseColor.rgb * 0.35 * vbEye;\n' +
           '#include <output_fragment>');
     };
-    mat.customProgramCacheKey = function () { return 'vbRimSkin'; };
+    mat.customProgramCacheKey = function () { return 'vbToonSkin'; };
+  }
+
+  /** Contorno de tinta por casco invertido: la misma geometría dibujada por detrás y empujada por la normal en el
+   *  espacio de la vista (después de la piel), con un grosor en píxeles proporcional al alto de la imagen y limitado en
+   *  metros. Atributo opcional `ow` por vértice (0..1): las piezas pequeñas de la cara y los ribetes no llevan contorno. */
+  var INK_MATS = {};
+  var INK_VS = [
+    '#include <common>', '#include <skinning_pars_vertex>', '#include <fog_pars_vertex>',
+    'uniform float uPx; uniform float uMaxW; uniform float uMinW;',
+    '#ifdef VB_OW', 'attribute float ow;', '#endif',
+    'void main() {',
+    '  #include <beginnormal_vertex>', '  #include <skinbase_vertex>', '  #include <skinnormal_vertex>',
+    '  #include <begin_vertex>', '  #include <skinning_vertex>',
+    '  vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );',
+    '  vec3 vbN = normalize( normalMatrix * objectNormal );',
+    '  float vbW = clamp( -mvPosition.z * uPx * 2.0 / ( 720.0 * projectionMatrix[ 1 ][ 1 ] ), uMinW, uMaxW );',
+    '  #ifdef VB_OW', '  vbW *= ow;', '  #endif',
+    '  mvPosition.xyz += vbN * vbW;',
+    '  gl_Position = projectionMatrix * mvPosition;',
+    '  #include <fog_vertex>', '}'].join('\n');
+  var INK_FS = [
+    'uniform vec3 uInk;', '#include <common>', '#include <fog_pars_fragment>',
+    'void main() {', '  gl_FragColor = vec4( uInk, 1.0 );',
+    '  #include <tonemapping_fragment>', '  #include <encodings_fragment>', '  #include <fog_fragment>', '}'].join('\n');
+  function inkMaterial(maxW, perVertex) {
+    var key = maxW.toFixed(4) + (perVertex ? 'w' : '');
+    if (INK_MATS[key]) return INK_MATS[key];
+    var u = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uInk: { value: null }, uPx: { value: OUT_PX }, uMaxW: { value: maxW }, uMinW: { value: Math.min(OUT_MIN, maxW * 0.5) } }]);
+    var T = toon();
+    u.uInk.value = new THREE.Color(T.ink != null ? T.ink : INK);
+    var m = new THREE.ShaderMaterial({ uniforms: u, vertexShader: INK_VS, fragmentShader: INK_FS, side: THREE.BackSide, fog: true });
+    if (perVertex) m.defines = { VB_OW: 1 };
+    m.name = 'vbInk';
+    return (INK_MATS[key] = m);
+  }
+  /** Malla de contorno para `mesh` (Mesh o SkinnedMesh; comparte geometría y esqueleto), hija de su mismo padre.
+   *  null en calidad baja. Es la implementación de VB.TOON.outline cuando la publica players. */
+  function outlineMesh(mesh, th) {
+    if (!mesh || !mesh.geometry || QRANK === 0 || mesh.isInstancedMesh) return null;
+    var mat = inkMaterial(th > 0 ? th : OUT_MAX, !!mesh.geometry.attributes.ow), o;
+    if (mesh.isSkinnedMesh) { o = new THREE.SkinnedMesh(mesh.geometry, mat); o.bind(mesh.skeleton, mesh.bindMatrix); }
+    else o = new THREE.Mesh(mesh.geometry, mat);
+    o.name = (mesh.name || 'mesh') + 'Ink'; o.castShadow = false; o.receiveShadow = false;
+    o.position.copy(mesh.position); o.quaternion.copy(mesh.quaternion); o.scale.copy(mesh.scale);
+    o.frustumCulled = mesh.frustumCulled; o.renderOrder = mesh.renderOrder;
+    if (mesh.parent) mesh.parent.add(o);
+    return o;
+  }
+  /** Contorno del atleta (1 dibujo más por atleta en media/alta; ninguno en baja). */
+  // INTEGRACIÓN (sprint cartoon): con el VB.TOON de arena, el contorno de los atletas es el MISMO que el del pabellón
+  // (VB.TOON.outline con tope en metros, grosor ×OUT_PX/px de arena y el peso `ow` por vértice); outlineMesh queda de
+  // respaldo si arena no ha publicado VB.TOON. La calidad la gobiernan VB.TOON.setQuality y setQuality de abajo.
+  function ensureInk(r) {
+    if (r.ink || QRANK === 0 || !r.skin) return;
+    var T = VB.TOON;
+    if (T && T.outline && T.own !== 'players' && T.px) {
+      r.ink = T.outline(r.skin, OUT_MIN, { max: OUT_MAX, k: OUT_PX / T.px });
+      if (r.ink) { r.ink.name = (r.skin.name || 'athlete') + 'Ink'; r.ink.visible = QRANK > 0; }
+      return;
+    }
+    r.ink = outlineMesh(r.skin, OUT_MAX);
   }
 
   // ---------- Piezas ----------
@@ -387,9 +481,11 @@
   function headGeo(g, L, tc) {
     var sk = L.skin, hr = L.hair, s, i;
     g.add(headSphere(sg(24, 14), sg(16, 10)), sk);                                  // cráneo + cara (una pieza)
+    g.owk = 0.2;
     g.add(sph(0.0135, 10, 7), sk, 0, 0.087, headFrontZ(0, 0.087) - 0.0015, 0.3, 0, 0, 0.74, 1.5, 0.92); // nariz (puente y punta)
     if (LODR > 0) g.add(sph(0.0082, 8, 5), sk, 0, 0.0745, headFrontZ(0, 0.0745) + 0.0025, 0, 0, 0, 1.7, 0.78, 0.85); // aletas
-    for (s = -1; s <= 1; s += 2) g.add(sph(0.027, 8, 6), sk, s * 0.098, 0.092, -0.004, 0, 0, 0, 0.45, 1, 0.75); // orejas
+    g.owk = 0.5; for (s = -1; s <= 1; s += 2) g.add(sph(0.027, 8, 6), sk, s * 0.098, 0.092, -0.004, 0, 0, 0, 0.45, 1, 0.75); // orejas
+    g.owk = 1;
     var cap = function (col, rot, sc) { g.add(new THREE.SphereGeometry(0.119, sg(22, 14), sg(12, 6), 0, PI * 2, 0, PI * 0.5), col, 0, 0.105, -0.006, rot, 0, 0, 0.93 * (sc || 1), 1.06 * (sc || 1), 1.04 * (sc || 1)); };
     switch (L.style) {
       case 'curly':
@@ -399,32 +495,34 @@
         break;
       case 'bun':
         cap(hr, -0.3);
-        g.add(torus(0.106, 0.013, 6, 28), tc.band, 0, 0.142, -0.004, PI / 2 - 0.22, 0, 0, 0.93, 1.04, 1); // cinta
+        g.owk = 0; g.add(torus(0.106, 0.013, 6, 28), tc.band, 0, 0.142, -0.004, PI / 2 - 0.22, 0, 0, 0.93, 1.04, 1); // cinta
         break;
       case 'buzz':
         cap(hr, -0.18, 0.99);
         // patillas cortas (la barba cerrada se leía como un agujero negro en los primeros planos)
-        for (s = -1; s <= 1; s += 2) g.add(sph(1, 8, 6), hr, s * 0.094, 0.115, 0.012, 0, 0, s * 0.12, 0.009, 0.026, 0.016);
+        g.owk = 0; for (s = -1; s <= 1; s += 2) g.add(sph(1, 8, 6), hr, s * 0.094, 0.115, 0.012, 0, 0, s * 0.12, 0.009, 0.026, 0.016);
         break;
       default: // crop con flequillo corto
         cap(hr, -0.32);
         g.add(sph(0.06, 12, 8), hr, 0.02, 0.19, 0.06, 0, 0, 0, 1.4, 0.55, 1.0);
     }
+    g.owk = 1;
   }
   // Huesos de la cara (espacio del hueso de la cabeza): ojos (parpadeo / entornar), boca, dientes, cejas y pelo (muelle)
+  var EYE_K = 1.0;   // escala extra de los ojos (CARTOON)
   var EYE_Y = 0.112, EYE_X = 0.036, MOUTH_Y = 0.05, BROW_Y = 0.142, BROW_X = 0.038, HAIR_P = [0, 0.19, -0.1];
   /** Rasgos de la cara en sus huesos (PLY-17/18). `on(bone)` coloca el acumulador en el hueso. */
   function faceGeo(r, on, L) {
     var F = faceTone(L), s, z;
-    var gE = on(r.eyes);
+    var gE = on(r.eyes); gE.owk = 0;   // rasgos de la cara sin contorno de tinta (serían manchas)
     for (s = -1; s <= 1; s += 2) {
       z = headFrontZ(s * EYE_X, EYE_Y) - r.eyes.position.z;
       gE.uvv = EYE_UV_V;
-      gE.add(sph(1, 10, 6), F.sclera, s * EYE_X, 0, z - 0.0015, 0, s * 0.18, 0, 0.0165, 0.0115, 0.0055);      // esclerótica
-      gE.add(sph(1, 8, 5), F.iris, s * (EYE_X - 0.0015), -0.0005, z + 0.003, 0, s * 0.18, 0, F.irisR, F.irisR * 1.04, 0.0032); // iris
-      if (LODR === 2) gE.add(sph(1, 6, 3), 0xffffff, s * (EYE_X - 0.0015) + 0.0028, 0.0028, z + 0.0058, 0, 0, 0, 0.0018, 0.0018, 0.001); // brillo
+      gE.add(sph(1, 10, 6), F.sclera, s * EYE_X, 0.001, z - 0.0022, 0, s * 0.26, 0, 0.0185 * EYE_K, 0.0158 * EYE_K, 0.0068); // esclerótica (CARTOON: grande)
+      gE.add(sph(1, 8, 5), F.iris, s * (EYE_X - 0.002), -0.0002, z + 0.0034, 0, s * 0.26, 0, F.irisR * 1.3 * EYE_K, F.irisR * 1.42 * EYE_K, 0.0034); // iris (pupila grande)
+      if (LODR > 0) gE.add(sph(1, 6, 3), 0xffffff, s * (EYE_X - 0.002) + 0.0034, 0.0042, z + 0.0064, 0, 0, 0, 0.0029, 0.0029, 0.0012); // brillo de dibujo animado
       gE.uvv = -1;
-      if (LODR > 0) gE.add(sph(1, 8, 3, 0, PI * 2, 0, PI * 0.5), F.lid, s * EYE_X, 0.0072, z - 0.0012, -0.35, s * 0.18, 0, 0.0182, 0.0048, 0.0068); // línea del párpado
+      if (LODR > 0) gE.add(sph(1, 8, 3, 0, PI * 2, 0, PI * 0.5), INK, s * EYE_X, 0.0098 * EYE_K, z - 0.0018, -0.35, s * 0.26, 0, 0.0204 * EYE_K, 0.0058, 0.0078); // línea del párpado (tinta)
     }
     var gM = on(r.mouth); z = headFrontZ(0, MOUTH_Y) - r.mouth.position.z;
     gM.add(sph(1, 10, 6), F.mouth, 0, -0.012, z - 0.0035, 0, 0, 0, 0.0205, 0.012, 0.0062);                   // boca (interior)
@@ -433,37 +531,42 @@
     if (LODR > 0) gT.add(sph(1, 8, 4), 0xf4efe6, 0, -0.0042, z + 0.0012, 0, 0, 0, 0.0145, 0.0042, 0.0045);                // dientes (fila superior)
     for (s = -1; s <= 1; s += 2) {
       var gB = on(r.brow[s < 0 ? 1 : 0]); z = headFrontZ(s * BROW_X, BROW_Y) - r.brow[0].position.z;
-      gB.add(sph(1, 8, 4), F.brow, 0, 0, z + 0.0015, 0, s * 0.2, s * -0.1, 0.0215, 0.0058, 0.0072);          // ceja
+      gB.add(sph(1, 8, 4), F.brow, 0, 0.002, z + 0.0018, 0, s * 0.2, s * -0.1, 0.0235, 0.0082, 0.0078);          // ceja (CARTOON: más gruesa)
     }
     if (L.style === 'bun') {
       // coleta alta (PLY-19): goma + mechón que se estrecha, en el hueso del pelo (muelle amortiguado)
       var gH = on(r.hair), hr = L.hair;
-      gH.add(sph(0.034, 10, 6), hr, 0, 0.0, 0.0, 0, 0, 0, 1, 0.9, 1.1);                                       // nudo
-      gH.add(torus(0.022, 0.0075, 5, 10), r.tc.band, 0, -0.014, -0.022, -1.02, 0, 0);                           // goma
-      gH.add(lathe([V2(0, 0.0), V2(0.026, -0.012), V2(0.03, -0.045), V2(0.026, -0.09), V2(0.016, -0.13), V2(0.004, -0.16), V2(0, -0.165)], 8, 5), hr, 0, -0.016, -0.03, 0.55, 0, 0, 1, 1, 0.8); // mechón
+      gH.owk = 1; gH.add(sph(0.034, 10, 6), hr, 0, 0.0, 0.0, 0, 0, 0, 1, 0.9, 1.1);                                       // nudo
+      gH.owk = 0; gH.add(torus(0.022, 0.0075, 5, 10), r.tc.band, 0, -0.014, -0.022, -1.02, 0, 0);                           // goma
+      gH.owk = 1; gH.add(lathe([V2(0, 0.0), V2(0.026, -0.012), V2(0.03, -0.045), V2(0.026, -0.09), V2(0.016, -0.13), V2(0.004, -0.16), V2(0, -0.165)], 8, 5), hr, 0, -0.016, -0.03, 0.55, 0, 0, 1, 1, 0.8); // mechón
     }
+    gE.owk = 1;
   }
   function neckGeo(g, L, tc) {
     g.add(cyl(0.05, 0.057, 0.16, 14), L.skin, 0, 0.33, 0.0);
-    g.add(torus(0.06, 0.012, 6, 20), tc.trim, 0, 0.29, 0.005, PI / 2 + 0.25, 0, 0, 1.15, 1, 1); // ribete del cuello
+    g.owk = 0; g.add(torus(0.06, 0.012, 6, 20), tc.trim, 0, 0.29, 0.005, PI / 2 + 0.25, 0, 0, 1.15, 1, 1); // ribete del cuello
+    g.owk = 1;
   }
   function upperGeo(g, L, tc) {
     g.add(lathe(limbPts(UPPER, 0.065, 0.05, 0.38, 0.01, 7), 14), L.skin);
     // manga por fuera del brazo (perfil <= 0,069 m con el bíceps; antes 0,066 abajo: la piel asomaba entre manga y ribete)
     g.add(cyl(0.079, 0.0712, 0.14, 14, true), tc.base, 0, -0.06, 0);                // manga corta que se estrecha (PLY-21)
     g.add(new THREE.SphereGeometry(0.0755, sg(14, 10), sg(10, 7)), tc.base, 0, -0.005, 0, 0, 0, 0, 1, 0.9, 1);          // hombro
-    g.add(cyl(0.0722, 0.0718, 0.016, 14, true), tc.accent, 0, -0.123, 0);           // ribete de manga
+    g.owk = 0; g.add(cyl(0.0722, 0.0718, 0.016, 14, true), tc.accent, 0, -0.123, 0);           // ribete de manga
+    g.owk = 1;
   }
   function foreGeo(g, L, tc, s) {
     // antebrazo con volumen (de ~0,052 m en el codo a ~0,037 m en la muñeca, músculo cerca del codo)
     g.add(lathe(limbPts(FORE, 0.05, 0.037, 0.2, 0.011, 8), 12), L.skin, 0, 0, 0, 0, 0, 0, 1, 1, 0.92);
     g.add(sph(0.05, 10, 6), L.skin, 0, 0.004, -0.004, 0, 0, 0, 1.02, 1, 0.98);      // codo: esfera de unión (sin escalón al doblar)
-    if (s < 0) g.add(cyl(0.045, 0.043, 0.05, 12), tc.band, 0, -FORE + 0.045, 0);    // muñequera
+    g.owk = 0.4; if (s < 0) g.add(cyl(0.045, 0.043, 0.05, 12), tc.band, 0, -FORE + 0.045, 0);    // muñequera
+    g.owk = 1;
   }
   /** Mano "manopla": palma ancha y plana, dedos de punta redonda algo abiertos y pulgar marcado.
    *  Plano de la mano = Y-Z del hueso (grosor en X); pulgar hacia +Z. Se lee a distancia (bloqueo, colocación). */
   function capsule(r, len, cs, rs) { return new THREE.CapsuleGeometry(r, len, Math.max(1, Math.round((cs || 3) * LODK)), sg(rs || 8, 4)); }
   function handGeo(g, L) {
+    g.owk = 0.55;   // dedos finos: contorno más fino (con el entero la mano era una manopla negra)
     g.add(capsule(1, 0.9, 3, 10), L.skin, 0, -0.052, 0.002, 0, 0, 0, 0.0175, 0.029, 0.047);   // palma
     var zs = [-0.03, -0.01, 0.01, 0.029], ls = [0.058, 0.07, 0.072, 0.064];
     for (var i = 0; i < 4; i++) {
@@ -471,13 +574,15 @@
       g.add(capsule(1, 2.2, 2, 6), L.skin, 0, -0.088 - Math.cos(a) * l * 0.5, zs[i] + Math.sin(-a) * l * 0.5, a, 0, 0, 0.0105, l / 4.2, 0.0115);
     }
     g.add(capsule(1, 2.0, 2, 6), L.skin, 0.007, -0.058, 0.058, -0.55, 0, 0, 0.0125, 0.0125, 0.014); // pulgar (algo abierto)
+    g.owk = 1;
   }
   function thighGeo(g, L, tc) {
     g.add(lathe(limbPts(THIGH, 0.09, 0.062, 0.25, 0.012, 8), 14), L.skin);
     // piezas superpuestas con los MISMOS lados que la extremidad (14 → mismo LOD y misma fase de vértices) y holgura
     // >= 4 mm: con lados distintos los vértices de la piel asomaban entre las caras planas (dientes de sierra en media)
     g.add(cyl(0.103, 0.1015, 0.22, 14, true), tc.shorts, 0, -0.08, 0);              // pernera (muslo <= 0,097)
-    g.add(cyl(0.1035, 0.1035, 0.016, 14, true), tc.accent, 0, -0.184, 0);          // ribete
+    g.owk = 0; g.add(cyl(0.1035, 0.1035, 0.016, 14, true), tc.accent, 0, -0.184, 0);          // ribete
+    g.owk = 1;
   }
   function kneeW(y) { return sstep(-0.04, 0.035, y) * 0.5; }
   function shinGeo(g, L, tc, thighBone) {
@@ -488,15 +593,21 @@
     if (thighBone >= 0) { g.bone2 = thighBone; g.w2 = kneeW; }
     g.add(cyl(0.078, 0.077, 0.12, 14), tc.pad, 0, -0.025, 0.004);                    // rodillera
     g.bone2 = -1; g.w2 = null;
+    g.owk = 0;   // calcetín y franja pegados a la pierna: sin contorno propio (el de la pierna ya los perfila)
     g.add(cyl(0.0515, 0.0445, 0.16, 14, true), 0xf4f4f2, 0, -SHIN + 0.08, 0);       // calcetín
     g.add(cyl(0.0525, 0.052, 0.02, 14, true), tc.base, 0, -SHIN + 0.13, 0);         // franja del calcetín
+    g.owk = 1;
   }
+  // CARTOON: zapatillas algo más grandes (largo y ancho ×FOOT_K; el alto no cambia: la suela sigue en el suelo)
+  var FOOT_K = 1.15;
   function shoeGeo(g, tc) {
-    g.add(sph(1, 16, 8, 0, PI * 2, 0, PI * 0.5), 0xf4f4f4, 0, -0.056, 0.04, 0, 0, 0, 0.055, 0.07, 0.135); // empeine
+    var K = FOOT_K;
+    g.add(sph(1, 16, 8, 0, PI * 2, 0, PI * 0.5), 0xf4f4f4, 0, -0.056, 0.04 * K, 0, 0, 0, 0.055 * K, 0.07, 0.135 * K); // empeine
     g.add(cyl(0.046, 0.05, 0.06, 12), 0xf4f4f4, 0, -0.02, -0.01);                   // tobillera
-    g.add(sph(1, 16, 5, 0, PI * 2, PI * 0.5, PI * 0.5), tc.sole, 0, -0.056, 0.04, 0, 0, 0, 0.057, 0.026, 0.138); // suela
-    g.add(sph(1, 14, 6, 0, PI * 2, 0, PI * 0.5), tc.accent, 0, -0.05, -0.025, 0, 0, 0, 0.0565, 0.034, 0.06);  // talón
-    g.add(box(0.03, 0.006, 0.06), 0x30333a, 0, 0.0, 0.1, -0.5, 0, 0);               // cordones
+    g.add(sph(1, 16, 5, 0, PI * 2, PI * 0.5, PI * 0.5), tc.sole, 0, -0.056, 0.04 * K, 0, 0, 0, 0.057 * K, 0.026, 0.138 * K); // suela
+    g.owk = 0.5; g.add(sph(1, 14, 6, 0, PI * 2, 0, PI * 0.5), tc.accent, 0, -0.05, -0.025 * K, 0, 0, 0, 0.0565 * K, 0.034, 0.06 * K);  // talón
+    g.owk = 0; g.add(box(0.03 * K, 0.006, 0.06 * K), 0x30333a, 0, 0.0, 0.1 * K, -0.5, 0, 0);               // cordones
+    g.owk = 1;
   }
   function shortsGeo(g, tc) {
     g.add(lathe(profPts(SHORTS_PROF), 22, 16), tc.shorts, 0, 0, 0, 0, 0, 0, SHORTS_S[0], SHORTS_S[1], SHORTS_S[2]);
@@ -544,6 +655,7 @@
     var spine = bone(pelvis, 0, SPINE_Y, 0);
     var chest = bone(spine, 0, CHEST_Y, 0);
     var head = bone(chest, 0, NECK_Y, 0.012); head.rotation.order = 'YXZ';
+    head.scale.setScalar(HEAD_K);   // CARTOON: cabeza más grande (cara, ojos y pelo van en huesos hijos: escalan con ella)
     // cara (PLY-17/18) y pelo (PLY-19): huesos hijos de la cabeza; la escala de los de la cara da las expresiones
     var fz = headFrontZ;
     var eyes = bone(head, 0, EYE_Y, fz(EYE_X, EYE_Y) - 0.004), mouth = bone(head, 0, MOUTH_Y, fz(0, MOUTH_Y) - 0.004);
@@ -574,6 +686,7 @@
     for (var k = 0; k < 2; k++) {
       var s = k === 0 ? 1 : -1;
       var sh = bone(chest, s * SH_X, SH_Y, SH_Z), up = bone(sh), el = bone(up, 0, -UPPER, 0), hd = bone(el, 0, -FORE, 0);
+      hd.scale.setScalar(HAND_K);     // CARTOON: manos algo mayores (la muñeca no se mueve: la IK sigue llevando la palma al balón)
       r.sh.push(sh); r.up.push(up); r.el.push(el); r.hand.push(hd);
       var hp = bone(pelvis, s * HIP_W, 0, 0), th = bone(hp), kn = bone(th, 0, -THIGH, 0), ft = bone(kn, 0, -SHIN, 0);
       r.hip.push(hp); r.th.push(th); r.kn.push(kn); r.ft.push(ft);
@@ -586,7 +699,8 @@
     skin.castShadow = true; skin.receiveShadow = true; skin.name = 'athleteSkin' + id;
     root.add(skin); root.updateMatrixWorld(true);
     skin.bind(new THREE.Skeleton(bones), skin.matrixWorld);
-    r.skin = skin;
+    r.skin = skin; r.ink = null;
+    ensureInk(r);                   // contorno de tinta (media/alta)
     root.scale.setScalar(L.h);
     // alias públicos para cámara/FX (rigOf)
     r.handL = r.hand[0]; r.handR = r.hand[1]; r.footL = r.ft[0]; r.footR = r.ft[1];
@@ -2504,6 +2618,18 @@
     c.v[KL].lerp(t.v[KL], kb); c.v[KR].lerp(t.v[KR], kb);
   }
 
+  /** CARTOON: estirar y encoger suave (squash & stretch) en el despegue y el aterrizaje, escalando el hueso body
+   *  (su origen está entre los pies: no se despegan del suelo). Volumen casi constante (xz = 1/sqrt(y)). Solo visual:
+   *  la sim, el balón y los contactos no cambian (el despegue acaba antes de cualquier contacto en el aire). */
+  var SQ_UP = 0.06, SQ_LAND = 0.08;
+  function squash(g, r) {
+    var tm = g.time, a = 0, tj = tm - r.jumpT, tl = tm - r.landT, b = r.body.scale;
+    if (tj >= 0 && tj < 0.16) a += SQ_UP * Math.sin(tj / 0.16 * PI);
+    if (tl >= 0 && tl < 0.38) a -= tl < 0.05 ? SQ_LAND * tl / 0.05 : tl < 0.24 ? SQ_LAND * (1 - sstep(0.05, 0.24, tl)) : -0.018 * Math.sin((tl - 0.24) / 0.14 * PI);
+    if (a === 0) { if (b.y !== 1) b.set(1, 1, 1); return; }
+    var sy = 1 + a, sx = 1 / Math.sqrt(sy);
+    b.set(sx, sy, sx);
+  }
   function torso(r, s) {
     r.body.position.set(s[OX], s[HOP], s[OZ]);
     r.pelvis.position.set(s[PX], HIP_H - s[DROP], s[PZ]);
@@ -3160,6 +3286,9 @@
       // de la malla (alta ~10k, media ~4k, baja ~2k triángulos por atleta) y el filtrado del atlas
       var rank = q && q.rank != null ? q.rank : 2;
       setLod(rank);
+      // contorno de tinta: no en baja (1 dibujo menos por atleta); se crea al subir de baja a media/alta
+      QRANK = rank;
+      for (var ck in cache) { var cr = cache[ck]; if (rank > 0) ensureInk(cr); if (cr.ink) cr.ink.visible = rank > 0; }
       var aniso = rank > 0 ? 4 : 1;
       for (var k in cache) { var m = cache[k].skin.material.map; if (m && m.anisotropy !== aniso) { m.anisotropy = aniso; m.needsUpdate = true; } }
     },
@@ -3268,6 +3397,7 @@
         var rp = r.root.position; rp.x = p.x + r.offX; rp.y = p.z; rp.z = -(p.y + r.offY); // = VB.toThree (sin HeapNumbers)
         footLock(r, p.z > 0.012, snap, dt);
         applyPose(r);
+        squash(g, r);
         // compresión del brazo que golpea (0,06 s tras el remate)
         var ha = g.time - r.hitT, sq = (r.hitAir && ha >= 0 && ha < 0.06 && r.hitShot !== 'tip') ? Math.sin(ha / 0.06 * PI) : 0;
         r.up[1].scale.set(1 + 0.1 * sq, 1, 1 + 0.1 * sq);
@@ -3277,6 +3407,7 @@
         r.inited = true;
       }
       screenLod();
+      for (i = 0; i < rigs.length; i++) { var ik = rigs[i].ink; if (ik && ik.geometry !== rigs[i].skin.geometry) ik.geometry = rigs[i].skin.geometry; }
       cvEmit(g, dt);
       // marcador del jugador controlado
       var show = !g.demo && ctx.state !== 'menu' && g.ctrl;

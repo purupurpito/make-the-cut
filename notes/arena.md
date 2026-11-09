@@ -499,3 +499,67 @@ contacto, `ik.js` = IK numérico de los brazos de makePerson, `cpucost.js`/`crew
   `R1.sig = 'challenge'`), vallas «VIDEO CHALLENGE», pantallas «CHALLENGE / REVISIÓN · equipo», la grada deja de animar.
   `challengeResult` → marcador desde `g` (`scoreFromGame`), pantallas «IN|OUT · x,x cm» + «PUNTO equipo» / «SE MANTIENE», brazo hacia el
   equipo que gana el punto; si se anula, ánimo de ese lado y reacción del banquillo. «VIDEO CHALLENGE» añadido a `warmMsgFonts`.
+
+## Sprint cartoon (arena_fx, 9-nov-2026 noche): restyle del pabellón, VB.TOON y FX de dibujo
+Capturas: antes `tools/out/cartoon/antes/arena/` (serve, rally, spike, block, point, dive, menu; `touch/` = 844×390 táctil en baja);
+después `tools/out/cartoon/despues/arena/` (las mismas + `fx-spike.png`, `fx-block.png`, `fx-dive.png` con los FX inyectados:
+`tools/out/cartoon/fxinject.js`, uso en su cabecera).
+- **VB.TOON (contrato del sprint, en arena.js; se crea al cargar el script si `window.THREE` existe y, si no, en `Arena.init`)**:
+  `{ gradientMap, ink: 0x1d1530, shadow: 0x2b2547, enabled, rank, px, toonMat(params), outline(mesh, metros), setQuality(q), frame(cam, h), _list }`.
+  - `gradientMap`: DataTexture RGBA de 10 texels NEAREST con 3 niveles lineales 0,18 / 0,55 / 1 (N·L < 0 sombra, 0..0,4 media, > 0,4 luz).
+  - `outline(mesh, m)`: casco invertido (MeshBasic BackSide, normal empujada DESPUÉS del esqueleto: vale para Mesh, SkinnedMesh
+    —mismo esqueleto y bindMatrix— e InstancedMesh —comparte instanceMatrix y count—). Grosor = max(m, ~1,8 px CSS a 720 p, escalado
+    con el alto del lienzo entre ×0,75 y ×1,6). Se cuelga como hijo de `mesh` y se devuelve SIEMPRE (no null): en calidad baja queda
+    oculto y vuelve al subir. `userData.inkRank` (1 media, 2 solo alta) y `userData.inkOn = false` para apagar uno. 1 dibujo por contorno.
+  - `toonMat(p)`: MeshToonMaterial con el gradientMap puesto.
+  - players: si usa `VB.TOON.outline` en sus SkinnedMesh no tiene que hacer nada más (calidad y grosor por píxel los lleva arena).
+- **Pabellón**: paleta nueva (PAL; pista miel `#f7c470`, zona libre azul plano `#1f8fd0` con anillo más claro, gradas y paredes azul violáceo);
+  tarima redibujada: tablas de 15 cm en 3 tonos de bloque, juntas de tinta, vetas como arcos sencillos, 2 brillos de barniz «pintados» y
+  filo de tinta POR FUERA de las líneas (las líneas FIVB no cambian). Asientos por bloques de 6 colores (`SEAT_BLOCKS`, sin tocar la secuencia
+  aleatoria del público). Techo luminoso azul violeta, paredes, pasarela y pilastras más claras, niebla `#1d1a44`. Público algo más saturado
+  (`SHIRT_DESAT` 0,12 / 0,15).
+- **Materiales toon** (sin especular ni entorno): tarima, suelo exterior, red, antenas/postes/protecciones (`aPbr` queda en la geometría sin uso),
+  malla estática de gradas + utillaje, oficiales, banderolas. Público 3D, impostores, LED, pantallas y cascarón: sin cambios de técnica.
+- **Luces**: mismas intensidades (los atletas se ajustan contra ellas); hemisférica cielo `#d6d0ff` / suelo `#5a4f8c` (sombras violáceas, no negras).
+  `LT[i].floor` (tinte del toon de la tarima) 0,68 / 0,72 / 0,64: con 1 el ACES lavaba la pista. El mapa de entorno PMREM sigue (lo usan los
+  materiales Standard que queden, p. ej. los de players si no pasan a toon).
+- **Contornos de arena**: postes/antenas (`poles:ink`, 0,4 k tri), utillaje (`props:ink`, 2 k) en media y alta; oficiales (`officials:ink`, 44 k)
+  solo en alta (en media el presupuesto de 350 k no da).
+- **fx.js**: balón MeshToon con paneles planos y costuras de tinta (sigue el brillo de borde y el calor), contorno de tinta ~2 px (se mantiene en
+  todas las calidades: es legibilidad); sombras de contacto como disco de borde definido y violáceo. FX cartoon en UN InstancedMesh (`toonFx`,
+  atlas 1024×512, mezcla normal, 0 dibujos si no hay nada vivo): estrellas de impacto (remate, saque fuerte, bloqueo, toque perfecto), explosión
+  de cómic (remate, saque fuerte, bloqueo directo), chispas de 4 puntas (toques suaves, red), nubes de polvo de dibujo (plancha, aterrizajes,
+  botes fuertes, `VB.FX.dust`), líneas de velocidad que siguen al balón (remate fuerte o perfecto, saque en salto) y «¡PAM!» en el remate
+  perfecto del humano. Tope de tamaño en pantalla por tipo (`TB_MAXF`) y casi transparentes pegados a la cámara; con bloom el dibujo se queda
+  bajo el umbral (`uGain` 0,8). Calidad baja: mitad de estrellas y nubes, sin líneas ni onomatopeya. softFlash: explosión al 45 % sin rebote,
+  onomatopeya más pequeña y translúcida. El destello aditivo baja de 0,62 a 0,48 (`FLASH_K`).
+  API nueva opcional: `VB.FX.stars(x, y, z, n, size)`, `comicBurst(x, y, z, size)`, `puffs(x, y, n, dirx, diry, size)`, `onomatopoeia(x, y, z)`;
+  `_dbg().toon`, `_dbg().toonN`.
+- **Rendimiento** (`perf.js 844x390 15 high,medium,low`, PC cargado por los otros flujos del sprint: fps no válidos): low 31/34 dibujos y 113 k
+  triángulos (objetivo ≤ 60 / ≤ 150 k), medium 282 k en `debug=rally` tras quitar el contorno de los oficiales (antes de quitarlo 313-327 k),
+  objetivos cumplidos. Repetir con el PC libre.
+
+### Para otros owners (sprint cartoon)
+- **ui_main (main.js)**: el ACES (`toneMapping`) desatura y aplasta los colores planos del cartoon; arena lo compensa con tintes, pero merece
+  probar `THREE.LinearToneMapping` (exposición ~0,9) o ACES con `toneMappingExposure` 0,85 cuando estén players y UI.
+  Ajuste opcional que fx.js ya respeta: `ctx.settings.comicText === false` apaga el «¡PAM!» (si se quiere una fila en Ajustes · Accesibilidad).
+- **Challenge fallado: la red cruza el cartel «OUT»**: no es de arena/fx. El cartel es el de ui.js (`banner(io, …)`) o el texto «IN|OUT · x cm» de
+  los videomarcadores; la malla solo puede cruzarlo si la cámara de punto queda detrás de la red (camera_input: no poner el plano del punto/revisión
+  con la red entre cámara y objetivo) o si el fondo del cartel de ui es translúcido (ui_main: fondo opaco). Arena no oculta la red a propósito.
+
+### Integración (9-nov-2026)
+- `VB.TOON.outline(mesh, m, opts)` acepta `opts = {max, k}` (tope en metros y multiplicador de píxeles) y el atributo `ow` por vértice. players lo usa para
+  los atletas (`OUT_MIN`, `{max: OUT_MAX, k: OUT_PX / VB.TOON.px}`): un único contorno y una única calidad. Nuevo `VB.TOON.drop(o)`.
+- Arreglo: la tinta (`uInk`) se creaba al cargar arena.js, antes de que main.js ponga `ColorManagement.legacyMode = false`, y salía lavanda (~#6a5a90 en
+  pantalla) en postes, mobiliario y árbitros. `frame()` la vuelve a fijar una vez, ya en modo lineal: ahora es #1d1530, como el contorno de los atletas.
+
+### Arreglos finales del sprint cartoon (9-nov-2026)
+- **ARN-12 en baja (pico 37 → 35)**: fx.js `_event` con `tbSwap = tbLow && toon`: en baja, donde salen estrellas/explosión de cómic
+  (remate, saque rápido, toque perfecto, bloqueo, bote fuerte) no se lanzan chispas, destellos ni ondas (la explosión de cómic hace de
+  destello). Además `burstAt` no lanza chispas en baja con piezas cartoon vivas, y `tbAdd` descarta la pieza (hueco mudo `tbMute`) si en
+  baja ya se dibujan chispas e `impactBills` a la vez. Medido (`tools/out/cartoon/fix/calls.js low 40`, 844×390 dpr 2,75): 30,5/35,
+  30,5/35 (seed 77), 29,0/34 (seed 5); antes 30,5/37. perf.js exige ahora ≤ 35 dibujos de pico en baja (antes ≤ 60): baja 29/34.
+- **Público cartoon**: el público 3D pasa de Lambert a MeshToonMaterial con rampa propia (0,5 · 0,78 · 1, `crowdRamp`); neutros de
+  colores de bloque (mismo número de entradas: la secuencia aleatoria no cambia); caída con la altura 0,42 → 0,6 y desaturación
+  0,33 + k·0,3 → 0,12 + k·0,22 (también en los impostores, mismo GLSL). Programa `vb-crowd-7`. Triángulos y dibujos iguales.
+- **Red con contorno**: tinta #1d1530 pintada en la textura de la red (filo de las dos bandas y de los extremos, ~2,5 cm): 0 dibujos.

@@ -3,7 +3,7 @@
 Fichero: `js/players.js`. Interfaces de CONTRACT.md §4 intactas. Fecha: 2026-11-06 (pasada de cierre).
 
 ## Estado
-- Atletas procedurales: UNA SkinnedMesh por atleta (piel rígida por hueso, ~10k triángulos, 1 dibujo + 1 sombra), atlas por jugador, brillo de contorno en el shader estándar,
+- Atletas procedurales: UNA SkinnedMesh por atleta (piel rígida por hueso, ~10k triángulos, 1 dibujo + 1 sombra; + 1 dibujo de contorno de tinta en media/alta), atlas por jugador, sombreado toon (sprint cartoon, ver al final),
   IK de dos huesos para brazos y piernas, pose objetivo por capas amortiguada, pies sin patinar.
 - **Dorsales** (pendiente de foundation): HECHO. Número grande en la espalda y pequeño en el pecho, blanco con filo del color
   oscuro del equipo, pegado a la curva del tronco; se redibuja cuando la UI ha cargado Barlow Condensed (sin peticiones nuevas).
@@ -573,3 +573,41 @@ Solo `js/players.js`. Herramientas en `tools/out/ply3/`: `face.js` (primer plano
 - CONTRACT (añadidos de los arreglos ola 3): cuadro vivo de `debug=point|ace` (condición exacta, re-emite el `point`) y `VB.Players._tab()`.
 - Visto en secuencia real (`tools/out/w4lead/seqpoint/`, 371 fotogramas en 4 s, debug=point alta): acercamiento, choque y vuelta; sin saltos. Las capturas de `debug=point` dependen ahora de WAIT.
 - Verificado en el árbol integrado: simtest completo + barrido `simtest <10|20> <1..25> 0` 50/50 TODO OK; console.sh 19 escenas (1280×720 y 844×390 táctil) sin errores; drive, touchplay, padplay (estándar y DualSense) y audiotest completo TODO OK; perf 844×390 ×4 «objetivos cumplidos» (ver TRASPASO).
+
+## Sprint cartoon (9-nov-2026, players) — restyle de los atletas
+Pedido de Ferran: «gráficos cartoonish». Capturas: antes `tools/out/cartoon/antes/players/`, después `tools/out/cartoon/players/despues/`
+(mismo guion: `bash tools/out/cartoon/players/caps.sh <carpeta>`; primer plano suelto: `tools/out/cartoon/players/close.sh`). Copia del fichero
+anterior: `tools/out/cartoon/players/players.antes.js`.
+- **Sombreado toon**: `MeshToonMaterial` (atlas + color por vértice) con `VB.TOON.gradientMap` (el de arena: 0,18 / 0,55 / 1). Solo la luz
+  principal va en bandas: el relleno y el contraluz (más débiles) suman un Lambert suave a medias (mezcla por intensidad, `smoothstep(1.2, 2.4, lum)`
+  del color de la luz); con todas en bandas la cara se llenaba de manchas. Luz ambiente propia teñida de violeta (`SHADE`; en la piel, cálida:
+  `SHADE_SKIN`), contraluz en banda dura (0,13) y ojos con luz propia. Mismo programa para los 4 atletas (`customProgramCacheKey 'vbToonSkin'`).
+  Sin especular ni mapa de entorno. Camiseta de color plano (sin degradado ni trama).
+- **Contorno de tinta** (`outlineMesh`, propio): `SkinnedMesh` con la MISMA geometría y esqueleto, `ShaderMaterial` por detrás que empuja por la
+  normal en el espacio de la vista tras la piel; grosor `OUT_PX` = 2,4 px a 720 de alto (proporcional al alto de la imagen), limitado a
+  [0,0025, 0,04] m; con niebla y tono de la escena. Atributo nuevo `ow` en la geometría (peso del contorno por pieza): rasgos de la cara, ribetes,
+  calcetines, cordones y cinta 0; nariz 0,2; orejas, talón 0,5; manos 0,55; muñequera 0,4. No uso `VB.TOON.outline` de arena para los atletas:
+  su grosor es max(m, px) sin tope ni peso por vértice (los ojos salían como manchas). Sí uso su `ink`. Si `VB.TOON` no existiera, players
+  publica uno compatible (`own: 'players'`; `outline` = `outlineMesh`).
+- **Coste**: +1 dibujo por atleta en media/alta (el contorno; sin sombra), 0 en baja (no se crea / se oculta en `setQuality`; se crea al subir).
+  Programas 43 → 44. `perf.js 844x390 20 medium,low 4`: media 79,4 fps, 46/51 dibujos, 271/293 k triángulos; baja 77,4 fps, 30/35 dibujos,
+  111/113 k triángulos: «objetivos cumplidos». El LOD sigue igual (el contorno toma la geometría de la piel cada frame).
+- **Proporciones**: cabeza ×1,13 (`HEAD_K`, escala del hueso de la cabeza en el reposo: cara, ojos y pelo van en hijos), manos ×1,14 (`HAND_K`,
+  hueso de la mano; la muñeca no se mueve), zapatillas ×1,15 de largo y ancho (`FOOT_K`; el alto no cambia). Pelos algo más claros (se separan de la tinta).
+- **Cara**: ojos grandes (esclerótica 0,0185×0,0158, iris ×1,3-1,42, brillo blanco también en media), línea del párpado en tinta, cejas más
+  gruesas. Las expresiones (escala de los huesos de la cara) siguen igual.
+- **Squash & stretch** (`squash`): escala del hueso `body` (origen entre los pies): despegue +6 % de alto en 0,16 s; aterrizaje −8 % (0,05 s
+  de bajada, vuelta en 0,19 s) con un rebote de +1,8 %; volumen casi constante (xz = 1/√y). Solo visual; medido en la demo: 0,92-1,06, sin NaN.
+- `setKit` (equipación) sigue igual con colores planos: comprobado `kit-verde-rayas.png` (contorno recreado con los atletas nuevos).
+- Pruebas: `simtest.js` TODO OK; `console.sh all` 1280×720 y táctil 844×390 sin errores; `drive.js 1280 720 20` TODO OK; perf arriba.
+
+### Problemas conocidos (cartoon)
+- En primeros planos muy cercanos el borde de la banda de sombra sigue las facetas de la malla (cráneo 24×16, mangas): se ve dentado en la cara y
+  en las mangas. A la distancia de juego no se nota. Arreglo posible: más segmentos solo en alta o normales suavizadas por pieza.
+- El brillo de borde (contraluz) queda junto a la línea de tinta en el pelo oscuro: halo claro fino, buscado.
+
+### Integración (9-nov-2026)
+- `ensureInk` usa `VB.TOON.outline` de arena (mismo material de tinta para todo; grosor mínimo `OUT_MIN`, tope `OUT_MAX`, ×`OUT_PX / VB.TOON.px`, peso `ow`).
+  El contorno es hijo de `r.skin`; `outlineMesh` queda de respaldo si arena no publica VB.TOON. Al reconstruir por cambio de equipación: `VB.TOON.drop(r.ink)`.
+- A 844×390 el grosor mínimo en píxeles lo fija arena (factor de alto limitado a ≥ 0,75): el trazo es algo más grueso que antes en pantallas bajas
+  (~1,8 px frente a ~1,3). Comprobado en las capturas táctiles: no empasta.

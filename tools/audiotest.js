@@ -390,7 +390,13 @@ const PLAN = {
   // sprint challenge (B8): bench-tablet horn, tense murmur during the review, reaction to the result
   horn: { target: -17, desc: 'challenge horn (fills the hall like the whistle, just under it)' },
   reviewBed: { target: -21, desc: 'tense murmur during the video review (+5 dB over the calm bed, no excitement layer)' },
-  reactBig: { target: -18, desc: 'reaction to an overturned call (louder than a normal point reaction)' }
+  reactBig: { target: -18, desc: 'reaction to an overturned call (louder than a normal point reaction)' },
+  // sprint cartoon: cartoon layers under the usual hit (colour, not a second hit) and the perfect-spike «¡PAM!» stinger
+  toon: { target: -25, desc: 'cartoon «bonk» under a touch (7 LU under the -18 touch)' },
+  toonHit: { target: -21, desc: 'cartoon «whack» under a spike (7 LU under the -14 spike)' },
+  toonZip: { target: -24, desc: 'speed-line whizz of a hard spike' },
+  toonBoing: { target: -24, desc: 'subtle spring when the ball bounces off the block or the net (6 LU under the -18 net)' },
+  stinger: { target: -21, desc: 'perfect-spike «¡PAM!» brass hit (a reward: like a moderate crowd reaction, under the -16 set stings)' }
 };
 /** The end-sheet count-up of ui.js (UI-11: 600 ms, cubic ease-out, one rAF per frame) with AUD-08 wired as notes/ui_main.md asks:
  *  ui('count', u) on every frame where a displayed number changes, and on the last frame (u = 1). Returns [[t, u], ...] (s from
@@ -487,7 +493,16 @@ const SCEN = [
   { id: 'challenge: se anula (en contra)', cat: 'reactBig', only: ['groan', 'applause'], ev: [{ type: 'challengeResult', team: 1, overturned: true, dist: 0.01, truthIn: true, calledIn: false, x: -4, y: 4.4, left: [2, 2] }] },
   { id: 'challenge: se mantiene (local)', cat: 'react', only: ['groan', 'applause'], ev: [{ type: 'challengeResult', team: 0, overturned: false, dist: 0.04, truthIn: true, calledIn: true, x: 4, y: 4.4, left: [1, 2] }] },
   { id: 'challenge: se mantiene (CPU)', cat: 'react', only: ['roar', 'applause'], ev: [{ type: 'challengeResult', team: 1, overturned: false, dist: -0.04, truthIn: false, calledIn: false, x: -4, y: 4.4, left: [2, 1] }] },
-  { id: 'crowd bed (set-point serve, HP)', cat: 'bed', update: 'sp', only: ['murmur', 'excite'], info: true }
+  { id: 'crowd bed (set-point serve, HP)', cat: 'bed', update: 'sp', only: ['murmur', 'excite'], info: true },
+  // sprint cartoon
+  { id: 'cartoon: bonk de la recepción', cat: 'toon', only: ['toonPop'], ev: [hitE('pass')] },
+  { id: 'cartoon: pip de la colocación', cat: 'toon', only: ['toonPop'], ev: [hitE('set', { touch: 2 })], info: true },
+  { id: 'cartoon: zas del remate', cat: 'toonHit', only: ['toonWhack'], ev: [hitE('spike', { touch: 3, speed: 16, power: 0.5 })] },
+  { id: 'cartoon: zumbido del remate fuerte', cat: 'toonZip', only: ['toonZip'], ev: [hitE('spike', { touch: 3, speed: 24, power: 0.9 })] },
+  { id: 'cartoon: muelle del bloqueo (toque)', cat: 'toonBoing', only: ['boing'], ev: [{ type: 'block', result: 'soft', x: 0.3, y: 1, z: 3, team: 1, player: { x: -0.4, y: 1, z: 0.5, team: 1 } }] },
+  { id: 'cartoon: muelle de la red', cat: 'toonBoing', only: ['boing'], ev: [{ type: 'net', x: 0, y: 1, z: 2.2, tape: false }] },
+  { id: 'cartoon: ¡PAM! del remate perfecto', cat: 'stinger', only: ['pamSting'], ev: [hitE('spike', { touch: 3, speed: 20, power: 0.8, human: true, grade: 'perfect' })] },
+  { id: 'cartoon: remate perfecto entero', cat: 'spike', only: ['spike', 'spikeHero', 'sub', 'perfect', 'toonWhack', 'toonZip', 'pamSting'], ev: [hitE('spike', { touch: 3, speed: 20, power: 0.8, human: true, grade: 'perfect' })], info: true }
 ];
 function seeded(seed) { let s = seed >>> 0 || 1; return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
@@ -735,6 +750,39 @@ async function featureReport(file) {
     const r0 = rateAt(0, 0.07), r1s = rateAt(0.25, 0.22), rSlow = rateAt(0.28, 0.4), rLongFreeze = rateAt(0, 0.5);
     ok('AUD-04 hit-stop no cambia el tono; la cámara lenta sí (tras 0,25 s)', Math.abs(r0 - 1) < 0.08 && Math.abs(r1s - 1) < 0.08 && rSlow < 0.7 && Math.abs(rLongFreeze - 1) < 0.08,
       'rate after 0 x 70 ms ' + r0.toFixed(2) + ', 0.25 x 220 ms ' + r1s.toFixed(2) + ', slow-mo 0.28 x 0.4 s ' + rSlow.toFixed(2) + ', freeze 0 x 0.5 s ' + rLongFreeze.toFixed(2));
+  }
+
+  // sprint cartoon: which layers sound for which event, the switches, and the «¡PAM!» dedupe with an fx event
+  {
+    const TOONS = ['toonPop', 'toonWhack', 'toonZip', 'boing', 'pamSting', 'perfect'];
+    const names = (evs, o) => {
+      o = o || {}; A.onGameStart({ demo: !!o.demo }); C.currentTime += 20; VC.settings = o.settings || {};
+      const mark = mock.started.length;
+      for (const step of evs) { if (step.dt) C.currentTime += step.dt; A.handle([Object.assign({}, step.e)], { mode: 'rally', players: [], rally: { t: 3, hits: 3 }, serving: 0, matchPoint: -1, setPoint: -1, lastKind: 'pass' }); }
+      VC.settings = {};
+      const out = mock.started.slice(mark).filter(s => !s.cancelled).map(s => nameOfBuf(A, s.src.buffer)).filter(n => TOONS.includes(n));
+      return out.sort().join(',');
+    };
+    const PS = hitE('spike', { touch: 3, speed: 20, power: 0.8, human: true, grade: 'perfect' }), GS = hitE('spike', { touch: 3, speed: 16, power: 0.5 });
+    const HS = hitE('spike', { touch: 3, speed: 24, power: 0.9 }), TIP = hitE('free', { touch: 3, shot: 'tip', human: true, grade: 'perfect' });
+    const SOFT = { type: 'block', result: 'soft', x: 0.3, y: 1, z: 3, team: 1, player: { x: -0.4, y: 1, z: 0.5, team: 1 } };
+    const r = {
+      pass: names([{ e: hitE('pass') }]), set: names([{ e: hitE('set', { touch: 2 }) }]), spike: names([{ e: GS }]), hard: names([{ e: HS }]),
+      perf: names([{ e: PS }]), tip: names([{ e: TIP }]), soft: names([{ e: SOFT }]), net: names([{ e: { type: 'net', x: 0, y: 1, z: 2.2 } }]),
+      perfFx: names([{ e: PS }, { e: { type: 'fx:onoma', team: 0, x: HOME.x, y: HOME.y, z: 3 }, dt: 0.1 }]),
+      fxOnly: names([{ e: { type: 'fx:pam', team: 0, x: HOME.x, y: HOME.y, z: 3 } }]),
+      fxCpu: names([{ e: { type: 'fx:onoma', team: 1, x: -HOME.x, y: HOME.y, z: 3 } }]),
+      perfLater: names([{ e: PS }, { e: PS, dt: 1.5 }]),
+      off: names([{ e: PS }, { e: SOFT }, { e: hitE('pass') }], { settings: { toonSfx: false } }),
+      noOnoma: names([{ e: PS }], { settings: { onoma: false } }),
+      demo: names([{ e: PS }], { demo: true })
+    };
+    A.setToon(false); const api = names([{ e: HS }, { e: SOFT }]); A.setToon(true);
+    const pass = r.pass === 'toonPop' && r.set === 'toonPop' && r.spike === 'toonWhack' && r.hard === 'toonWhack,toonZip' &&
+      r.perf === 'pamSting,toonWhack,toonZip' && r.tip === 'perfect,toonPop' && r.soft === 'boing' && r.net === 'boing' &&
+      r.perfFx === 'pamSting,toonWhack,toonZip' && r.fxOnly === 'pamSting' && r.fxCpu === '' && r.perfLater === 'pamSting,pamSting,toonWhack,toonWhack,toonZip,toonZip' &&
+      r.off === 'perfect' && api === '' && r.noOnoma === 'perfect,toonWhack,toonZip' && r.demo === 'toonWhack,toonZip';
+    ok('cartoon: capas por evento, interruptores y «¡PAM!» sin repetir', pass, Object.keys(r).map(k => k + '[' + r[k] + ']').join(' ') + ' setToon(false)[' + api + ']');
   }
   return res;
 }
@@ -1032,7 +1080,17 @@ const HIER = [
   ['flecha de dificultad: paso', 'ui start', -1.5, 1.5, 'arrow step at the level of the other menu confirmations'],
   ['ajustes: interruptor a Sí', 'ajustes: interruptor a No', -1.5, 1.5, 'Sí and No equally loud (only the gesture differs)'],
   ['flecha de dificultad: hover', 'hover', -1.5, 1.5, 'arrow hover at the level of the button hover'],
-  ['crowd bed (rally, 4 hits)', 'pass', -99, -6, 'crowd bed ≥ 6 LU under a touch']
+  ['crowd bed (rally, 4 hits)', 'pass', -99, -6, 'crowd bed ≥ 6 LU under a touch'],
+  // sprint cartoon: the cartoon layers colour the hit, they never become a second hit; the «¡PAM!» is a reward, not the hit
+  ['cartoon: bonk de la recepción', 'pass', -99, -5, 'cartoon bonk ≥ 5 LU under the pass it colours'],
+  ['cartoon: pip de la colocación', 'set', -99, -4, 'cartoon pip ≥ 4 LU under the set'],
+  ['cartoon: zas del remate', 'spike', -99, -5, 'cartoon whack ≥ 5 LU under the spike'],
+  ['cartoon: zumbido del remate fuerte', 'spike', -99, -8, 'speed whizz ≥ 8 LU under the spike'],
+  ['cartoon: muelle de la red', 'net', -99, -4, 'net spring ≥ 4 LU under the net rattle'],
+  ['cartoon: muelle del bloqueo (toque)', 'block stuff', -99, -6, 'block spring ≥ 6 LU under a stuff block'],
+  ['cartoon: ¡PAM! del remate perfecto', 'remate perfecto (humano)', -99, -6, '«¡PAM!» ≥ 6 LU under the perfect spike itself'],
+  ['cartoon: ¡PAM! del remate perfecto', 'setWin sting', -99, -3, '«¡PAM!» ≥ 3 LU under a set sting'],
+  ['cartoon: ¡PAM! del remate perfecto', 'perfect glint', 3, 99, '«¡PAM!» ≥ 3 LU over the small perfect glint']
 ];
 function hierReport(mix) {
   const by = {}; for (const r of mix) by[r.id] = r.lufs;
@@ -1728,7 +1786,7 @@ function robustTable(rows) {
  *     the whole bank is synthesised BEFORE any gesture, ~1-3 s after load, no AudioContext; then a tap builds the AudioBuffers).
  *  The page is a copy of index.html (tools/out/audio/cold-*.html) with <base href> to the project, so --file and the CSP work.
  * ==================================================================== */
-const CROWD_MUSIC = /^(murmur|excite|roar|applause|groan|ooh|palmas|bombo|introSting|introSwell|setWin|setLose|matchWin|matchLose|ir)$/;
+const CROWD_MUSIC = /^(murmur|excite|roar|applause|groan|ooh|palmas|bombo|introSting|introSwell|setWin|setLose|matchWin|matchLose|pamSting|ir)$/;
 function coldPage(file, tag, csp) {
   const u = f => require('url').pathToFileURL(f).href;
   let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

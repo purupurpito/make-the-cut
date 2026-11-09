@@ -153,19 +153,15 @@
   /** Balón: cada cara de la esfera-cubo es un grupo de 3 paneles (colores originales). */
   function ballTexture() {
     var S = 256, cv = canvas(S, S), g = cv.getContext('2d');
-    var cols = ['#ff6a3d', '#f7f3ea', '#1d3f7a'];
+    var cols = ['#ff6a3d', '#fffaf0', '#2456c8'];
     for (var i = 0; i < 3; i++) {
-      var x0 = i * S / 3, gr = g.createLinearGradient(x0, 0, x0 + S / 3, 0);
-      gr.addColorStop(0, shade(cols[i], -0.12)); gr.addColorStop(0.5, cols[i]); gr.addColorStop(1, shade(cols[i], -0.12));
-      g.fillStyle = gr; g.fillRect(x0, 0, S / 3 + 1, S);
+      var x0 = i * S / 3; // CARTOON: paneles planos (el sombreado lo ponen las bandas del toon)
+      g.fillStyle = cols[i]; g.fillRect(x0, 0, S / 3 + 1, S);
     }
     // costuras (entre paneles y en el borde del grupo)
-    g.fillStyle = 'rgba(20,18,16,0.55)';
-    g.fillRect(S / 3 - 2, 0, 4, S); g.fillRect(2 * S / 3 - 2, 0, 4, S);
-    g.fillStyle = 'rgba(20,18,16,0.7)'; g.fillRect(0, 0, S, 4); g.fillRect(0, S - 4, S, 4); g.fillRect(0, 0, 4, S); g.fillRect(S - 4, 0, 4, S);
-    // sombreado de panel abombado
-    var vg = g.createRadialGradient(S / 2, S / 2, S * 0.1, S / 2, S / 2, S * 0.75);
-    vg.addColorStop(0, 'rgba(255,255,255,0.08)'); vg.addColorStop(1, 'rgba(0,0,0,0.18)'); g.fillStyle = vg; g.fillRect(0, 0, S, S);
+    g.fillStyle = 'rgba(29,21,48,0.8)'; // costuras de tinta
+    g.fillRect(S / 3 - 3, 0, 6, S); g.fillRect(2 * S / 3 - 3, 0, 6, S);
+    g.fillStyle = 'rgba(29,21,48,0.9)'; g.fillRect(0, 0, S, 5); g.fillRect(0, S - 5, S, 5); g.fillRect(0, 0, 5, S); g.fillRect(S - 5, 0, 5, S);
     // logotipo diminuto en el panel blanco
     g.save(); g.translate(S / 2, S / 2); g.rotate(-Math.PI / 2); g.fillStyle = 'rgba(29,63,122,0.55)';
     g.font = '900 22px "Barlow Condensed", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('SALT·9', 0, 0); g.restore();
@@ -213,6 +209,7 @@
     s.x = x; s.y = y; s.z = z; s.vx = vx; s.vy = vy; s.vz = vz; s.life = life; s.max = life; s.r = r; s.g = g; s.b = b; s.grav = grav;
   }
   function burstAt(x, y, z, n, power, r, g, b, up, grav) {
+    if (tbLow && toon && toon.visible) return; // baja: con piezas cartoon vivas no hay chispas (pico de dibujos, ARN-12)
     n = Math.max(1, Math.round(n * qScale));
     for (var i = 0; i < n; i++) {
       var a = Math.random() * 6.283, e = Math.random() * 1.3 - 0.25, v = power * (0.35 + Math.random() * 0.85);
@@ -245,7 +242,7 @@
   }
   /** Atenúa destellos muy cerca de la cámara (golpes del propio jugador): que no tapen la jugada. */
   function nearFade(p) { var d = ctx.camera.position.distanceTo(p); return Math.max(0.12, Math.min(1, (d - 2) / 6)); }
-  var FLASH_K = 0.62; // intensidad del destello aditivo: solo el núcleo llega al umbral del bloom
+  var FLASH_K = 0.48; // intensidad del destello aditivo (CARTOON: 0,62 → 0,48; el impacto lo cuentan la explosión y las estrellas dibujadas)
   /** ARN-13 «destellos suaves» (ctx.settings.softFlash, Ajustes → Accesibilidad): destellos y ondas de impacto al 40 %. */
   function softK() { var st = ctx.settings; return st && st.softFlash ? 0.4 : 1; }
   function flashAt(x, y, z, size, dur, r, g, b) {
@@ -387,6 +384,206 @@
     }
     bills.count = n; bills.visible = n > 0;
     if (n) { bills.instanceMatrix.needsUpdate = true; ca.needsUpdate = true; cl.needsUpdate = true; }
+  }
+  /* ---------------------------------------------------------------------
+   * FX CARTOON (9-nov-2026): estrellas de impacto, «explosión» de cómic, nubes de polvo de dibujo, líneas de velocidad y
+   * onomatopeya («¡PAM!») en el remate perfecto del humano. Todo en UN InstancedMesh con mezcla normal (no aditiva: el
+   * dibujo lleva tinta oscura) y un atlas de lienzo 1024×512 (4×2 celdas de 256 px). 0 dibujos si no hay nada vivo; 1 si hay.
+   * Calidad baja: la mitad de estrellas y nubes, sin líneas de velocidad ni onomatopeya. «Destellos suaves» (softFlash):
+   * la explosión al 45 % y sin rebote de escala, la onomatopeya más pequeña y translúcida.
+   * --------------------------------------------------------------------- */
+  var TB_N = 48, toon = null, tb = [], tbHead = 0, tbAlive = 0, tbAtlas = null, tbM = null, tbP = null, tbS = null, tbQ = null;
+  var TBK = { star: 0, burst: 1, puff: 2, line: 3, ono: 4, spark: 6 };
+  var tbMute = { pop: 1, ox: 0, oy: 0, vx: 0 }; // pieza descartada (calidad baja con el pico de dibujos lleno)
+  // tope de tamaño en pantalla por tipo (fracción del alto visible a esa distancia): de cerca no tapan la jugada
+  var TB_MAXF = [0.06, 0.17, 0.13, 0.2, 0.1, 0.05, 0.05, 0.05];
+  var TB_CELL = [[0, 1, 1, 1], [1, 1, 1, 1], [2, 1, 1, 1], [3, 1, 1, 1], [0, 0, 2, 1], [2, 0, 1, 1], [2, 0, 1, 1], [3, 0, 1, 1]]; // [col, fila (v), ancho, alto] en celdas
+  var tbLow = false, speedT = 0, tbRight = null, tbUp = null, ballVel = null; // ballVel: velocidad del balón en coords three
+  var INK = '#1d1530';
+  function tbStar(g, cx, cy, R, r, n, rot) {
+    g.beginPath();
+    for (var i = 0; i < n * 2; i++) { var a = rot + i * Math.PI / n, rr = i % 2 ? r : R; g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+    g.closePath();
+  }
+  function drawToonAtlas(cv) {
+    var g = cv.getContext('2d'), C2 = 256; g.clearRect(0, 0, cv.width, cv.height); g.lineJoin = 'round'; g.lineCap = 'round';
+    // 0: estrella amarilla de 5 puntas con tinta y brillo
+    tbStar(g, 128, 134, 104, 46, 5, -Math.PI / 2); g.fillStyle = '#ffd93b'; g.fill(); g.lineWidth = 14; g.strokeStyle = INK; g.stroke();
+    tbStar(g, 112, 112, 30, 14, 5, -Math.PI / 2); g.fillStyle = 'rgba(255,255,240,0.9)'; g.fill();
+    // 1: explosión de cómic (picos irregulares, blanco cálido con corazón amarillo)
+    var ox = C2;
+    g.save(); g.translate(ox + 128, 128);
+    g.beginPath(); for (var i = 0; i < 24; i++) { var a = i * Math.PI / 12, rr = i % 2 ? 62 + (i * 37 % 11) : 112 - (i * 53 % 17); g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.closePath();
+    g.fillStyle = '#fff6dc'; g.fill(); g.lineWidth = 10; g.strokeStyle = INK; g.stroke();
+    g.beginPath(); for (var j = 0; j < 16; j++) { var b = j * Math.PI / 8 + 0.2, r2 = j % 2 ? 30 : 58; g.lineTo(Math.cos(b) * r2, Math.sin(b) * r2); } g.closePath();
+    g.fillStyle = '#ffcf33'; g.fill();
+    g.restore();
+    // 2: nube de polvo de dibujo (círculos solapados, tinta, sombra lavanda abajo)
+    ox = 2 * C2;
+    var P = [[128, 150, 70], [76, 150, 48], [182, 150, 48], [104, 104, 50], [156, 108, 46]];
+    g.save(); g.translate(ox, 0);
+    g.fillStyle = INK; for (var k = 0; k < P.length; k++) { g.beginPath(); g.arc(P[k][0], P[k][1], P[k][2] + 8, 0, 6.283); g.fill(); }
+    g.fillStyle = '#fbf5ea'; for (var k2 = 0; k2 < P.length; k2++) { g.beginPath(); g.arc(P[k2][0], P[k2][1], P[k2][2], 0, 6.283); g.fill(); }
+    g.fillStyle = 'rgba(150,130,210,0.45)'; g.beginPath(); g.ellipse(128, 182, 92, 26, 0, 0, 6.283); g.fill();
+    g.restore();
+    // 3: línea de velocidad (trazo afilado blanco con filo de tinta, a lo largo de x)
+    ox = 3 * C2;
+    g.save(); g.translate(ox, 0);
+    g.beginPath(); g.moveTo(8, 128); g.quadraticCurveTo(128, 104, 248, 122); g.lineTo(248, 134); g.quadraticCurveTo(128, 152, 8, 128); g.closePath();
+    g.fillStyle = INK; g.fill();
+    g.beginPath(); g.moveTo(26, 128); g.quadraticCurveTo(128, 112, 240, 125); g.lineTo(240, 131); g.quadraticCurveTo(128, 144, 26, 128); g.closePath();
+    g.fillStyle = '#ffffff'; g.fill();
+    g.restore();
+    // 4-5 (fila de abajo, 512×256): «¡PAM!» grueso, amarillo con tinta y sombra desplazada (estilo cómic)
+    g.save(); g.translate(256, C2 + 132); g.rotate(-0.08); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = 'italic 900 170px "Barlow Condensed", "Arial Black", Impact, sans-serif';
+    g.lineWidth = 26; g.strokeStyle = INK; g.fillStyle = INK; g.strokeText('¡PAM!', 10, 10); g.fillText('¡PAM!', 10, 10);
+    g.strokeText('¡PAM!', 0, 0); g.fillStyle = '#ffd23f'; g.fillText('¡PAM!', 0, 0);
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.save(); g.beginPath(); g.rect(-260, -90, 520, 50); g.clip(); g.fillText('¡PAM!', 0, 0); g.restore();
+    g.restore();
+    // 6: chispa de 4 puntas (toques suaves)
+    g.save(); g.translate(2 * C2 + 128, C2 + 128);
+    tbStar(g, 0, 0, 100, 22, 4, 0); g.fillStyle = '#ffffff'; g.fill(); g.lineWidth = 10; g.strokeStyle = INK; g.stroke();
+    g.restore();
+  }
+  function buildToonFx() {
+    var cv = canvas(1024, 512); drawToonAtlas(cv); tbAtlas = tex(cv);
+    var inst = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial({
+      uniforms: { map: { value: tbAtlas }, uGain: { value: 1 } }, transparent: true, depthWrite: false, toneMapped: false,
+      vertexShader: 'attribute vec4 aCol; attribute vec4 aCell; attribute float aRot; varying vec4 vCol; varying vec2 vUv;\n' +
+        'void main(){ vCol = aCol; vUv = (aCell.xy + uv * aCell.zw) * vec2(0.25, 0.5);\n' +
+        ' vec2 sc = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz)); vec2 p = position.xy * sc;\n' +
+        ' float c = cos(aRot), s = sin(aRot); p = vec2(c * p.x - s * p.y, s * p.x + c * p.y);\n' +
+        ' vec4 mv = modelViewMatrix * vec4(instanceMatrix[3].xyz, 1.0); mv.xy += p; gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform sampler2D map; varying vec4 vCol; varying vec2 vUv;\n' +
+        'uniform float uGain;\nvoid main(){ vec4 t = texture2D(map, vUv); float a = t.a * vCol.a; if (a < 0.01) discard; gl_FragColor = vec4(t.rgb * vCol.rgb * uGain, a);\n#include <encodings_fragment>\n}' }), TB_N);
+    inst.geometry.setAttribute('aCol', new THREE.InstancedBufferAttribute(new Float32Array(TB_N * 4), 4).setUsage(THREE.DynamicDrawUsage));
+    inst.geometry.setAttribute('aCell', new THREE.InstancedBufferAttribute(new Float32Array(TB_N * 4), 4).setUsage(THREE.DynamicDrawUsage));
+    inst.geometry.setAttribute('aRot', new THREE.InstancedBufferAttribute(new Float32Array(TB_N), 1).setUsage(THREE.DynamicDrawUsage));
+    inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    inst.count = 0; inst.visible = false; inst.frustumCulled = false; inst.renderOrder = 9; inst.name = 'toonFx';
+    root.add(inst); toon = inst;
+    for (var i = 0; i < TB_N; i++) tb.push(dblFields({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s0: 0.5, s1: 0.5, rot: 0, vr: 0, kind: 0, r: 1, g: 1, b: 1, a: 1, grav: 0, ox: 0, oy: 0, pop: 1 }));
+    tbM = new THREE.Matrix4(); tbP = new THREE.Vector3(); tbS = new THREE.Vector3(); tbQ = new THREE.Quaternion(); tbRight = new THREE.Vector3(); tbUp = new THREE.Vector3();
+    try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { try { drawToonAtlas(cv); tbAtlas.needsUpdate = true; } catch (e) { } }); } catch (e) { }
+  }
+  /** Nueva pieza (coords de sim para x, y, z y velocidad). */
+  function tbAdd(kind, x, y, z, vx, vy, vz, life, s0, s1, rot, vr, r, g, b, a, grav) {
+    // baja: si ya se dibujan chispas y destellos a la vez, no se añade el tercer dibujo (ARN-12); la pieza va a un hueco mudo
+    if (tbLow && spAlive && bills && bills.visible && !toon.visible) return tbMute;
+    var q = tb[tbHead]; tbHead = (tbHead + 1) % TB_N;
+    q.kind = kind; q.x = x; q.y = y; q.z = z; q.vx = vx; q.vy = vy; q.vz = vz; q.life = life; q.max = life; q.s0 = s0; q.s1 = s1;
+    q.rot = rot; q.vr = vr; q.r = r; q.g = g; q.b = b; q.a = a; q.grav = grav || 0; q.ox = 0; q.oy = 0; q.pop = 1;
+    tbAlive = 1; return q;
+  }
+  function toonOn() { return !!toon; }
+  /** Estrellas que salen del impacto (n antes de la calidad). */
+  function starsAt(x, y, z, n, power, size) {
+    if (!toonOn()) return;
+    n = Math.max(1, Math.round(n * (tbLow ? 0.5 : 1)));
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * 6.283, v = power * (0.6 + Math.random() * 0.6);
+      tbAdd(TBK.star, x, y, z, Math.cos(a) * v, Math.sin(a) * v, 1.2 + Math.random() * 1.6, 0.42 + Math.random() * 0.16,
+        size * (0.8 + Math.random() * 0.4), size * 0.3, Math.random() * 6.283, (Math.random() < 0.5 ? -1 : 1) * (5 + Math.random() * 5), 1, 1, 1, 1, 5);
+    }
+  }
+  function burstToon(x, y, z, size, dur) {
+    if (!toonOn()) return;
+    var soft = softK() < 1, q = tbAdd(TBK.burst, x, y, z, 0, 0, 0, dur, size * 0.7, size * (soft ? 0.95 : 1.2), Math.random() * 6.283, 0, 1, 1, 1, soft ? 0.45 : 0.95, 0);
+    q.pop = soft ? 0 : 1;
+  }
+  function sparkToon(x, y, z, n, size) {
+    if (!toonOn() || tbLow) return;
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * 6.283;
+      tbAdd(TBK.spark, x + Math.cos(a) * 0.15, y + Math.sin(a) * 0.15, z + (Math.random() - 0.3) * 0.2, Math.cos(a) * 0.8, Math.sin(a) * 0.8, 0.6, 0.26,
+        size, size * 0.2, Math.random(), 4, 1, 1, 1, 0.95, 0);
+    }
+  }
+  /** Nubes de polvo de dibujo a lo largo de (dirx, diry) desde (x, y), en el suelo. */
+  function puffsAt(x, y, n, dirx, diry, len, size) {
+    if (!toonOn()) return;
+    n = Math.max(1, Math.round(n * (tbLow ? 0.5 : 1)));
+    var dl = Math.sqrt(dirx * dirx + diry * diry), ux = dl > 1e-4 ? dirx / dl : 0, uy = dl > 1e-4 ? diry / dl : 0;
+    for (var i = 0; i < n; i++) {
+      var u = n > 1 ? (i / (n - 1) - 0.5) * len : 0, side = (i % 2 ? 1 : -1) * (0.15 + Math.random() * 0.2), a = Math.random() * 6.283;
+      var px = x + ux * u - uy * side + (dl > 1e-4 ? 0 : Math.cos(a) * 0.25), py = y + uy * u + ux * side + (dl > 1e-4 ? 0 : Math.sin(a) * 0.25);
+      var ov = 0.5 + Math.random() * 0.5;
+      tbAdd(TBK.puff, px, py, 0.18 + Math.random() * 0.08, (dl > 1e-4 ? -uy * side : Math.cos(a)) * ov, (dl > 1e-4 ? ux * side : Math.sin(a)) * ov, 0.35 + Math.random() * 0.3,
+        0.5 + Math.random() * 0.2, size * (0.55 + Math.random() * 0.25), size * (1.05 + Math.random() * 0.3), (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 1.2, 1, 0.97, 0.92, 0.95, -0.3);
+    }
+  }
+  /** Líneas de velocidad que siguen al balón durante `dur` s (remates fuertes y saques en salto). */
+  function speedLines(n, dur) {
+    if (!toonOn() || tbLow) return;
+    speedT = dur;
+    for (var i = 0; i < n; i++) {
+      var q = tbAdd(TBK.line, 0, 0, 0, 0, 0, 0, dur * (0.75 + Math.random() * 0.25), 0.7 + Math.random() * 0.5, 0.5, 0, 0, 1, 1, 1, 0.9, 0);
+      var a = (i / n) * 6.283 + Math.random() * 0.6; q.ox = Math.cos(a) * (0.16 + Math.random() * 0.14); q.oy = Math.sin(a) * (0.16 + Math.random() * 0.14); q.vx = 0.35 + Math.random() * 0.5; // vx = retraso tras el balón (m)
+    }
+  }
+  /** «¡PAM!» junto al impacto (remate perfecto del humano). Ajuste opcional ctx.settings.comicText === false lo apaga. */
+  function onoAt(x, y, z) {
+    if (!toonOn() || tbLow) return;
+    var st = ctx.settings; if (st && st.comicText === false) return;
+    var soft = softK() < 1;
+    var q = tbAdd(TBK.ono, x, y, z + 0.75, 0, 0, 0.35, 0.85, soft ? 0.75 : 1.05, soft ? 0.75 : 1.05, 0, 0, 1, 1, 1, soft ? 0.7 : 1, 0);
+    q.pop = soft ? 0 : 1;
+  }
+  function updateToonFx(dt) {
+    if (!toon) return;
+    if (!tbAlive) { if (toon.visible) { toon.visible = false; toon.count = 0; } return; }
+    var cam = ctx.camera, me = cam.matrixWorld.elements, n = 0, cp = cam.position, vis2 = 2 * Math.tan(cam.fov * Math.PI / 360);
+    // con bloom (alta) el dibujo se queda bajo el umbral (0,82): sin halo alrededor de la tinta
+    toon.material.uniforms.uGain.value = VB.Arena && VB.Arena.postActive && VB.Arena.postActive() ? 0.8 : 1;
+    tbRight.set(me[0], me[1], me[2]); tbUp.set(me[4], me[5], me[6]);
+    var A = toon.geometry.attributes.aCol.array, Ce = toon.geometry.attributes.aCell.array, R = toon.geometry.attributes.aRot.array;
+    if (speedT > 0 && dt > 0) speedT -= dt;
+    // dirección del balón en pantalla (para las líneas de velocidad)
+    var bv = ballVel, bl = Math.sqrt(bv.x * bv.x + bv.y * bv.y + bv.z * bv.z), bx = bl > 0.1 ? bv.x / bl : 0, by = bl > 0.1 ? bv.y / bl : 0, bz = bl > 0.1 ? bv.z / bl : 0;
+    var lrot = Math.atan2(bx * tbUp.x + by * tbUp.y + bz * tbUp.z, bx * tbRight.x + by * tbRight.y + bz * tbRight.z);
+    for (var i = 0; i < TB_N; i++) {
+      var q = tb[i]; if (q.life <= 0) continue;
+      if (dt > 0) {
+        q.life -= dt; if (q.life <= 0) continue;
+        if (q.kind !== TBK.line) {
+          q.vz -= q.grav * dt; var dr = q.kind === TBK.puff ? 1 - 3 * dt : 1 - 1.5 * dt; q.vx *= dr; q.vy *= dr;
+          q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; q.rot += q.vr * dt;
+          if (q.kind === TBK.puff && q.vz < 0.05) q.vz = 0.05;
+        }
+      }
+      var u = 1 - q.life / q.max, s, al = q.a;
+      if (q.kind === TBK.star || q.kind === TBK.spark) { s = u < 0.15 ? q.s0 * (0.4 + 4 * u) : q.s0 + (q.s1 - q.s0) * ((u - 0.15) / 0.85); al *= u < 0.7 ? 1 : 1 - (u - 0.7) / 0.3; }
+      else if (q.kind === TBK.burst) { s = q.s0 + (q.s1 - q.s0) * Math.sqrt(u); if (q.pop) s *= 1 + 0.25 * Math.sin(Math.min(1, u * 3) * Math.PI); al *= 1 - u * u; }
+      else if (q.kind === TBK.puff) { s = q.s0 + (q.s1 - q.s0) * (1 - (1 - u) * (1 - u)); al *= u < 0.55 ? 1 : 1 - (u - 0.55) / 0.45; }
+      else if (q.kind === TBK.ono) {
+        s = q.s0 * (q.pop ? (u < 0.12 ? 0.35 + 0.8 * (u / 0.12) * 1.15 : u < 0.2 ? 1.27 - (u - 0.12) / 0.08 * 0.27 : 1) : 1);
+        al *= u < 0.75 ? 1 : 1 - (u - 0.75) / 0.25;
+      } else { // línea de velocidad: detrás del balón, desplazada en el plano de la pantalla
+        if (bl < 4) al = 0;
+        var lag = q.vx + 0.25;
+        q.x = ballPivot.position.x - bx * lag + tbRight.x * q.ox + tbUp.x * q.oy;
+        q.z = ballPivot.position.y - by * lag + tbRight.y * q.ox + tbUp.y * q.oy;
+        q.y = -(ballPivot.position.z - bz * lag + tbRight.z * q.ox + tbUp.z * q.oy);
+        s = q.s0; al *= (1 - u) * Math.min(1, u * 8 + 0.3);
+      }
+      if (al <= 0.01 || s <= 0.001) continue;
+      // coords de sim (x, y, z) -> three (x, z, -y)
+      tbP.set(q.x, q.z, -q.y);
+      var dcx = tbP.x - cp.x, dcy = tbP.y - cp.y, dcz = tbP.z - cp.z, dc = Math.sqrt(dcx * dcx + dcy * dcy + dcz * dcz), smax = dc * vis2 * TB_MAXF[q.kind];
+      if (s > smax) s = smax;
+      if (dc < 3) al *= Math.max(0.15, (dc - 1) / 2); // pegado a la cámara: casi transparente
+      var cell = TB_CELL[q.kind], w = cell[2], h = cell[3];
+      if (q.kind === TBK.line) tbS.set(s, s * 0.07 * 4, 1); else tbS.set(s * w / h, s, 1);
+      tbM.compose(tbP, tbQ, tbS); toon.setMatrixAt(n, tbM);
+      A[n * 4] = q.r; A[n * 4 + 1] = q.g; A[n * 4 + 2] = q.b; A[n * 4 + 3] = al;
+      Ce[n * 4] = cell[0]; Ce[n * 4 + 1] = cell[1]; Ce[n * 4 + 2] = w; Ce[n * 4 + 3] = h;
+      R[n] = q.kind === TBK.line ? lrot : q.rot;
+      n++;
+    }
+    toon.count = n; toon.visible = n > 0;
+    if (n) { toon.instanceMatrix.needsUpdate = true; toon.geometry.attributes.aCol.needsUpdate = true; toon.geometry.attributes.aCell.needsUpdate = true; toon.geometry.attributes.aRot.needsUpdate = true; }
+    else tbAlive = 0;
   }
   function startTrail(r, g, b, width, strength) {
     trailA = strength; trailW = width; trailCol.setRGB(r, g, b); trailN = 0;
@@ -555,9 +752,10 @@
     'void main(){',
     ' float d = length(vUv - 0.5) * 2.0;',
     // perfil casi gaussiano que llega a 0 justo en el borde del plano (sin filo visible)
-    ' float sh = clamp((exp(-3.0 * d * d) - 0.0498) / 0.9502, 0.0, 1.0);',
-    ' float v = 1.0 - vK * sh;',
-    ' gl_FragColor = vec4(vec3(pow(v, 2.2)), 1.0);',
+    // CARTOON: disco de borde más definido (no gaussiano) y sombra violácea (#2b2547 mezclado), no gris
+    ' float sh = 1.0 - smoothstep(0.62, 1.0, d);',
+    ' vec3 v = mix(vec3(1.0), vec3(0.42, 0.37, 0.72), clamp(vK * sh * 1.5, 0.0, 1.0));',
+    ' gl_FragColor = vec4(pow(v, vec3(2.2)), 1.0);',
     '#include <encodings_fragment>',
     '}'].join('\n');
   function buildBlobs() {
@@ -734,7 +932,9 @@
 
       // Balón: pivote (aplastamiento orientado) + malla (giro)
       ballPivot = new THREE.Group(); root.add(ballPivot);
-      ballMat = new THREE.MeshStandardMaterial({ map: ballTexture(), roughness: 0.42, metalness: 0, envMapIntensity: 0.9, emissive: new THREE.Color(0xff5a20), emissiveIntensity: 0 });
+      // CARTOON: toon de 3 bandas (VB.TOON de arena.js) con los paneles planos; el brillo de borde y el «calor» siguen igual
+      ballMat = new THREE.MeshToonMaterial({ map: ballTexture(), emissive: new THREE.Color(0xff5a20), emissiveIntensity: 0 });
+      if (VB.TOON && VB.TOON.gradientMap) ballMat.gradientMap = VB.TOON.gradientMap;
       // castShadow = false: la sombra del mapa de sombras y la de contacto eran DOS manchas separadas en el
       // suelo; la buena para jugar es la de contacto (siempre en vertical bajo el balón).
       // brillo de borde (ARN-06): fresnel cálido y suave que se enciende lejos o con el balón rápido (uniforme uRim)
@@ -744,12 +944,12 @@
         sh.fragmentShader = 'uniform float uRim;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>',
           '#include <emissivemap_fragment>\n totalEmissiveRadiance += vec3(1.0, 0.93, 0.8) * uRim * pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 2.2);');
       };
-      ballMat.customProgramCacheKey = function () { return 'vb-ball-rim'; };
+      ballMat.customProgramCacheKey = function () { return 'vb-ball-rim-toon'; };
       var bgeo = ballGeometry(C.BR);
       ball = new THREE.Mesh(bgeo, ballMat); ball.castShadow = false; ballPivot.add(ball); ball.name = 'ball';
       // contorno oscuro (cáscara de caras traseras): separa el balón del público, que tiene sus mismos colores.
       // Grosor constante en píxeles (ver update).
-      ballOutline = new THREE.Mesh(bgeo, new THREE.MeshBasicMaterial({ color: 0x0b1222, side: THREE.BackSide }));
+      ballOutline = new THREE.Mesh(bgeo, new THREE.MeshBasicMaterial({ color: 0x1d1530, side: THREE.BackSide })); // tinta del cartoon
       ballOutline.renderOrder = 0; ballOutline.name = 'ballOutline'; ballPivot.add(ballOutline);
 
       // sombras de contacto (ARN-11): la del balón (siempre en vertical bajo él: legibilidad) y una mancha suave bajo cada
@@ -845,6 +1045,7 @@
         ws.visible = false; ws.renderOrder = 8; ws.name = 'wave'; wavePool.push({ s: ws, t: 0, d: 1, size: 1, near: 1 }); // (bills)
       }
       buildBills(flashTex, shockTex);
+      buildToonFx(); ballVel = new THREE.Vector3();
       // ondas en el suelo (caída del balón, aterrizajes)
       var ripTex = ringTex(0.7, 0.86, 0.12), ripGeo = new THREE.PlaneGeometry(1, 1);
       for (var rI = 0; rI < RIP_N; rI++) {
@@ -889,6 +1090,7 @@
       var r = !q ? 2 : q.rank;
       qScale = r >= 2 ? 1 : r === 1 ? 0.75 : 0.45;
       blobKq = BLOB_K[r >= 2 ? 2 : r === 1 ? 1 : 0];
+      tbLow = r < 1; // FX cartoon: en baja la mitad de estrellas y nubes, sin líneas de velocidad ni onomatopeya
       spCap = r >= 2 ? SPARK_N : r === 1 ? 150 : 90;
       duCap = r >= 2 ? DUST_N : r === 1 ? 72 : 40;
       confCap = r >= 2 ? CONF_N : r === 1 ? 360 : 200;
@@ -915,11 +1117,18 @@
       aimR.on = false; aimFill.visible = false; rv.on = false; rv.hold = 0; rv.a = 0; revFill.visible = revLine.visible = revGlow.visible = false;
       aim.a = 0; aim.on = false; aimRet.visible = false; aimArc.visible = false; focusRing.visible = false;
       confAlive = 0; conf.count = 0; conf.visible = false;
+      for (var tI = 0; tI < TB_N; tI++) tb[tI].life = 0;
+      speedT = 0; tbAlive = 1;
     },
     /** Partículas en coordenadas de simulación (interfaz del contrato). */
     burst: function (x, y, z, n, power) { burstAt(x, y, z, n, power, 1, 0.92, 0.7, 1, 9); },
     /** Polvo de la tarima (coords de sim), p. ej. planchas cosméticas de players.js. */
-    dust: function (x, y, n, dirx, diry) { dustAt(x, y, n || 22, 0.75, dirx || 0, diry || 0, 0.6, 1.5, 0.1); },
+    dust: function (x, y, n, dirx, diry) { dustAt(x, y, n || 22, 0.75, dirx || 0, diry || 0, 0.6, 1.5, 0.1); puffsAt(x, y, Math.max(2, Math.round((n || 22) / 6)), dirx || 0, diry || 0, 1.2, 0.45); },
+    /** FX cartoon (opcionales): estrellas de impacto, explosión de cómic, nubes de polvo, «¡PAM!» (coords de sim). */
+    stars: function (x, y, z, n, size) { starsAt(x, y, z, n || 4, 1.8, size || 0.24); },
+    comicBurst: function (x, y, z, size) { burstToon(x, y, z, size || 0.9, 0.16); },
+    puffs: function (x, y, n, dirx, diry, size) { puffsAt(x, y, n || 4, dirx || 0, diry || 0, 1.2, size || 0.45); },
+    onomatopoeia: function (x, y, z) { onoAt(x, y, z); },
     /** Confeti del color de un equipo (opcional). */
     confetti: function (team, n) { confetti(team === 1 ? 1 : 0, n || 400); },
     /** Malla del balón (opcional, para otros módulos). */
@@ -927,7 +1136,7 @@
     /** ARN-03: copias de compilación de todos los pools de efectos (ver VB.Arena.prewarmList, que ya las incluye). */
     prewarmList: function () { return root ? prewarmProxies(root, []) : []; },
     /** Solo depuración: escala de legibilidad del balón (ARN-06) y brillo de borde actual. */
-    _dbg: function () { return { ballBs: ballBs, rim: ballRim ? ballRim.value : 0, ringD: focusRing && focusRing.visible ? focusD : 0, ringOp: focusU ? focusU.uOp.value.toArray() : null, decals: decals, decOrder: decOrder, bills: bills, billOrder: billOrder, dropLine: dropLine }; },
+    _dbg: function () { return { ballBs: ballBs, rim: ballRim ? ballRim.value : 0, ringD: focusRing && focusRing.visible ? focusD : 0, ringOp: focusU ? focusU.uOp.value.toArray() : null, toon: toon, toonN: toon ? toon.count : 0, decals: decals, decOrder: decOrder, bills: bills, billOrder: billOrder, dropLine: dropLine }; },
     /** Solo depuración (tools/eval.js): objetivo de apuntado que pintaría la retícula. */
     _aimTarget: function (g, out) { out = out || { x: 0, y: 0 }; var m = aimTarget(g, out); return m ? { mode: m, x: out.x, y: out.y } : null; },
     update: function (g, dt, events) {
@@ -970,8 +1179,8 @@
         ballRim.value += (rimK * 0.3 - ballRim.value) * (dt > 0 ? Math.min(1, dt * 10) : 1);
       }
       ballPivot.quaternion.copy(squashQ); ballPivot.scale.set(bs * (1 + sq * 0.5), bs * (1 - sq), bs * (1 + sq * 0.5));
-      // contorno de ~1,4 px (más fino de cerca, donde ya se lee solo)
-      var ol = 1 + clampN(1.4 / Math.max(1, ballPx), 0.03, 0.2); ballOutline.scale.set(ol, ol, ol);
+      // contorno de tinta de ~2 px (CARTOON; antes 1,4 px), un poco más fino de cerca
+      var ol = 1 + clampN(2.0 / Math.max(1, ballPx), 0.04, 0.24); ballOutline.scale.set(ol, ol, ol);
       // la malla compensa la orientación del pivote para mantener el giro en mundo
       ball.quaternion.copy(squashQ).invert().multiply(spinQ);
       ballMat.emissiveIntensity = heat * 0.25; // filo cálido; los paneles siguen leyéndose
@@ -1147,10 +1356,14 @@
         var rs = Mk.s * 1.55 * pin; Mk.r.scale.set(rs, rs, rs);
       }
       writeDecals(); writeBills();
+      ballVel.set(b.vx, b.vz, -b.vy); updateToonFx(dt);
       updateConfetti(dt);
     },
     _event: function (e, g) {
       var T = TEAM_LIN;
+      // calidad baja: donde salen estrellas/explosión de cómic, sustituyen a las chispas, destellos y ondas (sparks e impactBills:
+      // 1-2 dibujos menos en el pico; ARN-12 <= 35 dibujos en baja). La explosión de cómic hace de destello.
+      var tbSwap = tbLow && !!toon;
       switch (e.type) {
         case 'hit': {
           var tc = T[e.team === 1 ? 1 : 0], qv = e.quality == null ? 0.8 : e.quality;
@@ -1163,25 +1376,34 @@
             trailA = 0; squash.t = 0.08; squash.k = 0.04;
           } else if (k === 'spike') {
             spin.rate = 32 + qv * 14; spin.sign = 1; spin.wob = 0;
-            flashAt(e.x, e.y, e.z, 1.0 + pw * 0.45, 0.14, 1, 0.9, 0.74);
-            shockAt(e.x, e.y, e.z, 1.8 + pw * 0.7, 0.2, tc.r, tc.g, tc.b);
-            burstAt(e.x, e.y, e.z, 16 + pw * 10, 4.5 + pw * 1.5, 1, 0.78, 0.45, 0.6, 7);
-            burstAt(e.x, e.y, e.z, 8, 3.2, tc.r, tc.g, tc.b, 0.4, 7);
+            if (!tbSwap) {
+              flashAt(e.x, e.y, e.z, 1.0 + pw * 0.45, 0.14, 1, 0.9, 0.74);
+              shockAt(e.x, e.y, e.z, 1.8 + pw * 0.7, 0.2, tc.r, tc.g, tc.b);
+              burstAt(e.x, e.y, e.z, 16 + pw * 10, 4.5 + pw * 1.5, 1, 0.78, 0.45, 0.6, 7);
+              burstAt(e.x, e.y, e.z, 8, 3.2, tc.r, tc.g, tc.b, 0.4, 7);
+            }
             startTrail(1, 0.94, 0.66, 0.15 + pw * 0.04, 0.75 + pw * 0.3);
             squash.t = 0.12; squash.k = 0.07 + pw * 0.025; heat = 0.6 + pw * 0.4;
+            // cartoon: explosión de cómic + estrellas; líneas de velocidad si es fuerte (o perfecto)
+            burstToon(e.x, e.y, e.z, 0.7 + pw * 0.35, 0.16);
+            starsAt(e.x, e.y, e.z, 3 + Math.round(pw * 2), 1.6 + pw, 0.24);
+            if (pw > 0.7 || perfect) speedLines(perfect ? 7 : 5, 0.32);
           } else if (k === 'serve') {
             var jumpS = e.shot === 'jump' || e.serveType === 'jump', floatS = e.shot === 'float' || e.serveType === 'float';
             var fast = jumpS || (!floatS && (e.speed || 0) > 13);
             spin.rate = floatS ? 0.4 : fast ? 26 : 14; spin.sign = 1; spin.wob = floatS ? 1.8 : 0;
-            flashAt(e.x, e.y, e.z, fast ? 0.95 : 0.6, 0.11, 1, 0.94, 0.8);
-            burstAt(e.x, e.y, e.z, fast ? 12 : 6, fast ? 3.6 : 2.2, 1, 0.88, 0.66, 0.6, 8);
-            if (fast) { shockAt(e.x, e.y, e.z, 1.5, 0.18, 1, 0.9, 0.7); startTrail(1, 0.96, 0.78, 0.12, 0.7); heat = 0.4; }
+            if (!(tbSwap && fast)) flashAt(e.x, e.y, e.z, fast ? 0.95 : 0.6, 0.11, 1, 0.94, 0.8);
+            if (!(tbSwap && fast)) burstAt(e.x, e.y, e.z, fast ? 12 : 6, fast ? 3.6 : 2.2, 1, 0.88, 0.66, 0.6, 8);
+            if (fast) { if (!tbSwap) shockAt(e.x, e.y, e.z, 1.5, 0.18, 1, 0.9, 0.7); startTrail(1, 0.96, 0.78, 0.12, 0.7); heat = 0.4; burstToon(e.x, e.y, e.z, 0.6, 0.13); starsAt(e.x, e.y, e.z, 2, 1.4, 0.2); }
+            else sparkToon(e.x, e.y, e.z, 1, 0.22);
+            if (jumpS) speedLines(4, 0.28);
             else trailA = 0;
             squash.t = 0.12; squash.k = fast ? 0.08 : 0.05;
           } else if (k === 'set') {
             spin.rate = 3; spin.sign = -1; spin.wob = 0;
             flashAt(e.x, e.y, e.z, 0.42, 0.07, 0.85, 0.92, 1);
             burstAt(e.x, e.y, e.z, 3, 1.2, 0.8, 0.9, 1, 0.8, 6);
+            sparkToon(e.x, e.y, e.z, 1, 0.18);
             trailA = 0; squash.t = 0.1; squash.k = 0.035;
           } else if (tip) { // dejada: toque suave con la punta de los dedos, sin estela
             spin.rate = 2; spin.sign = -1; spin.wob = 0;
@@ -1193,13 +1415,18 @@
             var shank = e.shot === 'shank';
             flashAt(e.x, e.y, e.z, shank ? 0.4 : 0.52, 0.08, 0.92, 0.95, 1);
             burstAt(e.x, e.y, e.z, shank ? 3 : 5, 1.6, 0.85, 0.92, 1, 0.8, 7);
+            sparkToon(e.x, e.y, e.z, shank ? 1 : 2, 0.2);
             trailA = 0; squash.t = 0.1; squash.k = 0.06;
           }
           // toque perfecto del humano: anillo dorado y chispas doradas (recompensa visible, sin cegar)
           if (perfect) {
-            shockAt(e.x, e.y, e.z, k === 'spike' || k === 'serve' ? 2.3 : 1.6, 0.26, 1, 0.8, 0.28);
-            burstAt(e.x, e.y, e.z, k === 'spike' ? 14 : 9, k === 'spike' ? 4.2 : 2.6, 1, 0.78, 0.25, 0.9, 5);
-            if (k !== 'set') flashAt(e.x, e.y, e.z, k === 'spike' ? 1.35 : 0.75, 0.1, 1, 0.85, 0.45);
+            if (!tbSwap) {
+              shockAt(e.x, e.y, e.z, k === 'spike' || k === 'serve' ? 2.3 : 1.6, 0.26, 1, 0.8, 0.28);
+              burstAt(e.x, e.y, e.z, k === 'spike' ? 14 : 9, k === 'spike' ? 4.2 : 2.6, 1, 0.78, 0.25, 0.9, 5);
+              if (k !== 'set') flashAt(e.x, e.y, e.z, k === 'spike' ? 1.35 : 0.75, 0.1, 1, 0.85, 0.45);
+            }
+            starsAt(e.x, e.y, e.z, k === 'spike' ? 3 : 2, 2.0, 0.28);
+            if (k === 'spike') onoAt(e.x, e.y, e.z); // «¡PAM!» solo en el remate perfecto del humano
           }
           // orientación del aplastamiento: eje Y local según la dirección de salida
           tv.set(g.ball.vx, g.ball.vz, -g.ball.vy); if (tv.lengthSq() < 1e-6) tv.set(0, 1, 0); tv.normalize();
@@ -1209,14 +1436,18 @@
         case 'block': {
           var tb = T[e.team === 1 ? 1 : 0], res = e.result || 'stuff';
           if (res === 'stuff') { // bloqueo directo: impacto contundente
-            flashAt(e.x, e.y, e.z, 1.25, 0.14, 1, 0.97, 0.92);
-            shockAt(e.x, e.y, e.z, 2.4, 0.22, tb.r, tb.g, tb.b);
-            burstAt(e.x, e.y, e.z, 22, 4.6, 1, 0.95, 0.85, 0.5, 8);
-            burstAt(e.x, e.y, e.z, 10, 3.4, tb.r, tb.g, tb.b, 0.4, 8);
+            if (!tbSwap) {
+              flashAt(e.x, e.y, e.z, 1.25, 0.14, 1, 0.97, 0.92);
+              shockAt(e.x, e.y, e.z, 2.4, 0.22, tb.r, tb.g, tb.b);
+              burstAt(e.x, e.y, e.z, 22, 4.6, 1, 0.95, 0.85, 0.5, 8);
+              burstAt(e.x, e.y, e.z, 10, 3.4, tb.r, tb.g, tb.b, 0.4, 8);
+            }
             squash.t = 0.12; squash.k = 0.095; spin.rate = 12;
+            burstToon(e.x, e.y, e.z, 1.05, 0.18); starsAt(e.x, e.y, e.z, 5, 2.2, 0.26);
           } else { // 'soft' (toque de bloqueo jugable) / 'tool' (block-out): roce
-            flashAt(e.x, e.y, e.z, 0.6, 0.09, 0.95, 0.97, 1);
-            burstAt(e.x, e.y, e.z, res === 'tool' ? 8 : 5, 2.0, 0.95, 0.95, 1, 0.5, 8);
+            if (!tbSwap) flashAt(e.x, e.y, e.z, 0.6, 0.09, 0.95, 0.97, 1);
+            if (!tbSwap) burstAt(e.x, e.y, e.z, res === 'tool' ? 8 : 5, 2.0, 0.95, 0.95, 1, 0.5, 8);
+            starsAt(e.x, e.y, e.z, 2, 1.4, 0.2);
             squash.t = 0.1; squash.k = 0.06; spin.rate = res === 'tool' ? 14 : 6;
           }
           trailA = 0; spin.sign = -1; spin.wob = 0;
@@ -1226,12 +1457,14 @@
           var nz = Math.min(C.NET_H, Math.max(1.6, e.z || C.NET_H));
           flashAt(0, e.y, nz, 0.55, 0.1, 0.75, 0.9, 1);
           burstAt(0, e.y, nz, 12, 2.4, 0.7, 0.88, 1, 0.3, 7);
+          sparkToon(0, e.y, nz, 2, 0.22);
           break;
         }
         case 'dive': { // plancha: polvo de parquet que sale hacia delante + onda en el suelo
           var dx = e.dir ? e.dir[0] : 0, dy = e.dir ? e.dir[1] : 0, px = e.player ? e.player.x : e.x, py = e.player ? e.player.y : e.y;
           dustAt(px + dx * 0.7, py + dy * 0.7, 22, 0.75, dx, dy, 0.6, 1.5, 0.1); // a lo largo del cuerpo (piernas→pecho)
           rippleAt(px + dx * 0.3, py + dy * 0.3, 1.3, 0.45, 0.95, 0.88, 0.75, 0.3);
+          puffsAt(px + dx * 0.8, py + dy * 0.8, 4, dx, dy, 1.4, 0.42); // nubes de dibujo a lo largo del cuerpo
           break;
         }
         case 'net':
@@ -1243,16 +1476,16 @@
           if (e.inside) rippleAt(e.x, e.y, 1.6 + sp2 * 0.12, 0.6, 1, 0.95, 0.85, 0.9);
           else rippleAt(e.x, e.y, 1.6 + sp2 * 0.12, 0.7, 1, 0.25, 0.18, 0.95);
           markAt(e.x, e.y, e.inside, sp2, g && g.ball ? g.ball.vx : 0, g && g.ball ? g.ball.vy : 0);
-          burstAt(e.x, e.y, 0.05, 10 + Math.min(14, sp2), 1.5 + sp2 * 0.15, 0.95, 0.9, 0.8, 1.2, 9);
+          if (!(tbSwap && sp2 > 8)) burstAt(e.x, e.y, 0.05, 10 + Math.min(14, sp2), 1.5 + sp2 * 0.15, 0.95, 0.9, 0.8, 1.2, 9);
           trailA = Math.min(trailA, 0.25);
-          if (sp2 > 8) shockAt(e.x, e.y, 0.15, 1.6, 0.25, 1, 0.9, 0.8);
+          if (sp2 > 8) { if (!tbSwap) shockAt(e.x, e.y, 0.15, 1.6, 0.25, 1, 0.9, 0.8); puffsAt(e.x, e.y, 3, 0, 0, 0, 0.4); }
           break;
         }
         case 'bounce':
           if ((e.speed || 0) > 2.5) rippleAt(e.x, e.y, 0.9, 0.45, 1, 1, 1, 0.4);
           break;
         case 'landPlayer':
-          if (e.player) { rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.3); dustAt(e.player.x, e.player.y, 5, 0.6, 0, 0, 0); }
+          if (e.player) { rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.3); dustAt(e.player.x, e.player.y, 5, 0.6, 0, 0, 0); puffsAt(e.player.x, e.player.y, 2, 0, 0, 0, 0.3); }
           break;
         case 'challenge': // B6: empieza la revisión; las marcas del bote (con la llamada del árbitro) se quitan: manda la huella
           for (var cm = 0; cm < MARK_N; cm++) { markPool[cm].t = 0; markPool[cm].m.visible = false; markPool[cm].r.visible = false; }

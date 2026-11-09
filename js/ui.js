@@ -391,6 +391,38 @@
     if (g.aim3) return !!g.aim3.on;
     return !!p && p.z > 0.2 && p.x > 0;
   }
+  // ---------- Acento de equipo = color de la equipación (contrato del sprint cartoon) ----------
+  // VB.Players.kitColors() → t0/t1.base (con guarda). En #app: --k0/--k1 (franjas y chips; los muy oscuros se aclaran para leerse
+  // sobre los paneles), --k0d/--k1d (fondos con texto blanco: los claros se oscurecen), --k0l/--k1l (texto sobre paneles oscuros),
+  // --k0rgb/--k1rgb (r,g,b para destellos). kitUI guarda lo mismo para los dibujos del tutorial.
+  var kitUI = { sig: '', c0: '#ff6a2e', d0: '#b8400f', l0: '#ffb07a', c1: '#2f7bff', d1: '#2459d8', l1: '#8fc0ff' };
+  function hx(n) { return '#' + ('00000' + (n >>> 0).toString(16)).slice(-6); }
+  function rgbOf(n) { return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  function lumOf(c) { var f = function (v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); }
+  function mixC(c, t, k) { return [Math.round(c[0] + (t[0] - c[0]) * k), Math.round(c[1] + (t[1] - c[1]) * k), Math.round(c[2] + (t[2] - c[2]) * k)]; }
+  function toHex(c) { return hx(c[0] << 16 | c[1] << 8 | c[2]); }
+  /** Variantes legibles de un color de camiseta: [franja, fondo con texto blanco, texto sobre oscuro, 'r,g,b']. */
+  function kitTones(n, acc) {
+    var c = rgbOf(n), W = [255, 255, 255], K = [0, 0, 0], k, d = c, l = c, st = c;
+    // negro/pizarra: la franja usa el color de los detalles si es claro; si no, gris claro (antes gris marengo, poco contraste
+    // sobre el panel violeta)
+    if (lumOf(c) < 0.05) st = typeof acc === 'number' && lumOf(rgbOf(acc)) > 0.18 ? rgbOf(acc) : mixC(c, W, 0.62);
+    for (k = 0.1; lumOf(d) > 0.2 && k <= 0.9; k += 0.1) d = mixC(c, K, k);         // texto blanco encima: ≥ 4,5:1
+    for (k = 0.1; lumOf(l) < 0.38 && k <= 0.9; k += 0.1) l = mixC(c, W, k);        // texto de color sobre el panel oscuro
+    return [toHex(st), toHex(d), toHex(l), st.join(',')];
+  }
+  function kitTick() {
+    var P = VB.Players, kc = null;
+    try { kc = P && P.kitColors ? P.kitColors() : null; } catch (e) { kc = null; }
+    if (!kc || !kc.t0 || !kc.t1 || !el.app) return;
+    var sig = kc.t0.base + ':' + kc.t0.accent + ':' + kc.t1.base; if (sig === kitUI.sig) return;
+    kitUI.sig = sig;
+    var a = kitTones(kc.t0.base, kc.t0.accent), b = kitTones(kc.t1.base, kc.t1.accent), st = el.app.style;
+    kitUI.c0 = a[0]; kitUI.d0 = a[1]; kitUI.l0 = a[2]; kitUI.c1 = b[0]; kitUI.d1 = b[1]; kitUI.l1 = b[2];
+    st.setProperty('--k0', a[0]); st.setProperty('--k0d', a[1]); st.setProperty('--k0l', a[2]); st.setProperty('--k0rgb', a[3]);
+    st.setProperty('--k1', b[0]); st.setProperty('--k1d', b[1]); st.setProperty('--k1l', b[2]); st.setProperty('--k1rgb', b[3]);
+    if (panel === 'tut' && tut.fig) tutGo(tut.i);                                  // figuras del tutorial con la equipación nueva
+  }
   function G() {
     var d = device();
     if (d === 'gamepad' && padFam() === 'ps') {
@@ -523,6 +555,8 @@
         s.blockTeam = e.team; s.blocker = e.player || null; break;
       case 'point': {
         var w = e.team, T = s.t[w];
+        // deshacer (punto anulado por challenge: sim vuelve a pitar el punto con la llamada buena, ver untally)
+        var U = s.undo = { w: w, field: '', P: null, pf: '', best: T.best, run: s.run, runTeam: s.runTeam, longest: s.longest };
         T.points++;
         if (s.runTeam === w) s.run++; else { s.run = 1; s.runTeam = w; }
         if (s.run > T.best) T.best = s.run;
@@ -542,28 +576,41 @@
         else if (e.reason === 'in') kind = s.lastHitKind === 'spike' && s.lastHitTeam === w ? 'kill' : 'free';
         else kind = 'error';
         // cada punto cae en exactamente una fila: las filas suman "Puntos"
-        if (kind === 'ace') T.aces++;
-        else if (kind === 'blockPt') T.blocks++;
-        else if (kind === 'kill' || kind === 'tip' || kind === 'free') T.kills++;
-        else T.oppErr++;
+        U.field = kind === 'ace' ? 'aces' : kind === 'blockPt' ? 'blocks' : (kind === 'kill' || kind === 'tip' || kind === 'free') ? 'kills' : 'oppErr';
+        T[U.field]++;
         e._uiKind = kind; // solo para la UI (no forma parte del contrato)
         var who = kind === 'blockPt' ? s.blocker : (kind === 'ace' || kind === 'kill' || kind === 'tip' || kind === 'free') ? s.lastHitter[w] : null;
         if (who && who.team === w) {
           var P = s.p[who.id] || (s.p[who.id] = { id: who.id, num: who.num, team: who.team, pts: 0, kills: 0, blocks: 0, aces: 0 });
           P.pts++; if (kind === 'ace') P.aces++; else if (kind === 'blockPt') P.blocks++; else P.kills++;
+          U.P = P; U.pf = kind === 'ace' ? 'aces' : kind === 'blockPt' ? 'blocks' : 'kills';
         }
         break;
       }
     }
   }
 
+  /** Punto anulado por challenge: quita de las estadísticas el último punto contado (sim ya corrige g.stats). */
+  function untally() {
+    var s = stats, U = s && s.undo; if (!U) return;
+    var T = s.t[U.w]; T.points = Math.max(0, T.points - 1); if (U.field) T[U.field] = Math.max(0, T[U.field] - 1);
+    T.best = U.best; s.run = U.run; s.runTeam = U.runTeam; s.longest = U.longest;
+    if (U.P) { U.P.pts = Math.max(0, U.P.pts - 1); U.P[U.pf] = Math.max(0, U.P[U.pf] - 1); }
+    s.undo = null;
+  }
   /** Puntos del set decisivo (3.º): min(15, puntos por set del partido). */
   function decT(g) { return Math.min(15, (g && g.points) || 25); }
   function onEvents(g, events) {
+    // punto anulado por challenge (sim, endReview): en el MISMO paso vuelve a pitar el punto ('point') y luego 'challengeResult'
+    // con overturned. Ese 'point' no lleva pestaña («REMATE» junto al marcador contradecía el cartel anterior): lo cuenta el
+    // banner IN/OUT del challenge; y las estadísticas descuentan el punto anulado.
+    var ovr = false;
+    for (var oi = 0; oi < events.length; oi++) if (events[oi].type === 'challengeResult' && events[oi].overturned) ovr = true;
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
       if (e.type === 'newMatch') { stats = newStats(); }
       if (g.demo) continue;
+      if (ovr && e.type === 'point') { untally(); e._ovr = true; }
       tally(e);
       switch (e.type) {
         case 'newMatch':
@@ -578,8 +625,8 @@
           // UI-02: el punto aparta al momento la tarjeta guiada, el consejo y el aviso
           clearPrompt(); if (guideT > 0) { guideT = 0; el.guide.className = ''; }
           last.coach = null; el.coach.classList.add('off');
-          presentPoint(e, me, k, g);
-          srScore(e, g);
+          if (e._ovr && !e.setWon && !e.matchWon) { hideBug(false); atSP = false; }  // lo dice el banner del challenge
+          else { presentPoint(e, me, k, g); srScore(e, g); }
           break;
         }
         case 'block':
@@ -1431,7 +1478,7 @@
     // red de seguridad: si el balón proyectado cae dentro del contador de toques, se atenúa (la cámara ya lo evita)
     // Lo mismo con la pastilla del consejo (va justo debajo del contador y es opaca): con el balón detrás, se vuelve
     // translúcida (.thru). Se usa el consejo visible del frame anterior (last.coach).
-    var tbDim = false, coachThru = false, guideThru = false;
+    var tbDim = false, coachThru = false, coachThruP = false, guideThru = false;
     if ((nt || last.coach || guideT > 0) && ctx.camera && VB.toThree && ctx.THREE) {
       if (!_bv) _bv = new ctx.THREE.Vector3();
       VB.toThree(g.ball.x, g.ball.y, g.ball.z, _bv); _bv.project(ctx.camera);
@@ -1443,6 +1490,18 @@
       if (last.coach) {
         if (!coachRect || (ctx.frame & 31) === 0) { coachRect = el.coach.getBoundingClientRect(); if (fitX(el.coach, coachRect, 1)) coachRect = el.coach.getBoundingClientRect(); }
         coachThru = bOn && inRect(bpx, bpy, coachRect, 12);
+        // también si tapa a un jugador (en táctil, a 844×390, tapaba al rematador y al bloqueador de la CPU junto a la red):
+        // se prueban el pecho y la cabeza de los 4 (8 proyecciones, solo con consejo visible). Clase propia (.thrup): el
+        // consejo sigue legible (es justo lo que hay que hacer), solo pierde el fondo opaco
+        if (!coachThru && g.teams) {
+          for (var ct = 0; ct < 2 && !coachThruP; ct++) for (var ci = 0; ci < g.teams[ct].length && !coachThruP; ci++) {
+            var cpl = g.teams[ct][ci];
+            for (var ch = 1.0; ch < 2.2 && !coachThruP; ch += 0.9) {
+              VB.toThree(cpl.x, cpl.y, (cpl.z || 0) + ch, _bv); _bv.project(ctx.camera);
+              coachThruP = _bv.z < 1 && inRect((_bv.x + 1) * 0.5 * ctx.width, (1 - _bv.y) * 0.5 * ctx.height, coachRect, 6);
+            }
+          }
+        }
       }
       if (guideT > 0) { // tarjeta guiada: también se aparta si el balón pasa por detrás (CSS solo la atenúa en móvil apaisado)
         if (!guideRect || (ctx.frame & 15) === 0) guideRect = el.guide.getBoundingClientRect();
@@ -1452,6 +1511,7 @@
     if (last.tbDim !== tbDim) { last.tbDim = tbDim; el.touchbar.classList.toggle('thru', tbDim); }
     if (el.guide.classList.contains('thru') !== guideThru) el.guide.classList.toggle('thru', guideThru);
     if (last.coachThru !== coachThru) { last.coachThru = coachThru; el.coach.classList.toggle('thru', coachThru); }
+    if (last.coachThruP !== coachThruP) { last.coachThruP = coachThruP; el.coach.classList.toggle('thrup', coachThruP); }
     // con la mira libre (3.er toque en el aire) el consejo es la instrucción clave: translúcido, pero legible
     var aimOn = !!(g.aim3 && g.aim3.on);
     if (last.coachAim !== aimOn) { last.coachAim = aimOn; el.coach.classList.toggle('aimtip', aimOn); }
@@ -2056,6 +2116,12 @@
   function S(t) { return '<span class="key">' + t + '</span>'; }
   function T(t, j) { return '<span class="key tch' + (j ? ' j' : '') + '">' + t + '</span>'; }
   function ctlRows(dv) {
+    var R = ctlRowsAll(dv);
+    // modo «Control: Uno»: no hay cambio de jugador (ni tecla, ni botón ⇄)
+    if (oneMode()) R = R.filter(function (r) { return r[1] !== 'Cambiar jugador'; });
+    return R;
+  }
+  function ctlRowsAll(dv) {
     if (dv === 'gamepad') {
       var P = padSet();
       return [[S('Stick') + S('Cruceta'), 'Moverse'], [padKey('a'), 'Golpear · sacar'], [padKey('b') + padKey('x'), 'Saltar <small>(en el aire: dejada)</small>'],
@@ -2075,6 +2141,9 @@
     var R = ctlRows(ctlView), h = '';
     for (var j = 0; j < R.length; j++) h += '<div><dt>' + R[j][0] + '</dt><dd>' + R[j][1] + '</dd></div>';
     el.ctlGrid.innerHTML = h;
+    var note = el.pnCtl.querySelector('.ctl-note');
+    if (note) note.innerHTML = oneMode() ? '<b>Arriba</b> es siempre hacia la red · llevas siempre al <b>n.º ' + oneNum() + '</b> y la IA a tu compañero · mantén una dirección al golpear para apuntar.'
+      : '<b>Arriba</b> es siempre hacia la red · el control pasa solo a quien da el siguiente toque · mantén una dirección al golpear para apuntar.';
     if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
   }
   function ctlStep(d) {
@@ -2094,7 +2163,9 @@
     // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS); el set decisivo va a min(15, puntos)
     setPoints: { vals: [11, 15, 21, 25], labels: ['11', '15', '21', '25'] },
     // control: los dos jugadores (el control pasa a quien toca) o solo uno (la IA lleva al compañero; sim: g.ctrlMode)
-    ctrlMode: { vals: ['both', 'one'], labels: ['Los dos', 'Uno'] },
+    // Contrato del sprint cartoon: en modo Uno se elige a cuál de los dos (ajuste ctrlPlayer → createGame({ctrlIdx})). La fila
+    // del menú es UNA sola con tres valores virtuales: los dos / Uno · n.º 7 / Uno · n.º 11 (ver ctrlSel y optIndex)
+    ctrlMode: { vals: ['both', 'one0', 'one1'], labels: ['Los dos', 'Uno · n.º 7', 'Uno · n.º 11'] },
     coachTips: { vals: [true, false], labels: ['Sí', 'No'] },
     // Equipación (Ajustes · Equipación): muestras de color; players.js setKit deriva el resto de tonos
     kitShirt: { vals: [0xff5a2c, 0xd8262e, 0xf2c230, 0x1f9a4a, 0x32b5e8, 0x7b3fd1, 0x22252c, 0xf2f4f8], labels: ['<i class="sw" style="background:#ff5a2c" title="Naranja"></i>', '<i class="sw" style="background:#d8262e" title="Rojo"></i>', '<i class="sw" style="background:#f2c230" title="Amarillo"></i>', '<i class="sw" style="background:#1f9a4a" title="Verde"></i>', '<i class="sw" style="background:#32b5e8" title="Celeste"></i>', '<i class="sw" style="background:#7b3fd1" title="Morado"></i>', '<i class="sw" style="background:#22252c" title="Negro"></i>', '<i class="sw" style="background:#f2f4f8" title="Blanco"></i>'] },
@@ -2107,7 +2178,31 @@
     hudScale: { vals: [1, 1.15, 1.3], labels: ['100%', '115%', '130%'] },
     softFlash: { vals: [true, false], labels: ['Sí', 'No'] }
   };
-  function optIndex(k) { var o = OPT[k], v = ctx.settings[k]; for (var i = 0; i < o.vals.length; i++) if (o.vals[i] === v) return i; return k === 'difficulty' ? 1 : 0; }
+  /** Dorsales del equipo humano (sim: teams[0][i].num; 7 y 11 si aún no hay partido). */
+  function teamNums() {
+    var g = ctx && ctx.game, t = g && g.teams && g.teams[0];
+    return [t && t[0] && t[0].num || 7, t && t[1] && t[1].num || 11];
+  }
+  /** ¿Modo «Control: Uno»? En partido manda el partido (g.ctrlMode); en el menú, el ajuste. */
+  function oneMode() {
+    var g = ctx && ctx.game;
+    if (g && !g.demo && (ctx.state === 'playing' || ctx.state === 'paused' || ctx.state === 'over')) return g.ctrlMode === 'one';
+    return ctx.settings.ctrlMode === 'one';
+  }
+  /** Dorsal del jugador que llevas en modo Uno (en partido, g.ctrl; si no, el del ajuste ctrlPlayer). */
+  function oneNum() {
+    var g = ctx && ctx.game;
+    if (g && !g.demo && g.ctrl && g.ctrlMode === 'one' && ctx.state !== 'menu') return g.ctrl.num;
+    return teamNums()[ctx.settings.ctrlPlayer === 1 ? 1 : 0];
+  }
+  /** Fila «Control» (valor virtual 0..2) → ajustes ctrlMode + ctrlPlayer. */
+  function ctrlSel(i) {
+    if (i > 0) ctx.actions.setSetting('ctrlPlayer', i === 2 ? 1 : 0);
+    ctx.actions.setSetting('ctrlMode', i > 0 ? 'one' : 'both');
+  }
+  function optIndex(k) {
+    if (k === 'ctrlMode') return ctx.settings.ctrlMode === 'one' ? (ctx.settings.ctrlPlayer === 1 ? 2 : 1) : 0;
+    var o = OPT[k], v = ctx.settings[k]; for (var i = 0; i < o.vals.length; i++) if (o.vals[i] === v) return i; return k === 'difficulty' ? 1 : 0; }
   var SLIDERS = { camSens: { min: 0.5, max: 1.5, def: 1 }, sfxVol: { min: 0, max: 1, def: 1 }, musicVol: { min: 0, max: 1, def: 0.75 } };
   function slVal(k) { var c = SLIDERS[k], v = +ctx.settings[k]; return isFinite(v) ? Math.max(c.min, Math.min(c.max, v)) : c.def; }
   function changeOpt(k, d, absIdx, arrowDir) {
@@ -2119,7 +2214,7 @@
       if (k === 'sfxVol' && VB.Audio && VB.Audio.play) try { VB.Audio.play('pass', 0.8); } catch (e) { }
     } else {
       var o = OPT[k], i = absIdx != null ? absIdx : (optIndex(k) + d + o.vals.length) % o.vals.length;
-      ctx.actions.setSetting(k, o.vals[i]);
+      if (k === 'ctrlMode') ctrlSel(i); else ctx.actions.setSetting(k, o.vals[i]);
     }
     optSound(k, arrowDir);
   }
@@ -2184,7 +2279,8 @@
     var pas = el.optPts.querySelectorAll('.arr');
     if (pas.length === 2) { pas[0].classList.toggle('end', pi === 0); pas[1].classList.toggle('end', pi === OPT.setPoints.vals.length - 1); }
     // menú: control (los dos / uno), misma fila que los puntos
-    var ci = optIndex('ctrlMode');
+    var ci = optIndex('ctrlMode'), tn = teamNums();
+    OPT.ctrlMode.labels[1] = 'Uno · n.º ' + tn[0]; OPT.ctrlMode.labels[2] = 'Uno · n.º ' + tn[1];
     if (el.ctrlVal.textContent !== OPT.ctrlMode.labels[ci]) {
       el.ctrlVal.textContent = OPT.ctrlMode.labels[ci];
       if (lastCtrlI >= 0) { var cv = el.ctrlVal.parentNode; cv.classList.remove('sl-l', 'sl-r'); void cv.offsetWidth; cv.classList.add(ci > lastCtrlI ? 'sl-r' : 'sl-l'); }
@@ -2192,7 +2288,8 @@
     lastCtrlI = ci;
     var cas = el.optCtrl.querySelectorAll('.arr');
     if (cas.length === 2) { cas[0].classList.toggle('end', ci === 0); cas[1].classList.toggle('end', ci === OPT.ctrlMode.vals.length - 1); }
-    el.playSub.textContent = 'Partido rápido · ' + OPT.difficulty.labels[di] + ' · Sets a ' + OPT.setPoints.vals[pi] + (OPT.ctrlMode.vals[ci] === 'one' ? ' · Controlas 1' : '');
+    el.playSub.textContent = 'Partido rápido · ' + OPT.difficulty.labels[di] + ' · Sets a ' + OPT.setPoints.vals[pi] + (ci > 0 ? ' · Solo el n.º ' + tn[ci - 1] : '');
+    el.optCtrl.classList.toggle('one', ci > 0);
   }
 
   // ---------- Tutorial ----------
@@ -2211,10 +2308,10 @@
   }
   function pts(list) { return list.map(function (q) { var p = P(q[0], q[1], q[2]); return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '); }
   function drawCourt(svg) {
-    svgEl('rect', { x: 0, y: 0, width: 400, height: 275, fill: '#0d1a2e' }, svg);
-    svgEl('polygon', { points: pts([[-10.5, -6.3], [-10.5, 6.3], [11.6, 6.3], [11.6, -6.3]]), fill: '#2f6f9a' }, svg);
-    svgEl('polygon', { points: pts([[-9, -4.5], [-9, 4.5], [9, 4.5], [9, -4.5]]), fill: '#e8cfa0' }, svg);
-    svgEl('polygon', { points: pts([[-3, -4.5], [-3, 4.5], [3, 4.5], [3, -4.5]]), fill: '#dfc290' }, svg);
+    svgEl('rect', { x: 0, y: 0, width: 400, height: 275, fill: '#2b2547' }, svg);
+    svgEl('polygon', { points: pts([[-10.5, -6.3], [-10.5, 6.3], [11.6, 6.3], [11.6, -6.3]]), fill: '#3d8fd1', stroke: '#1d1530', 'stroke-width': 2.4, 'stroke-linejoin': 'round' }, svg);
+    svgEl('polygon', { points: pts([[-9, -4.5], [-9, 4.5], [9, 4.5], [9, -4.5]]), fill: '#ffc979' }, svg);
+    svgEl('polygon', { points: pts([[-3, -4.5], [-3, 4.5], [3, 4.5], [3, -4.5]]), fill: '#ffb85c' }, svg);
     var L = { fill: 'none', stroke: '#fff', 'stroke-width': 1.6, 'stroke-linejoin': 'round' };
     svgEl('polygon', Object.assign({ points: pts([[-9, -4.5], [-9, 4.5], [9, 4.5], [9, -4.5]]) }, L), svg);
     svgEl('polyline', Object.assign({ points: pts([[-3, -4.5], [-3, 4.5]]) }, L), svg);
@@ -2231,19 +2328,23 @@
     var g = svgEl('g', {}, svg), p = P(pl.x, pl.y, 0), s = p[2] * 1.45;
     var shadow = svgEl('ellipse', { cx: p[0], cy: p[1], rx: 9 * s, ry: 3.2 * s, fill: 'rgba(0,0,0,.35)' }, g);
     var body = svgEl('g', { transform: 'translate(' + p[0].toFixed(1) + ',' + p[1].toFixed(1) + ') scale(' + s.toFixed(3) + ')' }, g);
-    var col = pl.t === 0 ? '#ff6a2e' : '#3a83ff', dark = pl.t === 0 ? '#9c2c0e' : '#173d8a';
-    svgEl('rect', { x: -4.2, y: -14, width: 3.4, height: 14, rx: 1.6, fill: '#e9c39d' }, body);
-    svgEl('rect', { x: 0.8, y: -14, width: 3.4, height: 14, rx: 1.6, fill: '#e9c39d' }, body);
-    svgEl('rect', { x: -5.2, y: -18, width: 10.4, height: 7, rx: 2, fill: '#141b28' }, body);
-    svgEl('rect', { x: -6, y: -31, width: 12, height: 15, rx: 4, fill: col }, body);
+    var col = pl.t === 0 ? kitUI.c0 : kitUI.c1, dark = pl.t === 0 ? kitUI.d0 : kitUI.d1, INK = '#1d1530', iw = 1.1;
+    // dibujo animado (sprint cartoon): figuras de colores planos con contorno de tinta, cabeza y zapatillas algo grandes
+    var ink = { stroke: INK, 'stroke-width': iw, 'stroke-linejoin': 'round' };
+    svgEl('rect', Object.assign({ x: -4.2, y: -14, width: 3.4, height: 14, rx: 1.6, fill: '#f0c49a' }, ink), body);
+    svgEl('rect', Object.assign({ x: 0.8, y: -14, width: 3.4, height: 14, rx: 1.6, fill: '#f0c49a' }, ink), body);
+    svgEl('ellipse', Object.assign({ cx: -2.8, cy: -0.6, rx: 2.9, ry: 1.6, fill: '#fff' }, ink), body);
+    svgEl('ellipse', Object.assign({ cx: 2.8, cy: -0.6, rx: 2.9, ry: 1.6, fill: '#fff' }, ink), body);
+    svgEl('rect', Object.assign({ x: -5.2, y: -18, width: 10.4, height: 7, rx: 2, fill: '#2a2440' }, ink), body);
     var arms = svgEl('g', {}, body);
-    svgEl('rect', { x: -9, y: -30, width: 3.2, height: 12, rx: 1.6, fill: col }, arms);
-    svgEl('rect', { x: 5.8, y: -30, width: 3.2, height: 12, rx: 1.6, fill: col }, arms);
-    svgEl('circle', { cx: 0, cy: -36, r: 5, fill: '#e9c39d' }, body);
-    svgEl('path', { d: 'M-5 -37 a5 5 0 0 1 10 0 z', fill: dark }, body);
-    if (pl.you) svgEl('path', { d: 'M-4 -49 h8 l-4 5 z', fill: '#ffffff', stroke: '#0d1a2e', 'stroke-width': 0.8 }, body);
+    svgEl('rect', Object.assign({ x: -9, y: -30, width: 3.2, height: 12, rx: 1.6, fill: col }, ink), arms);
+    svgEl('rect', Object.assign({ x: 5.8, y: -30, width: 3.2, height: 12, rx: 1.6, fill: col }, ink), arms);
+    svgEl('rect', Object.assign({ x: -6, y: -31, width: 12, height: 15, rx: 4, fill: col }, ink), body);
+    svgEl('circle', Object.assign({ cx: 0, cy: -37, r: 6, fill: '#f0c49a' }, ink), body);
+    svgEl('path', Object.assign({ d: 'M-6 -38 a6 6 0 0 1 12 0 z', fill: dark }, ink), body);
+    if (pl.you) svgEl('path', { d: 'M-4.5 -51 h9 l-4.5 5.5 z', fill: '#ffd23f', stroke: INK, 'stroke-width': 1.2, 'stroke-linejoin': 'round' }, body);
     if (pl.lbl) {
-      var t = svgEl('text', { x: 0, y: pl.you ? -53 : -46, 'text-anchor': 'middle', fill: '#fff', 'font-family': 'Barlow Condensed,Arial Narrow,sans-serif', 'font-weight': 800, 'font-size': Math.max(12.8, 12.8 * 1.55 / s).toFixed(1), 'letter-spacing': 1, stroke: '#0d1a2e', 'stroke-width': 2.4, 'paint-order': 'stroke', 'stroke-linejoin': 'round' }, body);
+      var t = svgEl('text', { x: 0, y: pl.you ? -55 : -48, 'text-anchor': 'middle', fill: '#fff', 'font-family': 'Barlow Condensed,Arial Narrow,sans-serif', 'font-weight': 800, 'font-size': Math.max(12.8, 12.8 * 1.55 / s).toFixed(1), 'letter-spacing': 1, stroke: INK, 'stroke-width': 3, 'paint-order': 'stroke', 'stroke-linejoin': 'round' }, body);
       t.textContent = pl.lbl;
     }
     return { g: g, body: body, arms: arms, shadow: shadow, base: p, s: s, pl: pl };
@@ -2274,7 +2375,12 @@
     { step: 'Paso 3 de 6', title: '2.º toque · Colocación', fig: {
         players: [{ t: 0, x: 4.2, y: -2.4, lbl: '1' }, { t: 0, x: 1.8, y: 1.2, you: 1, lbl: '2' }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }],
         segs: [{ a: [3.2, -1.5, 3.4], b: [1.8, 1.2, 2.3], apex: 4.4, dur: 0.7 }, { a: [1.8, 1.2, 2.3], b: [1.1, -2.4, 3.0], apex: 5.3, dur: 1.3, who: 1 }], ring: [1.8, 1.2], swing: [[1, 0.65, 0.3]] },
-      text: function (g) { return 'El control pasa solo a tu compañero (la cámara se desliza hacia él). Ponte bajo el balón y pulsa ' + g.hit + ': es la <b>colocación</b>, un balón alto junto a la red.'; },
+      // modo «Control: Uno»: no hay cambio de jugador; el compañero (IA) coloca tus recepciones
+      figOne: { players: [{ t: 0, x: 4.2, y: -2.4, you: 1, lbl: '1' }, { t: 0, x: 1.8, y: 1.2, lbl: '2' }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }] },
+      text: function (g) {
+        if (oneMode()) return 'Llevas siempre al mismo jugador: tu compañero (la IA) hace la <b>colocación</b>, un balón alto junto a la red, y tú te preparas para rematar. Si el 1r toque lo da él, la colocación es tuya: ponte bajo el balón y pulsa ' + g.hit + '.';
+        return 'El control pasa solo a tu compañero (la cámara se desliza hacia él). Ponte bajo el balón y pulsa ' + g.hit + ': es la <b>colocación</b>, un balón alto junto a la red.';
+      },
       rule: 'Cada equipo tiene <b>3 toques</b>. Un jugador no puede tocar dos veces seguidas: eso son <b>dobles</b>.' },
     { step: 'Paso 4 de 6', title: '3.er toque · Remate', fig: {
         players: [{ t: 0, x: 1.3, y: -2.4, you: 1, lbl: '3' }, { t: 0, x: 1.8, y: 1.2 }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }],
@@ -2286,7 +2392,10 @@
         players: [{ t: 0, x: 0.6, y: 1.4, you: 1, lbl: 'TÚ' }, { t: 0, x: 6, y: -1.5 }, { t: 1, x: -1.3, y: 1.4 }, { t: 1, x: -2, y: -2.5 }],
         segs: [{ a: [-2, -2.5, 2.3], b: [-1.05, 1.4, 3.15], apex: 5.1, dur: 1.1 }, { a: [-1.05, 1.4, 3.15], b: [-0.05, 1.4, 2.95], dur: 0.16, who: 2, spike: 1 }, { a: [-0.05, 1.4, 2.95], b: [-4.6, 0.3, 0.2], apex: 3.4, dur: 0.85, who: 0 }],
         jump: [[2, 0.6, 1.05], [0, 0.66, 1.1]], swing: [[2, 1.1, 0.25]], block: [0] },
-      text: function (g) { return 'Cuando la CPU coloca, el juego te pasa al defensor y tu compañero bloquea. Si prefieres bloquear tú, pulsa ' + g.sw + ' (cambiar) mientras la CPU coloca: ve a la red frente al atacante y pulsa ' + g.jump + ' cuando golpea. Si el balón te da en las manos: <b>bloqueo</b>.'; },
+      text: function (g) {
+        if (oneMode()) return 'Cuando la CPU coloca, decides con tu posición: si subes a la red frente al atacante, bloqueas tú y tu compañero defiende atrás; si te quedas al fondo, bloquea él. Pulsa ' + g.jump + ' cuando el atacante golpea. Si el balón te da en las manos: <b>bloqueo</b>.';
+        return 'Cuando la CPU coloca, el juego te pasa al defensor y tu compañero bloquea. Si prefieres bloquear tú, pulsa ' + g.sw + ' (cambiar) mientras la CPU coloca: ve a la red frente al atacante y pulsa ' + g.jump + ' cuando golpea. Si el balón te da en las manos: <b>bloqueo</b>.';
+      },
       rule: 'El <b>bloqueo no cuenta como toque</b>: después tu equipo aún tiene sus 3 toques.' },
     { step: 'Paso 6 de 6', title: 'Reglas y faltas', faults: true,
       text: function () { return ''; }, rule: '' }
@@ -2302,7 +2411,9 @@
     '<li><b>Challenge</b>¿Bote justo mal cantado? Pide revisión en 7 s. 2 por set; si fallas, gastas uno.</li>' +
     '<li><b>Cambio de campo</b>Al acabar cada set y a los 8 puntos del set decisivo.</li>' +
     '<li><b>Sets</b>A 25 puntos con 2 de diferencia; el 3.º, a 15. Gana quien se lleva 2 sets.</li>' +
-    '</ul><p class="tut-rule">Cada jugada da un punto (sistema de punto por jugada). Si la ganas recibiendo, recuperas el saque (<b>cambio de saque</b>) y sacáis por turnos: saca el jugador de tu equipo que no sacó la última vez (y lo controlas tú).</p>';
+    '</ul><p class="tut-rule">Cada jugada da un punto (sistema de punto por jugada). Si la ganas recibiendo, recuperas el saque (<b>cambio de saque</b>) y sacáis por turnos: saca el jugador de tu equipo que no sacó la última vez <span class="fl-who">(y lo controlas tú)</span>.</p>';
+  /** Paso 6: en modo Uno, el saque de tu compañero lo hace la IA. */
+  function faultsHtml() { return oneMode() ? FAULTS.replace('(y lo controlas tú)', '(si le toca a tu compañero, saca la IA)') : FAULTS; }
 
   var tut = { i: 0, raf: 0, t0: 0, fig: null, seen: {} };
   function tutGo(i) {
@@ -2310,7 +2421,7 @@
     tut.i = i; tut.seen[i] = 1;
     var S = TUT[i], g = G();
     el.tutStep.textContent = S.step; el.tutTitle.textContent = S.title;
-    el.tutText.innerHTML = S.faults ? FAULTS : '<p class="tut-text">' + S.text(g) + '</p>' + (S.rule ? '<div class="tut-rule">' + S.rule + '</div>' : '');
+    el.tutText.innerHTML = S.faults ? faultsHtml() : '<p class="tut-text">' + S.text(g) + '</p>' + (S.rule ? '<div class="tut-rule">' + S.rule + '</div>' : '');
     restartAnim(el.tutBody, 'tut-anim');
     el.tutFig.hidden = !!S.faults;
     el.tutBody.style.gridTemplateColumns = S.faults ? '1fr' : '';
@@ -2320,7 +2431,7 @@
     el.btnTutNext.textContent = i === TUT.length - 1 ? (panelFrom === 'menu' ? '¡A jugar!' : 'Volver al partido') : 'Siguiente ›';
     if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
     tutStop();
-    if (!S.faults) buildFig(S.fig);
+    if (!S.faults) buildFig(oneMode() && S.figOne ? Object.assign({}, S.fig, S.figOne) : S.fig);
     if (i === TUT.length - 1 && !ctx.debug) { record.tut = 1; saveRecord(); }
   }
   function buildFig(F) {
@@ -2344,7 +2455,7 @@
     svgEl('path', { d: path, fill: 'none', stroke: 'rgba(255,255,255,.85)', 'stroke-width': 1.3, 'stroke-dasharray': '2 5', 'stroke-linecap': 'round' }, svg);
     var flash = svgEl('circle', { r: 10, fill: 'none', stroke: '#fff', 'stroke-width': 2, opacity: 0 }, svg);
     var ball = svgEl('g', {}, svg);
-    svgEl('circle', { r: 5.2, fill: '#f7f2ea', stroke: '#1d3d7a', 'stroke-width': 1 }, ball);
+    svgEl('circle', { r: 5.4, fill: '#fffaf0', stroke: '#1d1530', 'stroke-width': 1.4 }, ball);
     svgEl('path', { d: 'M-5 0 Q0 -3 5 0 M-2 -4.6 Q1 0 -2 4.6', fill: 'none', stroke: '#ffb238', 'stroke-width': 1.3 }, ball);
     el.tutFig.innerHTML = ''; el.tutFig.appendChild(svg);
     var total = 0; F.segs.forEach(function (s) { s.t0 = total; total += s.dur; });
@@ -2578,6 +2689,7 @@
       var hs = [1, 1.15, 1.3].indexOf(+s.hudScale) >= 0 ? +s.hudScale : 1;
       if (hudScale !== hs) { hudScale = hs; el.app.style.setProperty('--hs', String(hs)); el.app.classList.toggle('hs-big', hs > 1); promptW = 0; tbRect = coachRect = guideRect = null; joyR = null; }
       el.app.classList.toggle('soft-flash', !!s.softFlash);
+      kitTick();
       hudFit();
       renderOpts();
       [el.pause, el.end, el.panel].forEach(function (n) { if (n && !n.hidden) { fitSheet(n); checkMore(n); } });
@@ -2615,6 +2727,7 @@
       if (introUI.on && !(ctx.introLeft > 0)) introEndUI(true);
       if (!(ctx.introLeft > 0)) { el.app.classList.remove('intro-on'); introUI.hudT = 0; introUI.quiet = false; }
       el.end.classList.remove('win', 'lose');
+      kitTick();
     },
     /** Estadísticas sin banners (escenas de depuración que avanzan la sim sin pintar). */
     ingest: function (events, g) { for (var i = 0; i < events.length; i++) { if (events[i].type === 'newMatch') stats = newStats(); else tally(events[i]); } },
@@ -2640,6 +2753,7 @@
     /** dt = tiempo de juego (0 en pausa/congelado: los banners se quedan). */
     update: function (g, dt, events) {
       if (!g) return;
+      if ((ctx.frame & 31) === 7) kitTick();   // por si players cambia la equipación de la CPU por su cuenta
       onEvents(g, events);
       syncScreens(g);
       if (!gym.done) gymTick();

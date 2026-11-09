@@ -1450,7 +1450,7 @@ if (ONLY !== 'matrix') {
       return { g, ld: ev.find(e => e.type === 'land'), pt: ev.find(e => e.type === 'point') };
     };
     // tasa de error por banda; nunca con |dist| > 0,10
-    { const bands = [[0, 0.02, 0.25, 0.45], [0.02, 0.05, 0.08, 0.23], [0.05, 0.1, 0.01, 0.1], [0.105, 0.3, 0, 0]], rates = [];
+    { const bands = [[0, 0.02, 0.35, 0.55], [0.02, 0.05, 0.22, 0.38], [0.05, 0.1, 0.09, 0.21], [0.105, 0.3, 0, 0]], rates = [];
       let ok = true, fieldsOk = true;
       for (const [a, bnd, lo, hi] of bands) {
         let n = 0, w = 0;
@@ -1520,31 +1520,74 @@ if (ONLY !== 'matrix') {
   // compañero en todo (toques, saque, bloqueo). g.ctrl no cambia nunca, el compañero toca y saca, pasa/coloca al humano, la IA
   // no comete dobles ni 4 toques y los partidos (a 11) terminan. Por defecto sigue 'both'.
   {
-    const f0 = failures, sum = { mate: 0, mateServe: 0, mateSet: 0, human: 0, matches: 0, pts: 0 };
+    const f0 = failures, sum = { mate: 0, mateServe: 0, mateSet: 0, human: 0, mateBlock: 0, humanBlock: 0, matches: 0, pts: 0, mate11: 0, mate11Serve: 0, mate11Block: 0 };
     if (S.createGame({ seed: 1 }).ctrlMode !== 'both' || S.createGame({ seed: 1, ctrl: 'x' }).ctrlMode !== 'both') fail('ctrlMode por defecto no es both');
-    for (let s = 1; s <= 4; s++) {
-      const g = S.createGame({ demo: false, seed: 9100 + s, difficulty: 'normal', ctrl: 'one', points: 11 }), bot = makeBot(BOTS.bueno, s * 7 + 3);
+    // ctrlIdx (contrato del sprint): 0 = teams[0][0] (n.º 7, por defecto), 1 = teams[0][1] (n.º 11); fuera del modo 'one' o con
+    // un valor raro, 0. Con el n.º 11 el orden de saque del equipo 0 va en espejo: el jugador del humano saca primero.
+    { const gi = (o) => S.createGame(Object.assign({ demo: false, seed: 3 }, o));
+      const a = gi({ ctrl: 'one', ctrlIdx: 1 }), b = gi({ ctrl: 'one' }), c = gi({ ctrl: 'both', ctrlIdx: 1 }), d = gi({ ctrl: 'one', ctrlIdx: 7 }), e = gi({ ctrl: 'one', ctrlIdx: '1' });
+      if (a.ctrlIdx !== 1 || a.ctrl !== a.teams[0][1] || a.ctrl.num !== 11 || a.server !== a.ctrl) fail('ctrlIdx 1: ctrl/saque inicial ' + [a.ctrlIdx, a.ctrl.num, a.server && a.server.num]);
+      if (b.ctrlIdx !== 0 || b.ctrl !== b.teams[0][0] || b.server !== b.ctrl) fail('ctrlIdx por defecto no es 0');
+      if (c.ctrlIdx !== 0 || c.ctrl !== c.teams[0][0] || d.ctrlIdx !== 0 || e.ctrlIdx !== 1) fail('ctrlIdx fuera de modo uno / valor raro: ' + [c.ctrlIdx, d.ctrlIdx, e.ctrlIdx]); }
+    for (let s = 1; s <= 6; s++) {
+      const ci = s > 4 ? 1 : 0; // semillas 5-6: el humano lleva al n.º 11
+      const g = S.createGame({ demo: false, seed: 9100 + s, difficulty: 'normal', ctrl: 'one', ctrlIdx: ci, points: 11 }), bot = makeBot(BOTS.bueno, s * 7 + 3);
       const me = g.ctrl, mate = S.other(g, me), ev = [];
       let ctrlBad = 0, sw = 0, aiFault = 0, lastT0 = null;
       if (g.ctrlMode !== 'one') fail('ctrl:one no guarda g.ctrlMode');
+      if (me !== g.teams[0][ci]) fail('modo uno: ctrlIdx ' + ci + ' no lleva a teams[0][' + ci + ']');
       for (let i = 0; i < 120 * 60 * 30 && !g.finished; i++) {
         S.step(g, DT, bot(g)); ev.length = 0; S.drainEvents(g, ev);
         if (g.ctrl !== me) ctrlBad++;
         for (const e of ev) {
           if (e.type === 'switch') sw++;
           else if (e.type === 'hit' && e.team === 0) {
-            if (e.player === mate) { if (e.kind === 'serve') sum.mateServe++; else sum.mate++; }
+            if (e.player === mate) { if (e.kind === 'serve') sum.mateServe++; else sum.mate++; if (ci) { if (e.kind === 'serve') sum.mate11Serve++; else sum.mate11++; } }
             else { sum.human++; if (lastT0 && lastT0.player === mate && lastT0.kind !== 'serve' && e.kind !== 'serve') sum.mateSet++; }
             lastT0 = e;
           } else if (e.type === 'hit') lastT0 = null;
+          else if (e.type === 'block' && e.team === 0) { if (e.player === mate) { sum.mateBlock++; if (ci) sum.mate11Block++; } else sum.humanBlock++; }
           else if (e.type === 'point') { sum.pts++; if ((e.reason === 'double' || e.reason === 'four') && e.team === 1 && g.lastPlayer === mate) aiFault++; lastT0 = null; }
         }
       }
       if (g.finished) sum.matches++;
       if (ctrlBad || sw || aiFault) fail('modo uno (semilla ' + (9100 + s) + '): ctrl cambiado ' + ctrlBad + ' pasos, ' + sw + ' switch, ' + aiFault + ' dobles/4 toques del compañero IA');
     }
-    if (sum.matches < 4 || sum.mate < 40 || sum.mateServe < 8 || sum.mateSet < 15 || sum.human < 40) fail('modo uno: ' + JSON.stringify(sum));
+    if (sum.matches < 6 || sum.mate < 60 || sum.mateServe < 12 || sum.mateSet < 22 || sum.human < 60 || sum.mateBlock < 3 || sum.mate11 < 15 || sum.mate11Serve < 3 || sum.mate11Block < 1) fail('modo uno: ' + JSON.stringify(sum));
     else if (failures === f0) console.log('modo controlar 1 jugador OK ' + JSON.stringify(sum));
+  }
+  // modo uno: el HUMANO bloquea (arreglos finales del sprint cartoon). El bot 'bueno' casi nunca sube a la red en modo uno
+  // (humanBlock 0 arriba), así que aquí un humano guionizado sube a la red en cada ataque rival (3.er toque de la CPU) y salta
+  // cuando el atacante está en el aire: el humano bloquea, el compañero IA no salta a la vez ni bloquea, sin faltas de red.
+  {
+    const f0 = failures, out = [];
+    for (const ci of [0, 1]) {
+      const st = { phases: 0, jumps: 0, human: 0, mate: 0, mateJump: 0, net: 0 };
+      for (let s = 1; s <= 6; s++) {
+        const g = S.createGame({ demo: false, seed: 9100 + s, difficulty: 'normal', ctrl: 'one', ctrlIdx: ci, points: 11 }), bot = makeBot(BOTS.bueno, s * 7 + 3);
+        let seen = -1, jumped = -1; const ev = [], mv = [0, 0];
+        for (let i = 0; i < 120 * 60 * 30 && !g.finished; i++) {
+          let inp = bot(g);
+          if (g.mode === 'rally' && g.touchTeam === 1 && g.touches === 2 && g.ball.x < 0) {
+            if (seen !== g.lastTouchT) { seen = g.lastTouchT; st.phases++; }
+            const p = g.ctrl, dx = 0.6 - p.x, dy = g.pr3.y - p.y, d = Math.hypot(dx, dy);
+            mv[0] = d > 0.15 ? dx / d : 0; mv[1] = d > 0.15 ? dy / d : 0;
+            inp = { move: mv, hit: false, jump: false, switchPlayer: false };
+            const att = g.teams[1].some(q => q.z > 0.35 && q.vz < 1.5 && Math.abs(q.x) < 4);
+            if (att && p.z === 0 && Math.abs(p.x) < 1.2 && jumped !== g.lastTouchT) { inp.jump = true; jumped = g.lastTouchT; st.jumps++; }
+            const m = S.other(g, p); if (g.defRole === 'block' && m.z > 0.3 && Math.abs(m.x) < 1.2) st.mateJump++;
+          }
+          S.step(g, DT, inp); ev.length = 0; S.drainEvents(g, ev);
+          for (const e of ev) {
+            if (e.type === 'block' && e.team === 0) { if (e.player === g.ctrl) st.human++; else st.mate++; }
+            if (e.type === 'point' && e.reason === 'net' && e.team === 1) st.net++;
+          }
+        }
+      }
+      out.push(st);
+      if (st.human < 30 || st.mate > 2 || st.mateJump > 0 || st.net > 2) fail('modo uno, bloqueo del humano (ctrlIdx ' + ci + '): ' + JSON.stringify(st));
+    }
+    if (failures === f0) console.log('modo uno: bloqueo del humano OK n.º 7 ' + JSON.stringify(out[0]) + ' · n.º 11 ' + JSON.stringify(out[1]));
   }
 }
 
