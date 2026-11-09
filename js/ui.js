@@ -547,7 +547,7 @@
             // (si acaba de salir «¡Pronto!» con su medidor, se queda: explica por qué le ha dado y hacia dónde corregir)
             if (performance.now() - missT > 700) callout('¡Te ha dado!', 0, 'neg', 1);
             else srSay('Te ha dado');
-            if (ctx.settings.showHelp !== false) bodyTipT = 1.5;
+            if (ctx.settings.coachTips !== false) bodyTipT = 1.5;
             break;
           }
           if (e.kind === 'free' && e.shot !== 'tip' && e.touch === 3 && ctx.settings.showHelp !== false && !e.dive)
@@ -1392,6 +1392,8 @@
     if (last.coachThru !== coachThru) { last.coachThru = coachThru; el.coach.classList.toggle('thru', coachThru); }
     // ---- aviso contextual + consejo ----
     var help = ctx.settings.showHelp !== false, gl = G(), touchDev = device() === 'touch';
+    // consejos (franja de arriba): ajuste propio, Ajustes · Juego · Consejos (se apaga solo al ganar el 1r partido)
+    var tips = ctx.settings.coachTips !== false || ctx.params.coach === '1';
     var pk = '', ptext = '', pcls = '', coach = '', progress = 0, clockF = -1;
     var p = g.ctrl, humanSide = playing && (!g.autopilot || ctx.debug) && !(ctx.introLeft > 0) && !introUI.quiet;
     if (humanSide && p) {
@@ -1434,7 +1436,7 @@
         // basta el aviso "¡Golpea ahora!" junto al jugador
         coach = '';
       } else if (g.mode === 'serve') {
-        coach = help ? (touchDev ? 'Saca la CPU · a recibir' : 'Saca la CPU · prepárate para la <b>recepción</b>') : '';
+        coach = tips ? (touchDev ? 'Saca la CPU · a recibir' : 'Saca la CPU · prepárate para la <b>recepción</b>') : '';
       } else if (g.mode === 'rally') {
         var w = VB.Sim && VB.Sim.hitWindow ? hw(g, p) : null;
         var wpr = w ? (w.press === w.press && w.press != null ? w.press : w.t) : 9;
@@ -1449,20 +1451,20 @@
           else if (!w && nt === 3 && g.jobs && g.jobs[0] === p && pr.x > 0 && pr.x < 3.9 && pr.t > 0.08 && pr.t < 0.62 && dist2(p, pr) < 2.9) { pk = 'jump'; ptext = '¡Salta!'; pcls = 'jump go'; }
           else if (g.touchTeam === 1 && g.touches === 2 && (g.defRole === 'block' || !g.defRole) && pr.x < 0 && pr.x > -3.9 && pr.t < 0.62 && p.x < 2.4 && Math.abs(p.y - pr.y) < 1.8) { pk = 'jump'; ptext = '¡Salta! · Bloqueo'; pcls = 'jump go'; }
         }
-        if (help && touchDev) { // táctil: una línea corta (el texto completo no cabe entre marcador y pausa)
+        if (tips && touchDev) { // táctil: una línea corta (el texto completo no cabe entre marcador y pausa)
           // (el contador de toques ya dice recepción/colocación/ataque)
           if (nt === 1) coach = 'Al círculo y ' + gl.hit;
           else if (nt === 2) coach = 'Bajo el balón y ' + gl.hit;
           else if (nt === 3) coach = gl.jump + ' y ' + gl.hit + ' arriba';
           else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump : '<b>Defiende</b> el círculo · ' + gl.sw + ' bloqueas tú';
-        } else if (help) {
+        } else if (tips) {
           if (nt === 1) coach = '1r toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al círculo y pulsa ' + gl.hit;
           else if (nt === 2) coach = '2.º toque · <b>Colocación</b>: ponte bajo el balón y pulsa ' + gl.hit;
           else if (nt === 3) coach = '3.er toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
           else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? 'La CPU va a atacar: frente al atacante, ' + gl.jump + ' para <b>bloquear</b>'
             : 'La CPU va a atacar: <b>defiende</b> el círculo · tu compañero bloquea · ' + gl.sw + ' para bloquear tú';
         }
-        if (bodyTipT > 0 && help && !touchDev) coach = 'Pulsa ' + gl.hit + ' antes de que llegue el balón';
+        if (bodyTipT > 0 && tips && !touchDev) coach = 'Pulsa ' + gl.hit + ' antes de que llegue el balón';
         if (guideOn(g)) guideCheck(g, p, w, nt, gl);
       }
     }
@@ -1520,7 +1522,7 @@
       last.csec = csec;
     }
     // el consejo espera a que no haya banner (punto, SET n, punto de set) ni tarjeta guiada, y es la capa que antes cede
-    var showCoach = coach && !(ctx.introLeft > 0) && !introUI.quiet && !Lban && !(guideT > 0) && g.mode !== 'point' && (nLay + (promptOk ? 1 : 0)) < 2 && (help || g.mode === 'serve') && (record.played < 3 || ctx.params.coach === '1' || (g.mode === 'serve' && !touchDev));
+    var showCoach = coach && !(ctx.introLeft > 0) && !introUI.quiet && !Lban && !(guideT > 0) && g.mode !== 'point' && (nLay + (promptOk ? 1 : 0)) < 2 && tips;
     // táctil: cada tipo de consejo se ve 3 s como mucho por partido (luego estorba más que ayuda)
     if (showCoach && touchDev) {
       var ckey = g.mode === 'serve' ? 's' + (myServe ? 1 : 0) : 'r' + nt + (g.touchTeam === 1 && g.touches === 2 ? 'b' : '');
@@ -1820,6 +1822,8 @@
     var isNew = false;
     if (!ctx.debug) {
       record.played++; if (win) { record.wins++; record.winRun++; } else record.winRun = 0;
+      // los consejos del partido acompañan hasta la primera victoria; luego se apagan (se reactivan en Ajustes · Juego · Consejos)
+      if (win && record.wins === 1 && ctx.settings.coachTips !== false) ctx.actions.setSetting('coachTips', false);
       if (T[0].best > record.bestStreak) { record.bestStreak = T[0].best; isNew = record.bestStreak >= 3; } // las rachas cortas no son récord
       saveRecord();
     }
@@ -2017,6 +2021,7 @@
     muted: { vals: [false, true], labels: ['Sí', 'No'] },
     quality: { vals: ['auto', 'high', 'medium', 'low'], labels: ['Auto', 'Alta', 'Media', 'Baja'] },
     showHelp: { vals: [true, false], labels: ['Sí', 'No'] },
+    coachTips: { vals: [true, false], labels: ['Sí', 'No'] },
     // Accesibilidad (UI-16)
     camStable: { vals: [true, false], labels: ['Sí', 'No'] },
     rumble: { vals: [true, false], labels: ['Sí', 'No'] },

@@ -64,17 +64,22 @@
     // sfxVol/musicVol: 0..1 (los lee audio.js en onSettings)
     // Accesibilidad (UI-16): camStable (cámara sin temblores ni sacudidas; la lee camera.js), rumble (vibración de mando y
     // móvil; input.js), hudScale (1 | 1,15 | 1,3: tamaño del HUD y de las hojas; ui.js), softFlash (destellos suaves; arena/fx/ui)
-    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, camSens: 1, sfxVol: 1, musicVol: 0.75,
+    // coachTips: consejos del partido (franja de arriba). Se ven hasta la primera victoria: ui.js los apaga al ganar el 1r partido
+    // y se pueden volver a encender en Ajustes · Juego.
+    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, camSens: 1, sfxVol: 1, musicVol: 0.75,
       camStable: false, rumble: true, hudScale: 1, softFlash: false };
     var saved = false;
-    try { var raw = localStorage.getItem('voley3d.settings'); if (raw) { saved = true; var o = JSON.parse(raw); for (var k in o) if (k in s && typeof o[k] === typeof s[k]) s[k] = o[k]; } } catch (e) { }
+    var o = null;
+    try { var raw = localStorage.getItem('voley3d.settings'); if (raw) { saved = true; o = JSON.parse(raw); for (var k in o) if (k in s && typeof o[k] === typeof s[k]) s[k] = o[k]; } } catch (e) { }
     // Jugador nuevo (sin ajustes guardados ni partidos jugados): empieza en Fácil. Normal contra un novato
     // es un muro (simtest: un bot novato gana ~30 % de los puntos en Normal y ~54 % en Fácil).
     // Las escenas de depuración siguen en Normal para que las capturas sean comparables.
+    var rec = null; try { rec = JSON.parse(localStorage.getItem('voley3d.record') || 'null'); } catch (e) { }
     if (!saved && !Q.debug) {
-      var rec = null; try { rec = JSON.parse(localStorage.getItem('voley3d.record') || 'null'); } catch (e) { }
       if (!rec || !(rec.played > 0)) s.difficulty = 'easy';
     }
+    // ajustes de antes de existir coachTips: quien ya ha ganado algún partido empieza sin consejos (como si acabara de ganar)
+    if (!Q.debug && rec && rec.wins > 0 && !(o && 'coachTips' in o)) s.coachTips = false;
     if (DIFFS.indexOf(s.difficulty) < 0) s.difficulty = 'normal';
     if (['auto', 'high', 'medium', 'low'].indexOf(s.quality) < 0) s.quality = 'auto';
     s.camSens = Math.max(0.5, Math.min(1.5, +s.camSens || 1));
