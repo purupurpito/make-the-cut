@@ -2096,6 +2096,11 @@
     // control: los dos jugadores (el control pasa a quien toca) o solo uno (la IA lleva al compañero; sim: g.ctrlMode)
     ctrlMode: { vals: ['both', 'one'], labels: ['Los dos', 'Uno'] },
     coachTips: { vals: [true, false], labels: ['Sí', 'No'] },
+    // Equipación (Ajustes · Equipación): muestras de color; players.js setKit deriva el resto de tonos
+    kitShirt: { vals: [0xff5a2c, 0xd8262e, 0xf2c230, 0x1f9a4a, 0x32b5e8, 0x7b3fd1, 0x22252c, 0xf2f4f8], labels: ['<i class="sw" style="background:#ff5a2c" title="Naranja"></i>', '<i class="sw" style="background:#d8262e" title="Rojo"></i>', '<i class="sw" style="background:#f2c230" title="Amarillo"></i>', '<i class="sw" style="background:#1f9a4a" title="Verde"></i>', '<i class="sw" style="background:#32b5e8" title="Celeste"></i>', '<i class="sw" style="background:#7b3fd1" title="Morado"></i>', '<i class="sw" style="background:#22252c" title="Negro"></i>', '<i class="sw" style="background:#f2f4f8" title="Blanco"></i>'] },
+    kitAccent: { vals: [0xffb238, 0xffffff, 0x1a1c22, 0xd9a520, 0x8fd3ff, 0xff4040], labels: ['<i class="sw" style="background:#ffb238" title="Ámbar"></i>', '<i class="sw" style="background:#ffffff" title="Blanco"></i>', '<i class="sw" style="background:#1a1c22" title="Negro"></i>', '<i class="sw" style="background:#d9a520" title="Dorado"></i>', '<i class="sw" style="background:#8fd3ff" title="Celeste"></i>', '<i class="sw" style="background:#ff4040" title="Rojo"></i>'] },
+    kitShorts: { vals: [0x191b22, 0xeceef2, 0x18244a, 0xb3161d, 0x5a606b], labels: ['<i class="sw" style="background:#191b22" title="Negro"></i>', '<i class="sw" style="background:#eceef2" title="Blanco"></i>', '<i class="sw" style="background:#18244a" title="Marino"></i>', '<i class="sw" style="background:#b3161d" title="Rojo"></i>', '<i class="sw" style="background:#5a606b" title="Gris"></i>'] },
+    kitPattern: { vals: ['diag', 'liso', 'franjas', 'rayas'], labels: ['Diagonal', 'Liso', 'Franjas', 'Rayas'] },
     // Accesibilidad (UI-16)
     camStable: { vals: [true, false], labels: ['Sí', 'No'] },
     rumble: { vals: [true, false], labels: ['Sí', 'No'] },

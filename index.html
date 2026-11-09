@@ -903,6 +903,12 @@ h2 span{color:var(--hot)}
 .seg{display:flex;gap:3px;padding:3px;border-radius:10px;background:rgba(0,0,0,.35)}
 .seg span{padding:7px 11px;border-radius:7px;font:800 14px var(--display);letter-spacing:.1em;color:var(--muted);transition:background .2s,color .2s}
 .seg span.on{background:var(--t0);color:#1d0c02;box-shadow:0 4px 12px rgba(255,90,40,.35)}
+/* Equipación: muestras de color (la elegida, con aro) */
+.seg.kit{flex-wrap:nowrap;flex-shrink:0}
+.seg.kit span{padding:5px}
+.seg.kit .sw{display:block;width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.25)}
+.seg.kit span.on{background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 2px #fff}
+@media (max-width:900px){.seg.kit{gap:1px}.seg.kit span{padding:3px}.seg.kit .sw{width:15px;height:15px}}
 .slider .v{min-width:3.2em;text-align:right;font-variant-numeric:tabular-nums}
 .slider{display:flex;align-items:center;gap:10px;font:800 15px var(--display);color:var(--gold);letter-spacing:.06em;transition:opacity .2s}
 .slider .trk{position:relative;width:150px;height:8px;border-radius:5px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px var(--line)}
@@ -928,8 +934,10 @@ h2 span{color:var(--hot)}
 /* con anchura: dos columnas (Audio · Imagen · Juego | Accesibilidad) */
 @media (min-width:600px){
   #panel .sheet.wide{max-width:1000px}
-  .sheet.wide .opts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-auto-flow:column;grid-template-rows:auto auto auto;column-gap:18px;row-gap:8px;align-items:start}
-  .sheet.wide #optA11y{grid-column:2;grid-row:1/span 3}
+  .sheet.wide .opts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-auto-flow:column;grid-template-rows:auto auto auto auto;column-gap:18px;row-gap:8px;align-items:start}
+  .sheet.wide #optA11y{grid-column:2;grid-row:1/span 2}
+  .sheet.wide #optKit{grid-column:2;grid-row:3/span 2}
+  .sheet.wide #optKit .opt-h{margin-top:0}
   .sheet.wide .opt-g{gap:6px}
   .sheet.wide .slider .trk{width:120px}
   .sheet.wide #optA11y .opt-h{margin-top:0}
@@ -1376,6 +1384,13 @@ h2 span{color:var(--hot)}
             <p class="opt-h">Juego</p>
             <button class="opt" data-opt="showHelp"><span>Ayudas en pantalla<small>Avisos de «¡Golpea!» y «¡Salta!»</small></span><span class="seg" data-seg="showHelp"></span></button>
             <button class="opt" data-opt="coachTips"><span>Consejos<small>Qué hacer en cada toque · se apagan al ganar tu primer partido</small></span><span class="seg" data-seg="coachTips"></span></button>
+          </div>
+          <div class="opt-g" id="optKit">
+            <p class="opt-h">Equipación</p>
+            <button class="opt opt-kit" data-opt="kitShirt"><span>Camiseta<small>Color de tu equipo</small></span><span class="seg kit" data-seg="kitShirt"></span></button>
+            <button class="opt opt-kit" data-opt="kitAccent"><span>Detalles<small>Franjas, ribetes y zapatillas</small></span><span class="seg kit" data-seg="kitAccent"></span></button>
+            <button class="opt opt-kit" data-opt="kitShorts"><span>Pantalón</span><span class="seg kit" data-seg="kitShorts"></span></button>
+            <button class="opt" data-opt="kitPattern"><span>Diseño<small>Si la CPU se parece, cambia de equipación</small></span><span class="seg" data-seg="kitPattern"></span></button>
           </div>
           <div class="opt-g" id="optA11y">
             <p class="opt-h">Accesibilidad</p>

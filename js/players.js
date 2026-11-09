@@ -43,6 +43,55 @@
     { base: 0x3363ea, top: 0x4f7ef6, accent: 0xbcd8ff, dark: 0x0b2766, trim: 0xffffff, shorts: 0x0b0e17, sole: 0x2f7bff, band: 0xbcd8ff, pad: 0x141a2a,
       yoke: 0xf4f8ff, panel: 0xf4f8ff }
   ];
+  // ---------- Equipación personalizable (Ajustes · Equipación) ----------
+  // settings.kitShirt / kitAccent / kitShorts (colores 0xRRGGBB) y kitPattern ('diag' | 'liso' | 'franjas' | 'rayas').
+  // El equipo 0 se deriva de esos colores; la CPU usa su equipación azul o, si se parece a la tuya, una alternativa.
+  var TEAM0_DEF = TEAMS[0], CPU_KITS = [TEAMS[1],
+    { base: 0x1f9a4a, top: 0x36b863, accent: 0xf4f8ff, dark: 0x0a3d1c, trim: 0xffffff, shorts: 0x0b0e17, sole: 0x22b45a, band: 0xf4f8ff, pad: 0x141a2a, yoke: 0xf4f8ff, panel: 0xf4f8ff },
+    { base: 0xd8262e, top: 0xea4048, accent: 0xffffff, dark: 0x5a0a0e, trim: 0xffffff, shorts: 0x0b0e17, sole: 0xe8323a, band: 0xffffff, pad: 0x141a2a, yoke: 0xf4f8ff, panel: 0xf4f8ff },
+    { base: 0xf2f4f8, top: 0xffffff, accent: 0x1b2b5a, dark: 0x1b2b5a, trim: 0x1b2b5a, shorts: 0x1b2b5a, sole: 0x1b2b5a, band: 0x1b2b5a, pad: 0x141a2a, numFill: '#1b2b5a' }];
+  var kitSig = 0;
+  function mixHex(a, b, t) {
+    var ar = a >> 16 & 255, ag = a >> 8 & 255, ab = a & 255, br = b >> 16 & 255, bg = b >> 8 & 255, bb = b & 255;
+    return (Math.round(ar + (br - ar) * t) << 16) | (Math.round(ag + (bg - ag) * t) << 8) | Math.round(ab + (bb - ab) * t);
+  }
+  function lumHex(h) { return (0.2126 * (h >> 16 & 255) + 0.7152 * (h >> 8 & 255) + 0.0722 * (h & 255)) / 255; }
+  function hueSat(h) {
+    var r = (h >> 16 & 255) / 255, g = (h >> 8 & 255) / 255, b = (h & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, hu = 0;
+    if (d > 0) hu = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [hu * 60, mx ? d / mx : 0, mx];
+  }
+  /** Parecido visual entre dos colores (0 = idénticos): tono si ambos tienen color; si no, luminosidad. */
+  function kitDist(a, b) {
+    var A = hueSat(a), B = hueSat(b);
+    if (A[1] < 0.25 || B[1] < 0.25) return Math.abs(lumHex(a) - lumHex(b)) * 2 + (A[1] < 0.25 && B[1] < 0.25 ? 0 : 0.6);
+    var dh = Math.abs(A[0] - B[0]); dh = Math.min(dh, 360 - dh); return dh / 60 + Math.abs(lumHex(a) - lumHex(b));
+  }
+  function setKit(st) {
+    st = st || {};
+    var shirt = typeof st.kitShirt === 'number' ? st.kitShirt : TEAM0_DEF.base;
+    var acc = typeof st.kitAccent === 'number' ? st.kitAccent : TEAM0_DEF.accent;
+    var sh = typeof st.kitShorts === 'number' ? st.kitShorts : TEAM0_DEF.shorts;
+    var pat = st.kitPattern || 'diag';
+    var light = lumHex(shirt) > 0.62;
+    var t0 = { base: shirt, top: mixHex(shirt, 0xffffff, 0.14), accent: acc, dark: light ? 0x20242e : mixHex(shirt, 0x000000, 0.62),
+      trim: light ? 0x20242e : 0xffffff, shorts: sh, sole: acc, band: acc, pad: 0x1d1f26, pattern: pat, numFill: light ? '#20242e' : '#ffffff' };
+    var best = CPU_KITS[0], bd = -1;
+    for (var i = 0; i < CPU_KITS.length; i++) {   // la azul de siempre si se distingue bien; si no, la alternativa más distinta
+      var d = Math.min(kitDist(shirt, CPU_KITS[i].base), kitDist(sh, CPU_KITS[i].shorts) + 1.5);
+      if (i === 0 && d >= 1.1) { best = CPU_KITS[0]; bd = 9; break; }
+      if (d > bd) { bd = d; best = CPU_KITS[i]; }
+    }
+    var sig = [shirt, acc, sh, pat].join(':');
+    if (sig === TEAMS._sig) return false;
+    TEAMS[0] = t0; TEAMS[1] = best; TEAMS._sig = sig; kitSig++;
+    for (var key in cache) {   // fuera los atletas construidos con la equipación anterior (texturas y mallas)
+      var r = cache[key];
+      try { if (r.skin && r.skin.material) { if (r.skin.material.map) r.skin.material.map.dispose(); r.skin.material.dispose(); } for (var gi in r.geos) if (r.geos[gi] && r.geos[gi].dispose) r.geos[gi].dispose(); } catch (e) { }
+      delete cache[key];
+    }
+    return true;
+  }
   // Por id de jugador: piel, pelo, peinado, escala de altura
   var LOOKS = [
     { skin: 0xdba27a, hair: 0x2a1a10, style: 'crop', h: 1.0 },
@@ -190,12 +239,22 @@
         g.quadraticCurveTo(o - W * 0.25, 40, o - W * 0.5, 25); g.fill();
       });
     }
-    // franja diagonal en el pecho (delante, cruza la costura u=0)
-    wrap(function (o) {
-      g.fillStyle = hexCss(tc.accent); g.globalAlpha = 0.9;
-      g.beginPath(); g.moveTo(o - 70, 120); g.lineTo(o + 70, 70); g.lineTo(o + 70, 86); g.lineTo(o - 70, 136); g.fill();
+    // diseño de la camiseta (equipación personalizable, setKit): 'diag' franja diagonal en el pecho (la de siempre),
+    // 'liso' sin franja, 'franjas' dos bandas horizontales, 'rayas' rayas verticales finas
+    var pat = tc.pattern || 'diag';
+    if (pat === 'diag') {
+      wrap(function (o) {
+        g.fillStyle = hexCss(tc.accent); g.globalAlpha = 0.9;
+        g.beginPath(); g.moveTo(o - 70, 120); g.lineTo(o + 70, 70); g.lineTo(o + 70, 86); g.lineTo(o - 70, 136); g.fill();
+        g.globalAlpha = 1;
+      });
+    } else if (pat === 'franjas') {
+      g.fillStyle = hexCss(tc.accent); g.globalAlpha = 0.92; g.fillRect(0, 150, W, 22); g.fillRect(0, 180, W, 10); g.globalAlpha = 1;
+    } else if (pat === 'rayas') {
+      g.fillStyle = hexCss(tc.accent); g.globalAlpha = 0.55;
+      for (var rx = 8; rx < W; rx += 32) g.fillRect(rx, 30, 9, H - 42);
       g.globalAlpha = 1;
-    });
+    }
     // canesú en la espalda (parte alta) en oscuro
     if (!tc.yoke) { g.fillStyle = hexCss(tc.dark); g.globalAlpha = 0.35; g.fillRect(150, 0, 212, 22); g.globalAlpha = 1; }
     // cuello en pico (delante) y ribete del cuello
@@ -221,7 +280,7 @@
       g.save(); g.translate(cx, (r0 + r1) / 2); g.scale(sx, 1);
       g.font = 'italic 900 ' + Math.round(h * 1.12) + 'px ' + NUM_FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.lineJoin = 'round'; g.lineWidth = h * 0.13; g.strokeStyle = hexCss(tc.dark);
-      g.strokeText(s, 0, h * 0.06); g.fillStyle = '#ffffff'; g.fillText(s, 0, h * 0.06);
+      g.strokeText(s, 0, h * 0.06); g.fillStyle = tc.numFill || '#ffffff'; g.fillText(s, 0, h * 0.06);
       g.restore();
     }
     one(256, chest0 + 0.19, chest0 - 0.03, 0.95);           // espalda (~20 cm)
@@ -2880,7 +2939,7 @@
   }
 
   function rigFor(p) {
-    var key = p.id + ':' + p.team + ':' + p.num;
+    var key = p.id + ':' + p.team + ':' + p.num + ':' + kitSig;
     var r = cache[key];
     if (!r) { r = cache[key] = buildRig(p); }
     r.p = p; return r;
@@ -3104,6 +3163,11 @@
       var aniso = rank > 0 ? 4 : 1;
       for (var k in cache) { var m = cache[k].skin.material.map; if (m && m.anisotropy !== aniso) { m.anisotropy = aniso; m.needsUpdate = true; } }
     },
+    /** Equipación personalizable: aplica settings.kit* (ver setKit arriba). Con g, reconstruye ya los atletas del partido
+     *  visible (la demo del menú o el partido en pausa). Devuelve true si cambió algo. */
+    setKit: function (st, g) { var ch = setKit(st); if (ch && g) this.onGameStart(g); return ch; },
+    /** Colores actuales (para la UI): {t0: {base, accent, shorts}, t1: {...}}. */
+    kitColors: function () { return { t0: { base: TEAMS[0].base, accent: TEAMS[0].accent, shorts: TEAMS[0].shorts }, t1: { base: TEAMS[1].base, accent: TEAMS[1].accent, shorts: TEAMS[1].shorts } }; },
     onGameStart: function (g) {
       for (var i = 0; i < rigs.length; i++) groupRoot.remove(rigs[i].root);
       rigs.length = 0; byId.length = 0;

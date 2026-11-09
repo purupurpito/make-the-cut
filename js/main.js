@@ -66,7 +66,7 @@
     // móvil; input.js), hudScale (1 | 1,15 | 1,3: tamaño del HUD y de las hojas; ui.js), softFlash (destellos suaves; arena/fx/ui)
     // coachTips: consejos del partido (franja de arriba). Se ven hasta la primera victoria: ui.js los apaga al ganar el 1r partido
     // y se pueden volver a encender en Ajustes · Juego.
-    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, ctrlMode: 'both', camSens: 1, sfxVol: 1, musicVol: 0.75,
+    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', camSens: 1, sfxVol: 1, musicVol: 0.75,
       camStable: false, rumble: true, hudScale: 1, softFlash: false };
     var saved = false;
     var o = null;
@@ -86,7 +86,9 @@
     s.sfxVol = Math.max(0, Math.min(1, isFinite(+s.sfxVol) ? +s.sfxVol : 1));
     s.musicVol = Math.max(0, Math.min(1, isFinite(+s.musicVol) ? +s.musicVol : 0.75));
     if ([1, 1.15, 1.3].indexOf(s.hudScale) < 0) s.hudScale = 1;
-    if ([11, 15, 21, 25].indexOf(s.setPoints) < 0) s.setPoints = 25;   // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS)
+    if ([11, 15, 21, 25].indexOf(s.setPoints) < 0) s.setPoints = 25;
+    // equipación: solo colores de las paletas de ui.js (OPT.kit*) y diseños conocidos
+    if (['diag', 'liso', 'franjas', 'rayas'].indexOf(s.kitPattern) < 0) s.kitPattern = 'diag';   // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS)
     if (s.ctrlMode !== 'one') s.ctrlMode = 'both';                      // control: los dos jugadores o solo uno (sim: g.ctrlMode)
     if (Q.diff && DIFFS.indexOf(Q.diff) >= 0) s.difficulty = Q.diff;
     return s;
@@ -270,6 +272,7 @@
   function setGame(g) {
     ctx.game = g; ctx.timeScale = 1; acc = 0;
     pendingEvents.length = 0;
+    call('Players', 'setKit', ctx.settings, null); // equipación personalizada (Ajustes · Equipación) antes de construir atletas
     Sim.drainEvents(g, pendingEvents); // eventos iniciales (newMatch, serveReady...) se entregan en el primer frame
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onGameStart', g);
     fixShadowDepth(); // los jugadores se reconstruyen en onGameStart
@@ -337,6 +340,7 @@
     if (ctx.settings[k] === v) return;
     ctx.settings[k] = v; saveSettings();
     if (k === 'muted') call('Audio', 'setMuted', !!v);
+    if (k.indexOf('kit') === 0 && ctx.game) call('Players', 'setKit', ctx.settings, ctx.game); // vista previa en vivo
     if (k === 'quality') { aq.downs = 0; aq.lastDown = -99; aq.noScale = false; aq.chk = null; applyQuality(pickQuality()); }
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', ctx.settings, k);
   };

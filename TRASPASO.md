@@ -227,6 +227,15 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - **Modo Carrera** (9-nov-2026, el que más ilusión le hace a Ferran; el más largo): un jugador con estadísticas bajas que se
   inscribe en equipos modestos, recibe ofertas de equipos mejores, mejora sus estadísticas y acaba jugando VNL, Olimpiadas, etc.
   Depende del 6v6, del modo de un solo jugador y de las posiciones/estadísticas.
+- **Error arbitral y challenge por nivel de competición** (concepto de Ferran, 9-nov-2026; para Carrera y modos futuros):
+  | Competición | Error arbitral | Challenge |
+  |---|---|---|
+  | Partido rápido | el de base actual (`VB.REF_ERR`), sin modificador | sí |
+  | Ligas bajas | alto | no |
+  | Ligas medias | medio | no |
+  | Ligas altas | bajo, porque hay jueces de línea | no |
+  | Ligas muy altas | bajo | sí |
+  | Olímpicas y similares | casi nulo | sí (casi no hace falta) |
 - **Más modos de juego**: el selector de puntos por set es la base de «Partido rápido»; los modos nuevos irán al lado.
 - **Textos**: Ferran revisará el resto de textos y botones (lista numerada A–D que se le pasó el 9-nov-2026).
   Pregunta abierta: ¿«3.er» → «3r» y «2.º» → «2º»?
@@ -234,6 +243,10 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   su verificación y el QA final. Solo si Ferran lo pide.
 
 ### Hecho (9-nov-2026)
+- Equipación personalizable (Ajustes · Equipación): color de camiseta (8), detalles (6), pantalón (5) y diseño (Diagonal, Liso,
+  Franjas, Rayas). players.js `setKit` deriva los tonos (dorsal oscuro en camisetas claras) y la CPU cambia a una equipación
+  alternativa (roja, verde o blanca) si la suya se parece a la tuya. Vista previa en vivo sobre la demo del menú.
+  Pendiente: las muestras de color son pequeñas en el móvil (~21 px); la UI (marcador, tutorial) sigue con el naranja/azul.
 - Selector «Control: Los dos / Uno» en el menú (ajuste `ctrlMode`, `createGame({ctrl})`, `g.ctrlMode`). En modo Uno el humano lleva
   siempre a `teams[0][0]` y la IA al compañero (toques, posición, defensa/bloqueo y su saque); sin cambio de jugador ni botón ⇄.
   El bloqueo se reparte de forma dinámica durante la colocación de la CPU (sim.js `updateDefense`): si el humano sube a la red,
