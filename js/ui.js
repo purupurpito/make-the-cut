@@ -147,7 +147,7 @@
     function () { gymBan('¡Remate!', 'Recepción fuera', 'CAMBIO DE SAQUE', 'show win r2 at-l'); gymPr('hit go bar anch', '¡Golpea ahora!', 'key', 1); gymBug('show t0 two', 1);
       el.callout.className = 'show c0'; el.guide.className = 'show'; el.rl.className = 'rl on'; el.rlN.className = 'bump'; el.coach.className = ''; el.touchbar.className = ''; el.tb[0].className = 'tb-seg done'; el.tb[1].className = 'tb-seg next';
       el.tag.hidden = false; el.tag.textContent = 'PUNTO DE SET'; gymTouch(0); gymStamp('on pf', ''); el.off.className = 'on'; el.off.style.transform = 'translate3d(60px,' + Math.round(ctx.height * 0.5) + 'px,0)'; },
-    function () { gymBan('Punto de set', 'Un punto para ganar el 1.er set', '', 'show gold compact'); gymPr('jump go anch thru', '¡Salta! · Bloqueo', 'key', 1); gymBug('show t1', 0);
+    function () { gymBan('Punto de set', 'Un punto para ganar el 1r set', '', 'show gold compact'); gymPr('jump go anch thru', '¡Salta! · Bloqueo', 'key', 1); gymBug('show t1', 0);
       el.callout.className = 'show good'; el.coach.className = 'faint'; el.rl.className = 'rl on hot'; el.rlN.className = ''; el.touchbar.className = 'thru'; el.tag.className = 'sb-tag cpu'; el.guide.className = 'out'; gymTouch(1); gymStamp('on gd', 'un pelín tarde'); el.off.className = 'on t1'; },
     function () { gymBan('Gana la CPU', 'Sets 0-2', 'SETS 0-2', 'show lose t3 long'); gymPr('hit clk urg anch', 'Saca ya <span class="nu">1 s</span>', 'key', 1);
       gymBug('show t0 out fast', 0); el.rl.className = 'rl on end'; el.coach.className = 'thru'; gymTouch(2);
@@ -156,7 +156,7 @@
       if (gym.pre) gymTouch(0); else gymTouchOff(); gymWipe('on cutw'); },
     // tarjeta de presentación (UI-14) y cortinilla de pantalla de la casa: sin ensayar, la tarjeta costaba un frame de 55-85 ms
     // ~0,1 s después de startMatch (raster en la GPU con compilación de shaders de Skia; traza de smtrace.js)
-    function () { gymBan('Cambio de campo', 'Fin del 1.er set', '', 'show neutral fastin mid'); gymPr('wait anch', 'Espera el silbato', 'key', 0); el.pbug.className = ''; gymTouchOff();
+    function () { gymBan('Cambio de campo', 'Fin del 1r set', '', 'show neutral fastin mid'); gymPr('wait anch', 'Espera el silbato', 'key', 0); el.pbug.className = ''; gymTouchOff();
       gymIntro(); gymWipe('on brand cutw'); }
   ];
   // controles táctiles de input.js (solo en táctil): se enseñan con sus estados (listo, aro, pulsado, apagado, en reposo) y se
@@ -614,7 +614,7 @@
     }
   }
   var missT = -9999;
-  var ORD = ['', '1.er', '2.º', '3.er'], pendCourt = null, courtNext = null, newSetShown = 0, bodyTipT = 0, lastBn2 = '', lastSub = '', held = null;
+  var ORD = ['', '1r', '2.º', '3.er'], pendCourt = null, courtNext = null, newSetShown = 0, bodyTipT = 0, lastBn2 = '', lastSub = '', held = null;
   var OUTK = { serve: 'Saque fuera', pass: 'Recepción fuera', set: 'Colocación fuera', spike: 'Remate fuera', free: 'Balón fuera' };
   // sin 'free': un balón libre (3.er toque sin saltar) es la opción floja y no se celebra
   var PERFECT = { pass: 'Recepción perfecta', set: 'Colocación perfecta', spike: '¡Remate perfecto!', serve: '¡Saque perfecto!' };
@@ -1266,8 +1266,8 @@
     // (UI-18: el nombre del toque ya lo dice el contador de toques, justo encima: aquí solo el ordinal)
     var k = nt === 1 ? 'Primer toque' : nt === 2 ? 'Segundo toque' : 'Tercer toque';
     var shortT = device() === 'touch' && ctx.height <= 420; // móvil apaisado: tarjeta de una línea
-    var txt = shortT ? (nt === 1 ? 'Al aro amarillo y ' + gl.hit : nt === 2 ? 'Bajo el balón y ' + gl.hit : gl.jump + ' y ' + gl.hit + ' arriba')
-      : nt === 1 ? 'Ve al aro amarillo y pulsa ' + gl.hit : nt === 2 ? 'Ponte bajo el balón y pulsa ' + gl.hit : gl.jump + ' para saltar · ' + gl.hit + ' arriba';
+    var txt = shortT ? (nt === 1 ? 'Al círculo y ' + gl.hit : nt === 2 ? 'Bajo el balón y ' + gl.hit : gl.jump + ' y ' + gl.hit + ' arriba')
+      : nt === 1 ? 'Ve al círculo y pulsa ' + gl.hit : nt === 2 ? 'Ponte bajo el balón y pulsa ' + gl.hit : gl.jump + ' para saltar · ' + gl.hit + ' arriba';
     el.guideK.textContent = k.toUpperCase(); el.guideT.innerHTML = txt;
     el.guide.className = ''; void el.guide.offsetWidth; el.guide.className = 'show';
     guideT = 2.4;
@@ -1451,16 +1451,16 @@
         }
         if (help && touchDev) { // táctil: una línea corta (el texto completo no cabe entre marcador y pausa)
           // (el contador de toques ya dice recepción/colocación/ataque)
-          if (nt === 1) coach = 'Al aro amarillo y ' + gl.hit;
+          if (nt === 1) coach = 'Al círculo y ' + gl.hit;
           else if (nt === 2) coach = 'Bajo el balón y ' + gl.hit;
           else if (nt === 3) coach = gl.jump + ' y ' + gl.hit + ' arriba';
-          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump : '<b>Defiende</b> el aro · ' + gl.sw + ' bloqueas tú';
+          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump : '<b>Defiende</b> el círculo · ' + gl.sw + ' bloqueas tú';
         } else if (help) {
-          if (nt === 1) coach = '1.er toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al aro amarillo y pulsa ' + gl.hit;
+          if (nt === 1) coach = '1r toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al círculo y pulsa ' + gl.hit;
           else if (nt === 2) coach = '2.º toque · <b>Colocación</b>: ponte bajo el balón y pulsa ' + gl.hit;
           else if (nt === 3) coach = '3.er toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
           else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? 'La CPU va a atacar: frente al atacante, ' + gl.jump + ' para <b>bloquear</b>'
-            : 'La CPU va a atacar: <b>defiende</b> el aro · tu compañero bloquea · ' + gl.sw + ' para bloquear tú';
+            : 'La CPU va a atacar: <b>defiende</b> el círculo · tu compañero bloquea · ' + gl.sw + ' para bloquear tú';
         }
         if (bodyTipT > 0 && help && !touchDev) coach = 'Pulsa ' + gl.hit + ' antes de que llegue el balón';
         if (guideOn(g)) guideCheck(g, p, w, nt, gl);
@@ -2160,11 +2160,11 @@
         segs: [{ a: [10.0, -1.5, 2.7], b: [-6.2, 1.6, 0.2], apex: 4.3, dur: 1.5, who: 0 }], ring: [-6.2, 1.6], swing: [[0, 0, 0.3]] },
       text: function (g) { return 'Con ' + g.move + ' te desplazas por el fondo. ' + g.serve + ' lanza el balón para un saque flotante; ' + g.jump + ', para un <b>saque en salto</b>. Vuelve a pulsar ' + g.serve + ' cuando baje a tu mano y apunta con ' + g.aim + '.'; },
       rule: '<b>Ace</b> (punto directo de saque): el balón cae en el campo rival o la recepción no se controla. Tienes <b>8 segundos</b> para sacar; si sale fuera o pasa por fuera de las antenas, punto para el rival.' },
-    { step: 'Paso 2 de 6', title: '1.er toque · Recepción', fig: {
+    { step: 'Paso 2 de 6', title: '1r toque · Recepción', fig: {
         players: [{ t: 0, x: 6, y: -1.5, you: 1, lbl: '1' }, { t: 0, x: 1.8, y: 1.2, lbl: '2' }, { t: 1, x: -9.8, y: 1 }, { t: 1, x: -3.5, y: -2 }],
         segs: [{ a: [-9.5, 1, 2.7], b: [5.9, -1.5, 0.85], apex: 4.1, dur: 1.3 }, { a: [5.9, -1.5, 0.85], b: [1.8, 1.2, 2.3], apex: 4.4, dur: 1.0, who: 0 }], ring: [6, -1.5], swing: [[0, 1.25, 0.3]] },
-      text: function (g) { return 'Cuando el balón viene a tu campo aparece un <b>aro amarillo</b> donde tienes que jugarlo; se cierra y se llena en el momento de pulsar. Llega al aro y pulsa ' + g.hit + ': el juego hace la <b>recepción</b> de antebrazos hacia tu compañero.'; },
-      rule: 'Tras un remate rival el 1.er toque se llama <b>defensa</b>. Tú solo te colocas y golpeas: el tipo de toque lo elige el juego.' },
+      text: function (g) { return 'Cuando el balón viene a tu campo aparece un <b>círculo</b> donde tienes que jugarlo; se hace más pequeño hasta el momento de pulsar. Llega al círculo y pulsa ' + g.hit + ': el juego hace la <b>recepción</b> de antebrazos hacia tu compañero.'; },
+      rule: 'Tú solo te colocas y golpeas: el tipo de toque lo elige el juego.' },
     { step: 'Paso 3 de 6', title: '2.º toque · Colocación', fig: {
         players: [{ t: 0, x: 4.2, y: -2.4, lbl: '1' }, { t: 0, x: 1.8, y: 1.2, you: 1, lbl: '2' }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }],
         segs: [{ a: [3.2, -1.5, 3.4], b: [1.8, 1.2, 2.3], apex: 4.4, dur: 0.7 }, { a: [1.8, 1.2, 2.3], b: [1.1, -2.4, 3.0], apex: 5.3, dur: 1.3, who: 1 }], ring: [1.8, 1.2], swing: [[1, 0.65, 0.3]] },
@@ -2191,7 +2191,6 @@
     '<li><b>Red</b>Tocar la red entre las antenas mientras se juega el balón es falta. Si el balón la toca y pasa, el juego sigue.</li>' +
     '<li><b>4 toques</b>Un equipo toca el balón más de 3 veces (el bloqueo no cuenta).</li>' +
     '<li><b>Dobles</b>El mismo jugador toca el balón dos veces seguidas.</li>' +
-    '<li><b>Cuerpo</b>Si el balón te da en el cuerpo, cuenta como toque.</li>' +
     '<li><b>Falta de saque: 8 segundos</b>Tras el silbato del árbitro tienes 8 segundos para sacar.</li>' +
     '<li><b>Ataque sobre el saque</b>No se puede rematar ni bloquear el saque rival por encima de la red.</li>' +
     '<li><b>Cambio de campo</b>Al acabar cada set y a los 8 puntos del set decisivo.</li>' +

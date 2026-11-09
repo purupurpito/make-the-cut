@@ -205,6 +205,15 @@ Detalle por owner en `notes/<owner>.md` («Pulido ola 3» y el log «Aplicado �
 - Por emulación, el p5 de alta y media se queda en ~55 fps (ft95 ~18 ms): es el ritmo de frames del headless, no tirones (≤ 3 frames
   de > 33 ms en 20 s).
 
+## Pendiente (pedido por Ferran)
+
+- **[PENDIENTE] Modo de un solo jugador controlado**: poder jugar controlando solo a un jugador (por ejemplo, ser el colocador)
+  y que la IA lleve al compañero en todos sus toques, en vez de que el control pase solo a quien da el siguiente toque.
+  Pedido el 9-nov-2026; aún sin diseñar ni empezar.
+- **Gráficos cartoonish**: cambio de dirección artística a estilo dibujo animado (pedido el 8-nov-2026; sin empezar).
+- **Textos**: el 9-nov-2026 Ferran revisó el tutorial: «1r toque» (sin punto), «círculo» en vez de «aro amarillo»,
+  «se hace más pequeño», sin la explicación de la defensa y sin la falta «Cuerpo». El resto de textos y botones los revisará más adelante.
+
 ## Cómo seguir en casa
 
 1. `git clone https://github.com/purupurpito/voley-3d.git && cd voley-3d`
