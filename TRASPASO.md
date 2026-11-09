@@ -223,6 +223,17 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - **Modo de un solo jugador controlado** (9-nov-2026): controlar solo a un jugador (por ejemplo, el colocador) y que la IA
   lleve al compañero en todos sus toques, en vez de que el control pase a quien da el siguiente toque. Sin diseñar.
 - **Gráficos cartoonish** (8-nov-2026): cambio de dirección artística a estilo dibujo animado. Sin empezar.
+- **Modo 6v6** (9-nov-2026): llevar el juego de 2 contra 2 a 6 contra 6. Campo más grande (pista reglamentaria de 18×9 m
+  con 6 por equipo), rotaciones y posiciones. Cambiar de jugador será poco habitual, así que el primer modo 6v6 será
+  **controlando solo a un jugador** (enlaza con el to-do anterior). Se mantiene todo el motor de toques y reglas, que ya funciona bien.
+- **Posiciones y estadísticas de jugador** (para el 6v6): colocador, opuesto, central, receptor, líbero; atributos (salto,
+  remate, recepción, saque, bloqueo, velocidad…) que influyan en la sim.
+- **Error arbitral en botes justos + challenge** (9-nov-2026): con el balón muy cerca de la línea, probabilidad de que el árbitro
+  se equivoque, sin avisar. El jugador puede pedir **challenge**: 2 por set, fallar le hace perder uno (como la FIVB).
+  Reglamento FIVB revisado y propuesta de diseño en `notes/challenge-fivb.md`.
+- **Modo Carrera** (9-nov-2026, el que más ilusión le hace a Ferran; el más largo): un jugador con estadísticas bajas que se
+  inscribe en equipos modestos, recibe ofertas de equipos mejores, mejora sus estadísticas y acaba jugando VNL, Olimpiadas, etc.
+  Depende del 6v6, del modo de un solo jugador y de las posiciones/estadísticas.
 - **Más modos de juego**: el selector de puntos por set es la base de «Partido rápido»; los modos nuevos irán al lado.
 - **Textos**: Ferran revisará el resto de textos y botones (lista numerada A–D que se le pasó el 9-nov-2026).
   Pregunta abierta: ¿«3.er» → «3r» y «2.º» → «2º»?
