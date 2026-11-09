@@ -339,3 +339,559 @@ js/camera.js:
   ráfagas «dependent prototype chain changed» pasan de 116 desopt. (máx. 42 a la vez, t = 67 s) a 71 (máx. 20), casi todas antes de t = 52 s.
   `perf.js ALLOC=1 low`: camera.js 114 → 197 KB/s entre dos pasadas A/B (ruido del JIT y del perfil: no se puede concluir mejora de basura).
 - `node tools/padtest.js` → 26 ok (el fallo que vio ui_main era el caso viejo, ya actualizado por ti). touchtest 30 ok, courttest set 8 ok.
+
+## Aviso de sim (pulido ola 1, SIM-01/03): `point.highlight`, `point.hold` y pausa saltable (2026-11-07)
+Ver notes/sim.md §P1. En partidos humanos (main.js pasará `present: true`):
+- `point.hold` (s) = pausa real hasta el siguiente `serveReady` (o `gameOver`): 1,9 normal, 2,4 si `highlight ≥ 0,55`, **4,0 al
+  ganar un set** (antes 3,4 y antes 3,6; pedido por CAM-09; el comentario de `courtShot` habla de 3,6: con la cámara lenta del set son ~3,9 s reales y la grúa
+  acaba a ~3,85: cabe justa) y 4,2 en `'over'`. Sugerencia: `CC.len = Math.max(1.6, (e.hold || 3.6) * 0.67)` al recibir
+  `courtChange` en vez de los 2,4 fijos, y el plano de reacción (`planPoint`) puede alargarse con `e.hold`.
+- El jugador puede **saltar la pausa** (`VB.Sim.skipHold`, tras 0,8 s): `serveReady`/`newSet` llegan entonces 0,3 s después de
+  pulsar. La cámara debe aceptar el `serveReady` en mitad del plano de reacción o de la grúa (cortar o deslizar al saque).
+- `point.highlight` (0..1) para elegir planos: ≥ 0,55 = momento grande; ≥ 0,8 = clímax (bloqueo directo o remate perfecto con
+  punto de partido). `point.digs`, `point.streak`, `point.savedSetPoint` dan el porqué.
+
+## Aviso de audio (pulido ola 1, AUD-04): hit-stop y `ctx.timeScale` (2026-11-07)
+- audio.js ya no trata como cámara lenta una bajada de `ctx.timeScale` de menos de **0,25 s reales**, ni nunca un valor < 0,04 (congelación):
+  el chasquido suena a tiempo real y la grada no cambia. Tu `hitStop()` (0 × ≤ 150 ms + vuelta de 80 ms) puede poner `ctx.timeScale = 0` sin
+  más; comprobado en la partida real con `hitStop(70)` y `hitStop(150)` (tono de audio 1,00) y con `slowmo(0.28, 1.9)` (entra a los 255 ms, ×0,6).
+- Si algún día encadenas un hit-stop con una cámara lenta corta, el audio solo «baja» si la bajada dura ≥ 0,25 s.
+
+## Pulido ola 1 — camera_input (2026-11-07, RTX 3060 Ti): CAM-01…CAM-07
+
+### js/camera.js
+- **CAM-01 cámara fuera del pabellón**: causa = `K.nearK` (apartarse del compañero) era un MULTIPLICADOR suavizado del vector cámara→compañero;
+  tras un corte, un peso viejo de ~7 por un vector nuevo de ~10 m mandaba la cámara a x = 49-75 m (medido antes del arreglo: 163-303 frames
+  fuera por partida de 120 s, a 1280×720 y a 844×390). Ahora: empujón acotado `unit(q)·max(0, 2,6 − |q|)·w` (w suavizado 0..1).
+  `settle(g)` en CADA corte deliberado (reacción, vuelta al saque, grúa, final): todos los suavizados de juego a su objetivo (dt = 0), cámara en la
+  posición/mira deseadas y el encuadre fino convergido (24 pasadas). Al entrar en un plano de juego desde punto/grúa/final/menú sin corte, los
+  suavizados también arrancan en su objetivo. Límite DURO a cualquier altura y también con el temblor: |x| ≤ `freeX − 0,3`, |y| ≤ `freeY − 0,2`
+  (grúa: `freeY + 0,7`), z ≤ `hallH − 3` (lee `VB.Arena.bounds`; respaldo 15,2 / 9,3 / 10,2 / 19). Órbita del menú dentro (15,0 × 9,1).
+- **CAM-03 saque rival**: la vuelta del punto al saque se decide (y anuncia) durante el punto con la cámara del saque prevista (sim coloca a los
+  jugadores en sitios fijos): corte si cruza la red, > 7 m, ΔFOV > 7°, pasa a < 1,6 m de un jugador o la cámara está baja (casi siempre: el plano de
+  reacción va a 1,6 m con FOV 32-38°). Si no, **transición fija**: destino calculado una vez (asentado) y una sola curva monótona y sin
+  sobrepaso (mínimo tirón `10s³ − 15s⁴ + 6s⁵`: probé la críticamente amortiguada desde reposo y daba un latigazo de 20 m/s en el primer cuarto;
+  esta tiene velocidad y aceleración nulas en los extremos, pico 13 m/s en 4 m, relevo 0,07 → 0 m/s; `tools/out/camtest/fbtest.js`) en posición,
+  giro, cabeceo y FOV, sin encuadre fino ni FOV de ayuda por el camino; presupuesto 0,8 s
+  (`g.cpuTossIn` si sim lo da: lista 0,45 s antes del lanzamiento); si necesitaría > 0,9 s, cruza > 8 m, cambia el FOV > 8° o pasa a < 1,5 m de un
+  jugador, corta. En el saque rival se encuadra desde el principio la CUMBRE del lanzamiento (4,75 m sobre el sacador): el plano no cabecea con el
+  lanzamiento (antes 26-35 inversiones de cabeceo por minuto; ahora 0).
+- **CAM-02 plano de reacción**: héroe (remate, ace, bloqueo, dejada, balón libre ganado y errores del RIVAL) = el último de su equipo que tocó el
+  balón en el peloteo (el sacador en el ace; si no tocó nadie, el más cercano al balón) y su compañero si están a < 4,2 m. Cámara baja (1,6 m) en el
+  campo del héroe, FOV 34° (hasta 38° para meter a los dos), héroe al 37-52 % del alto en un TERCIO (NDC x = ±0,42, con aire hacia donde mira; el
+  centro queda para el rótulo), cabeza a 0,45 NDC; 192 candidatos puntuando el frente (≤ 60°, tres cuartos ~28°, de espaldas casi prohibido),
+  perdedores ≤ 55 % de su altura o fuera de cuadro, nadie delante y sin postes/oficiales/balón en primer plano. Se recalcula en el instante del corte
+  (0,45 s) con el frente de ese momento. Víctima SOLO en los errores propios del equipo humano, y nunca de espaldas. El héroe siempre entra por corte.
+- **CAM-04 impacto**: `hitStop(ms, grade)` = `ctx.timeScale = 0` durante `ms` reales y vuelta 0,25 → 1 en 80 ms (remate perfecto 60, bueno 35, bloqueo
+  directo humano 70, defensa perfecta de un remate rival 40, saque en salto perfecto 35; nada en confort). `punch(deg)` = impulso de FOV que cierra la
+  lente en 1 frame (perfecto 3°, bueno 1,8°, malo 0) y vuelve con un muelle de ~150 ms, directo a la lente (`kick()` pasa a ser `punch()`).
+  Bote dentro tras un remate (o > 13 m/s): temblor 0,035 m · 0,18 s y vibración `kill` si el punto es nuestro. Vibración con firma (ver input.js).
+- **CAM-05 cortes para la UI**: `getDebug().cutN` (sube en cada corte deliberado), `.lastCut` `{from, to, kind: 'point'|'serve'|'court'|'over', t}`,
+  `.nextCutIn` (s reales hasta el próximo corte programado; −1 = ninguno; 0 en el frame del corte). Cuenta la cámara lenta y el hit-stop en curso y el
+  frame de retraso de sim; con `skipHold` sim deja 0,3 s (queda anunciado). `VB.CameraRig.clinchLeft()` = 0 hasta CAM-09.
+  `getDebug()` añade `timeScale`, `hitStop`, `punch`, `shake` (desplazamiento del temblor este frame), `fb` (avance de la transición fija o −1) y
+  `pf.mode` ('hero'|'vic'), `pf.how`, `pf.both`, `pf.team`, `pf.heroX` (NDC x donde queda el héroe), `pf.backCut`, `pf.score`, `pf.parts`.
+- La grúa del cambio de campo dura lo que dure la pausa real (`g.timer` con la cámara lenta del set ya en marcha): acaba ~0,3 s antes del saque.
+
+### js/input.js
+- `VB.Input.rumbleSig(name, k)`: firmas `perfect` (dos toques de 25 ms separados 40 ms), `good` (45 ms), `poor` (sordo 0,25 · 110 ms), `body`, `won`
+  (doble pulso), `lost` (uno flojo 0,3), `match` (tres crecientes), `kill`, `block`; en el móvil, patrones de `navigator.vibrate`. `rumble()` y
+  `rumbleSig()` no hacen nada si `ctx.settings.rumble === false` (UI-16). `_debug().sigs` (pruebas) y `_debug().dead`.
+- **CAM-07**: overlay al 25 % con balón muerto (`g.mode` 'point'/'over'; fundido 0,3 s, vuelve en 150 ms al saque; las zonas de pulsación siguen
+  activas). ⇄ y SALTAR desactivados: borde discontinuo, sin relieve ni color, icono atenuado y un candado pequeño. ⇄ activo con disco oscuro (0,78) y
+  al 82 % en reposo; joystick con disco oscuro (corona 0,62) y borde blanco 0,6.
+
+### Medido (ejecutado)
+- `node tools/camtest.js` (nuevo, ver abajo): antes del arreglo (copia en `tools/out/camtest/base/`) FALLAN bounds, cuts, servecut, settle, mono,
+  reverse, hero y bbox en 6/6 partidas; después pasan bounds, cuts, cutcount, servecut, nextcut, settle, mono, reverse, bbox y ball (16:9, 4:3, móvil).
+  `hero`: el héroe sale grande, en su tercio, el más grande y con los perdedores ≤ 60 % en casi todos los puntos, pero los rematadores junto a la red
+  miran a la red (~95° de cualquier cámara de su campo) hasta que players los gire en la celebración (PLY-07): ver petición en notes/players.md.
+- `tools/out/cam04/feel.js` (partido humano, eventos inyectados, mando falso): remate perfecto 60 ms congelado (3,6 frames a 60 fps), bueno 36 ms, malo 0;
+  bloqueo directo 73 ms; defensa perfecta 42 ms; saque en salto 36 ms; punch 3,00° en el frame del contacto y 0,17° a los 200 ms; temblor 0,040 m en el
+  frame del bote; firmas distintas perfect/good/poor y won/lost/match; `settings.rumble = false` → nada. TODO OK.
+- CAM-07: `debug=point` táctil → opacidad calculada del overlay 0,25; en vivo baja en 0,3 s y vuelve en ~150 ms con el saque. Sobre gris medio
+  (`tools/out/cam07/contrast.js`): disco de ⇄ 3,1:1 (reposo) / 3,3:1, icono ⇄ vs disco 10-11:1, corona del joystick activo 3,1-3,25:1 (la guía de
+  reposo «MOVER» se queda tenue a propósito, 50 %).
+- courttest set 1280×720 y eight 844×390 táctil TODO OK; touchtest 30 ok; padtest 26 ok; padplay y drive TODO OK; touchplay: 2 fallos en el MENÚ
+  («tocar NIVEL cambia la dificultad», ui.js en obras por UI-06); el resto (overlay en partido, joystick, botones, pausa) bien.
+  simtest 10 12345 0 TODO OK; console.sh all 1280×720 y táctil 844×390 sin errores; perf.js 844×390 medium 78,9 fps / 196 k tri / 46 draws,
+  low 84,6 fps / 81 k / 33 («objetivos cumplidos»; CPU del PC al 74-79 % por los otros agentes).
+
+### tools/camtest.js (nuevo, de camera_input)
+`node tools/camtest.js [s=75] [semillas=7,12345,3] [tamaños=1280x720,1680x720,1024x768,844x390t]` (SPEED=2, PAR=4, LOG=1, ONLY=…): partidas en vivo con
+autopilot y registro por frame tras `CameraRig.update`. Comprobaciones: bounds, cuts, cutcount, servecut, nextcut, settle, mono, reverse, hero, bbox, ball
+(21:9 en defensa = aviso hasta CAM-12) y fovrate. Sale con 1 si algo falla (STRICT=0 lo evita). Escribe solo en `tools/out/camtest/`. ~2,5-5 min.
+
+### Para el integrador
+- CONTRACT §4.4: `VB.CameraRig.hitStop(ms, grade)`, `punch(deg)`, `clinchLeft()`, `getDebug().cutN/.lastCut/.nextCutIn/.timeScale/.hitStop/.punch/.shake/.fb`,
+  `pf.mode/.how/.both/.team/.heroX/.backCut`; `VB.Input.rumbleSig(name, k)`, `ctx.settings.rumble` (false = sin vibración), `_debug().sigs/.dead`.
+  Convención de cámara: «el plano de reacción del héroe siempre entra por corte a los 0,45 s; la vuelta al saque se anuncia en `nextCutIn` y casi
+  siempre es corte; la grúa del cambio de campo, siempre por corte».
+- CONTRACT §6: añadir `node tools/camtest.js` (ver arriba).
+
+## De players (pulido ola 1, PLY-07), 2026-11-07 — informativo
+- Tras un punto ganado (salvo el que cierra el partido) la pareja ganadora se junta para chocar las manos: el que hizo el punto
+  (`g.lastPlayer` del equipo que gana; sin él, a medio camino) se mueve como mucho 1,2 m y el compañero hasta 4 m, entre ~0,15 s y ~1,6 s
+  del punto (contacto hacia 0,7-1,5 s). Es un desfase VISUAL de la raíz: la sim no se mueve. Si el plano de reacción encuadra con
+  `p.x/p.y`, el compañero entra en cuadro andando hacia el héroe (bien); si se quiere encuadrar a los dos, usar
+  `VB.Players.rigOf(p).root.position` (Three) en vez de la posición de la sim. En `serveReady` el desfase vuelve a 0.
+- El galón del jugador controlado se apaga solo a menos de ~6 m de la cámara y en el saque propio (el aro del suelo lo marca).
+
+## De ui_main (pulido ola 1, UI-04/UI-05), 2026-11-08
+1. **`VB.UI.bannerRect()`** ya existe (CAM-18): rectángulo en px CSS `{left, top, right, bottom, width, height, x, y}` de lo visible del
+   banner (cinta + subtítulo + chip) o `null` si no hay banner. La cinta de nivel 2 (UI-03) se coloca DESPUÉS del corte al plano de
+   reacción evitando las cajas de `pf.hero`/`pf.vic`; en escritorio va al tercio inferior (izq./dcha.) y en táctil o alto ≤ 560 px a la
+   franja alta. `VB.UI.onHoldSkip()` (main.js, al recortar la pausa con SIM-03) funde lo del punto en 120 ms.
+2. **Vibración antes de un gesto** (visto con `TOUCH=1 node tools/out/ui1/clock.js 844x390`, escena `debug=serve&clock=1` que acaba en la
+   falta de 8 s): Chrome registra un error de consola `Blocked call to navigator.vibrate because user hasn't tapped on the frame…`
+   (`js/input.js`, líneas ~610 y ~648). `tools/console.sh` lo cuenta como error si una escena lo dispara. Propuesta (las dos llamadas):
+   ```js
+   var ua = navigator.userActivation; if (ua && !ua.hasBeenActive) return; // sin gesto previo no se puede vibrar (y ensucia la consola)
+   ```
+   justo antes de `navigator.vibrate(...)`.
+3. Comprobado para UI-05 (no hace falta cambiar nada): durante el lanzamiento del saque `VB.Sim.hitWindow(g, server).press` cuenta de
+   forma continua hacia el contacto de BAJADA (0,85 → 0; medido), así que el brillo de SACAR (`press` en (−0,15, 0,24)) se enciende con el
+   balón ya bajando, igual que «¡Golpea ahora!» de ui.js. La barra del aviso «Espera… golpea al bajar» usa ahora ese mismo `press`.
+
+## Pulido ola 1, segunda pasada — camera_input (2026-11-08, RTX 3060 Ti)
+
+### CAM-02: el plano de héroe ya funciona… con un acuerdo con players
+- **Diagnóstico** (camtest ampliado: dice quién es más grande y por qué): con la convergencia de PLY-07 el héroe se gira hacia su
+  compañero y este acaba a 0,85 m DELANTE de él; desde cualquier sitio que le vea la cara al héroe (≤ 70°), el compañero queda igual de
+  grande o más (0,46 vs 0,466) y a veces cruza delante del objetivo al 61 % del alto. Sin cambiar la coreografía es geometría imposible:
+  2/36 planos bien en la pasada anterior; 1-4 % en 300 s.
+- **Acuerdo cámara↔players** (nuevo `VB.CameraRig.heroShot()`): la cámara elige su sitio y PUBLICA la coreografía que se filma bien
+  (`planHeroShot`): el héroe se queda y se gira hacia la cámara (abierto 35° hacia su compañero); el compañero va a un sitio a su lado y
+  detrás (0,8 m más lejos de la cámara, 0,9 m de lado, hacia el centro del cuadro: el héroe mira hacia dentro), abierto también a la
+  cámara; se miran solo en el choque. Candidatos: 24 ángulos × 5 tamaños (38-54 %) × 2 lados × 2 composiciones (tercio ±0,42 o abierta
+  ±0,55; en 21:9 sin táctil hasta ±0,68; a la izquierda castigada: los brazos en alto se meten bajo el marcador), puntuando el camino del
+  compañero (4 muestras + su sitio de la sim por si no llega a venir), perdedores ≤ 50 % con su posición a 0, 0,5 y 1 s, cuerpos cortados
+  por el borde con el medio ancho real a esa distancia, postes/oficiales/balón. Poda en cuanto un candidato no puede ganar: 0,9 ms más que
+  el plano antiguo, una vez por punto, con la CPU ×4 (`tools/out/cam02/plancost.js`). Zona de la cámara del héroe ampliada a la zona libre
+  real (|x| ≤ 14,6, |y| ≤ 9,1 de `VB.Arena.bounds`): junto a la banda cabe a ≤ 5,7 m de un héroe en la red y deja fuera al rival de enfrente.
+- La cámara solo usa el acuerdo si `VB.Players.heroShotAware === true`. **Parche exacto para players en notes/players.md** (probado con
+  `tools/out/cam02/mkproj.js`, que genera una copia parcheada en `tools/out/cam02/proj`). Sin él: plano antiguo, con el camino del
+  compañero vigilado (ya no cruza delante del objetivo).
+- **Medido con el parche** (`PAGE_ROOT=tools/out/cam02/proj node tools/camtest.js`): TODO OK; héroe 19/19 (1280×720), 18/18 (1680×720),
+  18/18 (1024×768), 17/18 (844×390 táctil); CPU experta 37/40; el héroe siempre es el que anotó. Capturas en `tools/out/cam02/shots/`
+  (`heroshots.js`) y secuencia del choque de manos en `tools/out/cam02/seq/` (`seq.js`): el compañero entra por detrás, más pequeño, se
+  miran en el choque y vuelven a la cámara. La UI ya coloca el rótulo al lado contrario del héroe (lee `pf.heroX`).
+
+### tools/camtest.js
+- Tope por partida (una partida colgada ya no deja la prueba esperando: antes, 14 min parada), `PAGE_ROOT=carpeta` (probar una copia
+  parcheada), `DIFF=expert` (más saques rivales), duración en s reales de cámara, `scorer` (el héroe es el que anotó: sacador en el ace o
+  el último del equipo que gana que tocó, de los eventos hit/block), `hero` agregado por tamaño sobre todas las semillas (≥ 90 %, como
+  la aceptación) y diagnóstico (quién es más grande, perdedores, `hs` = acuerdo activo / players lo acepta).
+- Sobre la versión ANTERIOR a la ola (copia `tools/out/cam02/prefix`, camera.js/input.js de HEAD): sale con 1 (bounds con la cámara a
+  x = 53 m, cuts, servecut, nextcut, settle, mono, reverse, bbox).
+
+### input.js
+- Patrón táctil de `perfect` = [25, 40, 25] ms (dos toques de 25 ms separados 40 ms, como el mando).
+
+### Verificado (ejecutado hoy)
+- camtest 300 s × 3 semillas a 1280×720 y 844×390 táctil (proyecto real): bounds, cuts, cutcount, servecut, nextcut, settle, mono, reverse,
+  bbox, ball OK en ~25 000 frames por partida; solo falla `hero` (sin el parche de players). Saques rivales asentados: 41/41 con la CPU experta.
+- `tools/out/cam04/feel.js` TODO OK (remate perfecto 60 ms congelado = 3,6 frames, bueno 36, malo 0; bloqueo 73; defensa 42; saque en salto
+  36; punch 3,00° → 0,17° a 200 ms; temblor en el frame del bote; firmas distintas; `rumble:false` = nada).
+- simtest 10 12345 0 TODO OK; courttest set 1280×720 y eight 844×390 táctil TODO OK; touchtest 30 ok; padtest 26 ok; drive y padplay TODO OK;
+  touchplay: solo los 2 fallos de NIVEL en el menú (ui.js, ver notes/ui_main.md); console.sh all 1280×720 y táctil 844×390 sin errores;
+  overlay táctil con `debug=point` 0,25; perf 844×390: media 118,7 fps / 201 k tri / 47 draws, baja 129,5 / 85 k / 34 («objetivos cumplidos»).
+
+## Aplicado (log, integración del pulido ola 1, 8-nov-2026, PC de casa)
+- Parche de players (CAM-02) aplicado: `VB.Players.heroShotAware === true`. camtest completo en el proyecto real → TODO OK (133 s).
+- Vibración sin gesto previo: `canVibrate()` en input.js (`navigator.userActivation.hasBeenActive`) antes de las dos llamadas a
+  `navigator.vibrate`; `sigLog` sigue anotando la firma.
+- Pausa del set recortada (SIM-03) antes de acabar la grúa: antes, la vuelta al saque deslizaba ~2 s desde el plano de reacción o media
+  grúa barriendo media pista alrededor de la red. Ahora `ccAbort` (grúa con `u < 0,85` cuando sim sale de `'point'`) fuerza CORTE al
+  saque (`markCut(…, 'serve')`), tanto desde `'point'` como desde `'court'`. Sin salto, la bajada de la grúa sigue deslizando.
+  Medido (`tools/out/int1/skipcrane.js`): salto a 1,2 s y a 2,4 s (ccU 0,52) → cámara asentada en el saque en el primer frame;
+  sin salto, bajada deslizada como antes. courttest set/eight TODO OK.
+- CONTRACT §4.4/§6: `heroShot`, `hitStop`, `punch`, `clinchLeft`, `getDebug` (cortes), `rumbleSig`, camtest y convención del héroe.
+
+## Pulido ola 2 — camera_input (2026-11-08, RTX 3060 Ti)
+
+### Temblor del bote tras un bloqueo (CAM-04, hallazgo del verificador feel)
+- camera.js, evento `land`: además de `lastKind === 'spike'` / velocidad > 13, también tiembla si el último contacto fue un BLOQUEO
+  (block-out que entra, bloqueo directo nuestro o del rival): 0,045 / 0,2 s (un poco más que el bote de remate).
+- Medido con el método del verificador (`tools/out/fixw1cam/play3.js` + `analyze.js`, partido humano real 300 s): botes de remate dentro
+  con temblor ≤ 2 frames **16/16** a 1280×720 y **9/9** a 844×390 táctil (antes 8/10 y 3/8). Mismo registro: 0 frames fuera del
+  pabellón, 0 saltos sin corte anotado, nextCutIn 0 fallos, deriva tras el corte al saque 0.
+
+### Plano de héroe: HUD, postes, balón que cae, rival que cruza (CAM-02, hallazgo del verificador feel)
+- `readHud()` (una vez por punto, try/catch): rectángulo NDC del marcador `#sb` y de la pestaña `#pbug` (estimada si aún no se ve) con
+  0,06 de margen por debajo. Cada candidato castiga la CABEZA del héroe bajo el HUD (40·fracción) y los brazos en alto bajo el
+  HUD (6·fracción + 40·(fracción − 0,4) si lo tapa casi entero) y el héroe cortado por el borde lateral. Pesos deliberadamente por
+  debajo del castigo de «perdedor demasiado grande»: con 40 + 260·fracción el héroe se iba siempre a la derecha y camtest bajaba a
+  65 % en 844×390 táctil (perdedores en el cuadro). Con los pesos finales: camtest igual que sin el cambio (17/18, el mismo fallo de
+  bloqueo @71,5 que ya tenía) . En 844×390 humano (17 planos, `tools/out/fixw1cam/g844`): ninguna cabeza bajo el HUD, pero 1 de 3 planos «abiertos a la izquierda»
+  (cut025) aún tiene las manos en alto rozando el borde inferior del marcador: ahí las alternativas tenían un rival demasiado grande.
+  Pendiente si se quiere más: que ui.js baje la opacidad del marcador durante el plano de héroe con `pf.heroX < -0.5`.
+- Postes: dentro del cuadro hasta 8 m y si están delante o a la altura del héroe (`od < hl + 1,5`), 90·(8−od)/8 (antes 45, solo delante),
+  con margen angular = ancho del acolchado a esa distancia + deriva del plano.
+- Balón: `predictBall()` (balística con botes y rodadura) a 0,45 / 0,9 / 1,5 s; vale el peor momento. Antes solo se miraba si `b.z < 3,5`
+  en el instante del punto: en un balón a la antena o un block-out alto no contaba y luego caía rodando en primer plano.
+- Rivales: la oclusión del héroe también con su posición prevista a 0,5 y 1,0 s (el bloqueador que cae junto a la red cruza por delante).
+
+### PEDIDO A players (CAM-02, de espaldas a los ~1,2 s del punto) — parche probado en una copia
+Diagnóstico (`tools/out/fixw1cam/heroan.js` sobre `play4.js`): a +0,5 s del corte el héroe está a ~35° de la cámara en casi todos los
+planos, pero a +0,8 s pasa a 75-130°: al acabar la convergencia (`g.time >= c.tr + 0.05`) `cvYaw` devuelve NaN y `desiredYaw` le gira hacia
+la red / su sitio mientras el plano de reacción sigue ~1-2 s más. Las capturas «de lado / de espaldas, agachado» del verificador
+(s1280/cut001, cut013) son el «¡vamos!» (celeb 0) ya girado. Parche en `js/players.js`, `cvYaw`, justo ANTES de
+`    if (c.hs && g.time < c.tr + 0.05) {`:
+```js
+    // (CAM-02) tras el choque de manos, el que anotó sigue de cara a la cámara del plano de héroe hasta que acaba la pausa
+    if (c.hs && (A ? 0 : 1) === c.hero && g.time >= c.tr + 0.05 && g.mode === 'point' && (g.timer || 0) > 0.3) return c.hyaw;
+```
+Probado con `tools/out/fixw1cam/mkproj.js` (copia parcheada en `tools/out/fixw1cam/proj`, `PAGE_ROOT=proj node play5.js …`): a 1280×720,
+de cara (≤ 70°) a +0,5/+0,8 s 38/44 (antes 36/44) y a +1,5/+2,2 s 2/3 (antes 0/3). Lo que queda de perfil a +0,8 s es la ventana del choque
+de manos (cara a cara, a propósito) y el rugido del bloqueador hacia la red (celeb 3, players ~2224): si se quiere de frente también ahí,
+que el bloqueador ruja hacia `c.hyaw` cuando `c.hs`.
+
+## Aplicado (log, integración del pulido ola 2, 8-nov-2026, PC de casa)
+- Tu parche para players (CAM-02, `cvYaw`): aplicado tal cual en js/players.js. El rugido del bloqueador hacia `c.hyaw` (opcional): no aplicado.
+- Tu idea opcional para ui_main: aplicada. ui.js (`sbDimTick`, cada 8 frames) pone `#sb.dim` mientras el plano del punto es `pf.mode === 'hero'`
+  con `pf.heroX < -0,5`; index.html atenúa los hijos del marcador a 0,38 con transición de 0,45 s (no la propia `.sb`, porque su animación
+  de entrada `sbIn ... both` fija la opacidad). `readHud()` sigue leyendo el mismo rectángulo (la opacidad no lo cambia).
+- CONTRACT §4.4 («pulido ola 2»): temblor del bote tras bloqueo y lo que lee el plano de héroe.
+
+## De sim (pulido ola 2, SIM-04, 8-nov-2026): `g.cpuTossIn` ya existe
+- `g.cpuTossIn` = s de juego hasta el lanzamiento de la CPU: lo fija `setupServe` (whistleAt + ritual = 1,5-2,3 s en partido; antes 1,3 s fijos
+  de `g.timer`), decrece de forma monótona, vale 0 en el paso del `toss` y hasta el golpe, y -1 con sacador humano o fuera de `'serve'`
+  (`g.timer` vale lo mismo durante el saque de la CPU). Tu `bud` de la vuelta al saque rival ya lo lee.
+- Durante el ritual el balón BOTA (z 1,28 → 0,21 → 1,0, vz hasta ±6 m/s) con `ball.held` = sacador. Tu encuadre del saque rival fija la
+  cumbre del lanzamiento y no se mueve: medido en vivo (`tools/out/sim-w2/camserve.js`, 4 saques rivales) cabeceo ±0,003° y FOV fijo, igual
+  que sin ritual. Si alguna regla nueva mira `b.z`/`b.vz` en `'serve'`, usar `g.ritual.on` o la mano (`VB.Sim._holdPos`) en vez del balón.
+- camtest (75 s, semillas 7 y 12345, 1280x720 y 844x390t) da `settle`/`reverse`/`spiker`/`fovpump` en rojo tanto CON ritual como con una copia
+  SIN ritual (`PAGE_ROOT=tools/out/sim-w2/root_norit`, copia de antes de tus últimos cambios): no los causa SIM-04 (ver `tools/out/sim-w2/camtest*.txt`).
+
+## De ui_main (pulido ola 2: UI-10, UI-11, UI-13, UI-14, UI-16), 8-nov-2026
+1. **UI-16 «Cámara estable» → temblor 0** (criterio de aceptación de UI-16: `camStable` activo ⇒ amplitud del temblor 0, medido con
+   `getDebug().shake`). Hoy el modo confort lo deja al 30 % (`camera.js`, en el cálculo del temblor: `* (comfort() ? 0.3 : 1)`). Propuesta: que
+   solo `prefers-reduced-motion` se quede al 30 % y el ajuste explícito lo quite del todo. En `readComfort()`:
+   ```js
+   var stableNow = false;
+   function readComfort() {
+     var st = ctx && ctx.settings;
+     stableNow = !!(st && Object.prototype.hasOwnProperty.call(st, 'camStable') && st.camStable);
+     calmNow = reduceMotion || stableNow;
+   }
+   // y en el temblor:  ... * (stableNow ? 0 : comfort() ? 0.3 : 1)
+   ```
+   `ctx.settings.camStable` ya existe siempre (por defecto `false`, persistido; Ajustes > Accesibilidad).
+2. **UI-14 `VB.CameraRig.playIntro(s)`**: main.js lo llama (con guarda) al empezar un partido humano, con la sim PARADA bajo la tarjeta de
+   presentación de 2,5 s (`g.mode === 'serve'`; el `serveReady` inicial y lo que venga detrás se retienen y llegan el frame en que acaba la
+   tarjeta). `playIntro(0)` = la tarjeta se ha saltado (cualquier botón/tecla/toque) o se ha salido al menú: cortar el plano de presentación y
+   volver al plan normal. Mientras dure, `ctx.introLeft` (s reales que quedan, > 0). Si no existe la función, no pasa nada (hoy se ve el plano
+   del saque normal).
+3. **UI-11 / CAM-10 `ctx.uiDock`**: con la hoja final acoplada a la izquierda (pantallas ≥ 1000 px de ancho) ui.js publica
+   `ctx.uiDock = {side:'left', frac}` (`frac` = borde derecho de la hoja / ancho; 0,472 a 1280×720); `null` sin hoja acoplada (móvil, o con
+   «Ver celebración»). Se actualiza cada 8 frames. En el móvil la hoja sale cuando `clinchLeft()` llega a 0 y han pasado ≥ 2,5 s desde el punto
+   que gana el partido.
+4. **UI-13 cortinilla**: se arma con `getDebug().nextCutIn` (cubre en 75 ms; cubierta del todo en el frame del corte) y solo tapa cortes con
+   `lastCut.kind` `'serve'` o `'court'`; el corte de reacción (`'point'`) y los de cierre (`'clinch'`) quedan secos. Se arma solo después del
+   corte de reacción/cierre del punto (o si `pf.cut === false`) y con `getDebug().clinch.phase` vacío o `'hero'`. Si añadís un tipo de corte nuevo
+   que vuelva al saque, decídmelo. Medido (`tools/out/w2/wipe.js`, 80 s): 3 de 3 cortes al saque tapados al 100 % en su frame, 127-134 ms en
+   pantalla, reacción seca, 0 frames > 33 ms.
+5. **Visto con UI-10 (indicador de borde)**: en el plano `defend` a 1280×720 el jugador controlado queda cortado por la cintura (pies fuera
+   por abajo) en ~20 % de los frames del peloteo (`debug=rally&live=1&seed=4`, 60 s); el indicador lo marca. Con CAM-13 (acercar el plano)
+   conviene que los pies queden ≥ 40 px por encima del borde inferior.
+
+## Pulido ola 2, segunda tanda — camera_input (2026-11-08, RTX 3060 Ti): CAM-08 … CAM-14 + peticiones de ui_main
+
+### js/camera.js
+- **CAM-08 seguimiento del remate hasta el bote**: remate del jugador controlado (o saque en salto con potencia > 0,7): la mira va del
+  rematador al punto de caída (`Sim.predictLanding`, recalculado cada frame) en 0,25 s de tiempo de JUEGO (el hit-stop lo congela), bote a
+  -0,12 NDC centrado, FOV -3,5° (nada en confort), el plano no cambia hasta el bote (`pickShot` mantiene 'attack') y la base de control queda
+  congelada. Se suelta en 0,35 s si el rival toca o bloquea. La mezcla cede lo justo (bisección) para que la cadera del rematador que cae no
+  salga del cuadro. Luego manda `planPoint` como siempre. `getDebug().ft` = `{on, w, lx, ly}`.
+- **CAM-09 cierre de set/partido** (plano interno `'clinch'`): (1) seguimiento: en punto de set/partido (del marcador), con el balón bajando,
+  ≤ 0,42 s para el bote, cayendo en su lado, > 12 cm de la línea y nadie que llegue (alcance + plancha + carrera): cámara lenta (×0,28 partido,
+  ×0,5 set) y CORTE a un plano bajo (1,15 m, FOV 34-36) del balón cayendo sobre su marca, de tres cuartos respecto a su trayectoria y sin postes ni
+  oficiales delante. Si alguien lo toca: corte de vuelta al juego y sin cámara lenta. Sin bote (falta): 0,45 s de espera. (2) héroe: la
+  coreografía se publica en el MISMO punto (`planHeroShot`/`heroShot()`, players la lee a los 0,12 s) y a los 0,4 s (set) / 0,75 s (partido) del
+  bote CORTE a una órbita cerrada de los ganadores: 2,8-4,5 m, FOV 34-42, cámara a 1,2 m (heroica), ~6°/s que busca sus caras (cono ±35-50°),
+  a ≥ 2,6 m de cada uno, cabezas justo bajo el centro (o 0,12 NDC bajo el rótulo si `VB.UI.bannerRect()` está arriba). Set: 1,85-2,4 s y luego la
+  grúa (su arco se acorta si la pausa no da para más; con < 0,95 s, la órbita sigue hasta el corte al saque). Partido: hasta que sale la hoja
+  final (`ctx.state === 'over' && !ctx.endHold`), luego 'over' se abre deslizando. `getShot()`: `'clinch'` en el seguimiento, `'point'` (set) /
+  `'over'` (partido) en la órbita, con `getDebug().pf` de héroe (`pf.heroX` = NDC x real del que anotó). `getDebug().clinch` =
+  `{phase:''|'track'|'hold'|'hero', left, team, why}`; `clinchLeft()` = s reales que quedan; `lastCut.kind` `'clinch'` en los dos cortes.
+- **CAM-10**: `overShot` encuadra a los ganadores en la parte libre con `ctx.uiDock` (ya lo publica ui.js): FOV con el aspecto libre y
+  `camera.filmOffset` = el de la hoja (como el menú); ángulo inicial (`overPick`) sin perdedores grandes en cuadro y en su campo; posiciones visuales.
+- **CAM-11 (táctil/móvil)**: FOV de ayuda por TOQUE y con histéresis (se abre si hace falta > ~0,05 NDC, se mantiene ≥ 0,6 s); la ayuda sale del
+  balón REAL contra el cabeceo real (fórmula exacta, sin la realimentación que la subía a escalones hasta el tope); antes que el FOV, cabeceo y
+  distancia: la cadera puede bajar a -0,72 NDC y el aro a -0,7 con el jugador centrado entre joystick y botones (ahí no hay pulgares), balón hasta
+  0,70 (0,74 con el balón que se va al rival, 0,78 en la defensa que se acerca; el contador de toques acaba en 0,88), el plano de remate se aleja y
+  sube más con la colocación alta, la cámara se aleja por toque (`touchFitPlan`, hasta 3 m). Por último la LENTE va a ritmo limitado en
+  rally/attack/defend: abre a ≤ 10°/s (16 con el balón ya arriba, 11 los primeros 0,6 s tras un plano de saque) y cierra a ≤ 1,4°/s. Táctil: +3°
+  de base en el peloteo y +6° en la recepción del saque rival.
+- **CAM-12**: `fovFor(base, h, vLow, wide)`: en aspecto > 2, planos rally/defend/attack con horizontal hasta 100° y VERTICAL ≥ 52°; la defensa usa
+  también la cumbre prevista y el balón nunca por encima de 0,9 NDC; en 21:9 la cadera a ≥ -0,72 (y el cambio de jugador abre antes).
+- **CAM-13 defensa que se acerca**: con el rival construyendo (recepción o colocación suya, balón en su campo): -2,5 m, -0,5 m de altura, FOV -8°
+  (≤ 8°/s) y cabeceo hacia el pecho del rematador previsto (el que recibió; tras la colocación, el compañero del colocador) sin que la cabeza de
+  nuestro defensor baje de -0,8 NDC (táctil -0,45; 21:9 la cadera a -0,9) ni la del compañero (el control puede pasar a él en el remate); nunca a
+  menos de 4,2 m (21:9: 5 m) detrás de un compañero que esté más atrás. Se suelta en 0,4 s en el remate. `getDebug().defW/.defF`.
+- **CAM-14 cutaway al sacador rival** (plano `'cutaway'`): tras un punto, en el `serveReady` de la CPU con `g.cpuTossIn` (SIM-04): CORTE a un plano
+  corto del sacador (FOV 30, ~45 % del alto, de perfil / tres cuartos de frente, 1,3 m, aire hacia la pista, leve acercamiento de 0,35 m) durante su
+  ritual y CORTE a la recepción ya asentada ≥ 0,55 s antes del lanzamiento. 0,95-1,4 s; si no hay tiempo, no hay cutaway. `lastCut.kind` `'serve'`
+  al entrar (sale del punto: cortinilla de UI-13 y rótulos con él) y `'cutaway'` al volver (corte seco). Durante el punto `nextCutIn` ya lo anuncia.
+- **UI-14 `playIntro(s)`** (petición de ui_main): plano `'intro'` bajo la tarjeta: corte desde el menú a una grúa alta desde la esquina del fondo
+  rival hacia la banda de la mesa (7,6 → 5,8 m, FOV 52 → 48) y, al acabar o con `playIntro(0)`, corte al saque asentado con `lastCut.kind` `'serve'`.
+- **UI-16** (petición de ui_main): `settings.camStable` → temblor 0 (`prefers-reduced-motion` sigue al 30 %).
+- `getDebug()` añade `fovWant, fovBoost, tfBack, defW, defF, ft, clinch`; con `&camdbg=1`, `x` = componentes del encuadre fino (pruebas).
+
+### js/input.js
+- CAM-14: el overlay táctil se atenúa (como con balón muerto) mientras `getShot() === 'cutaway'`; vuelve con el corte a la recepción.
+
+### Medido (ejecutado hoy)
+- `node tools/camtest.js` completo (4 tamaños × 3 semillas, 75 s): bounds, cuts, cutcount, servecut, nextcut, settle, mono, reverse, hero, scorer,
+  bbox, ball, fovrate, follow, fovpump (3/3 táctil), wide, cutaway y spiker por partida en verde; agregados hero 100/94/100/94 %, follow 100 %
+  (17/17 a 1024 y a 1280 con 150 s × 4 semillas). Solo queda en rojo el agregado spiker de 844×390 (ver abajo).
+- CAM-08: botes de remate propio en el 60 % central: 18/18 (1280), 18/18 (844 táctil), 10/10 (1680, 2560, 3440), 17/17 (1024); sin corte.
+- CAM-09 (`tools/out/cw2/clinch.js`, autopilot con `present`): set 4/4 y partido 3/3 a 1280×720 (bote en cuadro |ndc| ≤ 0,13, órbita ≥ 1,85 s en
+  el set / ≥ 3,1 s bien en el partido, cabezas nunca bajo el rótulo, sin perdedores delante, se mueve en cada ventana de 1 s, grúa tras el set).
+  A 844×390 la UI pone el rótulo grande en su hueco de abajo (130-291 px de 390, el centro de la pantalla) y tapa las cabezas: petición a ui_main.
+- CAM-10 (`tools/out/cw2/dock.js`, 10 s): ganadores fuera de la hoja 100 % a 1280×720, 1680×720 y 1024×768 (izq. 0,42), 95 % con la hoja a la
+  derecha 0,35; nunca un perdedor como figura más grande.
+- CAM-11 (844×390 táctil, 6 semillas × 75 s): p95 del ritmo de FOV 11,0-11,1°/s (antes 26-27), p50 1,4-2,4°/s (antes 7,5; ≤ 2 en 3-4 de 6),
+  balón fuera 0 %, tras el HUD 0-1 frame (la pastilla del aviso).
+- CAM-12 (1680×720, 2560×1080, 3440×1440 × 4 semillas): balón fuera 0, borde 0 %, cadera fuera 0 (12/12).
+- CAM-13: 1280×720 rematador ≥ 18 % en 94-96 % (mediana 18,5-19,6 %, antes 15-16 %), jugador en pantalla 100 %, FOV p95 7,5-8°/s, balón fuera 0.
+  844×390 táctil: mediana 15-16 % (pide 16 % en el 90 %): NO llega.
+- CAM-14 (camtest `cutaway`, DIFF=expert): 30/30 saques rivales con cutaway bien (sacador ≥ 40 % ≥ 0,8 s, vuelta ≥ 0,5 s antes, `settle` verde).
+- courttest set 1280×720 y eight 844×390 táctil TODO OK; touchtest 30 ok; padtest 26 ok; drive, padplay y touchplay TODO OK (touchplay falló una
+  vez en una comprobación estadística de juego y pasó al repetir); simtest 10 12345 0 y 10 7 0 TODO OK; console.sh all 1280×720 y táctil 844×390
+  sin errores (19/19); perf 844×390 ×4 dpr 2,75: baja 117 fps / 34-41 draws / 90 k tri, media 112 fps / 198-203 k tri («objetivos cumplidos»);
+  escritorio alta 164 fps.
+
+### Herramientas (scratch en tools/out/cw2/, git las ignora)
+`clinch.js set|match [WxH] [n] [seed] [touch]`, `seq.js` (secuencias de fotogramas con reloj de rAF lento y `PRE=js`), `dock.js WxH side frac`,
+`an.js size seed fov|hip|spk` (análisis de los registros `LOG=1` de camtest). `tools/camtest.js` (mío) tiene las comprobaciones nuevas.
+
+### Para el integrador (CONTRACT)
+- §4.4: `getShot()` añade `'clinch'`, `'cutaway'`, `'intro'`; `lastCut.kind` añade `'clinch'`, `'cutaway'`, `'intro'`; `VB.CameraRig.playIntro(s)`;
+  `clinchLeft()` real; `getDebug()` añade `ft`, `clinch`, `fovWant`, `fovBoost`, `tfBack`, `defW`, `defF`. Consumido: `ctx.uiDock`.
+- Convención de cámara: el cierre de set/partido entra por corte (seguimiento y órbita); el cutaway del saque rival entra con un corte `'serve'`
+  y vuelve con uno `'cutaway'`; la presentación del partido entra con `'intro'` y sale con `'serve'`.
+- §6: camtest con follow, fovpump, wide, spiker y cutaway.
+
+### Pendiente / no llega
+- CAM-11: p50 ≤ 2°/s solo en 3-4 de 6 semillas (p95, balón fuera y HUD sí).
+- CAM-13 en 844×390: el rematador queda en ~15-16 % (pide ≥ 16 % en el 90 %). Más cerca o más cerrado choca con el FOV mínimo de 52° (CAM-12) y
+  con la cabeza del defensor por encima de los pulgares (probado: acercar 3,2 m saca el balón del cuadro en la defensa y no agranda al rematador).
+- Petición nº 5 de ui_main (pies del defensor ≥ 40 px sobre el borde en 'defend'): con CAM-13 mandan la cabeza del defensor y el rematador rival;
+  en la defensa que se acerca los pies pueden salir por abajo a propósito.
+
+### Peticiones (en notes/ui_main.md y notes/sim.md)
+- ui_main: rótulo grande del set/partido en el hueco de ARRIBA durante la órbita del cierre; ocultar el indicador de borde (UI-10) en los planos
+  cinematográficos; tipos de corte nuevos.
+- sim: `VB.HOLD.set` 3,4 → ~4,0 (con `present`) para que la órbita del set (≥ 1,85 s) y la grúa (≥ 1,6 s) quepan con holgura.
+
+## Aplicado (log, integración del pulido ola 2, segunda tanda, 8-nov-2026, PC de casa)
+- Peticiones a ui_main aplicadas en ui.js: rótulo de set/partido arriba en la órbita del cierre (y recolocado al entrar en `'hero'`), indicador de borde
+  oculto en planos cinematográficos y durante 0,35 s tras un cambio de plano; en `serveUs`/`defend` solo por «fuera de cuadro» (tu petición nº 5
+  queda así resuelta del lado de la UI: los pies cortados a propósito en CAM-13 ya no sacan la insignia).
+- Petición a sim aplicada: `VB.HOLD.set` 3,4 → 4,0 (con `present`). clinch.js: órbita del set 1,98-2,01 s; courttest set 1280×720 y 844×390 táctil TODO OK.
+- CONTRACT §4.4: `getShot()`/`lastCut.kind` `'clinch'|'cutaway'|'intro'`, `playIntro(s)`, `clinchLeft()`, campos nuevos de `getDebug()`, `ctx.uiDock`,
+  `camStable` → temblor 0; convención de cortes del cierre, del cutaway y de la presentación.
+- camtest completo (2 min 14 s): todo verde salvo los dos parciales ya conocidos: `spiker 844x390t` 4/16 (CAM-13) y `fovpump` 2/3 (una semilla con
+  el balón 4 frames tras el HUD; p50 1,44-1,64 °/s, p95 11,1-11,2 °/s).
+
+## Arreglos tras la verificación de la ola 2 — camera_input (8-nov-2026, RTX 3060 Ti)
+
+### js/camera.js — cierre de set/partido (CAM-09)
+- **Seguimiento sin suelo vacío**: el seguimiento a cámara lenta tiene un SUJETO (`clinchSubject`): el atleta más cercano a la marca en el campo
+  donde cae (el defensor que no llega, ≤ 7,5 m) o, si no, el que lo mandó allí (≤ 11 m). El sitio de la cámara (72 candidatos: 24 ángulos × 5,4 /
+  6,6 / 7,8 m) lo deja dentro del cuadro abierto y también en el acercamiento final; la mira va al 42 % hacia su pecho y la lente abre lo justo (≤ 54°)
+  para que quepan él, el balón y la marca. En los últimos ~0,3 s reales antes del bote la mira se cierra sobre el balón (peso del sujeto 0,28, como
+  mucho en el borde) y tras el bote vuelve a abrir (su reacción con el confeti). El bote sigue en cuadro: |ndc| ≤ 0,47 en 27 cierres medidos.
+- **Órbita del partido de cara**: players no sigue la coreografía del héroe en la victoria: tras el choque de pecho los dos se quedan de cara el uno
+  al otro y miran a la grada de su banda (`look(x·1,15, ±13, 5)`). El ancla de la órbita es la perpendicular a la línea que los une, del lado de esa
+  grada (perfiles abiertos a cámara, uno no tapa al otro, caras hacia la lente), buscada cada 0,25 s en ±90° (y su opuesta, con castigo) con un sitio
+  válido: en su campo y lejos de la red (antes, cerca de la red la cámara acababa a 0,9 m de la red, subida a 2,95 m y a 1,3 m de un ganador), dentro
+  del pabellón, sin postes/oficiales ni perdedores cerca o delante (`clAnchor`). Giro del ancla ≤ 25°/s; la órbita oscila ±22° a 6°/s. Si players
+  llega a girarlos hacia la cámara (frentes a < 60° entre sí, a partir de 1,2 s), manda su frente medio.
+- **Encuadre del partido**: la pareja siempre centrada (antes el centro iba al 30 % hacia el héroe con ellos a > 3,4 m: el compañero salía por el
+  borde), margen lateral 0,9 m, R 3,6-5,6 m, FOV ≤ 46°, ganadores a ≥ 3,3 m de la cámara.
+- **Manos bajo el rótulo** (set y partido): envolvente de la altura de las manos de cada ganador (`VB.Players.handWorld`; sube al momento, baja a
+  0,6 m/s; en el partido, al menos brazos arriba = 1,22 × altura); el cabeceo deja la mano más alta ~3,5 % del alto por debajo del borde inferior de
+  `VB.UI.bannerRect()` y, si de las manos a la cadera no cabe, abre la lente (fit2, ≤ 50°).
+- **Siempre viva**: deriva lenta de la mira (±2,6°, dos senos) en la órbita: aunque el muro de 2,6 m de un ganador frene la órbita (pasaba en el set
+  a 844), ninguna ventana de 1 s queda quieta. Nada en confort.
+- `getDebug().clinch.x` (pruebas): `[aHd, aHn, pitch, handT, headN, hz0, hz1, vl, anc, ang]`.
+
+### js/camera.js — balón perdido (CAM-11, hallado al ampliar semillas)
+- `lostBall(g)`: en el peloteo, bote previsto en ≤ 1,2 s a > 0,4 m por fuera de la pista. Entonces el encuadre fino deja que mande el balón (±0,75 NDC
+  en horizontal, por encima de -0,8 en vertical, giro ±0,7 rad) y la mira acompaña al balón (`lostFollow`, peso 0,75, entra/sale en ~0,2 s), aunque pase
+  por detrás del plano de la cámara. Antes, con la semilla 11 a 844 táctil, una recepción desviada que se iba por detrás de la cámara dejaba el balón
+  53 frames fuera de cuadro (pasaba igual antes de estos cambios). `predictLanding` cuesta 0,45 µs: una vez por frame.
+- Lente en táctil: con el balón cerca del borde de arriba abre a 12°/s (antes 16) → el p95 de CAM-11 queda ≤ 12°/s por construcción (con el PC
+  cargado salía 12,7).
+
+### tools/camtest.js (CAM-06)
+- `fovpump` es la puerta de p95 ≤ 12°/s y balón fuera 0; `fovpumpX` (p50 ≤ 2 y balón tras el HUD) y `spikerAll` (agregado CAM-13) son
+  INFORMATIVAS por defecto (`info`) y cuentan como fallo con `STRICT2=1`. La puerta por defecto sale con 0 si pasa todo lo cerrado.
+
+### Medido (ejecutado hoy; scratch en tools/out/ci3/)
+- `node tools/camtest.js` completo (146 s): TODO OK, sale con 0. hero 4/4 tamaños, follow 4/4, spiker por partida 12/12; spikerAll 1280 15/16 (94 %),
+  844 táctil 4/16 (informativa); fovpumpX 2/3 (una semilla con 16 frames tras el HUD, informativa). Con 6 semillas a 844 táctil: balón fuera 0 en las 6.
+- CAM-09 (`ci3/clinch2.js` + `ci3/an2.js`, mide también el sujeto del seguimiento, manos sobre el rótulo y caras): partido 9/9 bien (1280 ×2
+  semillas, 844 táctil), set 12/12 bien (1280 ×2 semillas, 844 táctil); manos sobre el rótulo 0,00 s en todos (antes 1,4-2,2 s por cierre); ventanas
+  quietas 0; seguimiento con un atleta en cuadro (≥ 10 % del alto) el 100 % del tiempo en 23 de 24 cierres (un ace: 0,7 s con el receptor en el
+  borde). Secuencias de fotogramas mirados: `ci3/s-m7.png`, `s-m21.png`, `s-m844.png`, `s-set.png`.
+- courttest set 1280×720 y eight 844×390 táctil TODO OK; touchtest 30 ok; padtest 26 ok; drive y padplay TODO OK; simtest 10 12345 0 TODO OK;
+  console.sh all 1280×720 y táctil 844×390 sin errores; perf 844×390 ×4 dpr 2,75 (SCENE=rally): media 103,6 fps / 201 k tri / 40-43 draws, baja
+  108 fps / 89 k tri / 30-34 draws, «objetivos cumplidos».
+- touchplay: la copia parcheada (`ci3/touchplay_fix.js`) 3/3 a 844×390 y 1/1 a 667×375 con 0 toques de ⇄ sin cambio; la original 3/3 hoy pero
+  con 1-2 de 4 toques de ⇄ que no cambian (los que caen con `g.jobs[0]` puesto): falla cuando solo hay un intento y es de esos.
+
+### Peticiones
+- **ui_main (tools/touchplay.js, flaky)**: diff exacto en `tools/out/ci3/touchplay.diff` (copia completa en `tools/out/ci3/touchplay.proposed.js`).
+  (1) el saque apunta a `hitWindow().press` (instante ideal de PULSAR) en vez de `t − 35 ms` (que era ~35 ms tarde) y sondea fino cerca de él;
+  (2) ⇄ solo con `!g.jobs[0]` (la sim no deja cambiar si el equipo humano tiene tarea) y, si el toque no cambia, reintenta a los 1,2 s (máx. 6).
+  input.js no pierde toques (las pulsaciones quedan retenidas hasta `poll()`).
+- **ui_main (tools/perf.js)**: con el ui.js de ahora (20:57) el modo por defecto (`SCENE=match`) sale con «no arranca el partido: menu»:
+  `actions.startMatch({autopilot:true})` ya no deja `ctx.state === 'playing'` en el mismo tick (¿transición de 450 ms?). Esperar a `playing` con
+  un sondeo de hasta 2 s. `SCENE=rally` funciona.
+- **players (opcional, remata CAM-09 al 100 %)**: en la victoria del partido, tras el choque de pecho (`g.time > c.tc + 0.5`), girar a los dos hacia la
+  cámara (posición `VB.ctx.camera.position` → sim `(x, -z)`) ±35° hacia el compañero, en vez de seguir de cara el uno al otro. La cámara ya lo
+  detecta (frentes a < 60°) y pasa a encuadrarlos de frente.
+- **arena (informativo)**: durante la sesión, camtest vio 2 veces `[VB][ERROR] FX.init: TypeError: Cannot read properties of undefined (reading 'm'|'s')`
+  en partidas táctiles mientras fx.js se estaba editando; al repetir no salió (console.sh limpio). Comprobar en la integración.
+
+## Aplicado (log, integración de los arreglos tras la verificación de la ola 2, 8-nov-2026 noche, PC de casa)
+- Petición a players (CAM-09, girar a los ganadores hacia la cámara) **aplicada** en players.js (`cvYaw`): con `c.match` y `g.time > c.tc + 0,5`, cada ganador
+  mira a `VB.ctx.camera.position` (sim `(x, -z)`) con como mucho 35° vueltos hacia el compañero; el muelle de yaw suaviza el giro. A/B con `ci3/clinch2.js` +
+  `an2.js` (partido, 1280×720 semilla 7): «los dos de frente» **1 % → 51 %** del plano de héroe (844×390 táctil semilla 5: 58 %); manos sobre el rótulo 0,00 s,
+  cara tapada 0,00 s, ventanas quietas 0, 3/3 bien en los dos tamaños. Secuencias miradas: `tools/out/int3/seqm.png`, `seqm844.png` (de frente desde ~3,4 s).
+- touchplay.js (diff de ci3) y perf.js: aplicados por ui_main; perf.js además repite `startMatch` cada 0,5 s hasta `'playing'` (propuesta de arena).
+- CONTRACT §4.4 (`clinch.x`, convención del cierre y del balón perdido) y §6 (`STRICT2`, `fovpumpX`, `spikerAll`). `FX.init: TypeError` no reaparece
+  (console.sh all 1280×720 y 844×390 táctil limpios). `tools/camtest.js` sigue sin seguimiento en git: el commit debe añadirlo.
+
+## De arena (pulido ola 3, ARN-14), 8-nov-2026 — opcional
+- Hay banquillos con suplentes que aplauden/levantan los brazos, fotógrafos y cámara de TV. `VB.Arena.landmarks.benches[team]` (sim; equipo 0 en
+  x > 0, centro del banco a la altura de las cabezas), `.photographers[4]`, `.tvCamera`. Idea para un plano de reacción en el cierre de set/partido:
+  ~0,8 s al banquillo del ganador (brazos arriba durante 4,2 s tras `point.matchWon`, aplauso 2,4-2,9 s tras `setWon`), cámara dentro de la zona
+  libre (p. ej. sim `(bx * 0,8, 8,6, 1,5)` mirando a `benches[team]`). Con guardas: `var B = VB.Arena && VB.Arena.landmarks && VB.Arena.landmarks.benches;`.
+
+## De ui_main (pulido ola 3, 8-nov-2026)
+1. **Contraste del rótulo «SACAR»/«GOLPEAR» del botón táctil (UI-19)**: el auditor de texto (`tools/out/w3/a11y19.js`, escena `serve` táctil) da
+   2,9:1 para el texto blanco de `.vt-hit` en el saque (objetivo 4,5:1 con < 18,66 px). En ui_main los naranjas con texto blanco pequeño ya van a
+   paradas oscurecidas; propuesta para input.js, mismo criterio: fondo de `.vt-hit` `linear-gradient(180deg,#dd5421,#bd3611)` y de `.vt-jump`
+   `linear-gradient(180deg,#2f6ef0,#2459d8)` (o el rótulo ≥ 19 px en negrita). Comprobar con `STRICTC=1 node tools/out/w3/a11y19.js`.
+2. Informativo (UI-13): en escenas `debug=` táctiles el primer corte al saque tiene un frame de 60-90 ms aunque no haya cortinilla (`&wipe=0`):
+   coincide con `.vt-sw/.vt-jump` pasando a `off` (filtro saturate/brightness) mientras `#touch` sale de `dead` (transición de opacidad). En el flujo
+   real lo cubre el ensayo de estilos de ui.js (máx. 18 ms). Repro: `node tools/out/w3/cut1.js 844x390` (vs `REAL=1`).
+
+## Pulido ola 3 — camera_input (9-nov-2026, RTX 3060 Ti): CAM-15 … CAM-20 (+ CAM-11/13 arrastradas, + UI-19 en input.js)
+
+### js/camera.js
+- **CAM-15 saque propio** (`serveUsComp`, sustituye la cámara alta de 5,4 m): por encima del hombro, ~3,35 m (táctil 3,5), 4,3 m detrás y a un lado;
+  el sacador en el tercio derecho (hombros a ~+0,34 NDC; táctil +0,26) de rodillas para arriba; línea de fondo rival >= 0,56 NDC; balón >= 3,6 m
+  de la lente (se aleja si hace falta). Lanzamiento en salto: grúa +1,4 m / +0,8 m y lente con el balón <= 76 px a 1080p; flotante: la lente respira
+  hasta ~44° (balón <= ~122 px). El sitio lateral, el sesgo del sacador y un factor de lente se eligen entre 84 candidatos (también con la pose de la
+  grúa del salto, para que ningún oficial cambie de dentro a fuera por el camino) con histéresis. Oficiales = `VB.Arena._dbg()` refs + judges
+  (releídos cada 8 frames; el 2.º árbitro se mueve). Red de seguridad en `apply()` sobre la pose REAL: si un oficial cruza un borde, cambio mínimo de
+  lente (±24 %) y/o giro (±6°). En el saque propio no hay encuadre fino (`framing` lo salta). Prueba: `VB.CameraRig._serveDbg()`.
+- **CAM-16 menú**: realización de 6 tipos de plano (`wide, side, net, server, setter, board`; `getDebug().menu`/`.menuT`) de 6,6-9,4 s con cortes
+  secos (`lastCut.kind` **`'attract'`**, nuevo) nunca a ±0,3 s de un golpe (predicción de alcance 0,6 s), todas las cámaras del lado de la mesa
+  (y > 0,3; el fondo del sacador sobre el eje), despeje de oficiales/postes/atletas, encuadre automático del balón y los 2 jugadores activos en
+  ±0,42 NDC (con `filmOffset` quedan a la derecha del panel), giro combinado <= 24°/s. **`playIntro(s)`**: grúa desde la esquina alta de nuestro
+  fondo que ACABA en el encuadre asentado del primer saque (planeado al empezar) y cede sin corte (`nextCutIn` = -1 durante la presentación).
+  Saltarla (`playIntro(0)`) sigue cortando con `'serve'`.
+- **CAM-17 red y bloqueo** (`blockMoment`, `getDebug().blk`): de la colocación (toque 2) a 0,35 s tras el bloqueo: escritorio FOV -16°, la acción de la
+  red en el tercio de arriba (cabeza del controlado >= -0,85); bloqueando tú (netK) plano bajo 2,8-3,0 m en diagonal desde el lado de la mesa (silla
+  fuera); táctil sin tocar la lente (CAM-11): travelling hacia la red. Lente <= 10°/s y giro combinado <= 38,5°/s mientras dura. Remate propio con
+  bloqueo probable: la panorámica del seguimiento (CAM-08) espera 0,2 s y no gira rápido hasta que el balón pasa la red.
+- **CAM-18**: `predictBall` a 2,1 s (9 muestras); `ballClutter` (balón a < 6 m dentro del cuadro = descartado) y `ballBand` (balón > 3,6 % del alto en la
+  franja del 15 % del borde) en los dos planificadores del punto; red de seguridad en `apply()` (cierra la lente para sacarlo; en el frame del corte de
+  golpe); `VB.UI.bannerRect()` leído cada frame del plano de héroe: la cabeza nunca bajo la cinta (mira hasta +5°).
+- **CAM-19**: `boardGuard` en `apply()` para point/court/clinch/over/cutaway: caja del marcador colgado entera o fuera (>= 2° sobre el borde)
+  cerrando la lente (manda sobre los pies del héroe); prueba `VB.CameraRig._boardGuard(...)`, `getDebug().board`.
+- **CAM-20 / pruebas**: `&camBreak=clinch|serve|board|menu|block|clutter|hitstop|intro|cut` rompe a propósito cada regla (sin el parámetro nada cambia).
+
+### js/input.js
+- **UI-19** (petición de ui_main): `.vt-hit` `radial-gradient(#ec7444,#c9441a 55%,#a8300e)` y `.vt-jump` `(#6a9cf5,#2c62e0 55%,#1d4bbf)`: blanco de 15 px
+  >= 4,5:1 en el centro (#c9441a 4,9:1, #2c62e0 5,2:1). touchtest 30 ok, padtest 26 ok.
+
+### tools/camtest.js (CAM-20)
+Comprobaciones nuevas: `serve`, `board`, `clutter`, `block` (en cada partida); partidas aparte por tamaño `[menu]` (`menu` + `intro`), `[setend]`
+(`clinch`: órbita del héroe >= 1,8 s, grúa, marcador) y `[feel]` (hit-stop 60 ms y punch). `EXTRA_JOBS=` las quita. `node tools/camtest.js selftest`
+lanza cada `camBreak` con su comprobación y sale 1 si alguna rotura no se detecta.
+
+### Medido (ejecutado; scratch en tools/out/c3/)
+- camtest completo (4 tamaños × 3 semillas + 12 partidas extra): ~220-230 s; todo verde salvo las informativas (ver abajo). selftest: 9/9 roturas
+  detectadas (290 s).
+- CAM-15 `servechk.js`: serve/toss/jumpserve × 1280, 1024, 1680, 844t (semillas 1-3): hombros/cabeza/brazos dentro y fuera de `#prompt`, 0 oficiales
+  cortados, balón de jumpserve 65-76 px a 1080p, fondo >= 0,53 (táctil 0,57-0,66). En vivo (`serve`, 12 partidas) 0 frames mal.
+- CAM-16 `menuchk.js` 60 s: 5-6 tipos, 7 cortes, 0 a ±0,3 s de un golpe, ningún plano < 6 s, giro <= 25°/s, balón+activos a NDC x > -0,3 en 91-96 %;
+  `menuperf.js` móvil ×4: 99-102 fps. `introchk.js` (4 tamaños): salto en el relevo 0,000 m, sin cortes.
+- CAM-17 `blockchk.js` (block 3,5,7,9,11 × 1280 y 844t): bbox 0,31-0,49 del alto, silla 1,5-9 % del área, balón dentro; camtest `block` 12/12 (<= 39°/s).
+- CAM-18 `pointchk.js` (3 semillas × 150 s × 1280 y 844t, 38-39 puntos por tamaño, ~1400 frames con cinta): 0 balones > 4 % junto al borde/cinta, 0 cabezas.
+- CAM-19 `boardchk.js` (3 cierres de set × 2 tamaños): 0 frames cortados; camtest `board` y `clinch` verdes.
+- CAM-11 (844 táctil): p95 11,5°/s, balón fuera 0, p50 1,4-2,1°/s (<= 2 en 2 de 3 semillas); balón tras el HUD 0-21 frames (marcador/franja de toques). PARCIAL.
+- CAM-13: rematador >= 18 % a 1280 ~100 % (mediana 20-22 %); 844 táctil 53-63 % (antes 20-24 %). PARCIAL en móvil.
+- console.sh all 1280 y 844 táctil sin errores; simtest 10 12345 0 TODO OK; touchplay, padplay, drive, courttest set/eight TODO OK;
+  perf 844×390 ×4 dpr 2,75: media 96 fps / 251 k tri / 40-44 draws, baja 98 fps / 113 k tri / 31-34 draws («objetivos cumplidos»).
+
+### Para el integrador (CONTRACT §4.4 / §6)
+- `lastCut.kind` añade `'attract'` (cortes del menú; UI no debe taparlos con cortinilla). La presentación ya NO acaba en corte `'serve'` salvo si se salta.
+- `getDebug()` añade `menu`, `menuT`, `blk`, `board`, `pbNar`; pruebas `_serveDbg()`, `_boardGuard()`; parámetro de URL `&camBreak=`.
+- §6: camtest con serve/board/clutter/block/menu/intro/clinch/feel, `EXTRA_JOBS`, `CAMBREAK`, `selftest`.
+
+## Aplicado (log, integración del pulido ola 3, 9-nov-2026, PC de casa)
+- CONTRACT §4.4/§6: `lastCut.kind 'attract'`, `playIntro` sin corte final, `getDebug()` `menu/menuT/blk/board/pbNar/pbW/pbD`, `_serveDbg`, `_boardGuard`, `&camBreak=`, camtest (serve/board/clutter/block/menu/intro/clinch/feel, `EXTRA_JOBS`, `CAMBREAK`, `selftest`).
+- UI-19 en input.js: ya aplicado por camera_input. `node tools/camtest.js` en el árbol integrado → TODO OK (informativas: fovpumpX 2/3, spikerAll 1/2, las parciales conocidas de CAM-11/CAM-13).
+- Plano del banquillo (ARN-14): sigue sin hacer (opcional).
+
+## Pulido ola 4 — arreglos de cámara (fixer camera_input, 9-nov-2026, PC de casa)
+
+js/camera.js:
+- **UI-13 (tirón del corte punto→saque en el móvil)**. Antes: 84 candidatos del encuadre del saque cada frame (+ la pose de la grúa) y 24 veces
+  en el asentado del corte: 120-140 ms por corte y 23-25 ms por frame en la espera, en el móvil ×4. Ahora:
+  - `fit2` en forma cerrada (misma solución que la bisección, error 5e-12); `fovFor` fuera del bucle de `svcSolve`.
+  - `offStraddle`: atajo EXACTO con la esfera que envuelve los 16 puntos de cada oficial (dentro de la banda interior o fuera de un borde = mismo
+    resultado sin proyectar).
+  - Búsqueda repartida: pasada completa al empezar el saque / asentar un corte (una vez: las vueltas del asentado la reutilizan), luego 12
+    candidatos por frame en rueda (21 con el balón en el aire, y otra pasada completa al lanzar).
+  - **Pasada de antemano** (`svcPrewarm`): durante el plano del punto, si el próximo saque es nuestro, los 84 candidatos se puntúan de 12 en 12
+    con el sacador previsto (x 10,3, y ±1,5 según `g.serverIdx`); el corte la aprovecha.
+  - Red de seguridad de oficiales (apply): si ya falló con la misma pose no se repite (~640 proyecciones/frame quieto), y tras un fallo con la
+    cámara en marcha la búsqueda es corta.
+  - Medido (`tools/out/fix4-cam/camdist.js`, partido autopilot 60 s, 844×390 dpr 2,75 CPU ×4): `CameraRig.update` en serveUs p50 0,5-0,7 ms,
+    p95 1,3; **0 frames > 33 ms con la cortinilla** (low y medium; antes 3/3 cortes a 120-140 ms). `wiperun.js` (debug=rally&live=1, semillas
+    3 y 7 low, 3 medium): todos los cortes salvo el PRIMERO <= 24 ms (antes 72-95 ms también en cortes posteriores). perf.js: long tasks 0-1 (50 ms)
+    frente a 157/174 ms; «objetivos cumplidos».
+- **Fallo encontrado y arreglado**: la red de seguridad de oficiales sumaba su giro a `K.outYaw` y lo volvía a aplicar cada frame; con un oficial
+  cortado varios frames (grúa del saque en salto) la cámara se iba girando hacia la grada con el balón fuera. Ahora el giro es solo de ese frame.
+- **Saque en el móvil (pantalla baja/táctil)**: el juez de línea cercano (10,4, −5,9) está a la misma profundidad que el sacador y salía de ~150 px
+  encima del joystick. Penalización nueva `offForeground` (oficial entero > 30 % del alto o sobre la zona del joystick), sacador algo más centrado
+  (preferencia +0,17 NDC: queda entre el joystick y los botones) y la lente normal pesa más (x6). `judge.js` (3 semillas, 60 s): en la espera y en el
+  saque flotante el juez no entra nunca. En el saque en salto la grúa abre la lente y el juez entra entero abajo a la izquierda ~0,5 s; la red de
+  seguridad (en pantalla baja: lente hasta ±32 %, giro hasta 10°) evita que quede cortado. Con el balón en el aire, en pantalla baja el candidato no
+  cambia (cambiarlo metía al juez por el camino); en escritorio solo cambia para sacar a un oficial cortado.
+- **Plano final (`over`)**: el marcador colgado y las dos pantallas LED de los fondos quedan SIEMPRE fuera por arriba (>= 2°): desvío de cabeceo propio
+  continuo (sube al instante, vuelve a 5°/s, hasta 16°), la lente no se toca (cerrarla dejaba a un ganador enorme y cortado y saltaba 4-22°/frame).
+  `overprobe.js` (debug=over&live=1, 12 s, medido tras cada render): 0 frames con una caja a medias a 1280×720, 1920×1080, 1680×720, 1024×768 y
+  844×390; salto máximo de cabeceo 0,26°/frame. Coste: algo más de suelo abajo (5-8° a 16:9, ~12° a 4:3).
+  `boardGuard` ahora mide cajas genéricas (`BGB`) y tiene en cuenta `filmOffset`; para point/court/clinch/cutaway sigue igual (solo el marcador).
+- **Hit-stop**: tope de nominal + 2 frames pintados (`K.hsF/hsFMax`).
+- `getDebug()` añade `svcEval`/`svcOff` (candidatos y proyecciones de oficiales del frame) y `bgP` (desvío del plano final, °).
+
+tools/camtest.js: `feel` descuenta un frame lento del PC dentro de la congelación (lo indica); `wide` no cuenta los frames a <= 0,4 s de un tirón del PC
+(dt > 4× la mediana y > 50 ms) y los indica; `serve` en pantalla baja/táctil admite el sacador en x >= −0,02 (centrado entre los controles).
+
+Spike (escena `spike` 1280×720 low): en el árbol actual el aviso de toques va en la segunda línea del contador y `#prompt` está apagado; el balón queda a
+0,65 NDC, por debajo. Sin cambio de cámara.
+
+### Petición a ui_main (opcional; evidencia en tools/out/fix4-cam/)
+- **Primer corte al saque del partido en el móvil: 68-92 ms con la cortinilla en fase 3, ~0,15 s después del corte**. NO es JS: `breakdown.js` envuelve
+  `update`/`render` de todos los módulos y en ese frame y el anterior ninguno pasa de 2 ms (cámara < 2 ms); la traza muestra `RasterDecoderImpl::
+  DoEndRasterCHROMIUM` de 40-60 ms en el hilo de GPU. Solo pasa la primera vez (los cortes siguientes <= 24 ms). Sospecha: primer raster de la capa de
+  la cortinilla / del HUD del saque a dpr 2,75. Probar a pre-pintar la cortinilla una vez al cargar (opacity 0.001 un frame) o `will-change: transform`
+  en su capa, y medir con `node tools/out/fix4-cam/wiperun.js 3 low`.
+
+## Aplicado (log, integración de los arreglos tras la verificación de la ola 3, 9-nov-2026, PC de casa)
+- CONTRACT §4.4: `getDebug()` `svcEval`, `svcOff`, `bgP`; `board` `'baja'|'fuera'` en el plano `over`; hit-stop con tope nominal + 2 frames. §6: cambios de camtest (`feel`, `wide`, `serve` en pantalla baja x ≥ −0,02).
+- SIM-03: texto de la línea 345 corregido (4,0 s al ganar un set).
+- **Petición a ui_main (pre-pintar la cortinilla) — evaluada, no se aplica**: la traza (`tools/out/w4lead/trace2.js`) muestra que el hueco de 65-77 ms del primer corte de `debug=rally&live=1` NO es la cinta: es el primer raster (flush de GPU de 40-65 ms) del HUD del saque (`#prompt`, `#touch`, `#coach`, SALTAR), que esa escena nunca ha pintado antes porque empieza a mitad de peloteo. Pre-pintar la cinta (opacidad 0,002, los dos colores) no lo cambia (68/64 ms frente a 76/77). En el partido real el HUD del saque ya se pinta al empezar (bajo la presentación) y el primer corte punto → saque no tiene hueco (`tools/out/w4lead/rmatch.js`: 0 frames > 40 ms en el corte; el único tirón es el del primer punto, que se ha recortado desde arena.js, ver notes/arena.md).
+- Verificado en el árbol integrado: simtest completo + barrido `simtest <10|20> <1..25> 0` 50/50 TODO OK; console.sh 19 escenas (1280×720 y 844×390 táctil) sin errores; drive, touchplay, padplay (estándar y DualSense) y audiotest completo TODO OK; perf 844×390 ×4 «objetivos cumplidos» (ver TRASPASO).

@@ -78,13 +78,19 @@ async function runSize(size) {
     check(E.t && E.m && E.s === 'menu', 'detecta móvil táctil y arranca en el menú');
     check(E.w === W && E.h === H, 'viewport exacto ' + E.w + 'x' + E.h);
     await shot('menu');
-    // nivel: un toque cambia la dificultad
+    // nivel (UI-06): la flecha › sube un nivel, la ‹ lo baja (zonas propias de ≥ 44 px); ninguna da la vuelta
     const d0 = await evalJs('VB.ctx.settings.difficulty');
-    await tap('#optDiff'); await sleep(250);
+    await tap('#optDiff .arr[data-d="1"]'); await sleep(250);
     const d1 = await evalJs('VB.ctx.settings.difficulty');
-    check(d1 && d1 !== d0, 'tocar NIVEL cambia la dificultad (' + d0 + ' → ' + d1 + ')');
+    const ORDER = ['easy', 'normal', 'hard', 'expert'];
+    check(d1 && ORDER.indexOf(d1) === Math.min(3, ORDER.indexOf(d0) + 1), 'tocar › sube la dificultad (' + d0 + ' → ' + d1 + ')');
+    await tap('#optDiff .arr[data-d="-1"]'); await sleep(250);
+    const d2 = await evalJs('VB.ctx.settings.difficulty');
+    check(d2 === d0, 'tocar ‹ la baja (' + d1 + ' → ' + d2 + ')');
+    const az = await evalJs(`JSON.stringify([].map.call(document.querySelectorAll('#optDiff .arr'),function(a){var r=a.getBoundingClientRect();return [Math.round(r.width),Math.round(r.height)]}))`);
+    check(JSON.parse(az).every(z => z[0] >= 44 && z[1] >= 44), 'zonas ‹ › de al menos 44x44 px (' + az + ')');
     // vuelve a Fácil (el bot humano no es un jugador de élite)
-    for (let i = 0; i < 4 && (await evalJs('VB.ctx.settings.difficulty')) !== 'easy'; i++) { await tap('#optDiff'); await sleep(200); }
+    for (let i = 0; i < 4 && (await evalJs('VB.ctx.settings.difficulty')) !== 'easy'; i++) { await tap('#optDiff .arr[data-d="-1"]'); await sleep(200); }
     // ajustes y vuelta
     await tap('#btnSettings'); await sleep(450);
     check(await evalJs("VB.UI.isPanelOpen&&VB.UI.isPanelOpen()&&!document.getElementById('pnSet').hidden"), 'tocar AJUSTES abre el panel');
@@ -116,10 +122,11 @@ async function runSize(size) {
       await tap('.vt-hit', 3, 50);
       const t0 = Date.now();
       while (Date.now() - t0 < 2600) {
-        const t = await evalJs("(function(g){if(g.mode!=='serve'||g.serveState!=='toss')return -9;var w=VB.Sim.hitWindow(g,g.server);return w?w.t/Math.max(0.05,VB.ctx.timeScale):-9})(VB.ctx.game)");
+        // (apunta a hitWindow().press = instante ideal de PULSAR, en s reales; cerca de él sondea fino y descuenta ~20 ms de envío)
+        const t = await evalJs("(function(g){if(g.mode!=='serve'||g.serveState!=='toss')return -9;var w=VB.Sim.hitWindow(g,g.server);return w&&isFinite(w.press)?w.press/Math.max(0.05,VB.ctx.timeScale):-9})(VB.ctx.game)");
         if (t === -9 || t == null) break;
-        if (t > 0.22) { await sleep(60); continue; }
-        await sleep(Math.max(0, t * 1000 - 35)); await tap('.vt-hit', 3, 45); return 'ok:' + lbl;
+        if (t > 0.16) { await sleep(Math.min(60, (t - 0.15) * 1000)); continue; }
+        await sleep(Math.max(0, t * 1000 - 20)); await tap('.vt-hit', 3, 45); return 'ok:' + lbl;
       }
       return 'sintiempo';
     }
@@ -137,7 +144,7 @@ async function runSize(size) {
     const JOY = 1, BTN = 2;
     const R = await evalJs("(function(){var b=document.querySelector('.vt-base');return b?b.getBoundingClientRect().width/2:58})()") || 58;
     const jx0 = Math.round(W * 0.2), jy0 = Math.round(H * 0.62);
-    let joyOn = false, toward = 0, samples = 0, jumpsTried = 0, swTried = 0, lastSw = 0;
+    let joyOn = false, toward = 0, samples = 0, jumpsTried = 0, swTried = 0, lastSw = 0, swMiss = 0, swPend = true;
     const t0 = Date.now();
     while (Date.now() - t0 < SECS * 1000) {
       // dirección hacia el punto donde hay que jugar el balón, en coordenadas de pantalla (x derecha, y abajo)
@@ -149,7 +156,7 @@ async function runSize(size) {
         var w=VB.Sim.hitWindow(g,p),ts=Math.max(0.05,VB.ctx.timeScale);
         var sp=Math.hypot(p.vx||0,p.vy||0),dot=sp>0.2?((p.vx||0)*dx+(p.vy||0)*dy)/(sp*(d||1)):0;
         return {d:d,ux:sx/l,uy:-sy/l,dot:dot,sp:sp,w:w&&w.canReach&&!w.active&&w.t>0?(w.press/ts):9,att:!!(w&&w.attack),jt:w&&w.jumpT!=null?w.jumpT/ts:9,mine:g.touchTeam===0||g.touchTeam<0||true,
-          rec:VB.Sim.canReach(g,p),ctrl:p.id,air:!p.onGround}})()`);
+          rec:VB.Sim.canReach(g,p),ctrl:p.id,air:!p.onGround,swOk:!g.jobs[0]}})()`);
       if (s.st) { await sleep(150); continue; }
       if (s.serve) {
         if (joyOn) { await up(JOY); joyOn = false; }
@@ -169,7 +176,11 @@ async function runSize(size) {
       if (s.att && s.jt > 0 && s.jt < 0.12 && !s.air) { await tap('.vt-jump', BTN, 50); jumpsTried++; }
       else if (s.w < 0.09 && s.w > -0.05) { await tap('.vt-hit', BTN, 45); await sleep(120); }
       // ⇄ cambia de jugador (una vez cada ~8 s, con el balón en campo rival)
-      if (Date.now() - lastSw > 8000 && !s.rec && s.d > 3) { lastSw = Date.now(); if (await tap('.vt-sw', BTN, 50)) swTried++; }
+      // (la sim solo deja cambiar sin tarea del equipo humano, g.jobs[0] vacío: si el toque no cambia, reintenta a los 1,2 s)
+      if (Date.now() - lastSw > (swPend ? 1200 : 8000) && s.swOk && !s.rec && s.d > 3) {
+        lastSw = Date.now(); const n0 = JSON.parse(await evalJs('JSON.stringify(window.__tp)')).swManual;
+        if (await tap('.vt-sw', BTN, 50)) { await sleep(160); const n1 = JSON.parse(await evalJs('JSON.stringify(window.__tp)')).swManual; if (n1 > n0) { swTried++; swPend = false; } else { swMiss++; swPend = swMiss < 6; } }
+      }
       // SALTAR suelto alguna vez (comprobar que el botón salta aunque no sea remate)
       if (jumpsTried < 2 && s.d > 4 && !s.air && Math.random() < 0.03) { await tap('.vt-jump', BTN, 50); jumpsTried++; }
       await sleep(25);
@@ -182,7 +193,7 @@ async function runSize(size) {
     check(tp.hits - tp.serves >= MIN_TOUCHES, 'al menos ' + MIN_TOUCHES + ' toques humanos de balón con GOLPEAR (' + (tp.hits - tp.serves) + ')');
     check(tp.points >= 1, 'se juegan puntos (' + tp.points + ')');
     check(jumpsTried === 0 || tp.jumps >= 1, 'SALTAR salta');
-    check(swTried === 0 || tp.swManual >= 1, '⇄ cambia de jugador');
+    check(tp.swManual >= 1 || (swTried === 0 && swMiss === 0), '⇄ cambia de jugador (' + tp.swManual + ', toques sin cambio ' + swMiss + ')');
     await shot('juego');
 
     // ================= PAUSA =================

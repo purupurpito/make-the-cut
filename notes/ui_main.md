@@ -318,3 +318,764 @@ draw calls, pixelRatio y sombra son la parte de GPU del objetivo.
 
   «objetivos cumplidos» en las dos. La primera pasada de 844x390 dio 85-93 fps con más carga en el PC; un A/B inmediato contra la instantánea de la
   ronda 1 (`voley-3d-snapshots/verify1-before`) dio lo mismo (media 95 / 95 fps): sin regresión del código.
+
+## Petición de sim (pulido ola 1, SIM-03): pausa de presentación y saltarla (2026-11-07)
+sim.js ya expone (ver notes/sim.md §P1): `createGame({present:true})` (o `g.present = true`), `point.hold`, `VB.Sim.skipHold(g)`,
+`VB.HOLD`. Con `present` la pausa del punto es 1,9 s (normal), 2,4 s (`highlight ≥ 0,55`), 4,0 s (set, con el cambio de campo) y
+4,2 s en `'over'` antes de `gameOver` (antes 2,2: la pantalla final llega 2 s más tarde; UI-11 puede contar con ello).
+1. **main.js `ctx.actions.startMatch`** (partidos humanos; el autopilot de depuración y la demo, sin presentación):
+   ```js
+   setGame(Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: isRookie(), present: !opts.autopilot }));
+   ```
+2. **main.js, bucle** (justo antes del `while (acc >= STEP ...)`, con los flancos del frame aún en `edge`): GOLPEAR o SALTAR durante la
+   pausa la recorta (solo tras 0,8 s de pausa; nunca a menos de 0,3 s; sim decide). El flanco se consume para que no llegue al saque:
+   ```js
+   if (ctx.state === 'playing' && (g.mode === 'point' || g.mode === 'over') && (edge.hit || edge.jump) && Sim.skipHold) {
+     if (Sim.skipHold(g)) { edge.hit = edge.jump = false; call('UI', 'onHoldSkip', g); } // onHoldSkip opcional (p. ej. acortar el banner)
+   }
+   ```
+   (Con el balón en juego `skipHold` devuelve false sin tocar nada; en `'over'` ya terminado, también.)
+3. **UI (UI-03/UI-04)**: `point.hold` es la duración real de la pausa; un banner que dure `min(e.hold − 0,35, …)` no se queda colgado
+   sobre el saque. Si se salta, el siguiente `serveReady`/`newSet` llega antes: conviene que el banner del punto se cierre con él.
+
+## Aviso de audio (pulido ola 1, AUD-03): «toc» del reloj de saque (2026-11-07)
+- audio.js suena un «toc» al cruzar `g.serveClock` 3, 2 y 1 s (sacador humano, tras el silbato, solo con `serveState 'ready'`), el último más
+  brillante. Cae justo en el cambio de cifra de «Saca ya N s» (`Math.ceil`). Si UI-05 pinta un aro de 8 s, conviene que sus pulsos de los
+  últimos 3 s usen los mismos umbrales (cambio de `Math.ceil(g.serveClock)` de 4→3, 3→2, 2→1) para que sonido y aro vayan a la vez. Nada que
+  cambiar en ui.js para que funcione.
+
+## De camera_input (pulido ola 1, CAM-05/06/02/04): ganchos de corte, camtest, rótulo del héroe, vibración (2026-11-07)
+1. **Cortes (UI-04, UI-13)**: `VB.CameraRig.getDebug()` da `cutN` (sube en cada corte deliberado), `lastCut` `{from, to, kind, t}` con kind
+   `'point'` (al plano de reacción, a los 0,45 s del punto), `'serve'` (vuelta al saque), `'court'` (grúa del cambio de campo) u `'over'`, y
+   `nextCutIn` (s reales hasta el próximo corte programado; −1 = ninguno; 0 en el frame del corte; cuenta cámara lenta, hit-stop y `skipHold`).
+   Una cortinilla de 0,3 s centrada en el corte: empezarla cuando `0 < nextCutIn <= 0.15` y acabarla 0,15 s después de que `cutN` suba.
+   Un banner sincronizado: mostrarlo cuando `cutN` sube con `lastCut.kind === 'point'` (el plano de reacción ya está asentado en ese frame).
+2. **Rótulo y héroe (UI-03)**: en el plano de reacción `getDebug().pf.mode === 'hero'` y `pf.heroX` = NDC x donde queda el héroe (±0,42, en un
+   tercio, con su cabeza a 0,45 NDC). El centro del cuadro queda libre: un rótulo centrado arriba (o desplazado hacia `-pf.heroX`) no le tapa la cara.
+3. **CONTRACT §6**: añadir `node tools/camtest.js [s=75] [semillas] [tamaños]` (de camera_input; SPEED=2, PAR=4, LOG=1, ONLY=…, STRICT=0): regresión
+   automática de la cámara en vivo (límites del pabellón, cortes, saque rival asentado, transiciones, héroe, balón en cuadro). Escribe solo en tools/out/camtest/.
+4. **UI-16 (Ajustes > Accesibilidad)**: `ctx.settings.rumble === false` apaga toda la vibración (`VB.Input.rumble` y `rumbleSig`); el modo confort
+   (`camStable` o `prefers-reduced-motion`) ya quita hit-stop y punch de FOV y deja el temblor al 30 %.
+5. Visto al pasar `tools/touchplay.js`: «tocar NIVEL cambia la dificultad (easy → easy)» falla en el menú a 844×390 y 667×375 (ui.js, UI-06 en obras);
+   el resto de touchplay (overlay en partido, joystick, botones, pausa) pasa.
+
+## De players (pulido ola 1), 2026-11-07
+- **CONTRACT §4.4** (añadidos opcionales de players): `VB.Players.drainFx(out)` → `{type:'highfive'|'fistbump'|'chestbump'|'clap', team, x, y, z,
+  strength}` (contactos cosméticos de la celebración, coords de la sim, un evento por contacto); `VB.Players._marker()` (pruebas: estado del galón
+  del jugador controlado); campos del rig de solo lectura `aMode/aw0/aw1`, `hipYaw`, `pdW`, `diveTc`, `vh`. `offX/offY` incluye también la
+  convergencia de la pareja tras el punto (la raíz y las partes del cuerpo ya lo llevan: `rigOf`/`handWorld` siguen siendo la verdad visual).
+- **Cableado (opcional, si más de un módulo quiere los contactos)**: hoy solo audio los necesita y puede vaciar la cola él mismo
+  (notes/audio.md). Si también FX/UI los quieren, que main.js los vacíe una vez justo después de `Players.update` y los añada al array del frame
+  (los módulos que van detrás —FX, cámara, audio, UI— los verán como eventos):
+  ```js
+  // main.js, tras call('Players', 'update', g, gdt, ev):
+  if (VB.Players && VB.Players.drainFx) { var pfx = VB.Players.drainFx([]); for (var i = 0; i < pfx.length; i++) { pfx[i].t = g.time; pfx[i].type = 'fx:' + pfx[i].type; ev.push(pfx[i]); } }
+  ```
+  (en ese caso audio leería `ev[i].type === 'fx:highfive'…` en vez de llamar a `drainFx`).
+
+## De camera_input (pulido ola 1, 2.ª pasada, 2026-11-08)
+1. **CONTRACT §4.4** (añadidos opcionales de camera.js): `VB.CameraRig.heroShot()` → `null` o `{heroId, mateId, team, camX, camY, hx, hy,
+   heroYaw, conv, mx, my, mateYaw, t}` (coreografía del plano de héroe; solo en `g.mode === 'point'`; objeto reutilizado, no modificar) y
+   `VB.Players.heroShotAware` (players: la convergencia la sigue; ver notes/players.md). Convención de cámara: «el plano de héroe dicta la
+   coreografía de la celebración: el que anota, de cara a la cámara; el compañero llega por detrás».
+2. **CONTRACT §6**: `tools/camtest.js` admite ahora `PAGE_ROOT=carpeta` (otra copia del proyecto), `DIFF=nivel`, la comprobación `scorer` y el
+   criterio `hero` agregado por tamaño.
+3. **touchplay.js (informativo, tuyo)**: «tocar NIVEL cambia la dificultad (easy → easy)» falla en los dos tamaños: el toque en el CENTRO de
+   `#optDiff` cae ahora en la flecha «‹» (UI-06), que en Fácil no baja más. No es input.js (el `pointerdown` de captura solo mira el
+   overlay). O el test toca `.mv-val`/la flecha «›», o la fila deja el centro para el ciclo.
+
+## Pulido ola 1 — ui_main (2026-11-08, PC de casa, RTX 3060 Ti): UI-01…UI-08
+Todo medido con GPU real; scripts de prueba en `tools/out/ui1/` (no se suben). Interfaces de CONTRACT intactas; solo añadidos opcionales.
+
+### UI-08 · perfiles de Chrome que se quedaban en %TEMP%
+- `tools/cdp.js`: `close()` mata el árbol de Chrome y borra el perfil `vb3c-*` de forma SÍNCRONA con hasta 5 reintentos (200, 400… ms; Windows
+  suelta los ficheros con retraso) y otra vez tras el evento `exit` de Chrome (devuelve esa Promise); `open()` barre los `vb3c-*` de más de 1 h
+  (como mucho 1,5 s por arranque; `VB_NOSWEEP=1` lo desactiva; `VB_PROFDEBUG=1` dice «borrado / NO borrado»). `shot(file, clip)` admite recorte.
+- Medido: `console.sh all` (1280×720), `TOUCH=1 console.sh all 844 390` y `node tools/perf.js` → los tres «perfil … borrado»; lista de `vb3c-*`
+  idéntica antes y después.
+- **Para el integrador (CONTRACT §6)**: «Las herramientas de DevTools (`tools/cdp.js`) crean un perfil temporal `vb3c-*` en %TEMP% y lo borran al
+  cerrar (síncrono, 5 reintentos, y otra vez tras el `exit` de Chrome); al abrir barren los de más de 1 h. `VB_PROFDEBUG=1` informa.»
+
+### UI-01 · sin parón en el primer peloteo
+- main.js: programas precompilados EN PARALELO bajo el telón (`KHR_parallel_shader_compile`: escena + `VB.Arena.prewarmList()` con las luces y el
+  destino de render reales, sombras y pasadas del post de arena; sin la extensión, `VB.Arena.prewarmCompile()`), y otra vez al empezar partido.
+- Nuevo `warmDraw()`: con los programas ya enlazados, UN render con todo visible y sin recorte por cámara justo antes del primer frame (ANGLE/D3D11
+  compila en el primer DIBUJO la variante de cada programa: eran los frames de 40-55 ms al empezar el partido). 25-110 ms bajo el telón.
+  `&warmdraw=0` lo desactiva; `ctx.prewarmInfo()` añade `drawMs`.
+- ui.js: **ensayo de estilos del HUD** (`gym`): tras el enlace de programas y aún con el telón, se pintan una vez (con el fondo del telón al 99,5 %,
+  invisible) todos los estados del banner, la pestaña de punto, el aviso (con las teclas de teclado, mando y táctil), el consejo, la tarjeta
+  guiada, el contador y (en táctil) los controles de input.js con sus estados, que luego se devuelven tal cual. Motivo medido con trazas: la primera vez que Chrome pinta una sombra con desenfoque (p. ej. el brillo de la tecla de
+  «¡Golpea ahora!») Skia compila ~15 shaders en el proceso de GPU = un frame de 45-70 ms con el JS del frame en 1 ms. Con el ensayo: 0 tareas
+  de compilación y raster de 3 ms. Notas: bajo una capa opaca Chrome no rasteriza; con `.warm` (opacidad .01 en cada descendiente) o 1/255
+  tampoco; encima del telón al 3 % se veía. `VB.UI._gym()` (pruebas).
+- Medido (`tools/out/ui1/u1.js`, partido real con el bot «perfecto» de simtest, gesto previo en el menú; CPU del PC 42-45 %):
+  MENUWAIT 3000 y 15000 → 1 programa nuevo tras `startMatch` (sombra, 0,9-1,2 ms; ninguno > 8 ms); mayor hueco de frame en los primeros 60 s
+  **24,2 ms** en los dos (antes 55-85 ms al empezar y 55-73 ms en el primer «¡Golpea ahora!»). `feel.js NOCAST=1` 62 s: mayor hueco 26 ms.
+  Móvil emulado 844×390 táctil: mayor hueco 30 ms (antes 121-133 ms en el primer frame del partido, raster de los controles táctiles).
+  `prewarmMs` 72-122 ms (antes ~40-53). Con la máquina saturada por otras pruebas (CPU 84-100 %) salen huecos de 250-480 ms sin ningún
+  evento: no son del juego, hay que medir con el PC tranquilo.
+- Ojo: el primer `AudioContext` cuesta 50-64 ms en este Chrome (constructor). Pasa en el primer gesto (menú), no al empezar partido.
+
+### UI-02 · un solo árbitro de capas de texto
+- banner/pestaña > tarjeta guiada > aviso corto > aviso de golpe > consejo; como mucho 2 a la vez. Un punto quita al momento guía, consejo y aviso;
+  la guía y el consejo esperan a que no haya banner (también «SET n» y punto de set); con la guía no hay consejo.
+- Medido (DOM cada 100 ms, `debug=rally&live=1&guide=1`, 120 s): 1280×720 y 844×390 táctil → 0 muestras con banner + guía, 0 con más de 2 capas.
+
+### UI-03 · presentación del punto por niveles (`point.highlight`)
+- Nivel 1 (trámite): pestaña del color del equipo que sale de detrás del marcador, junto a su fila («Remate», «Error de la CPU»…), ~1 s; segunda
+  línea solo si informa: la llamada del árbitro TAL CUAL y sin pasarla a mayúsculas («Dobles: el mismo jugador toca dos veces», «Falta de saque: 8
+  segundos», «Ataque sobre el saque», «Toque de red», «Balón toca la antena»…). Chip «⇄ Saque» con cambio de saque.
+- Nivel 3 (set/partido) se coloca arriba, a media altura o en el tercio inferior, donde menos tape al héroe y nunca sobre el marcador.
+- Nivel 2 (bloqueo, ace, jugada ≥ 10 toques, racha tuya de 3 o 5, punto de set salvado o `highlight ≥ 0,55`): cinta tras el corte al plano de
+  reacción, en el tercio inferior (izq./dcha.) en escritorio y en la franja alta en táctil/alto ≤ 560 px, en el sitio que no tapa `pf.hero` /
+  `pf.vic`; la misma cinta no se repite dos puntos seguidos (2.º ace del mismo equipo → pestaña). Nivel 3 (set/partido): centro, tras el héroe.
+- Calibrado con la sim (`tierstat5.js`, 16 partidos por nivel): cinta grande en el 32,5 % (Fácil), 28,5 % (Normal), 27 % (Difícil) de los puntos.
+- Medido: timeline de 120 s → 25 % con cinta, 0 subtítulos repetidos seguidos; `REF=1 pres.js` (motivo y texto del árbitro inyectados en puntos
+  reales) → los 10 textos salen idénticos; 10 puntos a 1280×720 y 9 a 844×390: la cinta no corta las cajas del héroe ni de la víctima; titular
+  44 px (40 px el largo) a 844×390 y 59-69 px a 1280×720. Los tres textos fijados por Ferran siguen en sim.js tal cual.
+
+### UI-04 · banners al ritmo de los cortes; la pausa los quita
+- Con `CameraRig.getDebug()` (`cutN`, `nextCutIn`, `lastCut`, `ccU`): la cinta del punto entra con el corte al plano de reacción y se funde en
+  120 ms justo antes del corte de vuelta; «Cambio de campo» entra rápido (visible del todo a 0,09 s del plano `court`) y se va con `ccU` ≈ 0,88;
+  «Set para ti» solo en el plano de reacción; **nuevo**: «Set 2» entra en la bajada de la grúa (ccU ≈ 0,9) y ya no se repite con el `newSet`.
+- Pausa: banner, pestaña y aviso corto ocultos (también los que llegan con la pausa ya puesta, p. ej. `debug=pause`); al volver solo reaparecen si
+  les quedaban > 0,4 s. `VB.UI.bannerRect()` → rect en px CSS o null (para CAM-18). `VB.UI.onHoldSkip()` (ver SIM-03 abajo).
+- Medido (`seqcheck.js`, por frame): 8 cortes punto→saque con 0 frames de banner/pestaña del punto después; set: «Cambio de campo» 0,088 s,
+  fuera con ccU 0,884, «Set para…» con ccU > 0,2: 0. `debug=pause`: banner y pestaña con opacidad 0.
+
+### UI-05 · el aviso del saque enseña el momento bueno, y reloj de 8 s
+- Balón subiendo: sin tecla (reloj de arena) y «Espera… golpea al bajar» con una barra que se llena hacia una muesca fija; la barra usa el mismo
+  reloj que el brillo de SACAR y el aro (`hitWindow().press`, que cuenta de forma continua hacia el contacto de bajada). Tecla encendida y
+  «¡Golpea ahora!» solo en la ventana (−0,15, 0,24).
+- Reloj: aro alrededor de la tecla los últimos 5 s (ámbar; rojo en los 2 últimos), con un latido en cada segundo de los 3 últimos a la vez que el
+  «toc» de audio.js; «Saca ya 3 s» con la cifra y la unidad sin mayúsculas. «Falta de saque: 8 segundos» intacto.
+- Medido: novato que pulsa 200 ms después de ver cualquier tecla → 11 de 11 saques «perfect», 0 «Saque a la red»; captura a mitad de lanzamiento
+  sin tecla; `clock.js` a los 3, 5 y 7 s: aro = reloj ±0,02 s, sin «N S».
+
+### UI-06 · flechas de dificultad
+- ‹ baja y › sube (zonas propias de 46×44 px en táctil, 36×54 en escritorio, chevrons SVG), sin dar la vuelta (rebote y sonido en el tope);
+  el resto de la fila sigue avanzando; el valor entra deslizando desde el lado de la flecha. ←/→ del teclado igual. `drive.js` y
+  `touchplay.js` (actualizado: toca › y ‹ y comprueba ≥ 44×44) TODO OK.
+
+### UI-07 · arranque con marca
+- Script en línea en index.html (tras `#boot`, antes de three.js): pide la fuente del logotipo desde el primer instante (tope 2,5 s desde la
+  navegación) y avisa con `window.__vbFonts` / `window.__vbOnFonts`. main.js deja pintar UN frame con el logotipo antes del arranque pesado
+  (tope 350 ms; en depuración, sin esperar).
+- El telón usa el mismo marcado/CSS que `.logo` del menú; el logotipo se funde al llegar la fuente (animación de opacidad: la mueve el compositor) y,
+  con la escena lista y el ensayo de estilos hecho (tope 0,9 s), vuela con FLIP (solo transform, 0,64 s) a su sitio en el menú mientras el menú
+  entra en cascada (ya se puede pulsar); al aterrizar lo releva el del menú en el mismo frame. El arco punteado y el brillo no se animan mientras
+  vuela (son animaciones de pintado). Movimiento reducido: fundido de 150 ms.
+- Medido (`bootseq.js`, muestreo cada 50 ms + fotogramas reales): 0 muestras con dos logotipos; el primer frame con logotipo ya lleva la fuente;
+  menú pulsable a 2,60-2,73 s con Google Fonts bloqueado (antes 3,5-3,8 s) y a 2,6 s normal y a 844×390.
+
+### SIM-03 aplicado (petición de sim)
+- main.js: `present: !opts.autopilot` en `startMatch`; GOLPEAR/SALTAR durante la pausa del punto llama a `Sim.skipHold(g)` (consume el flanco) y
+  avisa a `UI.onHoldSkip()`.
+
+### Para el integrador
+- CONTRACT §4.1: `ctx.prewarmInfo()` (`{n, total, issueMs, waitMs, pending, drawMs}`); §4.4: `VB.UI.bannerRect()`, `VB.UI.onHoldSkip()`,
+  `VB.UI.bootReady(bootEl)` (main.js), `VB.UI._gym()` (pruebas); §6: nota de perfiles de UI-08, `&warmdraw=0`, `&prewarm=sync`.
+- notes/camera_input.md: `navigator.vibrate` sin gesto previo deja un error de consola (propuesta de guarda con `navigator.userActivation`).
+- Parámetro nuevo `&bootwait=0` (main.js): arranca sin esperar a pintar el logotipo del telón (pruebas A/B del arranque).
+
+## Aplicado (log, integración del pulido ola 1, 8-nov-2026, PC de casa)
+- main.js: tras `Players.update`, `VB.Players.drainFx(PFX)` y cada contacto se añade al array del frame como `fx:<tipo>` (con `t`);
+  si el frame no traía eventos se usa `frameEvents` en vez de `EMPTY`. Lo consumen audio (palmada/puños); los demás lo ignoran.
+- touchplay «NIVEL»: ya resuelto por UI-06 (touchplay actualizado, TODO OK).
+- CONTRACT: §4.1 `prewarmInfo()` y parámetros `&warmdraw=0`, `&prewarm=sync`, `&bootwait=0`; §4.4 `bannerRect`, `onHoldSkip`,
+  `bootReady`, `_gym`; §5 `skipHold` y `fx:*`; §6 perfiles `vb3c-*` de cdp.js y camtest.
+
+## Pulido ola 1 — arreglos de ui_main tras la verificación (2026-11-08, PC de casa)
+Scripts y capturas en `tools/out/ui2/` (no se suben).
+- **Saque en el móvil (aviso arriba que tapaba la red)**: en táctil ya no hay consejo arriba durante el saque. Los dos saques van en el
+  aviso de abajo, junto al sacador, en una rejilla de 2×2 (`#prompt.two`): la tecla SACAR de siempre (`#promptKey`, la que leen los bots)
+  con «Flotante» y la tecla SALTAR con «En salto». Mide 131×48 px a 844×390. La red y los receptores quedan libres (`serve_after2.png`,
+  `z_chip5.png`). Cuando empieza el reloj, vuelve a la línea única «Saca ya 3 s» con el aro (clock.js táctil: TODO OK). El aviso anclado
+  esquiva también el joystick por la izquierda, igual que ya esquivaba los botones por la derecha. Las teclas táctiles tienen más contraste
+  (blanco con sombra). En tabletas (táctil y alto > 560 px) el aviso anclado es más grande.
+- **3 capas de texto en el primer remate guiado**: el árbitro no contaba la tarjeta guiada cuando el balón le pasaba por detrás (`show thru`:
+  comparaba `className === 'show'`). Además, un aviso de golpe «go» («¡Salta!», «¡Golpea ahora!») corta el elogio del toque anterior
+  («Colocación perfecta») si ya hay tarjeta o banner. Medido: `layers.js` (debug=rally&live=1&guide=1, 120 s), 1280×720 y 844×390 táctil
+  → 0 muestras con banner+guía y 0 con más de 2 capas. Dos partidos humanos reales de 300 s (play3 del verificador, primer partido, 844
+  táctil y 1280 teclado): 0 muestras con más de 2 capas y ningún «TRI».
+- **Ritmo de las cintas grandes**: como mucho una cada 3 puntos. Excepciones: highlight ≥ 0,8, punto jugado con punto de set o de partido
+  (se lee de `serveReady`) y punto de set salvado. `tierstat6.js` usa los bots humanos de simtest contra la CPU, 6 partidos por casilla.
+  Antes, del 23,9 al 52,5 % (perfecto en Fácil: 52,5 %; bueno: 33,7-47,7 %). Ahora, del 18,0 al 31,1 % en todas las casillas, también
+  con autopilot (21-22 %). Partidos reales: 17,9 % (844 táctil) y 14,3 % (1280).
+- **Ace que acaba en «Balón a la red»**: si sim trae un texto del árbitro (red, antena, dobles, 8 s, «… a la red»), ese texto es el
+  subtítulo y sustituye a «La CPU no controla la recepción». Comprobado inyectando el evento: la pestaña muestra «¡Ace! / Balón a la red».
+- **Reglas (paso 6)**: añadidas «Falta de saque: 8 segundos» y «Ataque sobre el saque» con la redacción fijada. Lista reordenada por
+  parejas: Fuera/Antena, Red/4 toques, Dobles/Cuerpo, 8 s/Ataque sobre el saque, Cambio de campo/Sets. Fichas algo más compactas: a
+  1280×720 cabe sin desplazar (685/685).
+- **UI-07**: `document.fonts.check()` no prueba nada (da true sin ninguna cara). Ahora el script en línea deja `window.__vbFontFaces`, el
+  número de caras cargadas de verdad. La comprobación buena recorre `document.fonts` buscando Barlow Condensed 900 italic con
+  `status === 'loaded'` (`bootseq2.js`). Con la red normal sale true en el primer frame con logotipo (3 de 3, 4 caras). Con Google Fonts
+  bloqueado sale false y 0 caras, como debe ser. El ensayo de estilos pasa de paso cuando hay 2 frames fluidos y han pasado 50 ms (antes 3
+  frames y 70 ms). Menú pulsable a 2,80-3,18 s con el PC al 43-79 % por otras pruebas. El margen sigue siendo justo. Perfil del arranque
+  (`bootprof.js`): el hilo principal está ocioso 2,4 de 3,8 s. Lo que manda es la compilación en paralelo de los 39 programas en la GPU
+  (~1,05-1,1 s, todos de la escena; la lista de `prewarmList` no añade ninguno, A/B medido) y el primer paso del ensayo (~430 ms de
+  raster/Skia). Aplazar `prewarmList` no gana nada.
+- **Chrome huérfano**: `cdp.js` tiene ahora `killOrphans(maxAgeMs, dry)`. Busca procesos de navegador con un perfil `vb3c-*` en los que
+  el proceso y la carpeta tengan más de 1 h, y los cierra con `taskkill /T /F`. `sweepProfiles` lo llama si un perfil viejo no se deja
+  borrar, o una vez por hora (marca `%TEMP%/vb3-orphans.stamp`). Nuevo `node tools/clean.js` (`DRY=1`, `AGE=min`) para hacerlo a mano.
+  En la primera pasada cerró los 3 huérfanos (`vb3c-aULURv` del 6-nov, `cydPCB`, `sW6w78`) y borró la carpeta del 7-nov.
+- Regresión: `console.sh all` (1280 y 844 táctil) sin errores; drive/touchplay TODO OK. padplay TODO OK en 3 de 4 pasadas: la otra, con
+  el PC cargado, dio «1 FALLOS» y no se vio cuál. perf 844×390: baja 100,8 fps, 34-39 draw calls y 87 k triángulos; media 95 fps y
+  196 k; «objetivos cumplidos». u1 (UI-01): hueco máximo de 36 ms en los primeros 60 s (< 50). simtest rápido TODO OK.
+- **Para el integrador (CONTRACT §6)**: `tools/clean.js` (ui_main) y `killOrphans` en cdp.js. `window.__vbFontFaces` (index.html).
+- **Visto, no es de ui_main**: en partidos humanos sale a veces «Falta de saque: el balón cae sin golpearlo» también en el saque de la CPU
+  («Error de la CPU», w2k1280). El verificador ya tiene `srvdrop.js`. Para sim/ai: mirar si la CPU puede dejar caer su propio lanzamiento
+  cuando el PC va cargado.
+
+## Aplicado (log, integración del pulido ola 2, 8-nov-2026, PC de casa)
+- CONTRACT §4.1 `window.__vbFontFaces`; §6 `killOrphans(maxAgeMs, dry)` de cdp.js y `node tools/clean.js`; §4.4 «pulido ola 2» (aviso de saque táctil
+  `#prompt.two`, ritmo de cintas grandes 1 de cada 3).
+- Petición opcional de camera_input aplicada en ui.js + index.html: el marcador se atenúa (`#sb.dim`, hijos a 0,38) durante el plano de héroe
+  con el que anota a la izquierda (`getDebug().pf.heroX < -0,5`).
+- Tu aviso para sim/ai (la CPU deja caer su propio lanzamiento): ARREGLADO en sim.js. Causa: el desfase tardío del saque de la CPU
+  (`aiServeTe`, hasta +0,25 s en Fácil de primer partido) pasaba del final de la ventana de `canReach` (~−0,23 s): la CPU esperaba y el
+  balón caía. Tope tardío a 0,2 s. `srvdrop2.js` del verificador: 13 caídas en 5880 lanzamientos → 0 en 5880. Nueva comprobación en simtest.
+- `tools/padplay.js`: «se juegan puntos (0)» fallaba 2 de 3 veces porque un peloteo largo del bot contra la CPU llenaba los 30 s sin punto
+  (sonda: peloteo de 19 s y 13 toques, todo normal). Ahora la fase de juego se alarga hasta 25 s más mientras no haya habido punto. 3 de 3 TODO OK.
+- `w2k1280.txt`/`w2k1280.an.txt` (sueltos en la raíz del repo) movidos a `tools/out/int-w2/`.
+
+## De audio (pulido ola 2, AUD-06, 8-nov-2026): sonido de la cortinilla (UI-13) y de la presentación (UI-14)
+Todo ya existe en `js/audio.js` (opcional, con guarda; antes del primer gesto son no-ops sin error; medido con `node tools/audiotest.js`).
+- **Cortinilla (UI-13)** — llamar UNA vez al EMPEZAR la cortinilla de 0,3 s centrada en el corte (cuando `0 < nextCutIn <= 0.15`):
+  ```js
+  try { if (VB.Audio && VB.Audio.ui) VB.Audio.ui('wipe'); } catch (e) { }
+  ```
+  Soplido de aire filtrado que cruza de izquierda a derecha (el paneo va en el propio sonido) con el pico a 0,15 s, justo en el corte, y un
+  golpe de aire grave muy suave en ese instante. Bus de interfaz (no le afecta la pausa ni la cámara lenta). Anti-repetición 0,25 s: si
+  se llama también al salir de la cortinilla, la segunda llamada no suena. Nivel -25 LUFS (casi cada punto: discreto); pico real -12,7 dBTP
+  sobre la grada. **Si la cortinilla barre de derecha a izquierda, decídmelo** y la invierto (hoy siempre izquierda → derecha).
+- **Presentación (UI-14)** — al MOSTRAR la tarjeta (después del `newMatch` del primer frame o antes, da igual):
+  ```js
+  try { if (VB.Audio && VB.Audio.sting) VB.Audio.sting('intro'); } catch (e) { }
+  ```
+  Firma suave (campanas La-Re-Mi que se posan en Fa# sobre Re con novena, ~2,7 s) + crescendo de grada (~3,6 s) y el lecho de grada
+  agachado -7 dB bajo la tarjeta (vuelve solo a los 3 s). La ovación de bienvenida de `newMatch` se cancela sola si la presentación llega en
+  el mismo frame o antes (el crescendo ES la bienvenida). Al QUITAR la tarjeta:
+  ```js
+  // se va sola o con el gesto de continuar: el lecho vuelve, nada se corta
+  try { if (VB.Audio && VB.Audio.ui) VB.Audio.ui('introEnd'); } catch (e) { }
+  // si la SALTAN (GOLPEAR/Intro/toque nada más salir): grada y firma se apagan en ~0,5 s
+  try { if (VB.Audio && VB.Audio.ui) VB.Audio.ui('introSkip'); } catch (e) { }
+  ```
+  Sin llamadas de cierre también funciona: el primer silbato del saque suelta la presentación, y a los 6,5 s se suelta sola.
+  `VB.Audio.introInfo()` → `{active, t}` (s desde que empezó) por si la tarjeta quiere sincronizarse con la firma (el acorde entra a 0,52 s).
+- **«El primer silbato cae en la entrada del marcador» (AUD-06)**: el silbato es el de la sim (`whistle` `reason:'serve'`, 0,7 s de juego
+  después del `serveReady`). Para que caiga justo al asentarse el marcador: si la sim sigue corriendo bajo la tarjeta, que la entrada del HUD
+  EMPIECE con `serveReady` + ~0,25 s y dure ~0,45 s (acaba en el silbato); si la sim está congelada bajo la tarjeta, que la entrada del HUD
+  empiece al descongelar y dure ~0,7 s con salida suave. En los dos casos llamad `ui('introEnd')` al empezar la entrada del HUD.
+  **Medido en la partida real** (`tools/out/aud-w3/liveintro.js`, llamando a `sting('intro')` justo tras `startMatch`): hoy la sim sigue
+  corriendo y el silbato llega a los 0,7 s, así que suelta la presentación a los 0,7 s, con la tarjeta (si fuera más larga) aún en pantalla.
+  **Recomendado**: congelar la sim bajo la tarjeta (el primer saque espera a que se vaya), y así el pitido cae justo con el marcador.
+- Nombres desconocidos en `VB.Audio.ui(kind)` ya NO suenan como un clic (antes cualquier nombre nuevo daba un clic): `ui()` sin argumento
+  sigue siendo el clic. Para AUD-08 (ola 3) diré los nombres de la pantalla final.
+
+## Pulido ola 2 — ui_main (8-nov-2026, PC de casa, RTX 3060 Ti): UI-09…UI-16
+Todo medido con GPU real; pruebas en `tools/out/w2/` (no se suben). Interfaces de CONTRACT intactas; solo añadidos opcionales.
+
+### UI-16 · Ajustes > Accesibilidad
+- `ctx.settings` nuevos (persistidos y validados en `loadSettings`): `camStable` (false), `rumble` (true; input.js ya lo respeta), `hudScale`
+  (1 | 1,15 | 1,3; otro valor → 1), `softFlash` (false). Filas «Cámara estable», «Vibración», «Tamaño del HUD», «Destellos suaves» bajo el rótulo
+  «Accesibilidad» (y «Juego» encima del resto). En pantallas ≥ 1000×600 los ajustes van a dos columnas (Juego | Accesibilidad) sin desplazar.
+- Tamaño del HUD: variable `--hs` en `#app` (propiedad `scale` en marcador, contador, consejo, aviso, sello, indicador, botones; `zoom` en el
+  subtítulo/chip del banner). Las hojas (pausa, final, paneles) llevan `zoom` = `--hs` como mucho lo que quepa en alto y ancho (`fitSheet`:
+  los botones nunca quedan bajo el pliegue). Con el HUD grande, si el contador de toques entero pisaría el marcador solo rotula el toque activo
+  (`.tb-compact`) y la franja alta (contador, consejo) se corre a la derecha del marcador (`--fx`, `fitX`).
+- `tools/out/w2/a11y.js`: teclado (↓/→/Intro), mando (`UI.nav`), toque (130 % en táctil), persistencia, valores corruptos → TODO OK;
+  130 % a 844×390 y 667×375 (rally, serve, spike): marcador, contador y botones táctiles sin solapes.
+- Pendiente de camera_input (notes/camera_input.md): con `camStable` el temblor debe ser 0 (hoy 30 %).
+
+### UI-12 · Capa de pantalla: viñeta en media/baja y pulso de impacto
+- `#veil .vg`: viñeta CSS con la misma curva que el post de alta (paradas calculadas de `smoothstep(1.25,0.25,r)` al 0,32 en lineal → sRGB),
+  solo con `VB.Arena.postActive() === false` (comprobado en `setQuality` y cada 32 frames); se quita bajo las hojas (pausa, final, paneles).
+  `&vig=0` la desactiva (A/B). Medido (`tools/out/w2/vig.js`, 1280×720 rally, esquina 0,600-120,720): media/baja −15,5 %, alta (post) −12,8 %
+  (+1,8 % del velo de siempre en las dos).
+- `#veil .vp`: pulso del color del equipo 0 → 0,35 → 0 en 120 ms (Web Animations, opacidad) con remate perfecto o bloqueo directo del humano
+  y en el punto que gana el partido (dorado si es tuyo). No con movimiento reducido ni «Destellos suaves». `pulse.js`: > 0,2 a los 40 ms y 0
+  a los 200 ms; golpe bueno y destellos suaves: 0.
+
+### UI-09 · Sello de calidad en el punto de contacto
+- `#stamp`: «PERFECTO» dorado / «BIEN» blanco + «un pelín pronto/tarde» (|timing| > 0,03 s). Sale a ~72 px del contacto en la dirección que
+  menos estorba (8 candidatas; se proyecta el vuelo del balón a 0,1/0,2/0,3 s, el cuerpo del que golpea, el marcador y los bordes), sube 30 px
+  y se funde en 0,6 s (Web Animations, transform/opacidad; posición por frame siguiendo el punto del mundo). Nada en golpes flojos ni en el
+  balón libre. Ya no sale «Recepción perfecta» etc. en el aviso de arriba a la izquierda: el lector de pantalla lo oye por `#srLive`
+  (aria-live polite). Cuenta como aviso corto en el árbitro de capas (UI-02). `&stamp=1`: también con el autopilot (pruebas).
+- `stamp.js` (vivo, autopilot, 45 s): 10-13 sellos a 1280×720 y 844×390 táctil: centro a 63-74 px del contacto a los 100 ms; separación
+  mínima con el balón a los 200 ms 52-96 px.
+
+### UI-15 · Peloteo largo
+- Chip «PELOTEO · N» bajo el marcador desde el toque 8 (`g.rally.hits`, la misma cuenta que `point.rallyHits`); late en cada toque; desde 15 en
+  naranja; al acabar la jugada se queda 1,5 s en dorado con la cuenta final. Cinta de nivel 2: «¡Peloteo de N toques!» (antes «Jugada de N
+  toques»; ahora va antes que la racha). `rally.js` (seed 5, jugada de 18 toques, 667×375 táctil): chip en el 8, 8→18 de uno en uno, sin
+  pisar el contador, cinta «¡Remate! / ¡Peloteo de 18 toques!».
+
+### UI-10 · Indicador de borde
+- `#offArrow`: insignia del color del equipo con el dorsal y una flecha. Fuera de cuadro (cabeza fuera o detrás de la cámara): en el borde,
+  en la recta centro → jugador; solo cortado (pies a < 40 px de los bordes laterales/superior, o rodillas cortadas abajo, 0,3 s seguidos): en el
+  borde más cercano a los pies, a un lado del jugador, apuntándole. Se aparta (tramos libres del borde) del marcador, botones del HUD y
+  controles táctiles. 120 ms de fundido; solo en `serve`/`rally`, nunca durante la presentación. `offarrow.js` (cámara congelada y girada,
+  54 encuadres por tamaño): 1280×720, 844×390, 667×375 → visible en 44-50, ángulo 0° de la recta, 0 solapes; con el jugador en cuadro, oculto.
+
+### UI-13 · Cortinilla de marca
+- `#wipe`: cinta sesgada del color del equipo que anota (o de la casa) con el sello «Palau del Mar». Cortes punto → saque / cambio de campo:
+  cubre en 75 ms contados con `nextCutIn` (del todo en el frame del corte) y se va en 85 ms; el corte de reacción y los del cierre, secos.
+  Transiciones de pantalla de 450 ms con la acción a mitad: menú → partido (también revancha, «Jugar ya», tutorial, reiniciar), partido → final y
+  final/pausa → menú. Movimiento reducido: fundido de 150 ms. `VB.Audio.ui('wipe')` con `nextCutIn ≤ 0,15` o al empezar. `VB.UI.wipe(team, cb)`.
+- `wipe.js` (80 s): 3/3 cortes al saque cubiertos al 100 % en su frame, 127-134 ms en pantalla, reacción seca, 0 frames > 33 ms.
+
+### UI-14 · Tarjeta de presentación
+- main.js: `startMatch` (partidos humanos; en depuración con `&intro=1`; `&intro=0` la quita) muestra 2,5 s de tarjeta con la sim PARADA: los
+  eventos iniciales salvo `newMatch` se retienen y se entregan al acabar; el mundo se anima con dt real. `ctx.introLeft`, `ctx.introSkipReq`.
+  Cualquier botón (golpear, saltar, cambiar, pausa, aceptar), tecla o toque la salta en el frame siguiente (el botón no golpea ni pausa).
+  Llama con guarda `VB.CameraRig.playIntro(2.5)` (y `playIntro(0)` si se salta) y `VB.Audio.sting('intro')`.
+- ui.js: «Palau del Mar · Vóley · 2 contra 2», «TÚ + compañero vs CPU», chip del nivel, «Al mejor de 3 sets», quién saca, pista del
+  dispositivo y barra de 2,5 s. Sin marcador, consejo ni aviso (ni el banner «Set 1», ni el indicador de borde) hasta el primer silbato; el
+  marcador entra deslizando 0,25 s después de irse la tarjeta (`ui('introEnd')`; `ui('introSkip')` si la saltan). Movimiento reducido: fundido.
+- `intro.js` (1280×720 y 844×390 táctil): tarjeta de 0,06 a 2,4 s, 0 frames con consejo/aviso de 0 a 3 s, tecla y toque la quitan en el
+  mismo frame, saque autorizado saltándola 699-701 ms tras la tecla (sin tarjeta: 702-703 ms).
+
+### UI-11 · Hoja final
+- MVP de cada equipo (puntos de ataque + bloqueo + aces atribuidos al jugador: último que golpeó del equipo que anota, sacador o bloqueador;
+  los errores del rival no son de nadie), cifras con cuenta de 600 ms (rAF, cifras tabulares), sets en tira.
+- Escritorio (≥ 1000 px): hoja acoplada a la izquierda (como el menú, sin desenfoque) y `ctx.uiDock = {side:'left', frac}` para CAM-10; llega
+  con la cortinilla al `gameOver`. Móvil: la hoja espera a `clinchLeft() = 0` y ≥ 2,5 s desde el punto que gana el partido (cualquier botón o
+  toque lo adelanta tras 0,8 s); «Ver celebración» aparta la hoja y «Ver resultado» la devuelve. «Revancha» a lo ancho y debajo los otros dos a
+  partes iguales (también en escritorio). Se quitó la celebración vieja de 3,6 s (la pausa de 4,2 s de sim ya la da).
+- main.js: GOLPEAR, SALTAR, CAMBIAR o ACEPTAR recortan la pausa del punto (`Sim.skipHold`), también la del punto final.
+- `endtest.js`: MVP = puntos contados (#11 26, #9 17), suma por jugador = ataque + bloqueo + aces (44 / 27), hoja estable con la cuenta,
+  acoplada a 1280 (`frac` 0,472), a 844×390 botones en 2 filas (166/166 px); con `&hold=1` la hoja sale a los 2,9 s; Intro recorta la pausa
+  final en 5-11 ms.
+
+### Herramientas
+- `tools/cdp.js`: Chrome con `--remote-debugging-port=0` y el puerto leído de `DevToolsActivePort` (con puerto al azar, dos herramientas en
+  paralelo podían conectarse a la pestaña de la otra: capturas con el tamaño ajeno). `VB_ROOT=carpeta` abre otra copia del proyecto.
+  `page.frames(ms, {dir, start})`: fotogramas reales del compositor (Page.startScreencast) para mirar movimiento.
+- `tools/perf.js`: `EXTRA=params` de la página (A/B, p. ej. `EXTRA=vig=0`).
+
+### Para el integrador (CONTRACT)
+- §4.1: `settings.camStable/rumble/hudScale/softFlash`; `ctx.introLeft`, `ctx.introSkipReq`, `ctx.uiDock`.
+- §4.4: `VB.UI.introStart(g)`, `introEnd(skipped)`, `wipe(team, cb)`, `_stamp()`, `_offArrow()`, `_wipe()`, `_wipeLog(on)`, `_endStats()`,
+  `resize(w,h)`; main.js llama `VB.CameraRig.playIntro(s)` (0 = cortar).
+- §5.3: tarjeta de presentación (sim parada, eventos retenidos); `skipHold` también con CAMBIAR/ACEPTAR.
+- §6: `&intro=0|1`, `&stamp=1`, `&vig=0`; `tools/cdp.js` `frames()`, `VB_ROOT`; `perf.js` `EXTRA`.
+
+## De camera_input (pulido ola 2, segunda tanda: CAM-08…CAM-14), 2026-11-08
+Tus peticiones UI-14 (`playIntro`), UI-16 (`camStable` → temblor 0) y CAM-10 (`ctx.uiDock`) están hechas (ver notes/camera_input.md).
+1. **Rótulo grande del set / partido durante el cierre (CAM-09)**: con `VB.CameraRig.getDebug().clinch.phase === 'hero'` la cámara hace una
+   órbita cerrada de los ganadores con las cabezas justo bajo el centro de la pantalla (deja libre la mitad de arriba para el rótulo). Por favor,
+   en `placeT3` usa en ese caso el hueco de ARRIBA (`Math.max(Math.round(H * 0.04), 8)`), no el de abajo. Medido con `tools/out/cw2/clinch.js` a
+   844×390 táctil: el rótulo (161 px de alto) salía en el hueco de abajo, 130-291 px, que en un móvil apaisado es el centro de la pantalla, y tapaba
+   las cabezas en 314-404 frames de la órbita. A 1280×720 sale arriba y no tapa nada (0 frames). Propuesta (en `placeT3`, antes del bucle):
+   ```js
+   var clH = d && d.clinch && d.clinch.phase === 'hero';
+   if (clH) cands = [Math.max(Math.round(H * 0.04), 8)];   // órbita del cierre: la cámara deja la mitad de arriba libre
+   ```
+   Si el rótulo cambia de tamaño o de sitio, la cámara lo sigue (lee `VB.UI.bannerRect()` cada frame en la órbita: cabezas 0,12 NDC por debajo
+   de su borde inferior si su parte de arriba está en el 20 % superior).
+2. **Indicador de borde (UI-10) en planos cinematográficos**: en el cutaway del sacador rival se ve el «7» del jugador controlado en el borde
+   derecho (captura `tools/out/cw2/seq/cw-01.png`), y en el seguimiento del cierre la «11» a la izquierda. Propuesta: ocultarlo cuando
+   `VB.CameraRig.getShot()` sea `'clinch'`, `'cutaway'`, `'intro'`, `'point'`, `'court'` u `'over'` (solo tiene sentido en los planos de juego).
+3. **Tipos de corte nuevos** (para la cortinilla de UI-13 y los rótulos): `lastCut.kind`
+   - `'clinch'`: los dos cortes del cierre de set/partido (al seguimiento del balón y a la órbita): secos.
+   - cutaway del saque rival: el corte que SALE del punto al plano del sacador es `'serve'` (es la vuelta al saque: cortinilla y rótulos con él) y
+     la vuelta a la cámara de recepción ~1 s después es `'cutaway'` (seco, dentro del saque; por favor, sin cortinilla).
+   - presentación: `'intro'` al entrar (desde el menú, seco) y `'serve'` al salir al saque (cortinilla).
+   `nextCutIn` anuncia todos. `getShot()` puede ser `'cutaway'` (en `'serve'`) e `'intro'`.
+4. Petición nº 5 (pies del defensor en `defend`): con CAM-13 la defensa que se acerca deja la cabeza del defensor y el rematador rival; los pies
+   pueden salir por abajo a propósito en ese tramo (~1-1,5 s por ataque rival).
+
+### Ola 2 — ajustes finales y problemas conocidos (ui_main)
+- Cortinilla de corte por DEBAJO de los gráficos (`#wipe.cutw`, z 2: marcador, avisos y controles táctiles quedan encima, como en la tele); las
+  de pantalla, por encima de todo (z 30). También tapa el corte que sale del punto hacia el plano corto del sacador rival (`lastCut.kind
+  'cutaway'`, CAM-14) y los que salen del cierre (`from 'clinch'`); los `cutaway → serve` y `attack → clinch` siguen secos. Si el corte llega
+  sin aviso (o tarde), la salida se alarga para que la cortinilla dure ≥ ~125 ms; un frame largo no se come la salida (avance máx. 22 ms/frame).
+  `&wipe=0` la quita (A/B).
+- Nada de desenfoques en capas grandes: el `box-shadow` de 60 px de la cinta y el `text-shadow` difuso del sello «Palau del Mar» costaban un
+  frame de 30-42 ms en el primer corte (raster en la GPU). Sin ellos, 0 frames > 33 ms en la cortinilla a 1280×720 (3 escenas × 70 s).
+- Ensayo de estilos (UI-01): añade sello, chip de peloteo, indicador de borde y la cinta (un cuarto de pantalla, paso 3). Con perfil
+  nuevo ~1,2 s (caché de shaders fría), con la caché ya hecha ~480 ms los 5 pasos (antes ~430 el primero).
+- **Problema conocido (táctil, 844×390 emulado a dpr 1)**: en el PRIMER corte al saque con cortinilla hay un frame de 55-61 ms ~25 ms después del
+  corte (traza: `RendererRasterWorker` / `DoEndRasterCHROMIUM` 34 ms en la GPU). No pasa sin cortinilla (`&wipe=0`), ni ocultando los botones
+  táctiles (`#touch .vt-btn{display:none}`), ni en escritorio; no cambia con la cinta debajo o encima de los controles, con `will-change` en
+  `#touch`/`.vt-btn`, sin filtros ni transiciones en los botones, ni con un ensayo invisible de la cortinilla bajo la tarjeta. Los siguientes
+  cortes van a 6 ms. Repro: `TOUCH=1 NOSHOT=1 node tools/out/w2/wipe.js 844x390 45 ""` (línea «serve intervalo/JS»). Para camera_input
+  (input.js) si alguien quiere mirarlo: raster de los botones táctiles cuando la cinta pasa por debajo/encima en el primer saque.
+
+## Aplicado (log, integración del pulido ola 2, segunda tanda, 8-nov-2026, PC de casa)
+- Petición 1 de camera_input (CAM-09): en `placeT3`, con `getDebug().clinch.phase === 'hero'` el rótulo de set/partido va al hueco de ARRIBA
+  (`max(round(H·0,04), 8)`). Además, si el rótulo ya estaba puesto cuando la cámara entra en la órbita, se recoloca en ese frame (`cam.clPh`), y
+  `presUpdate` lee `getDebug()` también con `getShot() === 'clinch'` y en `g.mode === 'over'` (antes, en el cierre del partido `d` podía ser null).
+  Medido con `tools/out/cw2/clinch.js`: 844×390 táctil set 3/3 y partido 2/2 con «rótulo sobre cabeza 0» (antes 314-404 frames); 1280×720 set 2/2.
+  Secuencia mirada: `tools/out/int-w2b/seq/cl844-*.png`.
+- Petición 2 de camera_input: el indicador de borde (UI-10) se oculta con `getShot()` `'clinch'|'cutaway'|'intro'|'point'|'court'|'over'`
+  (`OFF_CINE`, leído en el propio `offTick`) y durante 0,35 s tras cualquier cambio de plano si no estaba ya visible. Además, en `serveUs` y `defend`
+  (planos que cortan las piernas a propósito: cámara detrás del sacador; defensa que se acerca, CAM-13) solo cuenta «fuera de cuadro» (cabeza fuera),
+  no «cortado» (`OFF_FEETOK`): a 1280×720 la insignia salía en el 85 % del saque propio (detrás del aviso «ESPACIO LANZAR») y en el 51 % de `defend`.
+  `tools/out/int-w2b/offcine.js` (70 s en vivo): cutaway 0/30 visible; 1280×720 serveUs 118/139 → 9/139, defend 216/426 → 0/427.
+- Arreglo: `gymEnd()` (fin del ensayo de estilos, UI-01) ya no borra la tarjeta de presentación ni una cortinilla en marcha. Si el partido empezaba
+  antes de acabar el ensayo, la tarjeta de UI-14 no se veía nunca (`#intro` sin clase `show` con `introLeft > 0`). En la práctica el menú solo es
+  clicable cuando el telón se va (y eso acaba el ensayo), pero `startMatch` desde herramientas o un telón lento lo disparaban. `introchk.js`: tarjeta visible.
+- `tools/padplay.js`: «se juegan puntos» también vale con un peloteo vivo de ≥ 20 toques (`__pp.rally`). En 2 de 6 pasadas el bot de mando contra la
+  CPU sostuvo un peloteo de 41 toques sin punto en 55 s; el juego seguía bien (toques, vibración, glifos).
+- CONTRACT §4.1 (settings `camStable/rumble/hudScale/softFlash`, `introLeft/introSkipReq`, `uiDock`), §4.4 (UI-09…UI-16), §5.3 (tarjeta), §6 (parámetros).
+
+## De camera_input (arreglos tras la verificación de la ola 2), 2026-11-08
+- **tools/touchplay.js (flaky: saque táctil y ⇄)**: diff exacto en `tools/out/ci3/touchplay.diff` (copia entera en `tools/out/ci3/touchplay.proposed.js`;
+  probada 3/3 a 844×390 y 1/1 a 667×375, 0 toques de ⇄ sin cambio). El saque apunta a `hitWindow().press` (antes `t − 35 ms`, ~35 ms tarde); ⇄ solo
+  con `!g.jobs[0]` (la sim no deja cambiar si el equipo humano tiene tarea) y reintento a los 1,2 s si el toque no cambia.
+- **tools/perf.js**: con el ui.js actual el modo por defecto sale con «no arranca el partido: menu» (`startMatch` ya no deja `'playing'` en el mismo
+  tick). Esperar a `VB.ctx.state === 'playing'` con un sondeo de hasta 2 s. `SCENE=rally` va bien.
+- Informativo: en el cierre del partido la cámara deja las manos levantadas de los ganadores ~3,5 % del alto bajo el borde inferior de
+  `VB.UI.bannerRect()`; si el rótulo cambia de sitio o de alto, lo sigue sola.
+
+## Arreglos de ui_main tras la verificación de la ola 2 (8-nov-2026, PC de casa, RTX 3060 Ti)
+Pruebas y capturas en `tools/out/fx3/` (no se suben). Medido con el PC muy cargado por los otros arregladores (CPU 80-90 %, ~57 Chrome):
+para comparar A/B se usó una instantánea estable (`VB_ROOT=tools/out/fx3/snap`, `sync.sh` copia mis 3 ficheros) y pasadas intercaladas.
+
+### UI-07 · arranque: logotipo en el primer frame, menú pulsable antes y relevo en dos tiempos
+- **Fuente embebida «VB Marca»** (index.html, script al principio, antes de la hoja de Google): dos recortes de Barlow Condensed (OFL 1.1)
+  con SOLO las letras del telón: Black Italic «VOLEY3D» (1,1 KB) y Bold «PALU DEMR» (1,1 KB), en base64, registrados con `FontFace` antes del
+  primer pintado. Los usan `.logo` (telón y menú) y el rótulo «PALAU DEL MAR». Nombre propio para no mezclar letras con la fuente de reserva
+  en el resto de textos si Google Fonts falla. Resultado: el primer frame con contenido ya trae el logotipo entero, opaco y en su fuente,
+  con o sin Google Fonts (`boot.js`: «first logo frame … logo1@1.00 … marcatrue "VB Marca"», 3/3 normal y con fonts.googleapis/gstatic
+  bloqueados). Telón: logotipo y rótulo quietos desde el primer frame; solo la barra entra con un fundido de 0,4 s.
+  Comprobación buena de la fuente: `document.fonts` con una cara `VB Marca` 900 italic en `status === 'loaded'` y
+  `getComputedStyle(.bt-logo .lg-voley).fontFamily` empezando por `"VB Marca"` (`check()` no sirve: da true sin caras).
+- **Sin esperas a Google Fonts para arrancar**: main.js arranca tras el primer frame (antes esperaba a la fuente: ~0,3 s). El script en
+  línea del final avisa YA si la hoja de Google no ha cargado (no hay caras Barlow en `document.fonts`); si no, con las caras o a los 2,5 s.
+- **Ensayo de estilos solapado con el montaje** (`VB.UI.preboot`): con el contexto WebGL ya creado, main.js monta el paso 1 del ensayo y deja
+  UN frame antes de construir el pabellón: la GPU lo rasteriza mientras el hilo principal monta la escena. (Montarlo antes de crear el
+  contexto retrasaba la creación ~0,65 s: comparten el hilo principal de la GPU; medido.) `ctx.bootInfo` = tiempos del arranque por módulo.
+  `&preboot=0` lo desactiva (A/B).
+- **Relevo en dos tiempos** (ui.js `tryReveal`): 1) MENÚ: el logotipo vuela a su sitio y el menú entra en cascada (pulsable) en cuanto la
+  escena está pintada (`bootReady`: programas enlazados y primeros frames hechos) o como muy tarde a `BOOT_CAP` = 2,6 s de la navegación; si
+  el ensayo no ha acabado, el fondo del telón se queda DEBAJO del menú (`.bt-bg.under`, z 9: tapa lienzo, HUD y tarjeta) y el ensayo sigue
+  ahí (se para durante el vuelo: cada paso es un frame largo de GPU y el vuelo daba tirones). 2) PABELLÓN: con el ensayo hecho (tope 1,7 s
+  desde la escena lista) el fondo se funde en 0,6 s. «EN DIRECTO · DEMO» solo aparece con la demo a la vista. Con todo listo a la vez, un
+  solo relevo como antes. Mientras se enlazan programas no hay frames fluidos en ningún sitio (la GPU está ocupada): por eso el vuelo no se
+  adelanta más (con el vuelo a 2,2 s durante el enlace, huecos de 250-740 ms en pleno vuelo; medido y descartado).
+- **JUGAR antes del tiempo 2**: la cortinilla de pantalla cubre y espera (`bootBusy()`) hasta que el pabellón está listo (0,5-1 s), luego
+  partido con tarjeta. Con el telón entero el menú no navega. El ensayo ya no pisa una cortinilla en marcha (`gymWipe` con `wp.ph`).
+  `early.js` (clic y Enter en el tiempo 1, 1280 y 844 táctil): cortinilla `on brand lock` → partido al llegar el tiempo 2, sin errores.
+- **Medido** (`bgaps.js`/`bg2.sh`, rAF por fase, intercalado con la versión de antes, PC cargado): menú pulsable a **2,30-2,64 s** (antes
+  2,9-4,0) y con Google Fonts bloqueado **2,30-2,89 s**; pabellón a la vista 3,9-4,4 s (antes 3,6-4,7 tras el vuelo). Vuelo: el primer frame
+  llega ~200 ms tarde (raster del menú) y luego fluido. 0 muestras con dos logotipos (`boot.js`, cada rAF).
+
+### UI-01 · el hueco tras startMatch era la tarjeta de presentación (no warmDraw)
+- Traza (`smtrace.js`): el frame de 55-85 ms ~0,1 s después de `startMatch` era el primer raster de la tarjeta de presentación (sombra de
+  80 px, degradado a pantalla completa, texto con degradado: compilación de shaders de Skia en la GPU). `warmDraw()` NO corre en
+  `startMatch` (solo `needWarmDraw` en el arranque). Arreglo: la tarjeta (`#intro.show.gy`, sin animaciones) y la cortinilla de la casa
+  entran en el paso 5 del ensayo de estilos; la cortinilla del ensayo va siempre con `.cutw` (z 2), bajo el fondo del telón.
+- Un partido HUMANO pedido mientras el arranque aún ensaya (herramientas que llaman a `startMatch` a los ~2,5 s, como feel.js) espera a
+  que acabe (`startWait`, como mucho hasta los 9 s); los de autopilot empiezan al momento como siempre (perf.js, audiotest.js).
+- Medido: `smtime.js` (clic previo + startMatch): 6/6 sin frames > 25 ms (antes 79-85 ms en el frame ~86). `feel.js NOCAST=1` 62 s, 1280×720:
+  arranque e intro ≤ 21 ms en todas las pasadas; **3 pasadas finales (árbol vivo): mayor hueco 23, 37 y 24 ms** (< 50); con el PC al 88 % salen huecos
+  sueltos de 65-580 ms con JS del frame ≤ 2 ms y 0 programas nuevos (`feelgap.js` muestra `js`/`pg`): son de la máquina, no del juego.
+  `progs.js` MENUWAIT 3000 y 15000: 1 programa tras startMatch (sombra, 2,3-2,9 ms), ninguno > 8 ms.
+- Audio (no es mío): el `AudioContext` se crea en el gesto; ver nota en notes/audio.md.
+
+### UI-10 · indicador de borde
+- Ya no cruza la pantalla: con un salto > 90 px (otro borde o tramo libre) va directo; la interpolación cortaba la esquina y pasaba por
+  encima del joystick (el «7» sobre la base en `ui10_844x390_-0.6`). Obstáculos: también `.vt-knob` y el rótulo `.vt-tip` del joystick
+  (la `.vt-zone` es la zona táctil invisible: no estorba). Con los pies dentro del joystick, el borde de abajo da el hueco a su derecha.
+- Escena de aceptación nueva y reproducible: `?debug=spike&camyaw=±1.2` (main.js: `&camyaw=rad` gira la cámara tras su update, solo en
+  depuración). `node tools/offarrow.js` (nuevo): 1280×720, 844×390 y 667×375 táctil → visible, ángulo de la flecha a 0° de la recta
+  centro → jugador, 0 solapes con marcador, botones del HUD y controles táctiles; sin giro, oculto. TODO OK. Capturas
+  `tools/out/offarrow_*.png`. Con la cámara girada en vivo (ui10.js del verificador): 0 solapes visibles (solo la `.vt-zone` invisible).
+
+### UI-11 · hoja final en el móvil
+- MVP en filas (una tarjeta por fila): el desglose sale entero también en la versión corta (`22 ataque · 2 bloqueo · 2 aces`, suma = puntos).
+  844×390: «26 PUNTOS» a la izquierda y desglose a la derecha; 667×375: desglose en segunda línea. « · CPU» solo en escritorio (el color ya
+  lo dice). Las tarjetas ocupan las filas 1-2 de la rejilla (no estiran la fila del rótulo de la izquierda) y las estadísticas van más juntas.
+- Secundarios con `minmax(0,1fr)`: 166/166 px a 844 y 124/124 a 667 (antes 158/128); a ≤ 740 px, si no caben, en dos líneas (36 px de alto,
+  sin puntos suspensivos). Arreglado también: a 667 la columna izquierda se salía 10 px y el «6» de las estadísticas pisaba REVANCHA.
+- Cuenta de cifras con un solo reloj (t0 = primer sello de rAF, y `u` acotado a 0..1): sin números negativos.
+- Capturas: `tools/out/fx3/over667.png`, `over844.png`, `over1280.png` (escritorio sin cambios).
+
+### Textos del punto
+- Ace cuya recepción acaba en la red: «¡Ace!» + «La recepción de la CPU va a la red» / «Ace de la CPU» + «Tu recepción va a la red» (antes
+  «Balón a la red», que se leía como saque a la red). Red/antena/dobles/8 s/ataque sobre el saque siguen con el texto del árbitro tal cual.
+- Tutorial: «Ace: punto directo de saque, sin que el rival lo controle».
+- Pestaña (nivel 1) sin «¡…!»: «Ace», «Punto de bloqueo» (la cinta grande sigue con «¡Ace!», «¡Punto de bloqueo!»). Un bloqueo directo tuyo
+  con highlight ≥ 0,6 sale en cinta aunque haya habido otra hace poco (salta BIG_GAP).
+
+### «PUNTO DE SET» compacto en táctil
+- `#banner.compact` a `right: 80px` (antes 64): la cinta sesgada sobresale ~4 px y tocaba el botón de pausa. A 844×390 acaba en x≈765 con el
+  botón en 787 (`tools/out/fx3/sp844.png`).
+
+### Herramientas
+- `tools/touchplay.js`: aplicado el diff de camera_input (`tools/out/ci3/touchplay.diff`: saque a `hitWindow().press`, ⇄ solo con
+  `!g.jobs[0]` y reintento). TODO OK (⇄ 4 cambios, 0 toques sin cambio, en los dos tamaños).
+- `tools/perf.js`: tras `startMatch` sondea `state === 'playing'` hasta 4 s (petición de camera_input; con autopilot ya no hacía falta, pero
+  no estorba).
+- `tools/offarrow.js` (nuevo, ver UI-10).
+
+### Regresión (árbol vivo, al final)
+- `console.sh all` 1280×720 y 844×390 táctil: sin errores. `drive.js`, `touchplay.js`, `padplay.js`: TODO OK. `simtest.js 10 7 0`: TODO OK.
+- `perf.js 844x390 15 medium,low` (×4, dpr 2,75): media 141 fps, 41-46 draw calls, 200 k triángulos; baja 150 fps, 31-35 draw calls, 89 k.
+  «objetivos cumplidos».
+
+### Para el integrador (CONTRACT)
+- §4.1: `ctx.bootInfo` (`{t0, renderer, yield, Arena, FX, …, quality, end}` ms); parámetros `&preboot=0`, `&bootcap=ms`, `&gymintro=0`,
+  `&camyaw=rad` (depuración). `startMatch` de un partido humano durante el arranque espera a que acabe (`startWait`, tope 9 s); autopilot no.
+- §4.4: `VB.UI.preboot(ctx)` (main.js, en el arranque), `VB.UI.bootBusy()`, `VB.UI._boot()` (pruebas). Fuente embebida «VB Marca» en
+  index.html (solo .logo y rótulo del telón). `window.__vbFonts` avisa al momento si la hoja de Google no carga.
+- §6: `node tools/offarrow.js` (UI-10).
+
+## Aplicado (log, integración de los arreglos tras la verificación de la ola 2, 8-nov-2026 noche, PC de casa)
+- CONTRACT §4.1 (`bootInfo`, espera de `startMatch` humano en el arranque), §4.4 (`preboot`, `bootBusy`, `_boot`, «VB Marca», `__vbFonts`, texto del ace
+  a la red), §6 (`&preboot=0`, `&bootcap`, `&gymintro=0`, `&camyaw`, `offarrow.js`).
+- perf.js: además del sondeo, repite `startMatch` cada 0,5 s mientras no esté en `'playing'` (arranque lento con el PC cargado, notes/arena.md §13).
+- Regresión en la integración: console.sh all (1280×720 y 844×390 táctil) sin errores; drive.js, touchplay.js, padplay.js TODO OK.
+
+## Desde sim (SIM-05, 2026-11-08): highlight calibrado
+`point.highlight` ya está calibrado (notes/sim.md §P3): en CPU vs CPU ~20 % de los puntos llegan a `VB.HOLD.bigAt` (0,55) y < 5 % a 0,8
+fuera de punto de set/partido; bot bueno vs Normal 23 % (antes 28 %). El bloqueo directo vale 0,55 por sí solo, la jugada épica
+(peloteo largo + defensas) llega a 0,55, y el **final apretado** (`e.clutch`, nuevo: últimos 8 puntos del set con ≤ 2 de diferencia)
+suma 0,28. Propuesta para `tierOf` en js/ui.js (las reglas propias ya están dentro del número; medir con tools/out/ui1/tierstat*.js):
+```js
+  function tierOf(e, k) {
+    var hl = typeof e.highlight === 'number' ? e.highlight : 0, big = (VB.HOLD && VB.HOLD.bigAt) || 0.55;
+    if (k === 'ace' || e.savedSetPoint) return 2;
+    if (k === 'error' || k === 'srvErr') return 1;
+    return hl >= big ? 2 : 1;
+  }
+```
+Subtítulo opcional cuando no hay texto del árbitro y `tier > 1`: `if (!sub && e.clutch) sub = 'Final apretado';` (después de los de
+punto de set salvado).
+
+## De players (pulido ola 3, 8-nov-2026)
+- `fx:catch` YA se emite: cada recogida del bote en el ritual del sacador CPU (`{team, x, y, z, strength:0.6}`), un evento por bote.
+- Nuevo `fx:call` (opcional): «¡mía!» del que va a por el balón (un evento por balón, `{team, x, y, z (cabeza), strength:0.6}`). Si se quiere, un aviso de voz
+  muy sutil; si no, se ignora (main.js ya lo reparte como cualquier `fx:*`).
+- CONTRACT §4.3: `fx:catch` lo emite players; nuevo `fx:call` `{team, x, y, z, strength}`. §4.4: `VB.Players._face(p, 'shout'|'effort'|'joy'|'sad'|'neutral'|'', sec)`
+  (pruebas); rig de solo lectura: huesos `eyes, mouth, teeth, brow[2], hair`, pesos `fxS/fxE/fxJ/fxD`, `hairAng`, `ritOn`, `tgtW`. Proporciones: cadera 1,042 m
+  (hombros y altura total iguales). Sin cambios necesarios en main.js.
+
+## De audio (pulido ola 3, AUD-08, 8-nov-2026): sonidos de la hoja final, de las flechas de dificultad y de Ajustes
+Todo ya existe en `js/audio.js` (opcional, con guarda; antes del primer gesto son no-ops sin error). Falta cablearlo en `js/ui.js`.
+**Probado tal cual**: `node tools/audiotest.js --endui-only` aplica EXACTAMENTE estos cambios a una copia del proyecto
+(`tools/out/audio/endui-root/`, con `ui.js` de hoy) y juega la hoja final (`?debug=end`, 1280×720 y 844×390 táctil) y el menú/Ajustes en
+Chrome real: 7 tics a 49-97 ms (≤ 20/s, se frenan con las cifras), «clac» EN el último frame de la cuenta (0 frames de desfase, 0 tics
+después), MVP una vez; flechas → paso arriba/abajo/tope y hover propio; Ayudas Sí/No → `tglOn`/`tglOff`; Calidad → `optSel`; hover de fila
+→ `optHover`. Cuando lo cablees, la misma prueba detecta `VB.Audio.ui('count'` en `ui.js` y prueba tu fichero sin tocarlo.
+- API: `VB.Audio.ui('count', u, ts)` (en cada frame de la cuenta en que cambia alguna cifra y en el último, u = avance 0..1, ts = sello
+  de rAF en ms) · `ui('mvp', win)` (al EMPEZAR la cuenta: el acento cae a 0,6 s, cuando se posan las cifras) · `ui('arrowHover', dir)` ·
+  `ui('arrow', dir, nivel, nNiveles)` · `ui('arrowEdge', dir)` · `ui('optHover')` · `ui('toggle', on)` · `ui('select', i, n)` · `ui('slide', v)`.
+- El ritmo de los tics lo pone audio.js (no hace falta limitar nada en ui.js): llamar en cada frame con cambio basta.
+- Mientras se ve la hoja (state `over` tras la 1.ª cifra o el MVP), la grada baja 6 dB (≈ 3 dB a la salida) y vuelve al salir de `over`.
+- Nota: el interruptor «Sonido: Sí» no puede sonar (el contexto se reanuda de forma asíncrona) y «Sonido: No» lo silencia: es lo esperado.
+- Los cambios (sangría +2 por la lista; el texto es el del fichero):
+- **cuenta: MVP al empezar** — sustituir:
+  ```js
+      cancelAnimationFrame(cuRaf);
+      if (reduceMotion || !items.length) return;
+  ```
+  por:
+  ```js
+      cancelAnimationFrame(cuRaf);
+      // AUD-08: revelación del MVP (el acento cae a 0,6 s, cuando se posan las cifras; con movimiento reducido, 0,6 s tras aparecer)
+      if (el.endMvp && el.endMvp.firstChild) { try { if (VB.Audio && VB.Audio.ui) VB.Audio.ui('mvp', root.classList.contains('win')); } catch (e) { } }
+      if (reduceMotion || !items.length) return;
+  ```
+- **cuenta: tics y clac** — sustituir:
+  ```js
+        for (var j = 0; j < items.length; j++) { var tv = String(Math.round(items[j][1] * e2)); if (items[j][0].textContent !== tv) items[j][0].textContent = tv; }
+        if (u2 < 1) cuRaf = requestAnimationFrame(step);
+  ```
+  por:
+  ```js
+        var chg = false;
+        for (var j = 0; j < items.length; j++) { var tv = String(Math.round(items[j][1] * e2)); if (items[j][0].textContent !== tv) { items[j][0].textContent = tv; chg = true; } }
+        // AUD-08: tic en los frames en que cambia alguna cifra (audio.js los espacia: ≤ 20/s, se frenan con la cuenta) y «clac» en el último
+        if (chg || u2 >= 1) { try { if (VB.Audio && VB.Audio.ui) VB.Audio.ui('count', u2, now); } catch (e) { } }
+        if (u2 < 1) cuRaf = requestAnimationFrame(step);
+  ```
+- **opciones: sonido según el tipo** — sustituir:
+  ```js
+        ctx.actions.setSetting(k, o.vals[i]);
+      }
+      click();
+    }
+  ```
+  por:
+  ```js
+        ctx.actions.setSetting(k, o.vals[i]);
+      }
+      optSound(k, arrowDir);
+    }
+    /** AUD-08: confirmación con el sonido de su tipo: flecha de dificultad (la nota sigue al nivel), Sí/No, varios valores, deslizador. */
+    function optSound(k, arrowDir) {
+      var A = VB.Audio; if (!A || !A.ui) return click();
+      try {
+        if (SLIDERS[k]) { if (k !== 'sfxVol') A.ui('slide', (slVal(k) - SLIDERS[k].min) / (SLIDERS[k].max - SLIDERS[k].min)); return; }
+        var o = OPT[k], i = optIndex(k);
+        if (arrowDir) A.ui('arrow', arrowDir, i, o.vals.length);
+        else if (o.labels.length === 2 && o.labels[0] === 'Sí') A.ui('toggle', i === 0);
+        else A.ui('select', i, o.vals.length);
+      } catch (e) { }
+    }
+    function uiSound2(kind, a) { try { if (VB.Audio && VB.Audio.ui) VB.Audio.ui(kind, a); } catch (e) { } }
+  ```
+- **opciones: firma con la flecha** — sustituir:
+  ```js
+    function changeOpt(k, d, absIdx) {
+  ```
+  por:
+  ```js
+    function changeOpt(k, d, absIdx, arrowDir) {
+  ```
+- **flechas: paso y tope** — sustituir:
+  ```js
+  uiSound('back'); return; }
+      changeOpt('difficulty', 0, j);
+  ```
+  por:
+  ```js
+  uiSound2('arrowEdge', d); return; }
+      changeOpt('difficulty', 0, j, d);
+  ```
+- **flechas: hover propio** — sustituir:
+  ```js
+  arrs[ai].addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') hoverSound(); });
+  ```
+  por:
+  ```js
+  arrs[ai].addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') uiSound2('arrowHover', +this.getAttribute('data-d') || 1); });
+  ```
+- **filas de Ajustes: hover propio** — sustituir:
+  ```js
+  hb[h].addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') hoverSound(); });
+  ```
+  por:
+  ```js
+  hb[h].addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') { if (this.classList.contains('opt')) uiSound2('optHover'); else hoverSound(); } });
+  ```
+- **filas de Ajustes: foco con mando/teclado** — sustituir:
+  ```js
+      focusEl(list[i], true); hoverSound();
+  ```
+  por:
+  ```js
+      focusEl(list[i], true); if (list[i].classList && list[i].classList.contains('opt')) uiSound2('optHover'); else hoverSound();
+  ```
+
+## Pulido ola 3 — ui_main (8-nov-2026, PC de casa, RTX 3060 Ti): UI-13, UI-16 (verificados) y UI-17…UI-23
+Pruebas y capturas en `tools/out/w3/` (no se suben). Interfaces de CONTRACT intactas; solo añadidos opcionales.
+
+### UI-17 · respuesta personal y medidor pronto/tarde
+- `callout(text, team, cls, dur, o)`: `cls` `'neg'` (blanco, filo rojo-naranja) / `'good'` (dorado) = respuesta PERSONAL; `c0/c1` solo para lo
+  que hace un equipo. `o.html` (texto propio con glifos), `o.gauge` (−1..1: medidor ◀ ● ▶ con la raya verde del instante bueno; − pronto).
+- «¡Pronto!» / «¡Tarde!» llevan el medidor (marca a ±(0,27…1) según `miss.t2`), «No llegas» y «¡Te ha dado!» van en `neg`; si el balón da en
+  el cuerpo ≤ 0,7 s después de un «¡Pronto!», se queda el «¡Pronto!» (explica por qué). Tu bloqueo directo: «¡Bloqueo!» en `good`.
+- `miss17.js` (partido humano real, teclado): «¡Pronto!» en vivo → color rgb(255,255,255), filo #ff5a2c, punto 16 px a la izquierda del centro;
+  «¡Tarde!» (evento inyectado) → punto 19 px a la derecha.
+### UI-18 · textos
+- Ace / antenas / «Un punto para ganar el 1.er set» / «Un punto para ganar el partido» / «¡Ganas el partido!» / «Balón libre · [SALTAR] para
+  rematar» / «3.er toque · Ataque: ponte bajo el balón, salta con K y golpea con ESPACIO arriba» / «Primer partido» / «Al mejor de 3 sets» /
+  «Voley 3D se juega en horizontal». Antetítulos con contexto: pausa «Set 1 · 24-10 · Normal» («Mando desconectado» si se va el mando; en medio
+  solo los sets), final «Palau del Mar · Nivel Normal · 3 sets», paneles «Botones y gestos» / «Se guardan en este navegador». Tarjeta guiada:
+  solo el ordinal («SEGUNDO TOQUE»; el nombre ya está en el contador). `#sbTag` oculto mientras la cinta «Punto de set/partido» está a la vista.
+- Hoja final: sin la cabecera «TÚ · CPU» de las estadísticas (cifras en el color del equipo); MVP en tabla: un solo rótulo vertical «MVP», cabecera
+  «Ataque · Bloqueo · Saque» una vez y una fila por equipo (aria-label con la frase entera). Hoja centrada (600-999 px) compactada: botones a la vista.
+- Fila de Dificultad quitada de Ajustes (estaba también en el menú; en la pausa no se aplicaba hasta el siguiente partido).
+- `ui18.js`: grep de cadenas viejas/nuevas, frases del árbitro intactas en sim.js/ui.js; pausa, final, punto de set 1,0/2,5 s y primer toque
+  guiado a 1280×720 y 844×390 táctil: cada frase visible una vez, sin desbordes → TODO OK.
+### UI-19 · tamaños y contraste
+- Marcador al 78 %: franja de arriba e historial a 12 px reales (15,5 px × 0,78); ≤ 420 px de alto, sin el nombre del pabellón (queda el balón).
+  Token `--dim-text:#8a9cb3` para texto (`--dim` solo trazos). Naranjas con texto blanco pequeño oscurecidos a paradas ≥ 4,5:1 (botón base,
+  JUGAR con subtítulo blanco al 100 %, teclas táctiles del aviso, pestaña de punto, insignias de dorsal, tecla encendida); segmento elegido y
+  chip hecho del contador con texto oscuro. Etiqueta del tutorial 14 px, peso 700, `lining-nums tabular-nums` («6» se lee: `tutzoom-*.png`).
+- `a11y19.js` (tamaño × escala real del rectángulo; contraste con fondos de antepasados y ::before/::after, degradados promediados, sobre arena
+  oscura y tarima clara): 14 escenas × 844×390 y 667×375 (también HUD al 130 %) → 0 textos < 11 px; contraste: todo ≥ objetivo salvo «SACAR»
+  del botón táctil (input.js, nota a camera_input). 1280×720 y 1920×1080: 0 < 11 px, contraste OK.
+### UI-20 · el aviso nunca pisa un botón táctil
+- `placePrompt`: cajas REALES de `#touch .vt-btn` (+10 px, medidas al cambiar de tamaño y cada 120 frames) como zonas prohibidas; si ningún sitio
+  cabe, solo la tecla (`#prompt.konly`); si aun así no, se sube por encima de los botones; el suavizado nunca lo cruza por encima. `VB.UI._prompt()`.
+- `prompt20.js` (40 s en vivo, táctil, rAF, cajas reales sin margen): 844×390 (semillas 3 y 7) y 667×375 → 0 frames con solape (~1900-2000 con aviso).
+### UI-21 · Ajustes y Controles en el móvil
+- Ajustes: grupos Audio · Imagen · Juego · Accesibilidad, dos columnas desde 600 px; Sonido = silencio general (altavoz o Intro) + volumen de
+  efectos en la misma fila (mover el volumen quita el silencio); filas compactas en el móvil; `.has-more` (desvanecido con flecha) si hubiera que
+  desplazar (`checkMore`, también pausa y final). Controles: pestañas pequeñas por dispositivo (marca «en uso»), el elegido grande en dos columnas,
+  nota en 2 líneas, «Saltar (en el aire: dejada)»; ←/→ o el stick cambian de pestaña. `ui21.js` → TODO OK (sin desplazar a 844/667, 0 solapes, ≥ 13 px).
+### UI-22 · glifos PlayStation
+- `padInfo().id` con 054c / DualSense / DualShock / Wireless Controller (no Xbox/045e) → ✕ ○ □ △ (formas SVG neutras, el carácter queda en el texto
+  y en aria-label), L1/R1, Options/Share; en aviso, panel de controles, menú, tarjeta y final. `tools/padplay.js` acepta `PADID="…"`:
+  estándar → A/B y panel con A; DualSense → ✕/○ y panel con ✕ (TODO OK los dos).
+### UI-23 · idioma y tanteo hablado
+- main.js `boot()`: `document.documentElement.lang = 'es'`. `#srLive` (aria-live polite) tras cada punto: «Tú 1, CPU 0. Set 1.» (con «Set para ti.» /
+  «Ganas el partido.» y los sets delante/detrás); también Pronto/Tarde y los elogios de calidad. Medido en `debug=rally&live=1`: coincide con el marcador.
+### UI-13 / UI-16 (arrastrados)
+- Cortinilla (`w2/wipe.js` en el flujo real, menú → partido): 1280×720 6/6 y 844×390 táctil 8/8 cortes cubiertos al 100 %, 133-134 ms, reacción
+  seca, 0 frames > 33 ms. En escenas `debug=` táctiles el primer saque tiene un frame de 60-90 ms TAMBIÉN con `&wipe=0`: es el primer raster de los
+  botones táctiles en estado `off` con `#touch` saliendo de `dead` (sin telón no hay ensayo de estilos); en el flujo real el ensayo lo cubre (máx. 18 ms).
+- Accesibilidad (`w2/a11y.js` TODO OK) y `camStable` → temblor 0 medido (`getDebug().shake` máx. 0 con estable, 0,12 sin él).
+### Regresión
+- `simtest 10 12345 0` TODO OK; `console.sh all` 1280×720 y 844×390 táctil sin errores; drive, touchplay, padplay (estándar y DualSense) TODO OK;
+  `perf.js 844x390 15 medium,low 4 2.75`: media 117 fps, 40/43 draw calls, 247 k tri; baja 104 fps, 31/33 draw calls, 113 k tri; «objetivos cumplidos».
+### Para el integrador (CONTRACT)
+- §4.4: `VB.UI.callout(text, team, cls, dur, o)` (`cls` 'neg'|'good'|'tip', `o.html`, `o.gauge`), `VB.UI._prompt()`. Ajustes sin fila de dificultad.
+- §6: `tools/padplay.js` `PADID=`.
+
+## Aplicado (log, integración del pulido ola 3, 9-nov-2026, PC de casa)
+- **SIM-05 → UI-03**: `tierOf` = `highlight >= VB.HOLD.bigAt` (+ ace, punto de bloqueo y punto de set salvado); fuera las reglas propias (jugada ≥ 10, racha 3/5),
+  que ya van dentro del número. `RALLY_BIG` solo queda para el subtítulo «¡Peloteo de N toques!». Subtítulo nuevo «Final apretado» (`e.clutch`, último recurso
+  tras punto de set salvado / peloteo / racha y nunca con punto de set en juego). Medido (autopilot, 16 partidos por nivel, sin el freno `bigGap`): cinta grande
+  34,1/30,3/28,2 % → 23,4/23,1/23,4 % (Fácil/Normal/Difícil), alineada con la pausa larga de 2,4 s (`tools/out/int3/tier.js`).
+- **AUD-08**: los 8 cambios de la nota de audio aplicados tal cual (MVP al empezar la cuenta, tic/clac por frame, `optSound`, `changeOpt(k, d, absIdx, arrowDir)`,
+  flechas paso/tope/hover, hover y foco de filas de Ajustes). `node tools/audiotest.js --endui-only` → TODO OK (7 tics, clac en el último frame, MVP 1, flechas y Ajustes).
+- **Arreglo (debug)**: `tryReveal` no relevaba nada sin telón, pero en escenas `debug=` (telón oculto por main.js, sin `bootReady`) el tope de 2,6 s hacía un relevo
+  PARCIAL y el fondo del telón tapaba el pabellón hasta los 7,6 s (`debug=menu` a 4 s salía sin escena en shot.sh/console.sh). Ahora, telón oculto y sin relevo
+  empezado → `bootStage = 2`. El flujo real no cambia (verificado: sin `.bt-bg` ni `bt-wait` a los 5 s).
+- **Arreglo (UI-18/UI-21, tutorial en el móvil)**: el texto nuevo del ace (4 líneas) dejaba Anterior/Siguiente medio tapados por el desvanecido en TODOS los pasos a 844×390
+  y 667×375 (desbordaba 28-42 px) y «Reglas y faltas» desbordaba ~250 px. En `@media (max-height:560px)`: tutorial compacto (título 25 px, texto 13 px, regla 12 px,
+  cabecera 6 px) y navegación `position:sticky` abajo con degradado (el desvanecido `.has-more` se quita en el tutorial). Pasos 1-5: 0 px de desborde a 844×390 y
+  667×375; paso 6 desplaza por debajo con los botones siempre a la vista (`tools/out/int3/tutfit.sh`, `tutB.png`, `tutC_s6.png`). Escritorio sin cambios.
+  Texto: «Ace: punto directo de saque: el balón…» (dos dos puntos seguidos) → «Ace (punto directo de saque): el balón…».
+
+## Arreglos tras la verificación ola 3 — ui_main (9-nov-2026, PC de casa)
+Pruebas y capturas en `tools/out/w4/` (no se suben). Interfaces de CONTRACT intactas; solo añadidos opcionales.
+- **«¡GANAS EL PARTIDO!» tapaba el marcador a 1280×720 (mayor)**: `placeT3` (nivel 3, set/partido) trabaja con candidatos (x, y) y zonas
+  prohibidas = marcador ENTERO (franja, cuerpo con historial, etiqueta de punto de set, chip de la jugada si no se está fundiendo), `.hud-btns`
+  y, en táctil, `#touch .vt-pause` (+12/+10 px). Cada altura centrada; si pisa algo, desplazada a la derecha del marcador (si cabe la cinta
+  real, sin el margen de centrado) o justo debajo de todo. Pesa 400/px² (manda sobre el héroe, 12). `#banner` sigue de lado a lado: el centro
+  se mueve con `left = 2·x − (W − bw)`. `&uidbg=1` registra los candidatos. Medido con `tools/out/w4/mw.js` (partido ganado en vivo,
+  0,7-3,5 s): 1280×720 → cinta bajo el marcador (y 156-308, 25-14 legible); 1680×720 y 1920×1080 → arriba a la derecha del marcador;
+  844×390 táctil → arriba entre marcador y pausa; 667×375 → bajo el marcador (antes lo tapaba). 0 solapes con #sb/botones en todos.
+  `debug=setpoint` (cinta compacta) a 1280/1680/1920: sin solape.
+- **Chip de la jugada en la celebración**: `rallyFade()` (clase `.fade`, animación `rlFade` 0,25 s; la de entrada fija la opacidad, por eso no
+  vale una transición) al salir el rótulo de set/partido o una cinta con «¡Jugada de N toques!». Medido: fundido a los 0,7 s del punto de partido.
+- **«Peloteo» → «Jugada»**: chip «JUGADA · N» y subtítulo «¡Jugada de N toques!» (la hoja final ya decía «Jugada más larga»). Las frases del
+  árbitro intactas (grep: sim.js 4, ui.js 5). 70 s de autopiloto: chips «Jugada 8…12», subtítulo «¡Jugada de 12 toques!», chip fundido.
+- **Tarjeta del 1.er toque guiado sobre el balón en el remate rival**: la pastilla era `#coach` (ya tenía `.thru`, pero en escritorio solo
+  aclaraba el fondo); ahora `#coach.thru` baja a opacidad 0,28 en todas las pantallas (0,14 s) y `#guide.thru` a 0,22 (antes solo en el móvil).
+  `debug=spike&guide=1` a 1280×720: balón en (538,77) bajo la pastilla → opacidad 0,28, el balón se lee (`spike-guide2.png`).
+- **Pestaña blanca vacía del marcador en el móvil**: el `letter-spacing:.2em` de `.sb-top` se hereda ya resuelto (2,5 px) y los 13 caracteres
+  invisibles de «PALAU DEL MAR» con `font-size:0` ensanchaban la pestaña a 55 px. `letter-spacing:0` → 22 px, solo el balón (`rally-ph2.png`).
+- **`debug=menu` sin pabellón (también a 1280×720, no solo en el móvil)**: carrera. En escenas `debug=` no hay `bootReady`; si el 3.er frame
+  pintado llegaba pasado BOOT_CAP (2,6 s; enlace de programas lento), `tryReveal` hacía un relevo PARCIAL y el fondo del telón quedaba bajo el
+  menú hasta los 7,6 s. Ahora `tryReveal` no empieza nunca un relevo en depuración (el telón lo quita main.js en el 3.er frame, como siempre).
+  No se pasa `debug=menu` por el telón real: audiotest/camtest lo usan e interactúan a ~1,2 s y `bootBusy` los frenaría. 5/5 capturas con escena.
+- **Perfiles vb3c-* huérfanos (UI-08)**: `cdp.js` `sweepDead(deadMs=8 min, dry)` borra carpetas de más de 8 min que NINGÚN proceso vivo nombra
+  en su línea de órdenes (`listVbProcs()`, sacado de `killOrphans`; si no se puede listar, `null` → no se borra nada). `open()` lo llama si hay
+  alguna así (como mucho cada 2 min, `%TEMP%/vb3-dead.stamp`; al momento con ≥ 4). `tools/clean.js` también (`DEAD=min`, `DRY=1` las lista).
+  La regla de 1 h queda de reserva. Probado: carpeta falsa de 10 min sin proceso → la borra el siguiente `eval.js`; la de otro agente en marcha
+  se respeta. Nota: cualquier proceso cuyo comando contenga el nombre la protege (conservador).
+### Regresión
+- `node --check` de todo js/ y tools/; `simtest 10 12345 0` TODO OK; `console.sh all` 1280×720 y 844×390 táctil sin errores (perfiles: 0 propios
+  restantes); drive, touchplay, padplay (estándar y DualSense) TODO OK (padplay estándar falló una vez «el mando pasa a ser el dispositivo activo»
+  con el PC cargado por otros agentes; repetido: TODO OK); `perf.js 844x390 15 medium,low 4 2.75`: media 78 fps (CPU del PC 58 %), baja 97 fps,
+  29-34 draw calls, 112-120 k tri, «objetivos cumplidos».
+### Para el integrador (CONTRACT)
+- §6: `tools/cdp.js` exporta además `sweepDead(deadMs, dry)` y `listVbProcs()`; `tools/clean.js` acepta `DEAD=min`.
+
+## Aplicado (log, integración de los arreglos tras la verificación de la ola 3, 9-nov-2026, PC de casa)
+- CONTRACT §6: `sweepDead(deadMs, dry)`, `listVbProcs()`, `clean.js DEAD=min`; añadidos visibles («JUGADA · N», `.rl.fade`, `placeT3` con zonas prohibidas, `#coach/#guide.thru` en todas las pantallas, `tryReveal` sin relevo en depuración).
+- SIM-03: línea 324 corregida a 4,0 s.
+- **Cambio del lead en index.html (fuentes)**: tras las 4 caras que espera el arranque, se piden SIN esperar las demás que usa la UI (Barlow Condensed 800/700 cursiva, 600, 500, 900; Barlow 400/500/700). Antes, Barlow 500/700 (el #coach del aviso de los 8 s) se bajaban la primera vez que salía ese texto a mitad de partido y Chrome volvía a maquetar todo: frame de 55-82 ms (Layout 53 ms con CPU ×4). Ahora llegan bajo el telón: 49-52 ms (Layout 27 ms). Comprobado: todas las caras latinas «loaded» a los 7 s.
+- Petición de camera_input (pre-pintar la cortinilla): evaluada y no aplicada; ver notes/camera_input.md (el hueco es del HUD del saque en `debug=rally`, no aparece en el partido real).
+- Verificado en el árbol integrado: simtest completo + barrido `simtest <10|20> <1..25> 0` 50/50 TODO OK; console.sh 19 escenas (1280×720 y 844×390 táctil) sin errores; drive, touchplay, padplay (estándar y DualSense) y audiotest completo TODO OK; perf 844×390 ×4 «objetivos cumplidos» (ver TRASPASO).

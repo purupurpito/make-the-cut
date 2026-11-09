@@ -19,7 +19,11 @@
   'use strict';
   var VB = window.VB = window.VB || {};
   var THREE, ctx, C, Sim, root;
-  var ballPivot, ball, ballMat, ballShadow, dropLine, marker, markerMat, focusRing, focusMat, focusFill, ballOutline;
+  var ballPivot, ball, ballMat, dropLine, marker, markerMat, focusRing, focusMat, focusU, focusD = 0, ballOutline;
+  // Aro de aproximación (ARN-05): diámetros (m) de la diana y del aro móvil al nacer, y segundos de cierre hasta PULSAR.
+  // Los planos miden 1 m: el aro de outlinedRingTex(104) mide 0,8125 m de diámetro y la diana de targetTex 0,875 m.
+  var FR_D0 = 0.8, FR_D1 = 2.6, FR_T = 0.9, FR_RING = 0.8125, FR_TGT = 0.875, FR_ON = 0.24, FR_OFF = -0.15;
+  var ballBs = 1, ballRim = null; // escala del balón por legibilidad (ARN-06) y uniforme del brillo de borde
   var aimRet, aimMat, aim = { a: 0, x: -6, y: 0, tx: -6, ty: 0, on: false, live: false, kill: 0 }, aimOut = { x: 0, y: 0 };
   var hwOut = { t: 0, press: 0 }, focusVis = false;
   // caché de hitWindow para el aro amarillo: la trayectoria es balística entre toques, así que «press» baja 1:1 con el
@@ -87,12 +91,41 @@
     draw(10, 'rgba(0,0,0,0.5)'); draw(0, '#ffffff');
     return tex(cv);
   }
-  /** Huella del balón en la tarima: óvalo oscuro con el borde más marcado (como el roce de la goma). */
-  function printTex() {
+  /** Relleno de la marca del bote (ARN-04): disco translúcido CLARO teñido con el color de la llamada (material.color),
+   *  más denso en el centro y con el borde suave. Antes era una huella marrón oscura que se leía como un «agujero». */
+  function fillTex() {
     var cv = canvas(128, 128), g = cv.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gr.addColorStop(0, 'rgba(46,30,16,0.42)'); gr.addColorStop(0.55, 'rgba(40,26,14,0.62)'); gr.addColorStop(0.74, 'rgba(30,20,10,0.8)');
-    gr.addColorStop(0.86, 'rgba(30,20,10,0.25)'); gr.addColorStop(1, 'rgba(30,20,10,0)');
+    gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.62, 'rgba(255,255,255,0.86)'); gr.addColorStop(0.8, 'rgba(255,255,255,0.56)');
+    gr.addColorStop(0.92, 'rgba(255,255,255,0.12)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return tex(cv);
+  }
+  /** Filo de la marca (ARN-04): aro con filo oscuro y, para FUERA, una X diagonal gruesa sobre la huella (la llamada
+   *  del juez de línea por FORMA, legible sin color: daltonismo y escala de grises). El blanco se tiñe con material.color. */
+  function markRimTex(cross) {
+    var cv = canvas(256, 256), g = cv.getContext('2d'), r = 100, w = 18;
+    g.lineCap = 'round';
+    function xs(lw, style) {
+      g.strokeStyle = style; g.lineWidth = lw; var k = r * 0.62;
+      g.beginPath(); g.moveTo(128 - k, 128 - k); g.lineTo(128 + k, 128 + k); g.moveTo(128 + k, 128 - k); g.lineTo(128 - k, 128 + k); g.stroke();
+    }
+    g.strokeStyle = 'rgba(12,8,0,0.72)'; g.lineWidth = w + 14; g.beginPath(); g.arc(128, 128, r, 0, 6.283); g.stroke();
+    if (cross) xs(w + 16, 'rgba(12,8,0,0.78)');
+    g.strokeStyle = '#ffffff'; g.lineWidth = w; g.beginPath(); g.arc(128, 128, r, 0, 6.283); g.stroke();
+    if (cross) xs(w + 2, '#ffffff');
+    return tex(cv);
+  }
+  /** Diana fija del aro de golpeo (ARN-05): aro fino con 4 marcas HACIA DENTRO (no se confunde con las marcas del bote
+   *  ni con colores de equipo) y filo oscuro para leerse sobre la tarima. */
+  function targetTex() {
+    var cv = canvas(256, 256), g = cv.getContext('2d'), r = 112;
+    function draw(ex, style) {
+      g.strokeStyle = style; g.lineCap = 'round';
+      g.lineWidth = 7 + ex; g.beginPath(); g.arc(128, 128, r, 0, 6.283); g.stroke();
+      g.lineWidth = 9 + ex;
+      for (var k = 0; k < 4; k++) { var a = k * Math.PI / 2 + Math.PI / 4; g.beginPath(); g.moveTo(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); g.lineTo(128 + Math.cos(a) * (r - 30), 128 + Math.sin(a) * (r - 30)); g.stroke(); }
+    }
+    draw(10, 'rgba(10,6,0,0.75)'); draw(0, '#ffffff');
+    return tex(cv);
   }
   /** Onda de choque: filo brillante fino con un halo interior muy tenue que cae a 0 (nada de disco gris). */
   function shockRingTex() {
@@ -170,7 +203,7 @@
       addSpark(x, y, z, Math.cos(a) * Math.cos(e) * v, Math.sin(a) * Math.cos(e) * v, Math.sin(e) * v + (up || 0.8),
         0.25 + Math.random() * 0.35, r, g, b, grav == null ? 9 : grav);
     }
-    spAlive = 1;
+    spAlive = 1; sparks.visible = true;
   }
   /** Polvo de parquet (coords de sim): velo bajo, a ras de suelo, que sale de debajo del cuerpo y se apaga en ~0,3 s.
    *  (x, y) es el punto de referencia; con dirección (dirx, diry) las partículas se reparten a lo largo de la línea del
@@ -197,14 +230,16 @@
   /** Atenúa destellos muy cerca de la cámara (golpes del propio jugador): que no tapen la jugada. */
   function nearFade(p) { var d = ctx.camera.position.distanceTo(p); return Math.max(0.12, Math.min(1, (d - 2) / 6)); }
   var FLASH_K = 0.62; // intensidad del destello aditivo: solo el núcleo llega al umbral del bloom
+  /** ARN-13 «destellos suaves» (ctx.settings.softFlash, Ajustes → Accesibilidad): destellos y ondas de impacto al 40 %. */
+  function softK() { var st = ctx.settings; return st && st.softFlash ? 0.4 : 1; }
   function flashAt(x, y, z, size, dur, r, g, b) {
-    var f = flashPool[flashHead]; flashHead = (flashHead + 1) % FLASH_N;
-    VB.toThree(x, y, z, f.s.position); f.t = dur; f.d = dur; f.size = size; f.s.material.color.setRGB(r * FLASH_K, g * FLASH_K, b * FLASH_K); f.s.visible = true;
+    var f = flashPool[flashHead], k = FLASH_K * softK(); flashHead = (flashHead + 1) % FLASH_N;
+    VB.toThree(x, y, z, f.s.position); f.t = dur; f.d = dur; f.size = size; f.s.material.color.setRGB(r * k, g * k, b * k); f.s.visible = true;
     f.near = nearFade(f.s.position);
   }
   function shockAt(x, y, z, size, dur, r, g, b) {
-    var w = wavePool[waveHead]; waveHead = (waveHead + 1) % WAVE_N;
-    VB.toThree(x, y, z, w.s.position); w.t = dur; w.d = dur; w.size = size; w.s.material.color.setRGB(r, g, b); w.s.visible = true;
+    var w = wavePool[waveHead], k = softK(); waveHead = (waveHead + 1) % WAVE_N;
+    VB.toThree(x, y, z, w.s.position); w.t = dur; w.d = dur; w.size = size; w.s.material.color.setRGB(r * k, g * k, b * k); w.s.visible = true;
     w.near = nearFade(w.s.position);
   }
   function rippleAt(x, y, size, dur, r, g, b, op) {
@@ -215,20 +250,128 @@
   /** Marca del bote (la "llamada" del juez de línea): huella oscura en la tarima orientada según el vuelo
    *  + filo de color (verde = dentro, rojo = fuera, mismo C.IN_TOL que el árbitro de sim). Dura 5 s para
    *  cubrir todo el plano del punto; entra con un pulso. */
-  var MARK_LIFE = 5.2;
+  var MARK_LIFE = 5.2, MARK_IN = null, MARK_OUT = null, rimInTex = null, rimOutTex = null;
   function markAt(x, y, inside, speed, vx, vy) {
     var m = markPool[markHead]; markHead = (markHead + 1) % MARK_N;
     m.m.position.x = x; m.m.position.z = -y; m.r.position.x = x; m.r.position.z = -y;
     m.t = MARK_LIFE; m.d = MARK_LIFE;
     var s = 0.46 + Math.min(0.16, speed * 0.012), hs = Math.hypot(vx || 0, vy || 0);
-    m.s = s; m.stretch = 1 + Math.min(0.45, hs * 0.03);
+    m.s = s; m.stretch = 1 + Math.min(0.18, hs * 0.012); // apenas ovalado: el relleno llena el aro sin salirse
     // óvalo alargado en la dirección del vuelo (sim (vx,vy) -> plano del suelo; rotation.z gira en el plano)
     m.m.rotation.z = hs > 0.1 ? Math.atan2(vy, vx) : 0;
-    m.m.scale.set(s * m.stretch, s, 1);
-    if (inside) m.r.material.color.setRGB(0.12, 0.9, 0.24); else m.r.material.color.setRGB(1, 0.05, 0.03); // lineales: verde / rojo vivos
+    m.m.scale.set(s * 1.24 * m.stretch, s * 1.24, 1);
+    // DENTRO = disco claro verde + aro; FUERA = disco claro rojo + aro con X (forma = llamada; el color es secundario)
+    if (inside) { m.r.material.color.setRGB(0.12, 0.9, 0.24); m.m.material.color.copy(MARK_IN); m.r.material.map = rimInTex; }
+    else { m.r.material.color.setRGB(1, 0.05, 0.03); m.m.material.color.copy(MARK_OUT); m.r.material.map = rimOutTex; }
+    m.inside = !!inside;
     m.m.visible = true; m.r.visible = true;
   }
 
+  /* Calcomanías del suelo en UN dibujo (InstancedMesh): rellenos de las marcas del bote, sus filos, ondas, marcador de caída y
+   * retícula de apuntado. Antes cada una era una malla (hasta 4 + 4 + 6 + 2 dibujos; 3-5 en un bote normal, en el mismo frame
+   * que el aro y la línea de altura: los picos de dibujos en baja). Las mallas de siempre siguen existiendo FUERA de la escena
+   * como «estado» (posición, giro, escala, color, opacidad, textura, visible): el código que las anima no cambia y writeDecals
+   * las copia cada frame en instancias, en el orden de antes (rellenos → filos y ondas → marcador → retícula).
+   * Atlas 1024×512 = 4×2 celdas de 256 px (potencia de 2: cada mip divide las celdas exactamente; con celdas de 272 px y
+   * margen los mips no potencia de 2 emborronaban la retícula lejana). */
+  var decals = null, DEC_CELL = 256, decTex = [], decOrder = [], decSz = [], decM = null, decV = null, decP = null, decQ = null, decY = null;
+  var DROP_TONE = 0.763; // la Line de antes pasaba por ACES (blanco 1 → 0,763); el lote no lleva tono: mismo blanco en pantalla
+  function buildDecals(texs) {
+    var cv = canvas(4 * DEC_CELL, 2 * DEC_CELL), g = cv.getContext('2d');
+    for (var i = 0; i < texs.length; i++) {
+      var cx = (i % 4) * DEC_CELL, cy = Math.floor(i / 4) * DEC_CELL;
+      g.drawImage(texs[i].image, cx, cy, 256, 256);
+      decTex.push(texs[i]);
+    }
+    g.fillStyle = '#ffffff'; g.fillRect(2 * DEC_CELL, DEC_CELL, DEC_CELL, DEC_CELL); // celda 6: blanco liso (línea de altura)
+    var at = tex(cv);
+    var N = MARK_N * 2 + RIP_N + 3, geo = new THREE.PlaneGeometry(1, 1);
+    var inst = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({
+      uniforms: { map: { value: at } }, transparent: true, depthWrite: false, toneMapped: false,
+      vertexShader: 'attribute vec4 aCol; attribute vec2 aCell; varying vec4 vCol; varying vec2 vUv;\n' +
+        'void main(){ vCol = aCol; vUv = aCell.x < 0.0 ? vec2(0.625, 0.25) : (aCell + uv * 256.0) / vec2(1024.0, 512.0);\n' +
+        ' gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform sampler2D map; varying vec4 vCol; varying vec2 vUv;\n' +
+        'void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vCol.rgb, t.a * vCol.a);\n#include <encodings_fragment>\n}' }), N);
+    inst.geometry.setAttribute('aCol', new THREE.InstancedBufferAttribute(new Float32Array(N * 4), 4).setUsage(THREE.DynamicDrawUsage));
+    inst.geometry.setAttribute('aCell', new THREE.InstancedBufferAttribute(new Float32Array(N * 2), 2).setUsage(THREE.DynamicDrawUsage));
+    inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    inst.count = 0; inst.visible = false; inst.frustumCulled = false; inst.renderOrder = 3; inst.name = 'floorDecals';
+    root.add(inst); decals = inst;
+    for (var m = 0; m < MARK_N; m++) decOrder.push(markPool[m].m);
+    for (var r = 0; r < MARK_N; r++) decOrder.push(markPool[r].r);
+    for (var p = 0; p < RIP_N; p++) decOrder.push(ripPool[p].m);
+    decOrder.push(marker, aimRet);
+    // lado del plano de cada malla (marcador 1,15 m, retícula 1,7 m; el resto 1 m): el lote usa un plano de 1 m
+    for (var z = 0; z < decOrder.length; z++) decSz.push(decOrder[z].geometry.parameters.width || 1);
+    decM = new THREE.Matrix4(); decV = new THREE.Vector3(); decP = new THREE.Vector3(); decQ = new THREE.Quaternion(); decY = new THREE.Vector3(0, 1, 0);
+  }
+  function writeDecals() {
+    if (!decals) return;
+    var n = 0, ca = decals.geometry.attributes.aCol, cl = decals.geometry.attributes.aCell, A = ca.array, B = cl.array;
+    // línea de altura balón → suelo (antes THREE.Line = 1 dibujo propio): tira vertical que mira a la cámara, ~1,3 px de ancho
+    if (dropLine.visible && dropLine.material.opacity > 0.002) {
+      var la = dropLine.geometry.attributes.position.array, cam = ctx.camera, h = la[1] - la[4];
+      if (h > 0.01) {
+        decP.set(la[0], (la[1] + la[4]) * 0.5, la[2]);
+        var dx = cam.position.x - decP.x, dz = cam.position.z - decP.z, dist = Math.max(0.5, Math.sqrt(dx * dx + dz * dz + (cam.position.y - decP.y) * (cam.position.y - decP.y)));
+        var wpx = 2 * dist * Math.tan(cam.fov * Math.PI / 360) / Math.max(200, ctx.height || 720); // metros por píxel CSS a esa distancia
+        decQ.setFromAxisAngle(decY, Math.atan2(dx, dz)); decV.set(1.3 * wpx, h, 1);
+        decals.setMatrixAt(n, decM.compose(decP, decQ, decV));
+        A[0] = A[1] = A[2] = DROP_TONE; A[3] = dropLine.material.opacity; B[0] = -1; B[1] = -1; // aCell < 0: uv fija en el centro de la celda blanca (sin mips)
+        n++;
+      }
+    }
+    for (var i = 0; i < decOrder.length; i++) {
+      var o = decOrder[i]; if (!o.visible) continue;
+      var mt = o.material, op = mt.opacity; if (op <= 0.002) continue;
+      var slot = decTex.indexOf(mt.map); if (slot < 0) continue;
+      o.updateMatrix(); var sz = decSz[i]; decals.setMatrixAt(n, sz === 1 ? o.matrix : decM.copy(o.matrix).scale(decV.set(sz, sz, 1)));
+      A[n * 4] = mt.color.r; A[n * 4 + 1] = mt.color.g; A[n * 4 + 2] = mt.color.b; A[n * 4 + 3] = op;
+      B[n * 2] = (slot % 4) * DEC_CELL; B[n * 2 + 1] = (1 - Math.floor(slot / 4)) * DEC_CELL; // v hacia arriba: fila 0 del lienzo = arriba
+      n++;
+    }
+    decals.count = n; decals.visible = n > 0;
+    if (n) { decals.instanceMatrix.needsUpdate = true; ca.needsUpdate = true; cl.needsUpdate = true; }
+  }
+  /* Destellos y ondas de choque (antes 4 + 4 Sprites: 2-3 dibujos en cada remate, justo en el pico de dibujos) en UN dibujo:
+   * carteles orientados a cámara en un InstancedMesh aditivo (con mezcla aditiva el orden no cambia nada). Los Sprites siguen
+   * existiendo FUERA de la escena como estado (posición, escala, color, opacidad, visible). Atlas 512×256: destello | onda. */
+  var bills = null, billOrder = [];
+  function buildBills(flashTex, shockTex) {
+    var cv = canvas(512, 256), g = cv.getContext('2d');
+    g.drawImage(flashTex.image, 0, 0, 256, 256); g.drawImage(shockTex.image, 256, 0, 256, 256);
+    var N = FLASH_N + WAVE_N;
+    var inst = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial({
+      uniforms: { map: { value: tex(cv) } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
+      vertexShader: 'attribute vec4 aCol; attribute float aCell; varying vec4 vCol; varying vec2 vUv;\n' +
+        'void main(){ vCol = aCol; vUv = vec2((aCell + uv.x) * 0.5, uv.y);\n' +
+        ' vec3 sc = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), 1.0);\n' +
+        ' vec4 mv = modelViewMatrix * vec4(instanceMatrix[3].xyz, 1.0); mv.xy += position.xy * sc.xy; gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform sampler2D map; varying vec4 vCol; varying vec2 vUv;\n' +
+        'void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vCol.rgb, t.a * vCol.a);\n#include <encodings_fragment>\n}' }), N);
+    inst.geometry.setAttribute('aCol', new THREE.InstancedBufferAttribute(new Float32Array(N * 4), 4).setUsage(THREE.DynamicDrawUsage));
+    inst.geometry.setAttribute('aCell', new THREE.InstancedBufferAttribute(new Float32Array(N), 1).setUsage(THREE.DynamicDrawUsage));
+    inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    inst.count = 0; inst.visible = false; inst.frustumCulled = false; inst.renderOrder = 8; inst.name = 'impactBills';
+    root.add(inst); bills = inst;
+    for (var f = 0; f < FLASH_N; f++) billOrder.push(flashPool[f].s);
+    for (var w = 0; w < WAVE_N; w++) billOrder.push(wavePool[w].s);
+  }
+  function writeBills() {
+    if (!bills) return;
+    var n = 0, ca = bills.geometry.attributes.aCol, cl = bills.geometry.attributes.aCell, A = ca.array;
+    for (var i = 0; i < billOrder.length; i++) {
+      var o = billOrder[i]; if (!o.visible) continue;
+      var mt = o.material, op = mt.opacity; if (op <= 0.002) continue;
+      o.updateMatrix(); bills.setMatrixAt(n, o.matrix);
+      A[n * 4] = mt.color.r; A[n * 4 + 1] = mt.color.g; A[n * 4 + 2] = mt.color.b; A[n * 4 + 3] = op;
+      cl.array[n] = i < FLASH_N ? 0 : 1;
+      n++;
+    }
+    bills.count = n; bills.visible = n > 0;
+    if (n) { bills.instanceMatrix.needsUpdate = true; ca.needsUpdate = true; cl.needsUpdate = true; }
+  }
   function startTrail(r, g, b, width, strength) {
     trailA = strength; trailW = width; trailCol.setRGB(r, g, b); trailN = 0;
     var bp = ballPivot.position;
@@ -249,7 +392,7 @@
       tv.set(tPts[i0 * 3] - tPts[i1 * 3], tPts[i0 * 3 + 1] - tPts[i1 * 3 + 1], tPts[i0 * 3 + 2] - tPts[i1 * 3 + 2]);
       tv2.set(cam.x - tPts[j * 3], cam.y - tPts[j * 3 + 1], cam.z - tPts[j * 3 + 2]);
       tv3.crossVectors(tv, tv2); var l = tv3.length();
-      var f = 1 - i / (TN - 1), w = trailW * (0.25 + 0.75 * f) * (l > 1e-6 ? 1 / l : 0);
+      var f = 1 - i / (TN - 1), w = trailW * (ballBs < 1.8 ? ballBs : 1.8) * (0.25 + 0.75 * f) * (l > 1e-6 ? 1 / l : 0);
       tv3.multiplyScalar(w);
       var px = tPts[j * 3], py = tPts[j * 3 + 1], pz = tPts[j * 3 + 2];
       tPos[i * 6] = px + tv3.x; tPos[i * 6 + 1] = py + tv3.y; tPos[i * 6 + 2] = pz + tv3.z;
@@ -329,13 +472,123 @@
     aimArc.geometry.attributes.position.needsUpdate = true; aimArc.geometry.attributes.color.needsUpdate = true;
   }
 
+  // ---------- Sombras de contacto (ARN-11) ----------
+  /* Instancia 0 = balón, 1..4 = atletas. Cada mancha es un plano en el suelo con su matriz (posición, giro, escala
+   * elíptica) y un atributo aK = oscurecimiento en el centro (0..1). El fragmento devuelve 1 - aK·perfil y la mezcla
+   * multiplica el destino por ese valor (CustomBlending ZERO, SRC_COLOR). El valor sale de linearToOutputTexel(v^2,2):
+   * a pantalla (salida sRGB) multiplica por ~v; al destino lineal del post, por v^2,2. Así «un 20 % más oscuro» es lo
+   * mismo en baja (sin post) que en alta (con post). */
+  var BLOB_N = 5, blobs = null, blobK = null, blobM = null, blobQ = null, blobS = null, blobP = null;
+  var BLOB_VS = 'attribute float aK; varying vec2 vUv; varying float vK;\n' +
+    'void main(){ vUv = uv; vK = aK; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }';
+  var BLOB_FS = [
+    'varying vec2 vUv; varying float vK;',
+    'void main(){',
+    ' float d = length(vUv - 0.5) * 2.0;',
+    // perfil casi gaussiano que llega a 0 justo en el borde del plano (sin filo visible)
+    ' float sh = clamp((exp(-3.0 * d * d) - 0.0498) / 0.9502, 0.0, 1.0);',
+    ' float v = 1.0 - vK * sh;',
+    ' gl_FragColor = vec4(vec3(pow(v, 2.2)), 1.0);',
+    '#include <encodings_fragment>',
+    '}'].join('\n');
+  function buildBlobs() {
+    var geo = new THREE.PlaneGeometry(1, 1); geo.rotateX(-Math.PI / 2);
+    blobK = new Float32Array(BLOB_N);
+    geo.setAttribute('aK', new THREE.InstancedBufferAttribute(blobK, 1).setUsage(THREE.DynamicDrawUsage));
+    var mat = new THREE.ShaderMaterial({ vertexShader: BLOB_VS, fragmentShader: BLOB_FS, transparent: true, depthWrite: false,
+      blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.ZeroFactor, blendDst: THREE.SrcColorFactor, toneMapped: false });
+    blobs = new THREE.InstancedMesh(geo, mat, BLOB_N);
+    blobs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    blobs.frustumCulled = false; blobs.renderOrder = 2; blobs.name = 'contactBlobs';
+    blobM = new THREE.Matrix4(); blobQ = new THREE.Quaternion(); blobS = new THREE.Vector3(); blobP = new THREE.Vector3();
+    for (var i = 0; i < BLOB_N; i++) setBlob(i, 0, 0, 0.01, 0.01, 0, 0);
+    root.add(blobs);
+  }
+  /** (x, y) sim; sx a lo largo de `yaw` (rad, sim), sy de través; k = oscurecimiento en el centro. */
+  function setBlob(i, x, y, sx, sy, yaw, k) {
+    blobP.set(x, 0.012 + i * 0.0004, -y); blobQ.setFromAxisAngle(UPV, yaw); blobS.set(sx, 1, sy);
+    blobM.compose(blobP, blobQ, blobS); blobs.setMatrixAt(i, blobM);
+    if (blobK[i] !== k) { blobK[i] = k; blobs.geometry.attributes.aK.needsUpdate = true; }
+    blobs.instanceMatrix.needsUpdate = true;
+  }
+  var BLOB_K = [0.36, 0.3, 0.26]; // oscurecimiento central por calidad [baja, media, alta] (en alta ya hay sombra real nítida)
+  var blobKq = BLOB_K[2];
+  /** Una mancha suave bajo cada atleta (~0,8 x 0,9 m), más oscura en el centro, que se agranda y se apaga con la altura del
+   *  salto (0 a 1,5 m) y se alarga en la dirección del cuerpo cuando está tumbado (plancha). Lee la posición VISUAL del rig
+   *  (VB.Players: incluye la convergencia de la celebración y el desfase de la plancha); sin rigs, la de sim. */
+  function updateAthleteBlobs(g) {
+    var P = VB.Players, rigs = P && P.rigs, ps = g.players, n = ps ? Math.min(4, ps.length) : 0;
+    for (var i = 0; i < n; i++) {
+      var p = ps[i], r = null;
+      if (rigs) for (var j = 0; j < rigs.length; j++) if (rigs[j] && rigs[j].p === p) { r = rigs[j]; break; }
+      var x = p.x, y = p.y, z = p.z > 0 ? p.z : 0, yaw = 0, lie = 0;
+      if (r && r.root) { x = r.root.position.x; y = -r.root.position.z; yaw = r.yaw || 0; lie = r.lieW > 0 ? (r.lieW < 1 ? r.lieW : 1) : 0; }
+      var hz = clampN(z / 1.5, 0, 1), fade = (1 - hz) * (1 - hz), grow = 1 + 0.35 * hz;
+      // tumbado: mancha larga a lo largo del cuerpo y algo adelantada (el pecho), algo más clara (repartida)
+      var sx = (0.78 + 1.2 * lie) * grow, sy = (0.92 - 0.2 * lie) * grow;
+      var off = 0.85 * lie; // la raíz queda en los pies: el centro del cuerpo tumbado está ~0,85 m por delante
+      setBlob(i + 1, x + Math.cos(yaw) * off, y + Math.sin(yaw) * off, sx, sy, yaw, blobKq * fade * (1 - 0.18 * lie));
+    }
+    for (var k = n; k < 4; k++) setBlob(k + 1, 0, 0, 0.01, 0.01, 0, 0);
+  }
+
   // ---------- Confeti ----------
+  var CONF_PAL = [[[1, 0.36, 0.2], [1, 0.62, 0.22], [1, 0.82, 0.25], [1, 1, 1]], [[0.25, 0.55, 1], [0.5, 0.75, 1], [1, 0.82, 0.25], [1, 1, 1]]];
+  var cfP = { x: 0, y: 0, z: 0 };
+  /** Tamaño del papelito para que en pantalla mida >= ~7 px (no una mota): escala por la distancia a la cámara. */
+  function confScale(tx, ty, tz) {
+    var cp = ctx.camera.position, dd = Math.sqrt((tx - cp.x) * (tx - cp.x) + (ty - cp.y) * (ty - cp.y) + (tz - cp.z) * (tz - cp.z));
+    var px = 0.1 * (ctx.height || 720) / (2 * Math.max(0.5, dd) * Math.tan(ctx.camera.fov * Math.PI / 360));
+    return clampN(7 / Math.max(0.1, px), 1, 2.6);
+  }
+  /** Confeti DENTRO del plano actual (ARN-13): unos cañonazos desde puntos que están en el cuadro de la cámara (parte alta,
+   *  a 6-12 m) y una cortina que cae desde justo encima del borde superior. Así la celebración se ve aunque la cámara del
+   *  plano de cierre esté lejos de las esquinas de la pista. Coordenadas: se eligen en el espacio de la cámara y se pasan a sim. */
+  function confettiInFrame(team, n) {
+    var cam = ctx.camera, pal = CONF_PAL[team], start = confAlive;
+    cam.updateMatrixWorld();
+    var e = cam.matrixWorld.elements, tanV = Math.tan(cam.fov * Math.PI / 360), tanH = tanV * (cam.aspect || 1.78);
+    // ejes de la cámara (columnas de matrixWorld): derecha, arriba, atrás
+    var rx = e[0], ry = e[1], rz = e[2], ux = e[4], uy = e[5], uz = e[6], bx = e[8], by = e[9], bz = e[10], cp = cam.position;
+    var nE = 4, ePts = [];
+    for (var k = 0; k < nE; k++) {
+      var ex = -0.62 + 1.24 * (k + 0.5) / nE + (Math.random() - 0.5) * 0.12, ey = 0.3 + Math.random() * 0.4, ed = 6.5 + Math.random() * 5;
+      // cámara alta mirando hacia abajo: a 6-11 m el punto quedaría casi en el suelo y el papel caería enseguida.
+      // Se busca la distancia del rayo a la que está a 3,2-5,5 m de altura (entre 5 y 16 m de la cámara).
+      var dyr = -by + ry * ex * tanH + uy * ey * tanV, hh = 3.2 + Math.random() * 2.3;
+      if (dyr < -0.02 && cp.y > hh + 0.5) ed = clampN((cp.y - hh) / -dyr, 5, 16);
+      ePts.push([ex, ey, ed]);
+    }
+    for (var i = 0; i < n && confAlive < confCap; i++) {
+      var d = confD[confAlive++], curtain = i % 5 >= 3, sx, sy, dist;
+      if (curtain) { sx = (Math.random() * 2 - 1) * 1.15; sy = 1.04 + Math.random() * 0.5; dist = 5 + Math.random() * 9; }
+      else { var E = ePts[i % nE]; sx = E[0] + (Math.random() - 0.5) * 0.05; sy = E[1] + (Math.random() - 0.5) * 0.05; dist = E[2]; }
+      var ox = sx * dist * tanH, oy = sy * dist * tanV;
+      var tx = cp.x - bx * dist + rx * ox + ux * oy, ty = cp.y - by * dist + ry * ox + uy * oy, tz = cp.z - bz * dist + rz * ox + uz * oy;
+      if (ty < 0.6) ty = 0.6;
+      VB.fromThree(tx, ty, tz, cfP);
+      d.x = cfP.x; d.y = cfP.y; d.z = cfP.z;
+      if (curtain) { d.vx = (Math.random() - 0.5) * 0.8; d.vy = (Math.random() - 0.5) * 0.8; d.vz = -0.6 - Math.random() * 0.8; }
+      else { // cañonazo: abanico hacia arriba y hacia fuera
+        var a = Math.random() * 6.283, sp = 2.2 + Math.random() * 4.2;
+        d.vx = Math.cos(a) * sp; d.vy = Math.sin(a) * sp; d.vz = 2.5 + Math.random() * 4.5;
+      }
+      d.sc = confScale(tx, ty, tz);
+      d.ax = Math.random() - 0.5; d.ay = Math.random() - 0.5; d.az = Math.random() - 0.5;
+      var l = Math.hypot(d.ax, d.ay, d.az) || 1; d.ax /= l; d.ay /= l; d.az /= l;
+      d.ang = Math.random() * 6.28; d.spin = 6 + Math.random() * 10; d.ph = Math.random() * 6.28; d.life = 6 + Math.random() * 3;
+      var c = pal[Math.floor(Math.random() * pal.length)]; conf.setColorAt(confAlive - 1, tv.set(c[0], c[1], c[2]));
+    }
+    if (conf.instanceColor && confAlive > start) conf.instanceColor.needsUpdate = true;
+    conf.count = confAlive; conf.visible = confAlive > 0;
+  }
   function confetti(team, n) {
     n = Math.round(n * (qScale > 0.6 ? 1 : 0.5));
-    var palette = team === 0 ? [[1, 0.36, 0.2], [1, 0.62, 0.22], [1, 0.82, 0.25], [1, 1, 1]] : [[0.25, 0.55, 1], [0.5, 0.75, 1], [1, 0.82, 0.25], [1, 1, 1]];
+    var palette = CONF_PAL[team === 1 ? 1 : 0];
     var start = confAlive;
     for (var i = 0; i < n && confAlive < confCap; i++) {
       var d = confD[confAlive++], cannon = i % 3 === 0;
+      d.sc = 1.3;
       if (cannon) { // cañones desde las esquinas de la pista
         var cx = (i % 2 ? 1 : -1) * 10, cy = (i % 4 < 2 ? 1 : -1) * 6;
         d.x = cx; d.y = cy; d.z = 1.0;
@@ -365,19 +618,41 @@
         confAlive--; continue;
       }
       if (d.z > 0.02) {
-        d.vz -= 9 * dt; var drag = d.vz < 0 ? 3.2 : 0.6; d.vx -= d.vx * drag * 0.4 * dt; d.vy -= d.vy * drag * 0.4 * dt; d.vz -= d.vz * drag * dt;
+        d.vz -= 9 * dt; var drag = d.vz < 0 ? 5.6 : 0.6; // cae a ~1,6 m/s: revolotea (antes 2,8 m/s, caía como piedra) d.vx -= d.vx * drag * 0.4 * dt; d.vy -= d.vy * drag * 0.4 * dt; d.vz -= d.vz * drag * dt;
         d.x += (d.vx + Math.sin(ctx.time * 3 + d.ph) * 0.6) * dt; d.y += (d.vy + Math.cos(ctx.time * 2.6 + d.ph) * 0.6) * dt; d.z += d.vz * dt;
         d.ang += d.spin * dt;
       } else { d.z = 0.012; d.vz = 0; d.ax = 1; d.ay = 0; d.az = 0; d.ang = Math.PI / 2; } // en el suelo, plano
       VB.toThree(d.x, d.y, Math.max(0.012, d.z), tv);
       axis.set(d.ax, d.ay, d.az); tmpQ.setFromAxisAngle(axis, d.ang);
-      tv2.set(1, 1, 1); confM.compose(tv, tmpQ, tv2); conf.setMatrixAt(i, confM);
+      tv2.set(d.sc, d.sc, d.sc); confM.compose(tv, tmpQ, tv2); conf.setMatrixAt(i, confM);
       i++;
     }
     conf.count = confAlive; conf.visible = confAlive > 0; conf.instanceMatrix.needsUpdate = true;
   }
   var confM = null;
 
+  /** Copias «de compilación» (ARN-03): por cada combinación material + tipo de objeto, un objeto NUEVO que comparte geometría
+   *  y material con el original (no lo saca de su padre ni lo modifica). Visibles y sin recorte: para renderer.compile(). */
+  function prewarmProxies(top, out) {
+    var seen = [];
+    top.traverse(function (o) {
+      var m = o.material; if (!m || Array.isArray(m) || !o.geometry && !o.isSprite) return;
+      var k = (o.isInstancedMesh ? 'I' : o.isSkinnedMesh ? 'S' : o.isPoints ? 'P' : o.isSprite ? 's' : o.isLine ? 'L' : o.isMesh ? 'M' : '') + (o.instanceColor ? 'c' : '');
+      if (!k || k === 'S') return; // las mallas con esqueleto (oficiales) están siempre a la vista: ya compiladas
+      for (var i = 0; i < seen.length; i++) if (seen[i][0] === m && seen[i][1] === k) return;
+      seen.push([m, k]);
+      var px;
+      if (o.isInstancedMesh) { px = new THREE.InstancedMesh(o.geometry, m, 1); if (o.instanceColor) px.instanceColor = o.instanceColor; }
+      else if (o.isPoints) px = new THREE.Points(o.geometry, m);
+      else if (o.isSprite) px = new THREE.Sprite(m);
+      else if (o.isLine) px = new THREE.Line(o.geometry, m);
+      else px = new THREE.Mesh(o.geometry, m);
+      px.castShadow = o.castShadow; px.receiveShadow = o.receiveShadow; px.frustumCulled = false; px.visible = true;
+      px.name = 'prewarm:' + (o.name || o.type); px.userData.prewarmOf = o;
+      out.push(px);
+    });
+    return out;
+  }
   // ---------- Módulo ----------
   VB.FX = {
     init: function (c) {
@@ -393,22 +668,30 @@
       ballMat = new THREE.MeshStandardMaterial({ map: ballTexture(), roughness: 0.42, metalness: 0, envMapIntensity: 0.9, emissive: new THREE.Color(0xff5a20), emissiveIntensity: 0 });
       // castShadow = false: la sombra del mapa de sombras y la de contacto eran DOS manchas separadas en el
       // suelo; la buena para jugar es la de contacto (siempre en vertical bajo el balón).
+      // brillo de borde (ARN-06): fresnel cálido y suave que se enciende lejos o con el balón rápido (uniforme uRim)
+      ballRim = { value: 0 };
+      ballMat.onBeforeCompile = function (sh) {
+        sh.uniforms.uRim = ballRim;
+        sh.fragmentShader = 'uniform float uRim;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>',
+          '#include <emissivemap_fragment>\n totalEmissiveRadiance += vec3(1.0, 0.93, 0.8) * uRim * pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 2.2);');
+      };
+      ballMat.customProgramCacheKey = function () { return 'vb-ball-rim'; };
       var bgeo = ballGeometry(C.BR);
-      ball = new THREE.Mesh(bgeo, ballMat); ball.castShadow = false; ballPivot.add(ball);
+      ball = new THREE.Mesh(bgeo, ballMat); ball.castShadow = false; ballPivot.add(ball); ball.name = 'ball';
       // contorno oscuro (cáscara de caras traseras): separa el balón del público, que tiene sus mismos colores.
       // Grosor constante en píxeles (ver update).
       ballOutline = new THREE.Mesh(bgeo, new THREE.MeshBasicMaterial({ color: 0x0b1222, side: THREE.BackSide }));
-      ballOutline.renderOrder = 0; ballPivot.add(ballOutline);
+      ballOutline.renderOrder = 0; ballOutline.name = 'ballOutline'; ballPivot.add(ballOutline);
 
-      // sombra de contacto (siempre en vertical bajo el balón: legibilidad)
-      ballShadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({
-        map: radialTex([[0, 'rgba(0,0,0,0.85)'], [0.45, 'rgba(0,0,0,0.45)'], [1, 'rgba(0,0,0,0)']]), transparent: true, depthWrite: false }));
-      ballShadow.rotation.x = -Math.PI / 2; ballShadow.position.y = 0.012; ballShadow.renderOrder = 2; root.add(ballShadow);
+      // sombras de contacto (ARN-11): la del balón (siempre en vertical bajo él: legibilidad) y una mancha suave bajo cada
+      // atleta, en TODOS los niveles, en UNA malla instanciada (1 dibujo para las 5). Mezcla multiplicativa: oscurece la
+      // tarima sin taparla (ni las líneas ni las marcas del bote) y se ve igual con o sin post-proceso.
+      buildBlobs();
 
       // línea vertical tenue balón -> suelo (lectura de altura)
       var lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
       dropLine = new THREE.Line(lg, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, depthWrite: false }));
-      dropLine.frustumCulled = false; root.add(dropLine);
+      dropLine.frustumCulled = false; dropLine.name = 'dropLine'; // estado: la pinta el lote decals como tira de ~1,3 px (writeDecals)
 
       // marcador de caída: retícula que se cierra según el tiempo que falta
       // (trazos con filo oscuro: sobre la tarima clara el blanco solo no se leía)
@@ -422,26 +705,37 @@
       drawMarker(9, 'rgba(0,0,0,0.5)'); drawMarker(0, '#ffffff');
       markerMat = new THREE.MeshBasicMaterial({ map: tex(mcv), transparent: true, depthWrite: false, toneMapped: false, opacity: 0.9 });
       marker = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 1.15), markerMat);
-      marker.rotation.x = -Math.PI / 2; marker.position.y = 0.016; marker.renderOrder = 3; root.add(marker);
+      marker.rotation.x = -Math.PI / 2; marker.position.y = 0.016; marker.renderOrder = 3; marker.name = 'landMarker'; // lo pinta el lote de calcomanías (decals)
 
       // "aro amarillo": punto donde tu equipo jugará el balón (1 m / 3 m). Es EL objetivo del jugador
       // (texto del entrenador: "ve al aro amarillo"): amarillo saturado con filo oscuro, se cierra según
       // hitWindow().press y se rellena en el instante de pulsar.
-      focusMat = new THREE.MeshBasicMaterial({ map: outlinedRingTex(104, 16), transparent: true, opacity: 0.92, depthWrite: false, toneMapped: false });
-      focusMat.color.setRGB(YEL[0], YEL[1], YEL[2]);
-      focusRing = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), focusMat);
-      focusRing.rotation.x = -Math.PI / 2; focusRing.position.y = 0.017; focusRing.renderOrder = 4; root.add(focusRing);
-      focusFill = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({
-        map: radialTex([[0, 'rgba(255,255,255,0.75)'], [0.6, 'rgba(255,255,255,0.45)'], [0.8, 'rgba(255,255,255,0.12)'], [1, 'rgba(255,255,255,0)']], 64),
-        transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
-      focusFill.material.color.setRGB(YEL[0], YEL[1], YEL[2]);
-      focusFill.rotation.x = -Math.PI / 2; focusFill.position.y = 0.0165; focusFill.renderOrder = 3; focusFill.visible = false; root.add(focusFill);
+      // ARN-05: aro de aproximación PREDECIBLE. Una diana fija (aro fino con marcas hacia dentro) del tamaño del contacto
+      // y un aro móvil que nace a 2,6 m de diámetro cuando faltan 0,9 s para PULSAR y se cierra LINEALMENTE hasta coincidir
+      // con la diana justo en press = 0 (hitWindow().press). Se pintan por encima de todo (depthTest off): el atleta que
+      // está encima ya no lo tapa. El relleno marca la ventana de pulsar (la de ui.js HINT_OFF/HINT_ON).
+      // Las tres capas (relleno de la ventana, diana fija y aro móvil) son concéntricas: UN solo plano con un shader que las
+      // compone en orden (relleno → diana → aro, «over» sobre colores ya codificados = lo mismo que tres dibujos seguidos).
+      // Antes eran 3 mallas (2-3 dibujos en cada frame de peloteo). La escala del plano es la del aro móvil, que es siempre la
+      // mayor (diámetro ≥ FR_D0); las otras capas se muestrean con su propia escala relativa (uS.y = diana, uS.z = relleno).
+      focusU = { tRing: { value: outlinedRingTex(104, 14) }, tTgt: { value: targetTex() },
+        tFill: { value: radialTex([[0, 'rgba(255,255,255,0.75)'], [0.6, 'rgba(255,255,255,0.45)'], [0.8, 'rgba(255,255,255,0.12)'], [1, 'rgba(255,255,255,0)']], 64) },
+        uCol: { value: new THREE.Color().setRGB(YEL[0], YEL[1], YEL[2]) }, uOp: { value: new THREE.Vector3(0.92, 0.9, 0) }, uS: { value: new THREE.Vector3(1, 1, 1) } };
+      focusMat = new THREE.ShaderMaterial({ uniforms: focusU, transparent: true, depthWrite: false, depthTest: false, toneMapped: false,
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: 'uniform sampler2D tRing; uniform sampler2D tTgt; uniform sampler2D tFill; uniform vec3 uCol; uniform vec3 uOp; uniform vec3 uS; varying vec2 vUv;\n' +
+          'vec4 lay(sampler2D t, float s, float op) { vec2 q = (vUv - 0.5) * s + 0.5; if (op <= 0.0 || any(lessThan(q, vec2(0.0))) || any(greaterThan(q, vec2(1.0)))) return vec4(0.0);\n' +
+          ' vec4 c = texture2D(t, q); c.rgb *= uCol; c.a *= op; return vec4(linearToOutputTexel(vec4(c.rgb, 1.0)).rgb, c.a); }\n' +
+          'vec4 over(vec4 top, vec4 dst) { float a = top.a + dst.a * (1.0 - top.a); return a > 1e-5 ? vec4((top.rgb * top.a + dst.rgb * dst.a * (1.0 - top.a)) / a, a) : vec4(0.0); }\n' +
+          'void main() { vec4 c = lay(tFill, uS.z, uOp.z); c = over(lay(tTgt, uS.y, uOp.y), c); c = over(lay(tRing, 1.0, uOp.x), c); if (c.a < 0.002) discard; gl_FragColor = c; }' });
+      focusRing = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), focusMat);
+      focusRing.rotation.x = -Math.PI / 2; focusRing.position.y = 0.02; focusRing.renderOrder = 10; focusRing.visible = false; focusRing.name = 'focusRing'; root.add(focusRing);
 
       // retícula de apuntado en el campo rival (saque y remate del humano)
       aimMat = new THREE.MeshBasicMaterial({ map: aimTex(), transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
       aimMat.color.set('#ff6326'); // (setRGB es LINEAL con ColorManagement: (1,0.5,0.24) salía color melocotón pálido)
       aimRet = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), aimMat);
-      aimRet.rotation.x = -Math.PI / 2; aimRet.position.y = 0.019; aimRet.renderOrder = 4; aimRet.visible = false; root.add(aimRet);
+      aimRet.rotation.x = -Math.PI / 2; aimRet.position.y = 0.019; aimRet.renderOrder = 4; aimRet.visible = false; aimRet.name = 'aimRet'; // (decals)
       // puntos opacos con filo oscuro (mezcla normal: el aditivo desaparecía sobre la tarima clara)
       var dcv = canvas(64, 64), dg = dcv.getContext('2d');
       dg.fillStyle = 'rgba(10,6,2,0.6)'; dg.beginPath(); dg.arc(32, 32, 26, 0, 6.283); dg.fill();
@@ -449,7 +743,7 @@
       var agp = new Float32Array(AIM_N * 3), agc = new Float32Array(AIM_N * 4), ag = new THREE.BufferGeometry();
       ag.setAttribute('position', new THREE.BufferAttribute(agp, 3)); ag.setAttribute('color', new THREE.BufferAttribute(agc, 4));
       aimArc = new THREE.Points(ag, new THREE.PointsMaterial({ size: 0.2, map: tex(dcv), vertexColors: true, transparent: true, depthWrite: false, toneMapped: false }));
-      aimArc.frustumCulled = false; aimArc.renderOrder = 7; aimArc.visible = false; root.add(aimArc);
+      aimArc.frustumCulled = false; aimArc.renderOrder = 7; aimArc.visible = false; aimArc.name = 'aimArc'; root.add(aimArc);
 
       // estela tipo cinta (aditiva, orientada a cámara)
       tPts = new Float32Array(TN * 3); tPos = new Float32Array(TN * 6); tCols = new Float32Array(TN * 6);
@@ -459,7 +753,7 @@
       // transparent:false a propósito: en r149 un material transparente DoubleSide cambia side y pone needsUpdate dos veces
       // por objeto y frame (recalcula el programa). Aditivo + sin profundidad funciona igual en la lista opaca (renderOrder alto).
       trail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: false, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
-      trail.frustumCulled = false; trail.visible = false; trail.renderOrder = 6; root.add(trail);
+      trail.frustumCulled = false; trail.visible = false; trail.renderOrder = 6; trail.name = 'trail'; root.add(trail);
 
       // chispas
       var sPos = new Float32Array(SPARK_N * 3), sCol = new Float32Array(SPARK_N * 3);
@@ -467,51 +761,55 @@
       var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sPos, 3)); sg.setAttribute('color', new THREE.BufferAttribute(sCol, 3));
       sparks = new THREE.Points(sg, new THREE.PointsMaterial({ size: 0.13, map: radialTex([[0, 'rgba(255,255,255,1)'], [0.35, 'rgba(255,255,255,0.6)'], [1, 'rgba(255,255,255,0)']], 64),
         vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
-      sparks.frustumCulled = false; sparks.renderOrder = 7; root.add(sparks);
+      sparks.frustumCulled = false; sparks.visible = false; sparks.renderOrder = 7; sparks.name = 'sparks'; root.add(sparks);
 
       // destellos y ondas de choque (sprites aditivos)
       var flashTex = radialTex([[0, 'rgba(255,250,235,1)'], [0.1, 'rgba(255,232,190,0.7)'], [0.32, 'rgba(255,190,120,0.16)'], [0.6, 'rgba(255,170,100,0.04)'], [1, 'rgba(255,160,90,0)']]);
       for (var f = 0; f < FLASH_N; f++) {
         var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
-        s.visible = false; s.renderOrder = 8; root.add(s); flashPool.push({ s: s, t: 0, d: 1, size: 1, near: 1 });
+        s.visible = false; s.renderOrder = 8; s.name = 'flash'; flashPool.push({ s: s, t: 0, d: 1, size: 1, near: 1 }); // estado: lo pinta el lote de destellos (bills)
       }
       var shockTex = shockRingTex();
       for (var w = 0; w < WAVE_N; w++) {
         var ws = new THREE.Sprite(new THREE.SpriteMaterial({ map: shockTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
-        ws.visible = false; ws.renderOrder = 8; root.add(ws); wavePool.push({ s: ws, t: 0, d: 1, size: 1, near: 1 });
+        ws.visible = false; ws.renderOrder = 8; ws.name = 'wave'; wavePool.push({ s: ws, t: 0, d: 1, size: 1, near: 1 }); // (bills)
       }
+      buildBills(flashTex, shockTex);
       // ondas en el suelo (caída del balón, aterrizajes)
       var ripTex = ringTex(0.7, 0.86, 0.12), ripGeo = new THREE.PlaneGeometry(1, 1);
       for (var rI = 0; rI < RIP_N; rI++) {
         var rm = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: ripTex, transparent: true, depthWrite: false, toneMapped: false }));
-        rm.rotation.x = -Math.PI / 2; rm.position.y = 0.018; rm.visible = false; rm.renderOrder = 3; root.add(rm); ripPool.push({ m: rm, t: 0, d: 1, size: 1, op: 1 });
+        rm.rotation.x = -Math.PI / 2; rm.position.y = 0.018; rm.visible = false; rm.renderOrder = 3; rm.name = 'ripple'; ripPool.push({ m: rm, t: 0, d: 1, size: 1, op: 1 }); // (lo pinta el lote decals)
       }
       // marcas del balón en el suelo
       // marcas del bote: huella oscura + filo de color dentro/fuera
-      var markTex = printTex(), rimTex = outlinedRingTex(100, 18);
+      var markTex = fillTex(); rimInTex = markRimTex(false); rimOutTex = markRimTex(true);
+      MARK_IN = new THREE.Color().setRGB(0.12, 0.9, 0.24); MARK_OUT = new THREE.Color().setRGB(1, 0.17, 0.11); // lineal: el del aro (rojo algo más claro para no oscurecer)
       for (var mI = 0; mI < MARK_N; mI++) {
-        var mm = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: markTex, transparent: true, depthWrite: false, opacity: 0.9 }));
-        mm.rotation.x = -Math.PI / 2; mm.position.y = 0.015; mm.visible = false; mm.renderOrder = 2; root.add(mm);
-        var mr = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: rimTex, transparent: true, depthWrite: false, opacity: 0.9, toneMapped: false }));
-        mr.rotation.x = -Math.PI / 2; mr.position.y = 0.0155; mr.visible = false; mr.renderOrder = 3; root.add(mr);
+        var mm = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: markTex, transparent: true, depthWrite: false, opacity: 0.9, toneMapped: false }));
+        mm.rotation.x = -Math.PI / 2; mm.position.y = 0.015; mm.visible = false; mm.renderOrder = 2; mm.name = 'mark'; // (decals)
+        var mr = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: rimInTex, transparent: true, depthWrite: false, opacity: 0.9, toneMapped: false }));
+        mr.rotation.x = -Math.PI / 2; mr.position.y = 0.0155; mr.visible = false; mr.renderOrder = 3; mr.name = 'markRim'; // (decals)
         markPool.push({ m: mm, r: mr, t: 0, d: 1, s: 0.5, stretch: 1 });
       }
+      buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map]);
       // polvo de parquet (plancha, aterrizajes): Points con alfa por vértice y mezcla normal
       var dPos = new Float32Array(DUST_N * 3), dCol = new Float32Array(DUST_N * 4);
       for (var dI = 0; dI < DUST_N; dI++) { du.push(dblFields({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s: 1 })); dPos[dI * 3 + 1] = -50; }
       var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dPos, 3)); dg.setAttribute('color', new THREE.BufferAttribute(dCol, 4));
       dust = new THREE.Points(dg, new THREE.PointsMaterial({ size: 0.42, map: radialTex([[0, 'rgba(255,255,255,0.75)'], [0.4, 'rgba(255,255,255,0.3)'], [1, 'rgba(255,255,255,0)']], 64),
         vertexColors: true, transparent: true, depthWrite: false }));
-      dust.frustumCulled = false; dust.renderOrder = 4; dust.visible = false; root.add(dust);
+      dust.frustumCulled = false; dust.renderOrder = 4; dust.visible = false; dust.name = 'dust'; root.add(dust);
       // confeti
       conf = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.075, 0.12), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false }), CONF_N);
-      for (var q = 0; q < CONF_N; q++) { confD.push(dblFields({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, ax: 1, ay: 0, az: 0, ang: 0, spin: 0, ph: 0, life: 0 })); conf.setColorAt(q, tv.set(1, 1, 1)); }
-      conf.instanceMatrix.setUsage(THREE.DynamicDrawUsage); conf.count = 0; conf.visible = false; conf.frustumCulled = false; root.add(conf);
+      for (var q = 0; q < CONF_N; q++) { confD.push(dblFields({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, ax: 1, ay: 0, az: 0, ang: 0, spin: 0, ph: 0, life: 0, sc: 1 })); conf.setColorAt(q, tv.set(1, 1, 1)); }
+      conf.instanceMatrix.setUsage(THREE.DynamicDrawUsage); conf.count = 0; conf.visible = false; conf.frustumCulled = false; conf.name = 'confetti'; root.add(conf);
       this.setQuality(c.quality);
     },
     setQuality: function (q) {
       var r = !q ? 2 : q.rank;
       qScale = r >= 2 ? 1 : r === 1 ? 0.75 : 0.45;
+      blobKq = BLOB_K[r >= 2 ? 2 : r === 1 ? 1 : 0];
       spCap = r >= 2 ? SPARK_N : r === 1 ? 150 : 90;
       duCap = r >= 2 ? DUST_N : r === 1 ? 72 : 40;
       confCap = r >= 2 ? CONF_N : r === 1 ? 360 : 200;
@@ -535,7 +833,7 @@
       for (var w = 0; w < WAVE_N; w++) { wavePool[w].t = 0; wavePool[w].s.visible = false; }
       for (var r = 0; r < RIP_N; r++) { ripPool[r].t = 0; ripPool[r].m.visible = false; }
       for (var m = 0; m < MARK_N; m++) { markPool[m].t = 0; markPool[m].m.visible = false; markPool[m].r.visible = false; }
-      aim.a = 0; aim.on = false; aimRet.visible = false; aimArc.visible = false; focusFill.visible = false;
+      aim.a = 0; aim.on = false; aimRet.visible = false; aimArc.visible = false; focusRing.visible = false;
       confAlive = 0; conf.count = 0; conf.visible = false;
     },
     /** Partículas en coordenadas de simulación (interfaz del contrato). */
@@ -546,6 +844,10 @@
     confetti: function (team, n) { confetti(team === 1 ? 1 : 0, n || 400); },
     /** Malla del balón (opcional, para otros módulos). */
     ballObject: function () { return ballPivot; },
+    /** ARN-03: copias de compilación de todos los pools de efectos (ver VB.Arena.prewarmList, que ya las incluye). */
+    prewarmList: function () { return root ? prewarmProxies(root, []) : []; },
+    /** Solo depuración: escala de legibilidad del balón (ARN-06) y brillo de borde actual. */
+    _dbg: function () { return { ballBs: ballBs, rim: ballRim ? ballRim.value : 0, ringD: focusRing && focusRing.visible ? focusD : 0, ringOp: focusU ? focusU.uOp.value.toArray() : null, decals: decals, decOrder: decOrder, bills: bills, billOrder: billOrder, dropLine: dropLine }; },
     /** Solo depuración (tools/eval.js): objetivo de apuntado que pintaría la retícula. */
     _aimTarget: function (g, out) { out = out || { x: 0, y: 0 }; var m = aimTarget(g, out); return m ? { mode: m, x: out.x, y: out.y } : null; },
     update: function (g, dt, events) {
@@ -572,11 +874,21 @@
         heat = Math.max(0, heat - dt * 2.2);
       }
       var sq = squash.t > 0 ? Math.sin((1 - squash.t / 0.12) * Math.PI) * Math.min(SQ_MAX, squash.k) : 0;
-      // tamaño mínimo en pantalla: radio >= 1,1 % de la altura del visor (máx. x1,6; el radio físico no cambia).
-      // Lejos (saque rival, remate de la CPU en móvil) el balón ya no se queda en 2 px perdido en la grada.
-      var cam = ctx.camera, dCam = cam.position.distanceTo(ballPivot.position), tanH = Math.tan(cam.fov * Math.PI / 360);
-      var bs = clampN(0.022 * dCam * tanH / C.BR, 1, 1.6);
-      var ballPx = C.BR * bs / Math.max(0.01, dCam * tanH) * (ctx.height || 720) * 0.5;
+      // ARN-06: tamaño mínimo en pantalla. Diámetro proyectado >= 9,6 px CSS (y >= 1,8 % del alto en pantallas grandes);
+      // el radio físico no cambia. Rodilla suave (sin saltos) y escala EXACTAMENTE 1 de cerca (a < 8 m siempre sobra).
+      // Lejos (remate de la CPU en el móvil, saque rival) el balón ya no se queda en 6 px perdido entre la grada.
+      var cam = ctx.camera, dCam = cam.position.distanceTo(ballPivot.position), tanH = Math.tan(cam.fov * Math.PI / 360), vh = ctx.height || 720;
+      var pxAt1 = C.BR * vh / Math.max(0.01, dCam * tanH);                 // diámetro en px CSS con escala 1
+      var need = Math.max(9.6, 0.018 * vh) / pxAt1;
+      var bs = dCam < 8 || need <= 0.85 ? 1 : need >= 1.15 ? need : 1 + (need - 0.85) * (need - 0.85) / 0.6; // >= need siempre
+      if (bs > 3.2) bs = 3.2;
+      ballBs = bs;
+      var ballPx = pxAt1 * bs * 0.5; // radio en px
+      // brillo de borde (fresnel) lejos o a más de 12 m/s: separa el balón del fondo sin llegar al umbral del bloom
+      if (ballRim) {
+        var bsp = Math.sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz), rimK = Math.max(clampN((dCam - 9) / 10, 0, 1), clampN((bsp - 12) / 8, 0, 1) * 0.8);
+        ballRim.value += (rimK * 0.3 - ballRim.value) * (dt > 0 ? Math.min(1, dt * 10) : 1);
+      }
       ballPivot.quaternion.copy(squashQ); ballPivot.scale.set(bs * (1 + sq * 0.5), bs * (1 - sq), bs * (1 + sq * 0.5));
       // contorno de ~1,4 px (más fino de cerca, donde ya se lee solo)
       var ol = 1 + clampN(1.4 / Math.max(1, ballPx), 0.03, 0.2); ballOutline.scale.set(ol, ol, ol);
@@ -585,9 +897,12 @@
       ballMat.emissiveIntensity = heat * 0.25; // filo cálido; los paneles siguen leyéndose
 
       // ---- sombra de contacto ----
-      var h = Math.max(0, b.z - C.BR), s = 0.62 / (1 + h * 0.1);
-      ballShadow.position.x = b.x; ballShadow.position.z = -b.y; ballShadow.scale.set(s, s, s);
-      ballShadow.material.opacity = Math.max(0.22, 0.95 / (1 + h * 0.22));
+      // ARN-04: el disco de sombra solo mientras el balón vuela; apoyado en el suelo queda un contacto pequeño y suave
+      // (antes, el disco oscuro de 0,6 m encima de la marca del bote se leía como un agujero en la tarima).
+      var h = Math.max(0, b.z - C.BR), air = clampN((h - 0.03) / 0.3, 0, 1), s = (0.3 + 0.32 * air) / (1 + h * 0.1) * Math.min(bs, 1.8);
+      // misma lectura que antes (disco ~0,85 en el centro y opacidad que cae con la altura), ahora como instancia 0
+      setBlob(0, b.x, b.y, s, s, 0, 0.85 * Math.max(0.22, 0.95 / (1 + h * 0.22)) * (0.5 + 0.5 * air));
+      updateAthleteBlobs(g);
 
       var inPlay = g.mode === 'rally' && !b.held;
       // ---- línea de altura ----
@@ -602,20 +917,21 @@
       var showFocus = inPlay && !g.demo && g.jobs && g.jobs[0] && Sim.focusPoint;
       var fp = showFocus ? Sim.focusPoint(g) : null;
       focusVis = !!fp;
-      focusRing.visible = focusVis; focusFill.visible = false;
+      focusRing.visible = focusVis;
       if (focusVis) {
         focusRing.position.x = fp.x; focusRing.position.z = -fp.y;
-        // se cierra hasta el instante de PULSAR (hitWindow.press) y se rellena en ese momento
         var press = 1.2;
         if (Sim.hitWindow) press = focusPress(g, g.jobs[0]);
-        var pk = clampN(press / 1.1, 0, 1), fsz = 0.72 + pk * 0.78 + Math.sin(ctx.time * 7) * 0.025 * pk;
-        focusRing.scale.set(fsz, fsz, fsz);
-        var now = clampN(1 - Math.abs(press) / 0.22, 0, 1);
-        focusMat.opacity = 0.82 + 0.18 * now;
-        if (now > 0.01) {
-          focusFill.visible = true; focusFill.position.x = fp.x; focusFill.position.z = -fp.y;
-          var ffs = fsz * 1.05; focusFill.scale.set(ffs, ffs, ffs); focusFill.material.opacity = 0.55 * now;
-        }
+        // aro móvil: diámetro LINEAL en press (2,6 m a 0,9 s -> diana a 0 s); antes de 0,9 s espera a 2,6 m apareciendo
+        var fd = FR_D0 + (FR_D1 - FR_D0) * clampN(press / FR_T, 0, 1), fsc = fd / FR_RING;
+        focusRing.scale.set(fsc, fsc, fsc); focusD = fd;
+        var fIn = clampN((FR_T + 0.55 - press) / 0.55, 0, 1), fLate = clampN((-press + FR_OFF) / 0.2, 0, 1);
+        // escalas relativas al plano (que lleva la del aro): diana FR_D0/FR_TGT, relleno FR_D0·1,12
+        focusU.uS.value.set(1, fsc / (FR_D0 / FR_TGT), fsc / (FR_D0 * 1.12));
+        // ventana de pulsar (la del aviso «¡Golpea!»): relleno que sube hasta press = 0 y se apaga al cerrarse la ventana
+        var now = press > 0 ? clampN(1 - press / FR_ON, 0, 1) : clampN(1 + press / -FR_OFF, 0, 1);
+        focusU.uOp.value.set(0.95 * fIn * (1 - 0.75 * fLate), 0.62 + 0.36 * now, now > 0.01 ? 0.55 * now * now : 0);
+        focusMat.opacity = focusU.uOp.value.x; // (solo lectura para herramientas: opacidad del aro móvil)
       }
       // ---- marcador de caída (secundario si el aro amarillo está activo) ----
       marker.visible = inPlay && b.vz < 6 && b.z > 0.5;
@@ -676,7 +992,7 @@
           } else if (pa[j * 3 + 1] !== -50) { pa[j * 3 + 1] = -50; ca[j * 3] = ca[j * 3 + 1] = ca[j * 3 + 2] = 0; }
         }
         sparks.geometry.attributes.position.needsUpdate = true; sparks.geometry.attributes.color.needsUpdate = true;
-        if (!alive) spAlive = 0;
+        if (!alive) { spAlive = 0; sparks.visible = false; } // sin chispas vivas: sin dibujo (antes 1 dibujo del pool entero en cada frame)
       }
       // ---- polvo ----
       if (duAlive) {
@@ -725,6 +1041,7 @@
         var pin = age < 0.22 ? 1 + 0.7 * (1 - age / 0.22) * (1 - age / 0.22) : 1 + Math.sin(age * 5) * 0.03;
         var rs = Mk.s * 1.55 * pin; Mk.r.scale.set(rs, rs, rs);
       }
+      writeDecals(); writeBills();
       updateConfetti(dt);
     },
     _event: function (e, g) {
@@ -832,10 +1149,12 @@
         case 'landPlayer':
           if (e.player) { rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.3); dustAt(e.player.x, e.player.y, 5, 0.6, 0, 0, 0); }
           break;
-        case 'set':
-          confetti(e.team === 1 ? 1 : 0, 160);
+        case 'set': // set: un poco en el plano + los cañones de las esquinas
+          confettiInFrame(e.team === 1 ? 1 : 0, Math.round(70 * (qScale > 0.6 ? 1 : 0.7)));
+          confetti(e.team === 1 ? 1 : 0, 110);
           break;
-        case 'match':
+        case 'match': // partido: la mayor parte en el plano actual (se ve en el primer segundo), el resto desde las esquinas
+          confettiInFrame(e.team === 1 ? 1 : 0, Math.round(confCap * 0.65));
           confetti(e.team === 1 ? 1 : 0, confCap);
           break;
       }

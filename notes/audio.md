@@ -66,12 +66,14 @@ music (ráfagas + UI) ───────────────────�
 | `bounce` | dead-ball bounces (volume by speed, minimum gap 50 ms) |
 | `whistle reason:'serve'` | short whistle (0.32 s): two tones (chambers ≈2.95/3.45 kHz) + pea trill 26-34 Hz + breath |
 | `whistle reason:'point'` | longer whistle (0.62 s); **end of set/match** → long whistle (1.05 s) |
-| `point` | crowd (local = team 0; uses `how` = ace/kill/tip/block/free/error when present): home point → roar (bigger after a long rally ≥8 touches, kill, ace, set) + applause; home error (out/antenna/double/4 touches/serve fault) → groan "ooohhh"; CPU point → smaller groan; menu demo → polite applause |
+| `point` | crowd (local = team 0), scaled continuously by `point.highlight` (AUD-07, 8-nov-2026; see «Pulido ola 2»): home point → roar 0.40 + 0.72·h, long-ovation layer from h 0.4, burst layer + bass drum from h 0.72, applause 0.22 + 0.5·h (+ a second one from h 0.45); digs ≥ 2 → "uuuh" breaking into the roar; streak ≥ 3 → unison claps + drum that run into the home-serve claps; saved set point → relief layer. CPU point → groan (bigger for a home error / a saved CPU set point), applause of recognition from h 0.45, "uuuh" of admiration with digs ≥ 2; menu demo → polite applause |
+| `fx:highfive` / `fx:fistbump` / `fx:chestbump` / `fx:clap` / `fx:catch` | celebration contacts (players `drainFx`, main.js): `slap` / `fist` / `chest` / `handclap` / soft catch pat, one sound per event (no anti-repeat), gain by `strength`, at `x, y`, through the voice-strip pool (AUD-05) |
+| `dribble` | serve ritual bounce (sim SIM-04): `dribble` sound at the bounce point, gain by `speed`, one per event, pool (AUD-05) |
 | `point matchWon` | double roar + long applause (or groan + polite applause if the CPU wins) |
 | `set` | music sting `setWin` / `setLose` (0.8 s after, once the whistle has finished). Not for the set that closes the match |
 | `match` | `matchWin` / `matchLose` sting (once per match; `gameOver` acts as a fallback if `match` did not arrive) |
 | `serveReady` | arms the serve wait: **home serve** → after 0.9 s the stands clap in unison (3 claps + rest) with a bass drum, rising; **match point** → heartbeat "lub-dub" every 0.9 s |
-| `newMatch` (not demo) | welcome roar + applause |
+| `newMatch` (not demo) | welcome roar + applause, 0.35 s late; cancelled before it sounds if `sting('intro')` arrives in time (AUD-06) |
 | `newSet` | applause |
 | `swing` | whoosh of the arm |
 | `jump` | sneaker scuff on take-off |
@@ -85,13 +87,14 @@ music (ráfagas + UI) ───────────────────�
 Contract (kept): `init(ctx)`, `unlock()`, `setMuted(b)`, `isMuted()`, `click()`, `onGameStart(g)`, `handle(events, g)`, `update(g, realDt)`.
 **Optional additions:**
 - `hover()` — soft UI sound (anti-repeat 40 ms).
-- `ui(kind)` — `'click' | 'hover' | 'back' | 'start'`.
+- `ui(kind)` — `'click' | 'hover' | 'back' | 'start' | 'wipe' | 'intro' | 'introEnd' | 'introSkip'` (AUD-06); unknown names → nothing (before: a click).
 - `setVolume(kind, v)` / `getVolume(kind)` — `kind = 'master' | 'sfx' | 'music' | 'crowd'`, `v` 0..1.
 - `onSettings(settings, key)` — reads `settings.sfxVol`, `settings.musicVol`, `settings.crowdVol`, `settings.volume` (0..1) if they are numbers, and `muted`. If `crowdVol` is missing, the crowd follows `sfxVol`.
 - `onState(state)` — pause/menu adjust the mix.
 - `setQuality(q)` — `rank 0` → no reverb, 20 voices.
 - `play(name, gain?, x?, y?)` — any sound from the catalogue (see `VB.Audio.SOUNDS`), with optional position in sim coords.
-- `sting(name)` — `'setWin' | 'setLose' | 'matchWin' | 'matchLose'`.
+- `sting(name)` — `'setWin' | 'setLose' | 'matchWin' | 'matchLose' | 'intro'` (AUD-06: presentation).
+- `introInfo()` → `{active, t}`; `voices()` → voices playing now (AUD-05/06).
 - Generation: see §1 (generators with yield, idle time, pre-synthesis before the gesture, segmented reverb).
 - `ready()` (0..1), `contextState()`, `stats` (`played`, `skipped`, `genMs`, `maxStepMs`), `synth(name, variant, sr)` and `synthRate(name, sr)` (pure generation, for tests).
 
@@ -226,3 +229,369 @@ auriculares y en un móvil." `tools/audiotest.js` is new (owner audio); add it t
 ## Aplicado (log, integración ronda 2 de verificación, 7-nov-2026)
 - CONTRACT §4.4: `stats.deferred/lateDrop/lateMax`. `tools/audiotest.js` (sin seguimiento en git) queda para que lo añada el lead.
 - Comprobado: `node tools/audiotest.js` TODO OK (mezcla 37/37, robustez 5/5, partido en Chrome 150 fuentes / 0 descartadas, silbato ≥ 14,2 dB sobre la grada).
+
+## Aviso de sim (pulido ola 1, SIM-01): `point.highlight` para las reacciones del público (AUD-07) (2026-11-07)
+Ver notes/sim.md §P1. Cada `point` trae `highlight` (0..1), `digs`, `streak`, `savedSetPoint`, `hold` (s de pausa hasta el saque).
+Distribución medida: demo CPU vs CPU media 0,29 (p50 0,18, p90 0,54, ≥ 0,55 el 8 %); partido humano medio vs Normal media 0,37
+(≥ 0,55 el 19 %). Errores ≤ 0,35 salvo que cierren set/partido. Sugerencia de escala: < 0,3 aplauso normal; 0,3-0,55 ovación;
+≥ 0,55 ovación larga (dura hasta `hold`); ≥ 0,8 estallido (bloqueo directo o remate perfecto con punto de partido).
+`savedSetPoint` = alivio/rugido de la grada; `streak ≥ 3` = cántico.
+
+## Pulido ola 1 (7-nov-2026, owner audio): AUD-01..04
+Ficheros: `js/audio.js`, `tools/audiotest.js`. Todo medido con `node tools/audiotest.js` → **TODO OK** (mezcla: los 37 escenarios de
+antes siguen en su objetivo ±1,5 LU; robustez 5/5; partido de 60 s en Chrome sin cambios: -18,6 LUFS, -3,7 dBTP, 150 fuentes / 0 descartadas,
+silbato ≥ 14,2 dB sobre la grada; clímax -2,3 dBTP, 0 recortes). Secciones nuevas del informe: **2b** (modelo, escenarios de las 4 tareas)
+y, dentro de la 3, **«polish wave 1»** (cadena real de Chrome: compresor + recortador, escenas controladas con lechos de grada y eventos
+inyectados, sin avanzar la sim, cámara a ~6 m del rematador). WAV para escuchar: `tools/out/audio/remate-bueno.wav` y `remate-perfecto.wav`.
+
+### AUD-01 · Golpe perfecto (remate, bloqueo directo, saque en salto) y remate que revienta
+- **Hallazgo medido**: el chasquido de un remate normal ya lleva el compresor general a ~3 dB de reducción y su pico de salida queda clavado
+  (-3,8 dBTP). La primera versión (sub de 50 Hz por el bus normal) dejaba el remate perfecto **0,8 LU MÁS FLOJO** que el bueno en Chrome: el
+  grave bombeaba el compresor y bajaba el chasquido. Subir ganancias por ese bus no se oye.
+- **Diseño final**: «bus de refuerzo» (`N.punch`) que entra DESPUÉS del compresor, directo al recortador, con 6 ms de retraso (la mirada
+  adelante del compresor de Chrome/WebKit: así el chasquido no se adelanta a su reverb ni a la grada) y la misma cadena de volúmenes (general,
+  efectos, demo, pausa, silencio). Solo van por él capas de pico conocido, con techo calculado (`punchCap`: pico del buffer × nivel × distancia ×
+  panoramizador × volúmenes ≤ techo):
+  - remate perfecto del humano → `spikeHero` (sonido nuevo: el mismo chasquido con más cuerpo y palmada larga; ~3,3 dB más sonoro al mismo
+    pico real, centroide 3,1 kHz frente a 2,8) por el bus de refuerzo, techo 0,6; un pelo más grave (×0,97);
+  - bloqueo directo del humano → `blockHero` (igual idea, +2,6 dB de densidad), techo 0,54 (lleva además el traqueteo de la red);
+  - saque en salto perfecto (versión ligera) → `spikeHero` con techo 0,5, sub y agachada al 55 %;
+  - en los tres: «thump» sub `sub` (62→45 Hz, ataque de 7 ms en coseno, ~120 ms audibles, armónicos 2.º y 3.º para altavoces pequeños) por el
+    bus de refuerzo con techo 0,12, 8 ms tarde (sobre la cola, no encima del pico), y **agachada de la grada** de 60 ms a -4 dB (`N.duck`, nodo
+    propio en la cadena de la grada; ataque 5 ms, vuelta 35 ms).
+  - El destello «perfecto» de remate y saque baja de 0,22 a 0,16 y entra 45 ms tarde: es una campana (picos de seno) y encima del contacto
+    sumaba 0,21 de pico a la salida sin sumar sonoridad.
+- `land` dentro tras un remate a > 13 m/s → capa de tarima `slamSub` (sonido nuevo) que crece con la velocidad (13 → 22 m/s).
+- **Medidas (salida real, Chrome)**: remate perfecto vs bueno, sonoridad en los 150 ms tras el contacto **+3,3 LU** (-10,2 → -6,9 LUFS),
+  pico real **-2,1 dBTP** (bueno -4,8). Bloqueo directo humano vs CPU **+3,1 LU**, -1,7 dBTP. Saque en salto perfecto **+2,0 LU** (más
+  ligero que el remate), -3,7 dBTP. Remate que revienta a 23 m/s a 4 m de la cámara: -4,6 dBTP. Capa de tarima (modelo): 13 / 17,5 / 22 m/s
+  → -11,3 / -10,5 / -9,8 LUFS (+1,5 LU a 22), nada si cae fuera.
+- En el modelo de la parte 2 (señal pequeña, sin reducción del compresor) el perfecto sale solo +1,3 LU: es lo esperable, porque toda su
+  ganancia es saltarse el compresor, que ese modelo no ve. Por eso la puerta de AUD-01 es la salida real (parte 3) y la fila del modelo es informativa.
+
+### AUD-02 · Latido en punto de set
+- `serveReady` con `setPoint ≥ 0` (y sin punto de partido) → latido a ×0,6 cada 1,0 s (partido: ×1 cada 0,9 s, como antes). Los dos
+  **paran al lanzar** (`toss`), incluidos los golpes ya programados (se cancelan con `stop()`). Durante la espera, paso alto suave en la
+  grada (170 Hz punto de set, 220 Hz partido; `N.crowdHp`, Q Butterworth) que vuelve a 20 Hz al lanzar.
+- Medido: partido -22,0 / set -26,4 LUFS (**-4,4 LU**), periodos 0,90 / 1,00 s; punto de set y de partido a la vez → latido de partido.
+- **Error previo arreglado**: tras una pausa larga en un saque de punto de partido, `beatNext` quedaba en el pasado y al reanudar salía un
+  latido por frame hasta alcanzar el reloj (medido en la versión anterior: 8 golpes en 0,6 s). Ahora se resincroniza (2 golpes = un lub-dub).
+
+### AUD-03 · Reloj de saque
+- Sacador humano (`g.server.team === 0`, sin autopilot, `serveAuth`, `serveState 'ready'`, regla de 8 s activa): «toc» de madera
+  (`tick`, sonido nuevo, 45 ms) al cruzar 3, 2 y 1 s de `g.serveClock`, programado con precisión de muestra hasta 40 ms antes del cruce;
+  el último, más brillante (×1,22 y +1,8 dB). Coincide con el cambio de cifra de «Saca ya N s» de ui.js (`Math.ceil`). Bus de música (seco,
+  sin filtro de pausa ni de cámara lenta). Nunca para la CPU.
+- Lanzar antes del cruce cancela el «toc» ya programado; pausar con uno programado lo cancela y se vuelve a marcar al reanudar.
+- Medido: 3 toc antes de la falta de 8 s (a 3, 2 y 1 s; error de tiempo 0,0 ms), 0 si saca a 3,5 s, 1 si saca a 2,5 s, 0 si saca a 3,02 s
+  (programado y cancelado), 0 con CPU / autopilot / `serveClock:false`; nivel **-25 LUFS, 9 LU bajo el silbato** (-16).
+
+### AUD-04 · Hit-stop (CAM-04) sin efectos en el audio
+- **Error previo arreglado**: cualquier bajada de `ctx.timeScale` por debajo de 0,95 bajaba el tono de los sonidos nuevos (hasta ×0,6) y
+  cerraba el filtro general (700 Hz con ts 0). El hit-stop del remate propio (antes 0,3 × 120 ms; ahora CAM-04: 0 × 35-70 ms + vuelta de
+  80 ms) apagaba la cola del chasquido y los lechos de grada cambiaban de tono en cada remate.
+- Ahora solo cuenta como cámara lenta una bajada que dure `SLOW_HOLD` = 0,25 s reales y no sea una congelación (`ts < 0,04`); entra con las
+  mismas rampas suaves de antes. El máximo de la API de CAM-04 (150 ms + 80 ms de vuelta = 230 ms) queda dentro.
+- Medido (Chrome, render comparado muestra a muestra con el de sin congelación): 0 × 70 ms, CAM-04 0 × 70 + 80 ms con la sim parada, máximo de
+  la API 0 × 150 + 80 ms y el hit-stop viejo 0,3 × 120 ms → **diferencia -inf dBFS** (idéntico), 0 clics nuevos > -30 dBFS, grada Δ 0 LU,
+  `lateDrop` igual. Con la versión anterior: diferencia -13,7 / -15,1 dBFS y grada Δ 0,71 / 0,97 LU (pasaba el «≤ 1 LU» por poco: por eso la
+  puerta incluye además la diferencia ≤ -60 dBFS). Modelo: tono ×0,98 (jit) tras 70 ms de congelación y tras 0,25 × 220 ms; cámara lenta
+  0,28 × 0,4 s → ×0,59.
+- Partida real en Chrome con la cámara real (`VB.CameraRig.hitStop(70)` / `(150)`): `slowRate` se queda en 1 (12 frames con ts 0);
+  `slowmo(0.28, 1.9)` entra a los 255 ms con ×0,6.
+
+### API (todo opcional, nada roto ni renombrado)
+- Sonidos nuevos en el catálogo: `spikeHero` (3 variantes), `blockHero` (3), `sub` (1), `slamSub` (2), `tick` (1). Banco: 80 trabajos (antes 70);
+  recolecciones del banco en node 412 (< 600). Generación en Chrome: paso peor 2,4-4,8 ms en tres pasadas alternas con la versión anterior
+  (2,5-3,5 ms): ruido de la máquina cargada.
+- `stats.ticks` («toc» programados). `VB.Audio._debug()` (pruebas) → `{slowRate, lowT, tension, tickNext, duck, crowdHp}`.
+- `play()` interno acepta el bus `'punch'` (no expuesto por `VB.Audio.play`).
+- `tools/audiotest.js`: `PAGE_RUN` acepta `nosim`, `cam`, `gset`, `freeze {t, dur, ts, ease, sim}`; exporta `featureReport`, `chromeFeatures`,
+  `pageHtml`, `PAGE_RUN`, `pcmOf`, `winLoud`, `clickTimes`, `variantsOf`. Duración total ~2 min 45 s.
+
+### Para el integrador / lead
+- CONTRACT §4.4 (añadidos de audio): `stats.ticks`, `VB.Audio._debug()`; los sonidos nuevos aparecen en `VARIANTS`/`LEVELS`.
+- TRASPASO (línea de audio): «hit-stop y cámara lenta separados (el audio ignora bajadas de `timeScale` de menos de 0,25 s); golpe perfecto con
+  bus de refuerzo (+3,3 LU medidos a la salida, pico -2,1 dBTP); latido en punto de set; reloj de saque en los últimos 3 s».
+- Avisos en notes/camera_input.md (CAM-04) y notes/ui_main.md (UI-05). sim: nada que pedir (`block.human` y `g.serveClock` ya existen).
+
+## De players (pulido ola 1, PLY-07 → AUD-05), 2026-11-07
+- **Qué**: los contactos cosméticos de la celebración ya existen en `js/players.js`: `VB.Players.drainFx(out)` añade a `out` (y vacía su cola)
+  `{type:'highfive'|'fistbump'|'chestbump'|'clap', team, x, y, z, strength}` (coords de la sim; `strength` 0..1: choque arriba 1, choque abajo
+  0,75, puños 0,55, palmadas de ánimo 0,6; `chestbump` llegará con PLY-15). Un evento por contacto, en el frame del contacto (tiempo de juego).
+- **Por qué**: hoy los choques de manos tras el punto son mudos (19 de 19 puntos tienen choque en la semilla 7).
+- **Propuesta** (en `VB.Audio.update(game, realDt)`, o donde se manejen los eventos; un solo consumidor vacía la cola, ver notes/ui_main.md
+  si main.js los reparte como eventos):
+  ```js
+  var FXB = [];
+  // ...cada frame:
+  if (VB.Players && VB.Players.drainFx) { FXB.length = 0; VB.Players.drainFx(FXB);
+    for (var i = 0; i < FXB.length; i++) { var f = FXB[i]; play(f.type === 'clap' ? 'clap' : f.type === 'fistbump' ? 'fistbump' : 'slap', 0.5 + 0.5 * f.strength, f.x, f.y); } }
+  ```
+  (los nombres de sonido son orientativos: los que defina AUD-05).
+
+## Aplicado (log, integración del pulido ola 1, 8-nov-2026, PC de casa)
+- AUD-05 (mínimo, por el integrador): sonidos nuevos `slap` (3 variantes: dos palmas planas a 1-2 ms, chasquido 1,5-3 kHz + cuerpo de
+  ~190 Hz) y `fist` (2: sordo < 1 kHz + golpe de 118 Hz), con paso alto (sin DC). Eventos `fx:highfive`/`fx:chestbump` → `slap`,
+  `fx:fistbump` → `fist`, `fx:clap` (ánimo del que pierde) → `slap` más suave y agudo (main.js reparte `VB.Players.drainFx`).
+  Niveles calibrados con `audiotest --calibrate`: `slap` 9,8, `fist` 8,2 (foley −24 LUFS: −23,8 / −23,0). Escenarios nuevos en audiotest.
+  `node tools/audiotest.js` completo → TODO OK (partido en Chrome −3,7 dBTP, 150/0 fuentes). En vivo (seed 7, 40 s): 3 puntos →
+  1 `fx:highfive`, 1 `fx:fistbump`, 2 `fx:clap` llegan a `Audio.handle`.
+- Pendiente para el owner: AUD-07 (`point.highlight` → escala de reacciones de la grada) sigue sin hacer.
+
+## Pulido ola 2 (8-nov-2026, owner audio): sonidos perdidos al empezar en un móvil lento
+Ficheros: `js/audio.js`, `tools/audiotest.js`. Problema verificado (tech, ola 1): en móvil CPU ×4 con JUGAR nada más cargar, los
+primeros 60-80 s de partido perdían la mitad de los toques (`skipped` 10 → 80, banco 2 → 39 de 85): el hilo principal no tiene
+huecos libres en pleno partido y la cola troceada solo sacaba ~1 sonido por segundo.
+- **Hilo de síntesis (Worker)**: el módulo se llama `VBAudioModule` y su propio código fuente (`toString()`) arranca un Worker desde un
+  Blob (sin ficheros ni red; vale en file://, comprobado). El Worker carga el mismo módulo (`self.__vbAudioWorker=1` → `workerMain()`),
+  sintetiza los trabajos en orden y devuelve los Float32Array transferidos (sin copia). El hilo principal solo los copia a
+  AudioBuffer. Arranca 0,4 s después de `init()` (antes 1,2 s; crearlo cuesta ~1 ms en el hilo principal) o en el gesto.
+  Saluda en 25-100 ms; hasta el saludo la cola troceada sigue trabajando (un Worker que no arranca no deja hueco). Si no hay Worker,
+  la CSP lo bloquea (evento error) o no saluda en 6 s, sus trabajos vuelven a la cola troceada (`stats.worker = 'failed:<motivo>'`).
+  Al acabar el banco se cierra (`terminate`) y se revoca la URL. Salida idéntica bit a bit (audiotest parte 5d: 84 buffers, 0 distintos).
+  Nota: con una CSP que bloquee workers, Chrome escribe su aviso de CSP en la consola (no se puede evitar; no es un error del juego).
+- **Sin Worker (respaldo)**: primera pasada con UNA variante de cada sonido de juego (`CORE`: click, start, whistle, serve, whoosh, pass,
+  set, spike, land, whistleLong, free, block, net, bounce, scuff, slam, netTape, feet, squeak, hover, back) antes que las demás
+  variantes. Mientras falte alguno, si no hay huecos libres, tramos forzados de 6 ms cada 24 ms (menú, saque, entre puntos) o 4 ms
+  cada 40 ms (peloteo). Un toque pedido sin buffer (no aplazable) pasa su sonido al frente de la cola (`bumpSoft`, también en el Worker).
+- **Medido** (Chrome 844x390 DPR 2,75 CPU ×4, JUGAR 1 s tras cargar, 20 s de partido; intercalado con la versión anterior):
+  antes: skipped 25-29, 22-24/85 sonidos, 14-16 oídos · ahora con Worker: **skipped 0**, banco entero 1,0-1,7 s después de JUGAR,
+  lateDrop 0 · sin Worker: skipped 2-14 · CSP que bloquea el Worker: skipped 0-5 en 12 s.
+  Método del verificador (`verify-w1-tech/soak.js`, MOB=1, JUGAR a los 2,5 s, 90 s): skipped 0 en todas las muestras (antes 10 → 104),
+  banco listo 1,5 s después del gesto, heap retenido 8,6 MB. perf.js 844x390 ×4: medium 78,6 / low 99,5 fps (low con WARM=1, la
+  síntesis dentro de la medida: 102,7); escritorio high 164 fps. console.sh all: sin errores JS.
+- `tools/audiotest.js`: **parte 5** (cold start en el juego real: a Worker, b sin Worker, c CSP, d antes del gesto + idéntico bit a bit;
+  ~90 s; `--no-cold` la salta, `--cold-only` solo ella) y parte 4d (protocolo del Worker con un Worker simulado: uno que no contesta y
+  uno que funciona, con el salto de cola). `node tools/audiotest.js` completo → **TODO OK** (mezcla y partido sin cambios: -18,6 LUFS,
+  -3,7 dBTP, 150/0 fuentes; AUD-01..04 siguen en objetivo).
+
+### Para el integrador / lead
+- CONTRACT §4.4 (añadidos de audio, todo opcional): `stats.worker` ('none' | 'starting' | 'on' | 'off' | 'failed:<motivo>'),
+  `stats.workerMs`, `stats.workerHi` (ms hasta el saludo), `stats.bumped`, `stats.missed` (nombre → veces pedido sin buffer),
+  `VB.Audio._bank(name)` (pruebas), `window.__vbAudioNoWorker = true` (pruebas: desactiva el Worker).
+- TRASPASO (línea de audio): «la síntesis del banco va en un Worker creado desde el propio audio.js (Blob, sin ficheros); sin Worker,
+  cola troceada con primera pasada de una variante por sonido de juego. Móvil ×4 con JUGAR inmediato: 0 sonidos perdidos (antes ~27 en 20 s)».
+- Restricción respetada: sin ficheros js/ nuevos, sin red, clásico (sin módulos ES). No hace falta tocar index.html ni main.js.
+
+## Aplicado (log, integración del pulido ola 2, 8-nov-2026, PC de casa)
+- CONTRACT §4.4 («pulido ola 2»): `stats.worker/workerMs/workerHi/bumped/missed`, `VB.Audio._bank(name)`, `window.__vbAudioNoWorker`.
+- TRASPASO: línea de audio con el Worker de síntesis.
+
+## Pulido ola 2 (8-nov-2026, owner audio): AUD-05, AUD-06, AUD-07
+Ficheros: `js/audio.js`, `tools/audiotest.js`. `node tools/audiotest.js` → **TODO OK** (todo lo de antes sigue igual: mezcla en objetivo,
+AUD-01..04, robustez, partido de 60 s, silbato sobre la grada, arranque en frío). Secciones nuevas del informe: **2c** (modelo) y
+«polish wave 2» dentro de la 3 (cadena real de Chrome). Escenarios nuevos en la 2. Cifras de la pasada final: ver «Medidas finales» abajo.
+
+### AUD-05 · Contactos de celebración y botes del ritual de saque
+- Sonidos nuevos: `handclap` (3 variantes: palmada de ánimo de UNA persona, manos ahuecadas: resonancia de ~1 kHz de 8-11 ms y 2-3
+  micro-impactos; distinta del choque de manos), `chest` (2: golpe de tórax 92→62 Hz con 2.º/3.er armónico para el móvil, "plaf" de ropa,
+  roce de camiseta y las manos que se agarran 25-40 ms después), `dribble` (3: bote controlado en el parqué, ~5 m/s, poco cuerpo, "ping" de
+  la cámara del balón y knock de la tarima). `fist` re-voceado: tenía el 99 % de la energía bajo 150 Hz y perdía 14 dB en un altavoz de
+  móvil; ahora con «toc» de nudillos en 560 Hz pierde 6,6 dB (como un toque).
+- `fx:highfive` → `slap`, `fx:fistbump` → `fist`, `fx:chestbump` → `chest`, `fx:clap` → `handclap`, `fx:catch` (opcional) → palmada blanda;
+  `dribble` (sim SIM-04, ya en sim.js) → `dribble` en el punto del bote, ganancia por `speed`. **Un sonido por evento** (se quitó la
+  anti-repetición: un choque y la palmada del otro equipo en el mismo frame eran un solo sonido).
+- **Pool de tiras de voz**: 8 tiras fijas (ganancia → paneo → efectos + envío de reverb) creadas al crear el contexto. Cada contacto o bote
+  solo crea su BufferSource; ganancia, paneo y envío se programan en la tira con `setValueAtTime` en el instante de arranque (LRU entre las
+  libres). Si las 8 están ocupadas cae a `play()`.
+- Niveles (plan, a ~8 m): choque/puños/pecho -24 (foley), palmada de ánimo -27 (`foleySoft`: un transitorio de 60 ms suena más de lo que
+  marca su LUFS de 400 ms; a -24 tenía picos de -1 dBFS), bote del ritual -23 (~5 LU bajo un bote de peloteo, por encima de los muertos).
+- Medido: celebración (choque + palmada en el mismo frame, 2.ª palmada, puños, pecho) → 5 eventos, 5 sonidos, los correctos, 0 nodos de
+  ganancia/paneo creados; 12 contactos en un frame → 12 sonidos; ritual 3 + 3 botes → 6; tiras 8/8 libres y 0 voces al acabar.
+  Chrome, 240 s de partido real (sim + contactos como los emite players): todos los contactos y todos los botes nativos de la sim suenan una
+  vez, 0 voces y 8/8 tiras libres tras 6 s de silencio, sin recortes. **Partida real (index.html, players.js de verdad)**: `fx:*` repartidos
+  por main.js = `fxIn` = `fxOut`; botes de la sim = `dribIn` = `dribOut`; 0 descartados (`tools/out/aud-w3/liveprobe.js`, scratch).
+
+### AUD-06 · Cortinilla y presentación
+- `VB.Audio.ui('wipe')`: soplido de aire filtrado (banda que sube de 450 Hz a 2,8 kHz y baja) que cruza de izquierda a derecha (paneo en el
+  buffer), pico a 0,15 s = el corte en el centro de la cortinilla de 0,3 s, con un golpe de aire grave muy suave en el corte. Bus de interfaz.
+  Anti-repetición 0,25 s. -25 LUFS (suena casi cada punto: discreto).
+- `VB.Audio.sting('intro')` (= `ui('intro')`): firma suave (`introSting`: campanas La-Re-Mi que se posan en Fa# sobre Re con novena en piano
+  eléctrico; sin metal: su diente de sierra grave quedaba al aire y audiotest lo marcaba como clic; las campanas casi al nivel del acorde:
+  el motivo es la firma) + crescendo de grada (`introSwell`, 3,6 s: voces que suben, aplauso cada vez más denso, unos silbidos) y el lecho de
+  grada agachado -7 dB (vuelve solo a los 3 s, bajo la meseta del crescendo: con una tarjeta larga no queda hueco). Se suelta con
+  `ui('introEnd')`, `ui('introSkip')` (grada y firma se apagan en ~0,5 s), el primer silbato del saque o a los 6,5 s. La ovación de bienvenida
+  de `newMatch` va 0,35 s tarde y se cancela antes de sonar si llega la presentación (aplazada sin buffer: tampoco suena). Plan: firma -19,
+  grada -21, juntas -17 LUFS.
+- Antes del primer gesto todo es no-op sin error (prueba nueva en la parte 4; console.sh limpio).
+
+### AUD-07 · Reacción de la grada con `point.highlight`
+- `crowdReact` reescrito (mismas muestras): punto local → ovación 0,40 + 0,72·h, capa de ovación larga desde h 0,4, estallido (capa aguda +
+  dos golpes de bombo) desde h 0,72, aplauso 0,22 + 0,5·h y segundo aplauso desde h 0,45; digs ≥ 2 → "uuuh" que rompe en ovación; racha ≥ 3
+  → palmas al unísono con bombo tras la ovación (solo hasta `point.hold`) que **siguen en la misma rejilla** con las palmas del saque local
+  (sin hueco ni golpe doble: separación 0,42-0,84 s medida); punto de set salvado → capa de alivio y aplauso largo. Punto rival → lamento
+  (más si es error local o si la CPU salva un punto de set), aplauso de reconocimiento desde h 0,45, "uuuh" de admiración con digs ≥ 2.
+  Sin `highlight` (sim antigua) se estima con los términos de `VB.Sim.highlightOf`.
+- En peloteo, el "uuuh" de cada defensa de remate crece con `g.rally.digs` (×1,22 y ×1,43 en la 2.ª y la 3.ª, un pelo más agudo) y el ánimo
+  del lecho sube con él.
+- Escenarios de mezcla de reacciones anclados en h 0,35 (mediana de un partido humano, notes/sim.md SIM-01): -20 LUFS, como antes.
+
+### API (todo opcional; nada roto ni renombrado)
+- `VB.Audio.ui('wipe'|'intro'|'introEnd'|'introSkip')`, `VB.Audio.sting('intro')`, `VB.Audio.introInfo()` → `{active, t}`, `VB.Audio.voices()`.
+- `stats`: `fxIn`, `fxOut`, `dribIn`, `dribOut`, `pooled`, `poolFull`, `voicesMax`, `intro`, `wipe`, `react`. `_debug()` añade `react` (última
+  reacción: `h, team, layers, chant`), `intro`, `pool`, `poolFree`, `voices`, `bed`, `chant`.
+- Sonidos nuevos: `handclap` (3), `chest` (2), `dribble` (3), `wipe` (2), `introSwell` (1), `introSting` (1). Banco: 97 trabajos (antes 85).
+- `ui(kind)` con un nombre desconocido ya no suena como un clic (sin argumento sigue siendo el clic).
+- `tools/audiotest.js`: parte 2c (`wave2Report`), `chromeWave2`, `realPoints`/`spreadPick`/`spearman`; `PAGE_RUN` acepta `api` (llamadas de UI
+  en un instante), `fxSynth` (contactos como los emite players y, si la sim no los trae, botes del ritual), `tail` (s finales sin eventos) y
+  registra las fuentes canceladas antes de sonar; `--no-w2` salta la parte de Chrome de la ola 2.
+
+### Para el integrador / lead
+- CONTRACT §4.4 (añadidos de audio, pulido ola 2): `VB.Audio.ui('wipe'|'intro'|'introEnd'|'introSkip')`, `sting('intro')`, `introInfo()`,
+  `voices()`; `stats.fxIn/fxOut/dribIn/dribOut/pooled/poolFull/voicesMax/intro/wipe/react`; eventos `fx:catch` (opcional) y `dribble` → sonido.
+- TRASPASO (línea de audio): «contactos de celebración y botes del ritual con sonido propio, uno por evento, por un pool de tiras; cortinilla y
+  presentación (firma + crescendo, lecho agachado); la grada reacciona en proporción a `point.highlight` (Spearman ≥ 0,99 medido a la salida)».
+- Peticiones: notes/ui_main.md (cablear `ui('wipe')`, `sting('intro')`, `ui('introEnd'|'introSkip')` y la entrada del HUD en el silbato),
+  notes/players.md (PLY-15 `chestbump`, `catch` opcional en PLY-16), notes/sim.md (nada: aviso de que `dribble` ya suena).
+
+### Medidas finales (pasada completa `node tools/audiotest.js --json tools/out/aud-w3/final.json` → TODO OK, 8-nov-2026)
+- Mezcla (parte 2): todos los escenarios en su objetivo ±1,5 LU, también los nuevos: choque -23,8 · puños -24 · pecho -24 · palmada de ánimo
+  -27 · bote del ritual -23 (peloteo -18, muerto -26) · cortinilla -25 · firma -19 · grada de la presentación -21 · presentación -17.
+- 2c (modelo): las 15 comprobaciones OK (celebración 5/5 con 0 nodos por contacto, 12 en un frame → 12, ritual 6/6, sin fugas; presentación
+  sin bienvenida, lecho -6,9 dB y de vuelta, silbato y salto la sueltan, tiempo agotado; cortinilla 1 por cortinilla; "uuuh" 0,67 → 0,81 →
+  0,96; racha → palmas del saque sin hueco (0,42-0,84 s); Spearman 0,998 en 30 puntos reales de 0,15 a 0,99).
+- Chrome (cadena real): cortinilla -12,7 dBTP (sola: -24,9 LUFS) · presentación -7,5 dBTP, -18,1 LUFS bajo la tarjeta, bienvenida 0, lecho
+  -27,4 → -34,0 → -27,1 LUFS · Spearman 0,997 (-22,2 → -14,7 LUFS en 5 s) · punto máximo -1,5 dBTP, 0 recortes · 240 s de partido: 48/48
+  contactos, 35/35 botes de la sim, 0 voces y 8/8 tiras libres al final, máx. 9 voces, -18,9 LUFS, -3,3 dBTP.
+- Partido de 60 s (semilla 7) sin cambios de fondo: -18,8 LUFS, -3,7 dBTP, 0 recortes, 159 fuentes / 0 descartadas (antes 150: ahora suenan
+  los botes del ritual de la sim), silbato ≥ 14,4 dB sobre la grada; clímax -2 dBTP.
+- Arranque en frío (CPU ×4, JUGAR a 1 s): con Worker 0-1 descartados, banco entero 1,1-1,8 s tras JUGAR; banco idéntico bit a bit (96
+  buffers). Sin Worker: `dribble`, `slap` y `handclap` entran en la primera pasada (`CORE`; el bote justo tras el silbato, que es cuando se
+  oye primero): los botes del ritual sin sonido en los primeros 20 s bajan de 3 a 1 (el primerísimo, antes de que exista nada).
+- Partida real (index.html, 60 s, autopilot): `fx:*` repartidos = sonados, botes 12/12, 0 descartados, ~160 fps.
+
+## De ui_main (pulido ola 2: UI-13, UI-14), 8-nov-2026 — cableado hecho
+- `VB.Audio.ui('wipe')`: en los cortes punto → saque / cambio de campo se llama cuando `nextCutIn ≤ 0,15` (el pico cae en el corte); en las
+  transiciones de pantalla (menú → partido, partido → final, final → menú, 450 ms) al empezar. La cinta barre de IZQUIERDA a DERECHA (como el
+  soplido). Una llamada por cortinilla.
+- `VB.Audio.sting('intro')`: main.js al mostrar la tarjeta (mismo frame que `newMatch`; la sim espera bajo la tarjeta 2,5 s).
+- `ui('introEnd')`: al empezar la entrada del marcador, 0,25 s después de que la tarjeta se vaya sola (la sim arranca al irse: `serveReady` en
+  ese frame, silbato 0,7 s después: la entrada del marcador dura 0,45 s y acaba hacia el silbato). `ui('introSkip')` en el frame en que la saltan.
+
+## Aplicado (log, integración del pulido ola 2, segunda tanda, 8-nov-2026, PC de casa)
+- Cableado de ui_main ya estaba hecho (cortinilla, presentación, `introEnd/introSkip`). La tarjeta de presentación no se veía si el partido empezaba antes
+  de acabar el ensayo de estilos (arreglado en ui.js); el sonido sí sonaba.
+- CONTRACT §4.4: `ui('wipe'|'intro'|'introEnd'|'introSkip')`, `sting('intro')`, `introInfo()`, `voices()`, `stats` nuevos, sonidos nuevos; §4.3 `fx:*` → sonidos.
+- `node tools/audiotest.js` en la integración: TODO OK (3 min 52 s).
+
+## De ui_main (arreglos tras la verificación de la ola 2, UI-01), 8-nov-2026 — opcional
+- El verificador midió `ensure()` (constructor del `AudioContext` + cadena maestra) en 46-53 ms de hilo y el primer `irStep` en 14 ms, en el
+  MISMO frame cuando el primer gesto del jugador es JUGAR (o cuando una herramienta llama a `startMatch` sin gesto previo: main.js llama a
+  `Audio.unlock` dentro de `startMatch`). Propuesta: en `unlock()` crear solo el `AudioContext` (debe ir dentro del gesto) y construir la
+  cadena maestra y el primer tramo de la reverberación en el siguiente frame (p. ej. `requestAnimationFrame` o un `setTimeout(…, 0)` tras el
+  `resume()`), para que los dos costes no compartan frame. Hoy, con el clic previo en el menú (lo normal), `smtime.js` da 6/6 frames < 25 ms
+  tras `startMatch`, y `feel.js NOCAST=1` 3/3 con el mayor hueco en 23-37 ms: no es urgente.
+
+## Aplicado (log, integración de los arreglos tras la verificación de la ola 2, 8-nov-2026 noche, PC de casa)
+- Propuesta opcional de ui_main (UI-01: crear la cadena maestra un frame después del `AudioContext`) **no aplicada**: el coste cae en el `pointerdown` del
+  primer gesto (antes del clic de JUGAR y antes de la cortinilla), y partir `ensure()` en dos frames arriesga que el primer sonido (clic, silbato) no tenga
+  cadena. Queda para el owner de audio si se quiere, con audiotest completo.
+
+## Desde sim (SIM-05, 2026-11-08): highlight calibrado
+La fórmula de `point.highlight` ha cambiado (notes/sim.md §P3; pesos en `VB.HL`). `hlOf` en js/audio.js solo la estima cuando falta
+`e.highlight`, que ya nunca falta: se puede dejar o sustituir por `VB.Sim.highlightOf` si existe. Nuevo `e.clutch` (final apretado:
+últimos 8 puntos del set con ≤ 2 de diferencia), por si la grada quiere más tensión en esos saques/puntos.
+
+## De players (pulido ola 3, 8-nov-2026)
+- `fx:catch` YA se emite: cada recogida del bote en el ritual del sacador CPU (`{team, x, y, z, strength:0.6}`), un evento por bote.
+- Nuevo `fx:call` (opcional): «¡mía!» del que va a por el balón (un evento por balón, `{team, x, y, z (cabeza), strength:0.6}`). Si se quiere, un aviso de voz
+  muy sutil; si no, se ignora (main.js ya lo reparte como cualquier `fx:*`).
+- CONTRACT §4.3: `fx:catch` lo emite players; nuevo `fx:call` `{team, x, y, z, strength}`. §4.4: `VB.Players._face(p, 'shout'|'effort'|'joy'|'sad'|'neutral'|'', sec)`
+  (pruebas); rig de solo lectura: huesos `eyes, mouth, teeth, brow[2], hair`, pesos `fxS/fxE/fxJ/fxD`, `hairAng`, `ritOn`, `tgtW`. Proporciones: cadera 1,042 m
+  (hombros y altura total iguales). Sin cambios necesarios en main.js.
+
+## Pulido ola 3 (8-nov-2026, owner audio): AUD-08, AUD-09
+Ficheros: `js/audio.js`, `tools/audiotest.js` (y una petición en notes/ui_main.md). `node tools/audiotest.js` → **TODO OK** (todo lo de antes
+sigue igual). Secciones nuevas del informe: **2d** (AUD-08, modelo), **2e** (jerarquía de la mezcla, AUD-09), dentro de la 3 «polish wave 3»
+(«final de partido» por la cadena real) y el barrido AUD-09, y la parte **6** (hoja final y menús en el juego real).
+
+### AUD-08 · Hoja final y sonidos de los menús
+- **Sonidos nuevos** (familia propia de "mecanismo" con un tono pequeño en Re mayor, la tonalidad de las ráfagas y de la presentación):
+  `cntTick` (2 var.: tic cristalino de 30 ms, energía en 4-9 kHz, por encima de la grada, que pasa por un paso bajo de 1,5-6,5 kHz),
+  `cntLock` («clac» doble con cuerpo Re5/La5 y "ding" en Re6), `mvpWin` (soplo que sube 0,5 s y arpegio de campanas Re-Fa#-La-Re sobre Re
+  mayor en piano eléctrico, acento a 0,6 s), `mvpLose` (el mismo gesto en Si menor, más corto y suave), `arwHover` (punteo; ‹ grave, › agudo),
+  `stepUp`/`stepDown` (trinquete + cuarta La5↔Re6; la nota final sigue al nivel de destino: Fácil→Experto -5/-3/0/+4 semitonos), `arwEdge`
+  (doble golpe sordo "no se puede"), `optHover` (toque de fieltro), `tglOn`/`tglOff` (pestillo con tono que sube / baja), `optSel` (retén con
+  nota que sube con el índice). Banco: 110 trabajos (antes 97).
+- **Cuenta de las cifras** (UI-11, 600 ms, salida cúbica): `ui('count', u, ts)` en cada frame con cambio. Cada tic suena YA (nada programado a
+  futuro), espaciados `0,05 + 0,1·u²` s (50 → 150 ms: se frenan como las cifras; nunca más de 20/s) con reloj virtual (un frame 2,5 ms
+  adelantado no se salta un tic), tono ×0,94 → ×1,10. `u ≥ 1` = «clac» EN ese frame. `ui('countEnd')` = el clac si no hubo frame con u = 1
+  (suelto, sin cuenta: nada).
+- **MVP**: `ui('mvp', win)` al empezar la cuenta (el acento cae a 0,6 s, con las cifras posadas); sin `win`, el ganador del evento `match`;
+  anti-repetición 1,5 s.
+- **Foco en la hoja**: con state `over` y tras la 1.ª cifra o el MVP, la grada baja 6 dB (`END_DUCK` 0,5; con el compresor ≈ -3,4 dB a la
+  salida) en ~0,35 s; vuelve al salir de `over`. Sin ese hueco, en el final más ruidoso los tics quedaban 4 dB bajo la ovación en su banda.
+- **Menús**: `ui('arrowHover', dir)`, `ui('arrow', dir, nivel, n)`, `ui('arrowEdge', dir)`, `ui('optHover')`, `ui('toggle', on)`,
+  `ui('select', i, n)`, `ui('slide', v)` (tic suelto a -28; el de Efectos sigue sonando con el toque `pass` de muestra).
+- Mientras ui.js no lo cablee no suena nada nuevo (todo opcional). Petición con los cambios exactos en notes/ui_main.md (8 cambios, probados).
+
+### AUD-09 · Pasada de mezcla completa
+- Re-medidos los 70 escenarios del plan (los 37 originales + olas 1-2 + 13 nuevos): todos en su objetivo ±1,5 LU (casi todos a ±0,2).
+  Reequilibrado: `hover` +1 dB (estaba a -29 de -28) con el cambio de jugador a 0,27 (era 0,3) para que siga a -28; niveles de los nuevos
+  calibrados con `--calibrate`.
+- **Colas cortadas** (solo se veían en espectrograma, `tools/out/aud-w4/spec.js`): `boom` (bombo de las ráfagas, cortado a -22 dB a los
+  0,9 s), las notas de metal (al 2 %) y las campanas (al 3 % a los 1,4 s) acababan en seco. Ahora se apagan en 60 / 40 / 80 ms. Afecta a
+  setWin, matchWin, introSting y los MVP (sin cambio de nivel medible).
+- **Jerarquía (2e, nueva puerta)**: 20 relaciones entre capas que los objetivos por categoría no vigilan (p. ej. tics ≥ 8 LU bajo el MVP,
+  MVP ≥ 2 LU bajo la ráfaga de partido, cortinilla ≥ 5 LU bajo un toque, bote del ritual entre el muerto y el de peloteo, latido de set ≥ 3 LU
+  bajo el de partido, Sí/No igual de fuertes).
+- **Pico real en todas partes (nueva puerta)**: los 59 escenarios de eventos/API por la cadena real de Chrome (compresor + recortador), sobre los
+  lechos, con la cámara a ~8 m y a ~3 m: pico real ≤ -1 dBTP y 0 recortes en cada ventana. Peor: bloqueo directo humano a 3 m -2,4 dBTP.
+- **Sonoridad del partido (nueva puerta)**: el partido de 60 s (semilla 7) debe quedar a ±1 LU de la referencia de la ola 2 (-18,8 LUFS).
+
+### Plan de niveles final (LUFS a la salida, señal pequeña; tolerancia ±1,5 LU)
+| capa | objetivo | | capa | objetivo |
+|---|---|---|---|---|
+| remate, saque en salto | -14 | | reacciones de grada | -20 |
+| bloqueo directo, remate al suelo | -15 | | lecho de grada (peloteo de 4) | -26 |
+| silbato | -16 | | palmas + bombo, latido de partido | -22 |
+| ráfagas set/partido | -16 | | latido de punto de set | -27 |
+| presentación (firma + grada) | -17 (-19 / -21) | | reloj de saque | -25 |
+| toques, balón al suelo, red | -18 | | destello «perfecto» | -26 |
+| colocación, dejada | -21 | | bote muerto | -26 |
+| MVP / hoja final entera | -19 / -19 | | cortinilla | -25 |
+| bote del ritual | -23 | | «clac» de la cuenta | -25 |
+| pies, zapatillas, brazo, choques | -24 | | tics de la cuenta (600 ms) | -29 |
+| palmada de ánimo | -27 | | interfaz: confirmaciones / hovers | -24 / -28 |
+`LEVEL` (dB, audio.js) con los valores finales; `VB.Audio.LEVELS` lo expone.
+
+### Medidas finales (`node tools/audiotest.js --json tools/out/aud-w4/final2.json` → TODO OK)
+- Mezcla (parte 2): 70/70 escenarios en objetivo (nuevos: tics -29, clac -25, MVP -19 / -19, hoja entera -19,1, flechas y Ajustes -24 / -28, deslizador -28). 2e: 20/20 relaciones.
+- 2d (modelo, 11/11): cuenta a 30/60/120/144 Hz → 6-7 tics a 17-383 ms (60 Hz), intervalo mín. 49-67 ms, clac en el último frame (600 ms), nada después; grada -6,0 dB y vuelta; MVP gana/pierde/por defecto; clac solo tras una cuenta; flechas ×0,84→1,00→1,26; Ajustes; no-op sin gesto.
+- Chrome «final de partido» (punto de partido con doble ovación, ráfaga, choque de pecho, cortinilla, hoja): pico real -2,3 dBTP, 0 recortes; 6 tics, clac a 608 ms = fin de la cuenta, 0 tics después; grada -3,4 dB a la salida bajo la hoja; tics +8,1 dB sobre el resto en su banda (mín. +4,3); acento del MVP -0,7 LU respecto a todo lo demás (encima de la ovación y la fanfarria). WAV: tools/out/audio/final-de-partido.wav.
+- Barrido AUD-09: 59 escenarios × 8 m / 3 m, todos ≤ -1 dBTP; peor remate perfecto humano -1,9 dBTP (varía ±0,6 con la variante elegida).
+- Partido de 60 s: -18,9 LUFS (-0,1 LU frente a -18,8), -3,7 dBTP, clímax -2 dBTP, 0 recortes; silbato ≥ 14 dB sobre la grada.
+- Juego real (parte 6, 1280×720 y 844×390 táctil): 7 tics a 49-97 ms, clac en el último frame de la cuenta (0 frames, reloj de audio 0,0 ms), 0 tics después, MVP 1; menú y Ajustes con sus sonidos.
+- Arranque en frío: Worker 0 descartados, banco (110) 1,0 s tras JUGAR; banco idéntico bit a bit (109 buffers). fps de esa prueba = carga de la máquina (base y nueva medidas seguidas: 62-63 / 67-70).
+- simtest 10 12345 0 → TODO OK.
+
+### API (todo opcional; nada roto ni renombrado)
+- `VB.Audio.ui('count', u, ts)`, `ui('countEnd')`, `ui('mvp', win)`, `ui('arrowHover', dir)`, `ui('arrow', dir, nivel, n)`, `ui('arrowEdge', dir)`,
+  `ui('optHover')`, `ui('toggle', on)`, `ui('select', i, n)`, `ui('slide', v)`. `ui()` acepta ahora hasta 3 argumentos tras el nombre.
+- `stats.count`, `countAt`, `countEnd`, `countEndAt` (ms de performance), `stats.mvp`. `_debug()` añade `crowd`, `endFocus`, `count`, `stingTeam`.
+- Sonidos nuevos en `SOUNDS`/`VARIANTS`/`LEVELS`: `cntTick` (2), `cntLock`, `arwHover`, `optHover`, `stepUp`, `stepDown`, `arwEdge`, `tglOn`,
+  `tglOff`, `optSel`, `mvpWin`, `mvpLose`. `sting()` no reproduce los MVP (van por `ui('mvp')`).
+- `tools/audiotest.js`: partes 2d, 2e, «polish wave 3» y barrido AUD-09 en la 3, parte 6; `--endui-only`, `--no-endui`, `--w3-only`,
+  `--sweep-only`, `--no-w3`, `--no-sweep`. `PAGE_RUN` acepta `mute` (todo menos esos sonidos), `api[].args` y las pseudo-llamadas `__state` y
+  `__gset`. Exporta `UI_PATCH`, `enduiReport`, `countUpCalls`. Duración total ~6 min.
+
+### Para el integrador / lead
+- Cablear AUD-08 en ui.js con la nota de notes/ui_main.md (o pedírselo a ui_main). Comprobar después con `node tools/audiotest.js --endui-only`
+  (detecta el cableado y prueba ui.js tal cual).
+- CONTRACT §4.4 (añadidos de audio, ola 3): la API de arriba, `stats.count/countAt/countEnd/countEndAt/mvp`.
+- TRASPASO (línea de audio): «hoja final con tics que se frenan con la cuenta, «clac» en el último frame y revelación del MVP (la grada cede
+  a la hoja); sonidos propios de las flechas de dificultad y de Ajustes; pasada de mezcla completa: 70 escenarios en objetivo, 20 relaciones
+  entre capas, pico real ≤ -1 dBTP en los 59 escenarios por la cadena real a 8 y 3 m, partido a -18,9 LUFS (±1 LU de la ola 2)».
+
+## Aplicado (log, integración del pulido ola 3, 9-nov-2026, PC de casa)
+- AUD-08 cableado en ui.js (los 8 cambios de notes/ui_main.md, tal cual): `--endui-only` → TODO OK.
+- **Arreglo (cola sin Worker)**: con la ola 3 players emite `fx:catch` (→ `set`) y pasos en los primeros segundos del primer saque de la CPU; en el respaldo sin
+  Worker / con CSP la 1.ª pasada aún no los tenía y la parte 5 fallaba de forma intermitente (`missed {feet:3}`, luego `{set:1}`). `CORE` empieza ahora por
+  `click, start, whistle, dribble, set, feet, serve…` (antes `set` 9.º y `feet` 17.º). `--cold-only` 3/3 TODO OK; con Worker, el banco es idéntico.
+- `hlOf` de reserva se deja (solo sin `e.highlight`, que ya no pasa). `fx:call` sin sonido (opcional; un «¡mía!» sintético no compensa el riesgo de sonar a juguete).
+- `node tools/audiotest.js` completo → TODO OK (mezcla, 2d/2e, partido -18,9 LUFS, barrido de pico real, arranque en frío, parte 6).
+
+## Aplicado (log, integración de los arreglos tras la verificación de la ola 3, 9-nov-2026, PC de casa)
+- Sin peticiones pendientes para audio. `node tools/audiotest.js` completo en el árbol integrado → TODO OK (parte 6: 7 tics, clac en el último frame, MVP 1, flechas y Ajustes, en 1280×720 y 844×390 táctil).
+- Aviso: con el cuadro vivo de players, `debug=point|ace` re-emiten el `point` en bucle: los sonidos de `fx:highfive` y familia suenan en cada vuelta (como en juego).

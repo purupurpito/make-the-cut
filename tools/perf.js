@@ -10,7 +10,7 @@
  * Imprime una tabla y escribe el JSON en tools/out/perf/.
  *
  * Uso: node tools/perf.js [WxH=844x390] [segundos=20] [niveles=auto,high,medium,low] [cpu=4] [dpr=2.75]
- * Variables: GL=swiftshader (render por software) · SCENE=match|rally (match = partido real con autopilot, por defecto;
+ * Variables: EXTRA=params de la página (A/B, p. ej. vig=0) · GL=swiftshader (render por software) · SCENE=match|rally (match = partido real con autopilot, por defecto;
  *   rally = ?debug=rally&live=1) · WARM=s de calentamiento antes de medir (10: fuera la compilación del menú y la síntesis de audio; 45 con ALLOC/RETAIN) · TRACE=0 sin traza de GC ·
  *   DESKTOP=1 sin emulación de móvil (escritorio, dpr 1) · STRICT=1 sale con 1 si no se cumplen los objetivos o si la medida
  *   no es válida (CPU del PC anfitrión > HOSTMAX % de media durante el nivel; 80 por defecto).
@@ -100,10 +100,18 @@ async function runLevel(page, level) {
   const q = [];
   if (SCENE === 'rally') q.push('debug=rally', 'live=1', 'aq=1');
   if (level !== 'auto') q.push('quality=' + level);
+  if (process.env.EXTRA) q.push(process.env.EXTRA);          // parámetros extra de la página (p. ej. EXTRA=vig=0 para un A/B)
   await page.navigate(q.join('&'));
   await CDP.sleep(1500);
   if (SCENE !== 'rally') {
-    const ok = await page.evalJs("(function(){if(!window.VB||!VB.ctx||!VB.ctx.actions)return false;VB.ctx.actions.startMatch({autopilot:true});return VB.ctx.state})()");
+    // (con el móvil emulado y el PC cargado el arranque puede tardar 2,5-3,5 s: si el juego aún no ha
+    //  aceptado el partido se vuelve a pedir cada 0,5 s, y se sondea hasta ~20 s antes de darlo por perdido)
+    const START = "(function(){if(!window.VB||!VB.ctx||!VB.ctx.actions)return false;if(VB.ctx.state!=='playing')VB.ctx.actions.startMatch({autopilot:true});return VB.ctx.state})()";
+    let ok = await page.evalJs(START);
+    for (let i = 0; i < 200 && ok !== 'playing'; i++) {
+      await CDP.sleep(100);
+      ok = await page.evalJs(i % 5 === 4 ? START : 'window.VB&&VB.ctx?VB.ctx.state:false');
+    }
     if (ok !== 'playing') throw new Error('no arranca el partido: ' + ok);
   }
   await CDP.sleep(WARM * 1000);

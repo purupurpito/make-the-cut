@@ -76,19 +76,24 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
 | `debug, params, frozen` | escena de depuración, parámetros de URL, simulación congelada |
 | `portraitBlock` | móvil en vertical en partido: la sim se detiene y UI muestra "Gira el móvil" |
 | `renderFn` | si no es null, main.js llama `renderFn(ctx)` en vez de `renderer.render(scene,camera)` (post-proceso de arena) |
-| `settings` | `{muted, difficulty, quality:'auto'|'high'|'medium'|'low', showHelp}` persistido en localStorage |
-| `actions` | `startMatch(opts), toMenu(), pause(), resume(), togglePause(), restart(), setSetting(k,v), toggleMute()` |
+| `settings` | `{muted, difficulty, quality:'auto'|'high'|'medium'|'low', showHelp, camStable (false: con true el temblor de cámara es 0), rumble (true), hudScale (1 \| 1.15 \| 1.3), softFlash (false: destellos de luz y flashes suaves; arena/fx leen `ctx.settings.softFlash === true` cada frame)}` persistido en localStorage (validado en `loadSettings`) |
+| `introLeft`, `introSkipReq` | tarjeta de presentación del partido (UI-14): s reales que quedan (> 0 mientras se ve; la sim está PARADA y los eventos iniciales salvo `newMatch` se retienen hasta que acaba) / petición de saltarla |
+| `uiDock` | `{side:'left', frac}` con la hoja final acoplada (pantallas ≥ 1000 px; `frac` = borde derecho / ancho) o `null`; lo publica ui.js cada 8 frames y lo lee camera.js (CAM-10) |
+| `actions` | `startMatch(opts), toMenu(), pause(), resume(), togglePause(), restart(), setSetting(k,v), toggleMute()`. Un `startMatch` HUMANO pedido mientras el arranque aún ensaya estilos (`VB.UI.bootBusy()`) espera a que acabe (`startWait`, tope 9 s); los de autopilot empiezan al momento |
 | `shake(amount, dur)`, `slowmo(scale, realSeconds)` | atajos hacia camera.js |
 | `simMove` | `[wx, wy]` entrada de MUNDO del frame (la misma matriz que recibe `Sim.step`; FX la lee para la retícula de apuntado) |
 | `endHold` | lo escribe ui.js: celebración de victoria en curso antes de la tarjeta final (main.js pinta a ritmo completo) |
 | `canvasAA`, `prewarm(mode)`, `prewarmMs` | MSAA del lienzo; precalentado de texturas al arrancar/empezar partido (ver notes/ui_main.md) |
+| `prewarmInfo()` | `{n, total, issueMs, waitMs, pending, drawMs}`: programas precompilados en paralelo bajo el telón (`KHR_parallel_shader_compile` con `VB.Arena.prewarmList()`; sin la extensión, `VB.Arena.prewarmCompile()`) y el render de calentamiento (`warmDraw`). `&warmdraw=0`, `&prewarm=sync`, `&bootwait=0` (pruebas) |
 | `frameMs`, `frameMsAvg` | coste JS del último frame / media de la ventana de 2 s (calidad adaptativa y `tools/perf.js`) |
 | `qLog` | cambios de calidad adaptativa `{t, rt, level, scale, pr, fps, js, why}` (`rt` = s reales desde el arranque; `t` = `ctx.time`, que va por detrás con frames recortados). `why` incluye `'escala deshecha (xN)'` |
 | `cpuBusy` | fracción ocupada del hilo principal en la ventana: máx.(JS del juego / intervalo, suma de tareas largas / 2 s; PerformanceObserver `longtask`). Decide si la escala de render ayuda |
 | `fixShadowDepth()` | pone un `customDepthMaterial` compartido por variante a `SkinnedMesh`/`InstancedMesh` (evita recompilar el material de profundidad 4 veces por frame). Llamarlo si se crean casters nuevos después de `onGameStart`/`setQuality` |
+| `bootInfo` | tiempos del arranque por módulo en ms (`{t0, renderer, yield, Arena, FX, …, quality, end}`; UI-07) |
+| `window.__vbFontFaces` | lo deja el script en línea de index.html: número de caras de Google Fonts cargadas DE VERDAD (0 si falla la red). Para comprobar fuentes, usar esto o buscar en `document.fonts` una cara con `status === 'loaded'`; nunca `document.fonts.check()` (da true sin ninguna cara) |
 
 ### 4.2 Simulación `VB.Sim` (sim.js) + `VB.AI` (ai.js) + `VB.C` (constantes)
-- `createGame(opts)` → `game`. `opts = {demo, autopilot, seed, difficulty ('easy'|'normal'|'hard'|'expert' = Fácil/Normal/Difícil/Experto, alias castellanos; orden en `VB.DIFF_ORDER`, nombre visible `VB.DIFF[k].name`), serveClock (false = sin regla de 8 s), stats, rookie (primer partido: la CPU saca más suave; sin efecto en Difícil/Experto)}`.
+- `createGame(opts)` → `game`. `opts = {demo, autopilot, seed, difficulty ('easy'|'normal'|'hard'|'expert' = Fácil/Normal/Difícil/Experto, alias castellanos; orden en `VB.DIFF_ORDER`, nombre visible `VB.DIFF[k].name`), serveClock (false = sin regla de 8 s), stats, rookie (primer partido: la CPU saca más suave; sin efecto en Difícil/Experto), present (pausas de presentación del punto, SIM-03: main.js lo pone en partidos humanos sin autopilot)}`.
   `demo`: CPU vs CPU (menú). `autopilot`: partido "humano" pero el equipo 0 lo juega la IA (escenas de depuración).
 - `step(game, dt, input)` — paso fijo `1/120`. `input` en coords de MUNDO: `{move:[wx,wy] (|v|≤1), hit, jump, switchPlayer}`;
   `hit/jump/switchPlayer` son flancos (pulsado en este paso). En saque humano: `move` desplaza al sacador a lo ancho y apunta.
@@ -115,6 +120,27 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
 - **R5 (verificación 2)**: criterio único de remate `isAttackContact(p, b)` (interno: `p.z > 0,25 && |b.x| < 3,8 && b.z > NET_H + 0,1`) que usan `hit()` y `aimPoint()` (la retícula promete el mismo tipo de golpe que sale). Un saque/remate que roza la cinta y cae dentro sin que nadie lo toque es `how:'ace'|'kill'` (ya no `'error'`).
 - **Revisión 3**: `g.antennaHit` (`{x,y,z}` del contacto con la antena en este punto, o null; se borra en `serveReady`); `g.aimIn`/`g.aimOn`
   (dirección de apuntado de la entrada del último paso); `VB.DIFF.demo` (perfil de la demo del menú, fuera de `VB.DIFF_ORDER`).
+- **Pulido ola 1 (SIM-01/02/03)**: estado nuevo `present` (bool), `hold` (s de la pausa en curso; `g.timer` arranca con él), `streakTeam/streakN`, `rally.digs`,
+  `atkHuman/atkGrade`. `g.lastPoint` copia `team, reason, text, how, highlight, digs, streak, savedSetPoint, signal, touchedOut, landSide, hold, setWon, matchWon`.
+  Funciones: `VB.Sim.skipHold(g)` → bool (en `'point'`/`'over'`, tras ≥ 0,8 s de pausa, recorta `g.timer` a 0,3 s como mucho; nunca en `'serve'`/`'rally'` ni con el
+  partido terminado), `VB.Sim.highlightOf(o)` (fórmula pura del `highlight`, notes/sim.md §P1); constantes `VB.HOLD` (`{routine 1.9, big 2.4, bigAt 0.55, set 4.0, match 4.2, eight 1.4, skipAfter 0.8, skipTo 0.3}`).
+  Con `present` las pausas son 1,9 s (normal) / 2,4 s (`highlight ≥ 0,55`) / 4,0 s (set, con el cambio de campo; antes 3,4, cambiado por CAM-09) / 4,2 s en `'over'` antes de `gameOver`; sin él, como antes
+  (1,9 / 3,6 / 2,2). `setupServe` coloca el balón en la mano del sacador ya en el paso del `serveReady`.
+- **Pulido ola 2 (SIM-04, ritual del sacador CPU)**: estado nuevo `seed` (int), `serveNo` (saques puestos), `cpuTossIn` (s de juego hasta el lanzamiento
+  programado de la CPU; decrece de forma monótona desde el `serveReady`, 0 en el paso del `toss` y hasta que acaba el saque; -1 con sacador humano y fuera
+  de `'serve'`; `g.timer` vale lo mismo en el saque de la CPU), `ritual` (objeto persistente, solo lectura: `{on, phase:'none'|'wait'|'pre'|'dribble'|'post'|'done',
+  t (s desde el silbato), dur (0,8-1,6), bounces (1-3), n, u (0..1 del bote en curso), player, rx, ry, cyc, td, tu, v0, vu, vc, vi, pre, post, still, press}`).
+  `serveClock` corre también para la CPU tras el silbato (lanza siempre con ≥ 6,3 s; UI y audio solo lo muestran al humano). Durante el ritual `ball.held`
+  sigue siendo el sacador, pero en `'dribble'` el balón bota delante de él con velocidad real: una regla que mire `b.z`/`b.vz` en `'serve'` debe usar
+  `g.ritual.on` o la mano. `VB.Sim._holdPos(g, p, out)` = punto de la MANO izquierda (con el balón salvo en los botes). `VB.Sim.ritualAt(g, t, out?)` →
+  balón del ritual en el instante `t` sin tocar nada (o null). `VB.RITUAL` (constantes; `tossBy` 4,5 s; demo del menú: `demoBounces` 1, `demoMax` 0,8 s, `demoWhistle` 0,2 s = silbato de la demo, `demoHold` 1,65 s = pausa rutinaria de la demo; solo con `g.demo`: partido humano y autopilot no cambian). `createGame({ritual:false})` = flujo anterior
+  byte a byte (pruebas). El estilo (botes, tempo) sale de un hash de `seed` + `player.id`: no gasta `g.rng`, pero desplaza los resultados de cada semilla.
+  Lanzamiento de la CPU 1,5-2,3 s tras `serveReady` en partido (demo 1,2-1,5). `VB.HOLD.set` = 4,0 s (antes 3,4: órbita del cierre + grúa, CAM-09).
+- **Pulido ola 3 (SIM-05, highlight calibrado)**: `point` añade `clutch` (bool: final apretado — con el marcador de ANTES del punto, el que va delante está en los últimos 8 puntos del
+  set, ≥ 17 de 25 o ≥ 7 de 15, y la diferencia es de 2 o menos); `g.lastPoint` también lo copia. `highlight` usa los pesos de `VB.HL` (solo lectura; notes/sim.md §P3:
+  tope conjunto peloteo + defensas 0,4, bloqueo directo +0,4, ace +0,25, remate perfecto humano +0,1, punto de set +0,15 o final apretado +0,28 (el mayor), punto de partido +0,45).
+  Función nueva: `VB.Sim.clutchOf(s0, s1, target)`. Umbrales para los demás: `VB.HOLD.bigAt` (0,55, «punto grande»: cinta grande, pausa larga) y 0,8 («enorme»: casi solo en
+  punto de set/partido). CPU vs CPU: ~20 % de los puntos ≥ 0,55 y < 5 % ≥ 0,8 fuera de punto de set/partido (simtest lo comprueba en 20 partidos completos).
 - **Constantes nuevas en `VB.C`**: `IN_TOL` (0,03 m: tolerancia de la llamada de línea; úsese también para pintar dentro/fuera), `WINDUP` (0,07 s de armado del brazo),
   `ASSIST` (0,16 s), `SWING` (0,30 s), `HOLD_Z/HOLD_FWD/HOLD_SIDE` (balón en la mano izquierda del sacador antes del lanzamiento).
 - **Funciones añadidas**: `hitWindow(g, p?, out?)` → `{t (s hasta el contacto ideal; <0 ya pasó), press (s hasta el momento ideal de PULSAR = t − WINDUP), d, dz, reach, kind, zc, x,y,z, active, canReach, attack, jumpT}`
@@ -144,14 +170,16 @@ Todos llevan `type` y `t` (tiempo de juego). `player` es la referencia al objeto
 | `net` | `{x,y,z, tape}` | el balón toca la red (`tape`: en la cinta) |
 | `land` | `{x,y, inside, team (campo donde cae), speed}` | primer bote en rally |
 | `bounce` | `{x,y,speed}` | botes de balón muerto |
-| `point` | `{team, reason:'in'|'out'|'antenna'|'double'|'four'|'net'|'serve'|'under'|'block'|'attackServe', text, score, sideout, rallyTime, rallyHits, setWon, matchWon, how:'ace'|'kill'|'tip'|'block'|'free'|'error', player (falta personal o null), lastKind, lastShot, antenna ([x,y,z] del contacto con la antena \| null = cruzó por fuera; solo con reason 'antenna')}` | punto. `antenna` = toca la antena (aunque no cruce la red, 8.4.3) o cruza en todo o en parte por fuera del espacio de paso (8.4.4). `text` es la frase del árbitro (lista cerrada en simtest `POINT_TEXTS`; 'out' según el último toque: "Saque fuera", "Remate fuera", "Recepción fuera", "Defensa fuera"…; balón que toca la red y cae en el propio campo: "Saque a la red"/"Balón a la red" con `reason 'in'` (dentro) o `'out'` (fuera)). `attackServe` llega unos instantes DESPUÉS del `hit` (al cruzar el balón la red), no en el mismo paso. `net` = toque de red, `serve` = falta de saque (8 s / no golpea el lanzamiento), `under` = por debajo de la red, `block` = bloqueo del saque, `attackServe` = ataque del saque rival por encima de la red en zona de ataque (13.3.4) |
+| `point` | `{team, reason:'in'|'out'|'antenna'|'double'|'four'|'net'|'serve'|'under'|'block'|'attackServe', text, score, sideout, rallyTime, rallyHits, setWon, matchWon, how:'ace'|'kill'|'tip'|'block'|'free'|'error', player (falta personal o null), lastKind, lastShot, antenna ([x,y,z] del contacto con la antena \| null = cruzó por fuera; solo con reason 'antenna'), highlight (0..1: lo grande que ha sido el punto; ≥ 0,55 «grande», ≥ 0,8 «clímax»), digs (int: defensas de remate del peloteo), streak (int ≥ 1: puntos seguidos del que puntúa en el set), savedSetPoint (bool: tenía en contra punto de set/partido), signal ('in'\|'out'\|'touched'\|'four'\|'double'\|'net'\|'under'\|'antenna'\|'attackFault'\|'delay8'\|'serveFault': señal oficial del árbitro), touchedOut (bool ⇔ signal 'touched'), landSide (0 = x > 0, 1 = x < 0, -1 sin bote), hold (s de juego hasta el siguiente saque o `gameOver`), clutch (bool: final apretado, SIM-05)}` | punto. `antenna` = toca la antena (aunque no cruce la red, 8.4.3) o cruza en todo o en parte por fuera del espacio de paso (8.4.4). `text` es la frase del árbitro (lista cerrada en simtest `POINT_TEXTS`; 'out' según el último toque: "Saque fuera", "Remate fuera", "Recepción fuera", "Defensa fuera"…; balón que toca la red y cae en el propio campo: "Saque a la red"/"Balón a la red" con `reason 'in'` (dentro) o `'out'` (fuera)). `attackServe` llega unos instantes DESPUÉS del `hit` (al cruzar el balón la red), no en el mismo paso. `net` = toque de red, `serve` = falta de saque (8 s / no golpea el lanzamiento), `under` = por debajo de la red, `block` = bloqueo del saque, `attackServe` = ataque del saque rival por encima de la red en zona de ataque (13.3.4) |
 | `sideout` | `{team}` | cambio de saque (rota el sacador) |
 | `set` | `{team, setNo, score, sets}` | set ganado |
 | `match` | `{team, sets, setScores}` | partido ganado (al caer el balón) |
 | `gameOver` | `{team, sets, setScores}` | fin de partido humano tras la pausa (UI muestra pantalla final) |
 | `newSet` | `{setNo}` | empieza el set siguiente |
 | `switch` | `{from, to, auto, reset?, reason?}` | cambia el jugador controlado (auto = lo decide el juego; `reason:'defense'` = al colocar la CPU, ~1,5 s antes del remate) |
+| `dribble` | `{player, team, x, y, n (1..of), of (botes de este ritual), speed (m/s contra el suelo), last (bool)}` | cada bote del ritual del sacador CPU (SIM-04); en ese paso `ball.z === BR`. Audio: bote controlado |
 | `courtChange` | `{setNo, why:'set'|'eight', score, sets, pause}` | cambio de campo (18.2.1 / 18.2.2): al acabar un set que no cierra el partido y a los 8 del 3.er set. Solo presentación (el humano sigue en x > 0) |
+| `fx:highfive` / `fx:fistbump` / `fx:chestbump` / `fx:clap` | `{team, x, y, z (sim), strength 0..1}` | NO los emite sim: main.js vacía `VB.Players.drainFx()` justo después de `Players.update` y los añade al array del frame (contactos cosméticos de la celebración; FX, cámara, audio y UI los ven). Audio: `highfive` → choque, `fistbump` → puños, `chestbump` → pecho (PLY-15, victoria del partido, strength 1), `clap` → palmada de ánimo; `fx:catch` (players, cada recogida del bote en el ritual del sacador CPU, strength 0,6) → recogida blanda; `fx:call` (players, PLY-20: «¡mía!» del que va a por el balón, un evento por balón, `z` = cabeza, strength 0,6; audio lo ignora por ahora) |
 
 ### 4.4 Módulos de presentación (todas las funciones son opcionales; main.js las llama con guarda y try/catch)
 Objetos: `VB.Arena`, `VB.FX`, `VB.Players`, `VB.CameraRig`, `VB.Input`, `VB.Audio`, `VB.UI`.
@@ -178,11 +206,103 @@ Objetos: `VB.Arena`, `VB.FX`, `VB.Players`, `VB.CameraRig`, `VB.Input`, `VB.Audi
 `VB.FX.confetti(team, n)`, `ballObject()`, `dust(x, y, n, dirx, diry)`; `VB.CameraRig.slowmo(scale, realSec, easeOut?)`, `kick(deg)`, `getShot()` (incluye `'court'`), `getDebug()` (`.pf` = plan del plano del punto, `.ccU` = avance de la grúa del cambio de campo 0..1 o -1, `.mateLo` = NDC y de los hombros del compañero entre cámara y jugador (-9 = no aplica), `.mateUp` = m que sube la cámara en táctil para sacarlo del cuadro), `_setOrbit(a)` (pruebas); `VB.Input.rumble(s, ms)`, `poll()` añade `confirm, hitHeld, jumpHeld, padEvent (''|'connected'|'disconnected', un frame)`, `VB.Input.padInfo()` → `{connected, id, mapping}`, `VB.Input._debug()` (pruebas; `.pad.rest` = reposo aprendido del stick: la zona muerta se mide desde ahí, mando con deriva);
 `VB.UI.nav(it, realDt)`, `back()`, `ingest(events, g)`, `callout(text, team)`, `isPanelOpen()`, `padEvent(kind)` (main.js con `it.padEvent`: "Mando desconectado" en la pausa); `VB.Audio.hover()`, `ui(kind)`, `setVolume/getVolume`, `play(name, gain?, x?, y?)`, `sting(name)`, `ready()`, `VARIANTS`, `LOOPS`, `LEVELS` (plan de mezcla en dB, solo lectura), `synthSteps(name, variant, rate)` (pruebas); `stats` añade `deferred`, `lateDrop`, `lateMax` (ms): sonidos críticos sin buffer aún que se aplazan / se descartan por llegar tarde.
 
+**Añadidos opcionales, pulido ola 1**: `VB.Players.drainFx(out)` (ver eventos `fx:*`), `VB.Players.heroShotAware` (true: la convergencia sigue `CameraRig.heroShot()`), `VB.Players._marker()` (pruebas),
+rig de solo lectura `aMode/aw0/aw1, hipYaw, fk[].lock, pdW, diveTc, vh` (`offX/offY` incluye la convergencia del punto: hasta 4 m de la sim; `rigOf`/`handWorld` son la verdad visual);
+`VB.Arena.prewarmList()` (copias que comparten geometría/material, sin tocar la escena), `VB.Arena.prewarmCompile()` (→ ms; compila contra el destino real del post), `VB.FX.prewarmList()`, `VB.FX._dbg()`,
+`VB.Arena._dbg().crowdU` (uniform `uCrowdLight` de la grada);
+`VB.CameraRig.heroShot()` → null o `{heroId, mateId, team, camX, camY, hx, hy, heroYaw, conv, mx, my, mateYaw, t}` (solo en `'point'`; objeto reutilizado, no modificar), `hitStop(ms, grade)`, `punch(deg)`, `clinchLeft()`,
+`getDebug()` añade `cutN` (sube en cada corte deliberado), `lastCut {from, to, kind:'point'|'serve'|'court'|'over', t}`, `nextCutIn` (s reales al próximo corte; -1 ninguno), `timeScale, hitStop, punch, shake, fb`, `pf.mode/.how/.both/.team/.heroX/.backCut`;
+`VB.Input.rumbleSig(name, k)` (firmas perfect/good/poor/body/won/lost/match/kill/block), `ctx.settings.rumble === false` apaga la vibración, sin gesto previo no se llama a `navigator.vibrate`, `_debug().sigs/.dead`;
+`VB.Audio.stats.ticks`, `VB.Audio._debug()` (pruebas), sonidos `spikeHero, blockHero, sub, slamSub, tick, slap, fist`;
+`VB.UI.bannerRect()` (px CSS o null), `VB.UI.onHoldSkip()` (main.js al recortar la pausa), `VB.UI.bootReady(bootEl)`, `VB.UI._gym()` (pruebas).
+
+**Añadidos opcionales, pulido ola 2**: audio: la síntesis del banco va en un Worker creado desde el propio audio.js (función `VBAudioModule`, Blob, sin ficheros ni red; respaldo: cola troceada con una variante de cada sonido de juego primero); `VB.Audio.stats.worker` (`'none'|'starting'|'on'|'off'|'failed:<motivo>'`), `stats.workerMs`, `stats.workerHi` (ms hasta el saludo), `stats.bumped`, `stats.missed` (nombre → veces pedido sin buffer), `VB.Audio._bank(name)` (pruebas), `window.__vbAudioNoWorker = true` (pruebas: sin Worker).
+ui_main: en táctil no hay consejo arriba durante el saque (los dos saques van en el aviso anclado `#prompt.two`, 2×2; `#promptKey` sigue visible para bots y herramientas); cintas grandes del punto como mucho 1 de cada 3 puntos (salvo `highlight ≥ 0,8`, punto de set/partido leído de `serveReady`, o punto de set salvado); durante el plano de héroe con el héroe a la izquierda (`getDebug().pf.heroX < -0,5`) el marcador `#sb` se atenúa.
+camera.js: temblor del bote también tras un bloqueo (0,045 / 0,2 s); el plano de héroe lee `#sb`/`#pbug` (una vez por punto), predice el balón y los rivales. players.js: el que anota sigue de cara a la cámara del héroe (`c.hyaw`) hasta que acaba la pausa; colocación con los dos pies plantados (`layerG(P,T,w,plant)`, `SET_PLANT`, `SET_UP = 0,12`).
+
+**Añadidos opcionales, pulido ola 2 (segunda tanda)**:
+players: `VB.Players.faceOf(p)` (en `'point'`/`'over'` la orientación objetivo de la celebración; si no, `rig.yaw`); rig de solo lectura `celV`, `celId`,
+`apOn`/`apS`/`apWarp` (carrera de ataque), `standW`, `yawV`, `lieW`. Durante ~1 s antes del salto de ataque de la CPU `offX/offY` puede valer hasta ~2,5 m
+(carrera visual; 0 en el despegue): usar la posición VISUAL (`rigOf`, `visPos`) para sombras y encuadres. Las excepciones de `Players.onEvent` se registran
+una vez como `[VB][ERROR] Players.onEvent`.
+arena/fx: `VB.Arena._dbg().mood` (luz de tensión; `mood.force` 0..1 la fuerza en pruebas, -1 = automático), `_dbg().led` (`w` cortina del mensaje, `GLOW`);
+mallas `hallShell` (cascarón del pabellón, sin luces) y `contactBlobs` (fx: manchas de contacto de balón + 4 atletas en un `InstancedMesh`; sustituye a la
+sombra del balón); el material de los halos es `ShaderMaterial` (`halos.material.uniforms.opacity`); los mensajes LED entran con cortina de 0,38 s
+(`led.msgOn` = pedido o visible); confeti dentro del plano en la victoria.
+camera: `getShot()` añade `'clinch'`, `'cutaway'`, `'intro'`; `lastCut.kind` añade `'clinch'` (los dos cortes del cierre de set/partido, secos), `'cutaway'`
+(vuelta seca del plano corto del sacador rival a la recepción; la ENTRADA a ese plano es un corte `'serve'`) e `'intro'` (entrada de la presentación;
+sale con `'serve'`); `VB.CameraRig.playIntro(s)` (main.js al mostrar la tarjeta; 0 = cortar); `clinchLeft()` real; `getDebug()` añade `ft`,
+`clinch {phase:''|...|'hero', left, team, why}`, `fovWant`, `fovBoost`, `tfBack`, `defW`, `defF` (`x` con `&camdbg=1`). Lee `ctx.uiDock` y
+`ctx.settings.camStable` (temblor 0; `prefers-reduced-motion` lo deja al 30 %).
+audio: `VB.Audio.ui('wipe'|'intro'|'introEnd'|'introSkip')`, `sting('intro')`, `introInfo()` → `{active, t}`, `voices()`; `stats.fxIn/fxOut/dribIn/dribOut/
+pooled/poolFull/voicesMax/intro/wipe/react`; `ui(kind)` con un nombre desconocido no suena (sin argumento = clic). Sonidos `handclap`, `chest`, `dribble`,
+`wipe`, `introSwell`, `introSting`.
+ui_main: `VB.UI.introStart(g)`, `introEnd(skipped)`, `wipe(team, cb)` (cortinilla de marca; cortes punto → saque/cambio de campo armados con `nextCutIn`,
+transiciones de pantalla de 450 ms), `resize(w,h)`, pruebas `_stamp()`, `_offArrow()`, `_wipe()`, `_wipeLog(on)`, `_endStats()`. El rótulo de set/partido
+va en el hueco de ARRIBA durante la órbita del cierre (`getDebug().clinch.phase === 'hero'`) y el indicador de borde (UI-10) solo se ve en planos de juego
+(oculto con `getShot()` `'clinch'|'cutaway'|'intro'|'point'|'court'|'over'`).
+
+**Añadidos, arreglos tras la verificación de la ola 2 (8-nov-2026)**:
+camera: `getDebug().clinch.x` (pruebas: `[aHd, aHn, pitch, handT, headN, hz0, hz1, vl, anc, ang]`). La órbita del PARTIDO filma a los ganadores desde la grada a la que
+miran (de perfil mientras están de cara el uno al otro; de frente cuando players los abre hacia la cámara, frentes a < 60°); el seguimiento lento del cierre
+mantiene en cuadro un SUJETO (el defensor más cercano a la marca o, si no, el atacante); en el cierre la mano más alta queda ~3,5 % del alto bajo
+`VB.UI.bannerRect()`. En el peloteo, si el balón va a botar a > 0,4 m por fuera en ≤ 1,2 s, la cámara de juego sigue al balón, no al jugador (`lostBall`).
+players: en la victoria del partido, 0,5 s después del choque de pecho los dos ganadores se giran hacia la cámara (`VB.ctx.camera.position`), como mucho
+35° vueltos hacia el compañero. `sepOffset`: los compañeros nunca quedan a < 0,5 m (offset visual de la raíz, la sim no cambia; 0 en `serveReady`).
+arena/fx: mallas fusionadas (para herramientas): `poles` (antenas + postes + protecciones, sustituye a `antennas`/`posts`/`pads`), los filos de luz de las
+pantallas van en la malla emisiva (sin `screenStrip`), `focusRing` (un plano con `ShaderMaterial`; sin `focusTarget`/`focusFill`), `floorDecals`
+(InstancedMesh: marcas del bote y filos, ondas, marcador de caída, retícula de apuntado, línea de altura; `landMarker`, `aimRet`, `ripple`, `mark`,
+`markRim`, `dropLine` siguen como estado fuera de la escena), `impactBills` (destellos y ondas de choque). Nombres de objetos: `floor`, `outerFloor`,
+`netFront/netBack`, `endScreen`, `hallName`, `halos`, `camFlashes`, `sparks`, `dust`, `confetti`, `ball`, `ballOutline`, `trail`, `aimArc`.
+`VB.FX._dbg()` añade `ringD, ringOp, decals, decOrder, bills, billOrder, dropLine`; `VB.Arena._dbg().screens`; tabla de luz `LT[i].floor` (tinte de la
+tarima por nivel). En pantallas de ≤ 560 px CSS de alto, durante saque/peloteo, los marcadores del pabellón que caen en el 40 % superior del cuadro se atenúan al 22 %.
+ui_main: `VB.UI.preboot(ctx)` (main.js, con el contexto WebGL creado, antes de montar el pabellón), `VB.UI.bootBusy()`, `VB.UI._boot()` (pruebas);
+fuente embebida «VB Marca» en index.html (recortes OFL de Barlow Condensed; solo `.logo` y el rótulo del telón; comprobar con `document.fonts` y una cara
+`VB Marca` 900 italic en `status === 'loaded'`); `window.__vbFonts` avisa al momento si la hoja de Google no carga. Relevo del arranque en dos tiempos
+(menú pulsable con la escena pintada o a 2,6 s; luego se funde el fondo del telón). Texto del ace con la recepción a la red: «La recepción de la CPU va a
+la red» / «Tu recepción va a la red».
+
+**Añadidos opcionales, pulido ola 3 (9-nov-2026)**:
+players: `VB.Players._face(p, 'shout'|'effort'|'joy'|'sad'|'neutral'|'', sec)` (pruebas); rig de solo lectura: huesos `eyes, mouth, teeth, brow[2], hair` (27 huesos por
+atleta, antes 21; misma textura de huesos y mismo programa), pesos de expresión `fxS/fxE/fxJ/fxD`, `hairAng` (coleta con muelle), `ritOn`, `tgtW`. Proporciones: cadera 1,042 m
+(antes 1,0); hombros, cabeza y altura total iguales. Emite `fx:catch` y `fx:call` por `drainFx` (ver §4.3).
+arena/fx: `VB.Arena.landmarks.benches[2]` (equipo 0 en x > 0, centro del banco a la altura de las cabezas), `.photographers[4]`, `.tvCamera` (coords de sim, fuera de la zona
+libre: objetivos de plano, no posiciones de cámara); `_dbg().crew`, `_dbg().crewReact(team, big, 'point'|'set'|'match')`, `_dbg().POSE`; la malla `officials` incluye ahora
+el entorno de pista (banquillos, fotógrafos, cámara de TV; `userData.lowIdx` = recorte de baja con `setDrawRange`); `ledRefl` tipo 3 (vidrio de la barandilla, uniforme
+`glassK`); `Builder.cbox()` (caja achaflanada); programa de la grada `vb-crowd-6` (asientos de prensa sin ola ni saltos). `finishLedRefl()` cierra `ledRefl` tras la grada.
+camera: `lastCut.kind` añade `'attract'` (cortes de la realización del menú; la UI no los tapa con cortinilla). `playIntro(s)` acaba en el encuadre del primer saque y cede
+SIN corte (`nextCutIn` = -1 mientras dura; saltarla con `playIntro(0)` sigue cortando con `'serve'`). `getDebug()` añade `menu`, `menuT`, `blk`, `board`, `pbNar`, `pbW`, `pbD`;
+pruebas `VB.CameraRig._serveDbg()`, `_boardGuard()`; URL `&camBreak=clinch|serve|board|menu|block|clutter|hitstop|intro|cut` (solo pruebas). El saque propio usa `ctx.isTouch`.
+Lee (con guarda) `VB.Arena._dbg()` refs/judges, `VB.UI.bannerRect()` y `VB.Arena.landmarks.scoreHung`. input.js: degradados más oscuros en GOLPEAR/SACAR y SALTAR (≥ 4,5:1).
+audio: `VB.Audio.ui('count', u, ts)`, `ui('countEnd')`, `ui('mvp', win)`, `ui('arrowHover', dir)`, `ui('arrow', dir, nivel, n)`, `ui('arrowEdge', dir)`, `ui('optHover')`,
+`ui('toggle', on)`, `ui('select', i, n)`, `ui('slide', v)` (`ui()` acepta hasta 3 argumentos tras el nombre); `stats.count/countAt/countEnd/countEndAt/mvp`; `_debug()` añade
+`crowd`, `endFocus`, `count`, `stingTeam`; sonidos `cntTick, cntLock, arwHover, optHover, stepUp, stepDown, arwEdge, tglOn, tglOff, optSel, mvpWin, mvpLose`. Con la hoja
+final a la vista (state `over`) la grada baja 6 dB. ui.js lo cablea: tics en cada frame de la cuenta con cambio y «clac» en el último, MVP al empezar la cuenta, flechas
+de dificultad (paso/tope/hover) y filas de Ajustes (hover, Sí/No, varios valores, deslizador).
+ui_main: `VB.UI.callout(text, team, cls, dur, o)` (`cls` `'neg'|'good'|'tip'` = respuesta personal; `o.html`, `o.gauge` −1..1 medidor pronto/tarde), `VB.UI._prompt()` (pruebas);
+Ajustes sin fila de dificultad (está en el menú), agrupados Audio · Imagen · Juego · Accesibilidad; glifos PlayStation (✕ ○ □ △) si `padInfo().id` es de Sony; `#srLive`
+(aria-live) con el tanteo hablado y `lang="es"`. La cinta grande del punto sigue a `highlight ≥ VB.HOLD.bigAt` (+ ace y punto de set salvado; subtítulo «Final apretado» con `clutch`).
+
+**Añadidos opcionales, arreglos tras la verificación de la ola 3 (9-nov-2026)**:
+sim: `checkBody` no da toque de cuerpo de su propio equipo a un jugador de IA (no `isHuman`) cuando sería falta (`g.lastPlayer === p` o `g.touches >= 3`) o el
+compañero soltó el balón hace < 0,3 s (el humano sigue expuesto a la regla); ai.js `TEAM_GAP` 0,2 s y `dodgeOwnBall` (`DODGE_R` 0,9 m). `VB.HOLD.set` = 4,0 (antes 3,4; CAM-09).
+players: con la sim parada en una escena de depuración (`ctx.frozen && ctx.debug && dt <= 0 && g.mode === 'point'`) la celebración se representa como cuadro vivo
+en bucle (re-emite el `point`, así que `fx:highfive` y familia llegan a FX/audio/UI también en `debug=point|ace`); pruebas `VB.Players._tab()` → `{t, max}`.
+arena: la señal `antenna` del 1.er árbitro es «balón fuera» (`POSE.outFa`); señalar la antena es del juez de línea (`judgeSignal`). `POSE.antenna` desaparece.
+camera: `getDebug()` añade `svcEval`, `svcOff` (candidatos del saque y proyecciones de oficiales de este frame) y `bgP` (desvío de cabeceo del plano final, °);
+en el plano `over`, `board` vale `'baja'|'fuera'` (marcador colgado y pantallas LED de los fondos siempre fuera por arriba). Hit-stop con tope nominal + 2 frames.
+ui_main: chip de la jugada «JUGADA · N» y subtítulo «¡Jugada de N toques!» (visible: «Jugada», no «Peloteo»); `.rl.fade` (animación `rlFade` 0,25 s) al salir el rótulo de
+set/partido; `placeT3` coloca `#banner` fuera del marcador entero, `.hud-btns` y la pausa táctil (mueve el centro con `style.left`; `&uidbg=1` registra candidatos);
+`#coach.thru` (0,28) y `#guide.thru` (0,22) en todas las pantallas; `tryReveal` no empieza relevo en escenas `debug=`.
+
 **Cámara (convención)**: los cambios de jugador SIEMPRE deslizan (nunca corte). El plano de reacción del punto (camera.js `planPoint`) usa
 cortes deliberados de retransmisión (a ~0,45 s del bote y de vuelta al saque si cruza la red o está a > 11 m); no son cambios de control.
 **Señal de golpeo (una sola ventana)**: el brillo de GOLPEAR/SACAR (input.js `CUE_OFF/CUE_ON`), el aro que se cierra sobre el botón (`.vt-ring`, clase `.cue`),
 el aro amarillo de la pista (fx.js) y el aviso "¡Golpea!" de ui.js (`HINT_OFF/HINT_ON`) usan `hitWindow().press` en (−0,15, 0,24). Si cambia, cambiar input.js, ui.js y simtest a la vez.
 input.js escucha `pointerdown` en captura sobre `window` (1.er toque tras jugar con mando); un control de UI se excluye con `data-ui`.
+El plano de héroe dicta la coreografía de la celebración: el que anota, de cara a la cámara; el compañero llega por detrás y a un lado (`heroShot`). El plano de reacción entra siempre por corte a los 0,45 s;
+la vuelta al saque se anuncia en `nextCutIn` y casi siempre es corte.
+El cierre del set/partido (CAM-09) entra por corte al seguimiento del balón a cámara lenta y corta otra vez a la órbita de los ganadores (`'clinch'`). Antes de cada saque rival hay un plano corto del sacador (CAM-14, 0,95-1,4 s) que vuelve a la recepción ≥ 0,55 s antes del lanzamiento. Tras nuestro ataque la cámara sigue el balón hasta el bote (CAM-08), sin corte.
 El cambio de campo (`courtChange`, plano `'court'`) usa un corte deliberado (reacción → grúa alta por la banda de la mesa) y baja SIN corte al plano del saque; la base de control queda congelada durante la grúa.
 
 ## 5. Orden por frame (main.js)
@@ -190,8 +310,9 @@ El cambio de campo (`courtChange`, plano `'court'`) usa un corte deliberado (rea
 2. `it = Input.poll(realDt)`; `it.pause` → `togglePause`; `it.mute` → `toggleMute`; `it.any` → `Audio.unlock`.
 3. Si no está en pausa/congelado/vertical: entrada → mundo con `CameraRig.getBasis()`; acumula `realDt*timeScale` y
    ejecuta `Sim.step(game, 1/120, input)` N veces (flancos solo en el primer subpaso); `drainEvents` → `events`.
-   Si llega `gameOver` en partido → `state = 'over'`.
-4. `Arena.update(g, gdt, ev)` → `Players.update` → `FX.update` → `CameraRig.update(g, realDt, ev)` →
+   Si llega `gameOver` en partido → `state = 'over'`. Con la tarjeta de presentación (`ctx.introLeft > 0`) la sim no avanza y los eventos iniciales salvo `newMatch` llegan al acabarla; cualquier botón la salta (sin golpear ni pausar). Antes del bucle de pasos: en `'point'`/`'over'` jugando, GOLPEAR, SALTAR, CAMBIAR o ACEPTAR llama a `Sim.skipHold(g)`; si recorta, se consume
+   el flanco y se avisa a `UI.onHoldSkip()`.
+4. `Arena.update(g, gdt, ev)` → `Players.update` → (main.js añade a `ev` los `fx:*` de `Players.drainFx`) → `FX.update` → `CameraRig.update(g, realDt, ev)` →
    `Audio.handle(ev, g)` → `Audio.update(g, realDt)` → `UI.update(g, gdt, ev)`.
 5. `renderFn(ctx)` o `renderer.render(scene, camera)`.
 6. Calidad adaptativa (ventanas de 2 s): baja un nivel (`setQuality`) tras 2 ventanas < 45 fps o 3 seguidas < 52; en "baja" reduce la escala de render solo si
@@ -230,6 +351,25 @@ El cambio de campo (`courtChange`, plano `'court'`) usa un corte deliberado (rea
   `&maxdt=0.25` permite dt grande en entornos lentos (SwiftShader va a ~1-5 fps; con GPU real headless va a 100+ fps).
   Las escenas congeladas envejecen los efectos del evento que las dispara (main.js `fxAge`) para que el destello no salga a plena intensidad.
 - Los errores de módulos los registra main.js como `console.error('[VB][ERROR] Modulo.funcion: ...')` (máx. 3 por sitio) sin romper el bucle.
+- `node tools/camtest.js [s=75] [semillas] [tamaños]` (de camera_input; SPEED=2, PAR=4, LOG=1, ONLY=…, STRICT=0, PAGE_ROOT=carpeta, DIFF=nivel): regresión automática de la cámara
+  en vivo (bounds, cuts, cutcount, servecut, nextcut, settle, mono, reverse, hero agregado por tamaño, scorer, bbox, ball, fovrate). Escribe solo en `tools/out/camtest/`.
+- Las herramientas de DevTools (`tools/cdp.js`) crean un perfil temporal `vb3c-*` en %TEMP% y lo borran al cerrar (síncrono, 5 reintentos, y otra vez tras el `exit` de Chrome);
+  al abrir barren los de más de 1 h (`VB_NOSWEEP=1` lo desactiva). `VB_PROFDEBUG=1` informa.
+  `cdp.js` exporta `killOrphans(maxAgeMs, dry)`: cierra (`taskkill /T /F`) los Chrome huérfanos cuyo proceso Y carpeta `vb3c-*` tienen más de 1 h; `sweepProfiles` lo llama si un perfil viejo no se deja borrar o una vez por hora (marca `%TEMP%/vb3-orphans.stamp`).
+  `node tools/clean.js` (ui_main; `DRY=1` solo lista, `AGE=min`) lo hace a mano.
+  `cdp.js` exporta además `sweepDead(deadMs = 8 min, dry)` (borra las carpetas `vb3c-*` de más de `deadMs` que ningún proceso vivo nombra en su línea de órdenes; si no se puede
+  listar, no borra nada; `open()` lo llama como mucho cada 2 min, marca `%TEMP%/vb3-dead.stamp`, al momento con ≥ 4) y `listVbProcs()`; `clean.js` acepta `DEAD=min`.
+- Parámetros nuevos (ola 2): `&intro=0|1` (tarjeta de presentación; en depuración solo con `&intro=1`), `&stamp=1` (sello de calidad también con autopilot), `&vig=0` (sin viñeta CSS), `&wipe=0` (sin cortinilla), `&camdbg=1`. `tools/cdp.js` `page.frames(ms, {dir, start})` (fotogramas reales del compositor) y `VB_ROOT=carpeta`; `perf.js` `EXTRA=params`. camtest añade follow, fovpump, wide, spiker y cutaway.
+- Parámetros nuevos (arreglos ola 2): `&preboot=0`, `&bootcap=ms`, `&gymintro=0`, `&camyaw=rad` (depuración: gira la cámara tras su update). `node tools/offarrow.js` (UI-10, escena `?debug=spike&camyaw=±1.2`).
+  camtest: `fovpump` es la puerta de p95 ≤ 12°/s y balón fuera de cuadro 0; `fovpumpX` (p50 ≤ 2°/s y balón tras el HUD) y `spikerAll` (agregado CAM-13) son informativas salvo con `STRICT2=1`.
+  simtest: bandas de la matriz con `MATRIX_STAT` (objetivo ± 3,5·sd/√(semillas × min/20)); las 6 casillas de banda estrecha juegan el doble de semillas. `perf.js` repite `startMatch` cada 0,5 s hasta `'playing'` (arranque lento).
+- Ola 3: camtest añade `serve`, `board`, `clutter`, `block` en cada partida y partidas aparte `[menu]` (`menu` + `intro`), `[setend]` (`clinch`) y `[feel]` (hit-stop y punch);
+  `EXTRA_JOBS=` las quita, `CAMBREAK=` fuerza una rotura y `node tools/camtest.js selftest` comprueba que cada `&camBreak=` hace fallar su comprobación. `tools/padplay.js` acepta
+  `PADID="…"` (p. ej. DualSense → glifos ✕/○). `tools/audiotest.js` añade las partes 2d/2e/6 y `--endui-only`, `--no-endui`, `--w3-only`, `--sweep-only`, `--no-w3`, `--no-sweep`.
+  simtest: sección de calibración del highlight (20 partidos completos de demo, también en el modo rápido) y comprobación de determinismo.
+- Arreglos ola 3: simtest falla si la IA (equipo CPU, demo, autopilot o compañero IA del humano; no el jugador que controla el humano) comete un punto `double`/`four`.
+  camtest: `feel` descuenta un frame lento del PC dentro de la congelación y `wide` ignora los frames a ≤ 0,4 s de un tirón del PC (lo indican); `serve` en pantalla
+  baja/táctil admite el sacador en x ≥ −0,02 NDC.
 - Capturas y logs en `tools/out/`.
 
 ## 7. Terminología (castellano, árbitro FCVB)

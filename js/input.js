@@ -191,7 +191,7 @@
   // ---------------- Táctil ----------------
   var T = { lastTouch: 0, idle: false, see: [false, false, false], rects: null, rectAt: -1, joy: null, ox: 0, oy: 0, jx: 0, jy: 0, R: 58, hit: false, jump: false, pause: false, sw: false,
             hitDown: false, jumpDown: false, used: false, shown: false, lastLabel: '', lastReady: null, lastServe: null,
-            touchN: 0, touchEvT: 0, lastW: 0, lastH: 0, lastRing: -2, lastCue: false };
+            touchN: 0, touchEvT: 0, lastW: 0, lastH: 0, lastRing: -2, lastCue: false, dead: false };
   var el = {};
   // estadística/diagnóstico (VB.Input._debug(): pruebas táctiles y de mando con eventos reales vía DevTools)
   var stats = { press: { hit: 0, jump: 0, sw: 0, pause: 0 }, out: { hit: 0, jump: 0, sw: 0, pause: 0, confirm: 0 }, slide: 0, lost: 0, adopt: 0,
@@ -203,19 +203,22 @@
   var SA = { t: 0, r: 0, b: 0, l: 0 };
   var ROLES = ['hit', 'jump', 'sw', 'pause'];
   var CSS = '' +
-    '#touch{position:absolute;inset:0;pointer-events:none;z-index:5;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}' +
+    '#touch{position:absolute;inset:0;pointer-events:none;z-index:5;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:opacity .15s ease-out}' +
+    // BALÓN MUERTO (entre el punto y el saque siguiente): todo el overlay baja al 25 % y deja ver el plano de reacción;
+    // vuelve en 150 ms al llegar el saque. Las zonas de pulsación siguen activas (sin latencia añadida).
+    '#touch.dead{opacity:.25;transition:opacity .3s ease-in}' +
     '#touch.on{pointer-events:auto;touch-action:none}' +
     '.vt-zone{position:absolute;left:0;top:0;bottom:0;width:50%;touch-action:none}' +
     '.vt-joy{position:absolute;left:0;top:0;pointer-events:none;transition:opacity .25s}' +
     '.vt-base{position:absolute;width:var(--d);height:var(--d);margin:calc(var(--d)/-2) 0 0 calc(var(--d)/-2);border-radius:50%;' +
-      'background:radial-gradient(circle,rgba(255,255,255,.05) 0 55%,rgba(255,255,255,.12) 56% 100%);border:2px solid rgba(255,255,255,.28);' +
+      'background:radial-gradient(circle,rgba(6,10,18,.30) 0 55%,rgba(6,10,18,.62) 56% 100%);border:2px solid rgba(255,255,255,.6);' +
       'box-shadow:0 6px 24px rgba(0,0,0,.35),inset 0 0 18px rgba(0,0,0,.25)}' +
     '.vt-base::before,.vt-base::after{content:"";position:absolute;left:50%;top:50%;width:0;height:0;border:6px solid transparent;opacity:.45}' +
     '.vt-base::before{border-bottom:8px solid #fff;margin:calc(var(--d)/-2 + 5px) 0 0 -6px}' +
     '.vt-base::after{border-top:8px solid #fff;margin:calc(var(--d)/2 - 19px) 0 0 -6px}' +
     '.vt-knob{position:absolute;width:var(--k);height:var(--k);margin:calc(var(--k)/-2) 0 0 calc(var(--k)/-2);border-radius:50%;' +
       'background:radial-gradient(circle at 35% 30%,#fff 0,#e9eef5 35%,#aab7c7 100%);box-shadow:0 4px 14px rgba(0,0,0,.45);opacity:.9}' +
-    '.vt-joy.idle{opacity:.38}.vt-joy.idle .vt-knob{opacity:.55}' +
+    '.vt-joy.idle{opacity:.5}.vt-joy.idle .vt-knob{opacity:.55}' +
     // sonda de zonas seguras: su padding = env(safe-area-inset-*) (lo lee readSafe; el joystick no nace bajo el notch)
     '.vt-safe{position:absolute;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;' +
       'padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}' +
@@ -233,9 +236,12 @@
     // detrás, más transparentes (.3). Al tocar o al brillar (.ready) vuelven enseguida.
     '#touch.idle .vt-btn:not(.dn):not(.ready):not(.cue):not(.off){opacity:.55;transform:scale(.94)}#touch.idle .vt-btn.off{transform:scale(.94)}' +
     '#touch .vt-btn.see:not(.dn):not(.ready):not(.cue):not(.off){opacity:.3}' +
+    // ⇄ es pequeño: en reposo se queda legible (disco oscuro >= 3:1 sobre un suelo gris medio)
+    '#touch.idle .vt-btn.vt-sw:not(.dn):not(.ready):not(.cue):not(.off):not(.see){opacity:.82}' +
     '#touch.idle .vt-btn.see:not(.dn):not(.ready):not(.cue):not(.off){opacity:.26}' +
     '.vt-hit{width:104px;height:104px;right:calc(22px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));' +
-      'background:radial-gradient(circle at 40% 30%,#ff9a6b,#ff6b3d 55%,#e2481f)}' +
+      // (UI-19: paradas más oscuras; rótulo blanco de 15 px >= 4,5:1 en el centro del botón)
+      'background:radial-gradient(circle at 40% 30%,#ec7444,#c9441a 55%,#a8300e)}' +
     '.vt-hit.ready{box-shadow:0 0 0 4px rgba(255,210,63,.85),0 0 28px rgba(255,190,60,.75),0 8px 22px rgba(0,0,0,.4),inset 0 2px 0 rgba(255,255,255,.28);opacity:1}' +
     // aro que se CIERRA sobre GOLPEAR/SACAR (como el aro amarillo de la pista): toca el borde del botón en el instante
     // ideal de pulsar; el brillo (.ready) se enciende ~0,24 s antes, a tiempo para reaccionar con el pulgar
@@ -245,10 +251,15 @@
     // arco con >= 16 px entre botones: SALTAR a la izquierda y algo más abajo que GOLPEAR; CAMBIAR (⇄) arriba a la
     // derecha de GOLPEAR, fuera del recorrido del pulgar de SALTAR a GOLPEAR (antes estaba encima de SALTAR a 8 px)
     '.vt-jump{width:78px;height:78px;right:calc(150px + env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));' +
-      'background:radial-gradient(circle at 40% 30%,#7fb2ff,#3f8cff 55%,#2565d6);font-size:13px}' +
-    '.vt-jump.off,.vt-sw.off{opacity:.3}' +
+      'background:radial-gradient(circle at 40% 30%,#6a9cf5,#2c62e0 55%,#1d4bbf);font-size:13px}' +
+    // DESACTIVADO (SALTAR y ⇄ en el saque): borde discontinuo, sin relieve ni color, icono atenuado y un candado pequeño
+    '.vt-jump.off,.vt-sw.off{opacity:.62;border-style:dashed;border-color:rgba(255,255,255,.6);box-shadow:none;filter:saturate(.15) brightness(.8)}' +
+    '.vt-jump.off{background:radial-gradient(circle at 40% 30%,rgba(90,110,140,.55),rgba(30,40,58,.6))}' +
+    '.vt-btn.off svg,.vt-btn.off span{opacity:.5}' +
+    '.vt-btn.off::before{content:"";position:absolute;right:12%;top:9%;width:7px;height:6px;margin-top:-5px;border:2px solid #dfe6ef;border-bottom:0;border-radius:5px 5px 0 0;box-sizing:border-box}' +
+    '.vt-btn.off::after{content:"";position:absolute;right:calc(12% - 1px);top:9%;width:9px;height:7px;border-radius:2px;background:#dfe6ef;box-shadow:0 0 0 1.5px rgba(8,13,22,.85)}' +
     '.vt-sw{width:50px;height:50px;right:calc(14px + env(safe-area-inset-right));bottom:calc(152px + env(safe-area-inset-bottom));' +
-      'background:rgba(8,13,22,.62);font-size:10px;letter-spacing:.1em}' +
+      'background:rgba(8,13,22,.78);border-color:rgba(255,255,255,.62);font-size:10px;letter-spacing:.1em}' +
     '.vt-sw svg{width:46%}' +
     '.vt-pause{width:46px;height:46px;right:calc(14px + env(safe-area-inset-right));top:calc(14px + env(safe-area-inset-top));' +
       'background:rgba(8,13,22,.66);border-color:rgba(255,255,255,.3)}' +
@@ -532,6 +543,11 @@
   /** Estado contextual de los botones (SACAR en tu saque, brillo y aro en el momento de golpear). */
   function touchContext() {
     var g = ctx.game; if (!g || !el.hit) return;
+    // (también durante el plano corto del sacador rival, CAM-14: no se puede hacer nada hasta su lanzamiento; vuelve con el corte)
+    var CRs = VB.CameraRig, cwy = false;
+    if (CRs && CRs.getShot && g.mode === 'serve') { try { cwy = CRs.getShot() === 'cutaway'; } catch (e) { cwy = false; } }
+    var dead = !g.demo && (g.mode === 'point' || g.mode === 'over' || cwy);
+    if (dead !== T.dead) { T.dead = dead; el.root.classList.toggle('dead', dead); }
     // nuestro saque: sacador humano, tanto con el balón en la mano ('ready') como lanzado ('toss')
     var sv = g.server || (g.ball && g.ball.held) || null;
     var myServe = g.mode === 'serve' && !!sv && sv.team === 0 && !g.demo && !g.autopilot;
@@ -578,15 +594,64 @@
   }
 
   // ---------------- Vibración ----------------
+  function rumbleOff() { var st = ctx && ctx.settings; return !!(st && st.rumble === false); }   // Ajustes > Vibración (UI-16)
+  function actuator() {
+    if (it.device !== 'gamepad' || pad.idx < 0) return null;
+    var pads = navigator.getGamepads ? navigator.getGamepads() : null, p = pads && pads[pad.idx];
+    var va = p && p.vibrationActuator;
+    return va && va.playEffect ? va : null;
+  }
+  function pulse(va, ms, strong, weak) {
+    var r = va.playEffect('dual-rumble', { startDelay: 0, duration: ms, weakMagnitude: Math.min(1, weak), strongMagnitude: Math.min(1, strong) });
+    if (r && r.catch) r.catch(function () { });
+  }
+  /** Sin un gesto previo en la página Chrome bloquea navigator.vibrate y deja un error en la consola: no lo intentamos. */
+  function canVibrate() { var ua = navigator.userActivation; return !!navigator.vibrate && !(ua && !ua.hasBeenActive); }
   function rumble(strength, ms) {
+    if (rumbleOff()) return;
     strength = Math.max(0, Math.min(1, strength || 0.5)); ms = Math.max(10, Math.min(250, ms || 60));
     try {
-      if (it.device === 'gamepad' && pad.idx >= 0) {
-        var pads = navigator.getGamepads ? navigator.getGamepads() : null, p = pads && pads[pad.idx];
-        var va = p && p.vibrationActuator;
-        if (va && va.playEffect) { var r = va.playEffect('dual-rumble', { startDelay: 0, duration: ms, weakMagnitude: strength * 0.6, strongMagnitude: strength }); if (r && r.catch) r.catch(function () { }); }
+      var va = actuator();
+      if (va) pulse(va, ms, strength, strength * 0.6);
+      else if (it.device === 'touch' && canVibrate()) navigator.vibrate(Math.round(8 + strength * 14));
+    } catch (e) { }
+  }
+  /* FIRMAS de vibración: el pulgar distingue la calidad del toque sin mirar.
+   * Cada pulso [inicio ms, duración ms, motor fuerte (grave), motor débil (agudo)]; en el móvil, patrón de navigator.vibrate.
+   * perfect = dos toques secos de 25 ms separados 40 ms · good = un toque de 45 ms · poor = golpe sordo y largo (grave) ·
+   * body = pulso corto y grave · won = doble pulso · lost = uno flojo · match = tres pulsos crecientes · kill / block = golpe pleno. */
+  var SIG = {
+    perfect: { pad: [[0, 25, 0.55, 1.0], [65, 25, 0.55, 1.0]], vib: [25, 40, 25] },
+    good:    { pad: [[0, 45, 0.5, 0.7]], vib: [34] },
+    poor:    { pad: [[0, 110, 0.25, 0.04]], vib: [70] },
+    body:    { pad: [[0, 40, 0.42, 0.0]], vib: [26] },
+    won:     { pad: [[0, 60, 0.6, 0.5], [140, 60, 0.6, 0.5]], vib: [40, 100, 40] },
+    lost:    { pad: [[0, 140, 0.3, 0.06]], vib: [60] },
+    match:   { pad: [[0, 70, 0.65, 0.5], [160, 70, 0.8, 0.6], [320, 150, 1.0, 0.8]], vib: [50, 110, 50, 110, 130] },
+    kill:    { pad: [[0, 90, 0.7, 0.45]], vib: [55] },
+    block:   { pad: [[0, 85, 0.85, 0.55]], vib: [55] }
+  };
+  var sigTimers = [], sigLog = [];
+  function rumbleSig(name, k) {
+    if (rumbleOff()) return;
+    var s = SIG[name]; if (!s) return;
+    k = Math.max(0.2, Math.min(1.5, +k || 1));
+    try {
+      var va = actuator();
+      if (va) {
+        for (var i = 0; i < sigTimers.length; i++) clearTimeout(sigTimers[i]);   // una firma nueva corta la anterior
+        sigTimers.length = 0;
+        if (sigLog.length < 64) sigLog.push(name);
+        var P = s.pad;
+        for (var j = 0; j < P.length; j++) {
+          (function (q) {
+            if (q[0] <= 0) pulse(va, q[1], q[2] * k, q[3] * k);
+            else sigTimers.push(setTimeout(function () { try { var v2 = actuator(); if (v2) pulse(v2, q[1], q[2] * k, q[3] * k); } catch (e) { } }, q[0]));
+          })(P[j]);
+        }
       } else if (it.device === 'touch' && navigator.vibrate) {
-        navigator.vibrate(Math.round(8 + strength * 14));
+        if (sigLog.length < 64) sigLog.push(name);
+        if (canVibrate()) navigator.vibrate(s.vib);
       }
     } catch (e) { }
   }
@@ -635,8 +700,10 @@
     isTouchActive: function () { return T.used || !!(ctx && ctx.isTouch); },
     /** OPCIONAL: los controles táctiles están en pantalla (la cámara aparta el aro de los botones). */
     overlayShown: function () { return T.shown; },
-    /** OPCIONAL: vibración corta (mando o móvil). strength 0..1, ms. */
+    /** OPCIONAL: vibración corta (mando o móvil). strength 0..1, ms. Nada si ctx.settings.rumble === false. */
     rumble: rumble,
+    /** OPCIONAL: vibración con firma ('perfect'|'good'|'poor'|'body'|'won'|'lost'|'match'|'kill'|'block'), k = intensidad 0,2..1,5. */
+    rumbleSig: rumbleSig,
     /** OPCIONAL: mando activo { connected, id, mapping ('standard' | '' = heurística) }. */
     padInfo: function () { return { connected: pad.idx >= 0, id: pad.id, mapping: pad.mapping }; },
     /** OPCIONAL (pruebas: tools/touchplay.js, tools/padplay.js, tools/out/ci/*): copia del estado interno. */
@@ -646,7 +713,8 @@
                device: it.device, mx: it.mx, my: it.my, safe: { t: SA.t, r: SA.r, b: SA.b, l: SA.l },
                pad: { idx: pad.idx, known: pad.known, id: pad.id, mapping: pad.mapping,
                       rest: pad.idx >= 0 && pad.rest[pad.idx] ? { x: pad.rest[pad.idx].x, y: pad.rest[pad.idx].y } : null },
-               geo: JSON.parse(JSON.stringify({ hit: GEO.hit, jump: GEO.jump, sw: GEO.sw, pause: GEO.pause })), stats: JSON.parse(JSON.stringify(stats)) };
+               geo: JSON.parse(JSON.stringify({ hit: GEO.hit, jump: GEO.jump, sw: GEO.sw, pause: GEO.pause })), stats: JSON.parse(JSON.stringify(stats)),
+               sigs: sigLog.slice(), dead: T.dead };
     },
     /** Devuelve las intenciones del frame (objeto reutilizado). */
     poll: function (dt) {

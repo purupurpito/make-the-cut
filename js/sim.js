@@ -168,6 +168,7 @@
     opts = opts || {};
     var teams = [[mkPlayer(0, 7, 0), mkPlayer(0, 11, 1)], [mkPlayer(1, 3, 0), mkPlayer(1, 9, 1)]];
     var diff = normDiff(opts.difficulty);
+    var seed = opts.seed != null ? opts.seed : (Date.now() & 0x7fffffff);
     var g = {
       opts: opts,
       demo: !!opts.demo,
@@ -184,7 +185,15 @@
       atkServe: null,          // {team, player}: toque por encima de la red sobre el saque rival en zona de ataque; es falta
                                // (13.3.4) solo si se COMPLETA como ataque: el balón cruza la red o lo toca el rival
       aimIn: [0, 0], aimOn: false, // dirección de apuntado de la entrada del último paso (mundo, normalizada)
-      rng: makeRng(opts.seed != null ? opts.seed : (Date.now() & 0x7fffffff)),
+      rng: makeRng(seed),
+      seed: seed | 0,          // semilla del partido (la presentación determinista la usa sin gastar g.rng: ritual SIM-04)
+      serveNo: 0,              // saques puestos en este partido (cuenta serveReady)
+      // ritual del sacador CPU (SIM-04), objeto persistente: on, phase ('none'|'wait'|'pre'|'dribble'|'post'|'done'), t (s desde
+      // el silbato), dur (s silbato -> lanzamiento), bounces, n (botes hechos), u (0..1 del bote en curso), player, rx/ry
+      // (punto del bote), cyc/td/tu (periodo, bajada, subida), v0/vu/vc/vi (empujón, subida, recogida, contra el suelo), press
+      ritual: dblFields({ on: false, phase: 'none', t: 0.5, dur: 0.5, bounces: 0, n: 0, u: 0.5, player: null, rx: 0.5, ry: 0.5,
+        pre: 0.5, post: 0.5, still: 0.5, cyc: 0.5, td: 0.5, tu: 0.5, v0: 0.5, vu: 0.5, vc: 0.5, vi: 0.5, press: false }),
+      cpuTossIn: -1,           // s de juego hasta el lanzamiento programado de la CPU (0 = ya lanzado; -1 = humano / sin saque)
       time: 0,                 // tiempo de juego acumulado (s)
       teams: teams,
       players: teams[0].concat(teams[1]),
@@ -213,9 +222,14 @@
       atkTeam: -1, atkHow: '', atkHits: 0, // último ataque/saque (para atribuir kill/ace aunque el rival lo toque y no lo salve)
       jobMem: [null, null], jobMemT: [-1, -1], jobSwT: [-9, -9], jobHop: [-1, -1], // IA: memoria de quién va al balón (histéresis)
       digMargin: 0,            // margen de defensa (s) del último remate (>0 el defensor llega con tiempo; <0 al hueco)
-      lastPoint: null,         // {team, reason, text}
+      lastPoint: null,         // {team, reason, text, how, highlight, digs, streak, savedSetPoint, clutch, signal, touchedOut, landSide, hold, setWon, matchWon}
       setPoint: -1, matchPoint: -1, // equipo con punto de set/partido en el saque actual (-1 nadie)
-      rally: { t: 0, hits: 0 },// duración y toques del rally en curso
+      rally: { t: 0, hits: 0, digs: 0 },// duración, toques y defensas de remate (SIM-01) del rally en curso
+      // presentación (SIM-03): g.present = true (main.js, partidos humanos) alarga la pausa de los puntos grandes;
+      // hold = duración (s) de la pausa del punto en curso (point.hold), para skipHold
+      present: !!opts.present, hold: 0,
+      streakTeam: -1, streakN: 0, // racha de puntos seguidos en el set (SIM-01)
+      atkHuman: false, atkGrade: '', // quién/cómo fue el último ataque o saque (para 'kill perfecto del humano')
       events: [],              // cola de eventos del paso (main.js la vacía cada frame)
       stats: opts.stats ? {
         hits: { pass: 0, set: 0, spike: 0, free: 0, serve: 0 }, blocks: 0, points: 0, why: {}, rallies: [],
@@ -423,6 +437,7 @@
    *  tgt: [x,y] destino explícito (IA) o null para usar aim. */
   function hit(g, p, aim, te, shot, tgt) {
     var t = p.team, sd = side(t), b = g.ball, prof = g.prof[t];
+    var inKind = g.lastKind, inShot = g.lastShot, inPrev = g.prevKind; // lo que llega (para contar defensas de remate)
     if (g.touchTeam === t && g.lastPlayer === p) { fault(g, t, 'double', 'Dobles: el mismo jugador toca dos veces', p); return; }
     var count = g.touchTeam === t ? g.touches + 1 : 1;
     if (count > 3) { fault(g, t, 'four', '4 toques', p); return; }
@@ -522,7 +537,7 @@
     g.prevKind = g.lastKind;
     g.lastKind = kind; g.lastShot = sub; g.lastTouchT = g.time; g.netSince = false;
     if (kind === 'spike' || (kind === 'free' && sub === 'tip')) {
-      g.atkTeam = t; g.atkHow = kind === 'spike' ? 'kill' : 'tip'; g.atkHits = g.rally.hits + 1;
+      g.atkTeam = t; g.atkHow = kind === 'spike' ? 'kill' : 'tip'; g.atkHits = g.rally.hits + 1; g.atkHuman = human; g.atkGrade = grade;
       if (g.stats && kind === 'spike') g.stats.spikes[t]++;
     }
     b.speed = Math.hypot(v[0], v[1], v[2]);
@@ -530,6 +545,10 @@
     if (sub === 'body') p.anim = 0.12; // sin gesto de brazos: solo el rebote
     if (shot === 'dive') p.lastAction = 'dive';
     g.rally.hits++;
+    // defensa de un remate (SIM-01): primer toque controlado (no desviado ni de rebote en el cuerpo) de un remate rival,
+    // también si llega frenado por el propio bloqueo ('touch') o es la cobertura de un bloqueo directo rival ('stuff')
+    if (kind === 'pass' && count === 1 && sub !== 'shank' && shot !== 'body' &&
+        (inKind === 'spike' || (inKind === 'block' && inPrev === 'spike' && (inShot === 'touch' || inShot === 'stuff')))) g.rally.digs++;
     if (human) g.lastGrade = grade;
     if (g.stats) {
       g.stats.hits[kind]++; g.stats.grades[grade]++; if (human) g.stats.hgrades[grade]++;
@@ -611,7 +630,7 @@
       g.lastShot = kindB; g.lastTouchT = g.time; g.hardIn = false; g.digOk = true; g.netSince = false;
       if (kindB === 'stuff') { // el atacante casi nunca la salva
         g.hardIn = true; g.digOk = g.rng() < 0.2 * (1 - qb);
-        g.atkTeam = q.team; g.atkHow = 'block'; g.atkHits = g.rally.hits;
+        g.atkTeam = q.team; g.atkHow = 'block'; g.atkHits = g.rally.hits; g.atkHuman = human; g.atkGrade = gradeOf(qb);
       } else if (kindB === 'touch') { // el remate sigue vivo pero frenado: la defensa IA lo saca más que un remate limpio
         var dpb = g.prof[q.team];
         g.hardIn = true; g.digOk = g.rng() < clamp(0.08 + dpb.dig * 1.0, 0, 0.85);
@@ -647,6 +666,13 @@
           mx2 * mx2 + my2 * my2 <= BODY_R * BODY_R && mz2 >= BODY_Z0 + 0.12 && mz2 <= BODY_Z1) continue; // aún dentro
       if (g.lastPlayer === p && g.time - g.lastTouchT < (g.lastShot === 'body' ? 1.2 : 0.5)) continue; // acaba de salir de sus manos / de rebotarle
       if (g.lastKind === 'serve' && g.touchTeam === p.team) continue;      // su propio saque
+      // la IA aparta el cuerpo del balón que le costaría una falta (dobles: su propio toque que le vuelve a caer
+      // encima; 4 toques: el equipo ya tocó tres veces) o que su compañero acaba de soltar a su lado (< 0,3 s: el
+      // toque siguiente lo juega con un gesto, no "de rebote"). Antes, ~1 de cada 1.800 puntos la IA hacía dobles
+      // o 4 toques así (recepción desviada que le cae encima; colocación que rebota en el compañero pegado).
+      // El humano sigue expuesto a la regla: si el balón le da a él, es toque.
+      if (!isHuman(g, p) && g.touchTeam === p.team &&
+          (g.lastPlayer === p || g.touches >= 3 || g.time - g.lastTouchT < 0.3)) continue;
       if (isHuman(g, p)) { if (g.swingLive) continue; }                    // gesto en curso: lo resuelve processSwing
       else if (g.jobs[p.team] === p && g.digOk) continue;                 // la IA que va a jugarlo lo juega (salvo 'batida')
       hit(g, p, null, 0.25, 'body', null);
@@ -656,17 +682,178 @@
 
   /** Balón en la mano del sacador (antes del lanzamiento): pecho, delante, hacia la mano izquierda.
    *  Un leve vaivén (el sacador "bota" el balón en la mano mientras se concentra). */
-  function holdPos(g, p, out) {
+  function holdBase(g, p, out) {
     var sd = side(p.team);
     out.x = p.x - sd * C.HOLD_FWD;            // hacia la red (-sd)
     out.y = p.y - sd * C.HOLD_SIDE;           // izquierda del jugador mirando a la red
     out.z = p.z + C.HOLD_Z + Math.sin(g.time * 3.1) * 0.025;
     return out;
   }
+  /** Punto de la MANO izquierda del sacador (players ancla ahí la palma con `_holdPos`). Fuera del ritual = balón en la
+   *  mano (holdBase). Durante el ritual de la CPU (SIM-04): en 'pre'/'post' la mano lleva el balón (= posición del balón);
+   *  en 'dribble' la mano se aparta a un lado mientras el balón bota y vuelve a recogerlo (ver ritualHand). */
+  function holdPos(g, p, out) {
+    var r = g.ritual;
+    if (r && r.on && r.player === p && g.mode === 'serve' && g.serveState === 'ready') return ritualHand(g, p, r, out);
+    return holdBase(g, p, out);
+  }
+
+  // ---------- Ritual del sacador CPU (SIM-04) ----------
+  /* Entre el silbato y el lanzamiento, el sacador de la CPU bota el balón 1-3 veces con un estilo propio y un tiempo
+   * previsible. Todo es presentación DETERMINISTA: no gasta el azar del partido (g.rng); los parámetros salen de un hash
+   * de la semilla del partido, el jugador y el número de saque. Fases (r.phase): 'wait' (balón en la mano antes del
+   * silbato) → 'pre' (baja el balón hasta la altura del bote) → 'dribble' (botes; r.n = botes ya hechos, r.u = 0..1 dentro
+   * del bote en curso) → 'post' (lo recoge y lo sube a la mano) → 'done' (quieto, concentrado, hasta el lanzamiento).
+   * El balón es una función pura de r.t (s desde el silbato). Cada contacto con el suelo emite `dribble`.
+   *   relZ: altura del centro del balón al soltarlo/recogerlo (m)   fwd/side: punto del bote delante/izquierda del sacador
+   *   e: restitución del bote (madera)   tossBy: el lanzamiento nunca después de esto desde serveReady (8 s de reglamento)
+   *   minDur/maxDur: duración total del ritual (silbato → lanzamiento)   postMove: s que tarda en subir el balón a la mano */
+  var RITUAL = VB.RITUAL = { minDur: 0.8, maxDur: 1.6, tossBy: 4.5, relZ: 1.0, fwd: 0.42, side: 0.12, e: 0.8,
+    postMove: 0.22, minCyc: 0.32, hand: 0.30, dwell: 0.017, demoMax: 0.8, demoBounces: 1, demoWhistle: 0.2, demoHold: 1.65 };
+  // demo del menú (ola 3): un solo bote firme, ritual de 0,8 s como mucho (minCyc puede alargarlo a ~0,84), silbato a los
+  // demoWhistle s y pausa rutinaria demoHold s (no 1,9): el ritual no puede frenar la demo. Con 2 botes/1,1 s y silbato a 0,35 la
+  // demo bajó de 113 a 108 puntos de media en 20 min (semillas 1-200) y 4 semillas no llegaban a 2 sets; así: 116 puntos, 0/200.
+  // dwell: el balón se queda en contacto con el suelo ~1 frame de 60 Hz (aplastamiento), para que todo frame pintado vea el bote
+  function hash01(a, b, c) { // [0,1) determinista (mezcla tipo murmur3)
+    var h = Math.imul((a | 0) ^ 0x2545F491, 0x9E3779B1) ^ Math.imul((b | 0) + 0x632BE5AB, 0x85EBCA77) ^ Math.imul((c | 0) + 0x1B873593, 0xC2B2AE3D);
+    h ^= h >>> 16; h = Math.imul(h, 0x85EBCA6B); h ^= h >>> 13; h = Math.imul(h, 0xC2B2AE35); h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+  /** Estilo fijo de cada jugador en el partido (personalidad): botes base y tempo. */
+  function ritualStyle(g, p) {
+    var a = hash01(g.seed, p.id, -1), b = hash01(g.seed, p.id, -2), c = hash01(g.seed, p.id, -3);
+    return { n: a < 0.3 ? 1 : a < 0.75 ? 2 : 3, tempo: b, pre: 0.16 + 0.06 * c, still: 0.12 + 0.14 * hash01(g.seed, p.id, -4) };
+  }
+  /** Divide un bote de periodo T en bajada (td, empujado), contacto (RITUAL.dwell) y subida (tu) con restitución RITUAL.e. */
+  function ritualSplit(r, T) {
+    var d = RITUAL.relZ - C.BR, G = C.G, lim = Math.sqrt(2 * d / G) - 1e-3;
+    T -= RITUAL.dwell;
+    var lo = Math.max(0.05, T - lim), hi = Math.min(lim, T - 0.05), td = 0.5 * (lo + hi);
+    for (var it = 0; it < 40; it++) { // e(td) crece con td: bisección
+      td = 0.5 * (lo + hi);
+      var tu = T - td, e = ((d + G * tu * tu / 2) / tu) / ((d + G * td * td / 2) / td);
+      if (e < RITUAL.e) lo = td; else hi = td;
+    }
+    var tu2 = T - td;
+    r.cyc = T + RITUAL.dwell; r.td = td; r.tu = tu2;
+    r.v0 = (d - G * td * td / 2) / td;          // velocidad del empujón hacia abajo
+    r.vu = (d + G * tu2 * tu2 / 2) / tu2;        // velocidad de subida tras el bote
+    r.vc = r.vu - G * tu2;                       // velocidad (hacia arriba) al recogerlo
+    r.vi = r.v0 + G * td;                        // velocidad contra el suelo
+  }
+  /** Prepara el ritual del sacador sv en setupServe (CPU) o lo apaga (humano). Devuelve s desde serveReady hasta el lanzamiento. */
+  function ritualSetup(g, sv, cpu) {
+    var r = g.ritual;
+    r.on = false; r.phase = 'none'; r.t = 0; r.n = 0; r.u = 0; r.player = null; r.dur = 0; r.bounces = 0;
+    if (!cpu || g.opts.ritual === false) return -1;               // opts.ritual:false = sin ritual (pruebas: flujo anterior)
+    var st = ritualStyle(g, sv), sn = g.serveNo;
+    var n = st.n, v = hash01(g.seed, sv.id, sn);
+    if (v < 0.11) n--; else if (v > 0.89) n++;                       // a veces uno más o uno menos
+    var press = g.setPoint >= 0 || g.matchPoint >= 0;                 // con punto de set/partido se toma su tiempo
+    if (press) n++;
+    n = clamp(n, 1, g.demo ? RITUAL.demoBounces : 3);
+    var maxDur = g.demo ? RITUAL.demoMax : RITUAL.maxDur;
+    var T = (n === 1 ? 0.50 : n === 2 ? 0.40 : 0.33) + (n === 1 ? 0.10 : n === 2 ? 0.06 : 0.04) * st.tempo;
+    T *= 1 + 0.06 * (hash01(g.seed, sv.id, sn + 7777) * 2 - 1);
+    var pre = st.pre, still = st.still + (press ? 0.12 : 0), post = RITUAL.postMove;
+    var dur = pre + n * T + post + still;
+    if (dur > maxDur) {                                               // demasiado largo: primero la pausa final, luego el tempo
+      still = Math.max(0.08, still - (dur - maxDur)); dur = pre + n * T + post + still;
+      if (dur > maxDur) { T = Math.max(RITUAL.minCyc, (maxDur - pre - post - still) / n); dur = pre + n * T + post + still; }
+    }
+    var minDur = Math.min(RITUAL.minDur, maxDur);
+    if (dur < minDur) { still += minDur - dur; dur = minDur; }
+    ritualSplit(r, T);
+    var sd = side(sv.team);
+    r.on = true; r.phase = 'wait'; r.player = sv; r.bounces = n; r.pre = pre; r.post = post; r.still = still; r.dur = dur;
+    r.rx = sv.x - sd * RITUAL.fwd; r.ry = sv.y - sd * RITUAL.side; r.press = press;
+    return Math.min(RITUAL.tossBy, g.whistleAt + dur);
+  }
+  function herm(a, b, ma, mb, s) { // Hermite cúbica: valores a,b y tangentes ma,mb (ya multiplicadas por la duración)
+    var s2 = s * s, s3 = s2 * s;
+    return (2 * s3 - 3 * s2 + 1) * a + (s3 - 2 * s2 + s) * ma + (-2 * s3 + 3 * s2) * b + (s3 - s2) * mb;
+  }
+  var _rH = { x: 0, y: 0, z: 0 };
+  /** Posición del balón durante el ritual: función pura del tiempo del ritual (r.t, o `at` si se pasa: mirar adelante). */
+  function ritualBall(g, p, r, out, at) {
+    var t = at != null ? at : r.t, H = holdBase(g, p, _rH), R0 = RITUAL.relZ + p.z, s, k;
+    if (t <= 0) { out.x = H.x; out.y = H.y; out.z = H.z; return out; }
+    if (t < r.pre) {                                  // baja el balón: llega al punto del bote ya empujándolo
+      s = t / r.pre;
+      out.x = herm(H.x, r.rx, 0, 0, s); out.y = herm(H.y, r.ry, 0, 0, s); out.z = herm(H.z, R0, 0, -r.v0 * r.pre, s);
+      return out;
+    }
+    var td = t - r.pre, nb = r.bounces * r.cyc;
+    if (td < nb) {                                    // botes
+      k = Math.floor(td / r.cyc); if (k >= r.bounces) k = r.bounces - 1;
+      var tau = td - k * r.cyc;
+      out.x = r.rx; out.y = r.ry;
+      if (tau < r.td) out.z = R0 - r.v0 * tau - C.G * tau * tau / 2;
+      else if (tau < r.td + RITUAL.dwell) out.z = p.z + C.BR;                       // en el suelo
+      else { var tt = tau - r.td - RITUAL.dwell; out.z = p.z + C.BR + r.vu * tt - C.G * tt * tt / 2; }
+      return out;
+    }
+    var tp = td - nb;                                 // lo recoge y lo sube a la mano
+    if (tp < r.post) {
+      s = tp / r.post;
+      out.x = herm(r.rx, H.x, 0, 0, s); out.y = herm(r.ry, H.y, 0, 0, s); out.z = herm(R0, H.z, r.vc * r.post, 0, s);
+      return out;
+    }
+    out.x = H.x; out.y = H.y; out.z = H.z; return out;
+  }
+  /** Mano izquierda durante el ritual: con el balón en 'pre'/'post'/'done'; en cada bote suelta el balón en el punto del
+   *  bote, se aparta a un lado (RITUAL.hand m) mientras el balón baja y sube, y vuelve a por él al final del bote. */
+  function ritualHand(g, p, r, out) {
+    ritualBall(g, p, r, out);
+    if (r.phase !== 'dribble') return out;
+    var u = r.u, k = sstep01(u / 0.22) * (1 - sstep01((u - 0.76) / 0.24));
+    out.x = r.rx; out.y = r.ry; out.z = RITUAL.relZ + p.z - 0.05 * k;
+    out.y -= side(p.team) * RITUAL.hand * k;       // hacia la izquierda del sacador
+    return out;
+  }
+  /** OPCIONAL (players, PLY-16): balón del ritual en el instante `t` (s desde el silbato) sin tocar nada; null si no hay ritual. */
+  function ritualAt(g, t, out) {
+    var r = g.ritual; if (!r || !r.on || !r.player) return null;
+    return ritualBall(g, r.player, r, out || {}, t);
+  }
+  function endRitual(g) { var r = g.ritual; if (r.on) { r.on = false; r.phase = 'none'; } g.cpuTossIn = -1; }
+  function sstep01(x) { x = x < 0 ? 0 : x > 1 ? 1 : x; return x * x * (3 - 2 * x); }
+  /** Avanza el ritual un paso: fase, avance del bote y evento `dribble` en cada contacto con el suelo. */
+  function ritualStep(g, sv) {
+    var r = g.ritual;
+    if (!r.on) return;
+    var t0 = r.t;
+    if (g.serveAuth) r.t = Math.max(0, g.serveT - g.whistleAt);
+    var t = r.t, td = t - r.pre, nb = r.bounces * r.cyc;
+    if (!g.serveAuth) r.phase = 'wait';
+    else if (t < r.pre) r.phase = 'pre';
+    else if (td < nb) {
+      r.phase = 'dribble';
+      var k = Math.min(r.bounces - 1, Math.floor(td / r.cyc));
+      r.u = (td - k * r.cyc) / r.cyc;
+      r.n = (td - k * r.cyc) >= r.td ? k + 1 : k;
+    } else { r.n = r.bounces; r.u = 1; r.phase = td - nb < r.post ? 'post' : 'done'; }
+    // contactos con el suelo cruzados en este paso
+    for (var i = 0; i < r.bounces; i++) {
+      var tc = r.pre + i * r.cyc + r.td;
+      if (t0 < tc && t >= tc) {
+        emit(g, { type: 'dribble', player: sv, team: sv.team, x: r.rx, y: r.ry, n: i + 1, of: r.bounces, speed: r.vi, last: i === r.bounces - 1 });
+      }
+    }
+  }
 
   function stepBall(g, dt) {
     var b = g.ball, G = gEff(b);
-    if (b.held) { holdPos(g, b.held, b); return; }
+    if (b.held) {
+      var rt = g.ritual;
+      if (rt.on && rt.player === b.held && g.mode === 'serve') { // ritual de la CPU: el balón sigue la función del bote
+        var ox = b.x, oy = b.y, oz = b.z;
+        ritualBall(g, b.held, rt, b);
+        if (dt > 0) { b.vx = (b.x - ox) / dt; b.vy = (b.y - oy) / dt; b.vz = (b.z - oz) / dt; }
+        if (rt.phase === 'dribble') b.spin += dt * 3;
+      } else holdPos(g, b.held, b);
+      return;
+    }
     if (g.mode === 'serve') { // balón lanzado al aire para sacar
       b.vz -= C.G * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.spin += dt * 2; return;
     }
@@ -762,18 +949,60 @@
     else if (st === g.lastTeam && g.netSince) point(g, 1 - g.lastTeam, 'out', netTxt);
     else point(g, 1 - g.lastTeam, 'out', outText(g));
   }
-  function fault(g, t, reason, text, p) { point(g, 1 - t, reason, text, p); }
+  function fault(g, t, reason, text, p, sig) { point(g, 1 - t, reason, text, p, sig); }
 
-  /** Asigna punto. reason: 'in'|'out'|'antenna'|'under'|'double'|'four'|'net'|'serve'|'block' */
-  function point(g, w, reason, text, p) {
+  /* ---------- Presentación del punto (SIM-01/02/03) ----------
+   * Campos AÑADIDOS al evento `point` (y copiados en g.lastPoint) para que cámara, UI, audio, luces y jugadores
+   * coincidan en cuánto vale un punto y qué señala el árbitro. Puros y deterministas: no gastan azar ni cambian
+   * el flujo del partido (salvo la duración de la pausa con g.present = true). Ver notes/sim.md §P1. */
+  /** Señal oficial del árbitro por motivo (reason 'out' y 'serve' se resuelven aparte, ver point()). */
+  var SIGNAL = { in: 'in', out: 'out', four: 'four', double: 'double', net: 'net', under: 'under', antenna: 'antenna',
+    attackServe: 'attackFault', block: 'attackFault', serve: 'serveFault' };
+  /** Pausa del punto con g.present (partido humano): normal, punto grande (highlight >= HOLD.bigAt), set, partido;
+   *  `eight` se suma por el cambio de campo a los 8 del set decisivo. */
+  var HOLD = VB.HOLD = { routine: 1.9, big: 2.4, bigAt: 0.55, set: 4.0, match: 4.2, eight: 1.4, skipAfter: 0.8, skipTo: 0.3 };
+  /** Pausa clásica (demo, autopilot, tests sin g.present): la de siempre. */
+  var HOLD_LEGACY = { routine: 1.9, set: 3.6, match: 2.2, eight: 1.4 };
+  /** Pesos de highlightOf (SIM-01, calibrados en SIM-05; ver notes/sim.md §P3). Solo lectura para los demás módulos. */
+  var HL = VB.HL = { base: 0.15, rallyFrom: 4, rally: 0.025, rallyMax: 0.35, dig: 0.08, digMax: 0.3, playMax: 0.4,
+    block: 0.4, ace: 0.25, perfectKill: 0.1, setPoint: 0.15, clutch: 0.28, clutchLast: 8, clutchGap: 2, matchPoint: 0.45,
+    saved: 0.15, streakAt: 3, streak: 0.1, errorMax: 0.35 };
+  /** "Lo grande que ha sido" un punto, 0..1 (SIM-01, calibrado en SIM-05). o = {how, rallyHits, digs, perfectKill, setPoint,
+   *  matchPoint, clutch, saved, streak, setWon, matchWon}. Base 0,15 +
+   *  - JUGADA (tope conjunto 0,4: con la base, una jugada épica sola ya llega a 0,55): peloteo largo +0,025 por toque a partir
+   *    del 5.º (máx. 0,35) y +0,08 por defensa de remate (máx. 0,3);
+   *  - CÓMO: bloqueo directo +0,4 (un punto de bloqueo siempre es grande), ace +0,25, remate perfecto del humano +0,1;
+   *  - PRESIÓN: punto de set +0,15, o final apretado (`clutch`: últimos 8 puntos del set con 2 o menos de diferencia) +0,28,
+   *    lo que sea mayor (no se suman: el 24-23 no vale menos que el 23-22); punto de partido +0,45 más;
+   *  - salvar un punto de set/partido +0,15; racha de 3 o más +0,1.
+   *  Un error se queda en 0,35 como mucho salvo que cierre el set o el partido. Redondeado a milésimas. */
+  function highlightOf(o) {
+    var play = Math.min(HL.rallyMax, HL.rally * Math.max(0, (o.rallyHits || 0) - HL.rallyFrom)) + Math.min(HL.digMax, HL.dig * (o.digs || 0));
+    var h = HL.base + Math.min(HL.playMax, play);
+    if (o.how === 'block') h += HL.block;
+    if (o.how === 'ace') h += HL.ace;
+    if (o.perfectKill) h += HL.perfectKill;
+    h += Math.max(o.setPoint ? HL.setPoint : 0, o.clutch ? HL.clutch : 0);
+    if (o.matchPoint) h += HL.matchPoint;
+    if (o.saved) h += HL.saved;
+    if (o.streak >= HL.streakAt) h += HL.streak;
+    if (o.how === 'error' && !o.setWon && !o.matchWon) h = Math.min(h, HL.errorMax);
+    return Math.round(clamp(h, 0, 1) * 1000) / 1000;
+  }
+  /** Final apretado (SIM-05): con el marcador de ANTES del punto, el que va delante está en los últimos HL.clutchLast puntos
+   *  del set (>= 17 de 25, >= 7 de 15) y la diferencia es de HL.clutchGap o menos. */
+  function clutchOf(s0, s1, tgt) { return Math.max(s0, s1) >= tgt - HL.clutchLast && Math.abs(s0 - s1) <= HL.clutchGap; }
+
+  /** Asigna punto. reason: 'in'|'out'|'antenna'|'under'|'double'|'four'|'net'|'serve'|'block'|'attackServe'.
+   *  sig: señal del árbitro explícita (solo la falta de saque: 'delay8' | 'serveFault'). */
+  function point(g, w, reason, text, p, sig) {
     if (g.mode !== 'rally' && g.mode !== 'serve') return;
-    g.score[w]++; g.mode = 'point'; g.timer = 1.9; g.ball.held = null; endSwing(g);
+    g.score[w]++; g.mode = 'point'; g.ball.held = null; endSwing(g);
     var sideout = w !== g.serving;
-    g.lastPoint = { team: w, reason: reason, text: text };
     if (g.stats) { g.stats.points++; g.stats.won[w]++; g.stats.how = g.stats.how || {}; g.stats.why[text] = (g.stats.why[text] || 0) + 1; g.stats.rallies.push(g.rally.t); }
     emit(g, { type: 'whistle', reason: 'point' });
     // cómo se ganó (para UI/público): ace, kill (remate), tip (dejada), block, error, free
-    var how = 'error', b = g.ball;
+    var how = 'error';
     // (sin mirar g.netSince: un saque o remate que roza la cinta y cae dentro sin que nadie lo toque es ace/kill legal;
     //  el balón 'a la red' que cae en su propio campo ya tiene lastTeam !== w)
     if (reason === 'in' && g.lastTeam === w) {
@@ -786,32 +1015,66 @@
       if (how === 'ace') g.stats.aces[w]++; else if (how === 'kill') g.stats.kills[w]++; else if (how === 'block') g.stats.stuffPts[w]++;
       if (p) g.stats.faults[reason] = (g.stats.faults[reason] || 0) + 1;
     }
+    // ¿cierra el set / el partido? ¿cambio de campo a los 8 del set decisivo? (se decide aquí para que el evento lo lleve)
+    var tgt = g.setNo === 3 ? 15 : 25, a = g.score[0], bb = g.score[1];
+    var setWon = g.score[w] >= tgt && g.score[w] - g.score[1 - w] >= 2, matchWon = setWon && g.sets[w] === 1;
+    var eight = !setWon && g.setNo === 3 && !g.courtSwap3 && g.score[w] === 8 && g.score[1 - w] < 8;
+    // contexto (SIM-01): racha en el set, punto de set/partido salvado, defensas de remate del peloteo
+    if (g.streakTeam === w) g.streakN++; else { g.streakTeam = w; g.streakN = 1; }
+    var saved = g.setPoint === 1 - w, digs = g.rally.digs;
+    var clutch = clutchOf(a - (w === 0 ? 1 : 0), bb - (w === 1 ? 1 : 0), tgt);
+    var perfectKill = how === 'kill' && g.atkHow === 'kill' && g.atkHuman && g.atkGrade === 'perfect';
+    var hl = highlightOf({ how: how, rallyHits: g.rally.hits, digs: digs, perfectKill: perfectKill, setPoint: g.setPoint !== -1,
+      matchPoint: g.matchPoint !== -1, clutch: clutch, saved: saved, streak: g.streakN, setWon: setWon, matchWon: matchWon });
+    // señal oficial (SIM-02). 'touched' (balón tocado y fuera): el último contacto fue del equipo que RECIBÍA el ataque o
+    // el saque rival (su bloqueo, o su primer toque: recepción/defensa, también desviada o de rebote en el cuerpo)
+    var touchedOut = reason === 'out' && (g.lastKind === 'block' || (g.lastKind === 'pass' && g.touches === 1 && g.touchTeam === g.lastTeam));
+    var signal = sig || (reason === 'out' ? (touchedOut ? 'touched' : 'out') : SIGNAL[reason] || reason);
+    var ll = g.lastLand, landSide = (reason === 'in' || reason === 'out') && ll && ll.t === g.time ? (ll.x > 0 ? 0 : 1) : -1;
+    // pausa del punto (SIM-03): con g.present (partido humano) más larga para los momentos grandes; si no, la de siempre
+    var hold;
+    if (g.present) hold = matchWon ? HOLD.match : setWon ? HOLD.set : (hl >= HOLD.bigAt ? HOLD.big : HOLD.routine) + (eight ? HOLD.eight : 0);
+    else hold = matchWon ? HOLD_LEGACY.match : setWon ? HOLD_LEGACY.set : (g.demo ? RITUAL.demoHold : HOLD_LEGACY.routine) + (eight ? HOLD_LEGACY.eight : 0);
+    g.timer = hold; g.hold = hold;
     var ev = emit(g, { type: 'point', team: w, reason: reason, text: text, how: how, score: [g.score[0], g.score[1]],
-      sideout: sideout, rallyTime: g.rally.t, rallyHits: g.rally.hits, setWon: false, matchWon: false, player: p || null,
-      lastKind: g.lastKind, lastShot: g.lastShot });
+      sideout: sideout, rallyTime: g.rally.t, rallyHits: g.rally.hits, setWon: setWon, matchWon: matchWon, player: p || null,
+      lastKind: g.lastKind, lastShot: g.lastShot,
+      highlight: hl, digs: digs, streak: g.streakN, savedSetPoint: saved, clutch: clutch,
+      signal: signal, touchedOut: touchedOut, landSide: landSide, hold: hold });
     if (reason === 'antenna') ev.antenna = g.antennaHit ? [g.antennaHit.x, g.antennaHit.y, g.antennaHit.z] : null; // null = por fuera de la antena
+    g.lastPoint = { team: w, reason: reason, text: text, how: how, highlight: hl, digs: digs, streak: g.streakN, savedSetPoint: saved, clutch: clutch,
+      signal: signal, touchedOut: touchedOut, landSide: landSide, hold: hold, setWon: setWon, matchWon: matchWon };
     if (g.stats) g.stats.how[how] = (g.stats.how[how] || 0) + 1;
     if (sideout) { // cambio de saque: rota el sacador del equipo que recupera el saque
       g.serving = w; g.serverIdx[w] = (g.serverIdx[w] + 1) % 2;
       emit(g, { type: 'sideout', team: w });
     }
-    var tgt = g.setNo === 3 ? 15 : 25, a = g.score[0], bb = g.score[1];
-    if (g.score[w] >= tgt && g.score[w] - g.score[1 - w] >= 2) {
-      g.sets[w]++; g.setScores.push([a, bb]); ev.setWon = true;
-      if (g.sets[w] === 2) {
-        g.mode = 'over'; g.timer = 2.2; ev.matchWon = true;
+    if (setWon) {
+      g.sets[w]++; g.setScores.push([a, bb]);
+      if (matchWon) {
+        g.mode = 'over';
         emit(g, { type: 'set', team: w, setNo: g.setNo, score: [a, bb], sets: [g.sets[0], g.sets[1]] });
         emit(g, { type: 'match', team: w, sets: [g.sets[0], g.sets[1]], setScores: g.setScores.slice() });
       } else {
-        g.pendingSet = true; g.timer = 3.6; // + pausa del cambio de campo
+        g.pendingSet = true; // (la pausa ya incluye la del cambio de campo)
         emit(g, { type: 'set', team: w, setNo: g.setNo, score: [a, bb], sets: [g.sets[0], g.sets[1]] });
         courtChange(g, 'set');
       }
-    } else if (g.setNo === 3 && !g.courtSwap3 && g.score[w] === 8 && g.score[1 - w] < 8) {
+    } else if (eight) {
       // Regla 18.2.2: en el set decisivo, cuando un equipo llega a 8 puntos se cambia de campo (sin demora)
-      g.courtSwap3 = true; g.timer += 1.4;
+      g.courtSwap3 = true;
       courtChange(g, 'eight');
     }
+  }
+  /** Saltar la pausa del punto (SIM-03). En 'point'/'over', pasados HOLD.skipAfter (0,8 s) de la pausa, la recorta a
+   *  HOLD.skipTo (0,3 s) como mucho; nunca a menos: el silbato, el cambio de campo y la vuelta al saque siguen su
+   *  orden. Devuelve true si se ha aceptado (también si ya quedaban menos de 0,3 s). Sin efecto en 'serve'/'rally'
+   *  ni con el partido ya terminado (gameOver emitido). Puro: solo toca g.timer. */
+  function skipHold(g) {
+    if ((g.mode !== 'point' && g.mode !== 'over') || g.finished || !(g.timer > 0)) return false;
+    if (g.hold - g.timer < HOLD.skipAfter) return false;
+    if (g.timer > HOLD.skipTo) g.timer = HOLD.skipTo;
+    return true;
   }
   /** Cambio de campo (reglas 18.2.1 y 18.2.2). Es PRESENTACIÓN: el humano sigue en x > 0 (controles relativos
    *  a la cámara); la UI muestra el aviso y arena/cámara pueden escenificarlo. */
@@ -976,27 +1239,35 @@
     }
     g.lastLand = null; g.antennaHit = null; g.atkServe = null;
     g.server = sv; g.serveState = 'ready'; g.serveJump = false; g.serveClock = C.SERVE_CLOCK; g.serveT = 0; g.tossT = 0;
+    g.serveNo++;
+    g.serveAuth = false; g.whistleAt = g.demo ? RITUAL.demoWhistle : 0.7; // (también abajo, tras el serveReady: el ritual lo necesita ya)
     b.held = sv; b.vx = b.vy = b.vz = 0; b.dip = 0; b.wobA = 0;
     g.touchTeam = -1; g.touches = 0; g.lastPlayer = null; g.lastTeam = t; g.jobs[0] = g.jobs[1] = null; g.lastKind = ''; g.lastShot = '';
-    g.timer = g.demo ? 0.9 : 1.3; g.hardIn = false; g.digOk = true; g.prevKind = ''; g.atkTeam = -1; g.atkHow = '';
+    g.hardIn = false; g.digOk = true; g.prevKind = ''; g.atkTeam = -1; g.atkHow = '';
     var prevCtrl = g.ctrl;
     g.ctrl = t === 0 ? sv : g.teams[0][0]; endSwing(g); g.swingLock = 0; g.defRole = '';
-    g.rally.t = 0; g.rally.hits = 0;
+    g.rally.t = 0; g.rally.hits = 0; g.rally.digs = 0;
     // ¿Punto de set / punto de partido?
     var tgt = g.setNo === 3 ? 15 : 25;
     g.setPoint = -1; g.matchPoint = -1;
     for (var k = 0; k < 2; k++) {
       if (g.score[k] >= tgt - 1 && g.score[k] - g.score[1 - k] >= 1) { g.setPoint = k; if (g.sets[k] === 1) g.matchPoint = k; }
     }
+    // CPU: ritual con botes y lanzamiento a hora fija (g.timer = g.cpuTossIn = s hasta el lanzamiento); humano: sin ritual
+    var tossIn = ritualSetup(g, sv, !isHuman(g, sv));
+    g.timer = tossIn > 0 ? tossIn : (g.demo ? 0.9 : 1.3); g.cpuTossIn = tossIn;
+    holdPos(g, sv, b); // en la mano ya en el frame de serveReady
     if (prevCtrl !== g.ctrl) emit(g, { type: 'switch', from: prevCtrl, to: g.ctrl, auto: true, reset: true });
     emit(g, { type: 'serveReady', team: t, player: sv, setPoint: g.setPoint, matchPoint: g.matchPoint });
     // el silbato de autorización llega un instante después (stepServe); desde él corren los 8 s
-    g.serveAuth = false; g.whistleAt = g.demo ? 0.35 : 0.7;
+    g.serveAuth = false; g.whistleAt = g.demo ? RITUAL.demoWhistle : 0.7;
   }
 
   /** Lanza el balón para sacar. jumpServe: toss alto y adelantado + carrera y salto automáticos. */
   function toss(g, sv, jumpServe) {
     var b = g.ball, sd = side(sv.team);
+    var rt = g.ritual; if (rt.on) { rt.on = false; rt.phase = 'none'; }
+    if (g.cpuTossIn > 0) g.cpuTossIn = 0;                  // CPU: lanzado (0 hasta que acaba el saque)
     b.held = null; g.serveState = 'toss'; g.serveJump = !!jumpServe; g.tossT = 0;
     holdPos(g, sv, b); // sale de la mano izquierda, a la altura del pecho
     var hx, hy = sv.y; // punto de contacto (sobre el hombro derecho, algo delante)
@@ -1016,7 +1287,7 @@
     }
     g.lastTouchT = g.time;
     sv.lastAction = 'toss'; sv.actionT = 0; sv.anim = 0.3;
-    if (!isHuman(g, sv)) { var pr = g.prof[sv.team]; g.aiServeTe = clamp(gauss(g) * pr.timing * 0.9, -0.25, 0.25); }
+    if (!isHuman(g, sv)) { var pr = g.prof[sv.team]; g.aiServeTe = clamp(gauss(g) * pr.timing * 0.9, -0.25, 0.2); } // tope tardío 0,2: con 0,25 la ventana de alcance (canReach, ~-0,23 s) se cerraba antes y la CPU dejaba caer su propio lanzamiento
     emit(g, { type: 'toss', player: sv, team: sv.team, jump: g.serveJump, human: isHuman(g, sv) });
   }
 
@@ -1055,7 +1326,7 @@
     sv.anim = 0.35; sv.lastAction = 'serve'; sv.actionT = 0; sv.shot = g.serveJump ? 'jump' : 'float'; sv.grade = grade;
     g.lastKind = 'serve'; g.lastShot = sv.shot; g.mode = 'rally'; g.touchTeam = sv.team; g.touches = 3; g.lastPlayer = sv; g.lastTeam = sv.team;
     g.lastTouchT = g.time; g.hardIn = b.speed > 13; g.netSince = false; g.prevKind = '';
-    g.atkTeam = sv.team; g.atkHow = 'ace'; g.atkHits = g.rally.hits;
+    g.atkTeam = sv.team; g.atkHow = 'ace'; g.atkHits = g.rally.hits; g.atkHuman = human; g.atkGrade = grade;
     // ¿Recibirá bien la IA? Función CONTINUA de la dificultad del saque (velocidad, baile del flotante, zona y
     // carrera del receptor), escalada por la recepción del perfil. (Antes era un corte duro a 13 m/s: un
     // flotante sin apuntar nunca podía ser ace y su baile no contaba.)
@@ -1118,11 +1389,15 @@
         if (g.serveAuth) { if (input.jump) toss(g, sv, true); else if (input.hit) toss(g, sv, false); }
         if (g.serveState === 'ready' && g.serveAuth && g.opts.serveClock !== false) {
           g.serveClock -= dt;
-          if (g.serveClock <= 0) { g.serveClock = 0; fault(g, sv.team, 'serve', 'Falta de saque: 8 segundos', sv); return; }
+          if (g.serveClock <= 0) { g.serveClock = 0; fault(g, sv.team, 'serve', 'Falta de saque: 8 segundos', sv, 'delay8'); return; }
         }
       } else {
         stepPlayer(g, sv, dt, 0, 0);
-        g.timer -= dt; if (g.timer <= 0 && g.serveAuth) toss(g, sv, g.rng() < g.prof[sv.team].jumpServe);
+        g.timer -= dt;
+        if (g.cpuTossIn >= 0) g.cpuTossIn = g.timer > 0 ? g.timer : 0;
+        if (g.serveAuth && g.opts.serveClock !== false) g.serveClock -= dt; // el reloj de 8 s corre para todos (la CPU lanza antes de 4,5 s)
+        ritualStep(g, sv);
+        if (g.timer <= 0 && g.serveAuth) toss(g, sv, g.rng() < g.prof[sv.team].jumpServe);
       }
     } else { // balón en el aire
       g.tossT += dt;
@@ -1142,7 +1417,7 @@
         if (w.t <= -g.aiServeTe || !w.reach || b.vz < -6) doServe(g, sv, null, -w.t, VB.AI && VB.AI.serveTarget ? VB.AI.serveTarget(g, sv) : null);
       }
       if (g.mode === 'serve' && b.vz < 0 && b.z < sv.z + 1.0) { // el balón cae sin golpearlo
-        fault(g, sv.team, 'serve', 'Falta de saque: el balón cae sin golpearlo', sv); return;
+        fault(g, sv.team, 'serve', 'Falta de saque: el balón cae sin golpearlo', sv, 'serveFault'); return;
       }
     }
     for (i = 0; i < 4; i++) { p = g.players[i]; if (p !== sv) stepPlayer(g, p, dt, 0, 0); }
@@ -1151,12 +1426,14 @@
 
   function nextSet(g) {
     g.pendingSet = false; g.setNo++; g.score = [0, 0]; g.serving = (g.setNo - 1) % 2; g.courtSwap3 = false;
+    g.streakTeam = -1; g.streakN = 0; // la racha es dentro del set
     g.serverIdx = g.serving === 0 ? [0, 1] : [1, 0];
     emit(g, { type: 'newSet', setNo: g.setNo });
   }
   function newGame(g) {
     g.score = [0, 0]; g.sets = [0, 0]; g.setNo = 1; g.serving = 0; g.serverIdx = [0, 1]; g.setScores = [];
     g.pendingSet = false; g.finished = false; g.lastPoint = null; g.courtSwap3 = false;
+    g.streakTeam = -1; g.streakN = 0;
     emit(g, { type: 'newMatch', demo: g.demo, difficulty: g.difficulty });
     setupServe(g);
   }
@@ -1196,7 +1473,7 @@
       }
       return;
     }
-    if (g.mode === 'serve') { stepServe(g, dt, input, mx, my, aim, human); refreshPred(g); return; }
+    if (g.mode === 'serve') { stepServe(g, dt, input, mx, my, aim, human); if (g.mode !== 'serve') endRitual(g); refreshPred(g); return; }
     // ---- Peloteo ----
     g.rally.t += dt;
     // (g.pr1/g.pr3 ya están al día: se recalculan al final de cada paso, ver refreshPred)
@@ -1326,8 +1603,12 @@
     hitWindow: hitWindow, aimPoint: aimPoint, predictKind: predictKind, canDive: canDive, timingQ: timingQ, gradeOf: gradeOf,
     normDiff: normDiff, DIFF: DIFF, TIMING: TIMING,
     // internos expuestos para la IA y los tests
-    _hit: hit, _jump: jump, _dive: dive, _diveMiss: diveMiss, _humanJump: humanJump, _holdPos: holdPos, _stepPlayer: stepPlayer, _emit: emit, _rnd: rnd, _gauss: gauss,
+    _hit: hit, _jump: jump, _dive: dive, _diveMiss: diveMiss, _humanJump: humanJump, _holdPos: holdPos, _holdBase: holdBase, _ritualBall: ritualBall, _ritualStyle: ritualStyle, _stepPlayer: stepPlayer, _emit: emit, _rnd: rnd, _gauss: gauss,
     _setupServe: setupServe, _newGame: newGame, _makeRng: makeRng, _toss: toss, _doServe: doServe, _fault: fault,
-    _inBlockVol: inBlockVol, _serveRisk: serveRisk, _recvFail: recvFail, _refreshPred: refreshPred
+    _inBlockVol: inBlockVol, _serveRisk: serveRisk, _recvFail: recvFail, _refreshPred: refreshPred,
+    // presentación del punto (SIM-01/03)
+    skipHold: skipHold, highlightOf: highlightOf, clutchOf: clutchOf,
+    // ritual del sacador CPU (SIM-04)
+    ritualAt: ritualAt
   };
 })();

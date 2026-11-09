@@ -91,6 +91,99 @@ El Final QA 2 no encontró nada roto y no cambió código. Logs y capturas en `t
   - En ejecución por `file://` (menú y partido en vivo): los únicos orígenes pedidos son `cdnjs.cloudflare.com` y `fonts.googleapis.com`.
     Antes de un gesto no hay AudioContext (`VB.Audio.contextState()` = `'none'`).
 
+### Pulido ola 1 + arreglos (8-nov-2026, PC de casa)
+
+Detalle por owner en `notes/<owner>.md` (secciones «Pulido ola 1/2» y sus logs «Aplicado»). Lo más visible:
+- **Audio**: la síntesis del banco va en un Worker creado desde el propio audio.js (Blob, sin ficheros); sin Worker, cola troceada con
+  primera pasada de una variante por sonido de juego. Móvil ×4 con JUGAR inmediato: 0 sonidos perdidos (antes ~27 en 20 s).
+- **Cámara/jugadores**: plano de héroe que esquiva marcador, postes, balón y rivales; el que anota sigue de cara a la cámara hasta el saque;
+  el marcador se atenúa si el héroe queda a la izquierda; temblor del bote también tras bloqueo; colocación con los dos pies plantados.
+- **UI**: en táctil los dos saques van en el aviso junto al sacador (la red queda libre); cintas grandes como mucho 1 de cada 3 puntos;
+  reglas con «Falta de saque: 8 segundos» y «Ataque sobre el saque»; `node tools/clean.js` cierra Chrome huérfanos de las pruebas.
+- **Arena**: vomitorios de verdad en las gradas laterales (antes, rectángulos negros).
+- **Sim**: la CPU ya no deja caer su propio lanzamiento de saque (~0,2 % de los saques, sobre todo en Fácil de primer partido).
+- Verificado en la integración: simtest completo + barrido de semillas 1-25 (10 y 20 min) TODO OK; console.sh (19 escenas, 1280 y 844 táctil)
+  sin errores; drive/touchplay/padplay/audiotest/camtest TODO OK; perf 844×390 ×4: ~141-145 fps en todos los niveles, baja 34-38 draw calls y
+  87 k triángulos, media 194-197 k; escritorio alta 165 fps.
+
+### Pulido ola 2, segunda tanda (8-nov-2026, PC de casa)
+
+Detalle por owner en `notes/<owner>.md` («Pulido ola 2» y el log «Aplicado … segunda tanda»). Lo más visible:
+- **Sim (SIM-04)**: el sacador de la CPU bota el balón 1-3 veces antes de lanzar, con un estilo propio por jugador (uno más en punto de set/partido).
+  Evento `dribble`. Desplaza los resultados de cada semilla (documentado); `createGame({ritual:false})` = flujo anterior. `VB.HOLD.set` 3,4 → 4,0 s.
+- **Jugadores (PLY-08…15)**: giros con muelle y pies plantados, aterrizaje con flexión, split-step del receptor, carrera de ataque de tres pasos,
+  piernas en el aire, colocación con tiempos, 16 celebraciones sin repetir y victoria con choque de pecho / rodillas al suelo del que pierde.
+- **Arena (ARN-08…13)**: la luz puntúa (tensión en punto de set/partido, contraluz del color del que anota, barrido en la victoria), cubierta
+  procedural, tarima a dos tonos, manchas de contacto bajo cada atleta, halo de las vallas, confeti dentro del plano, «Destellos suaves».
+- **Cámara (CAM-08…14)**: sigue el balón tras nuestro ataque; cierre de set/partido con cámara lenta y órbita de los ganadores; hoja final acoplada
+  sin tapar a nadie; ultrapanorámico sin perder el balón; plano corto del sacador rival botando antes de su saque; grúa de presentación.
+- **UI (UI-09…16)**: sello PERFECTO/BIEN junto al contacto, chip «PELOTEO · N», indicador de borde, cortinilla de marca, tarjeta de presentación,
+  hoja final con MVP, Ajustes > Accesibilidad (cámara estable, vibración, tamaño del HUD, destellos suaves).
+- **Audio (AUD-05…07)**: choque, puños, pecho, palmada y botes del ritual con sonido propio; cortinilla y firma de presentación; la grada reacciona
+  en proporción a lo grande que ha sido el punto.
+- **Integración**: rótulo del set/partido arriba en la órbita del cierre (en el móvil tapaba las cabezas); indicador de borde fuera de los planos
+  cinematográficos y sin saltar con las piernas cortadas a propósito; la tarjeta de presentación ya no se pierde si el partido empieza antes de acabar
+  el ensayo de estilos; CONTRACT al día.
+- Verificado en la integración: simtest completo + barrido 1-25 × (10 y 20 min): 51/51 TODO OK; console.sh 19 escenas (1280 y 844 táctil) sin
+  errores; drive, touchplay, padplay, audiotest, courttest (set 1280 y 844 táctil) TODO OK; camtest verde salvo los parciales conocidos (CAM-11, CAM-13
+  en 844); perf 844×390 ×4 (PC libre): auto/media 131-133 fps, alta 139, baja 143 (33/41 draw calls, 90/119 k triángulos); escritorio alta 165 fps.
+- Pendiente (ola 3): PLY-16 (mano que empuja el balón en el ritual, `fx:catch`), CAM-11/CAM-13 en móvil, ARN-09 (franja alta del plano de punto),
+  SIM-05 (banda de la matriz «novato vs Fácil»), texto «Balón a la red» junto a «¡ACE!» cuando la recepción rival va a la red.
+
+### Arreglos tras la verificación de la ola 2 (8-nov-2026 noche, PC de casa)
+
+Detalle en `notes/<owner>.md` («Arreglos tras la verificación de la ola 2» y el log «Aplicado … arreglos tras la verificación»).
+- **Arranque (UI-07/UI-01)**: logotipo entero en el primer frame (fuente embebida «VB Marca»), menú pulsable a ~2,3-2,6 s, relevo en dos tiempos;
+  sin tirón al empezar el partido (la tarjeta de presentación entra en el ensayo de estilos).
+- **Cierre de set/partido (CAM-09)**: la cámara lenta siempre tiene un atleta en cuadro; la órbita del partido filma a los ganadores de frente
+  (integración: players los abre hacia la cámara tras el choque de pecho; «los dos de frente» 1 % → 51-58 % del plano); manos nunca bajo el rótulo.
+- **Cámara (CAM-11)**: el balón desviado que se va fuera ya no se pierde por detrás de la cámara. camtest con puertas estrictas e informativas.
+- **Arena (ARN-01/08/12)**: tarima algo más luminosa, baja con ≤ 35 draw calls de pico (mallas fusionadas), marcadores del pabellón atenuados bajo el HUD del móvil.
+- **Sim (SIM-04/05)**: la demo del menú vuelve a su ritmo (1 bote), bandas de la matriz estadísticas (simtest sin falsos fallos).
+- **UI**: hoja final del móvil con MVP completo, texto del ace con la recepción a la red («La recepción de la CPU va a la red»), indicador de borde sin cruzar la pantalla.
+- Verificado en la integración: simtest completo + barrido 1-25 × (10 y 20 min) 51/51 TODO OK; console.sh 19 escenas (1280 y 844 táctil) sin errores;
+  drive, touchplay, padplay, audiotest, camtest TODO OK; perf 844×390 ×4: auto/media 130 fps, alta 139, baja 152 (30/36 draw calls, 89 k tri), media 199 k tri;
+  escritorio alta 164 fps.
+
+### Pulido ola 3 (9-nov-2026, PC de casa)
+
+Detalle por owner en `notes/<owner>.md` («Pulido ola 3» y el log «Aplicado … ola 3»). Lo más visible:
+- **Sim (SIM-05)**: `highlight` calibrado (CPU vs CPU ~20 % de puntos grandes, < 5 % «enormes» fuera de punto de set); `point.clutch` (final apretado); simtest con
+  calibración en 20 partidos completos y prueba de determinismo.
+- **Jugadores (PLY-16…21)**: caras de una superficie con ojos y expresiones (grito, esfuerzo, alegría, abatimiento, parpadeo), coleta con muelle, mano del ritual de
+  saque de la CPU sobre el balón (`fx:catch`), gesto de «¡mía!» (`fx:call`), piernas algo más largas.
+- **Arena (ARN-14…16)**: banquillos con suplentes y entrenador que reaccionan, fotógrafos, cámara de TV, barandilla de vidrio, tribuna de prensa, silla del árbitro y mesa
+  del anotador rehechas (con acta electrónica). Sin dibujos nuevos.
+- **Cámara (CAM-15…20)**: saque propio por encima del hombro sin oficiales cortados, realización del menú con 6 planos, presentación que acaba en el saque sin corte,
+  plano de red en el bloqueo, punto sin balón gigante en el borde, marcador colgado nunca cortado; camtest con autoprueba de roturas.
+- **Audio (AUD-08/09)**: tics de la cuenta de la hoja final, «clac», revelación del MVP, sonidos propios de flechas y Ajustes; pasada de mezcla (70 escenarios).
+- **UI (UI-17…23)**: respuesta personal con medidor pronto/tarde, textos revisados, contraste y tamaños, aviso que nunca pisa un botón táctil, Ajustes agrupados,
+  glifos PlayStation, tanteo hablado (`aria-live`).
+- **Integración**: cinta grande = `highlight ≥ 0,55` (+ ace, bloqueo, punto de set salvado; ~23 % de los puntos) con «Final apretado»; sonidos de AUD-08 cableados;
+  tutorial del móvil compacto con la navegación pegada abajo (los botones quedaban tapados); escenas `debug=` sin el fondo del telón tapando el pabellón hasta 7,6 s;
+  cola de audio sin Worker con `set`/`feet` al principio. CONTRACT al día.
+- Verificado en la integración: simtest completo + barrido 1-25 × (10 y 20 min) 51/51 TODO OK; console.sh 19 escenas (1280 y 844 táctil) sin errores; drive, touchplay,
+  padplay (estándar y DualSense), audiotest, camtest TODO OK; perf 844×390 ×4: auto/media 87-88 fps, alta 85, baja 93 (31/34 draw calls, 112 k tri), media 251 k tri;
+  667×375: media 95, baja 92. Escritorio alta 127 fps = tope de rAF del headless en este momento (128 Hz medido con la escena en pausa; antes era 165).
+- Pendiente: ARN-09 (franja alta del plano de punto), CAM-11/CAM-13 en móvil, PLY-01/03 (criterio con radio de balón 0,105), plano del banquillo ganador (idea).
+
+### Arreglos tras la verificación de la ola 3 (9-nov-2026, PC de casa)
+
+- **Sim**: la IA ya no comete dobles ni 4 toques (venían del balón que da en el cuerpo); simtest falla si vuelve a pasar. Pausa del set 4,0 s documentada (SIM-03 cerrado).
+- **UI**: «¡GANAS EL PARTIDO!» ya no tapa el marcador en ningún tamaño; chip «JUGADA · N» que se funde en la celebración; pestaña del marcador del móvil sin hueco
+  blanco; pastillas de ayuda que se apagan con el balón detrás; perfiles `vb3c-*` huérfanos barridos.
+- **Cámara**: corte punto → saque del móvil sin tirón (candidatos repartidos y precalculados); juez de línea fuera del saque flotante en el móvil; plano final con
+  el marcador y las pantallas siempre fuera por arriba; giro acumulado de la red de seguridad de oficiales arreglado.
+- **Jugadores**: `debug=point|ace` muestran la celebración en movimiento (cuadro vivo); empujón visible de la mano en el bote del ritual de la CPU.
+- **Arena**: grada lateral menos saturada en alta (ARN-02); el 1.er árbitro señala «fuera» en la falta de antena.
+- **Integración**: tallas de letra del videomarcador creadas bajo el telón (el primer punto del partido en el móvil bajaba de 155-163 ms de frame a 89-118 ms) y
+  todas las caras de Google Fonts pedidas al cargar (el primer aviso de los 8 s ya no fuerza una maquetación completa: 55-82 → 49-52 ms).
+- Verificado: simtest completo + barrido 50/50 TODO OK; console.sh 19 escenas × 2 tamaños sin errores; drive, touchplay, padplay (estándar y DualSense) y audiotest
+  TODO OK; perf 844×390 dpr 2,75 ×4: auto→media 109,8 fps, alta 101,3, media 100,8 (250 k tri), baja 103,8 (112 k tri, 31/34 draw calls), heap 9 → 10-11 MB;
+  escritorio alta 127 fps a 1280×720 y 1920×1080 = tope de rAF del headless (128,7/s medido en una página vacía).
+- Pendiente: ARN-09, CAM-10 (sin su medida), CAM-11/CAM-13 en móvil, juez cercano ~0,5 s en el saque en salto del móvil, el marcador colgado puede cortarse por arriba en
+  la grúa del saque en salto del móvil, cinta de set/partido a 667×375 bajo el marcador (sobre la grada).
+
 ### Solo lo puede comprobar una persona con un dispositivo real
 
 1. **Rendimiento y temperatura en un móvil de verdad.** Un móvil medio en horizontal, unos 10 minutos: fluidez, si la calidad automática
@@ -102,9 +195,7 @@ El Final QA 2 no encontró nada roto y no cambió código. Logs y capturas en `t
 4. **Escuchar el audio** con auriculares y con el altavoz del móvil. Incluye `scuff`/`slide`, que tras quitarles el DC solo se han medido.
 5. **Sensación de juego y dificultad** con personas reales. La matriz sale de bots: hay que comprobar si Fácil es fácil para alguien
    que nunca ha jugado y si el tiempo de golpeo se siente justo.
-6. **Decisión de Ferran como árbitro.** Faltan los textos propuestos en `notes/sim.md` §R5.5 («Ataque sobre el saque», «Retraso en el
-   saque (8 s)», «Doble contacto»). Si se aceptan, hay que cambiarlos a la vez en sim.js, `POINT_TEXTS` de simtest, `REASON` de
-   arena.js y el tutorial de ui.js.
+6. ~~Decisión de Ferran como árbitro~~: DECIDIDO (7-nov-2026). «Ataque sobre el saque» aplicado; «Dobles» y «Falta de saque: 8 segundos» se quedan.
 7. **Publicarlo como Artifact** y abrirlo en claude.ai (escritorio y móvil). Cumple las restricciones, pero no se ha publicado.
 
 ### Deuda técnica conocida (no bloquea)
@@ -154,5 +245,5 @@ cámara. Teclado, mando y táctil (móvil en horizontal). Reglas y vocabulario c
 
 ## Cuentas
 
-Repo privado en **purupurpito** (cuenta personal). En el PC del trabajo la cuenta habitual es
-`fsanchis-tlg`; purupurpito se conectó solo para crear y subir este repo.
+Repo público en **purupurpito** (cuenta personal), publicado en GitHub Pages:
+https://purupurpito.github.io/voley-3d/ (se despliega solo en cada push a main con .github/workflows/pages.yml).

@@ -163,6 +163,19 @@
   }
 
   var SHANK_SURPRISE = 0.4; // s que tarda en reaccionar al balón desviado por su compañero
+  var TEAM_GAP = 0.2;       // s mínimos entre el toque de un compañero y el siguiente toque de la IA (salvo balón que se va)
+  var DODGE_R = 0.9;        // m: el que acaba de tocar se aparta de la caída de su propio balón (evita dobles de cuerpo)
+  /** El jugador que acaba de tocar no puede volver a tocar (dobles): si su balón le va a caer encima (cruce a 1 m de
+   *  altura en su campo, cerca de su objetivo), aparta el objetivo a DODGE_R del punto de caída. Muta tg. */
+  function dodgeOwnBall(g, p, tg) {
+    var pr = g.pr1, sd = side(p.team);
+    if (pr.x * sd <= 0 || pr.t > 1.6) return;
+    var dx = tg.x - pr.x, dy = tg.y - pr.y, d = Math.hypot(dx, dy);
+    if (d >= DODGE_R) return;
+    if (d < 0.05) { dx = p.x - pr.x; dy = p.y - pr.y; d = Math.hypot(dx, dy); }
+    if (d < 0.05) { dx = sd; dy = 0; d = 1; }         // justo debajo: atrás, hacia su fondo
+    tg.x = pr.x + dx / d * DODGE_R; tg.y = clamp(pr.y + dy / d * DODGE_R, -4.4, 4.4);
+  }
   var _w = { t: 0, d: 0, dz: 0, reach: false, kind: '', zc: 0, x: 0, y: 0, z: 0, active: false, canReach: false };
 
   function aiJump(g, p) {
@@ -192,6 +205,7 @@
       } else { tx = p.x; ty = p.y; attack = block = false; }   // aún no ha leído la jugada
     } else {
       var tg = pos(g, p);
+      if (g.touchTeam === t && g.lastPlayer === p && g.jobs[t] !== p) dodgeOwnBall(g, p, tg);
       tx = p.tgx = tg.x; ty = p.tgy = tg.y; attack = p.tgA = tg.attack; block = p.tgB = tg.block; p.tgTime = g.time;
     }
     if (p.z === 0) {
@@ -230,6 +244,7 @@
     var w = S.hitWindow(g, p, _w);
     var rx = b.x - p.x, ry = b.y - p.y, hd = Math.hypot(rx, ry);
     var exiting = (hd > C.REACH - 0.15 && rx * b.vx + ry * b.vy > 0) || (b.z - p.z < 0.3 && b.vz < 0) || (p.z > 0 && p.z < 0.3 && p.vz < 0);
+    if (g.touchTeam === t && since < TEAM_GAP && !exiting) return; // el balón aún sale de las manos del compañero
     if (!(w.t <= -p.aiTe || exiting || !w.reach)) return;
     if (beaten) { // llega pero no la controla: toque desviado (casi siempre injugable)
       if (p.z > 0.25) return;

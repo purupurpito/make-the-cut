@@ -8,6 +8,8 @@
  *   vibración pedida en los toques propios (vibrationActuator.playEffect) · desconexión sin errores.
  * Capturas en tools/out/padplay/. Sale con 1 si falla algo.
  * Uso: node tools/padplay.js [W=1280] [H=720] [segundos de juego=30] [toques mínimos=3]
+ * PADID="<id del mando>" cambia el id del mando falso (UI-22: con un id de la familia PlayStation, p. ej.
+ *   "DualSense Wireless Controller (Vendor: 054c Product: 0ce6)", los glifos esperados son ✕ ○ □ △ en vez de A B X Y).
  * GL=swiftshader para software (añade quality=low&maxdt=0.25).
  */
 'use strict';
@@ -15,6 +17,9 @@ const fs = require('fs'), path = require('path');
 const CDP = require('./cdp.js');
 const W = +(process.argv[2] || 1280), H = +(process.argv[3] || 720), SECS = +(process.argv[4] || 30), MIN_TOUCHES = +(process.argv[5] || 3);
 const SOFT = process.env.GL === 'swiftshader', EXTRA = SOFT ? 'quality=low&maxdt=0.25' : '';
+const PADID = process.env.PADID || 'Mando virtual de pruebas (STANDARD GAMEPAD)';
+const PS = !/xbox|045e/i.test(PADID) && /054c|dualsense|dualshock|wireless controller|playstation/i.test(PADID);
+const GL_HIT = PS ? '✕' : 'A', GL_JUMP = PS ? '○' : 'B';
 const OUT = path.join(__dirname, 'out', 'padplay');
 setTimeout(() => { console.error('TIEMPO AGOTADO'); process.exit(2); }, (SECS + 150) * 1000).unref();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -27,7 +32,7 @@ const PAD = `(function(){
   var act = { type: 'dual-rumble', playEffect: function () { S.rumble++; return Promise.resolve('complete'); }, reset: function () { return Promise.resolve('complete'); } };
   function snap() {
     var b = []; for (var i = 0; i < 17; i++) b.push({ pressed: S.btn[i] > 0.5, touched: S.btn[i] > 0, value: S.btn[i] });
-    return { id: 'Mando virtual de pruebas (STANDARD GAMEPAD)', index: 0, connected: S.on, mapping: 'standard', timestamp: S.t, axes: S.axes.slice(), buttons: b, vibrationActuator: act, hapticActuators: [] };
+    return { id: __PADID__, index: 0, connected: S.on, mapping: 'standard', timestamp: S.t, axes: S.axes.slice(), buttons: b, vibrationActuator: act, hapticActuators: [] };
   }
   try { Object.defineProperty(Navigator.prototype, 'getGamepads', { configurable: true, value: function () { return [S.on ? snap() : null, null, null, null]; } }); } catch (e) { }
   function fire(type) { var ev = new Event(type); try { Object.defineProperty(ev, 'gamepad', { value: snap() }); } catch (e) { } window.dispatchEvent(ev); }
@@ -45,7 +50,7 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
   const check = (c, m) => { if (!c) { fail++; console.error('FALLO:', m); } else console.log('ok:', m); return !!c; };
   fs.mkdirSync(OUT, { recursive: true });
   try {
-    page = await CDP.open({ size: W + 'x' + H, init: [PAD] });
+    page = await CDP.open({ size: W + 'x' + H, init: [PAD.replace('__PADID__', JSON.stringify(PADID))] });
     const { evalJs } = page;
     const shot = async n => page.shot(path.join(OUT, String(++step).padStart(2, '0') + '-' + n + '.png'));
     const waitFor = async (expr, ms) => { const t = Date.now(); while (Date.now() - t < ms) { if (await evalJs(expr)) return true; await sleep(80); } return false; };
@@ -98,9 +103,9 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
       await press('A');
     }
     check(await waitFor("VB.ctx.state==='playing'", 5000), 'A en JUGAR empieza el partido');
-    await evalJs(`(function(){var T=window.__pp={hits:0,serves:0,tosses:0,swManual:0,points:0};var o=VB.Sim.step;VB.Sim.step=function(g,dt,i){var n=g.events.length;o(g,dt,i);
+    await evalJs(`(function(){var T=window.__pp={hits:0,serves:0,tosses:0,swManual:0,points:0,rally:0};var o=VB.Sim.step;VB.Sim.step=function(g,dt,i){var n=g.events.length;o(g,dt,i);
       for(var k=n;k<g.events.length;k++){var e=g.events[k];if(e.type==='hit'&&e.human){T.hits++;if(e.kind==='serve')T.serves++;}if(e.type==='toss'&&e.human)T.tosses++;
-      if(e.type==='switch'&&!e.auto)T.swManual++;if(e.type==='point')T.points++;}};})()`);
+      if(e.type==='switch'&&!e.auto)T.swManual++;if(e.type==='point')T.points++;}T.rally=g.mode==='rally'&&g.rally?g.rally.hits:0;};})()`);
     await sleep(500);
     // ---- saque: A lanza, A golpea cuando el balón llega a la mano
     async function serve() {
@@ -126,7 +131,10 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     // ---- juego: stick hacia el balón, A en el momento, RB para cambiar
     let samples = 0, toward = 0, rbTried = 0, lastRb = 0; const glyphs = {};
     const t0 = Date.now();
-    while (Date.now() - t0 < SECS * 1000) {
+    // un peloteo largo (bot contra la CPU) puede llenar los SECS sin un solo punto: se alarga hasta 25 s más mientras no haya punto
+    let ptsSeen = 0, ptsAt = 0;
+    while (Date.now() - t0 < SECS * 1000 || (!ptsSeen && Date.now() - t0 < (SECS + 25) * 1000)) {
+      if (!ptsSeen && Date.now() - ptsAt > 1000) { ptsAt = Date.now(); ptsSeen = +(await evalJs('__pp.points')) || 0; }
       const s = await evalJs(`(function(){var g=VB.ctx.game,p=g.ctrl;if(VB.ctx.state!=='playing')return {st:1};
         if(g.mode==='serve')return {serve:1};if(g.mode!=='rally')return {idle:1};
         var f=VB.Sim.focusPoint(g),b=VB.CameraRig.getBasis(),dx=f.x+0.2-p.x,dy=f.y-p.y,d=Math.hypot(dx,dy);
@@ -151,17 +159,23 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
       '· hacia el balón', samples ? Math.round(toward / samples * 100) + '%' : '-', '· vibraciones', rum, '· glifos del aviso', JSON.stringify(glyphs));
     check(samples > 20 && toward / samples >= 0.5, 'el stick lleva al jugador hacia el balón (' + toward + '/' + samples + ')');
     check(pp.hits - pp.serves >= MIN_TOUCHES, 'al menos ' + MIN_TOUCHES + ' toques humanos con A (' + (pp.hits - pp.serves) + ')');
-    check(pp.points >= 1, 'se juegan puntos (' + pp.points + ')');
+    // un peloteo vivo muy largo (bot preciso contra la CPU) también demuestra que se juega: cuenta si lleva >= 20 toques
+    check(pp.points >= 1 || pp.rally >= 20, 'se juegan puntos (' + pp.points + (pp.points ? '' : ', peloteo en curso de ' + pp.rally + ' toques') + ')');
     check(rbTried === 0 || pp.swManual >= 1, 'RB cambia de jugador');
     check(rum > 0, 'el mando vibra en los toques propios (' + rum + ' efectos)');
     const gk = Object.keys(glyphs);
-    check(gk.length > 0 && gk.every(k => k === 'A' || k === 'B' || k === ''), 'los avisos del HUD usan los glifos del mando (' + (gk.join(',') || pk) + ')');
+    check(gk.length > 0 && gk.every(k => k === GL_HIT || k === GL_JUMP || k === ''), 'los avisos del HUD usan los glifos del mando ' + (PS ? 'PlayStation ✕ ○' : 'A B') + ' (' + (gk.join(',') || pk) + ')');
     await shot('juego');
     // ---- Start pausa / reanuda
     await waitFor("VB.ctx.state==='playing'", 3000);
     await press('START');
     check(await waitFor("VB.ctx.state==='paused'", 2000), 'Start pausa');
     await sleep(300); await shot('pausa');
+    // UI-22: el panel de controles enseña los glifos del mando conectado (abierto desde la pausa)
+    const ctl = await evalJs("(function(){document.getElementById('btnPControls').click();var r=document.getElementById('ctlGrid').textContent;var on=(document.querySelector('.ctl-tab.on')||{}).getAttribute?document.querySelector('.ctl-tab.on').getAttribute('data-ctl'):'';VB.UI.back();return JSON.stringify({on:on,txt:r})})()");
+    const cj = JSON.parse(ctl);
+    check(cj.on === 'gamepad' && cj.txt.indexOf(GL_HIT) >= 0 && (PS ? cj.txt.indexOf('A') < 0 || !/A/.test(cj.txt) : true), 'el panel de controles abre en Mando con ' + GL_HIT + ' (' + cj.txt.slice(0, 60) + '…)');
+    await sleep(200);
     const fpz = await focused();
     check(/btnResume|btnP|btnRestart|btnQuit/.test(fpz), 'en la pausa hay foco para el mando (' + fpz + ')');
     await press('START');

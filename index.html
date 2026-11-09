@@ -1,4 +1,25 @@
 <title>Voley 3D</title>
+<script>
+/* UI-07: el logotipo no depende de la red. Dos recortes mínimos de Barlow Condensed (SIL Open Font License 1.1, The Barlow
+   Project Authors, github.com/jpt/barlow) con SOLO las letras del telón: Black Italic «VOLEY3D» (1,1 KB) y Bold «PALU DEMR»
+   (1,1 KB), registrados aquí antes del primer pintado con el nombre propio «VB Marca» (no se mezclan con el resto de textos si
+   Google Fonts falla). Los usan .logo (telón y menú) y el rótulo del telón: el primer frame ya sale con la fuente buena y el
+   logotipo del telón y el del menú son idénticos, con o sin Google Fonts. */
+(function () {
+  try {
+    if (!window.FontFace || !document.fonts || !window.atob) return;
+    var add = function (b64, desc, range) {
+      var s = atob(b64), u = new Uint8Array(s.length);
+      for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+      var f = new FontFace('VB Marca', u.buffer, { weight: desc[0], style: desc[1], unicodeRange: range, display: 'block' });
+      document.fonts.add(f);
+      if (f.status !== 'loaded' && f.load) f.load().catch(function () { });
+    };
+    add('d09GMgABAAAAAAR8AA4AAAAACNgAAAQoAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGhwbgTQcKgZgAFwRCAqGIIR6ATYCJAMgCxIABCAFhDoHIBsrByAeA+7MOBqeqCfefHkiCievwf/3h3bu+y+9UjrFSsNQpUyAozveCshaTFY4Zv8gz5q4TNMVsyTKtF2nOcB+geB54obvX11lQYRZHFBC3TWi8RgHNpzA///vVc2YFlq4HkiAp8bs/p8xFvBYGywxygkG57TR9ngBq6VgwVoCq22ycF8FI0bOOb2E+kAE8gDAGHGSlCQCWSPh0DO7sBLol0roBJoDfhwlj47vBBEEPM74JmvwB+Q5kCqEJIn3IbOGg51SBAfER72K+BvEuwCI7xBfuc8zIgkgxjkxgbjQcdjKE750u5o03bMDGwkY7I3W/v+ugM2HgDRDeGKB2NkJFOVXu17pdTCMCHXDi/+xwHfEAgABbEEPAtCDAQMB1GEE6nB7QFGaSZrJUqhEtbr+h5lM0Vf020Pd013d0k0QJCbqf6tXpgGUARkQgQ4AADx0aubG2hQBNhaMrWvmhNm2LXPmSKUTbsFHu3bpzZtZyR2p7ZwNjg22w9ZLJOOh9j+zOio/aiNmWVXOobpl420Y5SKdPZjaGreUy27d1jDHhjt33ECBgp32BfObfq0gfyYMvUsnIM3DUoYVOnOCbYOJCRLJndm2NXNs6pFllnXVUEqNqda5U/I6Y1fMLOmuW/DB4/jTxt9Ghtm6wmDZzZxn3+C4UT9/ye478xGwqZ6tABL7bEnFrOPA701zZNkicgx5pM7QWCy29AwwpdYbwlKP7F9KXv0wIYq1kFhaKWiCCOyCi+5jqP0EIVVZkSqKIxXDg2lVJqjJ+x3kGE5j0cQJreDAMH8pnExakYe3ztAGA2dda4XE1sNVqhpuVtfq50R3woix7ktzPD1DrO4omBwr9hNhFPNQDr+FqMUMs4aWcyiJVuiD6OUU5/NgcSK9HiaLIx2fIVj5RlxOL6Nl0rMYgSaeTaSXiXJ9Dm8knJ6Rfah58OgARzKjHPU97W4YxoelhYpcpVxFUllrUHwVV52toBo19VTb0d91p0xuyci7XU/KmVAtjmeml3vioop+JiWGzX8HwzDlN+8EABDQzR/4POJkiyLxazqFvQDgQf2ZAwAPEXXt799/78I73B9QKQZA+Gwc4adAeA2CIXg2xqez7f/b3IJUtgDVmUC9qJWfUJK3cMleoAmkPSHcoQgt5xyk3WA0igH+AEIyNR2ZvH8UnJ1HbhsblNBNKUpaxvSfLJpnKWTo0q0fnhHHQMAKFypMDFYlAx1WOhVeuy59sErxupjoaAhYaXoRGHThmbF8GQgE3czihQjBMRIY9KIWTKNLhxAm3QQh1A4G+bnDIQY6aQkYotmkBfRz2qlotMkjUGlnpBEmWKRQsRJUKpeuToLBZk2CoM7B6GePUDVdIEzGbT0ssC6A0QVT3ZLNNHjG0EE2BbuCZAoO/jfjhCiRrRCG+BPEXcINAAA=', ['900', 'italic'], 'U+33,U+44-45,U+4C,U+4F,U+56,U+59');
+    add('d09GMgABAAAAAARgAA4AAAAACLgAAAQNAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGhwbgUwcKgZgAGQRCAqGUIU4ATYCJAMoCxYABCAFgz4HIBsVB2C+BU+GYFb9LFMUGpmESbcole0p9qB0xwjew1I+kf4kv0+u+tXdNTMLEdkBymBG9y4jwlV88M+v885LQnx1dFOD8f6BaSmOh/8/1Pt+xgKKrUkbZCzLKQe7BcLlUqnirRW4PV4t4OyHDVN9U6dm7CES3iBrWSiYDiz/eY1KWMc4P195mW1aJzg1EO7zPxygeKoL5NIpB5p6YFq1mxzo9Mb5De43cTn9/5aOff4LSygNOLE9LB57A3XhAwW4bC0dy7LEAszajckCFxLSIN2+QS0AAQwBACBQmBEdPXQOoM9TOLHMLqyE875tchhOCoDfRtFd1/gwHMAKKAJPdITqy4FuNhEDjAEAgP/nAADMhJwNjTnvfqZFMgAtqLCSFtHMBEgKIwJAkSoBgtqMpDdfWriKlqs4K37IgHgQIygULGLphGxEAri6PMTJaZXH9Dr81VRl5v8BNSFzGGkEhO4CXAvSY4G3JBHsppSiYMqUBLhK09IRhoYm/5Db1P6uRaNCBRIh9C9cqA8ALAGGQG2ADqAAAArwWm3oUix3rOqbGgfaBNsYeRo5b2G/gmE24uJxmmxz7GPZTVab1Q/Ma5hmPe8F2rjpC+MrNHNfQen8ktF/U4k58RBdcd/Rlr4aA5YT7oEsZx3cRncdP9ShBvdAWRvjkkh2rNwLoys2au1uBlj3ewGUboVfvlW3xxyWvqujnjb87i1WPM5OvMV63mui3+TpzxJ92qHhc50KP9erj5Cl0dP5XPcFftxLJlvfpIU1yzQ8X1nfcMoocOccdp2Bs2MobTC764/Vswo2FUoEmiLiko/yydcaPn21sXO8RcO1z5t/+Czq7e3gFMj80NPuys9yvJ/xWe7mNu7uIT7A+DNWWwOUo6a2gNqphybciPJ8VC3whb1ZOeZRVpkXbWhYmTO5FEw9ksv0p0/o59TuT9Oq/dDi1YVka/KmY6SsgFnfCDy27dNCRGtAvM01znyR8UBE9QstfNK9Ucygoy9bODLZklwLrJs19VKDN6tvMLs2588wHuTS6hdtdUlgT+EabV5wivpu5p5K3rJwUr69DhQAEICux5+rdiaJXyvIeYC3hT8DvC1qT/0NMkvZYBAtAQAIPj2r/B4Ahwi0i37sBjyBPlXio1Fc78DpH0ue8ItnhvHGKL7oI4C+Ubw9CoFOUxRAqx6LsnoAdsLAxNVOWNC5DEvJbsOKvx8wsw/3T9bwjURkQIRF9nBzpwLhQoWJ4arS3QVIdyB7QwZQSoaeLk5UII1GdYdkCuALi1SEoipEiB4Pk1jNUVIHaD9iRj+iTWFV+H6RZPgM6Ov8H1+Ki7M69HaWESxSqFgJKg3VLdTcG6EpAa2lMcPpnLpszPZg1AWJ25PMziJp/90YAA==', ['700', 'normal'], 'U+20,U+41,U+44-45,U+4C-4D,U+50,U+52,U+55');
+  } catch (e) { }
+})();
+</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#070b14">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -7,12 +28,13 @@
 <style>
 /* =====================================================================
    VOLEY 3D — estilos (owner: ui_main). Juego de un solo aspecto oscuro.
+   Tokens de texto (UI-19): --fg/--fg2/--muted/--dim-text (≥ 4,5:1 sobre los paneles oscuros); --dim solo para trazos y adornos.
    Display: Barlow Condensed (italic 900 para titulares de retransmisión).
    Texto:   Barlow. Todo con fallbacks del sistema.
    ===================================================================== */
 :root{
   color-scheme:dark;
-  --ink:#070b14;--bg:#0a1020;--fg:#f7f2ea;--fg2:#dfe6ef;--muted:#93a4b9;--dim:#5d6f86;
+  --ink:#070b14;--bg:#0a1020;--fg:#f7f2ea;--fg2:#dfe6ef;--muted:#93a4b9;--dim:#5d6f86;--dim-text:#8a9cb3;
   --hot:#ff5a2c;--amber:#ffb238;--blue:#2f7bff;--sky:#86c8ff;--gold:#ffd23f;--ok:#4be0a0;
   --glass:rgba(9,14,26,.80);--glass2:rgba(14,22,40,.88);--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.18);
   --t0:linear-gradient(135deg,#ff6a2e,#ffa43a);--t1:linear-gradient(135deg,#2a6dff,#5fb0ff);
@@ -36,7 +58,7 @@ body{height:100%;margin:0;background:var(--ink);color:var(--fg);font-family:var(
 
 /* ---------- Botones base ---------- */
 button{font:800 18px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:0;border-radius:12px;
-  padding:14px 26px;color:#fff;background:linear-gradient(180deg,#ff7442,#f04e22);
+  padding:14px 26px;color:#fff;background:linear-gradient(180deg,#dd5421,#bd3611);
   box-shadow:0 10px 26px rgba(255,80,30,.30),inset 0 1px 0 rgba(255,255,255,.28);transition:transform .15s var(--ease),filter .15s,box-shadow .2s,background .2s}
 button:hover{filter:brightness(1.08)}
 button:active{transform:translateY(1px) scale(.985)}
@@ -48,32 +70,70 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
   background:linear-gradient(180deg,#22314a,#17233a);border:1px solid #3a4f6e;border-bottom-width:3px;border-radius:7px;
   font:700 .78em/1 var(--display);letter-spacing:.06em;color:var(--fg);vertical-align:middle;text-transform:uppercase;white-space:nowrap}
 .key.pad{border-radius:50%;width:1.7em;height:1.7em;padding:0;color:#fff;border-color:rgba(255,255,255,.25)}
+/* UI-22: mandos de la familia PlayStation: formas ✕ ○ □ △ dibujadas (trazo blanco neutro, sin colores ni logotipos de marca); el
+   carácter sigue en el texto (lectores de pantalla, pruebas) pero transparente: los glifos de sistema salían de tamaños distintos */
+.key.pad.ps{background:#1f2a3c no-repeat 50% 50%/70% 70%;border-color:rgba(255,255,255,.32);color:transparent;text-shadow:none}
+.key.pad.ps.pa{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E")}
+.key.pad.ps.pb{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='7'/%3E%3C/svg%3E")}
+.key.pad.ps.px{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5.5' y='5.5' width='13' height='13' rx='1'/%3E%3C/svg%3E")}
+.key.pad.ps.py{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4.8l7.6 13.2H4.4z'/%3E%3C/svg%3E")}
 .key.pa{background:#2fae5b}.key.pb{background:#d8433c}.key.px{background:#3b7be0}.key.py{background:#d9a514}
-.key.tch{border-radius:999px;background:linear-gradient(180deg,#ff7442,#f04e22);border-color:rgba(255,255,255,.35)}
-.key.tch.j{background:linear-gradient(180deg,#4a92ff,#2a6dff)}
+.key.tch{border-radius:999px;background:linear-gradient(180deg,#dc4d1d,#c23a12);border-color:rgba(255,255,255,.35);color:#fff;text-shadow:0 1px 1px rgba(110,24,0,.5)}
+.key.tch.j{background:linear-gradient(180deg,#2f6ef0,#2459d8);text-shadow:0 1px 1px rgba(0,24,110,.5)}
 
 /* ---------- Telón de carga ---------- */
-#boot{position:absolute;inset:0;z-index:40;background:radial-gradient(120% 90% at 50% 40%,#13203a 0%,var(--ink) 70%);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:18px;transition:opacity .6s var(--ease),visibility .6s}
+/* UI-07: el telón usa EXACTAMENTE el logotipo del menú (.logo), con la fuente embebida «VB Marca» (script al principio): se ve
+   entero desde el PRIMER frame, sin esperar a la red y sin fuente de reserva. Con la escena lista (tope de 2,6 s desde la
+   navegación), el logotipo vuela (FLIP, solo transform) hasta su sitio en el menú mientras el fondo del telón se funde; al
+   aterrizar, el del menú lo releva en el mismo frame. */
+#boot{position:absolute;inset:0;z-index:40;transition:opacity .6s var(--ease),visibility .6s}
+#boot .bt-bg,.bt-bg.under{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,#13203a 0%,var(--ink) 70%);transition:opacity .6s var(--ease)}
+/* relevo parcial (ui.js): el fondo del telón pasa bajo el menú (z 10) y sobre el lienzo, el HUD y la tarjeta (z ≤ 7) */
+.bt-bg.under{z-index:9;pointer-events:none}
+#app.bt-wait #menu .live{visibility:hidden}
+#boot .bt-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px}
 #boot.gone{opacity:0;visibility:hidden;pointer-events:none}
-#boot .bt-logo{font:900 italic 64px/0.9 var(--display);letter-spacing:.01em}
-#boot .bt-logo span{color:var(--hot)}
+#boot .bt-logo{will-change:transform}
+/* la barra entra con un fundido corto (compositor: se mueve aunque el arranque ocupe el hilo principal); logotipo y rótulo, quietos
+   y enteros desde el primer frame */
+#boot .bt-bar{animation:btIn .4s .25s var(--ease) both}
+@keyframes btIn{from{opacity:0}to{opacity:1}}
+#boot.flying{pointer-events:none}
+#boot.flying .bt-bg{opacity:0}
+#boot.flying .bt-bar,#boot.flying p{animation:btOut .22s ease-in both}
+@keyframes btOut{from{opacity:1}to{opacity:0}}
+#boot.xfade{opacity:0;transition:opacity .15s linear}
 #boot .bt-bar{width:180px;height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
 #boot .bt-bar i{display:block;height:100%;width:40%;background:var(--t0);border-radius:4px;animation:btload 1.1s var(--ease) infinite}
-#boot p{margin:0;font:700 13px var(--display);letter-spacing:.32em;color:var(--muted)}
+#boot p{margin:0;font:700 13px "VB Marca",var(--display);letter-spacing:.32em;color:var(--muted)}
 @keyframes btload{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
 
 /* ---------- Velo cinematográfico (siempre) ---------- */
 #veil{position:absolute;inset:0;pointer-events:none;z-index:1;
   background:radial-gradient(130% 100% at 50% 45%,transparent 58%,rgba(3,6,12,.42) 100%)}
+/* UI-12: capa de pantalla. .vg = viñeta de media/baja (sin el post de arena), igual que la del post de alta
+   (smoothstep(1,25; 0,25; r) al 0,32 en lineal, pasada a sRGB; r = 1,05·distancia/alto → círculo closest-side con paradas en
+   190,5·r %). Solo opacidad. .vp = pulso de impacto del color del equipo (0 → 0,35 → 0 en 120 ms). */
+#veil .vg,#veil .vp{position:absolute;inset:0;opacity:0}
+#veil .vg{transition:opacity .45s var(--ease);background:radial-gradient(circle closest-side at 50% 50%,rgba(0,0,0,0) 47.6%,rgba(0,0,0,0.005) 66.7%,rgba(0,0,0,0.017) 85.7%,rgba(0,0,0,0.036) 104.8%,rgba(0,0,0,0.06) 123.8%,rgba(0,0,0,0.086) 142.9%,rgba(0,0,0,0.114) 161.9%,rgba(0,0,0,0.14) 181%,rgba(0,0,0,0.162) 200%,rgba(0,0,0,0.178) 219%,rgba(0,0,0,0.184) 238.1%)}
+#veil.vig .vg{opacity:1}
+#veil.under .vg{opacity:0;transition-duration:.2s}
+#veil .vp{--pc:255,112,48;background:radial-gradient(ellipse 72% 68% at 50% 50%,rgba(var(--pc),0) 38%,rgba(var(--pc),.55) 78%,rgba(var(--pc),1) 100%)}
+#veil .vp.t1{--pc:64,146,255}
+#veil .vp.gold{--pc:255,200,64}
+#veil .vp.on{animation:vpulse .12s linear both}
+@keyframes vpulse{0%{opacity:0}15%{opacity:.35}45%{opacity:.31}100%{opacity:0}}
 
 /* =====================================================================
    HUD
    ===================================================================== */
 #hud{position:absolute;inset:0;pointer-events:none;z-index:3}
 .sb{position:absolute;left:calc(16px + var(--sl));top:calc(14px + var(--st));transform-origin:0 0;font-family:var(--display);
-  filter:drop-shadow(0 12px 26px rgba(0,0,0,.45));animation:sbIn .6s var(--ease) both;scale:var(--sbs,1)}
+  filter:drop-shadow(0 12px 26px rgba(0,0,0,.45));animation:sbIn .6s var(--ease) both;scale:calc(var(--sbs,1) * var(--hs,1))}
 @keyframes sbIn{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+/* plano de héroe con el que anota bajo el marcador (camera.js pf.heroX < -0.5): el marcador se aparta un poco */
+.sb>*{transition:opacity .45s var(--ease)}
+.sb.dim>*{opacity:.38}
 .sb-top{display:flex;align-items:stretch;height:22px;font-weight:800;font-size:12.5px;letter-spacing:.2em;text-transform:uppercase}
 .sb-venue{display:flex;align-items:center;gap:6px;padding:0 10px 0 9px;background:#f7f2ea;color:#0b1220;border-radius:8px 0 0 0}
 .sb-venue svg{width:13px;height:13px}
@@ -109,7 +169,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 @keyframes tagPulse{50%{filter:brightness(1.15)}}
 
 /* Contador de toques (arriba, centro) */
-#touchbar{position:absolute;left:50%;top:calc(14px + var(--st));transform:translateX(-50%);display:flex;align-items:center;gap:6px;
+#touchbar{position:absolute;left:calc(50% + var(--fx,0px));top:calc(14px + var(--st));transform:translateX(-50%);display:flex;align-items:center;gap:6px;
   font-family:var(--display);transition:opacity .25s,transform .35s var(--ease)}
 #touchbar.off{opacity:0;transform:translate(-50%,-10px)}
 /* "TOQUES" en su propia pastilla oscura (sobre el público, gris sobre gris no se leía) */
@@ -131,7 +191,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .tb-seg>*{transform:skewX(12deg)}
 .tb-seg i{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;background:rgba(255,255,255,.1);font-size:13px;color:var(--fg2)}
 .tb-seg.done{color:var(--fg2);background:rgba(255,110,50,.28);border-color:rgba(255,140,70,.5)}
-.tb-seg.done i{background:var(--t0);color:#fff}
+.tb-seg.done i{background:var(--t0);color:#2a0f02}
 .tb-seg.next{color:#fff;border-color:var(--gold);background:rgba(40,32,8,.82);box-shadow:0 0 0 1px rgba(255,210,63,.4),0 0 22px rgba(255,210,63,.25)}
 .tb-seg.next i{background:var(--gold);color:#1a1100;animation:nextPulse 1s ease-in-out infinite}
 @keyframes nextPulse{50%{transform:scale(1.15)}}
@@ -157,14 +217,60 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 #prompt.go .pr-in{animation:promptGo .42s ease-in-out infinite alternate;background:rgba(40,16,6,.86)}
 #prompt.jump.go .pr-in{background:rgba(8,22,48,.88)}
 @keyframes promptGo{to{transform:scale(1.08)}}
-.pr-bar{position:absolute;left:10px;right:10px;bottom:3px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);display:none;overflow:hidden}
-.pr-bar b{display:block;height:100%;background:linear-gradient(90deg,#ffb238,#ff5a2c);transform-origin:0 50%;transform:scaleX(0)}
-#prompt.soon .pr-bar{display:block}
+.pr-bar{position:absolute;left:14px;right:14px;bottom:6px;height:3px;border-radius:2px;background:rgba(255,255,255,.14);display:none}
+/* con barra, la pastilla crece hacia abajo: la barra y su muesca no pisan el texto */
+#prompt.bar .pr-in{height:48px;padding-bottom:12px;min-width:288px}
+.is-touch #prompt.anch.bar .pr-in{height:38px;padding-bottom:9px;min-width:220px}
+/* tecla ENCENDIDA solo dentro de la ventana de golpeo (.go): antes de eso no hay tecla (UI-05) */
+#prompt.go .key{box-shadow:0 0 0 2px rgba(255,200,150,.55),0 0 16px rgba(255,110,50,.75)}
+#prompt.go .key:not(.pad):not(.tch){background:linear-gradient(180deg,#e85a26,#c23a12);border-color:#ffc09a;border-bottom-color:#b8360f;color:#fff}
+.is-touch #prompt.bar .pr-bar{bottom:4px;left:10px;right:10px}
+.pr-bar b{position:absolute;inset:0;border-radius:2px;background:linear-gradient(90deg,rgba(255,178,56,.55),#ffb238);transform-origin:0 50%;transform:scaleX(0)}
+/* muesca fija = instante ideal de pulsar (ui.js NOTCH = 0,78) */
+.pr-bar u{position:absolute;left:78%;top:-3px;width:3px;height:9px;margin-left:-1.5px;border-radius:2px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.45),0 0 8px rgba(255,255,255,.6)}
+#prompt.bar .pr-bar{display:block}
+#prompt.go.bar .pr-bar b{background:linear-gradient(90deg,#ffb238,#ff5a2c)}
+/* saque lanzado, aún subiendo (UI-05): sin tecla encendida; reloj de arena y «Espera… golpea al bajar» */
+.pr-kw{position:relative;display:inline-flex}
+.pr-hg{display:none;align-items:center;justify-content:center;width:26px;height:26px;margin-left:2px;border-radius:50%;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.pr-hg svg{width:16px;height:16px;fill:none;stroke:var(--fg2);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;animation:hgTurn 1.6s var(--ease) infinite}
+.pr-hg .sand{fill:var(--amber);stroke:none}
+@keyframes hgTurn{0%,78%{transform:rotate(0)}100%{transform:rotate(180deg)}}
+.is-touch .pr-hg{width:22px;height:22px}.is-touch .pr-hg svg{width:13px;height:13px}
+#prompt.soon .pr-kw{display:none}
+#prompt.soon .pr-hg{display:inline-flex}
+/* reloj de 8 s (UI-05): aro alrededor de la tecla los últimos 5 s, que se vacía en el sentido del reloj (--p = fracción que
+   queda; trazo SVG con pathLength: avance lineal por el perímetro también en la tecla ancha ESPACIO). Ámbar; rojo y con pulso
+   en los 2 últimos. Solo cambia una propiedad propia (--p) y opacidad/transform. */
+.pr-ring{position:absolute;left:-4px;top:-4px;width:calc(100% + 8px);height:calc(100% + 8px);overflow:visible;opacity:0;--p:1;--rc:#ffb238;transition:opacity .2s;pointer-events:none}
+.pr-ring rect{x:1.5px;y:1.5px;width:calc(100% - 3px);height:calc(100% - 3px);rx:9px;fill:none;stroke-width:3px}
+.pr-ring .tr{stroke:rgba(255,255,255,.14)}
+.pr-ring .fi{stroke:var(--rc);stroke-linecap:round;stroke-dasharray:calc(var(--p) * 100) 200;filter:drop-shadow(0 0 3px var(--rc))}
+#prompt.clk .pr-ring{opacity:1}
+#prompt.clk .pr-in{padding-left:10px;gap:12px}
+#prompt.clk.urg .pr-ring{--rc:#ff3b2c}
+/* latido en cada segundo de los 3 últimos, a la vez que el «toc» del reloj de audio.js (cambio de Math.ceil(serveClock)) */
+#prompt.clk .pr-kw.tk .pr-ring{animation:ringTick .34s cubic-bezier(.2,.8,.2,1)}
+#prompt.clk #promptText .nu.tk{display:inline-block;animation:numTick .34s cubic-bezier(.2,.8,.2,1)}
+@keyframes ringTick{0%{transform:scale(1.16)}100%{transform:none}}
+@keyframes numTick{0%{transform:scale(1.28)}100%{transform:none}}
+#prompt .pr-kw:has(.key.pad) .pr-ring rect,#prompt .pr-kw:has(.key.tch) .pr-ring rect{rx:999px}
+/* saque en táctil: los dos saques en dos líneas compactas, cada una con su botón (rejilla 2×2: la tecla SACAR de siempre
+   y, con #promptText en display:contents, «Flotante», la tecla SALTAR y «En salto») */
+#prompt.two .pr-in,.is-touch #prompt.anch.two .pr-in{display:grid;grid-template-columns:auto auto;align-items:center;justify-items:start;column-gap:.5em;row-gap:4px;height:auto;padding:5px 14px 5px 5px;border-radius:16px}
+.is-touch #prompt.anch.two .pr-in{padding:4px 12px 4px 4px;font-size:14px;border-radius:14px}
+#prompt.two #promptText{display:contents}
+#prompt.two .key{min-width:4.7em;font-style:normal}
+#promptText .nu{text-transform:none;font-variant-numeric:tabular-nums;letter-spacing:.02em;margin-left:.15em}
+#prompt.urg #promptText{color:#ffb4a8}
 /* el aviso tapa a otro atleta o al balón (ui.js placePrompt ya elige el lado libre): fondo translúcido, texto con sombra */
 #prompt.thru .pr-in,#prompt.thru.go .pr-in,#prompt.thru.jump.go .pr-in{background:rgba(8,13,24,.32);box-shadow:0 0 0 1px rgba(255,140,80,.35);text-shadow:0 1px 2px #000,0 0 6px rgba(0,0,0,.9)}
 #prompt.thru.jump .pr-in{box-shadow:0 0 0 1px rgba(120,180,255,.4)}
+/* UI-20: sin sitio junto al jugador que no pise un botón táctil → solo la tecla (el botón táctil ya late con el mismo aviso) */
+#prompt.konly .pr-in{min-width:0!important;padding:0 6px!important;gap:0}
+#prompt.konly #promptText,#prompt.konly .pr-bar,#prompt.konly .pr-hg{display:none!important}
 /* Consejo para principiantes: franja alta bajo el contador de toques (antes iba abajo y tapaba pies y aro) */
-#coach{position:absolute;left:50%;top:calc(52px + var(--st));transform:translateX(-50%);max-width:min(640px,calc(100% - 560px));min-width:min(360px,calc(100% - 32px));box-sizing:border-box;
+#coach{position:absolute;left:calc(50% + var(--fx,0px));top:calc(52px + var(--st));transform:translateX(-50%);max-width:min(640px,calc(100% - 560px));min-width:min(360px,calc(100% - 32px));box-sizing:border-box;
   padding:6px 14px;border-radius:10px;background:rgba(8,13,24,.84);border:1px solid var(--line);font:500 14px/1.35 var(--ui);color:var(--fg2);text-align:center;
   text-shadow:0 1px 4px rgba(0,0,0,.5);transition:opacity .25s,color .25s}
 #coach.off{opacity:0}
@@ -176,6 +282,36 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 /* balón detrás del consejo (.thru, como el contador): pastilla casi transparente y texto con sombra para seguir legible */
 /* translúcida con el balón detrás, pero con fondo suficiente para leerse sobre los LED saturados */
 #coach.thru:not(.off){background:rgba(8,13,24,.38);border-color:rgba(255,255,255,.22);text-shadow:0 1px 2px #000,0 0 4px #000,0 0 10px rgba(0,0,0,.85)}
+/* y casi se apaga (en todas las pantallas, no solo en el móvil): en el remate rival del 1.er toque guiado el balón pasaba justo
+   bajo el texto de la pastilla a 1280×720, en el momento en que el defensor más necesita leerlo (verificación ola 3) */
+#coach.thru:not(.off){opacity:.28;transition:opacity .14s,color .25s}
+
+/* Sello de calidad del golpe (UI-09): sale del punto de contacto, sube ~30 px y se funde en 0,6 s (ui.js: posición por
+   frame en #stamp, subida y fundido con Web Animations en .st-in: solo transform/opacidad). PERFECTO dorado, BIEN blanco. */
+#stamp{position:absolute;left:0;top:0;pointer-events:none;z-index:2;visibility:hidden;will-change:transform}
+#stamp.on{visibility:visible}
+.st-in{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;opacity:0;transform:translate(-50%,-50%);white-space:nowrap;scale:var(--hs)}
+.st-in b{font:900 italic 31px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;padding:0 .12em}
+#stamp.pf .st-in b{color:#ffd23f;background:linear-gradient(180deg,#fffbe0 8%,#ffe066 40%,#ffc21f 62%,#ff9f1a 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(70,34,0,.9)) drop-shadow(0 3px 9px rgba(0,0,0,.55))}
+#stamp.pf .st-in::after{content:"";width:78%;height:3px;margin-top:3px;border-radius:2px;background:linear-gradient(90deg,rgba(255,210,63,0),#ffd23f 30%,#fff3b0 50%,#ffd23f 70%,rgba(255,210,63,0));box-shadow:0 0 8px rgba(255,200,60,.6)}
+#stamp.gd .st-in b{font-size:25px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.55),0 0 2px #000,0 3px 10px rgba(0,0,0,.6)}
+.st-in span{margin-top:4px;padding:2px 9px 3px;border-radius:7px;background:rgba(8,13,24,.78);box-shadow:0 0 0 1px rgba(255,255,255,.14);font:700 italic 14px/1 var(--display);letter-spacing:.05em;color:#e8eef6}
+.is-touch .st-in b{font-size:25px}.is-touch #stamp.gd .st-in b{font-size:21px}.is-touch .st-in span{font-size:12.5px}
+
+/* Indicador de borde (UI-10): el jugador controlado está fuera de cuadro (cabeza fuera o pies a < 40 px del borde).
+   Insignia del color del equipo con su dorsal y una flecha que le apunta; ui.js la pone en el borde, en la recta
+   centro → jugador, apartada del marcador y de los controles táctiles. Fundido de 120 ms; posición con transform. */
+#offArrow{position:absolute;left:0;top:0;width:38px;height:38px;margin:-19px 0 0 -19px;pointer-events:none;z-index:2;opacity:0;transition:opacity .12s linear;will-change:transform,opacity;scale:var(--hs)}
+#offArrow.on{opacity:1}
+#offArrow b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(135deg,#e2521f,#c23a12);
+  box-shadow:0 0 0 2px rgba(255,255,255,.92),0 4px 14px rgba(0,0,0,.5);font:900 italic 19px/1 var(--display);color:#fff;text-shadow:0 1px 2px rgba(110,30,0,.6);font-variant-numeric:tabular-nums}
+#offArrow.t1 b{background:linear-gradient(135deg,#2f6ef0,#2459d8);text-shadow:0 1px 2px rgba(0,20,110,.6)}
+#offArrow .oa-rot{position:absolute;inset:-14px;display:block}
+#offArrow .oa-rot svg{position:absolute;right:0;top:50%;width:15px;height:15px;margin-top:-7.5px;fill:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+#offArrow.on .oa-rot svg{animation:oaNudge .9s ease-in-out infinite}
+@keyframes oaNudge{50%{transform:translateX(3px)}}
+.is-touch #offArrow{width:34px;height:34px;margin:-17px 0 0 -17px}.is-touch #offArrow b{font-size:17px}
 
 /* Botones de HUD (escritorio) */
 .hud-btns{position:absolute;right:calc(16px + var(--sr));top:calc(14px + var(--st));display:flex;gap:8px;pointer-events:auto}
@@ -197,8 +333,8 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
   font-weight:700;font-size:clamp(18px,2.3vw,26px);letter-spacing:.05em;color:#f3f6fa;text-shadow:0 1px 3px rgba(0,0,0,.6);text-align:center}
 #bn3{margin-top:9px;display:inline-block;padding:6px 14px 6px 12px;border-radius:8px;background:rgba(8,13,24,.94);border:1px solid rgba(255,210,63,.7);color:var(--gold);
   font-weight:900;font-size:15px;letter-spacing:.18em;box-shadow:0 6px 18px rgba(0,0,0,.3)}
-#bn3::before{content:"\21C4";margin-right:8px;letter-spacing:0}
-#banner.long #bn1{font-size:clamp(36px,6.4vw,84px)}
+#bn3.so::before{content:"\21C4";margin-right:8px;letter-spacing:0}
+#banner.long #bn1,#banner.mid #bn1{font-size:clamp(36px,6.4vw,84px)}
 #banner.lose .bn-rib{--rib:rgba(40,110,255,.9)}
 /* Punto de set/partido al ir a sacar: versión compacta en la franja ALTA (sobre la grada), por encima de la red
    y del sacador rival del fondo; el consejo se oculta mientras dura (ui.js). La antigua cinta tapaba red y sacador. */
@@ -217,11 +353,52 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 #banner.show #bn2{animation:fadeUp .4s .2s var(--ease) both}
 #banner.show #bn3{animation:fadeUp .4s .3s var(--spring) both}
 #banner.out{animation:bnOut .3s ease-in both}
+#banner.out.fast{animation-duration:.12s}
+#banner.held{opacity:0!important;animation:none!important}
+/* Nivel 2 (UI-03): cinta en el tercio inferior (o en la franja alta en pantallas bajas/táctiles); ui.js la coloca donde no tape
+   al héroe ni a la víctima del plano de reacción */
+#banner.r2{right:auto;width:max-content;max-width:calc(100% - 32px);align-items:flex-start}
+#banner.r2.at-r{align-items:flex-end}
+#banner.r2.at-t{align-items:center}
+#banner.r2 .bn-rib{padding:2px clamp(34px,4vw,56px) 6px}
+#banner.r2 #bn1{font-size:clamp(46px,5.4vw,70px)}
+#banner.r2.long #bn1{font-size:clamp(44px,4.6vw,60px)}
+#banner.r2 #bn2{margin:7px 18px 0;font-size:clamp(16px,1.7vw,21px)}
+#banner.r2.at-r #bn2{margin-right:18px}
+#banner.r2 #bn3{margin:7px 18px 0}
+#banner.r2.ace #bn1{font-size:clamp(52px,6.2vw,84px)}
+/* Nivel 3 (set/partido): centrado y grande */
+#banner.t3{top:17%}
+/* entrada rápida (cambio de campo: visible del todo en < 0,3 s) */
+#banner.fastin.show .bn-rib::before{animation-duration:.2s}
+#banner.fastin.show .bn-rib::after{animation-duration:.22s;animation-delay:0s}
+#banner.fastin.show #bn1{animation-duration:.22s;animation-delay:0s}
+#banner.fastin.show #bn2{animation-duration:.2s;animation-delay:.04s}
 @keyframes ribIn{from{transform:skewX(-14deg) scaleX(0);opacity:.2}to{transform:skewX(-14deg) scaleX(1);opacity:1}}
 /* sin filter:blur ni letter-spacing animados: costaban frames de 40-55 ms en cada banner (rasterizado + maquetación por frame) */
 @keyframes txtIn{0%{opacity:0;transform:translateX(-40px) scale(1.12)}60%{opacity:1}100%{opacity:1;transform:none}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes bnOut{to{opacity:0;transform:translateY(-14px) scale(.98)}}
+
+/* Peloteo largo (UI-15): desde el 8.º toque, chip bajo el marcador con la cuenta, que late en cada contacto; al acabar la
+   jugada se queda un momento en dorado. Desde 15, en naranja vivo. Solo transform/opacidad en las animaciones. */
+.rl{display:none;align-self:flex-start;align-items:center;gap:7px;margin-top:7px;height:30px;box-sizing:border-box;padding:0 12px 0 8px;border-radius:9px;
+  background:rgba(8,13,24,.9);border:1px solid rgba(255,178,56,.5);box-shadow:0 6px 18px rgba(0,0,0,.35);font-family:var(--display);color:var(--amber)}
+.rl.on{display:inline-flex;animation:tagIn .35s var(--spring) both}
+.rl svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rl svg circle{fill:currentColor;stroke:none;opacity:.9}
+.rl-k{font-weight:800;font-size:13px;letter-spacing:.22em;text-transform:uppercase}
+.rl i{font-style:normal;font-weight:800;font-size:14px;opacity:.7}
+.rl b{display:inline-block;min-width:1.15em;text-align:center;font-weight:900;font-size:22px;line-height:1;color:#fff;font-variant-numeric:tabular-nums}
+.rl b.bump{animation:rlBump .34s var(--spring)}
+@keyframes rlBump{0%{transform:scale(1.5);color:var(--gold)}100%{transform:none}}
+.rl.hot{color:#ff8a52;border-color:rgba(255,100,50,.85);box-shadow:0 0 0 1px rgba(255,90,44,.3),0 6px 22px rgba(255,90,44,.32)}
+.rl.end{color:#1c1300;background:linear-gradient(90deg,#ffd23f,#ffb238);border-color:#ffe28a;box-shadow:0 6px 22px rgba(255,200,60,.4)}
+.rl.end b{color:#1c1300}
+.rl.end i{opacity:.55}
+/* la cuenta ya está dicha en la cinta, o llega el rótulo de set/partido: se funde (animación: la de entrada fija la opacidad) */
+.rl.on.fade{animation:rlFade .25s ease-in both}
+@keyframes rlFade{to{opacity:0;transform:translateY(-4px)}}
 
 /* Aviso corto durante el peloteo */
 /* Aviso corto durante el peloteo: va DENTRO del marcador, justo debajo (franja izquierda, sobre la grada/banda).
@@ -230,11 +407,51 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
   font:900 italic 26px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;padding:6px 20px 7px 16px;white-space:nowrap;transform-origin:0 50%}
 #callout::before{content:"";position:absolute;inset:0;transform:skewX(-14deg);background:rgba(10,16,30,.94);border:1px solid var(--line2);border-left:4px solid currentColor;z-index:-1}
 #callout.show{display:block;animation:callIn .8s var(--ease) both}
+#callout.held{opacity:0!important;animation:none!important}
 #callout.c0{color:#ffc8a8}#callout.c1{color:#bcd8ff}
 #callout.tip{font:700 18px/1.1 var(--display);letter-spacing:.06em;color:#ffe7a0}
+#callout.tip .key{font-size:14px;margin:0 2px;font-style:normal}
+/* UI-17: respuesta PERSONAL (no es del equipo rival): blanco con filo rojo-naranja (fallo, «¡Te ha dado!») o dorado (logro propio).
+   c0/c1 = color del equipo, solo para lo que hace un equipo */
+#callout.neg{color:#fff}
+#callout.neg::before{border-color:rgba(255,120,70,.45);border-left:5px solid #ff5a2c;background:linear-gradient(90deg,rgba(64,18,8,.96),rgba(10,16,30,.94) 46%)}
+#callout.good{color:var(--gold)}
+#callout.good::before{border-color:rgba(255,210,63,.5);border-left:4px solid var(--gold);background:linear-gradient(90deg,rgba(60,44,6,.96),rgba(10,16,30,.94) 46%)}
+/* medidor ◀ ● ▶ de pronto/tarde: la raya verde es el instante bueno; el punto, cuándo pulsaste (izquierda = pronto, derecha = tarde) */
+.cg{display:inline-flex;align-items:center;gap:5px;margin:0 0 0 14px;vertical-align:middle;position:relative;top:-2px}
+.cg-l,.cg-r{display:block;width:7px;height:10px;background:rgba(255,255,255,.6)}
+.cg-l{clip-path:polygon(100% 0,0 50%,100% 100%)}.cg-r{clip-path:polygon(0 0,100% 50%,0 100%)}
+.cg-t{position:relative;display:block;width:62px;height:6px;border-radius:3px;background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.cg-t u{position:absolute;left:50%;top:-4px;width:3px;height:14px;margin-left:-1.5px;border-radius:2px;background:#4be0a0;box-shadow:0 0 6px rgba(75,224,160,.6)}
+.cg-t b{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#ff6a3d;box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.5)}
+#callout.show .cg-t b{animation:cgIn .24s .02s var(--ease) both}
+@keyframes cgIn{from{left:50%;transform:scale(.6)}}
 @keyframes callIn{0%{opacity:0;transform:translateX(-18px) scale(.9)}14%{opacity:1;transform:translateX(0) scale(1.04)}24%{transform:none}80%{opacity:1}100%{opacity:0}}
 .sb{display:flex;flex-direction:column;align-items:flex-start}
-.sb-top,.sb-body{align-self:stretch}
+.sb-top,.sb-bw{align-self:stretch}
+.sb-bw{position:relative;isolation:isolate}
+.sb-body{position:relative;z-index:1}
+/* Punto de trámite (UI-03, nivel 1): pestaña del color del equipo que sale de DETRÁS del marcador, a la altura de su fila */
+#pbug{position:absolute;left:calc(100% - 14px);top:22px;z-index:0;display:none;flex-direction:column;justify-content:center;height:40px;box-sizing:border-box;
+  padding:0 18px 0 26px;border-radius:0 10px 10px 0;color:#fff;white-space:nowrap;box-shadow:0 10px 24px rgba(0,0,0,.35);pointer-events:none;
+  clip-path:inset(0 0 0 0 round 0 10px 10px 0)}
+#pbug.t0{background:linear-gradient(100deg,#b23510,#d4461b 30%,#d9501f)}
+#pbug.t1{top:62px;background:linear-gradient(100deg,#1840a8,#2459d8 30%,#2a64e4)}
+#pbug b{font:900 italic 21px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+/* 2.ª línea = la llamada del árbitro tal cual (sin pasarla a mayúsculas: «Dobles: el mismo jugador toca dos veces») */
+#pbug span{margin-top:2px;font:700 14.5px/1.05 var(--display);letter-spacing:.03em;color:rgba(255,255,255,.95)}
+#pbug.two{min-height:46px;height:auto;padding-top:5px;padding-bottom:6px}
+#pbug em{position:absolute;left:100%;top:50%;margin:-10px 0 0 7px;height:20px;box-sizing:border-box;display:flex;align-items:center;padding:0 7px;border-radius:6px;
+  background:rgba(8,13,24,.94);border:1px solid rgba(255,210,63,.7);color:var(--gold);font:900 10.5px/1 var(--display);letter-spacing:.14em;font-style:normal;text-transform:uppercase}
+#pbug{clip-path:none}
+#pbug.two b{font-size:19px}
+#pbug.show{display:flex;animation:bugIn .38s var(--ease) both}
+#pbug.show b,#pbug.show span{animation:fadeUp .3s .12s var(--ease) both}
+#pbug.out{animation:bugOut .25s ease-in both}
+#pbug.out.fast{animation-duration:.12s}
+#pbug.held{opacity:0!important}
+@keyframes bugIn{from{transform:translateX(-102%)}to{transform:none}}
+@keyframes bugOut{to{transform:translateX(-102%);opacity:.4}}
 
 /* Primeros toques guiados (primer partido): tarjeta centrada en la franja ALTA (donde va el consejo, que se oculta),
    con cámara lenta. En la franja baja tapaba al jugador controlado, que la cámara encuadra abajo al centro. */
@@ -245,11 +462,95 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 #guide .gd-t{display:flex;align-items:center;gap:10px;padding:10px 20px;border-radius:12px;background:rgba(8,13,24,.92);border:2px solid var(--gold);
   box-shadow:0 0 0 4px rgba(255,210,63,.18),0 14px 34px rgba(0,0,0,.45);font:800 italic 26px/1.1 var(--display);letter-spacing:.03em;color:#fff;white-space:nowrap}
 #guide .key{font-size:18px}
+/* con el balón por detrás (ui.js .thru, el mismo criterio que el contador de toques), la tarjeta se casi apaga en todas las
+   pantallas: en el remate rival el balón pasaba justo bajo ella a 1280×720 (verificación ola 3) */
+#guide .gd-k,#guide .gd-t{transition:opacity .14s ease-out}
+#guide.thru .gd-k,#guide.thru .gd-t{opacity:.22}
 @keyframes guideIn{from{opacity:0;transform:translate(-50%,-10px) scale(.92)}to{opacity:1;transform:translateX(-50%)}}
+/* Presentación del partido (UI-14): tarjeta de 2,5 s al empezar (la sim espera); se salta con cualquier botón, tecla o toque.
+   Sin marcador, consejo ni aviso mientras está; el marcador entra deslizando al acabar (.hud-in). Movimiento reducido: solo fundido
+   (ui.js con Web Animations, que la regla global de movimiento reducido no anula). */
+#intro{position:absolute;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;pointer-events:none;visibility:hidden;
+  background:radial-gradient(90% 80% at 50% 45%,rgba(4,7,14,.38),rgba(4,7,14,.12) 70%,transparent)}
+#intro.show,#intro.out{visibility:visible}
+.in-card{position:relative;margin-top:-6vh;width:min(640px,calc(100% - 40px));box-sizing:border-box;padding:20px 34px 0;border-radius:18px;overflow:hidden;text-align:center;
+  background:linear-gradient(180deg,rgba(15,24,44,.94),rgba(8,13,24,.96));border:1px solid var(--line2);box-shadow:0 30px 80px rgba(0,0,0,.55);font-family:var(--display)}
+.in-card::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,#ff5a2c,#ffb238 46%,#ffd23f 50%,#5fb0ff 54%,#2a6dff)}
+.in-k{display:flex;align-items:center;justify-content:center;gap:9px;margin:0;font-weight:800;font-size:14px;letter-spacing:.32em;text-transform:uppercase;color:var(--amber)}
+.in-k svg{width:16px;height:16px}
+.in-k span{color:var(--muted);letter-spacing:.2em}
+.in-k span::before{content:"·";margin:0 9px 0 0;color:var(--dim-text)}
+.in-vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;margin:12px 0 10px}
+.in-t{display:flex;flex-direction:column;align-items:center;gap:2px}
+.in-t b{font-weight:900;font-style:italic;font-size:clamp(46px,8.4vh,74px);line-height:.95;letter-spacing:.02em}
+.in-t.t0 b{background:linear-gradient(180deg,#fff 15%,#ffc39a 55%,#ff7a3e);-webkit-background-clip:text;background-clip:text;color:transparent}
+.in-t.t1 b{background:linear-gradient(180deg,#fff 15%,#b6d6ff 55%,#4c9bff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.in-t small{font:600 15px var(--ui);color:var(--fg2)}
+.in-x{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px var(--line2);
+  font-weight:900;font-style:italic;font-size:20px;letter-spacing:.02em;color:var(--fg)}
+.in-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 14px;font-weight:800;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg2)}
+.in-chip{padding:4px 11px;border-radius:7px;background:linear-gradient(90deg,#ffd23f,#ffb238);color:#1a1100;letter-spacing:.12em}
+.in-srv{color:var(--amber)}
+.in-skip{margin:12px 0 0;padding-bottom:14px;font:700 12px var(--display);letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+.in-skip .key{font-size:11px;margin-right:6px}
+.in-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.08)}
+.in-bar b{position:absolute;inset:0;background:linear-gradient(90deg,#ff7a3e,#ffd23f);transform-origin:0 50%;transform:scaleX(0)}
+#intro.show .in-card{animation:inCard .42s var(--ease) both}
+#intro.show .in-k{animation:fadeUp .4s .08s var(--ease) both}
+#intro.show .in-t.t0{animation:inL .5s .1s var(--ease) both}
+#intro.show .in-t.t1{animation:inR .5s .1s var(--ease) both}
+#intro.show .in-x{animation:inPop .36s .24s var(--spring) both}
+#intro.show .in-meta{animation:fadeUp .4s .3s var(--ease) both}
+#intro.show .in-skip{animation:fadeUp .4s .55s var(--ease) both}
+#intro.show .in-bar b{animation:inBar 2.5s linear both}
+#intro.out .in-card{animation:bnOut .28s ease-in both}
+#intro.out.fast .in-card{animation-duration:.14s}
+#intro.out{background:none}
+#intro.gy *{animation:none!important}
+@keyframes inCard{from{opacity:0;transform:translateY(16px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes inL{from{opacity:0;transform:translateX(-34px)}to{opacity:1;transform:none}}
+@keyframes inR{from{opacity:0;transform:translateX(34px)}to{opacity:1;transform:none}}
+@keyframes inPop{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
+@keyframes inBar{to{transform:scaleX(1)}}
+/* durante la tarjeta no hay marcador, consejo ni avisos; al acabar el marcador y los botones entran deslizando */
+#app.intro-on .sb,#app.intro-on #coach,#app.intro-on #prompt,#app.intro-on .hud-btns,#app.intro-on #touchbar{opacity:0!important}
+#app.hud-in .sb{animation:sbIn .45s var(--ease) both}
+#app.hud-in .hud-btns{animation:fadeUp .4s .08s var(--ease) both}
+@media (max-height:420px){
+  .in-card{padding:12px 24px 0;margin-top:-4vh}
+  .in-k{font-size:12px}.in-vs{margin:6px 0 6px}.in-t b{font-size:44px}.in-t small{font-size:13px}.in-x{width:38px;height:38px;font-size:17px}
+  .in-meta{font-size:13px}.in-skip{margin-top:8px;padding-bottom:10px}
+}
+
 /* Celebración antes de la pantalla final: aviso para saltarla */
 #skip{position:absolute;left:50%;bottom:calc(18px + var(--sbm));transform:translateX(-50%);z-index:5;pointer-events:none;padding:7px 16px;border-radius:999px;
   background:rgba(8,13,24,.82);border:1px solid var(--line2);font:800 14px var(--display);letter-spacing:.2em;color:var(--fg2);text-transform:uppercase;animation:fadeUp .5s 1s var(--ease) both}
 #skip .key{font-size:12px;margin-right:6px}
+
+/* Cortinilla de marca (UI-13): cinta sesgada del color del equipo con el sello «Palau del Mar» que tapa los cortes de cámara
+   punto → saque y punto → cambio de campo (cubre en ~70 ms hasta el frame del corte y se va en ~85 ms) y, más larga (450 ms),
+   las transiciones menú → partido, partido → final y final → menú. ui.js la mueve frame a frame con transform (sin animaciones
+   CSS: así queda sincronizada con nextCutIn de la cámara aunque haya cámara lenta o hit-stop). Movimiento reducido: fundido. */
+#wipe{position:absolute;inset:0;z-index:30;pointer-events:none;overflow:hidden;visibility:hidden}
+#wipe.on{visibility:visible}
+/* cortes de cámara: la cinta va entre la escena y los gráficos (marcador, avisos y controles táctiles quedan encima, como en la
+   tele; además, tapar los controles táctiles obligaba a Chrome a volver a rasterizarlos enteros al destaparlos: frame de ~60 ms) */
+#wipe.cutw{z-index:2}
+#wipe.lock{pointer-events:auto}
+.wp-band{position:absolute;top:-2%;bottom:-2%;left:-22vh;width:calc(100% + 44vh);will-change:transform;transform:translate3d(-300vw,0,0) skewX(-14deg);
+  background:linear-gradient(90deg,#d8401a 0%,#ff6a2e 30%,#ff8a3a 62%,#ffa43a 100%)}
+#wipe.t1 .wp-band{background:linear-gradient(90deg,#173fae 0%,#2a6dff 34%,#3f8cff 66%,#5fb0ff 100%)}
+#wipe.brand .wp-band{background:linear-gradient(90deg,#0a1124 0%,#121d38 40%,#16234a 70%,#1b2b58 100%)}
+.wp-band::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 2px,transparent 2px 28px),linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,0) 22%,rgba(0,0,0,0) 70%,rgba(0,0,0,.16))}
+.wp-band::after{content:"";position:absolute;left:50%;top:50%;width:62vh;height:62vh;margin:-31vh 0 0 -31vh;border-radius:50%;border:2.2vh solid rgba(255,255,255,.06);box-shadow:inset 0 0 0 9vh rgba(255,255,255,.025);transform:skewX(14deg)}
+.wp-tr{position:absolute;left:0;top:0;bottom:0;width:7vh;background:linear-gradient(90deg,rgba(7,11,20,.92),rgba(7,11,20,0))}
+.wp-ld{position:absolute;right:0;top:0;bottom:0;width:2.4vh;background:linear-gradient(90deg,#ffe28a,#ffd23f);box-shadow:-1.2vh 0 0 rgba(255,255,255,.85)}
+#wipe.brand .wp-ld{background:linear-gradient(90deg,#ffb238,#ff5a2c);box-shadow:-1.2vh 0 0 rgba(255,210,63,.9)}
+.wp-mark{position:absolute;left:50%;top:50%;display:flex;align-items:center;gap:.4em;transform:translate(-50%,-50%) skewX(14deg);white-space:nowrap;
+  font:900 italic clamp(30px,7.2vh,68px)/1 var(--display);letter-spacing:.08em;text-transform:uppercase;color:#fff8ee;text-shadow:0 .06em 0 rgba(0,0,0,.28)}
+.wp-mark svg{width:.9em;height:.9em;flex:none}
+#wipe.fade .wp-band{transform:none!important;left:0;width:100%;top:0;bottom:0}
+#wipe.fade .wp-mark{transform:translate(-50%,-50%)}
 
 /* =====================================================================
    PANTALLAS
@@ -266,10 +567,25 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .menu-col{width:min(460px,100%);display:flex;flex-direction:column;gap:clamp(14px,3vh,30px)}
 .menu-col>*{animation:fadeUp .7s var(--ease) both}
 .menu-col>*:nth-child(2){animation-delay:.12s}
+/* telón → menú (UI-07): mientras vuela el logotipo del telón, el del menú y el resto esperan; al aterrizar entran en cascada */
+#menu.intro .logo,#menu.lgwait .logo{visibility:hidden}
+/* el logotipo que vuela no se repinta (el arco punteado y el brillo animan con pintado, no con el compositor): queda fijo y
+   el del menú arranca sus animaciones desde ese mismo estado al relevarlo, sin salto */
+#boot .lg-arc path,#boot .lg-voley::after,#menu.intro .lg-arc path,#menu.intro .lg-voley::after,#menu.lgwait .lg-arc path,#menu.lgwait .lg-voley::after{animation:none}
+#menu.intro .menu-col>*{animation:none}
+#menu.intro .kicker,#menu.intro .tagline,#menu.intro .mi,#menu.intro .menu-foot,#menu.intro .live{opacity:0}
+#menu.enter .menu-col>*,#menu.enter .brand{animation:none}
+#menu.enter .kicker{animation:fadeUp .45s var(--ease) both}
+#menu.enter .tagline{animation:fadeUp .5s .06s var(--ease) both}
+#menu.enter .mi{animation:miIn .5s var(--ease) both}
+#menu.enter .mi:nth-child(1){animation-delay:.08s}#menu.enter .mi:nth-child(2){animation-delay:.14s}#menu.enter .mi:nth-child(3){animation-delay:.2s}
+#menu.enter .mi:nth-child(4){animation-delay:.26s}#menu.enter .mi:nth-child(5){animation-delay:.32s}
+#menu.enter .menu-foot,#menu.enter .live{animation:fadeUp .5s .38s var(--ease) both}
+@keyframes miIn{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
 .brand{position:relative}
 .kicker{display:flex;align-items:center;gap:10px;font:800 13px var(--display);letter-spacing:.34em;color:var(--amber);margin:0 0 8px;text-transform:uppercase}
 .kicker::before{content:"";width:28px;height:2px;background:var(--t0)}
-.logo{position:relative;margin:0;font-family:var(--display);font-weight:900;font-style:italic;line-height:.8;letter-spacing:-.01em;display:flex;align-items:flex-end;gap:12px;
+.logo{position:relative;margin:0;width:max-content;font-family:"VB Marca",var(--display);font-weight:900;font-style:italic;line-height:.8;letter-spacing:-.01em;display:flex;align-items:flex-end;gap:12px;
   font-size:clamp(76px,11.5vw,150px)}
 .lg-voley{position:relative;color:#fff8ee;
   text-shadow:1px 1px 0 #ff6a2e,2px 2px 0 #f2552b,3px 3px 0 #dd4320,4px 4px 0 #c43518,5px 5px 0 #a82b14,6px 6px 0 #8a2310,8px 10px 22px rgba(0,0,0,.55)}
@@ -292,34 +608,48 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .mi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--t0);transform:scaleY(0);transition:transform .25s var(--ease)}
 .mi:hover,.mi:focus-visible,.mi.kf{background:rgba(22,32,56,.85);box-shadow:inset 0 0 0 1px rgba(255,150,90,.55),0 10px 30px rgba(0,0,0,.35);outline:none;padding-left:20px}
 .mi:hover::before,.mi:focus-visible::before,.mi.kf::before{transform:none}
-.mi-n{font:700 14px var(--display);letter-spacing:.1em;color:var(--dim)}
+.mi-n{font:700 14px var(--display);letter-spacing:.1em;color:var(--dim-text)}
 .mi:focus-visible .mi-n,.mi.kf .mi-n,.mi:hover .mi-n{color:var(--amber)}
 .mi-s{font:600 13px var(--ui);letter-spacing:.02em;text-transform:none;color:var(--muted)}
-.mi.primary{height:66px;font-size:32px;background:linear-gradient(100deg,#ff6a2e,#f24e22 60%,#d93d18);box-shadow:0 14px 34px rgba(255,80,30,.35),inset 0 1px 0 rgba(255,255,255,.3)}
-.mi.primary .mi-n{color:rgba(255,255,255,.7)}
-.mi.primary .mi-s{color:rgba(255,255,255,.85)}
-.mi.primary:hover,.mi.primary:focus-visible,.mi.primary.kf{background:linear-gradient(100deg,#ff7a3e,#ff5a2c 60%,#e34820);box-shadow:0 0 0 3px #fff,0 16px 40px rgba(255,80,30,.45)}
+.mi.primary{height:66px;font-size:32px;background:linear-gradient(100deg,#e4561f,#cf4317 55%,#b9380f);box-shadow:0 14px 34px rgba(255,80,30,.35),inset 0 1px 0 rgba(255,255,255,.3)}
+.mi.primary .mi-n{color:#fff;opacity:.92}
+.mi.primary .mi-s{color:#fff;text-shadow:0 1px 2px rgba(90,20,0,.55)}
+.mi.primary:hover,.mi.primary:focus-visible,.mi.primary.kf{background:linear-gradient(100deg,#ea5c24,#d4471a 55%,#c03b12);box-shadow:0 0 0 3px #fff,0 16px 40px rgba(255,80,30,.45)}
 .mi.primary::before{display:none}
 /* con el foco de teclado/mando en otra opción, JUGAR baja a su contorno: si no, parecía el elegido (lleno naranja) */
 .mlist:has(.mi.kf) .mi.primary:not(.kf){background:rgba(10,16,30,.62);box-shadow:inset 0 0 0 2px rgba(255,106,46,.7)}
-.mlist:has(.mi.kf) .mi.primary:not(.kf) .mi-n{color:var(--dim)}
+.mlist:has(.mi.kf) .mi.primary:not(.kf) .mi-n{color:var(--dim-text)}
 .mlist:has(.mi.kf) .mi.primary:not(.kf) .mi-s{color:var(--muted)}
 .mi.kf:not(.primary){background:linear-gradient(100deg,rgba(255,106,46,.34),rgba(22,32,56,.9) 70%);box-shadow:inset 0 0 0 2px #ff7a3e,0 10px 30px rgba(0,0,0,.4)}
 /* Reiniciar armado: segundo toque en 2 s */
 #btnRestart.arm{background:rgba(255,90,44,.22);box-shadow:inset 0 0 0 2px #ff6a2e;color:#ffd9c4;letter-spacing:.04em}
 .mi.primary .go{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center}
 .mi.primary .go svg{width:14px;height:14px;fill:#fff}
-.mi-v{display:flex;align-items:center;gap:8px;font:800 18px var(--display);letter-spacing:.1em;color:var(--gold)}
-.mi-v i{font-style:normal;color:var(--dim);font-size:22px;transition:color .2s,transform .2s}
-.mi:focus-visible .mi-v i,.mi.kf .mi-v i,.mi:hover .mi-v i{color:var(--fg)}
-.mi-v b{min-width:80px;text-align:center;font-weight:800}
+.mi-v{display:flex;align-items:center;align-self:stretch;gap:2px;margin-right:-10px;font:800 18px var(--display);letter-spacing:.1em;color:var(--gold)}
+/* flechas ‹ › con zona de toque propia (UI-06): ‹ baja el valor, › lo sube; el resto de la fila sigue avanzando */
+.mi-v .arr{position:relative;display:flex;align-items:center;justify-content:center;width:36px;align-self:stretch;border-radius:10px;cursor:pointer;transition:background .15s}
+.mi-v .arr svg{width:20px;height:20px;fill:none;stroke:var(--dim);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s,transform .18s var(--ease)}
+.mi:focus-visible .mi-v .arr svg,.mi.kf .mi-v .arr svg,.mi:hover .mi-v .arr svg{stroke:var(--fg2)}
+.mi-v .arr:hover{background:rgba(255,255,255,.08)}
+.mi-v .arr:hover svg{stroke:#fff}
+.mi-v .arr:active svg,.mi-v .arr.hit svg{transform:scale(.8)}
+.mi-v .arr[data-d="-1"]:hover svg{transform:translateX(-2px)}
+.mi-v .arr[data-d="1"]:hover svg{transform:translateX(2px)}
+.mi-v .arr.end svg{opacity:.3}
+.is-touch .mi-v .arr{width:46px}
+.mv-val{display:flex;align-items:center;gap:8px;overflow:hidden;padding:0 2px}
+.mi-v b{min-width:80px;text-align:center;font-weight:800;display:inline-block}
+.mv-val.sl-l b{animation:valL .26s var(--ease)}
+.mv-val.sl-r b{animation:valR .26s var(--ease)}
+@keyframes valL{from{transform:translateX(-22px);opacity:0}to{transform:none;opacity:1}}
+@keyframes valR{from{transform:translateX(22px);opacity:0}to{transform:none;opacity:1}}
 .lvl{display:inline-flex;gap:3px;margin-left:2px}
 .lvl em{width:5px;height:14px;border-radius:2px;background:rgba(255,255,255,.14);transform:skewX(-12deg)}
 .lvl em.on{background:var(--gold)}
 
 .menu-foot{position:absolute;left:calc(clamp(24px,6vw,96px) + var(--sl));right:calc(24px + var(--sr));bottom:calc(16px + var(--sbm));display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
   font:600 13px var(--ui);color:var(--muted);pointer-events:none}
-.menu-foot .key{font-size:11px}
+.menu-foot .key{font-size:12.5px}
 .navhint{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .rec{margin-left:auto;display:flex;gap:18px;font-family:var(--display);text-transform:uppercase;letter-spacing:.14em;font-weight:700;font-size:12px;text-align:right}
 .rec b{display:block;font-size:22px;letter-spacing:.04em;color:var(--fg);font-weight:800}
@@ -351,7 +681,8 @@ h2 span{color:var(--hot)}
 .p-team i{width:6px;height:22px;border-radius:2px}
 .p-team.t0 i{background:var(--t0)}.p-team.t1 i{background:var(--t1)}
 .p-team b{font-size:40px;font-weight:900;font-variant-numeric:tabular-nums}
-.p-mid{color:var(--muted);font:700 13px var(--display);letter-spacing:.2em;text-align:center;line-height:1.5}
+.p-mid{color:var(--muted);font:700 13px var(--display);letter-spacing:.2em;text-align:center;line-height:1.3}
+.p-mid b{display:block;font-size:22px;letter-spacing:.06em;color:var(--fg2);font-variant-numeric:tabular-nums}
 
 /* Final */
 #end .sheet{max-width:620px;padding:30px 34px 26px}
@@ -364,19 +695,17 @@ h2 span{color:var(--hot)}
 .es-t{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:.1em}
 .es-t b{font-size:56px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums}
 .es-t.t0 b{color:#ffb07a}.es-t.t1 b{color:#8fc0ff}
-.es-sep{font:900 40px var(--display);color:var(--dim)}
+.es-sep{font:900 40px var(--display);color:var(--dim-text)}
 .end-sets{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
 .end-sets span{display:inline-flex;align-items:baseline;gap:6px;padding:6px 12px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid var(--line);
   font:800 18px var(--display);letter-spacing:.06em;font-variant-numeric:tabular-nums}
-.end-sets span small{font:700 11px var(--display);letter-spacing:.2em;color:var(--muted)}
+.end-sets span small{font:700 12px var(--display);letter-spacing:.2em;color:var(--muted)}
 .end-sets span.w0{border-color:rgba(255,140,70,.6);background:rgba(255,110,50,.12)}
 .end-sets span.w1{border-color:rgba(90,160,255,.6);background:rgba(60,130,255,.12)}
 .stats{margin:18px 0 6px;display:grid;gap:9px}
-.st-h{display:grid;grid-template-columns:44px 1fr 44px;font:800 12px var(--display);letter-spacing:.22em;color:var(--muted)}
-.st-h span:last-child{text-align:right}
 .st-r{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:10px;animation:fadeUp .45s var(--ease) both}
-.st-r b{font:900 24px var(--display);font-variant-numeric:tabular-nums}
-.st-r b:last-child{text-align:right}
+.st-r b{font:900 24px var(--display);font-variant-numeric:tabular-nums;color:#ffc39a}
+.st-r b:last-child{text-align:right;color:#b6d6ff}
 .st-r .mid{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:5px 4px;align-items:center}
 .st-r .mid em{grid-column:1/3;grid-row:1;text-align:center;font:700 13px var(--display);letter-spacing:.18em;color:var(--fg2);text-transform:uppercase;z-index:1}
 .st-r .bar.l{grid-column:1}.st-r .bar.r{grid-column:2}
@@ -393,6 +722,77 @@ h2 span{color:var(--hot)}
 .row-btn button{padding:14px 20px}
 .st-r.tot{padding-bottom:7px;border-bottom:1px solid var(--line)}
 .st-r.tot .mid em{color:#fff}
+/* MVP de cada equipo (UI-11): quien más puntos ha hecho (ataque + bloqueo + saque), con su desglose */
+/* MVP (UI-11/UI-18): tabla pequeña. Rótulo vertical único a la izquierda, cabecera «Ataque · Bloqueo · Saque» una vez y una fila por
+   equipo: dorsal, puntos (cifra grande, color del equipo) y desglose en columnas */
+.end-mvp{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:8px;row-gap:5px;margin:14px 0 0}
+.end-mvp:empty{display:none}
+.mvp-h{grid-row:2/span 1;display:flex;align-items:center;justify-content:center;padding:0 1px;font:900 12px/1 var(--display);letter-spacing:.24em;color:var(--gold);writing-mode:vertical-rl;transform:rotate(180deg)}
+.end-mvp.two .mvp-h{grid-row:2/4}
+.mvp-cols,.mvp{display:grid;grid-template-columns:38px minmax(0,1fr) repeat(3,52px);align-items:center;column-gap:10px;padding:0 12px 0 14px}
+.mvp-cols{grid-column:2;grid-row:1;font:700 12px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mvp-cols span{text-align:center}
+.mvp{grid-column:2;position:relative;padding-top:7px;padding-bottom:7px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);overflow:hidden}
+.mvp::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--t0)}
+.mvp.t1::before{background:var(--t1)}
+.mvp-n{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#dc4d1d,#c23a12);font:900 italic 19px/1 var(--display);color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.85);text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.mvp.t1 .mvp-n{background:linear-gradient(135deg,#2f6ef0,#2459d8)}
+.mvp strong{display:block;font:900 26px/1 var(--display);letter-spacing:.02em;font-variant-numeric:tabular-nums;color:#ffc39a}
+.mvp.t1 strong{color:#b6d6ff}
+.mvp strong i{font-style:normal}
+.mvp>b{text-align:center;font:800 18px/1 var(--display);font-variant-numeric:tabular-nums;color:var(--fg2)}
+.mvp>b.z{color:var(--dim-text);font-weight:700}
+.st-r b,.es-t b{font-variant-numeric:tabular-nums}
+/* «Ver celebración» (móvil): la hoja se aparta para ver a los ganadores; «Ver resultado» la devuelve */
+.end-peek{display:none}
+.end-back{position:absolute;left:50%;bottom:calc(16px + var(--sbm));transform:translate(-50%,140%);opacity:0;pointer-events:none;display:flex;align-items:center;gap:8px;padding:11px 18px;font-size:15px;
+  background:rgba(8,13,24,.9);box-shadow:inset 0 0 0 1px var(--line2),0 10px 30px rgba(0,0,0,.4);transition:transform .35s var(--ease),opacity .25s}
+.end-back svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+#end.peek .end-back{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+#end .sheet{transition:transform .42s var(--ease),opacity .3s}
+#end.peek .sheet{animation:none;transform:translateY(calc(100% + 40px));opacity:0;pointer-events:none}
+#end.peek{background:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* Pantalla final acoplada a la izquierda en pantallas anchas (UI-11, como el menú): la celebración queda a la vista a la derecha
+   y la cámara (CAM-10) encuadra en el hueco libre (ctx.uiDock) */
+@media (min-width:1000px){
+  #end.dock{justify-content:flex-start;padding-left:calc(clamp(24px,5vw,80px) + var(--sl));-webkit-backdrop-filter:none;backdrop-filter:none;
+    background:linear-gradient(90deg,rgba(5,8,15,.9) 0%,rgba(5,8,15,.72) 34%,rgba(5,8,15,.18) 56%,rgba(5,8,15,0) 72%)}
+  #end.dock .sheet{width:min(540px,44vw);max-width:none;padding:22px 28px 20px}
+  #end.dock .end-title{font-size:clamp(48px,5vw,64px)}
+  #end.dock .end-score{display:inline-flex;margin:8px 18px 0 0;vertical-align:middle}
+  #end.dock .es-t b{font-size:44px}
+  #end.dock .end-sets{display:inline-flex;margin:8px 0 0;vertical-align:middle}
+  #end.dock .end-mvp{row-gap:4px;margin-top:12px}
+  #end.dock .mvp{padding-top:5px;padding-bottom:5px}
+  #end.dock .mvp-n{width:32px;height:32px;font-size:17px}
+  #end.dock .mvp strong{font-size:22px}
+  #end.dock .stats{margin:12px 0 4px;gap:6px}
+  #end.dock .st-r b{font-size:21px}
+  #end.dock .end-rec{margin:8px 0 12px}
+  #end.dock .row-btn{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #end.dock .row-btn #btnAgain{grid-column:1/-1;padding:15px 20px;font-size:20px}
+  #end.dock .row-btn button{padding:12px 12px;font-size:16px;text-align:center;justify-content:center;white-space:nowrap}
+  #end.dock .row-btn #btnAgainAlt[hidden]+#btnMenu{grid-column:1/-1}
+}
+/* hoja final centrada (600-999 px de ancho con alto de sobra): compacta como la acoplada, para que los botones queden a la vista */
+@media (min-width:600px) and (max-width:999px) and (min-height:561px){
+  #end .sheet{padding:24px 28px 22px}
+  #end .end-title{font-size:clamp(48px,7vw,64px)}
+  #end .end-score{display:inline-flex;margin:8px 18px 0 0;vertical-align:middle}
+  #end .es-t b{font-size:44px}
+  #end .end-sets{display:inline-flex;margin:8px 0 0;vertical-align:middle}
+  #end .end-mvp{margin-top:12px;row-gap:4px}
+  #end .stats{margin:12px 0 4px;gap:6px}
+  #end .st-r b{font-size:21px}
+  #end .end-rec{margin:8px 0 12px}
+  #end .row-btn{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #end .row-btn #btnAgain{grid-column:1/-1}
+  #end .row-btn button{padding:12px;font-size:16px;text-align:center;justify-content:center}
+  #end .row-btn #btnAgainAlt[hidden]+#btnMenu{grid-column:1/-1}
+}
+/* durante la pantalla final el marcador y los botones del HUD se apartan (el marcador colgado del pabellón sigue a la vista) */
+#app.end-on .sb,#app.end-on .hud-btns,#app.end-on #touchbar,#app.end-on #coach{opacity:0!important;transition:opacity .3s}
+
 /* Primer partido: ¿tutorial o jugar ya? */
 #panel .sheet.first{max-width:560px}
 .first-lead{margin:0 0 16px;color:var(--fg2);font-size:16px;line-height:1.5}
@@ -410,11 +810,11 @@ h2 span{color:var(--hot)}
 .tut{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:center}
 .tut-fig{position:relative;border-radius:14px;overflow:hidden;background:radial-gradient(120% 100% at 50% 0%,#18304f,#0b1426);border:1px solid var(--line);aspect-ratio:16/11}
 .tut-fig svg{display:block;width:100%;height:100%}
-.tut-step{font:800 13px var(--display);letter-spacing:.28em;color:var(--amber);text-transform:uppercase}
+.tut-step{font:700 14px var(--display);letter-spacing:.24em;color:var(--amber);text-transform:uppercase;font-variant-numeric:lining-nums tabular-nums}
 .tut-title{font:900 italic 40px/1 var(--display);text-transform:uppercase;margin:6px 0 10px}
 .tut-text{font-size:15.5px;line-height:1.55;color:var(--fg2);margin:0}
 .tut-text b{color:#fff;font-weight:600}
-.tut-text .key{font-size:12px;margin:0 1px}
+.tut-text .key{font-size:12.5px;margin:0 1px}
 .tut-rule{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,210,63,.08);border:1px solid rgba(255,210,63,.25);font-size:13.5px;line-height:1.45;color:#f3e7c0}
 .tut-rule b{color:var(--gold)}
 .tut-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px}
@@ -423,35 +823,79 @@ h2 span{color:var(--hot)}
 .dots i.on{background:var(--gold);width:36px}
 .dots i.seen{background:rgba(255,210,63,.45)}
 .tut-anim{animation:fadeUp .45s var(--ease) both}
-.faults{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding:0;list-style:none}
-.faults li{padding:9px 11px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:13.5px;line-height:1.35;color:var(--fg2)}
-.faults li b{display:block;font:800 16px var(--display);letter-spacing:.08em;text-transform:uppercase;color:#fff;margin-bottom:2px}
+.faults{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;margin:0;padding:0;list-style:none}
+.faults li{padding:6px 11px 7px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:13px;line-height:1.32;color:var(--fg2)}
+.faults+.tut-rule{margin-top:8px;padding:8px 12px;line-height:1.4}
+.sheet:has(.faults) .tut-nav{margin-top:12px}
+.faults li b{display:block;font:800 15px var(--display);letter-spacing:.08em;text-transform:uppercase;color:#fff;margin-bottom:1px}
 /* controles */
-.ctl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.ctl section{padding:14px 14px 12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
-.ctl h3{margin:0 0 10px;font:800 15px var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--amber);display:flex;align-items:center;gap:8px}
-.ctl h3 svg{width:20px;height:20px;fill:var(--amber)}
-.ctl dl{margin:0;display:grid;gap:8px}
-.ctl dl div{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;color:var(--fg2)}
-.ctl dt{display:flex;gap:3px;flex-wrap:wrap}
-.ctl dd{margin:0;text-align:right;color:var(--muted)}
-.ctl-note{margin:14px 0 0;color:var(--muted);font-size:13.5px;line-height:1.5}
-.ctl.cur-keyboard .c-kb,.ctl.cur-gamepad .c-gp,.ctl.cur-touch .c-tc{border-color:rgba(255,150,90,.55);background:rgba(255,110,50,.07)}
-/* ajustes */
+/* controles (UI-21): pestañas pequeñas por dispositivo y, grande, el que está en uso (o el elegido) en dos columnas */
+.ctl-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.ctl-tab{display:flex;align-items:center;gap:7px;padding:7px 13px 7px 10px;border-radius:10px;font-size:14px;letter-spacing:.14em;color:var(--fg2);
+  background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line)}
+.ctl-tab svg{width:17px;height:17px;fill:currentColor;opacity:.8}
+.ctl-tab:hover{background:rgba(255,255,255,.10)}
+.ctl-tab.on{color:#fff;background:rgba(255,110,50,.16);box-shadow:inset 0 0 0 1.5px rgba(255,150,90,.75)}
+.ctl-tab.on svg{fill:var(--amber);opacity:1}
+/* «en uso» = el dispositivo con el que se está jugando */
+.ctl-tab.cur::after{content:"en uso";margin-left:2px;padding:2px 6px 3px;border-radius:5px;background:rgba(75,224,160,.16);color:#8ff0c4;font:700 11px/1 var(--display);letter-spacing:.12em;text-transform:uppercase}
+.ctl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px;margin:0;padding:14px 16px;border-radius:14px;background:rgba(255,110,50,.05);border:1px solid rgba(255,150,90,.35)}
+.ctl>div{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:36px;font-size:16px;color:var(--fg2)}
+.ctl>div+div{border-top:1px solid rgba(255,255,255,.06)}
+.ctl>div:nth-child(2){border-top:0}
+.ctl dt{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:16px}
+.ctl dt kbd,.ctl dt .key{font-size:14px}
+.ctl dt small{font:600 13px var(--ui);color:var(--muted);margin:0 3px}
+.ctl dd{margin:0;text-align:right;color:var(--fg2)}
+.ctl dd small{font-size:13px;color:var(--muted)}
+.ctl-note{margin:10px 0 0;color:var(--muted);font-size:13.5px;line-height:1.45}
+.ctl-note b{color:var(--fg2);font-weight:600}
+/* ajustes (UI-21): grupos con rótulo; dos columnas con anchura (Audio · Imagen · Juego | Accesibilidad); filas en rejilla (el
+   control nunca pisa el rótulo) */
 .opts{display:flex;flex-direction:column;gap:8px}
-.opt{display:grid;grid-template-columns:1fr auto;align-items:center;gap:14px;width:100%;text-align:left;padding:12px 16px;height:auto;border-radius:12px;
+.opt-g{display:flex;flex-direction:column;gap:6px}
+.opt{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;width:100%;text-align:left;padding:11px 16px;height:auto;border-radius:12px;
   background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg);font:800 20px/1.1 var(--display);letter-spacing:.06em}
 .opt:hover,.opt:focus-visible,.opt.kf{background:rgba(22,32,56,.95);box-shadow:inset 0 0 0 1px rgba(255,150,90,.6);outline:none}
 .opt small{display:block;margin-top:3px;font:500 13px/1.3 var(--ui);letter-spacing:0;text-transform:none;color:var(--muted)}
 .seg{display:flex;gap:3px;padding:3px;border-radius:10px;background:rgba(0,0,0,.35)}
 .seg span{padding:7px 11px;border-radius:7px;font:800 14px var(--display);letter-spacing:.1em;color:var(--muted);transition:background .2s,color .2s}
-.seg span.on{background:var(--t0);color:#fff;box-shadow:0 4px 12px rgba(255,90,40,.35)}
-.slider .v{min-width:3.2em;text-align:right}
-.slider{display:flex;align-items:center;gap:10px;font:800 15px var(--display);color:var(--gold);letter-spacing:.06em}
+.seg span.on{background:var(--t0);color:#1d0c02;box-shadow:0 4px 12px rgba(255,90,40,.35)}
+.slider .v{min-width:3.2em;text-align:right;font-variant-numeric:tabular-nums}
+.slider{display:flex;align-items:center;gap:10px;font:800 15px var(--display);color:var(--gold);letter-spacing:.06em;transition:opacity .2s}
 .slider .trk{position:relative;width:150px;height:8px;border-radius:5px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px var(--line)}
+.slider .trk::before{content:"";position:absolute;left:0;right:0;top:-12px;bottom:-12px}
 .slider .trk i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--t0)}
 .slider .trk b{position:absolute;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5)}
-.opt-foot{margin:14px 0 0;color:var(--dim);font-size:12.5px}
+/* Sonido: silencio general y volumen de efectos en la misma fila */
+.snd{display:flex;align-items:center;gap:10px}
+.snd .mute{display:flex;align-items:center;justify-content:center;width:36px;height:32px;border-radius:9px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px var(--line);transition:background .2s}
+.snd .mute svg{width:19px;height:19px;fill:none;stroke:var(--fg);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.snd .mute .sp{fill:var(--fg);stroke:none}
+.snd .mute .x{display:none;stroke:#ff8a6a}
+.snd .mute:hover{background:rgba(255,255,255,.1)}
+.opt-snd.muted .snd .mute{background:rgba(255,90,44,.2);box-shadow:inset 0 0 0 1.5px rgba(255,120,70,.7)}
+.opt-snd.muted .snd .mute .wv{display:none}.opt-snd.muted .snd .mute .x{display:block}
+.opt-snd.muted .slider{opacity:.4}
+.opt-foot{margin:12px 0 0;color:var(--dim-text);font-size:12.5px}
+.opt-foot .key{font-size:12.5px}
+.is-touch .opt-foot{display:none}
+.opt-h{display:flex;align-items:center;gap:10px;margin:6px 0 0;font:800 13px var(--display);letter-spacing:.3em;text-transform:uppercase;color:var(--amber)}
+.opt-h::after{content:"";flex:1;height:1px;background:var(--line2)}
+.opt-g:first-child .opt-h{margin-top:0}
+/* con anchura: dos columnas (Audio · Imagen · Juego | Accesibilidad) */
+@media (min-width:600px){
+  #panel .sheet.wide{max-width:1000px}
+  .sheet.wide .opts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-auto-flow:column;grid-template-rows:auto auto auto;column-gap:18px;row-gap:8px;align-items:start}
+  .sheet.wide #optA11y{grid-column:2;grid-row:1/span 3}
+  .sheet.wide .opt-g{gap:6px}
+  .sheet.wide .slider .trk{width:120px}
+  .sheet.wide #optA11y .opt-h{margin-top:0}
+}
+/* desplazable (pantallas bajas o HUD grande): desvanecido abajo con una flecha mientras quede algo por ver (ui.js checkMore) */
+.sheet.has-more::after{content:"";position:sticky;display:block;bottom:-28px;height:46px;margin:-46px -32px -28px;pointer-events:none;border-radius:0 0 20px 20px;
+  background:linear-gradient(180deg,rgba(9,14,26,0),rgba(9,14,26,.94) 62%) no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%23ffb238' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 50% 78%/20px 20px no-repeat}
 
 /* Girar el móvil */
 #rotate{position:absolute;inset:0;z-index:20;background:radial-gradient(100% 80% at 50% 40%,#13203a,var(--ink));display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:6px}
@@ -470,15 +914,17 @@ h2 span{color:var(--hot)}
 @media (max-width:900px){
   .tut{grid-template-columns:1fr}
   .tut-fig{aspect-ratio:16/8}
-  .ctl{grid-template-columns:1fr}
 }
 @media (max-height:560px){
   .sb{--sbs:.78}
+  /* UI-19: con el marcador al 78 %, la franja de arriba y el historial siguen a 12 px reales */
+  .sb-top{height:26px;font-size:15.5px}.sb-venue svg{width:16px;height:16px}
+  .sb-hist{font-size:15.5px;padding:5px 12px}
   #menu{padding-top:calc(12px + var(--st));padding-bottom:calc(12px + var(--sbm))}
   .menu-col{gap:10px;width:min(400px,100%)}
   .logo{font-size:64px}
   .tagline{margin-top:6px;font-size:13.5px;line-height:1.35}
-  .kicker{font-size:11px;margin-bottom:4px}
+  .kicker{font-size:12px;margin-bottom:4px}
   .mlist{gap:4px}
   .mi{height:38px;font-size:19px}
   .mi.primary{height:46px;font-size:24px}
@@ -499,10 +945,19 @@ h2 span{color:var(--hot)}
   .tut-text{font-size:13.5px;line-height:1.45}
   .tut-rule{font-size:12.5px;margin-top:8px;padding:7px 10px}
   .tut-nav{margin-top:10px}
-  .ctl{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .ctl section{padding:10px}
-  .ctl dl{gap:5px}.ctl dl div{font-size:12.5px}
+  .ctl{padding:8px 14px;gap:0 16px}.ctl>div{min-height:31px;font-size:14px}.ctl dt{font-size:14px}
+  .ctl-tabs{margin-bottom:8px}.ctl-tab{padding:5px 11px 5px 8px;font-size:13px}
+  .ctl-note{margin-top:8px;font-size:12.5px}
   .opt{padding:8px 12px;font-size:17px}
+  /* ajustes en el móvil apaisado: filas compactas (dos columnas, sin desplazar a 844×390; a 667×375 con el desvanecido si hiciera falta) */
+  .sheet.wide .opts{row-gap:6px}
+  .sheet.wide .opt-g{gap:5px}
+  .sheet.wide .opt{padding:5px 8px 5px 12px;font-size:16px;gap:10px;border-radius:10px}
+  .sheet.wide .opt-h{font-size:12px;letter-spacing:.24em;margin-top:2px}
+  .sheet.wide .seg span{padding:4px 8px;font-size:13px;line-height:1;letter-spacing:.06em}
+  .sheet.wide .slider{gap:8px;font-size:14px}
+  .sheet.wide .slider .trk{width:92px}
+  .sheet.wide .snd{gap:8px}.sheet.wide .snd .mute{width:32px;height:27px}
   .vlist{margin-top:12px;gap:6px}
   .vlist button{padding:11px 18px;font-size:16px}
   .es-t b{font-size:40px}
@@ -514,14 +969,26 @@ h2 span{color:var(--hot)}
   #coach{font-size:12.5px;top:calc(38px + var(--st));max-width:min(560px,calc(100% - 440px))}
   #touchbar{top:calc(8px + var(--st))}
   #banner.compact #bn2{display:none} /* en apaisado bajo el subtítulo pisaba la cinta de la red; el chip ya lo dice */
+  #banner.r2 #bn1{font-size:44px}
+  #banner.r2.long #bn1{font-size:40px}
+  #banner.r2 #bn2{font-size:15px;margin-top:5px;padding:3px 12px 4px}
+  #banner.r2 #bn3{font-size:12px;margin-top:5px;padding:4px 10px}
+  #banner.t3{top:12%}
+  #banner.t3 #bn1{font-size:56px}
+  /* el marcador va al 78 %: la pestaña sube de cuerpo para quedar en ≥ 15 px el titular y ≥ 12 px la llamada */
+  #pbug b{font-size:22px}
+  #pbug.two b{font-size:20px}
+  #pbug span{font-size:16px}
+  #pbug em{font-size:12px;height:22px;margin-top:-11px}
   /* en apaisado bajo, centrada tapaba la cabeza y el balón del sacador rival (la cámara lo encuadra en el centro):
-     a la derecha, junto al botón de pausa */
-  #banner.compact{left:auto;right:calc(64px + var(--sr));align-items:flex-end}
+     a la derecha, junto al botón de pausa (con aire: la cinta sesgada sobresale ~4 px y se tocaba con el botón; ola 2) */
+  #banner.compact{left:auto;right:calc(80px + var(--sr));align-items:flex-end}
   #banner.compact .bn-rib{padding:3px 30px 5px}
   #banner.compact #bn1{font-size:26px}
   .tb-seg{height:24px;font-size:12px}
   .tb-lbl{display:none}
   #callout{font-size:22px;margin-top:6px}
+  .rl{height:28px;margin-top:6px}.rl b{font-size:21px}.rl-k{font-size:13px}
   #callout.tip{font-size:16px}
   #guide{top:calc(36px + var(--st))}
   #guide .gd-t{font-size:20px;padding:8px 16px}
@@ -529,6 +996,10 @@ h2 span{color:var(--hot)}
 }
 /* teléfonos apaisados: botones de menú y pausa de ≥ 44 px con 6 px de separación (dedo); sin la frase de presentación */
 @media (max-height:420px){
+  .sheet.wide .opt small{display:none}
+  /* UI-19: en el teléfono apaisado el marcador pierde el nombre del pabellón (queda el balón): la franja sigue a 12 px sin ensancharse */
+  /* (letter-spacing 0: la de .sb-top se hereda ya resuelta a px y los 13 caracteres invisibles ensanchaban la pestaña ~30 px en blanco) */
+  .sb-venue{font-size:0;letter-spacing:0;gap:0;padding:0 6px}
   .tagline{display:none}
   .menu-col{gap:8px}
   .logo{font-size:56px}
@@ -539,13 +1010,47 @@ h2 span{color:var(--hot)}
   .vlist button{min-height:44px;padding:0 18px}
 }
 /* Final en móvil apaisado: resultado y botones a la izquierda, estadísticas a la derecha (los botones siempre a la vista) */
+/* tutorial en pantallas bajas (integración ola 3): compacto para que los pasos 1-5 quepan sin desplazar, y la navegación pegada
+   abajo (un paso largo, como «Reglas y faltas», desplaza por debajo; Anterior/Siguiente siempre a la vista) */
+@media (max-height:560px){
+  #panel .pn-head{margin-bottom:6px}
+  .tut-title{font-size:25px;margin:2px 0 5px}
+  .tut-text{font-size:13px;line-height:1.42}
+  .tut-rule{font-size:12px;line-height:1.36;margin-top:7px;padding:6px 10px}
+  #panel .tut-nav{position:sticky;bottom:-16px;z-index:2;margin:5px -20px -16px;padding:8px 20px 13px;
+    background:linear-gradient(180deg,rgba(9,14,26,0),rgba(9,14,26,.98) 26%);border-radius:0 0 20px 20px}
+  #panel .sheet:has(#pnTut:not([hidden])).has-more::after{display:none}
+  .faults li{padding:5px 10px 6px;font-size:12px;line-height:1.3}
+  .faults li b{font-size:13.5px}
+}
 @media (max-height:560px) and (min-width:600px){
   #end .sheet{max-width:820px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);column-gap:28px;align-items:start}
   #end .sheet>*{grid-column:1}
-  #end .stats{grid-column:2;grid-row:1/span 6;align-self:center;margin:0}
+  #end .stats{grid-column:2;grid-row:3/span 6;align-self:start;margin:6px 0 0;gap:4px}
+  /* MVP: una tarjeta por fila (lado a lado no cabía el desglose completo: se perdían los aces; verificación ola 2) */
+  #end .end-mvp{grid-column:2;grid-row:1/3;align-self:start;margin:0;row-gap:3px}
+  #end .mvp-cols,#end .mvp{grid-template-columns:28px minmax(0,1fr) repeat(3,50px);column-gap:8px;padding:0 10px 0 12px}
+  #end .mvp{padding-top:3px;padding-bottom:3px;border-radius:10px}
+  #end .mvp>b{font-size:16px}
+  #end .mvp-n{width:28px;height:28px;font-size:15px}
+  #end .mvp strong{font-size:20px;white-space:nowrap}
+  /* botones: «Revancha» a lo ancho y debajo los otros dos a partes iguales */
+  #end .row-btn{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+  #end .row-btn #btnAgain{grid-column:1/-1}
+  /* los dos secundarios a partes iguales SIEMPRE (minmax(0,1fr): el texto largo no ensancha su columna); si no cabe, dos líneas */
+  #end .row-btn button{min-width:0;padding:11px 8px;font-size:14px;letter-spacing:.05em;text-align:center;justify-content:center;white-space:nowrap}
+  #end .row-btn button:not(#btnAgain){overflow:hidden;text-overflow:ellipsis}
+  #end .row-btn #btnAgainAlt[hidden]+#btnMenu{grid-column:1/-1}
+  #end .end-peek{display:block;position:absolute;right:16px;bottom:14px}
+  #end .end-peek button{display:flex;align-items:center;gap:6px;padding:7px 11px;font-size:12px;letter-spacing:.12em;border-radius:9px}
+  #end .end-peek svg{width:15px;height:15px;fill:currentColor}
   #end .end-title{font-size:42px}
   #end .end-score{margin-top:6px}
   #end .es-t{font-size:18px}#end .es-t b{font-size:34px}#end .es-sep{font-size:28px}
+  /* estadísticas juntas: con las tarjetas MVP en filas, «Ver celebración» pisaba la última fila */
+  #end .stats{gap:2px;margin-top:4px}
+  #end .st-r{gap:8px}#end .st-r b{font-size:16px;line-height:1.05}
+  #end .st-r .mid{gap:2px 4px}#end .st-r .mid em{font-size:12px;letter-spacing:.1em}#end .st-r .bar{height:4px}
   #end .end-sets{margin:8px 0 2px;gap:6px}#end .end-sets span{font-size:15px;padding:4px 9px}
   #end .end-rec{margin:6px 0 10px;gap:2px 12px}
   #end .row-btn{gap:8px}
@@ -554,6 +1059,14 @@ h2 span{color:var(--hot)}
   #pause .sheet{max-width:720px;display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);column-gap:26px;align-items:center}
   #pause .sheet>*{grid-column:1}
   #pause .vlist{grid-column:2;grid-row:1/span 3;margin:0}
+}
+/* móviles apaisados estrechos (667×375…): tarjetas MVP en dos líneas y secundarios en dos líneas si hace falta (siempre del
+   mismo ancho, nunca con puntos suspensivos) */
+@media (max-height:560px) and (min-width:600px) and (max-width:740px){
+  #end .mvp-cols,#end .mvp{grid-template-columns:28px minmax(0,1fr) repeat(3,44px);column-gap:5px}
+  #end .mvp-cols{font-size:12px;letter-spacing:.02em}
+  #end .sh-k{letter-spacing:.14em}
+  #end .row-btn button:not(#btnAgain){white-space:normal;line-height:1.12;font-size:12.5px;letter-spacing:.03em;padding:8px 6px;min-height:36px;overflow:visible}
 }
 /* Ventanas estrechas de escritorio: el consejo se va a la derecha, bajo los botones de pausa/sonido (no pisa el marcador) */
 @media (max-width:1000px){
@@ -567,18 +1080,32 @@ h2 span{color:var(--hot)}
   .tb-seg.next{padding-right:10px}
   #touchbar{gap:4px}
 }
+/* HUD grande sin sitio para el contador entero (ui.js hudFit): solo el chip activo lleva texto */
+.tb-compact .tb-seg span{display:none}
+.tb-compact .tb-seg.next span{display:inline}
+.tb-compact .tb-seg{padding:0 7px 0 5px;gap:5px}
+.tb-compact .tb-seg.next{padding-right:10px}
+.tb-compact #touchbar{gap:4px}
+.tb-compact .tb-lbl{display:none}
 @media (max-width:640px){
   #menu{background:linear-gradient(90deg,rgba(5,8,15,.92),rgba(5,8,15,.6))}
   .rec{display:none}
 }
 .is-touch #prompt:not(.anch){bottom:calc(16px + var(--sbm))}
 /* táctil: consejo compacto de una línea bajo el contador de toques (antes no había ninguno en móvil) */
-.is-touch #coach{left:50%;right:auto;transform:translateX(-50%);top:calc(40px + var(--st));min-width:0;max-width:calc(100% - 420px);
+.is-touch #coach{left:calc(50% + var(--fx,0px));right:auto;transform:translateX(-50%);top:calc(40px + var(--st));min-width:0;max-width:calc(100% - 420px);
   padding:4px 12px;font-size:12.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
-.is-touch #coach .key{font-size:10.5px}
+.is-touch #coach .key{font-size:11.5px}
 /* móvil apaisado: el aviso junto al jugador más pequeño (el botón GOLPEAR ya late) */
 .is-touch #prompt.anch .pr-in{height:30px;font-size:15px;padding:0 11px 0 4px;gap:6px}
 .is-touch #prompt.anch .key{font-size:11px}
+/* tabletas (táctil con alto > 560 px): el aviso junto al jugador a tamaño de lectura (el de móvil se quedaba diminuto) */
+@media (min-height:561px){
+  .is-touch #prompt.anch .pr-in{height:36px;font-size:18px;padding:0 13px 0 5px;gap:8px}
+  .is-touch #prompt.anch .key{font-size:13px}
+  .is-touch #prompt.anch.two .pr-in{height:auto;font-size:17px;padding:5px 14px 5px 5px;row-gap:5px}
+  .is-touch #prompt.anch.bar .pr-in{height:44px;padding-bottom:10px;min-width:250px}
+}
 @media (max-height:420px){
   /* con el balón detrás del consejo o de la tarjeta guiada, casi desaparecen: la jugada viene de esa franja (campo rival) */
   .is-touch #coach.thru:not(.off){opacity:.3}
@@ -596,6 +1123,19 @@ h2 span{color:var(--hot)}
 /* táctil: sin desenfoque de fondo tampoco en el menú (la demo se pinta detrás a ritmo completo) */
 .is-touch .mi{-webkit-backdrop-filter:none;backdrop-filter:none}
 .is-touch .mi:not(.primary){background:rgba(10,16,30,.78)}
+/* ---------- Tamaño del HUD (UI-16, Ajustes > Accesibilidad): --hs = 1 | 1,15 | 1,3 ----------
+   Solo la propiedad scale (o zoom en lo que no coloca ui.js): los rectángulos que mide ui.js (getBoundingClientRect) ya la llevan. */
+#app{--hs:1}
+#touchbar,#guide{scale:var(--hs);transform-origin:0 0}
+#coach{scale:var(--hs);transform-origin:0 0}
+.hud-btns{scale:var(--hs);transform-origin:100% 0}
+.pr-in{scale:var(--hs)}
+#prompt:not(.anch) .pr-in{transform-origin:50% 100%}
+#skip{scale:var(--hs);transform-origin:0 100%}
+#bn2,#bn3{zoom:var(--hs)}
+/* hojas (pausa, final, paneles): ui.js les pone zoom = --hs como mucho, sin pasar del alto disponible (los botones siempre a la vista) */
+@media (max-width:1000px){#coach{transform-origin:100% 0}}
+.is-touch #coach{transform-origin:0 0}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -603,7 +1143,7 @@ h2 span{color:var(--hot)}
 
 <div id="app">
   <div id="stage"></div>
-  <div id="veil"></div>
+  <div id="veil"><i class="vg"></i><i class="vp" id="vpulse"></i></div>
 
   <!-- ================= HUD ================= -->
   <div id="hud" hidden>
@@ -612,6 +1152,8 @@ h2 span{color:var(--hot)}
         <span class="sb-venue"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 2c3 3 4 7 3 11M4 7c4 0 8 2 10 6M3 15c4 2 9 1 12-2" fill="none" stroke="currentColor" stroke-width="2"/></svg>PALAU DEL MAR</span>
         <span class="sb-set" id="sbSet">SET 1</span>
       </div>
+      <div class="sb-bw">
+      <div id="pbug" aria-live="polite"><b id="pbT"></b><span id="pbS" hidden></span><em id="pbX" hidden></em></div>
       <div class="sb-body">
         <div class="sb-row t0" id="sbRow0"><i class="sb-chip"></i><b class="sb-name" id="sbName0">TÚ</b>
           <span class="sb-srv" title="Saca"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#ffd23f"/><path d="M12 2c3 3 4 7 3 11M4 7c4 0 8 2 10 6M3 15c4 2 9 1 12-2" fill="none" stroke="#7a5600" stroke-width="1.8"/></svg></span>
@@ -621,7 +1163,9 @@ h2 span{color:var(--hot)}
           <span class="sb-sets" id="sbSets1"><em></em><em></em></span><span class="sb-pts" id="sbPts1">0</span><span class="flash"></span></div>
         <div class="sb-hist" id="sbHist" hidden></div>
       </div>
+      </div>
       <div class="sb-tag" id="sbTag" hidden></div>
+      <div class="rl" id="rally" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5.2"/><path d="M3.2 9.2a9.4 9.4 0 0 1 6-5.6M20.8 14.8a9.4 9.4 0 0 1-6 5.6"/><path d="M8.6 2.4l.9 1.4-1.6.5M15.4 21.6l-.9-1.4 1.6-.5"/></svg><span class="rl-k">Jugada</span><i>·</i><b id="rallyN">8</b></div>
       <div id="callout"></div>
     </div>
 
@@ -633,7 +1177,9 @@ h2 span{color:var(--hot)}
     </div>
 
     <div id="coach" class="off"></div>
-    <div id="prompt" class="off"><div class="pr-in"><span class="key" id="promptKey">ESPACIO</span><span id="promptText">¡Golpea!</span><i class="pr-bar"><b id="promptBar"></b></i></div></div>
+    <div id="offArrow" aria-hidden="true"><i class="oa-rot"><svg viewBox="0 0 24 24"><path d="M6 4l12 8-12 8z"/></svg></i><b id="offNum">7</b></div>
+    <div id="stamp" aria-hidden="true"><div class="st-in"><b id="stampT">Perfecto</b><span id="stampS" hidden></span></div></div>
+    <div id="prompt" class="off"><div class="pr-in"><span class="pr-kw"><svg class="pr-ring" id="promptRing" aria-hidden="true"><rect class="tr" pathLength="100"/><rect class="fi" pathLength="100"/></svg><span class="key" id="promptKey">ESPACIO</span></span><span class="pr-hg" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="sand" d="M8.6 5.2h6.8c0 2.2-1.6 3.6-3.4 5-1.8-1.4-3.4-2.8-3.4-5zM12 15.6c1.4.9 3 2 3.2 3.4H8.8c.2-1.4 1.8-2.5 3.2-3.4z"/><path d="M6.5 3h11M6.5 21h11M8 3.2c0 4.2 4 6 4 8.8S8 16.6 8 20.8M16 3.2c0 4.2-4 6-4 8.8s4 4.6 4 8.8"/></svg></span><span id="promptText">¡Golpea!</span><i class="pr-bar"><b id="promptBar"></b><u class="pr-notch"></u></i></div></div>
 
     <div class="hud-btns">
       <button id="btnHudMute" aria-label="Sonido"><svg viewBox="0 0 24 24" id="icoSound"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="#f7f2ea" stroke-width="2" stroke-linecap="round"/></svg></button>
@@ -643,10 +1189,17 @@ h2 span{color:var(--hot)}
   <div id="banner" aria-live="polite"><div class="bn-rib"><div id="bn1"></div></div><div id="bn2"></div><div id="bn3" hidden></div></div>
   <div id="guide" aria-live="polite"><div class="gd-k" id="guideK">PRIMER TOQUE</div><div class="gd-t" id="guideT"></div></div>
   <div id="skip" hidden></div>
+  <div id="intro" aria-live="polite"><div class="in-card">
+    <p class="in-k"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 2c3 3 4 7 3 11M4 7c4 0 8 2 10 6M3 15c4 2 9 1 12-2" fill="none" stroke="currentColor" stroke-width="2"/></svg>Palau del Mar<span>Vóley · 2 contra 2</span></p>
+    <div class="in-vs"><div class="in-t t0"><b>TÚ</b><small>+ compañero</small></div><div class="in-x">vs</div><div class="in-t t1"><b>CPU</b><small>Pareja rival</small></div></div>
+    <div class="in-meta"><span class="in-chip" id="introDiff">Nivel Normal</span><span>Al mejor de 3 sets</span><span class="in-srv" id="introSrv">Sacas tú</span></div>
+    <p class="in-skip" id="introHint">Pulsa cualquier tecla para empezar ya</p>
+    <i class="in-bar"><b></b></i>
+  </div></div>
   <div id="touch" hidden></div>
 
   <!-- ================= MENÚ ================= -->
-  <div id="menu" class="screen" hidden>
+  <div id="menu" class="screen intro" hidden>
     <div class="live">EN DIRECTO · DEMO</div>
     <div class="menu-col">
       <div class="brand">
@@ -655,11 +1208,11 @@ h2 span{color:var(--hot)}
           <svg class="lg-arc" viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true"><path d="M8 96 Q 190 -40 392 70"/></svg>
           <span class="lg-voley">VOLEY</span><span class="lg-3d">3D</span>
         </h1>
-        <p class="tagline">Vóley en pista cubierta, 2 contra 2: <b>tú y tu pareja contra la CPU</b>, al mejor de 3 sets.</p>
+        <p class="tagline">Vóley en pista cubierta, con la cámara detrás de tu jugador: <b>tú y tu pareja contra la CPU</b>.</p>
       </div>
       <nav class="mlist" data-nav aria-label="Menú principal">
-        <button class="mi primary" id="btnPlay"><span class="mi-n">01</span><span>Jugar<br><span class="mi-s" id="playSub">Partido · 25 · 25 · 15</span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
-        <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">02</span><span>Dificultad</span><span class="mi-v"><i>‹</i><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span><i>›</i></span></button>
+        <button class="mi primary" id="btnPlay"><span class="mi-n">01</span><span>Jugar<br><span class="mi-s" id="playSub">Partido · Al mejor de 3 sets</span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
+        <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">02</span><span>Dificultad</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Más fácil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span></span><span class="arr" data-d="1" aria-label="Más difícil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
         <button class="mi" id="btnTut"><span class="mi-n">03</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
         <button class="mi" id="btnControls"><span class="mi-n">04</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
         <button class="mi" id="btnSettings"><span class="mi-n">05</span><span>Ajustes</span><span class="mi-s"></span></button>
@@ -674,11 +1227,11 @@ h2 span{color:var(--hot)}
   <!-- ================= PAUSA ================= -->
   <div id="pause" class="screen dim" hidden>
     <div class="sheet" role="dialog" aria-labelledby="pauseTitle">
-      <p class="sh-k">Partido en pausa</p>
+      <p class="sh-k" id="pauseKick">Set 1 · 0-0 · Normal</p>
       <h2 id="pauseTitle">Pausa</h2>
       <div class="p-score">
         <div class="p-team t0"><i></i>TÚ <b id="pS0">0</b></div>
-        <div class="p-mid" id="pMid">SET 1<br>SETS 0-0</div>
+        <div class="p-mid" id="pMid">SETS<b>0-0</b></div>
         <div class="p-team t1"><b id="pS1">0</b> CPU<i></i></div>
       </div>
       <div class="vlist" data-nav>
@@ -694,12 +1247,13 @@ h2 span{color:var(--hot)}
   <!-- ================= FINAL ================= -->
   <div id="end" class="screen dim" hidden>
     <div class="sheet" role="dialog" aria-labelledby="endTitle">
-      <p class="sh-k" id="endKicker">Final del partido</p>
+      <p class="sh-k" id="endKicker">Palau del Mar</p>
       <h2 class="end-title" id="endTitle">Victoria</h2>
       <div class="end-score">
         <div class="es-t t0">TÚ <b id="endS0">2</b></div><span class="es-sep">–</span><div class="es-t t1"><b id="endS1">1</b> CPU</div>
       </div>
       <div class="end-sets" id="endSets"></div>
+      <div class="end-mvp" id="endMvp"></div>
       <div class="stats" id="endStats"></div>
       <div class="end-rec" id="endRecord"></div>
       <div class="row-btn" data-nav>
@@ -707,7 +1261,9 @@ h2 span{color:var(--hot)}
         <button class="ghost" id="btnAgainAlt" hidden>Revancha en Normal</button>
         <button class="ghost" id="btnMenu">Menú principal</button>
       </div>
+      <div class="end-peek" data-nav><button class="ghost" id="btnPeek"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5C6.5 5 2.7 9.4 1.6 12c1.1 2.6 4.9 7 10.4 7s9.3-4.4 10.4-7C21.3 9.4 17.5 5 12 5zm0 11.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm0-2.3a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4z"/></svg>Ver celebración</button></div>
     </div>
+    <button class="end-back" id="btnEndBack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>Ver resultado</button>
   </div>
 
   <!-- ================= PANELES ================= -->
@@ -729,65 +1285,91 @@ h2 span{color:var(--hot)}
         </div>
       </div>
       <div id="pnFirst" hidden>
-        <p class="first-lead">Es tu primer partido. ¿Quieres ver antes cómo se juega? Son 6 pasos cortos con dibujos: saque, recepción, colocación, remate, bloqueo y reglas.</p>
+        <p class="first-lead">¿Quieres ver antes cómo se juega? Son 6 pasos cortos con dibujos: saque, recepción, colocación, remate, bloqueo y reglas.</p>
         <div class="first-opts" data-nav>
           <button id="btnFirstTut"><span>Ver cómo se juega<small>1 minuto · luego empieza el partido</small></span><span class="ic">▶</span></button>
           <button class="ghost" id="btnFirstPlay"><span>Jugar ya<small id="firstDiff">Nivel Fácil · se cambia en el menú</small></span><span class="ic">›</span></button>
         </div>
       </div>
       <div id="pnCtl" hidden>
-        <div class="ctl" id="ctlGrid">
-          <section class="c-kb"><h3><svg viewBox="0 0 24 24"><path d="M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm2 3v2h2V9zm4 0v2h2V9zm4 0v2h2V9zm4 0v2h2V9zM7 13v2h10v-2z"/></svg>Teclado</h3>
-            <dl>
-              <div><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Moverse</dd></div>
-              <div><dt><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></dt><dd>También</dd></div>
-              <div><dt><kbd>Espacio</kbd><kbd>J</kbd></dt><dd>Golpear · sacar</dd></div>
-              <div><dt><kbd>K</kbd><kbd>X</kbd></dt><dd>Saltar · en el aire, dejada</dd></div>
-              <div><dt><kbd>C</kbd></dt><dd>Cambiar jugador</dd></div>
-              <div><dt><kbd>P</kbd><kbd>Esc</kbd></dt><dd>Pausa</dd></div>
-              <div><dt><kbd>M</kbd></dt><dd>Sonido</dd></div>
-            </dl></section>
-          <section class="c-gp"><h3><svg viewBox="0 0 24 24"><path d="M7 7h10a5 5 0 0 1 4.9 6l-.8 4a2.5 2.5 0 0 1-4.3 1.2L14.5 16h-5l-2.3 2.2A2.5 2.5 0 0 1 2.9 17l-.8-4A5 5 0 0 1 7 7zm0 3v1.5H5.5v1.5H7v1.5h1.5V13H10v-1.5H8.5V10zm9.5 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-2 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>Mando</h3>
-            <dl>
-              <div><dt><span class="key">Stick</span><span class="key">Cruceta</span></dt><dd>Moverse</dd></div>
-              <div><dt><span class="key pad pa">A</span></dt><dd>Golpear · sacar</dd></div>
-              <div><dt><span class="key pad pb">B</span><span class="key pad px">X</span></dt><dd>Saltar</dd></div>
-              <div><dt><span class="key pad py">Y</span></dt><dd>Cambiar jugador</dd></div>
-              <div><dt><span class="key">Start</span></dt><dd>Pausa</dd></div>
-              <div><dt><span class="key pad pa">A</span><span class="key pad pb">B</span></dt><dd>Menús: aceptar · volver</dd></div>
-            </dl></section>
-          <section class="c-tc"><h3><svg viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10l5.2 1.1a2 2 0 0 1 1.6 2.2l-.6 5.2A2 2 0 0 1 16.2 20H11a2 2 0 0 1-1.6-.8l-3.6-4.8a1.4 1.4 0 0 1 2.1-1.8z"/></svg>Táctil</h3>
-            <dl>
-              <div><dt><span class="key">Mitad izq.</span></dt><dd>Joystick</dd></div>
-              <div><dt><span class="key tch">Golpear</span></dt><dd>Golpear</dd></div>
-              <div><dt><span class="key tch">Sacar</span></dt><dd>Saque (el mismo botón)</dd></div>
-              <div><dt><span class="key tch j">Saltar</span></dt><dd>Remate · bloqueo</dd></div>
-              <div><dt><span class="key">II</span></dt><dd>Pausa</dd></div>
-              <div><dt><span class="key">↻</span></dt><dd>En horizontal</dd></div>
-            </dl></section>
+        <!-- UI-21: el dispositivo en uso, grande; los otros, en pestañas pequeñas (ui.js renderCtl pinta las filas; ←/→ cambia de pestaña) -->
+        <div class="ctl-tabs" data-nav role="tablist" aria-label="Dispositivo">
+          <button class="ctl-tab" data-ctl="keyboard" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm2 3v2h2V9zm4 0v2h2V9zm4 0v2h2V9zm4 0v2h2V9zM7 13v2h10v-2z"/></svg>Teclado</button>
+          <button class="ctl-tab" data-ctl="gamepad" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10a5 5 0 0 1 4.9 6l-.8 4a2.5 2.5 0 0 1-4.3 1.2L14.5 16h-5l-2.3 2.2A2.5 2.5 0 0 1 2.9 17l-.8-4A5 5 0 0 1 7 7zm0 3v1.5H5.5v1.5H7v1.5h1.5V13H10v-1.5H8.5V10zm9.5 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-2 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>Mando</button>
+          <button class="ctl-tab" data-ctl="touch" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10l5.2 1.1a2 2 0 0 1 1.6 2.2l-.6 5.2A2 2 0 0 1 16.2 20H11a2 2 0 0 1-1.6-.8l-3.6-4.8a1.4 1.4 0 0 1 2.1-1.8z"/></svg>Táctil</button>
         </div>
-        <p class="ctl-note"><b>Saque</b>: Golpear (en táctil, el botón SACAR) lanza un saque flotante y Saltar un saque en salto; después vuelve a pulsarlo cuando el balón baje a tu mano. <b>Arriba es siempre hacia la red</b>: la cámara va detrás de tu jugador. El control pasa solo al compañero que debe dar el siguiente toque, y el juego elige el tipo de toque: 1.er toque recepción, 2.º colocación, 3.er ataque. Si mantienes una dirección al golpear, apuntas el remate o el saque.</p>
+        <dl class="ctl" id="ctlGrid" role="tabpanel"></dl>
+        <p class="ctl-note"><b>Arriba</b> es siempre hacia la red · el control pasa solo a quien da el siguiente toque · mantén una dirección al golpear para apuntar.</p>
       </div>
       <div id="pnSet" hidden>
+        <!-- UI-21: grupos Audio · Imagen · Juego · Accesibilidad; dos columnas en cuanto hay anchura (móvil apaisado incluido) y, si aun
+             así no cabe, desvanecido abajo (.has-more). La dificultad está en el menú (una sola fila en todo el juego). -->
         <div class="opts" data-nav id="optList">
-          <button class="opt" data-opt="muted"><span>Sonido<small>Efectos del pabellón y del público</small></span><span class="seg" data-seg="muted"></span></button>
-          <button class="opt" data-opt="quality"><span>Calidad gráfica<small id="qualNote">Auto ajusta la calidad para ir fluido</small></span><span class="seg" data-seg="quality"></span></button>
-          <button class="opt" data-opt="sfxVol"><span>Efectos<small>Golpes, silbato y público</small></span><span class="slider" data-sl="sfxVol"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></button>
-          <button class="opt" data-opt="musicVol"><span>Música<small>Sintonías y sonidos del menú</small></span><span class="slider" data-sl="musicVol"><span class="trk"><i></i><b></b></span><span class="v">75%</span></span></button>
-          <button class="opt" data-opt="camSens"><span>Cámara<small>Rapidez con la que la cámara sigue a tu jugador</small></span><span class="slider" data-sl="camSens"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></button>
-          <button class="opt" data-opt="showHelp"><span>Ayudas en pantalla<small>Avisos de “¡Golpea!” y “¡Salta!” y consejos</small></span><span class="seg" data-seg="showHelp"></span></button>
-          <button class="opt" data-opt="difficulty"><span>Dificultad<small>Nivel de la pareja rival</small></span><span class="seg" data-seg="difficulty"></span></button>
+          <div class="opt-g">
+            <p class="opt-h">Audio</p>
+            <button class="opt opt-snd" data-opt="sfxVol"><span>Sonido<small>Golpes, silbato y público</small></span><span class="snd"><span class="mute" data-mute role="switch" aria-label="Silenciar"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="sp" d="M4 9h4l5-4v14l-5-4H4z"/><path class="wv" d="M16 8.5a5 5 0 0 1 0 7"/><path class="x" d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg></span><span class="slider" data-sl="sfxVol"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></span></button>
+            <button class="opt" data-opt="musicVol"><span>Música<small>Sintonías y sonidos del menú</small></span><span class="slider" data-sl="musicVol"><span class="trk"><i></i><b></b></span><span class="v">75%</span></span></button>
+          </div>
+          <div class="opt-g">
+            <p class="opt-h">Imagen</p>
+            <button class="opt" data-opt="quality"><span>Calidad<small id="qualNote">Auto la ajusta sola</small></span><span class="seg" data-seg="quality"></span></button>
+            <button class="opt" data-opt="camSens"><span>Cámara<small>Rapidez con la que sigue a tu jugador</small></span><span class="slider" data-sl="camSens"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></button>
+          </div>
+          <div class="opt-g">
+            <p class="opt-h">Juego</p>
+            <button class="opt" data-opt="showHelp"><span>Ayudas en pantalla<small>Avisos de «¡Golpea!» y «¡Salta!» y consejos</small></span><span class="seg" data-seg="showHelp"></span></button>
+          </div>
+          <div class="opt-g" id="optA11y">
+            <p class="opt-h">Accesibilidad</p>
+            <button class="opt" data-opt="camStable"><span>Cámara estable<small>Sin temblores ni sacudidas en los golpes</small></span><span class="seg" data-seg="camStable"></span></button>
+            <button class="opt" data-opt="rumble"><span>Vibración<small>Del mando y del móvil en los golpes</small></span><span class="seg" data-seg="rumble"></span></button>
+            <button class="opt" data-opt="hudScale"><span>Tamaño del HUD<small>Marcador, avisos y menús</small></span><span class="seg" data-seg="hudScale"></span></button>
+            <button class="opt" data-opt="softFlash"><span>Destellos suaves<small>Menos destellos en los puntos y las celebraciones</small></span><span class="seg" data-seg="softFlash"></span></button>
+          </div>
         </div>
-        <p class="opt-foot" id="optFoot">← → cambia el valor · Los ajustes se guardan en este navegador</p>
+        <p class="opt-foot" id="optFoot"><span class="key">←</span><span class="key">→</span> cambia el valor · <span class="key">Intro</span> pasa al siguiente</p>
       </div>
     </div>
   </div>
 
-  <div id="rotate" hidden><div class="ph"></div><b>Gira el móvil</b><p>Vóley 3D se juega en horizontal</p></div>
-  <div id="boot"><div class="bt-logo">VOLEY <span>3D</span></div><div class="bt-bar"><i></i></div><p>PALAU DEL MAR</p></div>
+  <div id="rotate" hidden><div class="ph"></div><b>Gira el móvil</b><p>Voley 3D se juega en horizontal</p></div>
+  <div id="boot"><div class="bt-bg"></div><div class="bt-c">
+    <div class="logo bt-logo" aria-hidden="true">
+          <svg class="lg-arc" viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true"><path d="M8 96 Q 190 -40 392 70"/></svg>
+          <span class="lg-voley">VOLEY</span><span class="lg-3d">3D</span>
+    </div>
+    <div class="bt-bar"><i></i></div><p>PALAU DEL MAR</p></div></div>
+  <div id="wipe" aria-hidden="true"><div class="wp-band"><i class="wp-tr"></i><i class="wp-ld"></i><div class="wp-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 2c3 3 4 7 3 11M4 7c4 0 8 2 10 6M3 15c4 2 9 1 12-2" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Palau del Mar</span></div></div></div>
+  <div id="srLive" class="sr" aria-live="polite"></div>
   <div id="fatal" hidden></div>
   <div id="fps" hidden></div>
 </div>
+<script>
+/* UI-07: las fuentes del menú y del HUD (Google Fonts) se piden desde el primer instante, en paralelo con three.js. El telón
+   ya no las espera (su logotipo va con la fuente embebida); solo el relevo al menú, para que el menú no salga en la fuente de
+   reserva: window.__vbFonts / __vbOnFonts. Sin esperas inútiles: si la hoja de Google no ha cargado (bloqueada, sin red), se
+   avisa YA; si no, al tener las caras o como mucho a los 2,5 s desde la navegación. */
+(function () {
+  var b = document.getElementById('boot'), done = false;
+  function ok() { if (done) return; done = true; window.__vbFonts = true; if (b) b.classList.add('fonts'); if (window.__vbOnFonts) window.__vbOnFonts(); }
+  try {
+    var F = document.fonts; if (!F || !F.load) { ok(); return; }
+    // este script espera a la hoja de estilos (bloquea scripts): aquí ya ha cargado o ha fallado
+    var gf = false; F.forEach(function (f) { if (/Barlow/.test(f.family)) gf = true; });
+    if (!gf) { window.__vbFontFaces = 0; ok(); return; }
+    setTimeout(ok, Math.max(0, 2500 - (window.performance ? performance.now() : 0)));
+    // window.__vbFontFaces = caras de Google que de verdad se han cargado. Ojo: document.fonts.check() devuelve true cuando
+    // NINGUNA cara coincide, no sirve de prueba.
+    Promise.all([F.load('900 italic 64px "Barlow Condensed"'), F.load('700 13px "Barlow Condensed"'), F.load('800 24px "Barlow Condensed"'), F.load('600 13px "Barlow"')])
+      .then(function (r) { var n = 0; for (var i = 0; i < r.length; i++) n += r[i].length; window.__vbFontFaces = n; ok(); }, function () { window.__vbFontFaces = 0; ok(); });
+    // El resto de caras que usa la UI, sin esperarlas (no retrasan el arranque): Chrome baja cada cara de Google la primera vez
+    // que un texto la pide y, al llegar, vuelve a maquetar TODO el documento. Sin esto, el primer aviso de los 8 s (#coach, Barlow
+    // 500/700) costaba un frame de ~70 ms en el móvil a mitad de partido; así llegan bajo el telón.
+    ['800 italic 24px "Barlow Condensed"', '700 italic 24px "Barlow Condensed"', '600 13px "Barlow Condensed"', '500 13px "Barlow Condensed"',
+     '900 24px "Barlow Condensed"', '400 13px "Barlow"', '500 13px "Barlow"', '700 13px "Barlow"'].forEach(function (d) { try { F.load(d).catch(function () { }); } catch (e) { } });
+  } catch (e) { ok(); }
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js"></script>
 <script src="js/sim.js"></script>
 <script src="js/ai.js"></script>

@@ -10,6 +10,9 @@
  *      malas lecturas, timing con σ por habilidad, inercia del stick): perfecto / bueno / medio / novato
  *      (primera sesión) contra los 4 niveles -> % de puntos y probabilidad estimada de ganar el partido
  *   5) Reglas puntuales (4 toques, dobles, sets, red, antena, saque, bloqueo...) y vocabulario del árbitro
+ *   6) Ritual del sacador CPU (SIM-04): en cada saque de cada partida (ritualChecker) y casos propios
+ *   7) Calibración del highlight (SIM-05): 20 partidos completos CPU vs CPU con histograma, banda 15-25 % de puntos >= 0,55,
+ *      < 5 % >= 0,8 fuera de punto de set/partido, cobertura de señal/landSide/pausa/ritual/dribble y determinismo por semilla
  * Sale con código != 0 si hay excepciones o invariantes rotos.
  * Uso: node tools/simtest.js [minutos=20] [seed=12345] [minutosMatriz=20] [semillas=4]
  *   La matriz (dificultades y bots) va en paralelo con worker_threads.
@@ -41,7 +44,7 @@ const DT = 1 / C.SIM_HZ;
 let failures = 0;
 const fail = m => { failures++; console.error('FALLO:', m); };
 const KNOWN = ['hit', 'block', 'net', 'land', 'point', 'set', 'match', 'gameOver', 'whistle', 'jump', 'switch', 'serveReady',
-  'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange'];
+  'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange', 'dribble'];
 const pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '-';
 // Vocabulario del árbitro (FCVB): cada motivo de punto con sus textos válidos. Un texto nuevo debe pasar por aquí.
 const POINT_TEXTS = {
@@ -53,6 +56,56 @@ const POINT_TEXTS = {
   attackServe: ['Ataque sobre el saque'], serve: ['Falta de saque: 8 segundos', 'Falta de saque: el balón cae sin golpearlo']
 };
 const badText = new Set();
+// Señales oficiales del árbitro (SIM-02, point.signal): lista cerrada
+const SIGNALS = ['in', 'out', 'touched', 'four', 'double', 'net', 'under', 'antenna', 'attackFault', 'delay8', 'serveFault'];
+const SIG_OF = { in: ['in'], out: ['out', 'touched'], four: ['four'], double: ['double'], net: ['net'], under: ['under'], antenna: ['antenna'],
+  attackServe: ['attackFault'], block: ['attackFault'], serve: ['delay8', 'serveFault'] };
+const isInt0 = v => Number.isInteger(v) && v >= 0;
+/** Comprueba los campos de presentación de un evento point (SIM-01/02/03/05). ctx = {streak, setPoint, matchPoint (del
+ *  serveReady), eight}. Además de cada campo por separado, RECOMPONE el highlight con S.highlightOf a partir de lo que el test
+ *  sabe por su cuenta (cómo, toques, defensas, racha contada, punto de set/partido del serveReady, final apretado calculado del
+ *  marcador, salvado, set/partido ganado) y exige el mismo número: un término que se cuele en la sim sin pasar por la fórmula
+ *  publicada, o un campo que no cuadre con el número, falla aquí. Devuelve la lista de problemas (vacía si todo cuadra). */
+function pointFieldIssues(e, g, ctx) {
+  const bad = [];
+  if (!(typeof e.highlight === 'number' && e.highlight >= 0 && e.highlight <= 1)) bad.push('highlight ' + e.highlight);
+  if (!isInt0(e.digs)) bad.push('digs ' + e.digs);
+  if (!isInt0(e.streak) || e.streak < 1) bad.push('streak ' + e.streak);
+  if (ctx && ctx.streak != null && e.streak !== ctx.streak) bad.push('streak ' + e.streak + ' != ' + ctx.streak + ' (contado en el test)');
+  if (typeof e.savedSetPoint !== 'boolean') bad.push('savedSetPoint ' + e.savedSetPoint);
+  if (ctx && ctx.setPoint != null && e.savedSetPoint !== (ctx.setPoint === 1 - e.team)) bad.push('savedSetPoint ' + e.savedSetPoint + ' con punto de set de ' + ctx.setPoint);
+  if (e.how === 'error' && !e.setWon && !e.matchWon && e.highlight > 0.35 + 1e-9) bad.push('error con highlight ' + e.highlight);
+  // final apretado (SIM-05): marcador de ANTES del punto, últimos HL.clutchLast puntos del set y diferencia <= HL.clutchGap
+  if (typeof e.clutch !== 'boolean') bad.push('clutch ' + e.clutch);
+  else if (g && Array.isArray(e.score)) {
+    const s0 = e.score[0] - (e.team === 0 ? 1 : 0), s1 = e.score[1] - (e.team === 1 ? 1 : 0), tgt = g.setNo === 3 ? 15 : 25;
+    const want = Math.max(s0, s1) >= tgt - VB.HL.clutchLast && Math.abs(s0 - s1) <= VB.HL.clutchGap;
+    if (e.clutch !== want) bad.push('clutch ' + e.clutch + ' con ' + s0 + '-' + s1 + ' (set ' + g.setNo + ')');
+    if (ctx && ctx.setPoint != null && ctx.matchPoint != null && typeof e.rallyHits === 'number') {
+      // remate perfecto del humano: el único término que el test no puede saber desde fuera (lo lee de g, como la sim)
+      const pk = e.how === 'kill' && g.atkHow === 'kill' && !!g.atkHuman && g.atkGrade === 'perfect';
+      const h = S.highlightOf({ how: e.how, rallyHits: e.rallyHits, digs: e.digs, perfectKill: pk, setPoint: ctx.setPoint !== -1, matchPoint: ctx.matchPoint !== -1,
+        clutch: want, saved: ctx.setPoint === 1 - e.team, streak: ctx.streak != null ? ctx.streak : e.streak, setWon: e.setWon, matchWon: e.matchWon });
+      if (h !== e.highlight) bad.push('highlight ' + e.highlight + ' != fórmula ' + h);
+    }
+  }
+  if (!SIGNALS.includes(e.signal)) bad.push('señal fuera de la lista: ' + e.signal);
+  else if (!(SIG_OF[e.reason] || []).includes(e.signal)) bad.push('señal ' + e.signal + ' para el motivo ' + e.reason);
+  if ((e.signal === 'touched') !== (e.touchedOut === true) || typeof e.touchedOut !== 'boolean') bad.push('touched/touchedOut ' + e.signal + '/' + e.touchedOut);
+  if (e.reason === 'serve' && (e.signal === 'delay8') !== (e.text === 'Falta de saque: 8 segundos')) bad.push('8 s: señal ' + e.signal + ' con "' + e.text + '"');
+  if (e.reason === 'serve' && e.signal === 'delay8' && g && g.serveClock !== 0) bad.push('delay8 con el reloj de saque en ' + g.serveClock);
+  const landed = e.reason === 'in' || e.reason === 'out';
+  if (landed ? !(e.landSide === 0 || e.landSide === 1) : e.landSide !== -1) bad.push('landSide ' + e.landSide + ' con ' + e.reason);
+  if (landed && g && g.lastLand && e.landSide !== (g.lastLand.x > 0 ? 0 : 1)) bad.push('landSide no es el campo del bote');
+  // pausa: la clásica sin g.present; con g.present la de presentación (VB.HOLD)
+  const H = VB.HOLD, eight = ctx && ctx.eight;
+  const want = g && g.present ? (e.matchWon ? H.match : e.setWon ? H.set : (e.highlight >= H.bigAt ? H.big : H.routine) + (eight ? H.eight : 0))
+    : (e.matchWon ? 2.2 : e.setWon ? 3.6 : (g && g.demo ? VB.RITUAL.demoHold : 1.9) + (eight ? 1.4 : 0)); // demo: pausa rutinaria corta (SIM-04)
+  if (Math.abs(e.hold - want) > 1e-9) bad.push('hold ' + e.hold + ' (esperado ' + want + ')');
+  const lp = g && g.lastPoint;
+  if (lp && (lp.highlight !== e.highlight || lp.signal !== e.signal || lp.hold !== e.hold || lp.digs !== e.digs || lp.streak !== e.streak || lp.landSide !== e.landSide || lp.clutch !== e.clutch)) bad.push('g.lastPoint no copia el evento');
+  return bad;
+}
 
 function checkInvariants(g, tag) {
   const b = g.ball;
@@ -69,19 +122,97 @@ function checkInvariants(g, tag) {
 
 function newCounters() { const o = {}; for (const k of KNOWN) o[k] = 0; return o; }
 
+/** Ritual del sacador CPU (SIM-04), comprobado en CADA saque de una partida (se llama tras cada paso con sus eventos):
+ *  - CPU: g.cpuTossIn decrece de forma monótona desde el serveReady y vale 0 en el paso del toss; el lanzamiento llega
+ *    a los g.whistleAt + ritual.dur (≤ RITUAL.tossBy desde el serveReady) y con el reloj de 8 s en ≥ 3 s; tantos `dribble`
+ *    como ritual.bounces, cada uno con el balón en el suelo (z = BR) y tras él el balón vuelve a la altura de la mano;
+ *    la duración del ritual en [minDur, maxDur]; 1-3 botes.
+ *  - Humano: sin ritual (cpuTossIn -1, ritual.on false, ningún `dribble`).
+ *  - Fuera del saque: cpuTossIn -1 y ritual apagado. */
+function ritualChecker(label) {
+  const R = VB.RITUAL, st = { serves: 0, cpu: 0, human: 0, dribbles: 0, minClock: 9, maxToss: 0, bad: 0, nb: [0, 0, 0, 0] };
+  let cur = null;
+  const bad = m => { if (st.bad++ < 4) fail(label + ' ritual: ' + m); };
+  st.step = (g, evs) => {
+    for (const e of evs) {
+      if (e.type === 'serveReady') {
+        st.serves++;
+        const cpu = !S.isHuman(g, e.player), r = g.ritual;
+        cur = { cpu, t0: e.t, last: g.cpuTossIn, n: 0, bounces: r.bounces, dur: r.dur, low: false, back: false };
+        // (el primer serveReady lo emite createGame: se ve tras el primer paso, de ahí el + g.serveT)
+        if (cpu) {
+          st.cpu++;
+          if (!r.on || r.player !== e.player || r.phase !== 'wait') bad('CPU sin ritual al poner el saque');
+          if (!(r.bounces >= 1 && r.bounces <= 3)) bad('botes ' + r.bounces);
+          if (!(r.dur >= R.minDur - 1e-9 && r.dur <= R.maxDur + 1e-9)) bad('duración ' + r.dur);
+          if (!(Math.abs(g.cpuTossIn + g.serveT - Math.min(R.tossBy, g.whistleAt + r.dur)) < 1e-9) || Math.abs(g.timer - g.cpuTossIn) > 1e-9) bad('cpuTossIn ' + g.cpuTossIn + ' / timer ' + g.timer);
+          st.nb[r.bounces]++;
+        } else {
+          st.human++;
+          if (r.on || g.cpuTossIn !== -1) bad('humano con ritual (cpuTossIn ' + g.cpuTossIn + ')');
+        }
+      }
+      if (e.type === 'dribble') {
+        st.dribbles++;
+        if (!cur || !cur.cpu) { bad('dribble sin saque de la CPU'); continue; }
+        cur.n++;
+        if (e.player !== g.server || Math.abs(g.ball.z - C.BR) > 1e-9) bad('dribble con el balón a ' + g.ball.z.toFixed(3) + ' m');
+        if (e.n !== cur.n || e.of !== cur.bounces) bad('dribble ' + e.n + '/' + e.of + ' (contados ' + cur.n + '/' + cur.bounces + ')');
+      }
+      if (e.type === 'toss' && cur) {
+        if (cur.cpu) {
+          const tt = e.t - cur.t0;
+          if (g.cpuTossIn !== 0) bad('cpuTossIn ' + g.cpuTossIn + ' en el toss');
+          if (g.serveClock < 3) bad('lanzamiento con el reloj de saque en ' + g.serveClock.toFixed(2) + ' s');
+          if (tt > R.tossBy + 1e-6 || Math.abs(tt - Math.min(R.tossBy, g.whistleAt + cur.dur)) > 1.5 * DT) bad('lanzamiento a los ' + tt.toFixed(3) + ' s (dur ' + cur.dur.toFixed(3) + ')');
+          if (cur.n !== cur.bounces) bad(cur.n + ' dribbles de ' + cur.bounces);
+          if (!cur.low || !cur.back) bad('el balón no bota (bajo ' + cur.low + ', vuelve ' + cur.back + ')');
+          if (g.serveClock < st.minClock) st.minClock = g.serveClock; if (tt > st.maxToss) st.maxToss = tt;
+        } else if (g.cpuTossIn !== -1) bad('cpuTossIn ' + g.cpuTossIn + ' en un toss humano');
+        cur.tossed = true;
+      }
+    }
+    if (g.mode === 'serve' && cur && !cur.tossed) {
+      if (cur.cpu) {
+        if (g.cpuTossIn > cur.last + 1e-9 || g.cpuTossIn < 0) bad('cpuTossIn no decrece: ' + cur.last + ' -> ' + g.cpuTossIn);
+        cur.last = g.cpuTossIn;
+        if (g.ritual.phase === 'dribble' && g.ball.z <= C.BR + 0.06) cur.low = true;
+        if (cur.low && g.ritual.phase !== 'dribble' && g.ball.z >= R.relZ - 0.05) cur.back = true;
+        if (g.serveState === 'ready' && g.ball.held !== g.server) bad('balón fuera de la mano del sacador durante el ritual');
+      } else if (g.cpuTossIn !== -1 || g.ritual.on) bad('saque humano con cpuTossIn ' + g.cpuTossIn);
+    } else if (g.mode !== 'serve' && (g.cpuTossIn !== -1 || g.ritual.on)) bad('cpuTossIn ' + g.cpuTossIn + ' / ritual en modo ' + g.mode);
+  };
+  return st;
+}
+
 /** Ejecuta `seconds` de juego. inputFn(g) devuelve la entrada humana o null. */
 function run(label, opts, seconds, inputFn, quiet) {
   const g = S.createGame(Object.assign({ stats: true, seed: SEED }, opts));
   const ev = newCounters(), evs = [], serveTakeoff = [];
   let steps = Math.round(seconds / DT), lastSamePlayer = null, sameTouch = 0, matches = 0, setsSeen = 0, matchWins = [0, 0];
   let ghost = 0, stalePr = 0, lateSw = 0, blkSwitch = 0, spikeCtl = null; const fresh = {};
+  const aiFaults = []; // dobles / 4 toques cometidos por la IA (equipo CPU o compañero IA del humano): deben ser 0
+  const hls = [], sigs = {}, pf = { streakT: -1, streakN: 0, setPoint: -1, matchPoint: -1, issues: 0, digs: 0, maxDigs: 0 };
+  const rit = ritualChecker(label);
   const t0 = Date.now();
   try {
     for (let i = 0; i < steps; i++) {
       const preSp = Math.hypot(g.ball.vx, g.ball.vy, g.ball.vz), preT = g.pr1.t; // lo que ve la sim al decidir el cambio
       S.step(g, DT, inputFn ? inputFn(g, i) : null);
       evs.length = 0; S.drainEvents(g, evs);
+      rit.step(g, evs);
       for (const e of evs) {
+        // campos de presentación del punto (SIM-01/02/03), contrastados con un recuento propio
+        if (e.type === 'newSet' || e.type === 'newMatch') { pf.streakT = -1; pf.streakN = 0; }
+        if (e.type === 'serveReady') { pf.setPoint = e.setPoint; pf.matchPoint = e.matchPoint; }
+        if (e.type === 'point') {
+          if (pf.streakT === e.team) pf.streakN++; else { pf.streakT = e.team; pf.streakN = 1; }
+          const eight = evs.some(x => x.type === 'courtChange' && x.why === 'eight');
+          const bad = pointFieldIssues(e, g, { streak: pf.streakN, setPoint: pf.setPoint, matchPoint: pf.matchPoint, eight });
+          if (Math.abs(g.timer - e.hold) > 1e-9) bad.push('g.timer ' + g.timer + ' != hold ' + e.hold);
+          if (bad.length && pf.issues++ < 5) fail(label + ' campos del punto: ' + bad.join('; ') + ' ' + JSON.stringify({ reason: e.reason, how: e.how, text: e.text, score: e.score }));
+          hls.push(e.highlight); sigs[e.signal] = (sigs[e.signal] || 0) + 1; pf.digs += e.digs; if (e.digs > pf.maxDigs) pf.maxDigs = e.digs;
+        }
         if (!(e.type in ev)) fail('evento desconocido ' + e.type); else ev[e.type]++;
         if (!Number.isFinite(e.t)) fail('evento sin t ' + e.type);
         if (e.type === 'hit') {
@@ -91,6 +222,10 @@ function run(label, opts, seconds, inputFn, quiet) {
         if (e.type === 'block') lastSamePlayer = null; // tras bloqueo se puede volver a tocar
         if (e.type === 'jump' && g.mode === 'serve' && g.serveJump) serveTakeoff.push(e.player.x * S.side(e.player.team));
         if (e.type === 'point') lastSamePlayer = null;
+        if (e.type === 'point' && (e.reason === 'double' || e.reason === 'four')) {
+          const ft = 1 - e.team, human = !g.demo && !g.autopilot && ft === 0 && e.player === g.ctrl;
+          if (!human) aiFaults.push(e.reason + ' eq' + ft + ' t=' + e.t.toFixed(2));
+        }
         if (e.type === 'point' && !(POINT_TEXTS[e.reason] || []).includes(e.text) && !badText.has(e.reason + e.text)) { badText.add(e.reason + e.text); fail(label + ' texto de punto fuera del vocabulario: ' + e.reason + ' "' + e.text + '"'); }
         if (e.type === 'match') { matches++; matchWins[e.team]++; }
         if (e.type === 'set') setsSeen++;
@@ -131,13 +266,23 @@ function run(label, opts, seconds, inputFn, quiet) {
     console.log('motivos', JSON.stringify(st.why));
     console.log('cómo', JSON.stringify(st.how));
     console.log('eventos', JSON.stringify(ev));
+    if (hls.length) {
+      const hs = hls.slice().sort((a, b) => a - b), m = hs.reduce((a, b) => a + b, 0) / hs.length;
+      console.log('highlight media', m.toFixed(3), 'p50', hs[hs.length >> 1].toFixed(2), 'p90', hs[Math.floor(hs.length * 0.9)].toFixed(2), 'máx', hs[hs.length - 1].toFixed(2),
+        '>=0,55:', pct(hs.filter(h => h >= 0.55).length, hs.length), '| defensas de remate', pf.digs, '(máx. por punto ' + pf.maxDigs + ')', '| señales', JSON.stringify(sigs));
+    }
+    console.log('ritual (SIM-04): saques', rit.serves, '(CPU', rit.cpu, '/ humano', rit.human + ')', '| botes por saque', JSON.stringify(rit.nb.slice(1)),
+      '| dribbles', rit.dribbles, '| lanzamiento CPU más tardío', rit.maxToss.toFixed(2) + ' s', '| reloj mínimo al lanzar', rit.cpu ? rit.minClock.toFixed(2) + ' s' : '-');
   }
   if (sameTouch) fail(label + ` mismo jugador tocó dos veces seguidas ${sameTouch} veces sin falta`);
+  if (aiFaults.length) fail(label + ` la IA comete dobles/4 toques ${aiFaults.length} veces: ` + aiFaults.slice(0, 4).join(', '));
   if (ghost) fail(label + ` ${ghost} remates atraviesan las manos del bloqueador sin evento block`);
   if (stalePr) fail(label + ` g.pr3 vieja tras ${stalePr} toques`);
   if (lateSw) fail(label + ` ${lateSw} cambios automáticos de jugador con balón rápido a < 0,6 s del contacto`);
   if (blkSwitch) fail(label + ` el control salta del bloqueador al defensor ${blkSwitch} veces durante el ataque de la CPU`);
-  return { g, st, ev, med, mean, matches, setsSeen, matchWins };
+  const hlMean = hls.length ? hls.reduce((a, b) => a + b, 0) / hls.length : 0;
+  if (rit.serves > 2 && !rit.cpu && !(opts.demo === false && !opts.autopilot && inputFn)) fail(label + ' ritual: ningún saque de la CPU');
+  return { g, st, ev, med, mean, matches, setsSeen, matchWins, hlMean, hls, rit };
 }
 
 // ---------- Probabilidad de partido a partir de la de punto (sets 25/25/15, dif. 2) ----------
@@ -151,6 +296,23 @@ function setWinProb(p, target) {
   }
   return f(0, 0);
 }
+/** Estadística de la matriz (SIM-05), medida con 80 semillas × 20 min por casilla (8-nov-2026, `SIMTEST_ONLY=matrix node tools/simtest.js 0 <s> 20 1`,
+ *  s = 1..80): [media de % de puntos, desviación típica de UNA semilla de 20 min]. Las bandas y diferencias mínimas se abren con el
+ *  ruido real de la muestra: σ de la media = sd / √(semillas × minutos/20), banda = objetivo ± k·σ (k = 3,5: ~2·10⁻⁴ de falso fallo
+ *  por comprobación). Las bandas fijas de antes (p. ej. novato/Fácil 0,40-0,51 con 4 semillas) tenían el borde a ~1,6σ de la media:
+ *  remuestreando esas 80 semillas, el 14,7 % de las semillas del simtest fallaba la matriz sin haber cambiado nada (semillas 3 y 99);
+ *  con esto, el 0,09 %. Las casillas de `key` juegan el doble de semillas para que su banda no se abra tanto.
+ *  Si se recalibra la IA, volver a medir (tools/out: bucle de semillas + media y sd por casilla) y actualizar esta tabla. */
+const MATRIX_STAT = {
+  k: 3.5,
+  key: new Set(['novato:easy', 'novato:normal', 'medio:normal', 'medio:hard', 'auto:normal', 'auto:hard']),
+  sd: { 'novato:easy': [0.470, 0.051], 'novato:normal': [0.363, 0.052], 'medio:normal': [0.514, 0.053], 'medio:hard': [0.401, 0.040],
+    'medio:expert': [0.238, 0.038], 'auto:normal': [0.592, 0.044], 'auto:hard': [0.495, 0.043], 'auto:expert': [0.250, 0.039] }
+};
+const mxN = (k) => (MATRIX_STAT.key.has(k) ? 2 : 1) * NSEED * BOTMIN / 20;
+const mxSd = (k) => MATRIX_STAT.sd[k][1] / Math.sqrt(mxN(k));
+/** Diferencia mínima exigida entre dos casillas: la de diseño `want`, salvo que la media medida menos k·σ quede por debajo. */
+const mxGap = (a, b, want) => Math.min(want, MATRIX_STAT.sd[a][0] - MATRIX_STAT.sd[b][0] - MATRIX_STAT.k * Math.hypot(mxSd(a), mxSd(b)));
 function matchWinProb(p) { const s = setWinProb(p, 25), t = setWinProb(p, 15); return s * s + 2 * s * (1 - s) * t; }
 
 // ================= 4) Bots humanos (solo entrada real) =================
@@ -288,8 +450,76 @@ function makeBot(bp, seed) {
 }
 function topWhy(w) { return Object.entries(w).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => k.replace(/^(.{24}).*/, '$1') + ':' + v); }
 
+// ================= Calibración del highlight (SIM-05) =================
+/** Un partido COMPLETO de demo (CPU vs CPU, perfil DIFF.demo) con todas las comprobaciones de los campos del punto y del ritual.
+ *  Devuelve los puntos compactos [highlight, conPuntoDeSet, how, signal, landSide, hold, clutch, reason] y una TRAZA de todo lo
+ *  que la presentación consume (marcador, highlight, señal, campo del bote, pausa, final apretado, defensas, racha y cada bote
+ *  del ritual con su velocidad) para la prueba de determinismo: misma semilla -> la misma traza, carácter a carácter. */
+function runHlMatch(j) {
+  const label = 'calibración del highlight (semilla ' + j.seed + ')';
+  const g = S.createGame({ demo: true, seed: j.seed, stats: true }), rit = ritualChecker(label), evs = [];
+  const pf = { streakT: -1, streakN: 0, setPoint: -1, matchPoint: -1, issues: 0 }, pts = [], trace = [];
+  let done = false, dribbles = 0, bounces = 0;
+  try {
+    for (let i = 0; i < 70 * 60 * C.SIM_HZ && !done; i++) {
+      S.step(g, DT, null); evs.length = 0; S.drainEvents(g, evs); rit.step(g, evs);
+      for (const e of evs) {
+        if (e.type === 'newSet' || e.type === 'newMatch') { pf.streakT = -1; pf.streakN = 0; }
+        if (e.type === 'serveReady') { pf.setPoint = e.setPoint; pf.matchPoint = e.matchPoint; if (g.ritual.on) bounces += g.ritual.bounces; }
+        if (e.type === 'dribble') { dribbles++; trace.push('d' + e.n + '/' + e.of + '@' + e.speed); }
+        if (e.type === 'point') {
+          if (pf.streakT === e.team) pf.streakN++; else { pf.streakT = e.team; pf.streakN = 1; }
+          const eight = evs.some(x => x.type === 'courtChange' && x.why === 'eight');
+          const bad = pointFieldIssues(e, g, { streak: pf.streakN, setPoint: pf.setPoint, matchPoint: pf.matchPoint, eight });
+          if (Math.abs(g.timer - e.hold) > 1e-9) bad.push('g.timer ' + g.timer + ' != hold ' + e.hold);
+          if (bad.length && pf.issues++ < 5) fail(label + ' campos del punto: ' + bad.join('; ') + ' ' + JSON.stringify({ reason: e.reason, how: e.how, score: e.score }));
+          pts.push([e.highlight, pf.setPoint !== -1 ? 1 : 0, e.how, e.signal, e.landSide, e.hold, e.clutch ? 1 : 0, e.reason]);
+          trace.push(e.score.join('-') + '|' + e.how + '|' + e.highlight + '|' + e.signal + '|' + e.landSide + '|' + e.hold + '|' + (e.clutch ? 1 : 0) + '|' + e.digs + '|' + e.streak);
+        }
+        if (e.type === 'match') done = true;
+      }
+      if (i % 60 === 0 && !checkInvariants(g, label)) break;
+    }
+  } catch (e) { fail(label + ' excepción: ' + (e && e.stack || e)); }
+  if (!done) fail(label + ': el partido no acaba en 70 min de juego');
+  return { kind: 'hl', seed: j.seed, pts, trace: trace.join(';'), dribbles, bounces, cpuServes: rit.cpu, serves: rit.serves, failures };
+}
+/** Banda calibrada (SIM-05): en 20 partidos CPU vs CPU, entre el 15 y el 25 % de los puntos con highlight >= VB.HOLD.bigAt (la
+ *  cinta grande y la pausa larga) y menos del 5 % >= 0,8 fuera de los puntos de set/partido. Medido con 160 partidos de demo
+ *  (8-nov-2026): 19,6 % (grupos de 20 partidos: 17,6-20,9; σ ≈ 1,1 puntos) y 3,2 %. */
+const HL_CAL = { matches: 20, bigLo: 0.15, bigHi: 0.25, topAt: 0.8, topMax: 0.05 };
+function hlCalibration(res) {
+  const pts = [].concat(...res.map(r => r.pts)), n = pts.length, H = VB.HOLD;
+  const big = pts.filter(p => p[0] >= H.bigAt).length / n, nsp = pts.filter(p => !p[1]), top = nsp.filter(p => p[0] >= HL_CAL.topAt).length / Math.max(1, nsp.length);
+  const hist = new Array(10).fill(0); for (const p of pts) hist[Math.min(9, Math.floor(p[0] * 10 + 1e-9))]++;
+  console.log('\n== Calibración del highlight (SIM-05): ' + res.length + ' partidos completos CPU vs CPU (demo), ' + n + ' puntos ==');
+  for (let i = 0; i < 10; i++) console.log('  ' + (i / 10).toFixed(1) + '-' + ((i + 1) / 10).toFixed(1) + ' ' + String(hist[i]).padStart(5) + ' ' + pct(hist[i], n).padStart(6) + ' ' + '#'.repeat(Math.round(60 * hist[i] / n)));
+  const per = res.map(r => r.pts.filter(p => p[0] >= H.bigAt).length / Math.max(1, r.pts.length)).sort((a, b) => a - b);
+  const howBig = {}, sig = {}, land = { 0: 0, 1: 0, '-1': 0 }, holds = {}; let clutch = 0;
+  for (const p of pts) { if (p[0] >= H.bigAt) howBig[p[2]] = (howBig[p[2]] || 0) + 1; sig[p[3]] = (sig[p[3]] || 0) + 1; land[p[4]]++; holds[p[5]] = (holds[p[5]] || 0) + 1; if (p[6]) clutch++; }
+  console.log('  >= ' + H.bigAt + ': ' + pct(big * 1000, 1000) + ' (objetivo ' + 100 * HL_CAL.bigLo + '-' + 100 * HL_CAL.bigHi + ' %; por partido ' + pct(per[0] * 1000, 1000) + '-' + pct(per[per.length - 1] * 1000, 1000) + ')' +
+    ' | >= ' + HL_CAL.topAt + ' sin punto de set/partido: ' + pct(top * 1000, 1000) + ' (máx. ' + 100 * HL_CAL.topMax + ' %) | final apretado ' + pct(clutch, n) + ' | grandes por cómo ' + JSON.stringify(howBig));
+  console.log('  señales ' + JSON.stringify(sig) + ' | landSide ' + JSON.stringify(land) + ' | pausas ' + JSON.stringify(holds));
+  const dr = res.reduce((a, r) => a + r.dribbles, 0), bo = res.reduce((a, r) => a + r.bounces, 0), cs = res.reduce((a, r) => a + r.cpuServes, 0), sv = res.reduce((a, r) => a + r.serves, 0);
+  console.log('  ritual: ' + sv + ' saques (' + cs + ' de la CPU), ' + bo + ' botes programados, ' + dr + ' eventos dribble');
+  const f0 = failures;
+  if (!(big >= HL_CAL.bigLo && big <= HL_CAL.bigHi)) fail('calibración del highlight: ' + pct(big * 1000, 1000) + ' de puntos >= ' + H.bigAt + ' (objetivo ' + 100 * HL_CAL.bigLo + '-' + 100 * HL_CAL.bigHi + ' %)');
+  if (!(top < HL_CAL.topMax)) fail('calibración del highlight: ' + pct(top * 1000, 1000) + ' de puntos >= ' + HL_CAL.topAt + ' fuera de punto de set/partido (máx. ' + 100 * HL_CAL.topMax + ' %)');
+  // cobertura de los campos nuevos en partido real: las tres señales de bote, los dos campos y -1 sin bote, pausas de la tabla
+  for (const k of ['in', 'out', 'touched']) if (!sig[k]) fail('calibración: ninguna señal ' + k + ' en ' + n + ' puntos');
+  if (!land[0] || !land[1] || !land['-1']) fail('calibración: landSide sin los tres valores ' + JSON.stringify(land));
+  const okHold = [VB.RITUAL.demoHold, VB.RITUAL.demoHold + 1.4, 3.6, 2.2];
+  for (const h in holds) if (!okHold.some(x => Math.abs(x - h) < 1e-9)) fail('calibración: pausa ' + h + ' fuera de la tabla de la demo');
+  if (!holds[3.6] || !holds[2.2]) fail('calibración: faltan pausas de set (3,6) o de partido (2,2): ' + JSON.stringify(holds));
+  // ritual: todos los saques de la demo son de la CPU, con un `dribble` por cada bote programado
+  // (la demo bota VB.RITUAL.demoBounces veces: hoy 1, así que dribbles >= saques)
+  if (cs !== sv || !(dr >= sv * VB.RITUAL.demoBounces) || dr !== bo) fail('calibración: ritual ' + JSON.stringify({ saques: sv, cpu: cs, botes: bo, dribbles: dr }));
+  if (failures === f0) console.log('  calibración del highlight y cobertura de señal/landSide/pausa/ritual/dribble OK');
+}
+
 /** Trabajo de una casilla de la matriz (se ejecuta en un worker). */
 function runJob(j) {
+  if (j.kind === 'hl') return runHlMatch(j);
   const opts = j.kind === 'auto' ? { demo: false, autopilot: true, difficulty: j.diff, seed: j.seed } :
     { demo: false, difficulty: j.diff, serveClock: true, seed: j.seed, rookie: !!BOTS[j.bot].rookie && ROOKIE_MODE !== 'off' };
   const r = run(j.label, opts, j.seconds, j.kind === 'bot' ? makeBot(BOTS[j.bot], j.seed * 7 + 3) : null, true);
@@ -340,6 +570,15 @@ const demo = run('CPU vs CPU (demo del menú, perfil DIFF.demo)', { demo: true }
   // en pruebas cortas se abre con √(115/n) para mantener la misma tasa de falso fallo (p. ej. 10 min ≈ 0,48).
   const ilo = 0.72 - 0.17 * Math.max(1, Math.sqrt(115 / Math.max(1, st.points)));
   if (inPts / st.points < ilo) fail('demasiados puntos por error (no por balón dentro): ' + pct(inPts, st.points) + ' (mínimo ' + (100 * ilo).toFixed(0) + ' % con ' + st.points + ' puntos)');
+  // SIM-01/05: cordura del highlight en ESTA demo (no son 20 partidos: la banda calibrada 15-25 % va en «Calibración del
+  // highlight», más abajo). Medido (SIM-05, 160 partidos de demo): media 0,337 (σ por partido 0,033), puntos grandes 19,6 %
+  // (σ por partido 4,8 puntos, mínimo 5,8 %, máximo 35,3 %). Topes a 4σ de un partido de ~110 puntos, abiertos con √(110/n).
+  { const n = Math.max(1, demo.hls.length), k = Math.max(1, Math.sqrt(110 / n)), big = demo.hls.filter(h => h >= VB.HOLD.bigAt).length / n;
+    const hlMax = 0.337 + 4 * 0.033 * k, bigMax = 0.196 + 4 * 0.048 * k;
+    if (!(demo.hlMean <= hlMax)) fail('highlight medio de la demo ' + demo.hlMean.toFixed(3) + ' > ' + hlMax.toFixed(3) + ' (' + n + ' puntos)');
+    // suelo solo con >= 100 puntos (0 grandes en un partido entero sería que la fórmula no puntúa nada)
+    else if (!((n < 100 || big > 0.01) && big < bigMax)) fail('puntos grandes (highlight >= ' + VB.HOLD.bigAt + ') en la demo: ' + pct(big * 1000, 1000) + ' (cordura 1-' + (100 * bigMax).toFixed(0) + ' %)');
+    else console.log('highlight medio de la demo ' + demo.hlMean.toFixed(3) + ' (tope ' + hlMax.toFixed(3) + ' con ' + n + ' puntos), puntos grandes ' + (100 * big).toFixed(1) + ' % OK'); }
 }
 
 // ================= 3) Fuzz: entrada humana aleatoria =================
@@ -349,16 +588,53 @@ if (ONLY !== 'matrix') {
     if (i % 30 === 0) { const a = rng() * Math.PI * 2, m = rng() < 0.2 ? 0 : rng(); held[0] = Math.cos(a) * m; held[1] = Math.sin(a) * m; }
     return { move: held, hit: rng() < 0.04, jump: rng() < 0.01, switchPlayer: rng() < 0.005 };
   });
+  // SIM-03: partido humano con g.present (pausas de presentación) jugado por el bot 'bueno' hasta el final
+  { const opts = { demo: false, difficulty: 'normal', serveClock: true, seed: SEED + 5, present: true };
+    if (!S.createGame(opts).present) fail('createGame({present:true}) no activa g.present');
+    const f0 = failures, r = run('Partido humano con g.present (bot bueno vs Normal)', opts, 6 * 60, makeBot(BOTS.bueno, SEED * 3 + 1), true), hs = r.hls;
+    if (hs.length < 15) fail('partido con g.present: muy pocos puntos (' + hs.length + ')'); // (6 min: 24-31 puntos según la semilla)
+    console.log('\nPartido con g.present (bot bueno vs Normal, 6 min): ' + hs.length + ' puntos, highlight medio ' + r.hlMean.toFixed(3) + ', puntos >= ' + VB.HOLD.bigAt + ': ' +
+      hs.filter(h => h >= VB.HOLD.bigAt).length + ' (pausa ' + VB.HOLD.big + ' s)' + (failures > f0 ? '' : ' OK'));
+  }
 }
 
+// ================= Calibración del highlight y determinismo (SIM-05) =================
+if (ONLY !== 'matrix') {
+  const jobs = []; for (let k = 0; k < HL_CAL.matches; k++) jobs.push({ kind: 'hl', seed: SEED + 7919 * k, label: 'highlight ' + k });
+  const t0 = Date.now(), res = (await runMatrix(jobs)).filter(Boolean);
+  for (const r of res) failures += r.failures;
+  if (res.length !== HL_CAL.matches) fail('calibración: ' + res.length + ' de ' + HL_CAL.matches + ' partidos');
+  else { hlCalibration(res); console.log('  (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s en paralelo)'); }
+  // determinismo: el mismo partido repetido aquí (otro hilo, otro contexto) da la MISMA traza: highlight, señal, landSide,
+  // pausa, final apretado, defensas, racha y cada bote del ritual; otra semilla da otra traza (la traza no es trivial)
+  if (res.length >= 2) {
+    const a = runHlMatch({ seed: res[0].seed }), b = runHlMatch({ seed: res[0].seed });
+    const hlSeq = r => r.pts.map(p => p[0]).join(',');
+    const firstDiff = (x, y) => { let i = 0; while (i < x.length && x[i] === y[i]) i++; return i; };
+    if (a.trace !== b.trace || a.trace !== res[0].trace) fail('determinismo: misma semilla ' + res[0].seed + ', trazas distintas (carácter ' + firstDiff(a.trace, a.trace === b.trace ? res[0].trace : b.trace) + ')');
+    else if (hlSeq(a) !== hlSeq(res[0])) fail('determinismo: secuencia de highlight distinta con la misma semilla');
+    else if (a.trace === res[1].trace) fail('determinismo: dos semillas distintas dan la misma traza (¿traza vacía?)');
+    else {
+      // partido humano con g.present (la pausa depende del highlight): el bot y la sim repiten la misma secuencia
+      const pres = () => { const r = run('determinismo con present', { demo: false, difficulty: 'normal', serveClock: true, seed: SEED + 11, present: true }, 4 * 60, makeBot(BOTS.bueno, SEED * 5 + 2), true);
+        return r.hls.join(',') + '#' + r.g.time.toFixed(6); };
+      const p1 = pres(), p2 = pres();
+      if (p1 !== p2) fail('determinismo: partido con present y la misma semilla da otra secuencia de highlight');
+      else console.log('determinismo (misma semilla -> misma traza de ' + a.pts.length + ' puntos y ' + a.dribbles + ' botes en dos hilos; con present ' + p1.split(',').length + ' puntos) OK');
+    }
+  }
+}
 
   // ================= 2) y 4) Matriz en paralelo =================
   if (BOTMIN > 0) {
     const jobs = [];
     const LV = VB.DIFF_ORDER; // easy, normal, hard, expert
-    for (let s = 0; s < NSEED; s++) {
-      for (const d of LV) jobs.push({ kind: 'auto', diff: d, seconds: BOTMIN * 60, label: 'auto ' + d, seed: SEED + 1000 * s });
-      for (const bn of Object.keys(BOTS)) for (const d of LV)
+    // las casillas con banda estrecha (MATRIX_STAT.key) juegan el doble de semillas: mismas semillas 0..NSEED-1 que el resto y
+    // NSEED..2·NSEED-1 de más (la desviación de su media baja √2 y la banda se estrecha en la misma proporción)
+    for (let s = 0; s < 2 * NSEED; s++) {
+      const extra = s >= NSEED;
+      for (const d of LV) if (!extra || MATRIX_STAT.key.has('auto:' + d)) jobs.push({ kind: 'auto', diff: d, seconds: BOTMIN * 60, label: 'auto ' + d, seed: SEED + 1000 * s });
+      for (const bn of Object.keys(BOTS)) for (const d of LV) if (!extra || MATRIX_STAT.key.has(bn + ':' + d))
         jobs.push({ kind: 'bot', bot: bn, diff: d, seconds: BOTMIN * 60, label: `bot ${bn} vs ${d}`, seed: SEED + bn.length * 31 + d.length + 1000 * s });
     }
     if (MFILTER) for (let i = jobs.length - 1; i >= 0; i--) if (!MFILTER.test(jobs[i].label)) jobs.splice(i, 1);
@@ -377,13 +653,13 @@ if (ONLY !== 'matrix') {
     }
     const res = [...cells.values()];
     for (const c of res) c.med = c.meds.reduce((a, b) => a + b, 0) / c.meds.length;
-    console.log(`\n######## IA compañero (equipo 0) contra cada dificultad  [${NSEED} semillas × ${BOTMIN} min de juego por casilla, ${((Date.now() - t0) / 1000).toFixed(1)} s en paralelo] ########`);
+    console.log(`\n######## IA compañero (equipo 0) contra cada dificultad  [${NSEED} semillas × ${BOTMIN} min de juego por casilla (${2 * NSEED} en las de banda estrecha), ${((Date.now() - t0) / 1000).toFixed(1)} s en paralelo] ########`);
     const diffShare = {};
     for (const r of res.filter(r => r && r.kind === 'auto')) {
       diffShare[r.diff] = r.won0 / r.points;
       console.log(`  vs ${VB.DIFF[r.diff].name.padEnd(8)} puntos IA-compañero ${pct(r.won0, r.points)} (${r.points} pts)  rally mediana ${r.med.toFixed(2)} s  remates ${r.hits.spike} bloqueos ${r.blocks} planchas ${r.dives}  partidos ${r.matchWins.join('-')}  cómo ${JSON.stringify(r.how)}`);
     }
-    if (BOTMIN >= 20 && !MFILTER && !(diffShare.easy > diffShare.normal + 0.04 && diffShare.normal > diffShare.hard + 0.02 && diffShare.hard > diffShare.expert + 0.02)) fail('las dificultades no están ordenadas: ' + JSON.stringify(diffShare));
+    if (BOTMIN >= 20 && !MFILTER && !(diffShare.easy > diffShare.normal + 0.04 && diffShare.normal > diffShare.hard + mxGap('auto:normal', 'auto:hard', 0.02) && diffShare.hard > diffShare.expert + mxGap('auto:hard', 'auto:expert', 0.02))) fail('las dificultades no están ordenadas: ' + JSON.stringify(diffShare));
     console.log('\n######## Bots humanos (solo entrada de mando) contra la CPU ########');
     const botRes = {};
     for (const r of res.filter(r => r && r.kind === 'bot')) {
@@ -395,13 +671,15 @@ if (ONLY !== 'matrix') {
     }
     if (BOTMIN >= 20 && !MFILTER) { // objetivos de diseño (márgenes amplios: son estimaciones estadísticas)
       // curva de 4 niveles (revisión 2): quien acaba de superar Fácil no pierde casi todos los partidos en Normal
-      const rng2 = (k, a, b, why) => { if (!(botRes[k] > a && botRes[k] < b)) fail(why + ' (' + k + ' = ' + (botRes[k] || 0).toFixed(2) + ', objetivo ' + a + '-' + b + ')'); };
-      // revisión 3 (bots humanos en tercera persona; márgenes = objetivo ± ruido de 4 semillas × 20 min, ~2,5 puntos de %)
-      rng2('novato:easy', 0.40, 0.51, 'novato en su primera sesión vs Fácil: objetivo 45-49 % de puntos (perdona, pero no es automático; gana ~1 de cada 3)');
-      rng2('medio:normal', 0.44, 0.57, 'jugador medio vs Normal: objetivo ~50 % de puntos');
-      rng2('novato:normal', 0.22, 0.42, 'novato vs Normal: objetivo ~33 %');
+      // banda = objetivo de diseño [a, b] ± MATRIX_STAT.k desviaciones de la media de la muestra (ver MATRIX_STAT)
+      const rng2 = (k, a, b, why) => { const s = MATRIX_STAT.k * mxSd(k), lo = a - s, hi = b + s;
+        if (!(botRes[k] > lo && botRes[k] < hi)) fail(why + ' (' + k + ' = ' + (botRes[k] || 0).toFixed(3) + ', banda ' + lo.toFixed(3) + '-' + hi.toFixed(3) + ' con ' + mxN(k) + ' semillas × ' + BOTMIN + ' min)'); };
+      rng2('novato:easy', 0.45, 0.49, 'novato en su primera sesión vs Fácil: objetivo 45-49 % de puntos (perdona, pero no es automático; gana ~1 de cada 3)');
+      rng2('medio:normal', 0.47, 0.53, 'jugador medio vs Normal: objetivo ~50 % de puntos');
+      rng2('novato:normal', 0.30, 0.38, 'novato vs Normal: objetivo ~33-37 %');
       if (!(botRes['medio:easy'] > 0.62)) fail('Fácil no perdona a un jugador medio (' + botRes['medio:easy'].toFixed(2) + ')');
-      if (!(botRes['medio:hard'] < botRes['medio:normal'] - 0.06 && botRes['medio:expert'] < botRes['medio:hard'] - 0.06)) fail('Difícil/Experto no son claramente más difíciles para el jugador medio');
+      { const g1 = mxGap('medio:normal', 'medio:hard', 0.06), g2 = mxGap('medio:hard', 'medio:expert', 0.06);
+        if (!(botRes['medio:hard'] < botRes['medio:normal'] - g1 && botRes['medio:expert'] < botRes['medio:hard'] - g2)) fail('Difícil/Experto no son claramente más difíciles para el jugador medio (Normal ' + botRes['medio:normal'].toFixed(3) + ', Difícil ' + botRes['medio:hard'].toFixed(3) + ', Experto ' + botRes['medio:expert'].toFixed(3) + '; diferencia mínima ' + g1.toFixed(3) + ' / ' + g2.toFixed(3) + ')'); }
       if (!(botRes['bueno:expert'] < 0.5)) fail('Experto no exige a un buen jugador');
       if (!(botRes['perfecto:expert'] > 0.5)) fail('bot perfecto no gana a Experto');
       if (!(botRes['novato:expert'] < 0.25)) fail('Experto no exige: el novato le gana demasiados puntos');
@@ -874,9 +1152,210 @@ if (ONLY !== 'matrix') {
     if (gc2.mode === 'serve' && S.aimPoint(gc2, {}) !== null) { ok = false; msg.push('saque de la CPU'); }
     if (!ok) fail('Sim.aimPoint: ' + msg.join('; ')); else console.log('Sim.aimPoint (saque: vista previa y real, remate con y sin dirección, CPU sin retícula) OK');
   }
+  // ---------- presentación del punto (SIM-01/02/03) ----------
+  // señales del árbitro en casos concretos (además del contraste de cada punto en todas las partidas)
+  {
+    const sigCase = (setup) => {
+      const gq = S.createGame({ demo: false, seed: 120 }); for (const q of gq.players) { q.x = S.side(q.team) * 8.5; q.y = 3; }
+      const inp = setup(gq) || null; const e = stepUntil(gq, 'point', 1500, inp).find(x => x.type === 'point'); return e || { signal: 'nada' };
+    };
+    const outAt = (kind, shot, touches) => (gq) => {
+      rallyAt(gq, { x: -5, y: -(C.HW + 0.5), z: 0.5, vz: -3 }); gq.lastTeam = 1; gq.touchTeam = 1; gq.touches = touches;
+      gq.lastKind = kind; gq.lastShot = shot; gq.prevKind = kind === 'pass' ? 'spike' : 'pass'; gq.lastPlayer = gq.teams[1][0];
+    };
+    const cases = {
+      'remate fuera': [outAt('spike', 'power', 3), 'out'],
+      'saque fuera': [(gq) => { outAt('serve', 'float', 3)(gq); gq.lastTeam = 0; gq.touchTeam = 0; gq.lastPlayer = gq.teams[0][0]; }, 'out'],
+      'defensa fuera (1.er toque)': [outAt('pass', 'dig', 1), 'touched'],
+      'recepción desviada fuera': [outAt('pass', 'shank', 1), 'touched'],
+      'colocación fuera (2.º toque)': [outAt('set', 'overhead', 2), 'out'],
+      'toca el bloqueo y fuera': [outAt('block', 'tool', 0), 'touched'],
+      'dentro': [(gq) => { rallyAt(gq, { x: -5, y: 0, z: 0.5, vz: -3 }); gq.lastTeam = 0; gq.touchTeam = 0; gq.touches = 3; gq.lastKind = 'spike'; gq.lastShot = 'power'; gq.lastPlayer = gq.teams[0][0]; }, 'in'],
+      '8 segundos': [() => null, 'delay8'],
+      'no golpea el lanzamiento': [() => { let pr = false; return (g) => { const h = !pr && g.serveAuth; if (h) pr = true; return { move: [0, 0], hit: h, jump: false }; }; }, 'serveFault'],
+      'bloqueo del saque': [(gq) => { const bk = gq.teams[0][0]; rallyAt(gq, { x: -0.3, y: 0, z: 2.8, vx: 8, vz: -0.5 }); gq.lastTeam = 1; gq.touchTeam = 1; gq.touches = 3; gq.lastKind = 'serve'; bk.x = 0.5; bk.y = 0; bk.z = 0.9; bk.vz = 0.3; gq.blockCD = 0; }, 'attackFault'],
+      'por debajo de la red': [(gq) => { rallyAt(gq, { x: 0.1, y: 0, z: 0.7, vx: -4, vz: 0.5 }); gq.lastTeam = 0; gq.touchTeam = 0; gq.touches = 1; }, 'under'],
+      'antena': [(gq) => { rallyAt(gq, { x: 0.1, y: 4.5, z: 2.8, vx: -3 }); gq.lastTeam = 0; gq.touchTeam = 0; gq.touches = 1; }, 'antenna']
+    };
+    const got = {}; for (const k in cases) got[k] = sigCase(cases[k][0]);
+    const bad = Object.keys(cases).filter(k => got[k].signal !== cases[k][1] || (got[k].touchedOut === true) !== (cases[k][1] === 'touched'));
+    const ls = [got['dentro'].landSide, got['remate fuera'].landSide, got['saque fuera'].landSide, got['8 segundos'].landSide], lsBad = ls.join() !== '1,1,1,-1';
+    if (bad.length || lsBad) fail('señales del árbitro: ' + bad.map(k => k + ' -> ' + got[k].signal + ' (esperado ' + cases[k][1] + ')').join('; ') + (lsBad ? ' | landSide ' + ls.join() : ''));
+    else console.log('señales del árbitro (fuera / tocado / dentro / 8 s / no golpea / ataque / debajo / antena) y landSide OK');
+  }
+  // highlight: momentos grandes (bloqueo directo y remate perfecto del humano con punto de partido) >= 0,8
+  {
+    const mpGame = (seed, score, sets, demo) => { const gq = S.createGame({ demo: !!demo, seed }); gq.sets = sets; gq.score = score.slice(); S._setupServe(gq); S.drainEvents(gq); return gq; };
+    // remate perfecto del humano (te = 0 -> 'perfect') con punto de partido a favor, que cae dentro
+    const gk = mpGame(130, [24, 21], [1, 0]), h = gk.teams[0][0];
+    if (gk.matchPoint !== 0) fail('prueba de punto de partido mal montada');
+    rallyAt(gk, { x: 0.9, y: 0.5, z: 3.1, vz: -0.5 }); gk.touchTeam = 0; gk.touches = 2; gk.lastTeam = 0; gk.lastKind = 'set'; gk.lastPlayer = gk.teams[0][1];
+    gk.ctrl = h; h.x = 1.2; h.y = 0.5; h.z = 0.8; h.vz = 0.5; gk.teams[0][1].x = 6;
+    for (const q of gk.teams[1]) { q.x = -8.8; q.y = 4.4; }
+    S._hit(gk, h, null, 0, '', [-4.5, -2.5]); gk.digOk = false; // (la defensa IA no la saca: el test mide la nota, no la defensa)
+    const ek = S.drainEvents(gk).concat(stepUntil(gk, 'point', 600)), hk = ek.find(e => e.type === 'hit'), pk = ek.find(e => e.type === 'point');
+    // bloqueo directo con punto de partido: del que bloquea ([24,22], sets 1-0) y del rival (salvado: [22,24], sets 0-1)
+    const stuffAt = (score, sets) => {
+      for (let s = 0; s < 400; s++) {
+        const gs2 = mpGame(700 + s, score, sets, true), blk = gs2.teams[0][0];
+        rallyAt(gs2, { x: -0.5, y: 0, z: 3.0, vx: 9, vz: -1.5 }); gs2.touchTeam = 1; gs2.lastTeam = 1; gs2.touches = 3; gs2.lastKind = 'spike'; gs2.lastPlayer = gs2.teams[1][0];
+        blk.x = 0.5; blk.y = 0; blk.z = 0.8; blk.vz = 0.3; gs2.teams[0][1].x = 6; gs2.teams[1][0].x = -1.5; gs2.teams[1][1].x = -5;
+        const evs = stepUntil(gs2, 'point', 600), bk = evs.find(e => e.type === 'block'), pe = evs.find(e => e.type === 'point');
+        if (bk && bk.result === 'stuff' && pe && pe.how === 'block' && pe.team === 0) return pe;
+      }
+      return null;
+    };
+    const sOwn = stuffAt([24, 22], [1, 0]), sSaved = stuffAt([22, 24], [0, 1]);
+    // fórmula en sus extremos; errores: tope 0,35 salvo que cierren el set
+    const H = S.highlightOf;
+    const fx = [
+      [H({ how: 'error', rallyHits: 30, digs: 4, setPoint: true, matchPoint: true, saved: true, streak: 5 }), 0.35],
+      [H({ how: 'error', rallyHits: 3, digs: 0, setPoint: true, matchPoint: true, setWon: true, matchWon: true, streak: 1 }), 0.75],
+      [H({ how: 'kill', rallyHits: 3, digs: 0, streak: 1 }), 0.15],
+      [H({ how: 'ace', rallyHits: 0, digs: 0, streak: 3 }), 0.5],
+      // jugada épica: peloteo (0,35) + defensas (0,3) con tope conjunto 0,4 -> 0,55 justo (grande por sí sola)
+      [H({ how: 'kill', rallyHits: 20, digs: 5, streak: 1 }), 0.55],
+      [H({ how: 'kill', rallyHits: 10, digs: 1, streak: 1 }), 0.38],
+      [H({ how: 'block', rallyHits: 30, digs: 5, setPoint: true, matchPoint: true, saved: true, streak: 4 }), 1],
+      // SIM-05: el punto de bloqueo siempre es grande; final apretado 0,28 y punto de set 0,15 no se suman (el mayor)
+      [H({ how: 'block', rallyHits: 2, digs: 0, streak: 1 }), 0.55],
+      [H({ how: 'kill', rallyHits: 3, digs: 0, clutch: true, streak: 1 }), 0.43],
+      [H({ how: 'kill', rallyHits: 3, digs: 0, clutch: true, setPoint: true, streak: 1 }), 0.43],
+      [H({ how: 'kill', rallyHits: 3, digs: 0, setPoint: true, streak: 1 }), 0.3],
+      [H({ how: 'kill', rallyHits: 3, digs: 0, perfectKill: true, streak: 1 }), 0.25],
+      [H({ how: 'kill', rallyHits: 3, digs: 0, perfectKill: true, setPoint: true, matchPoint: true, streak: 1 }), 0.85],
+      [H({ how: 'error', rallyHits: 3, digs: 0, clutch: true, saved: true, streak: 4 }), 0.35]
+    ];
+    const fBad = fx.map(([a, b], i) => Math.abs(a - b) < 1e-9 ? '' : '#' + i + ' ' + a + ' != ' + b).filter(Boolean);
+    const msg = 'highlight: remate perfecto del humano con punto de partido ' + (pk && pk.highlight) + ' (' + (hk && hk.grade) + ', ' + (pk && pk.how) + '), bloqueo directo con punto de partido ' +
+      (sOwn && sOwn.highlight) + ' / salvándolo ' + (sSaved && sSaved.highlight);
+    if (!hk || hk.grade !== 'perfect' || !hk.human || !pk || pk.how !== 'kill' || !pk.matchWon || !(pk.highlight >= 0.8) || gk.lastPoint.highlight !== pk.highlight) fail(msg + ' [remate]');
+    else if (!sOwn || !(sOwn.highlight >= 0.8) || sOwn.savedSetPoint || !sSaved || !(sSaved.highlight >= 0.8) || !sSaved.savedSetPoint) fail(msg + ' [bloqueo]');
+    else if (fBad.length) fail('highlightOf fuera de la fórmula: ' + fBad.join(', '));
+    else console.log(msg + ', errores <= 0,35 y fórmula OK');
+  }
+  // defensas de remate (digs) y racha (streak) en un peloteo montado
+  {
+    const gd = S.createGame({ demo: true, seed: 140 }); gd.score = [3, 5]; gd.streakTeam = 1; gd.streakN = 2; // el equipo 1 lleva 2 seguidos
+    const d1 = gd.teams[0][0], d2 = gd.teams[0][1];
+    const incoming = (kind, shot, prev, touches) => { rallyAt(gd, { x: 3, y: 0, z: 1.2, vx: 4, vz: -1 }); gd.touchTeam = 1; gd.lastTeam = 1; gd.touches = touches; gd.lastKind = kind; gd.lastShot = shot; gd.prevKind = prev; gd.lastPlayer = kind === 'block' ? null : gd.teams[1][0]; };
+    d1.x = 3.4; d1.y = 0; d1.z = 0; d2.x = 3.4; d2.y = 0.3; d2.z = 0;
+    incoming('spike', 'power', 'set', 3); S._hit(gd, d1, null, 0.01, '', null); const n1 = gd.rally.digs;   // defensa de remate: cuenta
+    incoming('serve', 'float', '', 3); S._hit(gd, d1, null, 0.01, '', null); const n2 = gd.rally.digs;     // recepción del saque: no
+    incoming('block', 'touch', 'spike', 0); S._hit(gd, d2, null, 0.01, '', null); const n3 = gd.rally.digs;// tras tocar su bloqueo: cuenta
+    incoming('spike', 'power', 'set', 3); S._hit(gd, d1, null, 0.01, 'body', null); const n4 = gd.rally.digs;// rebote en el cuerpo: no
+    rallyAt(gd, { x: -5, y: 0, z: 0.4, vz: -3 }); gd.lastTeam = 0; gd.lastKind = 'spike'; gd.touchTeam = 0;
+    const pd = stepUntil(gd, 'point', 300).find(e => e.type === 'point');
+    S._setupServe(gd); S.drainEvents(gd); rallyAt(gd, { x: -5, y: 0, z: 0.4, vz: -3 }); gd.lastTeam = 0; gd.lastKind = 'spike'; gd.touchTeam = 0;
+    const pd2 = stepUntil(gd, 'point', 300).find(e => e.type === 'point');
+    if (n1 !== 1 || n2 !== 1 || n3 !== 2 || n4 !== 2 || !pd || pd.digs !== 2 || pd.streak !== 1 || !pd2 || pd2.streak !== 2 || pd2.digs !== 0)
+      fail('digs/streak: ' + JSON.stringify([n1, n2, n3, n4, pd && pd.digs, pd && pd.streak, pd2 && pd2.streak, pd2 && pd2.digs]));
+    else console.log('defensas de remate (digs ' + pd.digs + ': remate y toque de bloqueo sí; saque y cuerpo no) y racha (corta la del rival: ' + pd.streak + ', luego ' + pd2.streak + ') OK');
+  }
+  // pausa de presentación y skipHold (SIM-03)
+  {
+    const finish = (present, score, sets, setNo) => {
+      const gq = S.createGame({ demo: false, seed: 150, present }); if (sets) gq.sets = sets; if (setNo) gq.setNo = setNo; gq.score = score.slice(); S._setupServe(gq); S.drainEvents(gq);
+      rallyAt(gq, { x: -5, y: 0, z: 0.4, vz: -3 }); gq.lastTeam = 0; gq.lastKind = 'spike'; gq.lastShot = 'power'; gq.touches = 3; gq.touchTeam = 0;
+      for (const q of gq.players) { q.x = S.side(q.team) * 8.5; q.y = 3; }
+      return gq;
+    };
+    const pointOf = (gq) => { const all = stepUntil(gq, 'point', 300); return { p: all.find(e => e.type === 'point'), all }; };
+    const res = [];
+    // set ganado con g.present: pausa VB.HOLD.set (4,0 s); skipHold no a los 0,5 s, sí a los 0,9 s, y sale de 'point' en <= 0,3 s
+    const gs = finish(true, [24, 20]), ps = pointOf(gs).p;
+    const holdOk = ps && ps.setWon && Math.abs(ps.hold - VB.HOLD.set) < 1e-9 && Math.abs(gs.timer - VB.HOLD.set) < 1e-9;
+    let tq = 0; while (tq < 0.5 - 1e-9) { S.step(gs, DT, null); tq += DT; } S.drainEvents(gs);
+    const s05 = S.skipHold(gs), t05 = gs.timer;
+    while (tq < 0.9 - 1e-9) { S.step(gs, DT, null); tq += DT; } S.drainEvents(gs);
+    const s09 = S.skipHold(gs), t09 = gs.timer; let left = -1; const after = [];
+    for (let i = 1; i <= 120 * 0.3 + 1; i++) { S.step(gs, DT, null); after.push(...S.drainEvents(gs)); if (gs.mode !== 'point') { left = i * DT; break; } }
+    res.push(['set con present', holdOk && !s05 && t05 > 2.8 && s09 && Math.abs(t09 - 0.3) < 1e-9 && left > 0 && left <= 0.3 + 1e-9 && gs.mode === 'serve' &&
+      after.some(e => e.type === 'newSet') && after.some(e => e.type === 'serveReady'), { hold: ps && ps.hold, s05, s09, t09, left, mode: gs.mode }]);
+    // sin present: la pausa clásica del set (3,6 s)
+    const gl = finish(false, [24, 20]), pl = pointOf(gl).p;
+    res.push(['set sin present', pl && pl.hold === 3.6 && gl.timer === 3.6, pl && pl.hold]);
+    // punto normal con present: 1,9 s
+    const gr = finish(true, [10, 12]), pr = pointOf(gr).p;
+    res.push(['punto normal con present', pr && pr.highlight < 0.55 && pr.hold === 1.9, pr && [pr.highlight, pr.hold]]);
+    // punto grande con present (punto de set salvado con racha de 3): 2,4 s
+    const gbg = finish(true, [22, 24]); gbg.streakTeam = 0; gbg.streakN = 2; const pbg = pointOf(gbg).p;
+    res.push(['punto grande con present', pbg && pbg.highlight >= 0.55 && pbg.hold === 2.4 && pbg.savedSetPoint, pbg && [pbg.highlight, pbg.hold]]);
+    // partido con present: 'over' 4,2 s; skipHold a 1 s -> gameOver a los <= 1,3 s; ya terminado, skipHold = false
+    const gm = finish(true, [24, 20], [1, 0]), pm = pointOf(gm).p;
+    let skM = null, goT = -1;
+    for (let i = 0; i < 120 * 6 && goT < 0; i++) { if (i === 120) skM = S.skipHold(gm); S.step(gm, DT, null); if (S.drainEvents(gm).some(e => e.type === 'gameOver')) goT = (i + 1) * DT; }
+    res.push(['partido con present', pm && pm.matchWon && pm.hold === 4.2 && skM === true && goT > 1 && goT <= 1.3 + 1e-9 && gm.mode === 'over' && S.skipHold(gm) === false, pm && [pm.hold, skM, goT]]);
+    // sin efecto en 'serve' ni en 'rally'
+    const gx = S.createGame({ demo: false, seed: 151, present: true }); gx.hold = 5; const tx0 = gx.timer, sx = S.skipHold(gx);
+    rallyAt(gx, { x: 3, y: 0, z: 3 }); const sr2 = S.skipHold(gx);
+    res.push(['saque/peloteo', !sx && !sr2 && gx.timer === tx0, [sx, sr2]]);
+    // cambio de campo a los 8 del set decisivo con present: pausa del punto + 1,4 s
+    const g8p = finish(true, [7, 4], [1, 1], 3), r8 = pointOf(g8p), p8p = r8.p;
+    res.push(['8 del 3.er set con present', p8p && r8.all.some(e => e.type === 'courtChange' && e.why === 'eight') && Math.abs(p8p.hold - (p8p.highlight >= 0.55 ? 2.4 : 1.9) - 1.4) < 1e-9, p8p && p8p.hold]);
+    const bad = res.filter(r => !r[1]);
+    if (bad.length) fail('pausa de presentación / skipHold: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+    else console.log('pausa de presentación (set ' + VB.HOLD.set + ' s; skipHold no a 0,5 s, sí a 0,9 s -> saque en ' + res[0][2].left.toFixed(3) + ' s; normal 1,9; grande 2,4; partido 4,2; 8 del 3.er set +1,4; sin present 3,6) OK');
+  }
   // dificultades: alias en castellano
   if (S.createGame({ difficulty: 'Difícil', seed: 1 }).difficulty !== 'hard' || S.createGame({ difficulty: 'facil', seed: 1 }).difficulty !== 'easy' || S.createGame({ difficulty: 'Experto', seed: 1 }).difficulty !== 'expert') fail('alias de dificultad');
   else console.log('dificultad (alias easy/normal/hard/expert, facil/dificil/experto) OK');
+  // la CPU nunca deja caer su propio lanzamiento de saque (el desfase tardío muestreado cabe en la ventana de alcance)
+  {
+    let tosses = 0, drops = 0; const ev = [];
+    for (const diff of VB.DIFF_ORDER) for (const rookie of [true, false]) for (let sd = 1; sd <= 3; sd++) {
+      const g = S.createGame({ seed: sd * 7 + 3, difficulty: diff, rookie, present: true });
+      for (let i = 0; i < 120 * 150 && g.mode !== 'over'; i++) {
+        S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+        for (const e of ev) { if (e.type === 'toss' && e.team === 1) tosses++; if (e.type === 'point' && e.reason === 'serve' && e.team === 0) drops++; }
+      }
+    }
+    if (drops || !tosses) fail('la CPU deja caer su lanzamiento de saque: ' + drops + ' de ' + tosses);
+    else console.log('saque de la CPU: 0 lanzamientos caídos en ' + tosses + ' (4 niveles, primer partido sí/no) OK');
+  }
+  // SIM-04: ritual del sacador CPU (las comprobaciones de cada saque van en ritualChecker, dentro de run())
+  {
+    const res = [], R = VB.RITUAL, ev = [];
+    const untilToss = (g, team) => { for (let i = 0; i < 120 * 60; i++) { S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev); const t = ev.find(e => e.type === 'toss' && (team == null || e.team === team)); if (t) return t; } return null; };
+    // 1) no gasta el azar del partido: con y sin ritual, tras el primer lanzamiento de la CPU el generador está en el mismo punto
+    { const a = S.createGame({ seed: 4242, autopilot: true }), b = S.createGame({ seed: 4242, autopilot: true, ritual: false });
+      const ta = untilToss(a), tb = untilToss(b);
+      res.push(['sin gastar g.rng', ta && tb && ta.jump === tb.jump && a.aiServeTe === b.aiServeTe && a.rng() === b.rng() && b.cpuTossIn === -1 && !b.ritual.on, [ta && ta.t, tb && tb.t]]); }
+    // 2) determinista: misma semilla -> mismos rituales; el estilo es del jugador (mismo número de botes base en su mayoría)
+    { const seq = sd => { const g = S.createGame({ seed: sd, demo: false, autopilot: true }), out = [], per = {}; for (let i = 0; i < 120 * 600; i++) { S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+          for (const e of ev) if (e.type === 'serveReady') { out.push(e.player.id + ':' + g.ritual.bounces + ':' + g.ritual.dur.toFixed(4)); if (!g.ritual.press) (per[e.player.id] = per[e.player.id] || []).push(g.ritual.bounces); } }
+        return { out, per, g }; };
+      const s1 = seq(99), s2 = seq(99), s3 = seq(100);
+      let styleOk = true, styles = [];
+      for (const id in s1.per) { const v = s1.per[id], base = S._ritualStyle(s1.g, s1.g.players[id]).n, k = v.filter(x => x === base).length / v.length; styles.push(id + ':' + base + '(' + (100 * k).toFixed(0) + '%)'); if (v.length >= 8 && k < 0.65) styleOk = false; }
+      res.push(['determinista y con estilo propio', s1.out.join() === s2.out.join() && s1.out.join() !== s3.out.join() && styleOk, styles.join(' ')]); }
+    // 3) con punto de set la CPU se toma su tiempo (un bote más y pausa más larga, hasta 3 botes y 1,6 s)
+    { const g = S.createGame({ seed: 77, autopilot: true }); g.serving = 1; g.score = [20, 24]; S._setupServe(g);
+      const r = g.ritual, st = S._ritualStyle(g, g.server);
+      res.push(['punto de set: más ritual', r.press && r.bounces >= Math.min(3, st.n) && r.dur <= R.maxDur + 1e-9 && g.cpuTossIn > 0, [r.bounces, st.n, r.dur]]); }
+    // 4) el balón es función pura del tiempo del ritual, continuo, y la mano vuelve a por él (bote en el suelo, recogida a la altura de la mano)
+    { const g = S.createGame({ seed: 5, autopilot: true }); g.serving = 1; S._setupServe(g);
+      const sv = g.server, r = g.ritual, o1 = {}, o2 = {}, h = {};
+      let maxStep = 0, prev = null, minZ = 9, handBall = 0, pure = true;
+      for (let i = 0; i < 120 * 3 && g.serveState === 'ready'; i++) {
+        S.step(g, DT, null); S.drainEvents(g);
+        if (!r.on) break;
+        S._ritualBall(g, sv, r, o1); S._ritualBall(g, sv, r, o2); if (o1.z !== o2.z || Math.abs(o1.z - g.ball.z) > 1e-9) pure = false;
+        if (prev) maxStep = Math.max(maxStep, Math.hypot(g.ball.x - prev[0], g.ball.y - prev[1], g.ball.z - prev[2]));
+        prev = [g.ball.x, g.ball.y, g.ball.z]; minZ = Math.min(minZ, g.ball.z);
+        S._holdPos(g, sv, h); if (r.phase === 'pre' || r.phase === 'post' || r.phase === 'done') handBall = Math.max(handBall, Math.hypot(h.x - g.ball.x, h.y - g.ball.y, h.z - g.ball.z));
+      }
+      res.push(['balón puro, continuo y en la mano fuera de los botes', pure && maxStep < 0.08 && Math.abs(minZ - C.BR) < 1e-9 && handBall < 1e-9, [maxStep.toFixed(4), minZ, handBall]]); }
+    // 5) el sacador humano no hace ritual y su saque sigue igual (cpuTossIn -1, sin dribble)
+    { const g = S.createGame({ seed: 6 }); let dr = 0, okT = true; for (let i = 0; i < 120 * 3; i++) { S.step(g, DT, { move: [0, 0], hit: i === 150, jump: false }); ev.length = 0; S.drainEvents(g, ev); dr += ev.filter(e => e.type === 'dribble').length; if (g.mode === 'serve' && g.cpuTossIn !== -1) okT = false; }
+      res.push(['humano sin ritual', dr === 0 && okT && !g.ritual.on, dr]); }
+    // 6) la demo del menú: ritual más corto (RITUAL.demoBounces botes como mucho, hoy 1; ~0,8 s)
+    { const g = S.createGame({ seed: 8, demo: true }); let mx = 0, mb = 0; for (let i = 0; i < 120 * 300; i++) { S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev); for (const e of ev) if (e.type === 'serveReady') { mx = Math.max(mx, g.ritual.dur); mb = Math.max(mb, g.ritual.bounces); } }
+      res.push(['demo: ritual corto', mb >= 1 && mb <= R.demoBounces && mx <= 1.2, [mb, mx.toFixed(3)]]); }
+    const bad = res.filter(r => !r[1]);
+    if (bad.length) fail('ritual del sacador CPU: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+    else console.log('ritual del sacador CPU (sin gastar azar, determinista, estilo por jugador ' + res[1][2] + ', punto de set, balón puro y continuo, humano sin ritual, demo corta) OK');
+  }
 }
 
 

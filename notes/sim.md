@@ -8,6 +8,278 @@ en paralelo, ~70 s con 16 núcleos) → `TODO OK`. Rápido sin matriz: `node too
 Afinado: `SIMTEST_ONLY=matrix MATRIX_FILTER='novato vs easy|medio vs normal' node tools/simtest.js 5 777 20 12`
 (solo esas casillas, 12 semillas: ~1 200 puntos por casilla, ±1,4 puntos de %).
 
+## P1. Pulido, ola 1: presentación del punto (SIM-01, SIM-02, SIM-03; owner sim, 2026-11-07)
+Todo AÑADIDO y determinista: no gasta azar ni cambia la simulación. Con `g.present` en false (demo, autopilot, simtest) la
+salida de `node tools/simtest.js 10 12345 0` es idéntica línea a línea a la de antes (solo hay líneas nuevas).
+**Para que el lead lo pase a CONTRACT §4.2/§4.3** (texto listo):
+
+> `point` añade: `highlight` (0..1, lo grande que ha sido el punto), `digs` (int: defensas de remate del peloteo), `streak`
+> (int ≥ 1: puntos seguidos del que puntúa en este set, este incluido), `savedSetPoint` (bool: el que puntúa tenía en contra
+> punto de set o de partido), `signal` (señal del árbitro: `'in'|'out'|'touched'|'four'|'double'|'net'|'under'|'antenna'|
+> 'attackFault'|'delay8'|'serveFault'`), `touchedOut` (bool, true ⇔ `signal === 'touched'`), `landSide` (campo donde botó el
+> balón: 0 = x > 0, 1 = x < 0; -1 si el punto no es por bote), `hold` (s de pausa hasta el siguiente saque o `gameOver`;
+> `g.timer` arranca con este valor). `setWon`/`matchWon` ya son correctos en el propio evento (antes se rellenaban justo
+> después de emitirlo; para los que leen el array de eventos del frame no cambia nada). `g.lastPoint` copia `team, reason,
+> text, how, highlight, digs, streak, savedSetPoint, signal, touchedOut, landSide, hold, setWon, matchWon`.
+> Estado nuevo en `game`: `present` (bool), `hold` (s de la pausa en curso), `streakTeam/streakN`, `rally.digs`,
+> `atkHuman/atkGrade`. Funciones nuevas: `VB.Sim.skipHold(g)`, `VB.Sim.highlightOf(o)`; constantes `VB.HOLD`.
+
+### SIM-01 — `highlight` y contexto
+**Fórmula sustituida en SIM-05 (ver §P3).** Fórmula original (`highlightOf`, redondeada a milésimas, recortada a 0..1):
+| término | valor |
+|---|---|
+| base | 0,15 |
+| peloteo largo | +0,03 por toque a partir del 5.º (`rallyHits − 4`), máx. 0,35 (el saque no cuenta como toque en `rallyHits`) |
+| defensas de remate (`digs`) | +0,12 cada una, máx. 0,24 |
+| `how 'block'` (bloqueo directo) | +0,25 |
+| `how 'ace'` | +0,2 |
+| remate `perfect` del humano que es punto (`how 'kill'`) | +0,2 |
+| jugado con punto de set (de cualquiera) | +0,15 |
+| jugado con punto de partido | **+0,30** más (se suma al de set) |
+| `savedSetPoint` | +0,15 |
+| `streak ≥ 3` | +0,1 |
+| `how 'error'` sin cerrar set ni partido | tope 0,35 |
+
+**Desviación deliberada del enunciado**: el punto de partido vale +0,30 (no +0,25). Con +0,25 el remate perfecto del humano en
+punto de partido daba 0,15 + 0,2 + 0,15 + 0,25 = **0,75** y no cumplía la aceptación (≥ 0,8). Se ha cargado la diferencia al
+punto de partido (el momento más raro y más grande) y no al remate perfecto, para no subir la frecuencia de los puntos
+grandes en el juego normal: probado con +0,25 al remate perfecto, el bot «bueno» contra Normal pasaba del 26 % al 33 % de
+puntos ≥ 0,55. Bloqueo directo con punto de partido: 0,85; salvando el del rival: 1,0.
+
+Definiciones:
+- **`digs`**: primer toque (`kind 'pass'`, toque 1) controlado de un remate rival: no cuenta el desviado (`shot 'shank'`) ni el
+  rebote en el cuerpo (`'body'`); sí la plancha, el que llega frenado por el propio bloqueo (`block 'touch'`) y la cobertura de
+  un bloqueo directo rival (`block 'stuff'`). La recepción del saque no cuenta. Se cuentan los de los dos equipos.
+- **`streak`**: se reinicia en cada set (`newSet`/`newMatch`): un parcial de TV es dentro del set.
+- **`savedSetPoint`**: `g.setPoint === 1 − team` (el punto de set/partido se calcula en `serveReady`).
+- **remate perfecto del humano**: `how 'kill'` cuyo último ataque (`g.atkHow 'kill'`) fue del humano con nota `perfect`
+  (también cuando el rival lo toca y lo desvía, el block-out, etc.).
+
+Distribución medida (`tools/out/sim-p1/hlsweep.js`, `tools/out/sim-p1/hlhuman.js`):
+| partido | puntos | media | p50 | p90 | ≥ 0,55 |
+|---|---|---|---|---|---|
+| demo CPU vs CPU, 36 semillas × 20 min | 3 970 | **0,289** (peor semilla 0,323) | 0,18 | 0,54 | 8,1 % |
+| demo, 40 semillas × 10 min | 2 572 | 0,282 (peor 0,345) | 0,15 | 0,51 | 7,3 % |
+| bot novato vs Fácil (4 × 20 min) | 406 | 0,33 | 0,31 | 0,61 | 13 % |
+| bot medio vs Normal | 376 | 0,37 | 0,35 | 0,67 | 19 % |
+| bot bueno vs Normal | 382 | 0,42 | 0,40 | 0,74 | 26 % |
+| bot perfecto vs Experto | 295 | 0,56 | 0,53 | 0,94 | 47 % |
+
+**Para SIM-05 (calibración, ola 3)**: en partidos humanos los puntos «grandes» (≥ 0,55 → pausa de 2,4 s) son frecuentes en
+cuanto el jugador es bueno, porque remate perfecto (0,35) + una defensa (0,12) + dos toques de peloteo (0,06) ya llegan.
+Propuesta a medir entonces: contar como `digs` solo las defensas de remate de ≥ 13 m/s o en plancha, y subir el umbral de
+peloteo largo a partir del 7.º toque; objetivo ≤ 15 % de puntos grandes para un jugador bueno. No se ha tocado ahora para
+no mover el contrato que las demás ramas están empezando a usar.
+
+### SIM-02 — señal del árbitro
+| `signal` | cuándo |
+|---|---|
+| `in` | `reason 'in'` (también el balón a la red que cae dentro de su propio campo) |
+| `out` | `reason 'out'` y el último contacto NO fue del equipo que recibía |
+| `touched` | `reason 'out'` y el último contacto fue del equipo que recibía el ataque/saque rival: su bloqueo (`lastKind 'block'`: block-out, toque de bloqueo que sale) o su primer toque (`lastKind 'pass'` con `touches 1`: recepción/defensa, también desviada, en plancha o de rebote en el cuerpo). `touchedOut = true` |
+| `four`, `double`, `net`, `under`, `antenna` | el `reason` del mismo nombre |
+| `attackFault` | `reason 'attackServe'` y `'block'` (bloqueo del saque) |
+| `delay8` | `reason 'serve'` por la regla de 8 s (texto «Falta de saque: 8 segundos») |
+| `serveFault` | `reason 'serve'` porque el lanzamiento cae sin golpearlo |
+
+Un segundo/tercer toque propio que sale (colocación, remate) es `out`, no `touched`. `landSide` lo da `g.lastLand` del mismo
+paso. Textos del árbitro sin cambios («Dobles: el mismo jugador toca dos veces», «Falta de saque: 8 segundos», «Ataque sobre
+el saque», `POINT_TEXTS` igual).
+
+### SIM-03 — pausa de presentación y `skipHold`
+`point.hold` = `g.timer` al pitar (incluye el cambio de campo):
+| caso | sin `g.present` (como siempre) | con `g.present` |
+|---|---|---|
+| punto normal | 1,9 | 1,9 |
+| `highlight ≥ 0,55` (`VB.HOLD.bigAt`) | 1,9 | **2,4** |
+| set ganado (incluye el cambio de campo) | 3,6 | **3,4** |
+| partido ganado (modo `'over'` hasta `gameOver`) | 2,2 | **4,2** |
+| 8 puntos del set decisivo | 1,9 + 1,4 | (1,9 o 2,4) + 1,4 |
+
+Nota sobre el set: el enunciado pedía 3,4 s (creía que hoy era 1,9); hoy ya era 3,6 s con el cambio de campo. Se aplica 3,4
+como pide la aceptación: la grúa del cambio de campo de camera.js (empieza a 1,45 s reales y dura 2,4) acaba a ~3,85 s reales,
+y 3,4 s de juego con la cámara lenta del set (×0,5 los primeros 0,8 s reales) son ~3,9 s reales: cabe justa. Si CAM-09 quiere
+más, es un número (`VB.HOLD.set`).
+`g.present`: `createGame({present:true})` o `g.present = true` después de crearlo (main.js, partidos humanos). La demo del menú y
+el autopilot no lo llevan.
+`VB.Sim.skipHold(g)` → bool: en `'point'`/`'over'`, si han pasado ≥ 0,8 s de la pausa (`g.hold − g.timer`), recorta `g.timer`
+a 0,3 s como mucho y devuelve true; si no, false. Nunca baja de 0,3 s, no hace nada en `'serve'`/`'rally'` ni con el partido
+ya terminado (`g.finished`). El orden de eventos al acabar la pausa no cambia (`newSet`, `serveReady` o `gameOver`).
+
+### simtest (nuevo)
+- Cada punto de TODAS las partidas (demo, fuzz, matriz, partido con `present`) pasa `pointFieldIssues`: highlight en [0,1],
+  `digs`/`streak` enteros ≥ 0 (racha contrastada con un recuento propio por set), `savedSetPoint` contra el `serveReady`,
+  errores ≤ 0,35, `signal` de la lista cerrada y coherente con `reason`, `touched` ⇔ `touchedOut`, 8 s ⇔ `delay8` con el reloj a
+  0, `landSide` = campo del bote, `hold` según la tabla y `g.timer === hold`, `g.lastPoint` copia el evento.
+- Demo: highlight medio ≤ 0,35 (con ≥ 110 puntos; en pruebas cortas el tope se abre con √(110/n): 10 min ≈ 0,376) y puntos
+  grandes entre el 1 y el 25 %. El suelo del 1 % solo se exige con ≥ 100 puntos de demo (guarda de tamaño de muestra añadida
+  en la integración, no un aflojamiento silencioso): con ~8 % de puntos grandes, 0 de 61 sale ~1 de cada 160 semillas (semilla
+  22 a 10 min dio 0/61). El techo del 25 % se exige siempre. Ver `tools/simtest.js` (comentario «suelo del 1 %»).
+- Casos: 12 señales montadas (fuera / tocado / dentro / 8 s / no golpea / bloqueo del saque / debajo / antena) con `landSide`;
+  remate perfecto del humano con punto de partido (0,8), bloqueo directo con punto de partido propio (0,85) y salvándolo (1,0);
+  fórmula en 6 extremos; `digs` (remate y toque de bloqueo sí, saque y cuerpo no) y `streak` (corta la del rival); pausa con
+  `present` (set 3,4: `skipHold` false a 0,5 s, true a 0,9 s y saque a los 0,3 s; normal 1,9; grande 2,4; partido 4,2 con
+  `gameOver` a los 0,3 s del skip; 8 del 3.er set +1,4; sin `present` 3,6; sin efecto en saque/peloteo).
+- Partido humano de 6 min con `present: true` (bot bueno vs Normal).
+
+Herramientas de medida: `node tools/out/sim-p1/hlsweep.js [semillas] [min] [desde]` (demo) y
+`HLARGS='bueno normal 4 20' node tools/out/sim-p1/hlhuman.js` (bots de simtest con `present`).
+
+## P2. Pulido, ola 2: ritual del sacador CPU (SIM-04; owner sim, 2026-11-08)
+Entre el silbato y el lanzamiento, el sacador de la CPU (también el equipo 0 en autopilot y los dos equipos de la demo) bota el balón
+1-3 veces con un estilo PROPIO de cada jugador y lanza a una hora fija y anunciada. El humano no hace ritual: su saque no cambia.
+**Para que el lead lo pase a CONTRACT §4.2/§4.3** (texto listo):
+
+> Estado nuevo en `game`: `seed` (int, semilla del partido), `serveNo` (saques puestos), `cpuTossIn` (s de juego hasta el lanzamiento
+> programado de la CPU, decrece de forma monótona desde el `serveReady` y vale 0 en el paso del `toss` y hasta que acaba el saque; -1 con
+> sacador humano y fuera de `'serve'`; `g.timer` vale lo mismo en el saque de la CPU), `ritual` (objeto persistente, solo lectura:
+> `{on, phase:'none'|'wait'|'pre'|'dribble'|'post'|'done', t (s desde el silbato), dur (s silbato → lanzamiento, 0,8-1,6), bounces (1-3),
+> n (botes ya hechos), u (0..1 dentro del bote en curso), player, rx, ry (punto del bote, sim), cyc, td, tu (periodo, bajada, subida, s),
+> v0, vu, vc, vi (empujón, subida, recogida, contra el suelo; m/s), pre, post, still, press (punto de set/partido)}`).
+> `serveClock` corre también para la CPU tras el silbato (la CPU lanza siempre con ≥ 6,3 s; la UI y el audio solo lo muestran al humano).
+> Durante el ritual `ball.held` sigue siendo el sacador; el balón NO está en la mano en `'dribble'` (bota delante de él) y `ball.vx/vy/vz`
+> llevan la velocidad real del bote. `VB.Sim._holdPos(g, p, out)` es el punto de la MANO izquierda (con el balón en `'wait'/'pre'/'post'/'done'`;
+> en los botes se aparta 0,30 m a la izquierda y vuelve a por el balón al final de cada bote). Constantes `VB.RITUAL`.
+> Funciones: `VB.Sim.ritualAt(g, t, out?)` → posición del balón del ritual en el instante `t` (s desde el silbato) sin tocar nada, o null.
+> `createGame({ritual:false})` = sin ritual (pruebas: el flujo anterior, byte a byte).
+> Evento nuevo `dribble {player, team, x, y, n (1..of), of (botes de este ritual), speed (m/s contra el suelo), last (bool)}` en cada contacto
+> del balón con el suelo (en ese paso `ball.z === BR`).
+
+### Cómo es
+- Fases: `'wait'` (balón en la mano antes del silbato, 0,7 s; demo 0,35) → `'pre'` (0,16-0,22 s: baja el balón de la mano, 1,28 m, a 1,0 m y
+  llega ya empujándolo hacia abajo: curva de Hermite con la velocidad del bote al final, sin tirón) → `'dribble'` (n botes, cada uno: bajada
+  empujada en caída libre, 17 ms en el suelo para que todo frame de 60 Hz pintado vea el contacto, subida con restitución 0,8 hasta la mano
+  con velocidad pequeña) → `'post'` (0,22 s: lo sube a la mano con la velocidad de la recogida) → `'done'` (0,12-0,38 s quieto, mirando al
+  campo) → `toss`. El balón es función pura del tiempo del ritual (`ritualBall`); el lanzamiento sale del mismo punto de la mano de siempre.
+- Botes delante y algo a la izquierda del sacador (0,42 m hacia la red, 0,12 m a la izquierda), donde la mano izquierda ya tenía el balón.
+- Estilo por jugador (hash de `seed` + `player.id`, sin gastar `g.rng`): botes base (30 % uno, 45 % dos, 25 % tres), tempo (periodo del bote
+  0,50-0,60 s con 1 bote, 0,40-0,46 con 2, 0,33-0,37 con 3), bajada y pausa final propias. Por saque (hash de `seed`, jugador y `serveNo`):
+  11 % uno menos, 11 % uno más, ±6 % de tempo. **Con punto de set o de partido (de cualquiera) bota uno más y se queda 0,12 s más
+  concentrado** (hasta 3 botes y 1,6 s). Se ve: en una partida cada jugador repite su número de botes el 83-100 % de las veces.
+- Duración (silbato → lanzamiento) 0,8-1,6 s; lanzamiento entre 1,5 y 2,3 s desde `serveReady` en partido (antes, 1,3 s fijos; demo
+  1,2-1,5 s, antes 0,9); nunca después de
+  `RITUAL.tossBy` (4,5 s). **Demo del menú**: como mucho 2 botes y ~1,1 s (comprime los tiempos muertos como ya hacía con el silbato):
+  5,4 puntos/min de mediana (antes 5,7; con el ritual completo bajaba a 5,25 y la peor semilla a 10 min se acercaba al mínimo del simtest, 4,5).
+
+### Semillas (desplazamiento documentado)
+El ritual no gasta el azar del partido (simtest lo prueba: con y sin ritual el generador está en el mismo punto tras el primer
+lanzamiento), pero NO se pueden conservar los resultados de cada semilla: el lanzamiento de la CPU llega más tarde, la altura de salida del
+balón lleva el vaivén de la mano (`sin(g.time·3,1)`) y las diferencias de coma flotante del tiempo cambian el peloteo desde el primer saque
+de la CPU. Con `createGame({ritual:false})` la salida de `node tools/simtest.js 10 12345 0` es idéntica línea a línea a la de antes (solo
+aparece el contador `"dribble":0`). La matriz de equilibrio queda dentro del ruido de muestreo (4 semillas, ±2,5 puntos de %): novato vs
+Fácil 49,4 % (antes 48,5), vs Normal 35,2 % (33,9); medio vs Normal 50,0 % (53,0), vs Fácil 77,3 % (73,5).
+
+### Verificación
+- `node tools/simtest.js` completo, semillas 12345, 1 y 2 → TODO OK (≈ 38 s). Rápido (`10 <seed> 0`) con 12345, 1, 2, 3, 22, 777 → TODO OK.
+- **Aviso para SIM-05 (no lo causa SIM-04)**: `node tools/simtest.js 20 3` (completo, semilla 3) falla en la matriz «novato vs Fácil» = 51,6 %
+  (banda 0,40-0,51). Con la copia SIN ritual (`tools/out/sim-w2/simtest_noritual.js 20 3`) la misma casilla da 53,2 %: también falla. Es el ruido
+  de 4 semillas × 20 min (±2,5 puntos) contra una banda cuyo techo está a ~1σ de la media (48-49 %). Medido con/sin ritual en las semillas 3, 1, 2,
+  12345: 51,6/46,5/44,8/49,4 % frente a 53,2/43,2/45,9/48,5 %. No se ha tocado la banda (sería aflojar una prueba sin calibrar): para SIM-05.
+- simtest, en CADA saque de todas las partidas (demo, fuzz, `present`, matriz de 4 niveles × IA y 4 bots): `cpuTossIn` monótono y 0 en el
+  toss, lanzamiento a `whistleAt + dur` (± 1,5 pasos) y ≤ 4,5 s, **reloj de 8 s ≥ 3 s al lanzar** (mínimo medido 6,38 s), tantos `dribble`
+  como botes y cada uno con el balón en el suelo, el balón baja al suelo y vuelve a ≥ 0,95 m, `ball.held` = sacador, duración 0,8-1,6 y 1-3
+  botes; humano sin ritual (`cpuTossIn -1`, sin `dribble`); fuera del saque `cpuTossIn -1`. Casos: sin gastar `g.rng`, determinista y con
+  estilo por jugador, punto de set, balón puro/continuo (paso máx. < 0,08 m a 120 Hz; mano = balón fuera de los botes), humano, demo corta.
+- Película en el navegador (`debug=rally&live=1`, eval por frame): balón 1,27 → 0,21 (suelo) → 0,98 → 0,21 → 0,98 → 1,27 con 2 botes,
+  `cpuTossIn` monótono. **Desviación de la aceptación**: pedía z «por debajo de 0,15»; `ball.z` es el CENTRO y el balón tiene radio
+  `C.BR = 0,21` (exagerado por legibilidad), así que en el suelo `z = 0,21` exacto (el balón toca el parqué; por debajo atravesaría el suelo).
+- Capturas: `tools/out/sim-w2/front0/*.png` (de frente, congelado en cada fase), `zoom1/*.png` (sacador CPU visto desde nuestra recepción,
+  cámara lenta), `cast1/*.jpg` (screencast a ritmo real). Cámara durante el saque rival: cabeceo ±0,003°, FOV fijo (igual que sin ritual).
+- `node tools/drive.js` TODO OK (saque humano igual), `bash tools/console.sh all` sin errores.
+- Herramientas: `tools/out/sim-w2/probe.js [seed] [min] [demo|auto]`, `film.expr` (eval), `cast.js`, `zoom.js`, `side.js`, `ppm.js`, `camserve.js`.
+
+### Para los demás (detalle en sus notes)
+- players (PLY-16): la palma izquierda ya sigue `_holdPos` (mano) y el balón bota solo; falta la mano que empuja por ARRIBA y las rodillas.
+- audio: `dribble` ya suena (AUD-05). camera_input: `g.cpuTossIn` ya existe (1,5-2,3 s tras `serveReady`; antes 1,3).
+
+## P3. Pulido, ola 3: calibración del highlight y simtest (SIM-05; owner sim, 2026-11-08)
+**Sustituye la fórmula de §P1/SIM-01** (la tabla de allí queda como historia). Todo sigue siendo puro y determinista; solo cambia el
+NÚMERO `highlight` (y con él la pausa de 2,4 s de `g.present`). **Para que el lead lo pase a CONTRACT §4.2/§4.3** (texto listo):
+
+> `point` añade `clutch` (bool: final apretado — con el marcador de ANTES del punto, el que va delante está en los últimos 8 puntos del
+> set, ≥ 17 de 25 o ≥ 7 de 15, y la diferencia es de 2 o menos). `g.lastPoint` también lo copia. `highlight` usa los pesos de
+> `VB.HL` (solo lectura). Función nueva: `VB.Sim.clutchOf(s0, s1, target)`. Umbrales que pueden usar los demás: `VB.HOLD.bigAt`
+> (0,55, «punto grande»: cinta grande, pausa larga) y 0,8 («enorme»: casi solo en punto de set/partido).
+
+### Fórmula (`highlightOf`, `VB.HL`)
+| término | antes (SIM-01) | ahora |
+|---|---|---|
+| base | 0,15 | 0,15 |
+| peloteo largo | +0,03/toque desde el 5.º, máx. 0,35 | +0,025/toque desde el 5.º, máx. 0,35 |
+| defensas de remate | +0,12 c/u, máx. 0,24 | +0,08 c/u, máx. 0,3 |
+| **tope conjunto de la jugada** (peloteo + defensas) | — (0,59) | **0,4**: con la base, una jugada épica sola llega a 0,55 justo |
+| bloqueo directo | +0,25 | **+0,4** (un punto de bloqueo siempre es grande: 0,55) |
+| ace | +0,2 | +0,25 |
+| remate perfecto del humano | +0,2 | **+0,1** |
+| punto de set | +0,15 | +0,15, o **final apretado +0,28**, el mayor de los dos (no se suman: el 24-23 nunca vale menos que el 23-22) |
+| punto de partido | +0,30 | **+0,45** |
+| salvar punto de set/partido | +0,15 | +0,15 |
+| racha ≥ 3 | +0,1 | +0,1 |
+| error que no cierra set/partido | tope 0,35 | tope 0,35 |
+
+Momentos de la aceptación de SIM-01 (siguen ≥ 0,8): remate perfecto del humano con punto de partido 0,85 (0,95 si además el marcador
+está apretado); bloqueo directo con punto de partido 1,0 (propio y salvándolo).
+
+### Por qué así (medido)
+Antes, en CPU vs CPU solo el **8,9 %** de los puntos llegaban a 0,55 (demo, 160 partidos) y la cinta grande dependía sobre todo del
+remate perfecto del HUMANO (+0,2: el 35 % de los puntos del bot «bueno» lo tenían), así que la UI tuvo que inventar reglas propias
+(jugada ≥ 10 toques, racha 3/5…). Los términos nuevos premian lo que hace grande un punto en cualquier partido: el **marcador apretado
+al final del set** (además, un partido igualado tiene más momentos grandes que una paliza), el **bloqueo directo** y la **jugada épica**;
+el tope conjunto evita que los peloteos largos con defensas disparen puntos de 0,8 a mitad de set (antes eran la mayoría de los ≥ 0,8
+fuera de punto de set). Herramientas: `tools/out/sim-w3/rec.js` graba rasgos por punto (`node rec.js demo|auto:<nivel>|bot:<bot>:<nivel>
+<partidos> <desde>`), `grid*.js` barren pesos sobre los rasgos sin volver a simular, `an2.js` resume.
+
+Partidos COMPLETOS; highlight ≥ 0,55 / ≥ 0,8 fuera de punto de set o partido:
+| partidos | puntos | antes | **ahora** |
+|---|---|---|---|
+| demo CPU vs CPU, 160 partidos | 16 943 | 8,9 % / 0,6 % | **19,6 % / 3,2 %** (grupos de 20 partidos: 17,6-20,9 %) |
+| autopilot (IA compañero) vs Normal, 40 | 3 400 | 16,0 % / 2,5 % | **20,2 % / 2,6 %** |
+| autopilot vs Difícil, 20 | 2 065 | 17,4 % / 2,4 % | 25,2 % / 4,4 % |
+| autopilot vs Fácil, 20 | 1 284 | 9,4 % / 0,6 % | 12,0 % / 0,9 % |
+| bot novato vs Fácil, 12 | 1 219 | 10,9 % / 1,6 % | 19,9 % / 2,9 % |
+| bot medio vs Normal, 12 | 1 270 | 18,3 % / 4,1 % | 25,0 % / 5,4 % |
+| bot bueno vs Normal, 12 | 878 | **27,7 % / 8,2 %** | **23,2 % / 2,3 %** |
+| bot perfecto vs Experto, 8 | 710 | 42,4 % / 20,7 % | 44,5 % / 11,0 % |
+
+Lectura: CPU vs CPU entra en la banda pedida (15-25 %, < 5 % de ≥ 0,8); para el jugador bueno la pausa larga sale MENOS que antes
+(27,7 → 23,2 %) y los «enormes» fuera de punto de set bajan de 8,2 a 2,3 %. Histograma de la demo (160 partidos): 0,1-0,2 43 % ·
+0,2-0,3 11 % · 0,3-0,4 11 % · 0,4-0,5 14 % · 0,5-0,6 9 % · 0,6-0,7 6 % · 0,7-0,8 2 % · 0,8-0,9 2 % · 0,9-1 3 %. Puntos grandes por
+cómo (demo): bloqueo ~49 %, remate ~46 % (casi todos con final apretado, racha o jugada larga), ace ~5 %.
+
+### simtest
+- **Calibración** (sección nueva, siempre salvo `SIMTEST_ONLY=matrix`, también en el modo rápido): 20 partidos COMPLETOS de demo
+  (semillas `SEED + 7919·k`) en paralelo (~4 s). Imprime el histograma por décimas, % ≥ 0,55 (banda **15-25 %**), % ≥ 0,8 fuera de
+  punto de set/partido (**< 5 %**), rango por partido, grandes por cómo, % de finales apretados, señales, `landSide`, pausas y ritual.
+  Falso fallo estimado: 0 de 20 000 remuestreos de los 160 partidos medidos (media 19,6 %, σ 1,1; ≥ 0,8: 3,1 %, σ 0,4).
+- **Cobertura en partido real** (esos 20 partidos): cada punto pasa `pointFieldIssues` con el ritual vigilado por `ritualChecker`;
+  además tienen que aparecer las señales `in`/`out`/`touched` y `landSide` 0, 1 y -1; solo pausas de la tabla de la demo (1,65, +1,4 del
+  cambio a los 8, 3,6 de set, 2,2 de partido, y al menos un set y un partido); todos los saques de la CPU y exactamente un `dribble` por
+  bote programado.
+- **`pointFieldIssues` recompone el highlight**: con lo que el test sabe por su cuenta (cómo, toques, defensas, racha contada, punto de
+  set/partido del `serveReady`, final apretado calculado del marcador, salvado, set/partido ganado; el remate perfecto del humano lo lee
+  de `g`) llama a `S.highlightOf` y exige el MISMO número en cada punto de todas las partidas (demo, fuzz, `present`, matriz,
+  calibración). Comprueba también `clutch` y que `g.lastPoint` lo copia.
+- **Determinismo**: el primer partido de la calibración se repite dos veces en el hilo principal y su traza (marcador, cómo, highlight,
+  señal, `landSide`, pausa, `clutch`, defensas, racha y cada `dribble` con su velocidad) es idéntica carácter a carácter a la del worker;
+  otra semilla da otra traza. Un partido humano de 4 min con `present: true` (bot bueno) repetido da la misma secuencia de highlight y
+  el mismo `g.time` final (la pausa depende del highlight).
+- Fórmula fijada en 14 casos (antes 6): bloqueo solo 0,55, final apretado 0,43 (con punto de set también 0,43: no se suman), punto de
+  set solo 0,3, remate perfecto 0,25 y con punto de partido 0,85, jugada épica 0,55, error con todo 0,35, etc.
+- La comprobación de la demo de `MIN` minutos pasa a ser de cordura (media ≤ 0,337 + 4σ; grandes entre 1 % y 19,6 % + 4σ; abiertas
+  con √(110/n)): un solo partido no puede llevar la banda 15-25 % (σ por partido 4,8 puntos; rango medido 5,8-35,3 %).
+
+### Verificación
+`node tools/simtest.js` completo con las semillas 1, 7, 99 y 12345 → **TODO OK** (calibración 19,3 / 21,0 / 19,6 / 20,2 %; ≥ 0,8 sin
+punto de set 2,8 / 3,1 / 3,8 / 3,3 %; determinismo OK; matriz sin cambios: el highlight no toca el juego sin `present`).
+`node tools/simtest.js 10 12345 0` → TODO OK. `bash tools/console.sh all` → sin errores JS. `node tools/drive.js` → TODO OK. En la
+página real (demo del menú) `VB.ctx.game.lastPoint` lleva `clutch` y el highlight nuevo (ace con racha de 4: 0,5). Salidas:
+`tools/out/sim-w3/full_*.txt`, `fast_12345.txt`, `console_all.txt`, `drive.txt`.
+
+### Para los demás (detalle en sus notes)
+- ui_main (UI-03): `tierOf` puede quedarse en `highlight >= VB.HOLD.bigAt` (+ ace y punto de set salvado); las reglas propias
+  (jugada ≥ 10 toques, racha 3/5) ya están dentro del número. `e.clutch` sirve para un subtítulo «Final apretado».
+- audio (AUD-07): `hlOf` de reserva copia la fórmula vieja; solo se usa sin `e.highlight` (ya nunca). Opcional: `e.clutch` para tensión.
+
 ## R6. Demo CPU vs CPU dependiente de la semilla (fixer sim, 2026-11-07)
 **Síntoma**: `node tools/simtest.js 20 99 0` → «ningún partido completo ni dos sets» y «remates punto 37 %»; `10 99 0` / `10 4242 0`
 → «muy pocos puntos» (44). Demo con 93 puntos en 20 min, mediana de rally 8,06 s (antes ~5 s).
@@ -431,3 +703,119 @@ Las tres pendientes de la revisión 2 quedan HECHAS en sim.js (texto de 'out', a
   (`tools/out/camalloc/deopt3.js`): ya no hay deprecaciones de `step`/`stepServe`/`toss`/`doServe` sobre `g` en mitad del partido. Quedan las de los
   literales de EVENTO (`hit`, `block`, `point`, `land`: ~40-80 mapas por punto; sus mapas se recolectan y se rehacen), sin desoptimizaciones en masa asociadas.
 - Comprobado: simtest completo TODO OK (novato Fácil 46,8 %, Normal 33,9 %; medio Normal 53,0 %, Fácil 74,2 %).
+
+## De camera_input (pulido ola 1, CAM-03/05): lo que la cámara lee de `g` (2026-11-07)
+- Nada que cambiar para que funcione. La cámara anuncia sus cortes con `g.timer` en `'point'` (s de juego hasta `serveReady`; `skipHold` deja 0,3 s:
+  sigue anunciado con margen; **por favor, que un salto futuro nunca ponga `g.timer` por debajo de ~0,2 s**, o la cortinilla de UI-13 no llegaría).
+- SIM-04: la transición al saque rival lee `g.cpuTossIn` (s de juego hasta el lanzamiento de la CPU) si existe; hoy el reloj equivalente es `g.timer` en
+  `'serve'` con `g.serving === 1` (1,3 s desde `serveReady`). Si el ritual del sacador CPU alarga ese tiempo, basta con exponer `g.cpuTossIn`.
+
+## De players (pulido ola 1), 2026-11-07 — informativo, nada bloquea
+1. **Balón en la mano en el frame de `serveReady`**: `setupServe` pone `b.held = sv` pero la posición del balón no se actualiza hasta el
+   siguiente `stepBall` (sigue donde rodaba ese frame: arena lo pinta un frame lejos del sacador). Players ya usa `VB.Sim._holdPos`. Si se
+   quiere el balón en la mano desde ese mismo frame, al final de `setupServe`: `holdPos(g, sv, b);`.
+2. **Altura del contacto del saque flotante** (`ZC.fserve` = 2,55 sobre los pies, y la IA golpea hasta ~2,78 cuando adelanta el golpe): con el
+   brazo estirado la palma del atleta llega a ~2,3 m; players sube a puntillas y da un saltito de hasta 0,22 m en los últimos 0,3 s para
+   llegar. Si se busca un flotante «de pie» más realista, `ZC.fserve` ≈ 2,40 (opcional; cambia el timing, habría que recalibrar simtest).
+3. Las convergencias de PLY-07 leen `g.timer` en 'point' para la vuelta: SIM-03 (pausas largas) les da más tiempo sin cambios.
+
+## Aplicado (log, integración del pulido ola 1, 8-nov-2026, PC de casa)
+- Petición de players §1 aplicada: `setupServe` llama a `holdPos(g, sv, b)` (balón en la mano ya en el paso del `serveReady`). Sin azar:
+  `simtest 10 12345 0` idéntico línea a línea antes/después. §2 (`ZC.fserve` ≈ 2,40) NO aplicado: cambia el timing y la calibración.
+- simtest: el suelo del 1 % de «puntos grandes» de la demo solo se exige con ≥ 100 puntos (semilla 22 a 10 min: 0 de 61 puntos, ~1 de cada 160
+  semillas por azar con un 8 % de grandes). Medido después: semillas 1-35 a 10 min y 1-25 a 20 min → TODO OK; completo TODO OK.
+- CONTRACT §4.2/§4.3/§5 actualizado con el texto de §P1 (campos del punto, `present`, `skipHold`, `highlightOf`, `VB.HOLD`).
+- SIM-03 en main.js ya lo había cableado ui_main (`present: !opts.autopilot`, `skipHold` con GOLPEAR/SALTAR).
+
+## Aplicado (log, integración del pulido ola 2, 8-nov-2026, PC de casa)
+- Aviso de ui_main (y del verificador, `verify-w1-feel/srvdrop.js`): la CPU dejaba caer su propio lanzamiento («Falta de saque: el balón cae sin
+  golpearlo» a favor del humano), ~0,2 % de los saques, casi todos en Fácil de primer partido. Causa: `g.aiServeTe` se muestreaba en
+  (−0,25, 0,25) y la IA solo golpea con `canReach`, que se cierra hacia `w.t ≈ −0,23 s`: con un desfase tardío > 0,23 esperaba hasta que el
+  balón caía. Arreglo en `toss()`: `clamp(..., -0.25, 0.2)` (sin cambiar el flujo del azar). `srvdrop2.js`: 13/5880 → 0/5880.
+  simtest: comprobación nueva «saque de la CPU: 0 lanzamientos caídos» (4 niveles × primer partido sí/no × 3 semillas, 150 s cada uno).
+  Matriz de equilibrio prácticamente igual (novato en Fácil 46,8 % → 48,5 %, medio en Fácil 74,2 → 73,5 %; el resto idéntico).
+
+## De audio (pulido ola 2, AUD-05, 8-nov-2026): `dribble` consumido
+- audio.js suena cada `dribble` (SIM-04) como un bote en el parqué más suave que uno de peloteo (-23 frente a -18 LUFS; por encima de los
+  botes muertos, -26), en el punto del bote (`x, y` del evento) y con la ganancia por `speed` (velocidad contra el suelo). Uno por evento:
+  en 240 s de partido renderizado, 35 botes de la sim → 35 sonidos; en la partida real, 12/12. Nada que pedir.
+
+## De camera_input (pulido ola 2, CAM-09 cierre de set), 2026-11-08 — petición opcional
+- `g.cpuTossIn` (SIM-04) consumido: el cutaway al sacador rival (CAM-14) dura `gameToReal(g.cpuTossIn) - 0,55` s (0,95-1,4) y vuelve a la
+  recepción ≥ 0,55 s antes del lanzamiento. Gracias: con los 1,3 s de antes no cabía.
+- **Pausa del set**: el cierre de set ahora es seguimiento del balón a cámara lenta + órbita de los ganadores (≥ 1,85 s, lo pide CAM-09) y
+  DESPUÉS la grúa del cambio de campo. Con `VB.HOLD.set = 3,4` (≈ 3,9 s reales con la cámara lenta) quedan ~1,66 s de grúa (courttest pide ≥ 1,6:
+  pasa, justo). Propuesta: `VB.HOLD.set` 3,4 → **4,0** (solo con `present`) para órbita de ~2,2 s y grúa de ~2 s cómodas. La cámara se adapta a
+  lo que haya (`point.hold` / `g.timer`): no hace falta coordinar nada más.
+
+## Aplicado (log, integración del pulido ola 2, segunda tanda, 8-nov-2026, PC de casa)
+- Petición de camera_input aplicada: `VB.HOLD.set` 3,4 → **4,0** (solo con `present`). simtest: la comprobación de la pausa del set usa
+  `VB.HOLD.set` en vez del 3,4 literal (y el texto del informe). Barrido 1-25 × (10 y 20 min) + completo: TODO OK.
+- CONTRACT §4.2/§4.3: texto de §P2 pegado (estado `seed/serveNo/cpuTossIn/ritual`, `VB.RITUAL`, `ritualAt`, `createGame({ritual:false})`,
+  `serveClock` de la CPU, `_holdPos` = mano) y evento `dribble`.
+- Visto en la integración (no cambiado): la escena `debug=ace` sale ahora con un ace cuyo texto es «Balón a la red» (`reason 'in'`, `how 'ace'`:
+  la recepción rival a la red y cae en su campo). Es un texto de la lista cerrada y correcto, pero junto a «¡ACE!» se lee raro; para SIM-05 /
+  ui_main valorar «Recepción a la red» (añadirlo a `POINT_TEXTS` si se hace).
+
+## Aplicado (log, ola 3 — fixer sim, 8-nov-2026)
+- **SIM-04 (regresión del ritmo de la demo)**: con el ritual (2 botes, ≤ 1,1 s, silbato a 0,35) la demo del menú bajó de 113,3 a 107,8 puntos
+  de media en 20 min (semillas 1-200, `tools/out/simfix/demosweep.js`) y 4 de 200 semillas (33, 54, 88, 164) no cerraban 2 sets. Arreglo, solo
+  con `g.demo` (partido humano y autopilot idénticos): `VB.RITUAL.demoBounces` 2 → **1** (un bote firme), `demoMax` 1,1 → **0,8** (el ciclo mínimo
+  `minCyc` puede llevarlo a ~0,84; `minDur` ya no alarga por encima de `demoMax`), silbato de la demo `RITUAL.demoWhistle` = **0,2** s (antes 0,35
+  literal) y pausa rutinaria de la demo `RITUAL.demoHold` = **1,65** s (antes 1,9; set 3,6 y partido 2,2 sin cambios). Resultado: 116,3 puntos de
+  media, 0/200 semillas sin 2 sets en 20 min, mínimo 107 (10 min: mínimo 48, el umbral es 45). En el navegador (menú): ritual de 1 bote, balón al
+  suelo (z = C.BR) y de vuelta, lanzamiento a ~1,0 s del serveReady, 1,63 s reales entre punto y saque. La cámara no hace cutaway en la demo
+  (`cutawayNext` excluye `g.demo`); el presupuesto de vuelta al saque con `cpuTossIn` ≈ 1,0 queda en 0,55 s (antes 0,45 con el 0,9 fijo).
+- **SIM-05 (matriz con bandas que dependen de la muestra)**: medidas 80 semillas × 20 min por casilla (`SIMTEST_ONLY=matrix node tools/simtest.js
+  0 <s> 20 1`, s = 1..80): novato/Fácil 47,0 % (sd de una semilla 5,1), medio/Normal 51,4 (5,3), novato/Normal 36,3 (5,2), medio/Difícil 40,1 (4,0),
+  medio Normal−Difícil 11,3 (sd 6,0). Las bandas fijas tenían el borde a ~1,6σ: remuestreando esas semillas, **14,7 %** de las semillas del simtest
+  fallaban la matriz sin cambiar nada (las 3 y 99 del verificador). Ahora (`MATRIX_STAT` en simtest): banda = objetivo de diseño ± 3,5·sd/√(semillas
+  × min/20) (novato/Fácil 45-49, medio/Normal 47-53, novato/Normal 30-38), diferencias mínimas = min(diseño, media medida − 3,5σ) (medio
+  Normal−Difícil, Difícil−Experto, auto Normal−Difícil, Difícil−Experto), y las 6 casillas de banda estrecha juegan el doble de semillas.
+  Falso fallo remuestreado: **0,09 %**. Las demás comprobaciones de la matriz (fijas) no cambian. Simtest completo ~45-55 s (antes ~40).
+- simtest: la pausa esperada de la demo es `VB.RITUAL.demoHold`; comentario de la prueba 6 del ritual al día.
+- Comprobado: simtest completo TODO OK en semillas 3, 99, 33, 1, 7 y 12345; barrido `simtest <10|20> <1..40> 0` → 80/80 TODO OK (puntos de la demo:
+  10 min 52-65, mediana 59; 20 min 110-126, mediana 118 ≈ 5,9/min, algo más ágil que HEAD 5,65); drive.js TODO OK; película del ritual en
+  `debug=rally&live=1` (2 botes, z 1,0 → 0,21 → 1,0) y en el menú (1 bote) con eval.js.
+
+### Para el lead (CONTRACT §4.2, línea de `VB.RITUAL`), texto propuesto
+`VB.RITUAL` (constantes; `tossBy` 4,5 s; demo del menú: `demoBounces` 1, `demoMax` 0,8 s, `demoWhistle` 0,2 s = silbato de la demo, `demoHold` 1,65 s =
+pausa rutinaria de la demo).
+### Para el lead (aceptación)
+- SIM-03: la pausa del set es `VB.HOLD.set` = **4,0** s (pedido por camera_input para CAM-09); el simtest la compara con `VB.HOLD.set`.
+- SIM-04: «el balón llega al suelo (z del centro = C.BR = 0,21)», no «por debajo de 0,15» (el centro del balón nunca baja de su radio).
+
+## Aplicado (log, integración de los arreglos tras la verificación de la ola 2, 8-nov-2026 noche, PC de casa)
+- CONTRACT §4.2: línea de `VB.RITUAL` con el texto propuesto (demo: `demoBounces` 1, `demoMax` 0,8, `demoWhistle` 0,2, `demoHold` 1,65); §6: `MATRIX_STAT`.
+- Barrido de la integración: `simtest <10|20> <1..25> 0` → 50/50 TODO OK; `simtest` completo TODO OK. Textos arbitrales intactos.
+
+## Aplicado (log, integración del pulido ola 3, 9-nov-2026, PC de casa)
+- CONTRACT §4.2/§4.3 con el texto de §P3 (`clutch`, `VB.HL`, `clutchOf`, umbrales 0,55/0,8); ui.js usa ya `highlight >= VB.HOLD.bigAt` y el subtítulo «Final apretado».
+- simtest completo (semilla por defecto) → TODO OK (calibración 20,2 % / 3,3 %); barrido `simtest <10|20> <1..25> 0` → 50/50 TODO OK.
+
+## Arreglos tras la verificación de la ola 3 (9-nov-2026, PC de casa) — fixer sim
+- **IA sin dobles ni 4 toques** (antes ~1/1.800 puntos, igual que HEAD). Causa medida con una sonda (40 semillas × 10 min × demo + autopilot
+  vs 4 niveles, 9.645 puntos): los 7 casos venían de `checkBody` (balón que da en el cuerpo), no del reparto de `computeJob` (que ya daba el
+  toque siguiente al compañero): (a) recepción desviada que, pasados los 0,5 s de gracia, le cae encima al propio receptor → dobles;
+  (b) colocación que en el mismo paso o el siguiente toca al compañero pegado (3.er toque de cuerpo o de antebrazo instantáneo) y luego
+  rebota en el colocador → 4 toques. Arreglo:
+  - sim.js `checkBody`: un jugador de IA (no `isHuman`) NO recibe toque de cuerpo de su equipo si sería falta (`g.lastPlayer === p` o
+    `g.touches >= 3`) o si el compañero acaba de soltar el balón (< 0,3 s). El humano sigue expuesto a la regla.
+  - ai.js: `TEAM_GAP` 0,2 s (la IA no toca el balón que el compañero acaba de soltar, salvo que se le vaya: `exiting`) y `dodgeOwnBall`
+    (el que acaba de tocar aparta su objetivo a `DODGE_R` 0,9 m del cruce a 1 m de su propio balón: se ve cómo se aparta).
+  - simtest: `run()` cuenta los `point` con `reason` 'double'/'four' cometidos por la IA (equipo CPU, demo, autopilot o compañero IA del
+    humano; no el jugador que controla el humano) y falla si hay alguno. Cubre la demo, el autopilot (matriz), el fuzz y los bots.
+  - Sonda tras el arreglo: 0 dobles y 0 cuatro toques en 9.642 puntos (puntos por configuración ±2 % de antes). simtest completo TODO OK en
+    semillas 12345, 1, 7 y 99 (calibración 18,1 % ≥ 0,55; matriz dentro de banda); barrido `simtest 10 <2..42> 0` 12/12 TODO OK; drive.js TODO OK.
+
+### Para el lead (SIM-03: la pausa del set es 4,0 s, no 3,4) — textos exactos
+- CONTRACT.md línea 126: `set 3.4` → `set 4.0` (queda `{routine 1.9, big 2.4, bigAt 0.55, set 4.0, match 4.2, eight 1.4, skipAfter 0.8, skipTo 0.3}`).
+- notes/camera_input.md:345: `**3,4 al` + `ganar un set** (antes 3,6; …` → `**4,0 al` + `ganar un set** (antes 3,4 y antes 3,6; pedido por CAM-09 …`.
+- notes/ui_main.md:324: `3,4 s (set, con el cambio de campo)` → `4,0 s (set, con el cambio de campo)`.
+- Aceptación de SIM-03: «un punto `setWon` tiene hold 3,4» pasa a **«hold = `VB.HOLD.set` = 4,0»** (cambio deliberado, CAM-09). El simtest ya lo
+  comprueba así: «pausa de presentación (set 4 s; skipHold no a 0,5 s, sí a 0,9 s -> saque en 0.300 s …) OK».
+
+## Aplicado (log, integración de los arreglos tras la verificación de la ola 3, 9-nov-2026, PC de casa)
+- SIM-03: aplicados los textos exactos: CONTRACT §4.2 `VB.HOLD` `set 4.0` (y la frase de las pausas: «4,0 s (set…; antes 3,4, cambiado por CAM-09)»), notes/camera_input.md:345 y notes/ui_main.md:324. La aceptación de SIM-03 pasa a «hold = `VB.HOLD.set` = 4,0». SIM-03 queda completo.
+- CONTRACT: regla de `checkBody` para la IA, `TEAM_GAP`/`dodgeOwnBall` y la nueva comprobación de simtest (la IA no comete `double`/`four`).
+- simtest completo (semilla por defecto) TODO OK (calibración en 20 partidos de demo, 2.029 puntos; determinismo OK); barrido 1..25 × (10 y 20 min) 50/50 TODO OK.
