@@ -714,3 +714,43 @@ Copia del fichero anterior: `tools/out/arte/personajes/players.antes.js`. Captur
 - Pendiente: costuras del contorno en rodillas/codos desnudos en la playa; cabeza que roza el hombro del compañero en alguna celebración de
   playa (`HEAD_K` 1,55); pose de celebración en la hoja final (`over`); retratos de `portrait.js` mal centrados en escenas animadas
   (usar `serve`); cara algo blanda en primerísimo plano.
+
+## Presets de cuerpo (10-nov-2026, agente silueta): `?body=tanque|chibi|heroe`
+Ferran: los personajes seguían pareciéndose a los de SetPoint por la SILUETA (atleta realista de extremidades finas). Sistema de preset de
+cuerpo en `js/players.js` (`BODY_PRESETS`, `applyBody` en `init` desde `ctx.params.body`; por defecto `tajo` = lo de siempre, byte a byte).
+API: `VB.Players.body()` (nombre activo), `bodyPresets()`, `bodyKnobs()` (mandos activos, solo lectura), `setBody(nombre, g)` (pruebas: cambia en
+caliente, libera los atletas y los reconstruye). **Restricción cumplida**: hombros a la misma altura (HIP_H + SPINE_Y + CHEST_Y + SH_Y constante:
+si `legs` acorta las piernas, SPINE_Y/CHEST_Y crecen lo mismo y la camiseta del abdomen se estira `ABS_SY`), UPPER/FORE iguales; PALM sigue a la
+mano como en TAJO (la palma se apoya en el balón). Las poses van en el espacio del cuerpo con los hombros de referencia y los pies a ANKLE, así
+que IK, salto, plancha, bloqueo y celebraciones salen sin tocar nada. Los grosores solo escalan primitivas: mismos huesos, mismos triángulos y
+dibujos (rally baja 844×390: 113.676 triángulos / 34 dibujos con tajo y con tanque).
+- **Mandos** (1 = TAJO): `legs` reparto piernas/tronco · `torso` largo del tronco (pelvis → hombros) · `arm` largo de brazo + antebrazo (con
+  `arm` ≠ 1 el alcance lo cierra el brazo: UPPER + FORE = alcance tajo − cadera − tronco − palma, y `arm` es solo un mínimo; `ARM_K` escala
+  desde el hombro los objetivos de mano de las poses, que van en metros absolutos, así los ángulos de codo se conservan; lo anclado al balón
+  no se toca) · `scale` escala de TODO el rig (alcance incluido) · `stretch` estiramiento cartoon máximo del brazo en la IK cuando el objetivo
+  queda fuera de alcance (escala y del hueso del brazo, `r.armS0/armS1`; solo con el brazo recto: sin cizalla; vuelve a 1 al reposar) ·
+  `head`/`hand`/`foot` escala ABSOLUTA del hueso (TAJO 1,55 / 1,32 / 1,4) · `neck` largo
+  del cuello (NECK_Y; el cilindro del cuello lo sigue) · `neckW` grosor · `sh` bola del hombro · `shX` separación de los hombros (SH_X) · `hipW`
+  separación de caderas · `up`/`fore`/`thigh`/`shin` = [grosor arranque, grosor punta, abultamiento (0 = tubo), posición del abultamiento 0-1 opc.]
+  (manga, pernera, rodillera, calcetín y cuello de la zapatilla siguen el grosor del miembro) · `chest` = [ancho, fondo, V = ancho arriba frente
+  al bajo del pecho, lineal entre y = -0,16 y 0,15] · `waist` [ancho, fondo] · `hips` [ancho, fondo]. Derivados: `HEAD_R`/banda de `headClear` y
+  el galón del controlado crecen con la cabeza (`HEAD_HK`); `CV_K` (cuerpos anchos/cabezones) aleja las paradas de los choques de manos/pecho
+  (0,8 · CV_K, 0,6 · CV_K…), el sitio del compañero del plano de héroe (≥ 0,86 · CV_K) y `SEP_MIN`.
+- **tanque** (Fall Guys / Strikers): legs 0,88, head 1,5, hand 2,1, foot 2,1, neck 0,85, neckW 1,6, sh 1,35, shX 1,3, hipW 1,4, up [1,9 1,85 0],
+  fore [1,85 1,75 0], thigh [1,8 1,7 0], shin [1,8 1,75 0], chest [1,2 1,55 0,95], waist [1,3 1,7], hips [1,5 1,6].
+- **chibi** (muñeco cabezón y bajito, 2.ª versión a petición de Ferran: «que se vea pequeño de verdad»): legs 0,63, torso 0,92, arm 1,6 (hacía
+  falta ×1,6, no ×1,4-1,5, para el mismo alcance), head 2,3, hand 2, foot 2,3, neck 0,72 (la cabeza se asienta entre los hombros), neckW 1,3,
+  sh 1,25, shX 1,25, hipW 1,1, up [1,45 1,4 1], fore [1,45 1,35 1], thigh/shin [1,6 1,5 1], chest [1,05 1,1 1], waist [1,1 1,15], hips
+  [1,15 1,15]. De pie ≈ 1,65 m (hombros a 1,13; tajo ≈ 1,9); los brazos cuelgan casi hasta el suelo (tipo muñeco).
+- **mini** (para comparar): el chibi de la 1.ª versión (legs 0,78, head 2,1, hand 2,2, foot 2,3, extremidades ×1,5, neck 1) con `scale` 0,85
+  (todo el rig, ≈ 1,7 m de pie) y `stretch` 1,28: en remate y bloqueo el brazo se alarga hasta un 28 % para llegar al balón. Visto de cerca
+  (`close.js mini out.png at:0 spike` / `at:1 block`): el brazo recto largo se lee como estirón de dibujo, sin codo roto; en reposo vuelve.
+- **heroe** (cómic): legs 1, head 1,35, hand 1,5, foot 1,75, neck 0,88, neckW 1,3, sh 1,5, shX 1,6, up [1,5 1,25 2], fore [1,3 1 5 a 0,3]
+  (Popeye), thigh [1,25 1,1 1,5], shin [1,3 0,95 3,5 a 0,3] (gemelo), chest [1 1,05 1,55] (V), waist [0,82 0,85], hips [0,95 0,95].
+- Capturas: `tools/out/arte/presets/<preset>-{point-playa,spike-pabellon,cerca}.png` (cerca = los dos receptores de la CPU de frente, cuerpo
+  entero: `close.js <preset> <out> two|one[:id]|pair|net[:id]|at:<id> [escena]`), hoja `comparativa.png` (los 5 de pie junto al poste y la red,
+  misma cámara fija: modo `net`; `sheet.js` la compone en el navegador, sin ImageMagick/Pillow); borradores (block, dive, jumpserve, over, rally,
+  LOD baja, 6v6, primeros planos `at-*`) en `w/`.
+- Pendiente / conocido: manos y pies van ×1,6-1,8 sobre la manopla/zapatilla TAJO (ya exageradas): en tanque/chibi son enormes, a propósito;
+  el tanque de frente con los brazos delante mete algo el codo en el barril (poses pensadas para un tronco plano); los hombros del héroe se leen
+  como hombreras. No hay UI para elegir el preset (solo `?body=`).

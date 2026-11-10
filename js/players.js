@@ -38,6 +38,94 @@
   // escala del hueso (la geometría se construye en la pose de reposo ya escalada)
   var HEAD_K = 1.55, HAND_K = 1.32;
 
+  // ---------- PRESET DE CUERPO (silueta; 10-nov-2026) ----------
+  // Unos pocos MANDOS sobre la silueta TAJO y tres presets muy distintos entre sí (y de SetPoint), elegibles con
+  // ?body=tanque|chibi|heroe (lectura: VB.Players.body(); por defecto 'tajo' = lo de siempre, byte a byte).
+  // RESTRICCIÓN DURA: el alcance visual no cambia. Los hombros quedan a la MISMA altura (cadera + tronco constante: si `legs`
+  // acorta las piernas, SPINE_Y/CHEST_Y crecen lo mismo y la camiseta del abdomen se estira ABS_SY) y UPPER/FORE no cambian;
+  // PALM sigue a la mano (como en TAJO): la palma se apoya en el balón, no lo atraviesa. Las poses van en el espacio del cuerpo
+  // con los hombros como referencia (shoulderC/shoulderAt) y los pies a ANKLE: la IK, el salto, la plancha y las celebraciones
+  // valen sin tocar nada. Los grosores solo tocan la geometría (mismos huesos, mismas primitivas: mismos triángulos y dibujos).
+  // Mandos (1 = TAJO):
+  //   legs   reparto piernas/tronco (THIGH, SHIN y HIP_H ×legs; el tronco absorbe la diferencia)
+  //   head / hand / foot   escala ABSOLUTA del hueso (como HEAD_K / HAND_K / FOOT_K; TAJO 1,55 / 1,32 / 1,4)
+  //   neck   largo del cuello (NECK_Y)   neckW grosor del cuello   sh bola del hombro   shX separación de los hombros (SH_X)
+  //   up / fore / thigh / shin   [grosor en el arranque, grosor en la punta, abultamiento (0 = tubo), posición del abultamiento 0-1 (opc.)]
+  //   chest  [ancho, fondo, V = ancho arriba respecto al bajo del pecho]   waist [ancho, fondo]   hips [ancho, fondo]   hipW separación de las caderas
+  var BODY_PRESETS = {
+    tajo: {},
+    // rechoncho y macizo (Fall Guys / Mario Strikers): tubos gruesos casi sin afinarse, barril, cuello hundido, piernas cortas
+    tanque: { legs: 0.88, head: 1.5, hand: 2.1, foot: 2.1, neck: 0.85, neckW: 1.6, sh: 1.35, shX: 1.3, hipW: 1.4,
+      up: [1.9, 1.85, 0], fore: [1.85, 1.75, 0], thigh: [1.8, 1.7, 0], shin: [1.8, 1.75, 0],
+      chest: [1.2, 1.55, 0.95], waist: [1.3, 1.7], hips: [1.5, 1.6] },
+    // muñeco cabezón y BAJITO (~1,65 m de pie): cabeza ×2,3 sin cuello, piernas al 63 %, tronco al 92 % y brazos largos de muñeco
+    // (`arm` ×1,6: lo que hace falta para que cadera + tronco + brazo sume el MISMO alcance que tajo), manos y pies grandes
+    chibi: { legs: 0.63, torso: 0.92, arm: 1.6, head: 2.3, hand: 2.0, foot: 2.3, neck: 0.72, neckW: 1.3, sh: 1.25, shX: 1.25, hipW: 1.1,
+      up: [1.45, 1.4, 1], fore: [1.45, 1.35, 1], thigh: [1.6, 1.5, 1], shin: [1.6, 1.5, 1],
+      chest: [1.05, 1.1, 1], waist: [1.1, 1.15], hips: [1.15, 1.15] },
+    // mini (para comparar): el chibi de la primera versión (piernas 0,78, cabeza ×2,1) escalado ENTERO al 85 % (`scale`: el rig,
+    // el alcance incluido); para que la mano siga llegando al balón, estiramiento cartoon del brazo en la IK hasta +28 % (`stretch`)
+    mini: { scale: 0.85, stretch: 1.28, legs: 0.78, head: 2.1, hand: 2.2, foot: 2.3, neck: 1.0, neckW: 1.25, sh: 1.2, shX: 1.05, hipW: 1.1,
+      up: [1.5, 1.45, 1], fore: [1.5, 1.4, 1], thigh: [1.5, 1.45, 1], shin: [1.5, 1.45, 1],
+      chest: [1.05, 1.1, 1], waist: [1.1, 1.15], hips: [1.15, 1.15] },
+    // cómic exagerado: hombros/pecho en V muy marcada, cintura estrecha, antebrazos y gemelos Popeye, cabeza pequeña, cuello corto
+    heroe: { legs: 1.0, head: 1.35, hand: 1.5, foot: 1.75, neck: 0.88, neckW: 1.3, sh: 1.5, shX: 1.6, hipW: 1.0,
+      up: [1.5, 1.25, 2], fore: [1.3, 1.0, 5, 0.3], thigh: [1.25, 1.1, 1.5], shin: [1.3, 0.95, 3.5, 0.3],
+      chest: [1.0, 1.05, 1.55], waist: [0.82, 0.85], hips: [0.95, 0.95] }
+  };
+  var BODY0 = { HIP_H: HIP_H, THIGH: THIGH, SHIN: SHIN, HIP_W: HIP_W, SPINE_Y: SPINE_Y, CHEST_Y: CHEST_Y, SH_X: SH_X, SH_Y: SH_Y, NECK_Y: NECK_Y, HEAD_K: HEAD_K, HAND_K: HAND_K, PALM: PALM, FOOT_K: 1.4, UPPER: UPPER, FORE: FORE };
+  var BODY = 'tajo', BK = null, ABS_SY = 1, HEAD_HK = 1;   // mandos activos; estirado vertical de la camiseta del abdomen; cabeza respecto a TAJO
+  // ARM_K: largo del brazo respecto a tajo (los objetivos de mano de las poses, que van en metros absolutos desde el hombro, se escalan
+  // con él: así las poses conservan sus ángulos con brazos largos); BODY_SCALE: escala de TODO el rig; ARM_STRETCH: estiramiento
+  // cartoon máximo del brazo en la IK cuando el objetivo queda fuera de alcance (1 = sin estirar, como siempre)
+  var ARM_K = 1, BODY_SCALE = 1, ARM_STRETCH = 1, SH_DY = 0;
+  function bodyKnobs(name) {
+    var p = BODY_PRESETS[name] || {};
+    function v(k, d) { return p[k] != null ? p[k] : d; }
+    function lk(k) { var a = p[k] || []; return [a[0] != null ? a[0] : 1, a[1] != null ? a[1] : 1, a[2] != null ? a[2] : 1, a[3] != null ? a[3] : 0]; }
+    function k2(k) { var a = p[k] || []; return [a[0] != null ? a[0] : 1, a[1] != null ? a[1] : 1, a[2] != null ? a[2] : 1]; }
+    return { legs: v('legs', 1), torso: v('torso', 1), arm: v('arm', 1), scale: v('scale', 1), stretch: v('stretch', 1),
+      head: v('head', BODY0.HEAD_K), hand: v('hand', BODY0.HAND_K), foot: v('foot', BODY0.FOOT_K), neck: v('neck', 1), neckW: v('neckW', 1),
+      sh: v('sh', 1), shX: v('shX', 1), hipW: v('hipW', 1), up: lk('up'), fore: lk('fore'), thigh: lk('thigh'), shin: lk('shin'), chest: k2('chest'), waist: k2('waist'), hips: k2('hips') };
+  }
+  /** Aplica un preset a las proporciones del rig (antes de construir atletas; setBody libera los construidos). */
+  function applyBody(name) {
+    name = BODY_PRESETS[name] ? name : 'tajo';
+    var k = BK = bodyKnobs(name); BODY = name;
+    THIGH = BODY0.THIGH * k.legs; SHIN = BODY0.SHIN * k.legs; HIP_H = k.legs === 1 ? BODY0.HIP_H : THIGH + SHIN + ANKLE;
+    // tronco (pelvis → hombros): el de tajo × `torso`; si `arm` es 1, además absorbe lo que se acortan las piernas (alcance igual).
+    // Con `arm` ≠ 1 el alcance lo cierra el brazo: UPPER + FORE = alcance de tajo − cadera − tronco − palma (y `arm` solo es un mínimo)
+    var T0 = BODY0.SPINE_Y + BODY0.CHEST_Y + BODY0.SH_Y, dL = (BODY0.THIGH + BODY0.SHIN) * (1 - k.legs);
+    var dT = k.torso === 1 && k.arm === 1 ? dL : T0 * k.torso - T0 + (k.arm === 1 ? dL : 0);
+    // el reparto 0,443 / 0,557 es el de las dos mitades de la camiseta del abdomen (0,135 abajo / 0,17 arriba): así un único
+    // estirado vertical ABS_SY la deja encajada en el pantalón y en el pecho como antes
+    SPINE_Y = BODY0.SPINE_Y + dT * 0.443; CHEST_Y = BODY0.CHEST_Y + dT * 0.557; ABS_SY = 1 + dT / 0.305;
+    HIP_W = BODY0.HIP_W * k.hipW; SH_X = BODY0.SH_X * k.shX; NECK_Y = BODY0.NECK_Y * k.neck;
+    BODY_SCALE = k.scale; ARM_STRETCH = Math.max(1, k.stretch);
+    HEAD_K = k.head; HAND_K = k.hand; FOOT_K = k.foot; PALM = k.hand === BODY0.HAND_K ? BODY0.PALM : BODY0.PALM * k.hand / BODY0.HAND_K;
+    if (k.arm === 1) { UPPER = BODY0.UPPER; FORE = BODY0.FORE; ARM_K = 1; }
+    else {
+      var reach0 = BODY0.HIP_H + T0 + BODY0.UPPER + BODY0.FORE + BODY0.PALM, need = reach0 - HIP_H - (SPINE_Y + CHEST_Y + BODY0.SH_Y) - PALM;
+      var ka = Math.max(k.arm, need / (BODY0.UPPER + BODY0.FORE));
+      UPPER = BODY0.UPPER * ka; FORE = BODY0.FORE * ka; ARM_K = (UPPER + FORE + PALM) / (BODY0.UPPER + BODY0.FORE + BODY0.PALM);
+    }
+    // con `arm` ≠ 1 los hombros ya no quedan a la altura de tajo: los objetivos de mano (metros absolutos, pensados para hombros a
+    // 1,535) se refieren primero al hombro de tajo (SH_DY = lo que han bajado los hombros) y luego se escalan desde el hombro real
+    SH_DY = HIP_H + SPINE_Y + CHEST_Y + BODY0.SH_Y - (BODY0.HIP_H + T0);
+    // derivados (declarados más abajo con los valores TAJO; aquí se recalculan)
+    JY0 = HIP_H + SPINE_Y - 0.135 * ABS_SY; JY1 = HIP_H + SPINE_Y + CHEST_Y + 0.306;
+    ARM_R = UPPER + FORE + PALM; ARM_L2 = FORE + PALM; ARM_W = UPPER + FORE;
+    HEAD_HK = HEAD_K / BODY0.HEAD_K; HEAD_CY = NECK_Y + HEAD_C * HEAD_K; HEAD_R = 0.33 * (0.44 + 0.56 * HEAD_HK);   // tajo: 0,33 exacto
+    // celebraciones: los cuerpos anchos o cabezones paran más lejos (choques de manos / pecho y separación visual del doble bloqueo)
+    CV_K = Math.max(1, 0.1 + 0.9 * HEAD_HK, 0.4 + 0.6 * Math.max(k.chest[0] * k.chest[2], k.shX)); SEP_MIN = 0.5 * CV_K;
+  }
+  var CV_K = 1;
+  BK = bodyKnobs('tajo');
+  /** Perfil de extremidad con los mandos del preset (k = up/fore/thigh/shin). */
+  function limbK(len, r0, r1, bAt, bulge, n, k) { return limbPts(len, r0 * k[0], r1 * k[1], k[3] > 0 ? k[3] : bAt, bulge * k[2], n); }
+  /** Grosor relativo de una extremidad a la fracción t (0 arranque, 1 punta): para las piezas de ropa que la rodean. */
+  function rk(k, t) { return k[0] + (k[1] - k[0]) * t; }
+
   // ---------- Aspecto ----------
   // Equipos (colores alineados con la UI: --hot/--amber y --blue/--sky)
   var TEAMS = [
@@ -907,31 +995,36 @@
     g.owk = 1;
   }
   // TAJO: cuello corto y ancho (la cabeza grande no parece una jirafa)
+  // PRESET: el cilindro va colgado de NECK_Y (cuello corto = cilindro corto) y su grosor con neckW
   function neckGeo(g, L, tc, beach) {
-    g.add(cyl(0.058, 0.064, 0.12, 14), L.skin, 0, 0.3, 0.0);
-    g.owk = 0; g.add(torus(0.064, 0.012, 6, 20), beach ? tc.accent : tc.trim, 0, 0.29, 0.005, PI / 2 + 0.25, 0, 0, 1.15, 1, 1); // ribete del cuello
+    var nw = BK.neckW, ny = NECK_Y - BODY0.NECK_Y;
+    g.add(cyl(0.058 * nw, 0.064 * nw, 0.12 * Math.max(0.6, BK.neck), 14), L.skin, 0, 0.3 + ny, 0.0);
+    g.owk = 0; g.add(torus(0.064 * nw, 0.012, 6, 20), beach ? tc.accent : tc.trim, 0, 0.29 + ny, 0.005, PI / 2 + 0.25, 0, 0, 1.15, 1, 1); // ribete del cuello
     g.owk = 1;
   }
   function upperGeo(g, L, tc, s, beach) {
-    g.add(lathe(limbPts(UPPER, 0.065, 0.05, 0.38, 0.01, 7), 14), L.skin);
+    var k = BK.up, ksh = BK.sh;   // PRESET: grosor del brazo (arranque / codo) y bola del hombro; la manga sigue al brazo
+    g.add(lathe(limbK(UPPER, 0.065, 0.05, 0.38, 0.01, 7, k), 14), L.skin);
     if (beach) {   // playa: camiseta de tirantes, hombro de piel
-      g.add(new THREE.SphereGeometry(0.072, sg(14, 10), sg(10, 7)), L.skin, 0, -0.008, 0, 0, 0, 0, 1, 0.92, 1);
+      g.add(new THREE.SphereGeometry(0.072 * ksh, sg(14, 10), sg(10, 7)), L.skin, 0, -0.008, 0, 0, 0, 0, 1, 0.92, 1);
       return;
     }
     // manga por fuera del brazo (perfil <= 0,069 m con el bíceps; antes 0,066 abajo: la piel asomaba entre manga y ribete)
-    g.add(cyl(0.079, 0.0712, 0.14, 14, true), tc.base, 0, -0.06, 0);                // manga corta que se estrecha (PLY-21)
-    g.add(new THREE.SphereGeometry(0.087, sg(14, 10), sg(10, 7)), tc.base, 0, -0.008, 0, 0, 0, 0, 1, 0.88, 1);          // hombro redondo (TAJO ×1,15)
-    g.owk = 0; g.add(cyl(0.0722, 0.0718, 0.016, 14, true), tc.accent, 0, -0.123, 0);           // ribete de manga
+    var km = rk(k, 0.43), kc = rk(k, 0.2);
+    g.add(cyl(0.079 * k[0], 0.0712 * km, 0.14, 14, true), tc.base, 0, -0.06, 0);                // manga corta que se estrecha (PLY-21)
+    g.add(new THREE.SphereGeometry(0.087 * ksh, sg(14, 10), sg(10, 7)), tc.base, 0, -0.008, 0, 0, 0, 0, 1, 0.88, 1);          // hombro redondo (TAJO ×1,15)
+    g.owk = 0; g.add(cyl(0.0722 * km, 0.0718 * km, 0.016, 14, true), tc.accent, 0, -0.123, 0);           // ribete de manga
     if (s > 0) {   // TAJO: chapa redonda del equipo en la manga izquierda (en vez de muñequeras)
-      g.add(cyl(0.025, 0.025, 0.006, 14), tc.dark, s * 0.0775, -0.062, 0, 0, 0, PI / 2 + 0.07);
-      g.add(cyl(0.019, 0.019, 0.004, 14), tc.accent, s * 0.0805, -0.062, 0, 0, 0, PI / 2 + 0.07);
+      g.add(cyl(0.025, 0.025, 0.006, 14), tc.dark, s * 0.0775 * kc, -0.062, 0, 0, 0, PI / 2 + 0.07);
+      g.add(cyl(0.019, 0.019, 0.004, 14), tc.accent, s * 0.0805 * kc, -0.062, 0, 0, 0, PI / 2 + 0.07);
     }
     g.owk = 1;
   }
   function foreGeo(g, L, tc, s) {
-    // TAJO: antebrazo que se afina (grueso en el codo, fino en la muñeca); sin muñequeras
-    g.add(lathe(limbPts(FORE, 0.052, 0.032, 0.2, 0.011, 8), 12), L.skin, 0, 0, 0, 0, 0, 0, 1, 1, 0.92);
-    g.add(sph(0.052, 10, 6), L.skin, 0, 0.004, -0.004, 0, 0, 0, 1.02, 1, 0.98);      // codo: esfera de unión (sin escalón al doblar)
+    // TAJO: antebrazo que se afina (grueso en el codo, fino en la muñeca); sin muñequeras. PRESET: grosor y abultamiento (Popeye)
+    var k = BK.fore;
+    g.add(lathe(limbK(FORE, 0.052, 0.032, 0.2, 0.011, 8, k), 12), L.skin, 0, 0, 0, 0, 0, 0, 1, 1, 0.92);
+    g.add(sph(0.052 * k[0], 10, 6), L.skin, 0, 0.004, -0.004, 0, 0, 0, 1.02, 1, 0.98);      // codo: esfera de unión (sin escalón al doblar)
   }
   /** TAJO: manopla de verdad: palma, UNA hoja de dedos fusionados y pulgar (sin dedos sueltos: -600 triángulos por atleta).
    *  Plano de la mano = Y-Z del hueso (grosor en X); pulgar hacia +Z. Se lee a distancia (bloqueo, colocación). */
@@ -944,42 +1037,45 @@
     g.owk = 1;
   }
   function thighGeo(g, L, tc, beach) {
-    g.add(lathe(limbPts(THIGH, 0.09, 0.062, 0.25, 0.012, 8), 14), L.skin);
+    var k = BK.thigh, kp = rk(k, 0.4);   // PRESET: grosor del muslo; la pernera lo rodea con la misma holgura
+    g.add(lathe(limbK(THIGH, 0.09, 0.062, 0.25, 0.012, 8, k), 14), L.skin);
     // piezas superpuestas con los MISMOS lados que la extremidad (14 → mismo LOD y misma fase de vértices) y holgura
     // >= 4 mm: con lados distintos los vértices de la piel asomaban entre las caras planas (dientes de sierra en media)
     if (beach) {   // playa: malla corta ceñida del color de la camiseta
-      g.add(cyl(0.103, 0.1015, 0.13, 14, true), tc.base, 0, -0.035, 0);
-      g.owk = 0; g.add(cyl(0.1035, 0.1035, 0.014, 14, true), tc.accent, 0, -0.095, 0);
+      g.add(cyl(0.103 * k[0], 0.1015 * rk(k, 0.25), 0.13, 14, true), tc.base, 0, -0.035, 0);
+      g.owk = 0; g.add(cyl(0.1035 * rk(k, 0.25), 0.1035 * rk(k, 0.25), 0.014, 14, true), tc.accent, 0, -0.095, 0);
       g.owk = 1; return;
     }
-    g.add(cyl(0.103, 0.1015, 0.22, 14, true), tc.shorts, 0, -0.08, 0);              // pernera (muslo <= 0,097)
-    g.owk = 0; g.add(cyl(0.1035, 0.1035, 0.016, 14, true), tc.accent, 0, -0.184, 0);          // ribete
+    g.add(cyl(0.103 * k[0], 0.1015 * kp, 0.22, 14, true), tc.shorts, 0, -0.08, 0);              // pernera (muslo <= 0,097)
+    g.owk = 0; g.add(cyl(0.1035 * kp, 0.1035 * kp, 0.016, 14, true), tc.accent, 0, -0.184, 0);          // ribete
     g.owk = 1;
   }
   function kneeW(y) { return sstep(-0.04, 0.035, y) * 0.5; }
   function shinGeo(g, L, tc, thighBone, beach) {
-    // TAJO: espinilla que se afina (gruesa en la rodilla, fina en el tobillo)
-    g.add(lathe(limbPts(SHIN, 0.066, 0.033, 0.28, 0.013, 8), 14), L.skin);
+    // TAJO: espinilla que se afina (gruesa en la rodilla, fina en el tobillo). PRESET: grosor y gemelo (abultamiento)
+    var k = BK.shin;
+    g.add(lathe(limbK(SHIN, 0.066, 0.033, 0.28, 0.013, 8, k), 14), L.skin);
     if (beach) return;   // playa: descalzos, sin rodilleras ni calcetines
     // mismos lados que la pierna (14) y holgura sobre su perfil: sin dientes de sierra
     // rodillera elástica: la mitad de arriba sigue al muslo (piel a dos huesos), así al doblar la rodilla la cubre
     // en vez de dejar asomar el muslo por delante (borde dentado). TAJO: «pastilla» redonda del oscuro del equipo
     if (thighBone >= 0) { g.bone2 = thighBone; g.w2 = kneeW; }
-    g.add(cyl(0.084, 0.083, 0.12, 14), tc.dark, 0, -0.025, 0.004);                   // rodillera
-    g.add(sph(0.05, 12, 8), tc.dark, 0, -0.022, 0.062, 0, 0, 0, 1.1, 1.05, 0.55);     // pastilla delantera
+    var kr = Math.max(k[0], BK.thigh[1] * 0.75);
+    g.add(cyl(0.084 * kr, 0.083 * kr, 0.12, 14), tc.dark, 0, -0.025, 0.004);                   // rodillera
+    g.add(sph(0.05, 12, 8), tc.dark, 0, -0.022, 0.062 * kr, 0, 0, 0, 1.1 * kr, 1.05, 0.55);     // pastilla delantera
     g.bone2 = -1; g.w2 = null;
     g.owk = 0;   // calcetín y franja pegados a la pierna: sin contorno propio (el de la pierna ya los perfila)
-    g.add(cyl(0.051, 0.038, 0.16, 14, true), tc.accent, 0, -SHIN + 0.08, 0);         // calcetín (del acento, no blanco)
-    g.add(cyl(0.0505, 0.05, 0.02, 14, true), tc.base, 0, -SHIN + 0.13, 0);          // franja del calcetín
+    g.add(cyl(0.051 * rk(k, 0.75), 0.038 * k[1], 0.16, 14, true), tc.accent, 0, -SHIN + 0.08, 0);         // calcetín (del acento, no blanco)
+    g.add(cyl(0.0505 * rk(k, 0.75), 0.05 * rk(k, 0.75), 0.02, 14, true), tc.base, 0, -SHIN + 0.13, 0);          // franja del calcetín
     g.owk = 1;
   }
   // TAJO: zapatillas exageradas (×1,4 de largo y ancho, suela 1,5× más alta y del acento, punta redonda); la planta sigue en el
-  // mismo plano (-0,082): la locomoción y footLock no cambian
+  // mismo plano (-0,082): la locomoción y footLock no cambian. PRESET: FOOT_K lo pone applyBody (mando `foot`)
   var FOOT_K = 1.4;
   function shoeGeo(g, tc) {
-    var K = FOOT_K, Y = -0.042;
+    var K = FOOT_K, Y = -0.042, ka = Math.max(1, BK.shin[1] * 0.92);   // ka: cuello de la zapatilla alrededor de un tobillo grueso
     g.add(sph(1, 16, 8, 0, PI * 2, 0, PI * 0.5), 0xf4f4f4, 0, Y, 0.04 * K, 0, 0, 0, 0.055 * K, 0.07, 0.13 * K);  // empeine
-    g.add(cyl(0.046, 0.05, 0.06, 12), 0xf4f4f4, 0, -0.02, -0.01);                   // tobillera
+    g.add(cyl(0.046 * ka, 0.05 * ka, 0.06, 12), 0xf4f4f4, 0, -0.02, -0.01);                   // tobillera
     g.add(sph(1, 16, 5, 0, PI * 2, PI * 0.5, PI * 0.5), tc.sole, 0, Y, 0.04 * K, 0, 0, 0, 0.058 * K, 0.04, 0.134 * K); // suela
     g.owk = 0.5; g.add(sph(1, 14, 6, 0, PI * 2, 0, PI * 0.5), tc.accent, 0, Y + 0.006, -0.025 * K, 0, 0, 0, 0.0565 * K, 0.034, 0.06 * K);  // talón
     g.owk = 0; g.add(box(0.03 * K, 0.006, 0.06 * K), 0x30333a, 0, 0.014, 0.09 * K, -0.5, 0, 0);               // cordones
@@ -989,25 +1085,34 @@
    *  acento. La planta queda en el mismo plano que la suela de la zapatilla. s: 1 izquierdo, -1 derecho (el dedo gordo, dentro). */
   var SAND_HEX = 0xe8cf9a;
   function footGeo(g, L, tc, s) {
-    var K = 1.3, sk = L.skin, Y = -0.058;
-    g.add(sph(0.042, 12, 8), sk, 0, -0.035, -0.008, 0, 0, 0, 1, 1.1, 1.1);                                   // tobillo y talón
+    var K = 1.3 * FOOT_K / BODY0.FOOT_K, sk = L.skin, Y = -0.058, ka = Math.max(1, BK.shin[1] * 0.92);   // PRESET: pie con el mando `foot`, tobillo con la espinilla
+    g.add(sph(0.042 * ka, 12, 8), sk, 0, -0.035, -0.008, 0, 0, 0, 1, 1.1, 1.1);                                   // tobillo y talón
     g.add(sph(1, 14, 7, 0, PI * 2, 0, PI * 0.5), sk, 0, Y, 0.035 * K, 0, 0, 0, 0.046 * K, 0.05, 0.1 * K);       // empeine
     g.add(sph(1, 14, 4, 0, PI * 2, PI * 0.5, PI * 0.5), mixHex(sk, SAND_HEX, 0.35), 0, Y, 0.035 * K, 0, 0, 0, 0.047 * K, 0.024, 0.101 * K); // planta con arena
     g.owk = 0.5; g.add(sph(0.021, 8, 6), sk, -s * 0.026, Y + 0.004, 0.035 * K + 0.088 * K, 0, 0, 0, 1, 0.85, 1.1); // dedo gordo
-    g.owk = 0; g.add(torus(0.037, 0.0075, 5, 14), tc.accent, 0, -0.006, -0.004, PI / 2, 0, 0);                    // tobillera de tela
+    g.owk = 0; g.add(torus(0.037 * ka, 0.0075, 5, 14), tc.accent, 0, -0.006, -0.004, PI / 2, 0, 0);                    // tobillera de tela
     g.owk = 1;
   }
-  /** Pantalón (pelvis). TAJO: panel lateral del acento a los dos lados (el tajo que baja de la camiseta). Playa: del color de la camiseta. */
+  /** Pantalón (pelvis). TAJO: panel lateral del acento a los dos lados (el tajo que baja de la camiseta). Playa: del color de la camiseta.
+   *  PRESET: ancho y fondo con `hips`. */
   function shortsGeo(g, tc, beach) {
-    g.add(lathe(profPts(SHORTS_PROF), 22, 16), beach ? tc.base : tc.shorts, 0, 0, 0, 0, 0, 0, SHORTS_S[0], SHORTS_S[1], SHORTS_S[2]);
+    var kx = SHORTS_S[0] * BK.hips[0], kz = SHORTS_S[2] * BK.hips[1];
+    g.add(lathe(profPts(SHORTS_PROF), 22, 16), beach ? tc.base : tc.shorts, 0, 0, 0, 0, 0, 0, kx, SHORTS_S[1], kz);
     var pp = profPts(SHORTS_PROF).slice(1, -1);
     g.owk = 0;
-    for (var s = -1; s <= 1; s += 2) g.add(new THREE.LatheGeometry(pp, sg(4, 3), s * PI / 2 - 0.2, 0.4), tc.accent, 0, 0, 0, 0, 0, 0, SHORTS_S[0] * 1.012, SHORTS_S[1] * 1.002, SHORTS_S[2] * 1.03);
+    for (var s = -1; s <= 1; s += 2) g.add(new THREE.LatheGeometry(pp, sg(4, 3), s * PI / 2 - 0.2, 0.4), tc.accent, 0, 0, 0, 0, 0, 0, kx * 1.012, SHORTS_S[1] * 1.002, kz * 1.03);
     g.owk = 1;
   }
-  /** Camiseta (abdomen en el hueso spine, pecho en chest): toma la textura del atlas. */
-  function absGeo(g) { g.jersey = true; g.add(lathe(profPts(ABS_PROF), 24, 16), null, 0, 0, 0, 0, 0, 0, ABS_S[0], ABS_S[1], ABS_S[2]); g.jersey = false; }
-  function chestGeo(g) { g.jersey = true; g.add(lathe(profPts(CHEST_PROF), 28, 18), null, 0, 0, 0, 0, 0, 0, CHEST_S[0], CHEST_S[1], CHEST_S[2]); g.jersey = false; }
+  /** Camiseta (abdomen en el hueso spine, pecho en chest): toma la textura del atlas.
+   *  PRESET: abdomen con `waist` (y estirado ABS_SY si el tronco se alarga); pecho con `chest` = [ancho, fondo, V]: la V escala el
+   *  perfil del pecho de ×waist en el bajo (encaja con el abdomen) a ×V arriba (hombros), lineal entre -0,16 y 0,15. */
+  function absGeo(g) { g.jersey = true; g.add(lathe(profPts(ABS_PROF), 24, 16), null, 0, 0, 0, 0, 0, 0, ABS_S[0] * BK.waist[0], ABS_S[1] * ABS_SY, ABS_S[2] * BK.waist[1]); g.jersey = false; }
+  function chestProf() {
+    var a = [], kw = Math.min(1, (BK.waist[0] + BK.waist[1]) * 0.5), kv = BK.chest[2];
+    for (var i = 0; i < CHEST_PROF.length; i++) { var y = CHEST_PROF[i][1]; a.push(V2(CHEST_PROF[i][0] * lerp(kw, kv, clamp((y + 0.16) / 0.31, 0, 1)), y)); }
+    return a;
+  }
+  function chestGeo(g) { g.jersey = true; g.add(lathe(chestProf(), 28, 18), null, 0, 0, 0, 0, 0, 0, CHEST_S[0] * BK.chest[0], CHEST_S[1], CHEST_S[2] * BK.chest[1]); g.jersey = false; }
 
   // =====================================================================
   //  POSE (estructura plana para mezclar capas)
@@ -1075,7 +1180,8 @@
       hitMode: '', hwx: 0, hwy: 0, hwz: 0, hdx: 0, hdy: 0, hdz: 0,
       locoOwn: 0, ownPrev: 0, mPrev: 0, hipYaw: 0, fk: [footState(), footState()],
       offX: 0, offY: 0, ox0: 0, oy0: 0, lpx: 0, lpy: 0, faceKeep: 0, hasFace: false, yawRate: 0, yawV: 0, standW: 0, fex: 0, bkOn: false, celV: '', celId: '', lastCel: '', lastPrev: '', lkW: 0, lkX: 0, lkY: 0, lkZ: 0, apOn: false, apWarp: false, apS: 0, apS0: 0, apW: 0, apT0: -99, apJ: -99, apX0: 0, apY0: 0, ssT: -99, ssLast: -99, ssK: 1, ssAir: false, guard: false, tossT: -99, tossJump: false, hitShot: '', hitGrade: '',
-      faceE: 0, faceM: 0, beach: false, acc: ''   // TAJO: celdas de la cara y escenario
+      faceE: 0, faceM: 0, beach: false, acc: '',   // TAJO: celdas de la cara y escenario
+      armS0: 1, armS1: 1   // PRESET: estiramiento del brazo izquierdo / derecho (1 = largo normal)
     };
     for (var k = 0; k < 2; k++) {
       var s = k === 0 ? 1 : -1;
@@ -1098,10 +1204,10 @@
     skin.bind(new THREE.Skeleton(bones), skin.matrixWorld);
     r.skin = skin; r.ink = null;
     ensureInk(r);                   // contorno de tinta (media/alta)
-    root.scale.setScalar(L.h);
+    root.scale.setScalar(L.h * BODY_SCALE);   // PRESET `scale`: todo el rig (alcance incluido; ver `stretch`)
     // alias públicos para cámara/FX (rigOf)
     r.handL = r.hand[0]; r.handR = r.hand[1]; r.footL = r.ft[0]; r.footR = r.ft[1];
-    r.scale = L.h;
+    r.scale = L.h * BODY_SCALE;
     dblFields(r);
     return r;
   }
@@ -2836,7 +2942,7 @@
     c.hs = false; c.solo = false;
     if (c.match) {
       if (tm - c.t0 < 0.3) return;                                          // primero, la reacción
-      var S1 = c.type === 3 ? 0.6 : 0.86, fr = Math.max(0, D - S1);
+      var S1 = (c.type === 3 ? 0.6 : 0.86) * CV_K, fr = Math.max(0, D - S1);   // PRESET: cuerpos anchos/cabezones, más lejos
       if (D < 0.05) { c.on = false; return; }
       dx /= D; dy /= D;
       c.a0x = ax; c.a0y = ay; c.b0x = bx; c.b0y = by;
@@ -2849,7 +2955,12 @@
     }
     if (hs && hs.team === won && (hs.heroId === A.id || hs.heroId === B.id)) {
       var hA = hs.heroId === A.id, mX0 = hA ? bx : ax, mY0 = hA ? by : ay;
-      var mTx = hs.conv ? hs.mx : mX0, mTy = hs.conv ? hs.my : mY0, wm = Math.sqrt((mTx - mX0) * (mTx - mX0) + (mTy - mY0) * (mTy - mY0));
+      var mTx = hs.conv ? hs.mx : mX0, mTy = hs.conv ? hs.my : mY0;
+      if (hs.conv && CV_K > 1) {   // PRESET: cuerpos anchos/cabezones: el sitio del compañero, como poco a 0,86·CV_K del héroe (misma dirección)
+        var hX = hA ? ax : bx, hY = hA ? ay : by, ddx = mTx - hX, ddy = mTy - hY, dd = Math.sqrt(ddx * ddx + ddy * ddy), need = 0.86 * CV_K;
+        if (dd > 1e-3 && dd < need) { mTx = hX + ddx / dd * need; mTy = hY + ddy / dd * need; }
+      }
+      var wm = Math.sqrt((mTx - mX0) * (mTx - mX0) + (mTy - mY0) * (mTy - mY0));
       c.hs = true; c.solo = !hs.conv; c.hyaw = hs.heroYaw; c.myaw = hs.mateYaw; c.scorer = hs.heroId; c.hero = hA ? 0 : 1;
       c.a0x = ax; c.a0y = ay; c.b0x = bx; c.b0y = by;
       if (hA) { c.ax = ax; c.ay = ay; c.bx = mTx; c.by = mTy; c.twa = 0.3; c.twb = Math.max(0.3, wm / CV_WALK); }
@@ -2860,7 +2971,7 @@
       c.mx = (c.ax + c.bx) * 0.5; c.my = (c.ay + c.by) * 0.5; c.mz = (c.type === 0 ? 2.02 : c.type === 1 ? 0.98 : 1.32) * sch;
       return;
     }
-    var S0 = c.type === 2 ? 0.74 : c.type === 1 ? 0.98 : 0.8, free = D - S0;
+    var S0 = (c.type === 2 ? 0.74 : c.type === 1 ? 0.98 : 0.8) * CV_K, free = D - S0;   // PRESET: cuerpos anchos/cabezones, más lejos
     if (D > CV_MAXD + S0 || D < 0.05) { c.on = false; return; }
     dx /= D; dy /= D;
     var wa, wb;
@@ -3097,8 +3208,8 @@
   // Si el brazo no llega, la pelvis se corrige (inclinación <= aLean m, flexión de rodillas para balones bajos) solo en este
   // frame (no altera el muelle de la pose). Sin asignaciones.
   var ANC_PRE = 0.14, ARM_W = UPPER + FORE, BR = 0.21; // BR = radio del balón de la sim (VB.C.BR, exagerado): init
-  var SVS = new Float32Array(NS), AB = null, AD = null, AW0 = null, AW1 = null, AS0 = null, AS1 = null, AU = null, AN = null, AX = null, AP = null;
-  function ancVecs() { AB = new THREE.Vector3(); AD = new THREE.Vector3(); AW0 = new THREE.Vector3(); AW1 = new THREE.Vector3(); AS0 = new THREE.Vector3(); AS1 = new THREE.Vector3(); AU = new THREE.Vector3(); AN = new THREE.Vector3(); AX = new THREE.Vector3(); AP = new THREE.Vector3(); }
+  var SVS = new Float32Array(NS), AB = null, AD = null, AW0 = null, AW1 = null, AS0 = null, AS1 = null, AU = null, AN = null, AX = null, AP = null, ASK = null;
+  function ancVecs() { AB = new THREE.Vector3(); AD = new THREE.Vector3(); AW0 = new THREE.Vector3(); AW1 = new THREE.Vector3(); AS0 = new THREE.Vector3(); AS1 = new THREE.Vector3(); AU = new THREE.Vector3(); AN = new THREE.Vector3(); AX = new THREE.Vector3(); AP = new THREE.Vector3(); ASK = new THREE.Vector3(); }
   /** Punto de la sim -> marco del hueso body (espacio cuerpo menos los desplazamientos del body). */
   function toBodyBone(r, s, x, y, z, out) { toBody(r, x, y, z, out); out.x -= s[OX]; out.y -= s[HOP]; out.z -= s[OZ]; return out; }
   /** Dirección de la sim -> espacio cuerpo (solo giro). */
@@ -3207,6 +3318,9 @@
       sh.position.set(sg * (SH_X - 0.022 * s[SHR]), SH_Y + SHR_UP * s[SHR], SH_Z);
       tV2.copy(v[AL + k]).applyQuaternion(qB);
       tV.copy(v[HL + k]);
+      // PRESET con brazos largos (ARM_K): el objetivo de la pose se escala desde el hombro (mismos ángulos de codo con el brazo largo);
+      // lo que está anclado al balón (abajo) va en absoluto y no se toca
+      if (ARM_K !== 1) { if (!ASK) ancVecs(); shoulderAt(s, k, ASK); tV.sub(ASK); tV.y += SH_DY; tV.multiplyScalar(ARM_K).add(ASK); }
       if (k === 1 && r.guard) headClear(tV);
       if (mode) {
         var wk = k ? aw1 : aw0;
@@ -3223,7 +3337,13 @@
         }
       }
       tV.applyMatrix4(mInv); tV.x -= sh.position.x; tV.y -= sh.position.y; tV.z -= sh.position.z;
-      solveIK(r.up[k], r.el[k], tV, tV2, UPPER, ARM_L2);
+      // PRESET `stretch` (squash & stretch cartoon): si el objetivo queda fuera de alcance, el brazo se alarga hasta ARM_STRETCH
+      // en vez de quedarse corto; la escala va en el hueso del brazo (el antebrazo y la mano la heredan) y, como solo ocurre con el
+      // brazo recto, no hay cizalla en el codo. En cuanto el objetivo vuelve al alcance, sA = 1 (largo normal)
+      var sA = 1;
+      if (ARM_STRETCH > 1) { var dA = tV.length(), fA = UPPER + ARM_L2; if (dA > fA) sA = Math.min(ARM_STRETCH, dA / fA); }
+      if (k) r.armS1 = sA; else r.armS0 = sA;
+      solveIK(r.up[k], r.el[k], tV, tV2, UPPER * sA, ARM_L2 * sA);
       eA.set(s[WRL + k], s[TWL + k], 0, 'YXZ'); r.hand[k].quaternion.setFromEuler(eA);
     }
     // piernas
@@ -3248,7 +3368,8 @@
   var HEAD_R = 0.33, HEAD_CY = NECK_Y + HEAD_C * HEAD_K, HEAD_UP = 0.62;   // HEAD_UP: lo más que la cabeza mira hacia arriba (rad)
   function headClear(h) {
     HC.set(0, HEAD_CY, 0.012).applyMatrix4(mA);   // centro de la cabeza (mA: cuerpo <- pecho)
-    var dy = h.y - HC.y, band = sstep(-0.33, -0.19, dy) * (1 - sstep(0.26, 0.4, dy));
+    var hk = HEAD_HK;   // PRESET: el cilindro (HEAD_R) y la banda crecen con la cabeza
+    var dy = h.y - HC.y, band = sstep(-0.33 * hk, -0.19 * hk, dy) * (1 - sstep(0.26 * hk, 0.4 * hk, dy));
     if (band <= 0) return;
     var dx = h.x - HC.x, dz = h.z - HC.z, d = Math.sqrt(dx * dx + dz * dz), R = HEAD_R * band;
     if (d >= R) return;
@@ -3750,6 +3871,7 @@
     heroShotAware: true,
     init: function (c) {
       ctx = c; THREE = c.THREE; C = VB.C; if (C && C.BR) BR = C.BR;
+      applyBody(c.params && c.params.body);   // PRESET de cuerpo (?body=tanque|chibi|heroe; por defecto tajo), antes de construir atletas
       ensureTemps();
       groupRoot = new THREE.Group(); groupRoot.name = 'players'; ctx.scene.add(groupRoot);
       // marcador del jugador controlado: aro luminoso + flecha flotante
@@ -3780,6 +3902,13 @@
     /** 6v6: color de la camiseta del líbero del equipo t (0xRRGGBB; para la UI o pruebas). */
     liberoColor: function (t) { return liberoKit(t ? 1 : 0).base; },
     kitColors: function () { return { t0: { base: TEAMS[0].base, accent: TEAMS[0].accent, shorts: TEAMS[0].shorts }, t1: { base: TEAMS[1].base, accent: TEAMS[1].accent, shorts: TEAMS[1].shorts } }; },
+    /** PRESET de cuerpo activo ('tajo' | 'tanque' | 'chibi' | 'heroe'); se elige con ?body=. */
+    body: function () { return BODY; },
+    /** Nombres de los presets de cuerpo y los mandos del activo (solo lectura; pruebas y UI). */
+    bodyPresets: function () { return Object.keys(BODY_PRESETS); },
+    bodyKnobs: function () { return BK; },
+    /** Pruebas: cambia el preset de cuerpo en caliente (libera los atletas; con g los reconstruye ya). Devuelve true si cambió. */
+    setBody: function (name, g) { if (!BODY_PRESETS[name] || name === BODY) return false; applyBody(name); flushCache(); if (g) this.onGameStart(g); return true; },
     /** TAJO: escenario con el que se visten los atletas ('hall' | 'beach'). */
     venue: function () { return VEN; },
     /** TAJO (pruebas): fuerza el escenario de los atletas ('hall' | 'beach'; '' = el de arena). Con g, los reconstruye ya. */
@@ -3889,7 +4018,8 @@
         squash(g, r);
         // compresión del brazo que golpea (0,06 s tras el remate)
         var ha = g.time - r.hitT, sq = (r.hitAir && ha >= 0 && ha < 0.06 && r.hitShot !== 'tip') ? Math.sin(ha / 0.06 * PI) : 0;
-        r.up[1].scale.set(1 + 0.1 * sq, 1, 1 + 0.1 * sq);
+        r.up[1].scale.set(1 + 0.1 * sq, r.armS1, 1 + 0.1 * sq);   // y: estiramiento cartoon del brazo (PRESET stretch; 1 si no)
+        if (r.up[0].scale.y !== r.armS0) r.up[0].scale.y = r.armS0;
         aimHead(r, g, dt, snap);
         updateFace(g, r, dt, snap);
         hairSpring(r, dt, snap);
@@ -3920,7 +4050,7 @@
         // la cámara (< ~6 m: el aro del suelo ya lo marca), con el saque propio y en el aire (taparía la mano que golpea)
         var cam = ctx.camera;
         // justo encima de la cabeza REAL (agachado, en carrera o tumbado la cabeza no está a la altura de pie)
-        if (rc) { rc.head.getWorldPosition(markerCone.position); markerCone.position.y += 0.3 * rc.scale + Math.sin(ctx.time * 3.2) * 0.015; }
+        if (rc) { rc.head.getWorldPosition(markerCone.position); markerCone.position.y += 0.3 * HEAD_HK * rc.scale + Math.sin(ctx.time * 3.2) * 0.015; }   // PRESET: por encima de la cabeza grande
         else markerCone.position.set(c.x, c.z + topY, -c.y);
         var cd = cam ? cam.position.distanceTo(markerCone.position) : 10;
         var want = sstep(4.8, 6.6, cd) * (c.z > 0.05 || (g.mode === 'serve' && g.server === c) || g.mode === 'point' || g.mode === 'over' ? 0 : 1); // balón muerto: sin galón (plano de héroe limpio)
