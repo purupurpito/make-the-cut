@@ -501,16 +501,17 @@
     } catch (e) { }
   }
   function exitFs() { try { var p = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen && document.webkitExitFullscreen(); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
-  var fsTipT = 0;
-  function showFsTip() {
-    var t = document.getElementById('fsTip'); if (!t) return;
-    t.innerHTML = 'En iPhone, para jugar sin la barra de direcciones: <b>Compartir</b> → <b>Añadir a pantalla de inicio</b> y abre el juego desde el icono.';
-    t.hidden = false; clearTimeout(fsTipT); fsTipT = setTimeout(function () { t.hidden = true; }, 7000);
+  // iPhone y navegadores de dentro de apps (sin pantalla completa): tutorial de instalar con dibujos (js/install.js), que se
+  // cierra cuando quieras. Sustituye al aviso #fsTip de antes, que tapaba media pantalla y no se podía cerrar.
+  var inAppUA = !!(VB.Install && VB.Install.inApp);
+  function toggleFs() {
+    if (isFs()) exitFs();
+    else if (fsApi() && !inAppUA) enterFs();
+    else if ((isIOS || inAppUA) && VB.Install) VB.Install.open();
   }
-  function toggleFs() { if (isFs()) exitFs(); else if (fsApi()) enterFs(); else if (isIOS) showFsTip(); }
   function tryFullscreen() { if (isTouch && !ctx.debug && !standalone() && !isFs() && fsApi()) enterFs(); }
   function syncFs() {
-    var fs = isFs(), can = !ctx.debug && !standalone() && (fsApi() || isIOS);
+    var fs = isFs(), can = !ctx.debug && !standalone() && (fsApi() || isIOS || inAppUA);
     document.documentElement.classList.toggle('is-fs', fs);
     var b = document.getElementById('btnFs'); if (b) b.hidden = !can || fs;
     var h = document.getElementById('btnHudFs'); if (h) h.hidden = !can || isTouch;

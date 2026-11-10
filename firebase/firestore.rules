@@ -1,0 +1,17 @@
+rules_version = '2';
+// Make the Cut: progreso de cada cuenta (escuadrón, Carrera y ajustes). Sin cifrar; solo lo lee y lo cambia su dueño.
+// users/{uid}/saves/{key}: key = squad | career | settings; data = JSON en texto; updatedAt = milisegundos del dispositivo.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    match /users/{uid}/saves/{key} {
+      allow get, list, delete: if owner(uid);
+      allow create, update: if owner(uid)
+        && key in ['squad', 'career', 'settings']
+        && request.resource.data.keys().hasOnly(['data', 'updatedAt', 'v'])
+        && request.resource.data.data is string && request.resource.data.data.size() <= 400000
+        && request.resource.data.updatedAt is number
+        && (!('v' in request.resource.data) || request.resource.data.v is int);
+    }
+  }
+}
