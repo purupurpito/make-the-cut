@@ -362,9 +362,10 @@
       og.fillStyle = '#22d8c6';
       for (var nx2 = cell / 2; nx2 <= Wd; nx2 += cell) for (var ny2 = top + cell; ny2 < Ht - bot; ny2 += cell) { og.beginPath(); og.arc(nx2, ny2, Math.max(3, ppm * 0.034), 0, 6.283); og.fill(); }
       // máscara: letras gruesas (relleno + trazo) con mucho aire entre ellas
-      var mk = canvas(Wd, Ht), mg = mk.getContext('2d'), fh = mh * 0.84, wx = 1.45; // letras anchas (escala en x) y trazo de ~1,3 celdas
-      mg.font = '900 ' + Math.round(fh) + 'px Impact, "Arial Black", ' + FONT; mg.textAlign = 'center'; mg.textBaseline = 'middle';
-      mg.fillStyle = '#000'; mg.strokeStyle = '#000'; mg.lineWidth = cell * 1.3 / wx; mg.lineJoin = 'round';
+      // letras con los huecos abiertos (Arial Black, poco ensanchadas, trazo fino): si el trazo es grueso la M se cierra
+      var mk = canvas(Wd, Ht), mg = mk.getContext('2d'), fh = mh * 0.88, wx = 1.12;
+      mg.font = '900 ' + Math.round(fh) + 'px "Arial Black", Arial, Impact, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
+      mg.fillStyle = '#000'; mg.strokeStyle = '#000'; mg.lineWidth = cell * 0.5 / wx; mg.lineJoin = 'round';
       var gap = fh * 1.05 * wx, cy = top + mh * 0.5;
       ['M', 'T', 'C'].forEach(function (L, i) { var cx = Wd / 2 + (i - 1) * gap; mg.save(); mg.translate(cx, cy); mg.scale(wx, 1); mg.strokeText(L, 0, 0); mg.fillText(L, 0, 0); mg.restore(); });
       og.globalCompositeOperation = 'destination-in'; og.drawImage(mk, 0, 0);
