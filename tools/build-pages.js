@@ -30,7 +30,12 @@ const manifest = { name: 'Make the Cut', short_name: 'Make the Cut', lang: 'es',
     { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml' }] };
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(path.join(OUT, 'js'), { recursive: true });
-fs.writeFileSync(path.join(OUT, 'index.html'), html);
+// Cada script lleva ?v=<hash de su contenido>: así el navegador (y la caché de 10 min de GitHub Pages) no sirve un js viejo
+// con un index nuevo. El index.html sí puede tardar esos 10 min en renovarse; los js que referencia son siempre los suyos.
+const crypto = require('crypto');
+const ver = f => crypto.createHash('sha1').update(fs.readFileSync(path.join(ROOT, 'js', f))).digest('hex').slice(0, 8);
+const htmlV = html.replace(/src="js\/([A-Za-z0-9_-]+\.js)"/g, (m, f) => 'src="js/' + f + '?v=' + ver(f) + '"');
+fs.writeFileSync(path.join(OUT, 'index.html'), htmlV);
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
 fs.writeFileSync(path.join(OUT, 'manifest.webmanifest'), JSON.stringify(manifest, null, 2));
 for (const f of fs.readdirSync(path.join(ROOT, 'pages'))) fs.copyFileSync(path.join(ROOT, 'pages', f), path.join(OUT, f)); // iconos
