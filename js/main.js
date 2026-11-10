@@ -4,7 +4,7 @@
  * reparto de eventos a los módulos, calidad adaptativa (con histéresis)
  * y escenas de depuración deterministas:
  *   ?debug=menu|serve|rally|spike|block|point|ace|setpoint|switch|over|end|
- *          mobile|pause|tutorial|controls|settings|toss|jumpserve|dive
+ *          mobile|pause|tutorial|controls|settings|toss|jumpserve|dive|doll (maqueta del muñeco nuevo, js/doll.js; &view=fila|poses|cara|cuerpo)
  *   &seed=N  &live=1  &quality=low|medium|high  &maxdt=0.25  &fps=1  &clock=1 (serve/hud con regla de 8 s)
  *   &diff=easy|normal|hard  &panel=tut|ctl|set  &step=N (tutorial)
  * Ver CONTRACT.md para el orden por frame y las interfaces.
@@ -564,7 +564,7 @@
 
   // ---------- Bucle ----------
   var pendingEvents = [], frameEvents = [], EMPTY = [], PFX = [];
-  var acc = 0, last = 0, fxAge = 0, idleT = 0, drawn = 0, bootDone = false;
+  var acc = 0, last = 0, fxAge = 0, idleT = 0, drawn = 0, bootDone = false, dollOn = false;
   var bootEl = document.getElementById('boot'), fpsEl = document.getElementById('fps');
   var meter = { t: 0, n: 0, js: 0, lt: 0 }, fpsShowT = 0;
   // Tareas largas del hilo principal (>50 ms, incluidas las que no son del juego: GC, otras pestañas del proceso, compositor).
@@ -674,6 +674,7 @@
     // &camyaw=rad (solo depuración): gira la cámara tras su update; escena reproducible con el jugador fuera de cuadro para el
     // indicador de borde (UI-10), p. ej. ?debug=rally&live=1&seed=4&camyaw=0.9
     if (ctx.debug && Q.camyaw && ctx.camera) { ctx.camera.rotateY(+Q.camyaw || 0); ctx.camera.updateMatrixWorld(true); }
+    if (dollOn) call('Doll', 'update', g, realDt);   // ?debug=doll: animación de la maqueta y cámara fija (después de la cámara)
     call('Audio', 'handle', ev, g);
     call('Audio', 'update', g, realDt);
     call('UI', 'update', g, gdt, ev);
@@ -915,6 +916,8 @@
       case 'over': case 'end':
         g = mk(true);
         keep = advanceUntil(g, function (e) { return e && e.type === 'gameOver'; }, 0, 3000, uiIngest); state = 'over'; break;
+      case 'doll':   // maqueta del muñeco nuevo (js/doll.js): el pabellón con 4 muñecos y cámara fija; la sim queda congelada en el saque
+        g = mk(true, true); break;
       default:
         console.warn('[VB] escena de depuración desconocida:', name); ctx.actions.toMenu(); return;
     }
@@ -924,6 +927,7 @@
     if (state === 'paused') { setState('playing'); setState('paused'); } else setState(state);
     ctx.frozen = !live && name !== 'serve' && name !== 'hud' && name !== 'pause';
     call('CameraRig', 'snap', g);
+    if (name === 'doll') { dollOn = true; call('Doll', 'start', ctx, g); }
     console.info('[VB] escena de depuración: ' + name + ' (modo ' + g.mode + ', ' + g.score.join('-') + ', sets ' + g.sets.join('-') + ')');
   }
 

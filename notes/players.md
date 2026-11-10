@@ -754,3 +754,75 @@ dibujos (rally baja 844×390: 113.676 triángulos / 34 dibujos con tajo y con ta
 - Pendiente / conocido: manos y pies van ×1,6-1,8 sobre la manopla/zapatilla TAJO (ya exageradas): en tanque/chibi son enormes, a propósito;
   el tanque de frente con los brazos delante mete algo el codo en el barril (poses pensadas para un tronco plano); los hombros del héroe se leen
   como hombreras. No hay UI para elegir el preset (solo `?body=`).
+
+## Muñeco (doll.js): maqueta (10-nov-2026, agente muñeco) — fase 1, sin integrar en el partido
+Ferran rechazó TAJO y los presets `?body=` («son los actuales modificados; quiero un modelo nuevo»). Dirección elegida: **muñeco simple**
+(Switch Sports / Sackboy: figura redondeada y limpia, tubos con bolas en las articulaciones, cara sencilla y expresiva, ropa pintada) +
+**caricatura de cómic** (Windjammers 2 / Mario Strikers: cabeza grande, manos enormes, poses chulescas). Fichero NUEVO `js/doll.js`
+(`VB.Doll`), cargado tras players.js en index.html; solo actúa en `?debug=doll`. players.js no cambia salvo `VB.Players.dims()` (solo
+lectura: longitudes del rig, alcance y orden de los 27 huesos). main.js: escena `doll` (`&view=fila|poses|cara|cuerpo|peinados`), gancho
+`VB.Doll.update` tras la cámara solo con esa escena; tools/shot.js la incluye en `all`. Capturas: `tools/out/arte/doll/doll-{fila,cara,
+cuerpo,poses,peinados,fila-baja}.png` (borradores en `w/`).
+- **Esqueleto**: los MISMOS 27 huesos, nombres, jerarquía y orden que players.js (`body, pelvis, spine, chest, head, eyes, mouth, teeth,
+  browL, browR, hair, [sh, up, el, hand, hip, th, kn, ft] × izq/der`): la animación, la IK y la sim de la fase 2 se enganchan sin cambiar.
+  Longitudes nuevas (`VB.Doll.dims()`): cadera 0,78 (muslo 0,33 + espinilla 0,33 + zapatón 0,12), tronco 0,22 + 0,22, hombro a **1,45**
+  (atleta 1,535), SH_X 0,17, sin cuello (`NECK_Y = SH_Y`: la cabeza nace a la altura de los hombros y se apoya en el domo del tronco),
+  brazo 0,335 + antebrazo 0,307 + palma 0,10. **Alcance comprobado**: `fitReach()` reparte brazo/antebrazo para que hombro + brazo +
+  antebrazo + palma = `VB.Players.dims().reach` → **2,192 m = 2,192 m del atleta** (lo imprime la consola y `VB.Doll.reach()`). Cabeza hasta
+  1,86 m: **4,4 cabezas** (cabeza de 0,42 m). Escalas de huesos en reposo todas 1 (cabeza y manos van en la geometría: la fase 2 NO debe aplicar
+  `HEAD_K`/`HAND_K` al muñeco).
+- **Piezas** (una `SkinnedMesh` por muñeco, color por vértice + atlas; acumulador `Geo` propio con modos de UV `flat/wrap/strip/own`):
+  tronco = pera limpia (lathe, piel a DOS huesos pelvis→chest con `sstep(0.1, 0.5, y)`: se dobla sin costura; sin pecho en V ni músculos);
+  bolas de hombro (un punto más oscuras que la camiseta para leerse como pieza), codo (piel) y rodilla (= **rodillera**, oscuro del equipo);
+  brazos y piernas = tubos de grosor uniforme (0,047 / 0,054); manoplas = esfera 0,058×0,108×0,094 + pulgar insinuado (sin dedos);
+  zapatones = media esfera 0,092×0,088×0,158 + suela y puntera del acento; cabeza = esfera deformada `headShape` (cráneo grande, anillo de la
+  mandíbula bajo las orejas, mentón que asoma, nuca recogida) con normales analíticas; orejas sencillas (esferas). **Sin nariz**: decidido
+  porque la cara es una lámina lisa de ojos+cejas+boca y cualquier bulto en medio rompía la lectura a distancia y chocaba con la lámina de la
+  boca; el perfil ya lo da el mentón (Sackboy y Fall Guys tampoco la llevan; de cerca se puede pintar un puntito en la hoja si se quiere).
+- **Ropa PINTADA** (atlas de diseño 512, pintado a 1024² `PXK = 2`): filas 0-199 tronco (u alrededor, v por la altura de reposo
+  `TR_Y0..TR_Y1`): camiseta con el tajo en zigzag del hombro izquierdo a la cadera derecha, dorsal grande en la espalda y pequeño en oscuro
+  dentro del tajo, cuello redondo; pantalón de `TR_SPLIT` abajo con cinturilla y paneles del acento. Tiras: 208-247 brazo (manga corta con
+  ribete → piel), 250-289 muslo (pernera → piel), 292-331 espinilla (piel → calcetín del acento con franja). 200-207 texel blanco.
+- **Hoja de caras** (filas 336-511; láminas `faceSheet` pegadas al cráneo con UV en la celda 0 y desplazamiento por uniformes `uEyeOff`/
+  `uMouthOff` como en TAJO: cambiar de expresión = 2 uniformes, sin texturas ni mallas): ojos+cejas 8 celdas de 128×60 (4×2): 0 neutra ·
+  1 parpadeo · 2 concentrado · 3 esfuerzo (> <) · 4 alegría (^ ^) · 5 pena · 6 sorpresa · 7 grito; bocas 8 celdas de 64×56: 0 neutra ·
+  1 sonrisa con dientes · 2 O de grito · 3 dientes apretados · 4 pena · 5 «o» · 6 lengua · 7 línea tensa. Expresiones (`VB.Doll.EXPR`):
+  neutra [0,0], concentrado [2,7], esfuerzo [3,3], grito [7,2], alegria [4,1], pena [5,4], sorpresa [6,5], lengua [4,6]. Ojos ovalados
+  enormes (0,046×0,06 m) con pupila de tinta y dos brillos; **cejas gruesas** (0,024 m) que llevan la expresión; pieles oscuras con halo claro
+  (`faceHalo`). Parpadeo: celda 1 durante 0,12 s cada 2-5 s (no en las caras con los ojos ya cerrados). Elegido celdas en vez de huesos:
+  se ve mejor desde lejos, cuesta 0 triángulos y la fase 2 solo tiene que mapear los pesos S/E/J/D de `updateFace` a nombres de `EXPR`.
+- **Pelo** (vértices, hueso head; 7 siluetas): `tupe`, `coleta` (cola en el hueso `hair`, para el muelle), `afro` (bola abierta por delante:
+  casquete + anillo sin la cuña de la cara), `flequillo` (tazón con borde recto sobre las cejas), `rapado`, `mono`, `trenzas`. Complementos:
+  `gorra` (hacia delante, del acento, con visera oscura; el pelo solo casquete), `visera`, `cinta`, `gafas` (de sol subidas a la frente,
+  montura del acento con brillo: la cara sigue leyéndose). Playa (tirantes, descalzo): prevista, no hecha.
+- **Sombreado**: `MeshToonMaterial` con gradiente propio de **dos bandas** (10 texeles, terminador en N·L ≈ 0,2; solo la luz principal
+  en bandas, relleno y contraluz en Lambert suave, como players), ambiente teñido (`uShade`), brillo de borde, blanco de ojos y dientes con
+  luz propia. Programa único `vbDollToon`. **Tinta de color**: `VB.TOON.outline` de arena con `color: inkHex(tc)`, `OUT_PX` 3,6, tope 0,06,
+  peso `ow` por vértice (cara 0, gafas/ribetes 0, orejas 0,6, manos 0,75). En baja arena la apaga (`VB.TOON.setQuality`).
+- **Números**: triángulos alta/media/baja **9.264 / 4.164 / 2.724** (atleta TAJO 10,6-11,1k / 4,8-5,0k / 3,7-3,9k): LOD por segmentos
+  (`LOD_K` 1 / 0,65 / 0,45) con las 3 geometrías por muñeco (`rigGeometry`, misma piel y huesos). Dibujos por muñeco: **3** (piel + tinta +
+  sombra). Escena entera en baja a 1280×720: 25 dibujos, 105k triángulos (`doll-fila-baja.png`). Atlas 1024² por muñeco (4 MB; TAJO 512²:
+  si en móvil pesa, `PXK = 1` lo deja en 512 sin tocar nada más).
+- **Poses** (a mano, `POSES`: `idle` con el balón en la manopla derecha, `recv` plataforma con rodillas flexionadas, `spike` en el aire con
+  el brazo arriba, `cel` brazos en V con una rodilla arriba, `stand`). Convención: huesos con identidad en reposo; `rotation.x < 0` lleva
+  la mano/pie hacia delante, `rotation.z > 0` hacia +X (la izquierda del muñeco).
+- **Animación con chispa (demostrada)**: ganchos como escalas de huesos, pensados para que players.js los llame en la fase 2:
+  `VB.Doll.squash(r, a)` (hueso body desde el suelo, volumen constante: aplastamiento al aterrizar −14 %, estirón al despegar +10 %),
+  `stretchArm(r, k, s)` (escala y del hueso del brazo: +28 % en el instante del golpe), `headBob(r, dy, pitch)` (rebote de la cabeza sin
+  cuello). El bucle de la maqueta (`animate`): reposo = respiración + cabeza al compás; recepción = balanceo; remate = ciclo de 1,9 s
+  (anticipación aplastado → despegue estirado → golpe con estirón del brazo → aterrizaje aplastado → rebote); celebración = saltitos con
+  brazos que bombean. `VB.Doll.freeze({idx: t})` congela el bucle para capturas (remate en el golpe t = 0,8; celebración en el aire 0,38).
+- **API** (`VB.Doll`): `start(ctx, g)`, `update(g, realDt)`, `view(nombre)`, `setFace(i, expr)`, `setPose(i, pose)`, `restyle(i, peinado,
+  complemento)`, `setLod(0|1|2)`, `freeze(map)`, `stats()` → `{tris, draws, reach}`, `reach()`, `dims()`, `build(L, idx)` (construye un
+  muñeco fuera de la escena de depuración), constantes `LOOKS, STYLES, ACCS, EXPR, POSES`.
+- **Fase 2 (integración en players.js)**, lo que hará falta: (1) `buildRig` con un conmutador de modelo (`?model=doll` o ajuste) que use
+  la geometría de doll.js y las longitudes de `VB.Doll.dims()` en vez de las TAJO (HIP_H, SPINE_Y, CHEST_Y, SH_Y, UPPER, FORE, PALM, NECK_Y):
+  el resto del código ya lee esas variables (como hace `applyBody`); (2) las poses de players van en metros absolutos desde hombros a 1,535:
+  usar `SH_DY`/`ARM_K` de applyBody (hombros a 1,45 y brazo ×1,13 = exactamente el caso `arm ≠ 1` del preset chibi); (3) `updateFace` →
+  `setFaceCells` del muñeco (misma técnica de uniformes; las celdas son otras); los huesos eyes/mouth/brow siguen vacíos; (4) el `squash` de
+  players ya escala `body`: sustituirlo por `VB.Doll.squash` (más amplitud) y añadir `stretchArm` en `applyPose` donde hoy está la compresión
+  del brazo (`r.up[1].scale`) y `headBob` en `aimHead`; (5) `headClear`/`HEAD_R`/`CV_K` con la cabeza de 0,42 m (como el chibi); (6) atlas del
+  muñeco en `atlasMaterial` (dorsal `p.num`, equipaciones `setKit`, líbero) y versión de playa (tirantes, descalzo); (7) LOD por pantalla
+  (`screenLod`) y `fixShadowDepth` ya valen (misma `SkinnedMesh`).
+- Pruebas: `bash tools/console.sh all` (con `doll`) sin errores; `node tools/simtest.js` TODO OK (la sim no se toca); el juego normal no cambia
+  (doll.js no hace nada fuera de `?debug=doll`).

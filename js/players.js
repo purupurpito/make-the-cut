@@ -3909,6 +3909,14 @@
     bodyKnobs: function () { return BK; },
     /** Pruebas: cambia el preset de cuerpo en caliente (libera los atletas; con g los reconstruye ya). Devuelve true si cambió. */
     setBody: function (name, g) { if (!BODY_PRESETS[name] || name === BODY) return false; applyBody(name); flushCache(); if (g) this.onGameStart(g); return true; },
+    /** Dimensiones del rig activo (m; solo lectura): las lee js/doll.js (maqueta del muñeco) para construir el MISMO esqueleto
+     *  con el mismo alcance (hombro + brazo + antebrazo + palma). Orden de los 27 huesos en `bones`. */
+    dims: function () {
+      return { HIP_H: HIP_H, HIP_W: HIP_W, THIGH: THIGH, SHIN: SHIN, ANKLE: ANKLE, SPINE_Y: SPINE_Y, CHEST_Y: CHEST_Y, SH_X: SH_X, SH_Y: SH_Y, SH_Z: SH_Z,
+        NECK_Y: NECK_Y, UPPER: UPPER, FORE: FORE, PALM: PALM, HEAD_K: HEAD_K, HAND_K: HAND_K, FOOT_K: FOOT_K,
+        shoulder: HIP_H + SPINE_Y + CHEST_Y + SH_Y, reach: HIP_H + SPINE_Y + CHEST_Y + SH_Y + UPPER + FORE + PALM,
+        bones: ['body', 'pelvis', 'spine', 'chest', 'head', 'eyes', 'mouth', 'teeth', 'browL', 'browR', 'hair', 'shL', 'upL', 'elL', 'handL', 'hipL', 'thL', 'knL', 'ftL', 'shR', 'upR', 'elR', 'handR', 'hipR', 'thR', 'knR', 'ftR'] };
+    },
     /** TAJO: escenario con el que se visten los atletas ('hall' | 'beach'). */
     venue: function () { return VEN; },
     /** TAJO (pruebas): fuerza el escenario de los atletas ('hall' | 'beach'; '' = el de arena). Con g, los reconstruye ya. */
