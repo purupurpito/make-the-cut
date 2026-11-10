@@ -338,11 +338,13 @@
   var casters = []; // mallas del pabellón que proyectan sombra (en calidad baja solo la proyectan jugadores y balón)
   var net = null, netRip = { a: 0, y: 0, z: 0, t: 9, dir: 1 };
   var NET_W = 10, NET_HH = 1, NSX = 50, NSY = 6;
-  /** beach: red de playa estilo AVP (decisión de Ferran, 10-nov-2026): la cuerda sigue negra y las BANDAS (arriba, abajo y
-   *  laterales) van amarillas. En las dos sedes, «MTC» (Make the Cut) en teal en el centro de la malla. */
+  /** beach: red de playa estilo AVP (referencia: foto del Manhattan Beach Open; decisión de Ferran, 10-nov-2026): cuerda
+   *  negra, banda superior amarilla y alta con el logo del juego repetido en tinta, banda inferior y laterales amarillas.
+   *  En las dos sedes, «M T C» (Make the Cut) en el centro: no es un estampado, son las propias cuerdas y nudos de la malla
+   *  pintados de teal dentro de la forma de las letras (bien separadas). */
   function netTexture(beach) {
     var Wd = ctx.isMobile ? 1024 : 2048, Ht = Wd / 8, cv = canvas(Wd, Ht), g = cv.getContext('2d');
-    var ppm = Wd / NET_W, cell = 0.1 * ppm, top = 0.07 * ppm, bot = 0.05 * ppm;
+    var ppm = Wd / NET_W, cell = 0.1 * ppm, top = (beach ? 0.10 : 0.07) * ppm, bot = (beach ? 0.06 : 0.05) * ppm;
     g.clearRect(0, 0, Wd, Ht);
     g.strokeStyle = 'rgba(14,16,20,0.96)'; g.lineWidth = Math.max(1.5, ppm * 0.011);
     for (var x = cell / 2; x <= Wd; x += cell) { g.beginPath(); g.moveTo(x, top); g.lineTo(x, Ht - bot); g.stroke(); }
@@ -350,21 +352,42 @@
     // nudos
     g.fillStyle = 'rgba(10,10,12,1)';
     for (var nx = cell / 2; nx <= Wd; nx += cell) for (var ny = top + cell; ny < Ht - bot; ny += cell) g.fillRect(nx - 1.5, ny - 1.5, 3, 3);
-    // «MTC» tejido en el centro de la malla, en teal (letras gruesas; la trama negra se ve por encima)
+    // «M T C»: la misma malla (cuerdas y nudos) pintada de teal, recortada por la forma de tres letras separadas
     var mh = Ht - top - bot;
-    g.save(); g.fillStyle = 'rgba(28,196,180,0.92)'; g.font = '900 ' + Math.round(mh * 0.62) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('MTC', Wd * 0.5, top + mh * 0.52); g.restore();
-    g.strokeStyle = 'rgba(14,16,20,0.96)'; g.lineWidth = Math.max(1.5, ppm * 0.011);
-    for (var x2 = cell / 2; x2 <= Wd; x2 += cell) { g.beginPath(); g.moveTo(x2, top); g.lineTo(x2, Ht - bot); g.stroke(); }
-    for (var y2 = top + cell; y2 < Ht - bot; y2 += cell) { g.beginPath(); g.moveTo(0, y2); g.lineTo(Wd, y2); g.stroke(); }
-    // bandas superior e inferior (lona blanca con costuras; amarilla en la playa)
+    (function paintLetters() {
+      var off = canvas(Wd, Ht), og = off.getContext('2d');
+      og.strokeStyle = '#22d8c6'; og.lineWidth = Math.max(3, ppm * 0.032); og.lineCap = 'round';
+      for (var x2 = cell / 2; x2 <= Wd; x2 += cell) { og.beginPath(); og.moveTo(x2, top); og.lineTo(x2, Ht - bot); og.stroke(); }
+      for (var y2 = top + cell; y2 < Ht - bot; y2 += cell) { og.beginPath(); og.moveTo(0, y2); og.lineTo(Wd, y2); og.stroke(); }
+      og.fillStyle = '#22d8c6';
+      for (var nx2 = cell / 2; nx2 <= Wd; nx2 += cell) for (var ny2 = top + cell; ny2 < Ht - bot; ny2 += cell) { og.beginPath(); og.arc(nx2, ny2, Math.max(3, ppm * 0.034), 0, 6.283); og.fill(); }
+      // máscara: letras gruesas (relleno + trazo) con mucho aire entre ellas
+      var mk = canvas(Wd, Ht), mg = mk.getContext('2d'), fh = mh * 0.84, wx = 1.45; // letras anchas (escala en x) y trazo de ~1,3 celdas
+      mg.font = '900 ' + Math.round(fh) + 'px Impact, "Arial Black", ' + FONT; mg.textAlign = 'center'; mg.textBaseline = 'middle';
+      mg.fillStyle = '#000'; mg.strokeStyle = '#000'; mg.lineWidth = cell * 1.3 / wx; mg.lineJoin = 'round';
+      var gap = fh * 1.05 * wx, cy = top + mh * 0.5;
+      ['M', 'T', 'C'].forEach(function (L, i) { var cx = Wd / 2 + (i - 1) * gap; mg.save(); mg.translate(cx, cy); mg.scale(wx, 1); mg.strokeText(L, 0, 0); mg.fillText(L, 0, 0); mg.restore(); });
+      og.globalCompositeOperation = 'destination-in'; og.drawImage(mk, 0, 0);
+      g.drawImage(off, 0, 0);
+    })();
+    // bandas superior e inferior (lona blanca con costuras; amarillas en la playa)
     var bandCol = beach ? '#f7c531' : '#f3f0e8';
     g.fillStyle = bandCol; g.fillRect(0, 0, Wd, top); g.fillRect(0, Ht - bot, Wd, bot);
     g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, top - 2, Wd, 2); g.fillRect(0, Ht - bot, Wd, 2);
     g.fillStyle = 'rgba(0,0,0,0.10)'; for (var sx = 0; sx < Wd; sx += 12) { g.fillRect(sx, 3, 5, 1); g.fillRect(sx, Ht - bot + bot * 0.5, 5, 1); }
-    // marca del fabricante (ficticia) en la banda superior
-    g.fillStyle = beach ? 'rgba(60,40,10,0.6)' : 'rgba(20,40,70,0.55)'; g.font = '800 ' + Math.round(top * 0.78) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('SALT·9  PRO NET', Wd * 0.5, top * 0.55);
+    if (beach) {
+      // banda superior AVP: el logo del juego (balón + MAKE THE CUT) repetido en tinta a lo largo de toda la banda
+      g.fillStyle = '#1d1530'; g.strokeStyle = '#1d1530'; g.font = '900 ' + Math.round(top * 0.5) + 'px ' + FONT; g.textAlign = 'left'; g.textBaseline = 'middle';
+      var step = 1.25 * ppm, r0 = top * 0.3;
+      for (var bx = step * 0.5; bx < Wd; bx += step) {
+        g.save(); g.lineWidth = Math.max(1, r0 * 0.14); drawGameBall(g, bx, top * 0.5, r0); g.restore();
+        g.fillStyle = '#1d1530'; g.fillText('MAKE THE CUT', bx + r0 * 1.5, top * 0.52);
+      }
+    } else {
+      // marca del fabricante (ficticia) en la banda superior
+      g.fillStyle = 'rgba(20,40,70,0.55)'; g.font = '800 ' + Math.round(top * 0.78) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('SALT·9  PRO NET', Wd * 0.5, top * 0.55);
+    }
     // bandas laterales sobre las líneas laterales (5 cm x 1 m)
     function bandAt(yy) { var u0 = (yy + NET_W / 2) * ppm; g.fillStyle = beach ? bandCol : '#f7f4ee'; g.fillRect(u0, 0, 0.05 * ppm, Ht); }
     bandAt(C.HW - 0.05); bandAt(-C.HW);
@@ -4033,20 +4056,20 @@
    * piezas del pabellón equivalentes (`props`, `poles`) se ocultan en la playa. 1 dibujo (+ tinta en media/alta). */
   var BCOL = { wood: '#c8955a', woodD: '#94653a', woodL: '#e4b97f', canA: '#ffffff', canB: '#22b8d6', coral: '#ee4a2f', alu: '#dfe4ea', rope: '#f2ead8', bag: '#d8342c' };
   function beachNetHW(B, hw) {
-    var top = C.NET_H, white = col('#f4f1ea'), cable = col('#9aa3ad'), rod = col('#d8d4cc'), post = col(BCOL.alu), padA = col('#0f8fb3'), padW = col(BCOL.canA);
+    var top = C.NET_H, white = col('#f4f1ea'), cable = col('#9aa3ad'), rod = col('#d8d4cc'), post = col('#26262c'), padA = col('#f7c531'), padW = col('#1d1530');
     var coral = col(BCOL.coral), red = col('#e0262f'), antW = col('#f7f5f0'), ropeC = col(BCOL.rope), bagC = col(BCOL.bag);
     objM(0, 0, 0, 1);
-    B.sbox(0.035, 2 * hw + 1, 0.07, 0, 0, top - 0.035, col('#f7c531'));                           // cinta superior (amarilla, estilo AVP)
+    B.sbox(0.035, 2 * hw + 1, 0.10, 0, 0, top - 0.05, col('#f7c531'));                            // cinta superior alta y amarilla (AVP)
     for (var s = -1; s <= 1; s += 2) {
       var py = s * (hw + 1);
       B.sbox(0.012, 0.55, 0.012, 0, s * (hw + 0.75), top - 0.03, cable); B.sbox(0.012, 0.55, 0.012, 0, s * (hw + 0.75), top - 0.97, cable);
       B.sbox(0.02, 0.02, 1, 0, s * (hw + 0.5), top - 0.5, rod);                                   // varilla del extremo de la red
       lrod(B, 0, -0.3, -py, 0, top + 0.2, -py, 0.045, post, BGEO.cyl);                            // poste de aluminio (clavado en la arena)
       part(B, BGEO.hemi, 0, top + 0.2, -py, post, 0, 0, 0, 0.05, 0.035, 0.05);
-      // protección fina de lona acolchada (la gruesa del pabellón no): turquesa con franja coral abajo y blanca arriba
+      // protección de lona acolchada estilo AVP: amarilla sobre poste negro, con una franja negra abajo y otra arriba
       lrod(B, 0, 0, -py, 0, 1.7, -py, 0.1, padA, BGEO.cyl);
-      lrod(B, 0, 0.14, -py, 0, 0.34, -py, 0.104, coral, BGEO.cyl);
-      lrod(B, 0, 1.52, -py, 0, 1.6, -py, 0.104, padW, BGEO.cyl);
+      lrod(B, 0, 0.14, -py, 0, 0.3, -py, 0.104, padW, BGEO.cyl);
+      lrod(B, 0, 1.5, -py, 0, 1.6, -py, 0.104, padW, BGEO.cyl);
       part(B, BGEO.hemi, 0, 1.7, -py, padA, 0, 0, 0, 0.1, 0.03, 0.1);
       for (var k = 0; k < 10; k++) lrod(B, 0.03, top - 1 + k * 0.18, -s * (hw + 0.006), 0.03, top - 1 + (k + 1) * 0.18, -s * (hw + 0.006), 0.013, k % 2 ? antW : red, BGEO.cyl);
       for (var dx = -1; dx <= 1; dx += 2) {                                                        // vientos a sacos de arena
