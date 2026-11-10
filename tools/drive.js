@@ -2,7 +2,7 @@
 /* VOLEY 3D — tools/drive.js  (owner: ui_main)
  * Conduce el juego REAL en Chrome headless vía DevTools Protocol (sin dependencias:
  * usa el WebSocket nativo de node >= 22) y simula a un jugador con teclado:
- * menú -> Intro -> saque (silbato, Espacio lanza, Espacio golpea) -> moverse/golpear -> pausa -> seguir.
+ * menú -> Intro -> saque (silbato, J lanza, J golpea) -> moverse/golpear (J o clic izquierdo; Espacio salta) -> pausa -> seguir.
  * Captura errores de consola/excepciones y hace capturas en tools/out/drive-*.png.
  * Uso: node tools/drive.js [W=1280] [H=720] [segundos reales=40] [query extra, p. ej. "quality=low"]
  * Con GPU no hace falta nada más; con GL=swiftshader (sin GPU) conviene pasar "quality=low&maxdt=0.25".
@@ -24,23 +24,29 @@ setTimeout(() => { console.error('TIEMPO AGOTADO'); process.exit(2); }, (SECS + 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let send, errors = [], logs = [];
 async function evalJs(expr) { const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true }); return r.result && r.result.value; }
-const KEYS = { ' ': ['Space', 32], Enter: ['Enter', 13], ArrowUp: ['ArrowUp', 38], ArrowDown: ['ArrowDown', 40], ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39], p: ['KeyP', 80], k: ['KeyK', 75], c: ['KeyC', 67] };
+const KEYS = { ' ': ['Space', 32], Enter: ['Enter', 13], ArrowUp: ['ArrowUp', 38], ArrowDown: ['ArrowDown', 40], ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39], p: ['KeyP', 80], j: ['KeyJ', 74], c: ['KeyC', 67] };
 async function key(type, k) { const [code, kc] = KEYS[k]; await send('Input.dispatchKeyEvent', { type, key: k, code, windowsVirtualKeyCode: kc, text: type === 'keyDown' && k.length === 1 ? k : undefined }); }
 async function press(k, ms) { await key('keyDown', k); await sleep(ms || 60); await key('keyUp', k); }
+// clic izquierdo (golpear) en el centro de la pista, como un ratón de verdad (pointerType 'mouse')
+async function click(ms) {
+  const o = { x: Math.round(W / 2), y: Math.round(H * 0.55), button: 'left', clickCount: 1 };
+  await send('Input.dispatchMouseEvent', Object.assign({ type: 'mousePressed', buttons: 1 }, o)); await sleep(ms || 40);
+  await send('Input.dispatchMouseEvent', Object.assign({ type: 'mouseReleased', buttons: 0 }, o));
+}
 async function shot(name) { const r = await send('Page.captureScreenshot', { format: 'png' }); const f = path.join(OUT, 'drive-' + name + '.png'); fs.writeFileSync(f, Buffer.from(r.data, 'base64')); console.log('captura', f); }
 async function waitFor(expr, ms) { const t = Date.now(); while (Date.now() - t < ms) { if (await evalJs(expr)) return true; await sleep(150); } return false; }
-// Saque humano en dos pulsaciones: espera el silbato, Espacio lanza y Espacio golpea en el momento ideal
+// Saque humano en dos pulsaciones: espera el silbato, J lanza y J golpea en el momento ideal
 // (VB.Sim.hitWindow da los segundos que faltan). Devuelve 'ok' | 'nosaque' (no era saque humano).
 async function serve() {
   if (!(await waitFor("(function(g){return g.mode!=='serve'||g.serveAuth})(VB.ctx.game)", 4000))) return 'sinsilbato';
   if (!(await evalJs("(function(g){return g.mode==='serve'&&g.server&&g.server.team===0&&g.serveState==='ready'})(VB.ctx.game)"))) return 'nosaque';
-  await press(' ', 40);
+  await press('j', 40);
   const t0 = Date.now();
   while (Date.now() - t0 < 2500) {
     const t = await evalJs("(function(g){if(g.mode!=='serve'||g.serveState!=='toss')return -9;var w=VB.Sim.hitWindow(g,g.server);return w?w.t/Math.max(0.05,VB.ctx.timeScale):-9})(VB.ctx.game)");
     if (t === -9 || t == null) break;
     if (t > 0.25) { await sleep(80); continue; }
-    await sleep(Math.max(0, t * 1000 - 25)); await press(' ', 40); return 'ok';
+    await sleep(Math.max(0, t * 1000 - 25)); await press('j', 40); return 'ok';
   }
   return 'ok';
 }
@@ -70,7 +76,7 @@ const state = () => evalJs('JSON.stringify({s:VB.ctx.state,m:VB.ctx.game&&VB.ctx
     st = await state();
     const tA = await evalJs('VB.ctx.game.time'), fA = await evalJs('VB.ctx.frame'); await sleep(2000);
     const tB = await evalJs('VB.ctx.game.time'), fB = await evalJs('VB.ctx.frame');
-    console.log('en 2 s reales: tiempo de juego', (tB - tA).toFixed(2) + ' s,', ((fB - fA) / 2).toFixed(1) + ' fps'); check(st.m === 'rally', 'Espacio lanza y Espacio saca (modo rally)');
+    console.log('en 2 s reales: tiempo de juego', (tB - tA).toFixed(2) + ' s,', ((fB - fA) / 2).toFixed(1) + ' fps'); check(st.m === 'rally', 'J lanza y J saca (modo rally)');
     // jugar: perseguir el punto de caída con las flechas y golpear a menudo
     const t0 = Date.now(); let points = 0, lastSc = '0-0', hits = 0;
     await evalJs('window.__hits=0;window.__pts=0;(function(){var o=VB.Sim.step;VB.Sim.step=function(g,dt,i){var n=g.events.length;o(g,dt,i);for(var k=n;k<g.events.length;k++){var e=g.events[k];if(e.type==="hit"&&e.human)window.__hits++;if(e.type==="point")window.__pts++;}};})()');
@@ -82,13 +88,15 @@ const state = () => evalJs('JSON.stringify({s:VB.ctx.state,m:VB.ctx.game&&VB.ctx
         if(l<0.25) return 'none'; return Math.abs(sx)>Math.abs(sy)?(sx>0?'ArrowRight':'ArrowLeft'):(sy>0?'ArrowUp':'ArrowDown');})()`);
       if (dir === 'serve') { if ((await serve()) !== 'ok') await sleep(200); continue; }
       if (dir !== 'none') await press(dir, 90);
-      await press(' ', 30);
-      if (Math.random() < 0.05) await press('k', 30);
+      if (Math.random() < 0.5) await press('j', 30); else await click(30);   // golpear: tecla o clic izquierdo
+      if (Math.random() < 0.05) await press(' ', 30);                        // Espacio salta
     }
     hits = await evalJs('window.__hits'); points = await evalJs('window.__pts');
     st = await state(); console.log('estado', JSON.stringify(st), 'toques humanos', hits, 'puntos', points);
     check(points > 0, 'se juegan puntos');
     check(hits > 0, 'el humano llega a tocar el balón');
+    const mclk = await evalJs('VB.Input._debug().stats.mouse.hit');
+    check(mclk > 0, 'el clic izquierdo en la pista cuenta como golpear (' + mclk + ' clics)');
     await shot('3-juego');
     await press('p'); await waitFor("VB.ctx.state==='paused'", 8000);
     st = await state(); check(st.s === 'paused', 'P pausa');

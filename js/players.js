@@ -69,25 +69,38 @@
     if (A[1] < 0.25 || B[1] < 0.25) return Math.abs(lumHex(a) - lumHex(b)) * 2 + (A[1] < 0.25 && B[1] < 0.25 ? 0 : 0.6);
     var dh = Math.abs(A[0] - B[0]); dh = Math.min(dh, 360 - dh); return dh / 60 + Math.abs(lumHex(a) - lumHex(b));
   }
+  /** Equipación completa desde los 4 colores de setKit (camiseta, detalles, pantalón, diseño). */
+  function mkKit(shirt, acc, sh, pat) {
+    var light = lumHex(shirt) > 0.62;
+    // CARTOON (arreglos finales): una camiseta casi negra se fundía con la tinta del contorno y con el uniforme negro de los
+    // árbitros; se aclara a pizarra (#383c4a con el negro de la paleta) para que el contorno y los pliegues se lean
+    if (lumHex(shirt) < 0.18) shirt = mixHex(shirt, 0x5a5f78, 0.4);
+    return { base: shirt, top: mixHex(shirt, 0xffffff, 0.14), accent: acc, dark: light ? 0x20242e : mixHex(shirt, 0x000000, 0.62),
+      trim: light ? 0x20242e : 0xffffff, shorts: sh, sole: acc, band: acc, pad: 0x1d1f26, pattern: pat, numFill: light ? '#20242e' : '#ffffff' };
+  }
   function setKit(st) {
     st = st || {};
     var shirt = typeof st.kitShirt === 'number' ? st.kitShirt : TEAM0_DEF.base;
     var acc = typeof st.kitAccent === 'number' ? st.kitAccent : TEAM0_DEF.accent;
     var sh = typeof st.kitShorts === 'number' ? st.kitShorts : TEAM0_DEF.shorts;
     var pat = st.kitPattern || 'diag';
-    var light = lumHex(shirt) > 0.62;
-    // CARTOON (arreglos finales): una camiseta casi negra se fundía con la tinta del contorno y con el uniforme negro de los
-    // árbitros; se aclara a pizarra (#383c4a con el negro de la paleta) para que el contorno y los pliegues se lean
-    if (lumHex(shirt) < 0.18) shirt = mixHex(shirt, 0x5a5f78, 0.4);
-    var t0 = { base: shirt, top: mixHex(shirt, 0xffffff, 0.14), accent: acc, dark: light ? 0x20242e : mixHex(shirt, 0x000000, 0.62),
-      trim: light ? 0x20242e : 0xffffff, shorts: sh, sole: acc, band: acc, pad: 0x1d1f26, pattern: pat, numFill: light ? '#20242e' : '#ffffff' };
+    var t0 = mkKit(shirt, acc, sh, pat);
+    shirt = t0.base;
     var best = CPU_KITS[0], bd = -1;
-    for (var i = 0; i < CPU_KITS.length; i++) {   // la azul de siempre si se distingue bien; si no, la alternativa más distinta
+    // integración Carrera: st.rival = {kitShirt, kitAccent, kitShorts, kitPattern} viste al equipo 1 con la equipación del club
+    // rival si se distingue de la tuya; si se parece, la CPU de siempre (la alternativa más distinta)
+    var rv = st.rival && typeof st.rival.kitShirt === 'number' ? st.rival : null, rk = null;
+    if (rv) {
+      rk = mkKit(rv.kitShirt, typeof rv.kitAccent === 'number' ? rv.kitAccent : 0xffffff, typeof rv.kitShorts === 'number' ? rv.kitShorts : 0x0b0e17, rv.kitPattern || 'diag');
+      if (Math.min(kitDist(shirt, rk.base), kitDist(sh, rk.shorts) + 1.5) < 1.1) rk = null;
+    }
+    if (rk) { best = rk; bd = 9; }
+    else for (var i = 0; i < CPU_KITS.length; i++) {   // la azul de siempre si se distingue bien; si no, la alternativa más distinta
       var d = Math.min(kitDist(shirt, CPU_KITS[i].base), kitDist(sh, CPU_KITS[i].shorts) + 1.5);
       if (i === 0 && d >= 1.1) { best = CPU_KITS[0]; bd = 9; break; }
       if (d > bd) { bd = d; best = CPU_KITS[i]; }
     }
-    var sig = [shirt, acc, sh, pat].join(':');
+    var sig = [shirt, acc, sh, pat, rk ? [rk.base, rk.accent, rk.shorts, rk.pattern].join('/') : ''].join(':');
     if (sig === TEAMS._sig) return false;
     TEAMS[0] = t0; TEAMS[1] = best; TEAMS._sig = sig; kitSig++;
     for (var key in cache) {   // fuera los atletas construidos con la equipación anterior (texturas y mallas)

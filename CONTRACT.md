@@ -12,6 +12,7 @@ Proyecto personal. Este documento es la ley para los 6 especialistas que trabaja
 `js/prog.js` (estadísticas y progresión de tus jugadores: `VB.Prog`, guardado en `voley3d.squad`) también es de **ui_main**; sim lo recibe ya convertido en `createGame({attrs: [[st7, st11], [st3, st9]]})` (atributos 1-99 con las claves `VB.ATTR_KEYS`; 50 = neutro; sin `attrs` la sim no cambia), que deja `p.st`, `p.prof` (perfil de IA, `Sim.statProf`) y `p.ak` (multiplicadores del humano, `Sim.attrK`).
 `tools/drive.js`, `tools/eval.js`, `tools/shot.js`, `tools/cdp.js`, `tools/chrome.js`, `tools/chrome-env.sh`, `tools/perf.js`, `tools/touchplay.js` y `tools/padplay.js` también son de **ui_main**.
 `tools/audiotest.js` es de **audio**; `tools/touchtest.js`, `tools/padtest.js` y `tools/courttest.js` son de **camera_input**.
+`js/badges.js` (`VB.Badges`, insignias), `js/career.js` (`VB.Career`, datos y lógica de la Carrera, sin DOM) y `js/career-ui.js` (`VB.CareerUI`, pantallas de la Carrera: crea su propio DOM `#career` y su `<style>` desde JS) son de **ui_main**, igual que `tools/badgetest.js` y `tools/careertest.js`. Guardados: `voley3d.squad` (v2, con insignias) y `voley3d.career`.
 
 **Reglas**
 - Cada especialista edita SOLO sus ficheros. Nada de tocar ficheros ajenos "solo una línea".
@@ -77,7 +78,7 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
 | `debug, params, frozen` | escena de depuración, parámetros de URL, simulación congelada |
 | `portraitBlock` | móvil en vertical en partido: la sim se detiene y UI muestra "Gira el móvil" |
 | `renderFn` | si no es null, main.js llama `renderFn(ctx)` en vez de `renderer.render(scene,camera)` (post-proceso de arena) |
-| `settings` | `{muted, difficulty, quality:'auto'|'high'|'medium'|'low', showHelp (avisos «¡Golpea!»/«¡Salta!»), setPoints (11 | 15 | 21 | 25, por defecto 25: Partido rápido; main.js lo pasa a Sim.createGame como `points`, set decisivo a min(15, points), ver `Sim.setTarget`), ctrlMode ('both' \| 'one', por defecto 'both': fila «Control» del menú; main.js lo pasa a Sim.createGame como `ctrl`), ctrlPlayer (0 \| 1, por defecto 0: en modo Uno, n.º 7 o n.º 11; la fila «Control» tiene «Los dos» / «Uno · n.º 7» / «Uno · n.º 11»; main.js lo pasa como `ctrlIdx`), coachTips (true: consejos del partido; ui.js lo pone a false al ganar el 1r partido), camStable (false: con true el temblor de cámara es 0), rumble (true), hudScale (1 \| 1.15 \| 1.3), softFlash (false: destellos de luz y flashes suaves; arena/fx leen `ctx.settings.softFlash === true` cada frame)}` persistido en localStorage (validado en `loadSettings`) |
+| `settings` | `{muted, difficulty, quality:'auto'|'high'|'medium'|'low', showHelp (avisos «¡Golpea!»/«¡Salta!»), setPoints (11 | 15 | 21 | 25, por defecto 25: Partido rápido; main.js lo pasa a Sim.createGame como `points`, set decisivo a min(15, points), ver `Sim.setTarget`), ctrlMode ('both' \| 'one', por defecto 'both': fila «Controlar» del menú, «A los dos jugadores» / «Un jugador»; main.js lo pasa a Sim.createGame como `ctrl`), ctrlPlayer (en desuso: loadSettings lo fuerza a 0; la fila se lee «Controlar ‹ a los dos jugadores ›» / «Controlar ‹ un jugador ›» —en filas estrechas «a los dos»— y en modo Uno llevas siempre al n.º 1), coachTips (true: consejos del partido; ui.js lo pone a false al ganar el 1r partido), camStable (false: con true el temblor de cámara es 0), rumble (true), hudScale (1 \| 1.15 \| 1.3), softFlash (false: destellos de luz y flashes suaves; arena/fx leen `ctx.settings.softFlash === true` cada frame), arena ('hall' \| 'beach', por defecto 'hall': Ajustes · Imagen · Escenario, Palau del Mar / Platja Llarga; `?map=beach` lo fuerza en pruebas; arena.js lo aplica con `onSettings(s, 'arena')`)}` persistido en localStorage (validado en `loadSettings`) |
 | `introLeft`, `introSkipReq` | tarjeta de presentación del partido (UI-14): s reales que quedan (> 0 mientras se ve; la sim está PARADA y los eventos iniciales salvo `newMatch` se retienen hasta que acaba) / petición de saltarla |
 | `uiDock` | `{side:'left', frac}` con la hoja final acoplada (pantallas ≥ 1000 px; `frac` = borde derecho / ancho) o `null`; lo publica ui.js cada 8 frames y lo lee camera.js (CAM-10) |
 | `actions` | `startMatch(opts), toMenu(), pause(), resume(), togglePause(), restart(), setSetting(k,v), toggleMute()`. Un `startMatch` HUMANO pedido mientras el arranque aún ensaya estilos (`VB.UI.bootBusy()`) espera a que acabe (`startWait`, tope 9 s); los de autopilot empiezan al momento |
@@ -94,7 +95,7 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
 | `window.__vbFontFaces` | lo deja el script en línea de index.html: número de caras de Google Fonts cargadas DE VERDAD (0 si falla la red). Para comprobar fuentes, usar esto o buscar en `document.fonts` una cara con `status === 'loaded'`; nunca `document.fonts.check()` (da true sin ninguna cara) |
 
 ### 4.2 Simulación `VB.Sim` (sim.js) + `VB.AI` (ai.js) + `VB.C` (constantes)
-- `createGame(opts)` → `game`. `opts = {demo, autopilot, seed, difficulty ('easy'|'normal'|'hard'|'expert' = Fácil/Normal/Difícil/Experto, alias castellanos; orden en `VB.DIFF_ORDER`, nombre visible `VB.DIFF[k].name`), serveClock (false = sin regla de 8 s), stats, rookie (primer partido: la CPU saca más suave; sin efecto en Difícil/Experto), present (pausas de presentación del punto, SIM-03: main.js lo pone en partidos humanos sin autopilot), ctrl ('both' por defecto: el control pasa a quien da el siguiente toque; 'one': el humano lleva siempre a `teams[0][0]` y la IA al compañero en todo, saque incluido, sin eventos `switch`; queda en `g.ctrlMode`; main.js lo toma de `ctx.settings.ctrlMode`), ctrlIdx (0 \| 1, solo con ctrl 'one': 0 = `teams[0][0]` n.º 7, 1 = `teams[0][1]` n.º 11; queda en `g.ctrlIdx`; con 1 el orden de saque del equipo 0 va en espejo; main.js lo toma de `ctx.settings.ctrlPlayer` o de `&ctrlidx=`)}`.
+- `createGame(opts)` → `game`. `opts = {demo, autopilot, seed, difficulty ('easy'|'normal'|'hard'|'expert' = Fácil/Normal/Difícil/Experto, alias castellanos; orden en `VB.DIFF_ORDER`, nombre visible `VB.DIFF[k].name`), serveClock (false = sin regla de 8 s), stats, rookie (primer partido: la CPU saca más suave; sin efecto en Difícil/Experto), present (pausas de presentación del punto, SIM-03: main.js lo pone en partidos humanos sin autopilot), ctrl ('both' por defecto: el control pasa a quien da el siguiente toque; 'one': el humano lleva siempre a `teams[0][0]` y la IA al compañero en todo, saque incluido, sin eventos `switch`; queda en `g.ctrlMode`; main.js lo toma de `ctx.settings.ctrlMode`), ctrlIdx (0 \| 1, solo con ctrl 'one': 0 = `teams[0][0]` n.º 1, 1 = `teams[0][1]` n.º 2; queda en `g.ctrlIdx`; con 1 el orden de saque del equipo 0 va en espejo; el juego pasa siempre 0, el 1 solo con `&ctrlidx=1` o `opts.ctrlIdx` en pruebas)}`.
   `demo`: CPU vs CPU (menú). `autopilot`: partido "humano" pero el equipo 0 lo juega la IA (escenas de depuración).
 - `step(game, dt, input)` — paso fijo `1/120`. `input` en coords de MUNDO: `{move:[wx,wy] (|v|≤1), hit, jump, switchPlayer}`;
   `hit/jump/switchPlayer` son flancos (pulsado en este paso). En saque humano: `move` desplaza al sacador a lo ancho y apunta.
@@ -148,6 +149,18 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
   (reutiliza un objeto interno si no se pasa `out`), `aimPoint(g, out?, move?)` → `{x,y,kind:'serve'|'spike'|'tip'|'free', mode:1|2, aimed, spread, spreadPoor}`
   o null (destino previsto del golpe del humano sin el error de ejecución; `move` = `ctx.simMove`; lo usa fx.js para la retícula), `predictKind(g,p)`, `canDive(g,p)`, `timingQ(te)`, `gradeOf(q)`, `normDiff(d)`; `VB.DIFF`;
   `VB.AI.serveTarget(g, sv)`, `VB.AI.openSpot(g, p, minDepth, out, atk)`; `VB.DIFF_ORDER`, `VB.TIMING`; internos de test `_inBlockVol`, `_serveRisk`, `_recvFail`, `_refreshPred`.
+- **Sprint Carrera (9-nov-2026; detalle en notes/sim.md «Sprint Carrera»)**:
+  - `opts.badges = [[b7, b11], [b3, b9]]` (misma forma que `attrs`), `b = {idInsignia: nivel 1-3}` o null → `p.badges = {id: nivel}` (o null). Sin `badges` la sim es idéntica
+    (no gasta azar). `VB.Sim.BADGE_IDS` = `['canon','mira','rompemanos','seda','bombardero','flotador','muro','ancla','red','motor','sangrefria','lider']`; tablas por nivel en
+    `VB.BADGE` (solo lectura); `VB.Sim.badgeLevel(p, id)`, `VB.Sim.aiReact(g, p, pr)`, `VB.Sim.aiTiming(g, p, pr)`, `VB.Sim.reachOf(g, p)`. Valen para humano e IA.
+  - **Saque dirigible**: `g.aim3 = {on, x, y, kind:'spike'|'serve'}`. Con sacador humano `on = true`, `kind 'serve'` desde el `serveReady` (en `'ready'` el stick mueve al
+    sacador y la diana queda quieta; durante el lanzamiento el stick la mueve a 12 m/s por el campo rival, |x| 1-9, |y| ≤ 4,5; empieza en (−7, 0)). `doServe` apunta a la diana
+    con `VB.Sim.serveSpread(q, jump)` de dispersión (perfecto ≈ exacto; el flotante sigue bailando, conserva un 25 % del desvío). `aimPoint` en saque → `kind 'serve'`,
+    `spread`, `spreadPoor`, `spreadNow` (null antes del silbato). `hit.target` del saque = la diana. `attrK().srvSpread`. La CPU no cambia.
+  - `g.atkSet` (colocador del último ataque).
+  - `opts.ref = {p1, p2, p3, d1?, d2?, d3?, chal}` (Carrera: error arbitral y challenge por competición, `VB.Career.matchSetup().ref`): sustituye a `VB.REF_ERR` en ese partido
+    (`g.refErr`) y `chal` = challenges por set (`g.chalPerSet`; 0 = sin challenge, la UI oculta el contador). Sin `ref`, idéntico (`VB.Sim.refErrP(dist, g?)`).
+  - `opts.nums = [[n1, n2], [n3, n9]]` (cada hueco o equipo puede ser null): dorsal propio (`p.num`); players.js y ui.js ya leen `p.num`.
 - **Saque**: `serveReady` → silbato a los 0,7 s (antes no se puede lanzar) → GOLPEAR lanza flotante / SALTAR lanza en salto (`toss`)
   → GOLPEAR en el momento justo golpea (`hit kind:'serve'`). Si el balón cae sin golpearlo o pasan 8 s → falta de saque (`point reason:'serve'`).
 - Solo sim escribe en `game`. Los demás módulos lo leen y NUNCA lo modifican.
@@ -181,6 +194,10 @@ Todos llevan `type` y `t` (tiempo de juego). `player` es la referencia al objeto
 | `dribble` | `{player, team, x, y, n (1..of), of (botes de este ritual), speed (m/s contra el suelo), last (bool)}` | cada bote del ritual del sacador CPU (SIM-04); en ese paso `ball.z === BR`. Audio: bote controlado |
 | `courtChange` | `{setNo, why:'set'|'eight', score, sets, pause}` | cambio de campo (18.2.1 / 18.2.2): al acabar un set que no cierra el partido y a los 8 del 3.er set. Solo presentación (el humano sigue en x > 0) |
 | `fx:highfive` / `fx:fistbump` / `fx:chestbump` / `fx:clap` | `{team, x, y, z (sim), strength 0..1}` | NO los emite sim: main.js vacía `VB.Players.drainFx()` justo después de `Players.update` y los añade al array del frame (contactos cosméticos de la celebración; FX, cámara, audio y UI los ven). Audio: `highfive` → choque, `fistbump` → puños, `chestbump` → pecho (PLY-15, victoria del partido, strength 1), `clap` → palmada de ánimo; `fx:catch` (players, cada recogida del bote en el ritual del sacador CPU, strength 0,6) → recogida blanda; `fx:call` (players, PLY-20: «¡mía!» del que va a por el balón, un evento por balón, `z` = cabeza, strength 0,6; audio lo ignora por ahora) |
+
+**Añadidos del sprint Carrera a los eventos**: `hit.dig` (bool, defensa controlada de un remate rival), `hit.recv` (bool, 1r toque tras un saque);
+`point.assist` (jugador de la colocación del remate que gana el punto, solo con `how 'kill'`, o null) y `point.tool` (bool, remate que toca el bloqueo rival y sale fuera);
+`g.lastPoint` copia los dos. Los cuenta `VB.Badges.ingest` (insignias) y `VB.Career.ingest` (nota del partido).
 
 ### 4.4 Módulos de presentación (todas las funciones son opcionales; main.js las llama con guarda y try/catch)
 Objetos: `VB.Arena`, `VB.FX`, `VB.Players`, `VB.CameraRig`, `VB.Input`, `VB.Audio`, `VB.UI`.
@@ -296,6 +313,30 @@ ui_main: chip de la jugada «JUGADA · N» y subtítulo «¡Jugada de N toques!�
 set/partido; `placeT3` coloca `#banner` fuera del marcador entero, `.hud-btns` y la pausa táctil (mueve el centro con `style.left`; `&uidbg=1` registra candidatos);
 `#coach.thru` (0,28) y `#guide.thru` (0,22) en todas las pantallas; `tryReveal` no empieza relevo en escenas `debug=`.
 
+**Insignias y Carrera (ui_main)**:
+- `VB.Badges` (js/badges.js, sin DOM): `LIST` (`{id, name, icon (SVG), desc, fx[3], cond, unit, th [bronce, plata, oro]}`), `IDS`, `BY`, `TIERS`, `ingest(e, g)` (ui.js la llama con
+  cada evento; solo cuenta partidos humanos del equipo 0: no demo, autopilot ni depuración), `endMatch(g, win, athletes?)` → `[{slot, num, id, name, lvl, prev, tier, eq}]`
+  (por defecto el escuadrón de Partido rápido, que guarda; con atletas propios —Carrera— guarda quien llama), `forPlayer(a)` → `{id: nivel}` de las EQUIPADAS,
+  `forSquad()` → `[[b7, b11], null]` o null, `slots(a)` = mín(6, 2 + floor(nivel/5)), `toggle/equip/unequip(a, id)`, `progress`, `level`, `label(u)`.
+  Progreso en cada atleta de `VB.Prog`: `a.bp` (contadores), `a.bd` (`{id: nivel}`), `a.beq` (equipadas).
+- `VB.Prog` (js/prog.js) añade funciones sobre un atleta cualquiera (no guardan): `newAthlete(o)`, `saneAthlete(a)`, `athleteAddXP(a, xp)`, `athleteBump(a, k)`, `athleteAttrs(a)`, `squad()`.
+- `VB.Career` (js/career.js, sin DOM; guardado `voley3d.career`): `exists/get/create/abandon/save`, `next(c)`, `matchSetup(c)` → `{attrs, badges, points, difficulty, ctrl,
+  ctrlIdx, ref, kit, rivalKit, career}`, `ingest(evs, g)`, `matchDone(r, st, g)` → resumen `{nota, xp, lvlUp, lvl, ptsGained, badges}`, `simulateNext(c)`, `abortMatch()`,
+  `table(c, lvl)`, `bump(k)`, `toggleBadge(id)`, `acceptOffer(i)`, `stay()`, `lost()` (había un guardado que no se pudo reparar; copia en `voley3d.career.bak`).
+  Ofertas: `{club, lvl, ovr, mate, interest, role, years}` (`lvl`/`ovr`: liga y media de la temporada en la que jugarías).
+- `VB.CareerUI` (js/career-ui.js): `open(view?, o?)`, `isOpen()`, `back()`, `nav(it, dt)` (mando; main.js la llama en lugar de `VB.UI.nav` mientras está abierta).
+- main.js: `ctx.actions.startCareerMatch()` arranca el partido de Carrera con `createGame({attrs, badges, points, difficulty, ctrl, ctrlIdx, ref, nums})`, marca `g.career`
+  (`{season, week, label, me, rival, meName, rivalName, player, num, mate, mateNum, …}`) y viste los dos equipos (`Players.setKit({...kit, rival: rivalKit})`). Con `g.career`
+  ui.js no reparte XP ni insignias al escuadrón (lo hace `VB.Career.matchDone`, que main.js llama al llegar `gameOver`) y el marcador muestra las abreviaturas de los clubes.
+  Partido rápido: `badges: VB.Badges.forSquad()` (salvo autopilot y depuración; `&nobadges=1` las quita).
+- players: `setKit(st, g)` acepta `st.rival = {kitShirt, kitAccent, kitShorts, kitPattern}` para el equipo 1 (si se parece demasiado a la tuya, la CPU de siempre).
+- fx: diana del saque (`g.mode === 'serve' && g.aim3.on && g.aim3.kind === 'serve'`), turquesa (dorada con `spreadNow` < ~0,45 m); notes/arena.md.
+- main.js: en `g.mode === 'serve'` la entrada se pasa a mundo con los ejes de la PISTA (el más cercano de la base de la cámara), no con la
+  base girada: ↑ lleva la diana recta al fondo y ←/→ solo a lo ancho.
+- ai.js: la IA deja botar el saque rival que se va fuera (`leaveServe`, una decisión por saque y equipo en `g._lv`).
+- ui.js: en un partido de Carrera los textos con «CPU» (cintas, avisos, consejo, lector de pantalla, rótulo del challenge) pasan por
+  `cpuTxt` («Remate del rival», «Tú 3, PUE 1»), y el partido no cuenta para el récord de Partido rápido (`voley3d.record`).
+
 **Cámara (convención)**: los cambios de jugador SIEMPRE deslizan (nunca corte). El plano de reacción del punto (camera.js `planPoint`) usa
 cortes deliberados de retransmisión (a ~0,45 s del bote y de vuelta al saque si cruza la red o está a > 11 m); no son cambios de control.
 **Señal de golpeo (una sola ventana)**: el brillo de GOLPEAR/SACAR (input.js `CUE_OFF/CUE_ON`), el aro que se cierra sobre el botón (`.vt-ring`, clase `.cue`),
@@ -384,3 +425,19 @@ Arte y nombres originales; marcas de las vallas ficticias (NÓRDIKA, VOLTA, ALBA
   geometría trae el atributo `ow` (0..1) se usa como peso por vértice. Nunca devuelve null: en calidad baja queda oculto (`userData.inkRank` 1 = desde media,
   2 = solo alta; `userData.inkOn = false` lo apaga). `drop(o)` lo quita de la lista (players, al reconstruir los atletas).
 - Un solo gradientMap y una sola tinta para atletas, pabellón y mobiliario. El balón (fx.js) usa el mismo gradientMap y su propio contorno de ~2 px.
+
+### Pulido 10-nov-2026 (controles PC, dorsales, Control, separadores, pantallas grandes, playa)
+- **Teclas (input.js; textos de ui.js salen de la tabla `GLYPH`):** moverse WASD/flechas; golpear y sacar **J** o **X** o **clic izquierdo**; saltar (en el
+  aire: dejada) **Espacio** o **clic derecho** (K sigue saltando como alias no anunciado); C cambiar jugador; V challenge; P/Esc pausa; M sonido; Intro aceptar;
+  F pantalla completa. Espacio ya no golpea. El clic entra en el mismo mapa que las teclas (ids `Mouse0`/`Mouse2`: mantener = hitHeld/jumpHeld), solo con
+  `pointerType 'mouse'`, solo en `playing`, nunca sobre `MOUSE_UI` (botones, paneles, overlay táctil) ni con los controles táctiles a la vista.
+- **Dorsales:** tu pareja lleva el **1** y el **2** (`createGame`: `mkPlayer(0, 1, 0)`, `mkPlayer(0, 2, 1)`; CPU 3 y 9). `prog.js` renumera escuadrones
+  guardados (7/11 → 1/2) sin perder progreso. Carrera: dorsal por defecto 1, compañero 2.
+- **Control:** `ctrlMode` de dos valores ('both' \| 'one'); en 'one' siempre el n.º 1. Carrera usa las mismas palabras y orden («A los dos jugadores» / «Un jugador»).
+- **Separadores:** `VB.UI.sep(parts, kind, html)` (= `sepHTML` de ui.js; career-ui.js lo usa vía `sp()`): 'd' rombo (antetítulos), 'v' raya fina (ayudas de
+  teclas, parciales, estadísticas), 's' barra inclinada (pares cortos), 'c' pastillas (datos de una opción). `parts` es array o texto con « · »; entre trozos
+  va una coma `.sr` para lectores. Las frases van con puntuación normal, no con «·».
+- **Escala de UI:** `--vs` en `#app` (ui.js `vpFit`): 1 hasta ~1280×760, 1,34 a 1920×1080, 1,71 a 2560×1440, tope 2; `.vs-up` con --vs > 1,05. Menú, Carrera
+  (`.cr-in`) y tarjeta de presentación (`#intro .in-card`) usan `zoom: var(--vs)`; HUD y hojas usan `--hs` = Tamaño del HUD × --vs. Por debajo no cambia nada.
+- **Escenario:** ajuste `arena` (arriba). `VB.Arena.venueName(id?)` da «Palau del Mar» / «Platja Llarga»; ui.js cambia el nombre en los textos visibles
+  (los que nombran los dos se dejan). La playa se construye al elegirla y se libera al volver (sin fugas); el pabellón solo se oculta. Ver notes/arena.md «Playa».

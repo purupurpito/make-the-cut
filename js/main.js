@@ -67,7 +67,7 @@
     // coachTips: consejos del partido (franja de arriba). Se ven hasta la primera victoria: ui.js los apaga al ganar el 1r partido
     // y se pueden volver a encender en Ajustes · Juego.
     var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, camSens: 1, sfxVol: 1, musicVol: 0.75,
-      camStable: false, rumble: true, hudScale: 1, softFlash: false };
+      camStable: false, rumble: true, hudScale: 1, softFlash: false, arena: 'hall' }; // arena: sede ('hall' Palau del Mar | 'beach' Platja Llarga; ?map=beach en pruebas)
     var saved = false;
     var o = null;
     try { var raw = localStorage.getItem('voley3d.settings'); if (raw) { saved = true; o = JSON.parse(raw); for (var k in o) if (k in s && typeof o[k] === typeof s[k]) s[k] = o[k]; } } catch (e) { }
@@ -90,7 +90,7 @@
     // equipación: solo colores de las paletas de ui.js (OPT.kit*) y diseños conocidos
     if (['diag', 'liso', 'franjas', 'rayas'].indexOf(s.kitPattern) < 0) s.kitPattern = 'diag';   // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS)
     if (s.ctrlMode !== 'one') s.ctrlMode = 'both';                      // control: los dos jugadores o solo uno (sim: g.ctrlMode)
-    if (s.ctrlPlayer !== 1) s.ctrlPlayer = 0;                           // modo Uno: 0 = teams[0][0] (n.º 7), 1 = teams[0][1] (n.º 11); sim: ctrlIdx
+    s.ctrlPlayer = 0;                                                    // modo Uno: llevas siempre al n.º 1 (teams[0][0]); el ajuste antiguo (1 = el otro) se ignora
     if (Q.diff && DIFFS.indexOf(Q.diff) >= 0) s.difficulty = Q.diff;
     return s;
   }
@@ -270,10 +270,11 @@
   }
 
   // ---------- Partidas ----------
-  function setGame(g) {
+  function setGame(g, kit) {
     ctx.game = g; ctx.timeScale = 1; acc = 0;
     pendingEvents.length = 0;
-    call('Players', 'setKit', ctx.settings, null); // equipación personalizada (Ajustes · Equipación) antes de construir atletas
+    // equipación personalizada (Ajustes · Equipación) antes de construir atletas; en Carrera, la del club
+    call('Players', 'setKit', kit || ctx.settings, null);
     Sim.drainEvents(g, pendingEvents); // eventos iniciales (newMatch, serveReady...) se entregan en el primer frame
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onGameStart', g);
     fixShadowDepth(); // los jugadores se reconstruyen en onGameStart
@@ -286,13 +287,20 @@
   // a startMatch a los ~2,5 s; con el menú, la cortinilla ya espera sola) espera a que acabe (como mucho hasta los 9 s): si no, el
   // ensayo se cortaba y el primer uso de la tarjeta de presentación o del aviso del saque costaba un frame de 45-70 ms.
   var startWait = null;
-  /** Modo «Control: Uno»: a cuál de los dos controla el humano (0 = teams[0][0], 1 = teams[0][1]); opts.ctrlIdx > &ctrlidx= > ajuste. */
+  /** Modo «Control: Uno»: a cuál de los dos controla el humano. En el juego siempre al n.º 1 (0 = teams[0][0]); opts.ctrlIdx y
+   *  &ctrlidx=1 (el n.º 2) quedan solo para pruebas. */
   function ctrlIdxOf(opts) {
-    var v = opts && opts.ctrlIdx != null ? +opts.ctrlIdx : Q.ctrlidx != null ? +Q.ctrlidx : ctx.settings.ctrlPlayer;
+    var v = opts && opts.ctrlIdx != null ? +opts.ctrlIdx : Q.ctrlidx != null ? +Q.ctrlidx : 0;
     return v === 1 ? 1 : 0;
   }
   ctx.actions.startMatch = function (opts) {
     opts = opts || {};
+    // Carrera: «Reiniciar partido» (pausa) repite el partido de Carrera; «Revancha» / Intro en la hoja final vuelven al hub
+    // (ui.js llama a startMatch() sin opciones en los dos casos)
+    if (!opts.career && !opts.autopilot && ctx.game && ctx.game.career && !ctx.game.demo) {
+      if (ctx.state === 'over') { ctx.actions.toMenu(); return; }
+      if (ctx.state === 'paused' || ctx.state === 'playing') { ctx.actions.startCareerMatch(); return; }
+    }
     // (solo partidos humanos: los de autopilot —herramientas de medida— empiezan al momento, como siempre)
     if (!ctx.debug && !opts.autopilot && call('UI', 'bootBusy')) { startWait = opts; return; }
     startWait = null;
@@ -300,7 +308,18 @@
     tryFullscreen();
     ctx.frozen = false;
     // present (SIM-03): en los partidos de verdad la pausa del punto se alarga en los momentos grandes (y se puede recortar)
-    setGame(Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: isRookie(), present: !opts.autopilot, points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: opts.ctrl || Q.ctrl || ctx.settings.ctrlMode, ctrlIdx: ctrlIdxOf(opts), attrs: !opts.autopilot && !Q.debug && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null }));
+    var cs = opts.career || null, own = !opts.autopilot && !Q.debug;
+    var g = Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: cs ? false : isRookie(), present: !opts.autopilot,
+      points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: opts.ctrl || Q.ctrl || ctx.settings.ctrlMode, ctrlIdx: ctrlIdxOf(opts),
+      attrs: opts.attrs || (own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null),
+      badges: cs ? (opts.badges || null) : (own && !Q.nobadges ? squadBadges() : null),
+      ref: opts.ref || undefined, nums: opts.nums || undefined });
+    // partido de Carrera: marca para ui.js/badges.js (no reparten experiencia ni insignias al escuadrón de Partido rápido) y
+    // para el hub (VB.Career.matchDone al llegar gameOver)
+    if (cs) g.career = cs;
+    endTweaked = false; careerEnd = null;
+    if (!cs) restoreEndButtons();
+    setGame(g, opts.kit || null);
     setState('playing');
     // los jugadores se reconstruyen en onGameStart: sube sus texturas/programas antes del primer frame
     // (sin pintar: aquí no hay telón que tape los objetos ocultos)
@@ -308,6 +327,72 @@
     // UI-14: tarjeta de presentación (partidos humanos; en depuración solo con &intro=1)
     if (!opts.autopilot && !opts.noIntro && Q.intro !== '0' && (!ctx.debug || Q.intro === '1')) introStart();
   };
+  /** Insignias equipadas del escuadrón de Partido rápido para createGame({badges}) (null sin js/badges.js o sin ninguna). */
+  function squadBadges() {
+    var B = VB.Badges; if (!B) return null;
+    try {
+      if (B.forSquad) return B.forSquad();
+      if (!B.forPlayer || !VB.Prog || !VB.Prog.squad) return null;
+      var sq = VB.Prog.squad(), b = [B.forPlayer(sq[0]), B.forPlayer(sq[1])].map(function (o) { return o && Object.keys(o).length ? o : null; });
+      return b[0] || b[1] ? [b, null] : null;
+    } catch (e) { reportError('Badges.forSquad', e); return null; }
+  }
+  // ---------- Carrera (js/career.js + js/career-ui.js) ----------
+  // startCareerMatch: el próximo partido de la Carrera (atributos de los 4, tus insignias, puntos, perfil del rival, control y
+  // equipación del club). Al llegar gameOver, VB.Career.matchDone (antes de que ui.js pinte la hoja final, para que badges.js
+  // cierre las insignias sobre tu atleta y no sobre el escuadrón); la hoja final ofrece «Volver a la Carrera».
+  var endTweaked = false, careerEnd = null, menuOnly = false;
+  // «Menú principal» de la hoja final de Carrera va al menú principal (antes abría el hub igual que «Volver a la Carrera»).
+  // ui.js llama a toMenu() con los dos botones: se marca aquí, en captura, antes de que llegue su manejador.
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('#btnMenu') : null;
+    if (t && endTweaked && ctx.game && ctx.game.career) menuOnly = true;
+  }, true);
+  ctx.actions.startCareerMatch = function () {
+    var K = VB.Career; if (!K || !K.matchSetup) return false;
+    var m = null; try { m = K.matchSetup(); } catch (e) { reportError('Career.matchSetup', e); }
+    if (!m) { if (VB.CareerUI && VB.CareerUI.open) VB.CareerUI.open(); return false; }
+    if (K.abortMatch) K.abortMatch();
+    ctx.actions.startMatch({ career: m.career, attrs: m.attrs, badges: m.badges, points: m.points, difficulty: m.difficulty, ctrl: m.ctrl, ctrlIdx: m.ctrlIdx, ref: m.ref,
+      kit: m.kit ? Object.assign({}, m.kit, { rival: m.rivalKit || null }) : null, // + equipación del club rival (Players.setKit st.rival)
+      nums: m.career ? [[m.career.num | 0 || null, m.career.mateNum | 0 || null], null] : undefined }); // tus dorsales (sim: opts.nums)
+    return true;
+  };
+  function restoreEndButtons() {
+    var a = document.getElementById('btnAgain'); if (a && a.getAttribute('data-cr')) { a.textContent = a.getAttribute('data-cr'); a.removeAttribute('data-cr'); }
+    var m = document.getElementById('btnMenu'); if (m && m.getAttribute('data-cr')) { m.textContent = m.getAttribute('data-cr'); m.removeAttribute('data-cr'); }
+  }
+  function fmt1(v) { return (Math.round(v * 10) / 10).toFixed(1).replace('.', ','); }
+  function escHtml(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); }
+  /** Hoja final de un partido de Carrera (tras showEnd de ui.js): título con el rival, antetítulo con la competición, nota y
+   *  experiencia, y «Volver a la Carrera» en vez de «Revancha». Solo DOM: ui.js no se toca. */
+  function careerEndSheet(g, s) {
+    endTweaked = true;
+    var cs = g.career || {};
+    var $ = function (id) { return document.getElementById(id); };
+    var a = $('btnAgain'), alt = $('btnAgainAlt'), mn = $('btnMenu'), t = $('endTitle'), k = $('endKicker'), rec = $('endRecord');
+    if (a) { if (!a.getAttribute('data-cr')) a.setAttribute('data-cr', a.textContent); a.textContent = 'Volver a la Carrera'; }
+    if (mn) { if (!mn.getAttribute('data-cr')) mn.setAttribute('data-cr', mn.textContent); mn.textContent = 'Menú principal'; }
+    if (alt) alt.hidden = true;
+    var win = g.sets && g.sets[0] > g.sets[1];
+    if (t && !win && cs.rivalName) t.textContent = 'Gana el ' + cs.rivalName;
+    if (k && cs.label) k.textContent = cs.label;
+    if (rec && s) {
+      var d = document.createElement('div'); d.className = 'end-xp';
+      var html = '<span>Nota: <b>' + fmt1(s.nota || 0) + '</b></span><span>' + (cs.player ? escHtml(cs.player) + ': ' : '') + '<b>+' + (s.xp | 0) + ' XP</b>' + (s.lvlUp ? ' <span class="lv">¡NIVEL ' + s.lvl + '! +' + s.ptsGained + ' PT</span>' : '') + '</span>';
+      d.innerHTML = html; rec.appendChild(d);
+      // insignias nuevas o que suben: en una fila compacta con su icono (el mismo estilo .end-bd que la hoja de Partido rápido);
+      // con el texto largo («¡Insignia nueva: …!») cada una ocupaba una línea y a 844×390 «Menú principal» quedaba fuera
+      if (s.badges && s.badges.length && VB.Badges) {
+        var bd = document.createElement('div'); bd.className = 'end-bd'; var bh = '';
+        s.badges.forEach(function (u) {
+          var b = VB.Badges.BY && VB.Badges.BY[u.id], tier = u.tier || (VB.Badges.TIERS && VB.Badges.TIERS[u.lvl]) || '';
+          bh += '<span class="l' + (u.lvl | 0) + '" title="' + escHtml(VB.Badges.label ? VB.Badges.label(u) : u.name) + '"><i class="bd-ic">' + (b ? b.icon : '') + '</i><b>' + escHtml(u.name) + '</b><small>' + (u.prev ? 'sube a ' + tier : 'nueva · ' + tier) + '</small></span>';
+        });
+        bd.innerHTML = bh; rec.appendChild(bd);
+      }
+    }
+  }
   // ---------- Presentación del partido (UI-14) ----------
   // Tarjeta de INTRO_SEC s al empezar: la sim queda parada (sin serveReady ni silbato; los eventos iniciales salvo newMatch se
   // guardan y se entregan al acabar), el mundo sigue animándose (dt de presentación = tiempo real). Cualquier botón, tecla o toque
@@ -334,9 +419,15 @@
   }
   ctx.actions.toMenu = function () {
     if (intro.left > 0) { intro.left = 0; ctx.introLeft = 0; intro.held.length = 0; call('CameraRig', 'playIntro', 0); call('UI', 'introEnd', true); }
+    var fromCareer = !!(ctx.game && ctx.game.career && !ctx.game.demo && !ctx.debug);
+    if (fromCareer && !careerEnd && VB.Career && VB.Career.abortMatch) VB.Career.abortMatch(); // partido abandonado: la jornada sigue pendiente
     ctx.frozen = false;
+    restoreEndButtons();
     setGame(Sim.createGame({ demo: true, seed: seed(), difficulty: 'normal' }));
     setState('menu');
+    if (fromCareer && !menuOnly && VB.CareerUI && VB.CareerUI.open) { try { VB.CareerUI.open('hub', { fresh: !!careerEnd }); } catch (e) { reportError('CareerUI.open', e); } }
+    else if (fromCareer && VB.CareerUI && VB.CareerUI.syncMenu) { try { VB.CareerUI.syncMenu(); } catch (e) { } }
+    careerEnd = null; menuOnly = false;
   };
   ctx.actions.pause = function () { if (ctx.state === 'playing') setState('paused'); };
   ctx.actions.resume = function () { if (ctx.state === 'paused') setState('playing'); };
@@ -426,7 +517,14 @@
     // it: intenciones crudas de VB.Input.poll (pantalla: mx derecha+, my hacia la red+)
     var bs = VB.CameraRig && VB.CameraRig.getBasis ? VB.CameraRig.getBasis() : null;
     var mx = it ? it.mx || 0 : 0, my = it ? it.my || 0 : 0;
-    if (bs) { simIn.move[0] = bs.rx * mx + bs.fx * my; simIn.move[1] = bs.ry * mx + bs.fy * my; }
+    var g0 = ctx.game;
+    if (bs && g0 && g0.mode === 'serve' && !g0.demo) {
+      // saque: ejes de la pista, no de la cámara (que está algo girada). Así ↑ sola lleva la diana recta al fondo y ←/→ la mueven
+      // solo a lo ancho (antes ↑ iba de (−7, 0) a (−9, 2)); y antes de lanzar, ←/→ desplazan al sacador sin deriva.
+      var ax = Math.abs(bs.fx) >= Math.abs(bs.fy), fX = ax ? (bs.fx < 0 ? -1 : 1) : 0, fY = ax ? 0 : (bs.fy < 0 ? -1 : 1);
+      var rX = ax ? 0 : (bs.rx < 0 ? -1 : 1), rY = ax ? (bs.ry < 0 ? -1 : 1) : 0;
+      simIn.move[0] = rX * mx + fX * my; simIn.move[1] = rY * mx + fY * my;
+    } else if (bs) { simIn.move[0] = bs.rx * mx + bs.fx * my; simIn.move[1] = bs.ry * mx + bs.fy * my; }
     else { simIn.move[0] = -my; simIn.move[1] = mx; } // por defecto: cámara detrás mirando a -x
     if (it) { edge.hit = edge.hit || !!it.hit; edge.jump = edge.jump || !!it.jump; edge.switchPlayer = edge.switchPlayer || !!it.switchPlayer; }
   }
@@ -467,14 +565,16 @@
       if (it.padEvent) call('UI', 'padEvent', it.padEvent); // 'connected' | 'disconnected' (antes de la pausa que provoca)
       if (it.pause) {
         // Esc/Start/P: primero cierra un panel abierto; si no, pausa/reanuda
-        if (!call('UI', 'back') && (ctx.state === 'playing' || ctx.state === 'paused')) ctx.actions.togglePause();
+        if (ctx.state === 'menu' && VB.CareerUI && VB.CareerUI.isOpen && VB.CareerUI.isOpen()) call('CareerUI', 'back');
+        else if (!call('UI', 'back') && (ctx.state === 'playing' || ctx.state === 'paused')) ctx.actions.togglePause();
       }
       if (it.mute) ctx.actions.toggleMute();
       if (it.challenge && ctx.state === 'playing' && !(intro.left > 0)) ctx.actions.challenge(); // B4: V / LT
       if (it.any) call('Audio', 'unlock');
       if (ctx.state !== 'playing') {
         var st0 = ctx.state;
-        call('UI', 'nav', it, realDt);
+        if (VB.CareerUI && VB.CareerUI.isOpen && VB.CareerUI.isOpen()) call('CareerUI', 'nav', it, realDt);
+        else call('UI', 'nav', it, realDt);
         if (ctx.state !== st0) { it.hit = it.jump = it.switchPlayer = false; } // el botón que acepta un menú no golpea
       }
     }
@@ -518,6 +618,7 @@
       if (n === MAX_STEPS) acc = 0;
       Sim.drainEvents(g, frameEvents);
       if (ctx.state === 'playing' && g.finished && frameEvents.some(isGameOver)) setState('over');
+      if (g.career && !g.demo && frameEvents.length) careerEvents(g, frameEvents);
     } else { edge.hit = edge.jump = edge.switchPlayer = false; acc = 0; }
     ctx.gameDt = gdt;
 
@@ -543,6 +644,10 @@
     call('Audio', 'handle', ev, g);
     call('Audio', 'update', g, realDt);
     call('UI', 'update', g, gdt, ev);
+    if (g && g.career && !g.demo) {
+      if (careerEnd && !endTweaked && ctx.state === 'over') { try { careerEndSheet(g, careerEnd); } catch (e) { reportError('careerEndSheet', e); } }
+      // (marcador con las abreviaturas de los clubes: lo pinta ui.js con g.career.me / g.career.rival)
+    }
 
     // En pausa (y en la pantalla final ya asentada) la escena queda detrás de un velo desenfocado: se pinta
     // a 1/3 de frecuencia para ahorrar batería y calor en el móvil. Entrada y UI siguen a ritmo completo.
@@ -570,6 +675,17 @@
     ctx.frameMs = performance.now() - tWork;
   }
   function isGameOver(e) { return e.type === 'gameOver'; }
+  /** Partido de Carrera: estadísticas para la nota (VB.Career.ingest) y cierre en gameOver (antes de UI.update). */
+  function careerEvents(g, evs) {
+    var K = VB.Career; if (!K) return;
+    try { if (K.ingest) K.ingest(evs, g); } catch (e) { reportError('Career.ingest', e); }
+    for (var i = 0; i < evs.length; i++) {
+      var e = evs[i];
+      if (e.type !== 'gameOver' || careerEnd) continue;
+      try { careerEnd = K.matchDone({ sets: [e.sets[0], e.sets[1]], setScores: e.setScores || g.setScores, win: e.team === 0 }, null, g) || { nota: 0, xp: 0 }; }
+      catch (er) { reportError('Career.matchDone', er); careerEnd = { nota: 0, xp: 0 }; }
+    }
+  }
   function safePoll(dt) { try { return VB.Input.poll(dt); } catch (e) { reportError('Input.poll', e); return null; } }
 
   // ---------- Medición y calidad adaptativa ----------

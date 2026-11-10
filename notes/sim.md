@@ -871,3 +871,104 @@ Todo en coordenadas de simulación; equipo 0 = humano. Nada de lo nuevo cambia `
   simtest: bandas esperadas 0,35-0,55 / 0,22-0,38 / 0,09-0,21 / 0 (medido 0,436/0,272/0,158/0); la CPU pide challenge 34/156.
 - simtest «modo controlar 1 jugador»: comprobaciones de `ctrlIdx` (por defecto, 1, fuera de modo uno, valor raro, saque inicial) y 6
   partidos (4 con el n.º 7, 2 con el n.º 11) contando toques, saques y bloqueos del compañero IA (mínimos también para el n.º 11).
+
+## Sprint Carrera (9-nov-2026): saque dirigible, insignias y eventos para desbloquearlas — sim
+Ficheros: `js/sim.js`, `js/ai.js`, `tools/simtest.js`. Sin `opts.badges` y en CPU contra CPU / autopilot la sim es idéntica
+a la de antes (comprobado contra la copia previa: demo, autopilot y autopilot con atributos, 600 s cada uno, misma huella de
+puntos y de velocidades de cada toque). Lo que sí cambia sin insignias es el SAQUE DEL HUMANO (diana nueva).
+
+### 1. Saque dirigible (`g.aim3.kind = 'serve'`)
+- `g.aim3 = {on, x, y, kind}`; `kind` nuevo: `'spike'` (remate apuntado A1, como antes) | `'serve'` | `''`.
+- Con el humano sacando (`setupServe` → `serveAimReset`; también tras un challenge fallado en saque): `on = true`, `kind = 'serve'`,
+  diana en el centro del fondo rival (`x = −7`, `y = 0`). Con el sacador CPU (o el compañero IA en modo Uno, demo, autopilot): `on = false`.
+- En `'ready'` el stick ya mueve al sacador a lo ancho, así que la diana se queda QUIETA (pero se ve). En `'toss'` la dirección de
+  mundo la mueve a 12 m/s (`updateServeAim`) por todo el campo rival hasta las líneas: |x| de 1,0 a 9,0, |y| <= 4,5. `doServe` y
+  `point` la apagan (`on = false`; `kind` se queda en `'serve'` hasta el siguiente remate apuntado, que lo pone a `'spike'`).
+  El remate apuntado y el `aimPoint` del peloteo ignoran una diana con `kind 'serve'`.
+- `doServe` (humano, diana encendida): destino = diana + error uniforme en un círculo de radio
+  `VB.Sim.serveSpread(q, jump) × p.ak.srvSpread` (atributo Saque: `attrK` añade `srvSpread = 1,2 − 0,4·f(serve)`, 1 a 50).
+  `serveSpread`: en salto `2·(1−q)^1,2` (q >= 0,9: como mucho 1 − q) → 0,95: 0,05 · 0,78: 0,33 · 0,5: 0,87 · 0,2: 1,53 m;
+  flotante `0,1 + 1,5·(1−q)^1,2` (q >= 0,9: como mucho 0,1 + 1 − q) → 0,95: 0,14 · 0,5: 0,75 · 0,2: 1,27 m. Con buen timing el
+  salto es más preciso; con mal timing, más arriesgado. Sigue el «a la red» con q < 0,45. Bota EN la diana (`tz = BR`).
+- Flotante dirigido: el baile (`wobA/wobF/wobP`) se decide antes de lanzar y `aimFloat` lanza de forma que, bailando, caiga en la
+  diana con un 25 % del desvío del baile (`FLOAT_DANCE`: sigue bailando en el aire y algo al caer) y pase la red con margen
+  (sin eso los flotantes cortos se iban a la red: el baile frena el balón). Un flotante corto desde el fondo sale en globo.
+- `hit.target` del saque = la diana. `aimPoint` en saque con la diana: `x,y = g.aim3`, `kind 'serve'`, `aimed true`, `mode` 1/2 como
+  antes (null antes del silbato, aunque `g.aim3.on` ya sea true), `spread`/`spreadPoor` = serveSpread(0,95 / 0,3) (flotante en
+  'ready'; salto o flotante según el lanzamiento en 'toss'), `spreadNow` = serveSpread de la calidad si pulsara AHORA (con el
+  balón ya bajando; antes, el valor medio). La CPU no cambia.
+- Medido (simtest «(c)»: 24 saques a las 4 esquinas, receptores apartados): salto perfecto 0,015 m de media, flotante perfecto
+  0,20 m, salto tarde (0,13 s) 0,70 m, flotante tarde 0,62 m. Aces de flotante perfecto en Normal: sin apuntar 3 % (antes 4 %),
+  apuntado a la esquina 19 % (antes 11 %; banda de simtest 7-16 % → 9-25 %). La matriz de bots sigue dentro de sus bandas.
+
+### 2. Insignias (`createGame({badges})`)
+- `badges = [[b7, b11], [b3, b9]]`, `b = {id: nivel}` (1 bronce, 2 plata, 3 oro) o null. `p.badges` = `{id: nivel}` solo con ids
+  conocidos y nivel redondeado a 1-3 (null si ninguno). En la demo no se aplican (como los atributos). `VB.Sim.BADGE_IDS` = los 12
+  ids; tablas por nivel `[0, bronce, plata, oro]` en `VB.BADGE` (solo lectura). Valen para el jugador lo lleve el humano o la IA.
+
+| id | efecto en la sim |
+|---|---|
+| `canon` | remate +0,6/1,2/1,8 m/s (humano e IA), con la MISMA trayectoria: la gravedad efectiva del liftado sube con (v1/v0)² (`boostDip`); si no, `launchDirect` frenaba el remate para pasar la red y la insignia casi no se notaba |
+| `mira` | humano: radio de la diana del remate ×0,88/0,78/0,68 (también en `aimPoint`); IA: `atkErr` ×0,9/0,8/0,7 |
+| `rompemanos` | si su remate toca el bloqueo: +8/16/24 puntos ABSOLUTOS de block-out (dado previo con x/(1 − P(tool)); solo se tira si lo lleva el atacante) |
+| `seda` | tras SU colocación buena o perfecta, el remate (no la dejada) del compañero: ventana ×1,08/1,16/1,25 (humano), +0,4/0,8/1,2 m/s (como Cañón), IA `atkErr` ×0,85/0,7/0,55 |
+| `bombardero` | saque en salto +0,7/1,4/2,1 m/s (misma trayectoria, `boostDip`); IA: prob. de saque en salto +0,1/0,2/0,3 |
+| `flotador` | baile del flotante ×1,15/1,3/1,45 (humano e IA) |
+| `muro` | IA: oficio del bloqueo (`k` de `checkBlock`) +0,04/0,08/0,12; humano: calidad del contacto `cq` ×1,08/1,16/1,25 (máx. 1) |
+| `ancla` | humano: ventana de la recepción del saque ×1,06/1,12/1,18; IA: `recv` +0,02/0,04/0,06 del receptor previsto (el que llega antes al bote, `g._rc.who` de `serveRisk`) |
+| `red` | alcance de defensa (1r toque que no es recepción) y de plancha ×1,05/1,10/1,15 (`reachOf`, `canReach`, `canDive`, `hitWindow.reach`); humano: ventana de la defensa de remate ×1,05/1,10/1,15 |
+| `motor` | carrera ×1,015/1,03/1,045 en el peloteo (humano e IA; no en el saque). Antes ×1,03/1,06/1,09: con oro daba +3,3 puntos de %, de las más fuertes, y llega sola jugando |
+| `sangrefria` | con punto de set o de partido de cualquiera (`g.setPoint !== -1`): humano, todas sus ventanas (toques y saque) ×1,08/1,16/1,25; IA, timing ×0,9/0,8/0,7 |
+| `lider` | su compañero, cuando lo lleva la IA: reacción −0,03/−0,06/−0,09 s (mín. 0,02) y timing ×0,92/0,84/0,76 (antes −0,02/−0,04/−0,06 y ×0,95/0,9/0,85: el oro en tu equipo daba +0,4 ± 1,1 puntos de %, sin efecto medible) |
+
+- ai.js lee la reacción y el timing efectivos con `VB.Sim.aiReact(g, p, pr)` / `VB.Sim.aiTiming(g, p, pr)` (= los del perfil sin
+  insignias). Exportados también `VB.Sim.badgeLevel(p, id)` y `VB.Sim.reachOf(g, p)`.
+- Medido (simtest «(b)», equipo CPU con la insignia de oro en los dos): Cañón remate 11,03 → 12,69 m/s; Manos de seda remate tras
+  colocación buena 10,95 → 12,18; Bombardero saque en salto 8 % → 38 % y +1,6 m/s (mismo saque forzado); Hoja seca baile 4,0 → 5,8;
+  Rompemanos block-out 4 % → 26 %; Muro directos 161 → 202 de 400; Ancla recepciones controladas 235 → 247 (nunca peor con el mismo
+  dado); Ojo de halcón error del remate tardío 0,57 → 0,39 m; Red, Motor, Sangre fría y Líder con comprobaciones exactas.
+
+### 3. Eventos para desbloquear insignias (badges.js)
+- `hit` añade `dig` (bool: defensa CONTROLADA de un remate rival — 1r toque tras un `spike` rival o tras el toque de bloqueo propio
+  `'touch'` de ese remate; no la desviada `'shank'`, ni el rebote en el cuerpo, ni la cobertura del propio remate tras un bloqueo
+  directo rival) y `recv` (bool: 1r toque tras un saque, cualquiera, también desviado: la nota va en `grade`). En el saque, ambos false.
+- `point` añade `assist` (jugador que hizo la colocación —2.º toque del mismo equipo— del remate que gana el punto, solo con
+  `how 'kill'`; null si no) y `tool` (bool: el punto es un remate que tocó el bloqueo rival y salió fuera, `reason 'out'` o antena).
+  `g.lastPoint` también los copia. Estado nuevo: `g.atkSet` (colocador del último ataque).
+- Medido en demo (4 × 10 min, simtest «(d)»): 222 puntos, 153 remates punto con 153 asistencias, 14 block-out, 108 defensas
+  (= `point.digs`), 208 recepciones de 225 saques.
+
+### simtest
+- Sección nueva «insignias, eventos y saque dirigible»: (a) sin insignias idéntico (ausente / nulo / vacío / ids desconocidos /
+  demo) y normalización de `p.badges`; (b) las 12 insignias; (c) saque dirigible; (d) eventos. `aimPoint` de saque, «mira libre
+  apagada» y «aces de flotante» adaptados a la diana; el bot lleva la diana con el stick al punto que antes elegía con la dirección.
+- «modo controlar 1 jugador»: la falta de dobles/4 toques del compañero IA se atribuye con `point.player` (antes `g.lastPlayer`,
+  que contaba como de la IA un 4.º toque del humano en el cuerpo tras el 3.º del compañero; salió con las semillas nuevas).
+
+### Para los demás
+- **fx/ui (diana)**: la diana del saque ya sale por `aimPoint` (kind 'serve', radio = `spreadNow`) desde el silbato (vista en la
+  captura de `?debug=toss`); `g.aim3.on` está encendida desde el `serveReady`. Para hacerla más visible, pintarla con
+  `g.aim3.kind === 'serve'` y radio `spreadNow`.
+- **ui_main (badges.js / career)**: `createGame({badges: [[equipadas, null], null]})`; eventos `point.assist`, `point.tool`,
+  `point.how`, `hit.dig`, `hit.recv`, `hit.grade`, `hit.shot` ('float' para Hoja seca), `g.setPoint`/`g.matchPoint` en el saque.
+- **Lead (CONTRACT §4.2/§4.3)**: añadir `opts.badges`, `VB.BADGE`, `Sim.BADGE_IDS/serveSpread/aiReact/aiTiming/badgeLevel/reachOf`,
+  `g.aim3.kind`, `g.atkSet`, `attrK().srvSpread`, `hit.dig/recv`, `point.assist/tool` (y en `g.lastPoint`).
+
+### Arreglos finales del sprint (10-nov-2026)
+- **La IA deja botar el saque que se va fuera** (ai.js `leaveServe`): antes la CPU intentaba recibir TODOS los saques, también los
+  que iban fuera, así que apuntar a la línea o a la esquina no tenía ningún riesgo (bot novato contra Fácil a la esquina: 31 % de
+  saques que habrían botado fuera, 0 fallos, 34,9 % de aces). Una decisión por saque y equipo (`g._lv`), cuando el balón ya ha
+  pasado la red, con `predictLanding` (sin el baile del flotante) y `lineDist`: lejos de la línea acierta siempre; cerca se
+  equivoca (la juega aunque vaya fuera o la deja aunque entre) con una franja de duda de ±(0,22 + 0,9·(1 − recv)) m centrada 10 cm por
+  fuera (ante la duda, la juega). Solo gasta azar en esa franja. Vale para los dos equipos (el compañero IA también deja los saques
+  largos de la CPU).
+- `RISK_W.line` 0,4 → 0,27 (el término de línea de `serveRisk` sumaba al máximo en la esquina).
+- Medido (bots de simtest, 12 partidos a 15 por casilla, `tools/out/carrera/verif/harness.js`), apuntado como antes → a la esquina:
+  novato/Fácil aces 6,2 % → 37,2 % con 37 % de fallos (puntos 46,4 → 48,2 %); medio/Normal 8,4 → 39,8 % con 25,7 % de fallos (51,4 →
+  54,8 %); bueno/Normal 14,7 → 46,6 % con 16,1 % (66,2 → 69,1 %); bueno/Experto 7,7 → 30,2 % con 13,5 % (39,3 → 43,8 %). Antes la
+  esquina daba +8-12 puntos de % y 0-2 % de fallos; ahora +2-4,5 y un riesgo real. Los aces de la CPU no cambian con el apuntado.
+- `endReview`: si el challenge anula un punto cuando ya se preparó el saque siguiente (`g.lastLand` a null), el bote se rehace con
+  la llamada (antes el punto nuevo salía con `landSide -1` y `reason 'in'`; lo destapó simtest con las semillas nuevas).
+
+### Integración (9-nov-2026, ui_main)
+- `opts.ref = {p1, p2, p3, d1?, d2?, d3?, chal}` → `g.refErr` (sustituye a `VB.REF_ERR` en `land`/`refErrP(dist, g)` y en la decisión de challenge de la CPU) y `g.chalPerSet` (challenges por set; 0 = sin challenge). `opts.nums = [[n7, n11], [n3, n9]]` → `p.num`. Sin ellos, idéntico (simtest «Carrera: opts.ref y opts.nums»).

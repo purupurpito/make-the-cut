@@ -54,8 +54,8 @@ Las interfaces de CONTRACT.md §4 siguen intactas. Todo lo de abajo son AÑADIDO
 - Chrome con la GPU real por defecto (`tools/chrome-env.sh` para bash, `tools/chrome.js` para node): ANGLE d3d11 en Windows,
   metal en Mac, gl en Linux; `GL=swiftshader` para máquinas sin GPU, `CHROME=/ruta` para otro ejecutable.
 - `tools/drive.js`: por defecto 1280×720 y sin `quality=low&maxdt=0.25` (con `GL=swiftshader` los añade solo).
-  El saque son dos pulsaciones: espera `g.serveAuth`, Espacio lanza y Espacio golpea cuando `VB.Sim.hitWindow(g, g.server).t`
-  llega a ~0 (función `serve()`); el bucle de juego usa lo mismo en cada saque humano.
+  El saque son dos pulsaciones: espera `g.serveAuth`, J lanza y J golpea cuando `VB.Sim.hitWindow(g, g.server).t`
+  llega a ~0 (función `serve()`); el bucle de juego usa lo mismo en cada saque humano y golpea con J o con clic izquierdo (comprueba `VB.Input._debug().stats.mouse.hit > 0`); Espacio salta.
 - `tools/eval.js`: si la expresión devuelve una Promise, espera a que se resuelva (`awaitPromise`).
 - `tools/shot.sh` acepta una ruta de salida relativa (la convierte en absoluta).
 - `tools/shot.sh` borra la captura anterior antes de generar (antes daba por buena una PNG vieja si Chrome fallaba).
@@ -1129,3 +1129,88 @@ Capturas: `tools/out/cartoon/antes/` y `tools/out/cartoon/despues/` (no se suben
   es opaco con contorno. Si lo que se cruza es el rótulo 3D (`screenMsg` de arena en el marcador colgado) con la cámara de punto
   detrás de la red, es de arena/camera_input, no de la UI.
 Pruebas: simtest TODO OK; console.sh all sin errores JS; perf «objetivos cumplidos» (844×390 auto 81,5 fps); touchplay TODO OK.
+
+## Integración sprint Carrera (9-nov-2026: saque dirigible + insignias + Carrera 2v2)
+- **Saque dirigible (ui.js)**: consejo antes de lanzar «… · al lanzar, **diana** con <flechas/stick/joystick>»; mientras el balón SUBE,
+  «Saque · apunta la diana con … · con buen timing va exacto» (táctil: «Apunta la diana con el joystick»); se quita al bajar.
+  `.aimtip` solo con la mira del remate (`aim3.kind !== 'serve'`). Si la diana queda detrás del consejo, `.thrup` (sin fondo opaco);
+  si queda detrás del marcador (esquina del fondo rival en 844×390), `.sb.aimthru` (hijos a 0,3). Tutorial paso 1, filas de
+  Controles (teclado/mando/táctil) y nota de Controles mencionan la diana del saque.
+- **Carrera**: marcador, presentación (`.in-t`), pausa (`.p-team`) y hoja final (`.es-t`) con las abreviaturas de los clubes
+  (`teamNames` en ui.js; antes main.js sondeaba `#sbName1`). Hoja final de Carrera: insignias en fila compacta `.end-bd` con icono
+  (con el texto largo «Menú principal» quedaba fuera a 844×390). main.js pasa `nums` (tus dorsales) y la equipación del rival.
+  Sin challenge en la competición (`g.chalPerSet === 0`) no se ve el contador.
+- **sim.js**: `opts.ref` y `opts.nums` (CONTRACT §4.2); simtest comprueba que sin ellos la sim es idéntica. **players.js**: `setKit`
+  con `st.rival`. **career.js**: ofertas de fin de temporada con la liga de la temporada siguiente (`nextLvl`).
+- **tools/padplay.js**: el menú tiene CARRERA entre JUGAR y NIVEL; comprueba A abre / B cierra la Carrera con el mando.
+- CONTRACT.md: §1 (badges.js, career.js, career-ui.js, badgetest, careertest → ui_main), §4.2 «Sprint Carrera», §4.3 eventos
+  nuevos, §4.4 «Insignias y Carrera».
+- Recorrido completo (crear → hub → jugar → final forzado con falta de la CPU en punto de partido → hub → simular temporada →
+  ofertas → fichar) con capturas en `tools/out/carrera/integ/` (1280×720 y 844×390 táctil).
+
+## Dorsales 1 y 2 y «Control» de dos valores (nov-2026)
+- Tu equipo lleva el **n.º 1 y el n.º 2** (antes 7 y 11): `sim.js createGame` (`mkPlayer(0, 1, 0)`, `mkPlayer(0, 2, 1)`; la CPU
+  sigue con 3 y 9), `prog.js BASE` (1 «Atacante», 2 «Universal»), `ui.js teamNums()` y el `#offNum` de index.html. Migración del
+  guardado `voley3d.squad`: `sane()` fuerza `num` desde BASE y, si el guardado traía otro dorsal (7/11), `load()` lo reescribe
+  (nivel, XP, atributos e insignias intactos; badgetest lo comprueba).
+- Fila «Control»: `OPT.ctrlMode = {vals: ['both', 'one'], labels: ['Los dos', 'Uno'], desc: [...]}` (fuera `ctrlSel` y los
+  valores virtuales). La ayuda («Controlar a los dos jugadores» / «Controlar un jugador (el n.º 1; la IA lleva al n.º 2)») va en
+  `title`/`aria-label` de `#optCtrl`. En modo Uno llevas siempre al n.º 1: main.js fuerza `ctrlPlayer = 0` y `ctrlIdxOf` ya no lee
+  el ajuste (solo `opts.ctrlIdx` / `&ctrlidx=` para pruebas).
+- Carrera: dorsal por defecto 1 (`career.js create`, formulario de `career-ui.js`); el compañero del club lleva el 2 salvo que tú
+  lleves el 2 (entonces el sorteado de siempre, misma tirada del rng). El selector de control de la Carrera ya era de dos valores
+  («Solo tu jugador» / «Los dos»); solo gana el `title` con la misma ayuda.
+
+## Arreglos finales del sprint Carrera (10-nov-2026)
+- **career-ui.js**: tras «Simular» el foco se queda en «Simular» (antes saltaba a «Jugar partido» y un 2.º Intro / A arrancaba un
+  partido); al acabar la temporada (y al abrir el hub en fin de temporada) el foco va a la pestaña Partido con el cuerpo arriba (antes
+  caía en «Seguir en…», que con otro Intro rechazaba todas las ofertas, y el `scrollIntoView` tapaba la tarjeta del resumen a 844×390).
+  Posiciones «N.º» solo con la liga empezada; equipar sin hueco o una bloqueada explica por qué (`.bd-msg`, `aria-live`); textos «caducan
+  al jugar o simular» y «solo con una nota media de 7 o más»; la oferta enseña `o.ovr`; `render` con red de seguridad (tarjeta «Guardado
+  dañado» con «Borrar la carrera dañada», doble pulsación); aviso de guardado perdido en crear y en el menú; los botones del HUD ya no
+  se ven detrás del hub (`#app.cr-on .hud-btns{visibility:hidden}`).
+- **main.js**: «Menú principal» de la hoja final de Carrera va al menú principal (marca en captura sobre `document` antes del manejador
+  de ui.js); «Volver a la Carrera» sigue abriendo el hub. Saque: entrada con los ejes de la pista (ver CONTRACT).
+- **index.html**: táctil, botones de la hoja final ≥ 44 px (`#app.is-touch #end .row-btn button, … .end-peek button`); `.end-xp .lv` sin
+  partir. A 667×375 la hoja de Carrera con subida de nivel e insignias sigue necesitando scroll para «Menú principal» (ya pasaba).
+- **ui.js**: `cpuTxt` («la CPU» → «el rival», «CPU» → abreviatura del club) en cintas, presentación, avisos, consejo, lector de pantalla,
+  rótulo del challenge e intro; la Carrera no suma al récord de Partido rápido ni enseña «Partidos ganados» / «Prueba el nivel …».
+- **badges.js**: umbrales nuevos (Cañón 100/400/1200, Ojo de halcón 80/300/1000, Manos de seda 50/200/600, Ancla 30/120/350, Red de
+  seguridad 100/400/1200; el resto igual) y Motor a la mitad (+1,5/3/4,5 %). Medido antes (bot medio, Carrera, control «uno»): Cañón
+  bronce en 2 partidos y oro en 21; Red 3/26; Ojo de halcón 3/32; Ancla oro en 162-219. Con los mismos ritmos, ahora ~7-10 partidos el
+  bronce y ~60-110 el oro (Ancla ~120-150). Con control «Los dos» (Partido rápido) los contadores se reparten entre los dos atletas y van
+  más lentos. badgetest y simtest leen los umbrales/efectos de las tablas.
+- Probado en Chrome (script `fixwalk.js` del scratchpad) a 1280×720, 844×390 y 667×375 táctil: doble Intro / doble A en «Simular» no
+  arranca partido; fin de temporada con foco en la pestaña y tarjeta visible, un Intro más no rechaza las ofertas; oferta 38/41 →
+  real 38/41; «Menú principal» → menú con la Carrera cerrada; guardados dañados (sin `sched`, sin `res`, `week: 99`, `myClub` 999, JSON
+  roto) sin errores JS.
+
+## Separadores con diseño y pantallas grandes (pulido 10-nov-2026)
+- `sepHTML(trozos, tipo, html)` en ui.js (expuesto como `VB.UI.sep`; career-ui.js lo usa con su `sp()`): 'd' rombo naranja con tinta
+  (antetítulos: menú, pausa, final, Carrera, titulares de banner con « · »), 'v' raya fina (parciales del marcador, consejos,
+  líneas de datos de la Carrera), 's' barra inclinada (pares: «SET 3 / A 15», «Nombre / Club»), 'c' pastillas (metadatos: JUGAR,
+  Carrera, Jugadores, fichas). Entre trozos va una coma `.sr` para lectores. `setSep(nodo, ...)` pinta solo si cambia.
+  `coachHTML`: consejo y título del tutorial con la etiqueta corta («Tu saque», «1r toque») en pastilla `.tchip`.
+  Pistas de teclas: grupos `.kh` con raya fina entre ellos. Prosa (ayudas, nota de Controles): puntos y comas, sin «·».
+  `banner()` dibuja el rombo si el subtítulo trae « · ». CSS: bloque «SEPARADORES CON DISEÑO» al final del `<style>`.
+- `--vs` (ui.js `vpFit`, en cada resize): 1 hasta ~1280×760; 1 + 0,8·(min(W/1280, H/760) − 1), tope 2 (1,34 a 1920×1080,
+  1,71 a 2560×1440). Menú: `zoom: var(--vs)` en `.menu-col`, `.menu-foot`, `.live`, `.fs-btn`, y con `.vs-up` la rejilla compacta
+  de 1280×720 (Cómo se juega · Controles · Ajustes en una fila). Carrera: zoom en `#career .cr-in`. HUD y hojas: `hudScale` =
+  ajuste del jugador (`hudSet`) × `--vs`, así que `--hs`, `fitSheet` y todas las medidas de ui.js ya lo llevan.
+
+## Correcciones tras la revisión visual (10-nov-2026, noche)
+- Fila del menú «Controlar ‹ a los dos jugadores ›» / «Controlar ‹ un jugador ›» (`OPT.ctrlMode.labels`; «jugadores» va en
+  `.cv-x` y se oculta con `max-width:900px` o `max-height:560px`, donde queda «a los dos»). `#ctrlVal` se pinta con innerHTML.
+  La Carrera usa las mismas palabras y el mismo orden (career-ui.js, selector «Controlar»).
+- `#intro .in-card` lleva `zoom: var(--vs)` (a 2560 medía ~500 px con letra de 9-11 px). Su antetítulo es «Palau del Mar ◆ 2 contra 2»,
+  igual que el del menú (antes mezclaba rombo y raya).
+- `checkMore`: el desvanecido de «hay más abajo» solo sale si sobran más de 20 px (la hoja final a 667×375 desbordaba 11 px de relleno
+  y el desvanecido apagaba «Revancha en difícil» y «Menú principal»).
+- Tutorial a `max-height:400px`: columna de texto más ancha (.78fr / 1.22fr) y letra un punto menor; el recuadro del ace ya no
+  queda bajo los puntos de paso a 667×375.
+- Panel Controles: el ratoncito es más grande, el botón pulsado va en ámbar y lleva «izq.» / «der.» al lado; táctil «Golpear y
+  sacar (joystick: diana del saque)»; mando «Menús: aceptar y volver».
+- Saque táctil: «SACAR Flotante / SALTAR Potente» (antes «SALTAR En salto»).
+- Ordinales en castellano: «1.er set», «1.er toque» (antes «1r», abreviatura catalana).
+- Sin cambiar (deliberado): el consejo de arriba se vuelve translúcido (`.thru`) cuando el balón o los jugadores pasan por detrás;
+  el clic sobre el marcador cuenta como clic en pantalla (golpea), tal como pidió Ferran («clicar en la pantalla»).

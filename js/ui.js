@@ -27,7 +27,8 @@
   // banGate = cómo acaba ('cut' = con el corte de vuelta al saque; 'court' = al bajar la grúa del cambio de campo)
   var banKind = '', banTier = 0, banRect = null, bugT = 0, bugOut = false;
   var record = { played: 0, wins: 0, bestStreak: 0, winRun: 0, tut: 0 };
-  var hudScale = 1;            // UI-16: escala del HUD (ctx.settings.hudScale)
+  var hudScale = 1;            // UI-16: escala del HUD (ctx.settings.hudScale) × vpScale (pantallas grandes; vpFit)
+  var hudSet = 1, vpScale = 1; // ajuste del jugador (1 | 1,15 | 1,3) y escala por tamaño de pantalla (--vs)
 
   // ---------- Telón de carga → menú (UI-07) ----------
   // El telón sale entero en el primer frame (logotipo con la fuente embebida «VB Marca», index.html). Relevo en dos tiempos:
@@ -187,6 +188,7 @@
   var gymKeys = null;
   function gymPr(cls, txt, keyCls, allKeys) {
     el.prompt.className = cls; el.promptText.innerHTML = txt; el.promptKey.className = keyCls;
+    el.promptKey.textContent = /\bjump\b/.test(cls) ? GLYPH.keyboard.jumpT : GLYPH.keyboard.hitT;   // tecla del ensayo: la de teclado
     // las otras teclas (mando A/B, táctil GOLPEAR/SALTAR) en el mismo aviso, junto a la de teclado
     if (allKeys && !gymKeys) {
       gymKeys = [['key pad pa', 'A'], ['key pad pb', 'B'], ['key tch', 'GOLPEAR'], ['key tch j', 'SALTAR']].map(function (k) {
@@ -282,6 +284,15 @@
 
   /** UI-16: con el HUD grande, el contador de toques solo rotula el toque activo si a tamaño completo pisaría el marcador
    *  (mismo criterio que la regla de ≤ 760 px de index.html; marcador ~240 px de ancho × su escala, contador ~440 px). */
+  /** Pantallas grandes (pulido 10-nov-2026): --vs = 1 hasta ~1280×760 y crece con min(ancho/1280, alto/760) al 80 % (1,34 a
+   *  1920×1080, 1,71 a 2560×1440, tope 2). Menú y Carrera: zoom CSS con --vs; HUD y hojas: hudScale = ajuste × --vs. */
+  function vpFit() {
+    if (!el.app) return;
+    var W = ctx.width || innerWidth, H = ctx.height || innerHeight, k = Math.min(W / 1280, H / 760);
+    var vs = k > 1 ? Math.round(Math.min(2, 1 + (k - 1) * 0.8) * 100) / 100 : 1, hs = Math.round(hudSet * vs * 1000) / 1000;
+    if (vs !== vpScale) { vpScale = vs; el.app.style.setProperty('--vs', String(vs)); el.app.classList.toggle('vs-up', vs > 1.05); }
+    if (hudScale !== hs) { hudScale = hs; el.app.style.setProperty('--hs', String(hs)); el.app.classList.toggle('hs-big', hudSet > 1); promptW = 0; tbRect = coachRect = guideRect = null; joyR = null; }
+  }
   function hudFit() {
     if (!el.app) return;
     var W = ctx.width || innerWidth, H = ctx.height || innerHeight, sbs = H <= 560 ? 0.78 : 1;
@@ -328,6 +339,30 @@
   function hoverSound() { try { if (VB.Audio && VB.Audio.hover) VB.Audio.hover(); } catch (e) { } }
   function setText(node, key, val) { if (last[key] !== val) { last[key] = val; node.textContent = val; return true; } return false; }
   function setHTML(node, key, val) { if (last[key] !== val) { last[key] = val; node.innerHTML = val; return true; } return false; }
+  // ---------- Separadores con diseño (pulido 10-nov-2026: «no todo con "·"»; CSS en index.html, bloque SEPARADORES) ----------
+  function escT(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  /** Une trozos con un separador dibujado: kind 'd' rombo (antetítulos), 'v' raya fina, 's' barra inclinada, 'c' pastillas.
+   *  parts: array o texto con « · ». Un trozo puede ser {t, c} (texto y clase extra de la pastilla) o {h} (HTML ya hecho).
+   *  html=true: los trozos de texto ya son HTML. Entre trozos, una coma .sr para lectores de pantalla. */
+  function sepHTML(parts, kind, html) {
+    if (typeof parts === 'string') parts = parts.split(' · ');
+    var out = [];
+    (parts || []).forEach(function (p) {
+      if (p == null || p === '') return;
+      var h = typeof p === 'object' ? (p.h != null ? p.h : escT(p.t)) : html ? String(p) : escT(p);
+      out.push(kind === 'c' ? '<span class="chip' + (p && p.c ? ' ' + p.c : '') + '">' + h + '</span>' : h);
+    });
+    return out.join(kind === 'c' ? '<span class="sr">, </span>' : '<span class="sep sep-' + (kind || 'd') + '"><span class="sr">, </span></span>');
+  }
+  /** Consejo (HTML con « · »): la etiqueta corta del principio («Tu saque», «1r toque») va en pastilla y el resto con raya fina. */
+  function coachHTML(h) {
+    var p = String(h).split(' · ');
+    if (p.length < 2) return h;
+    var head = p[0].length <= 12 && p[0].indexOf('<') < 0 ? '<span class="tchip">' + p.shift() + '</span><span class="sr">: </span>' : '';
+    return head + sepHTML(p, 'v', true);
+  }
+  /** Pinta sepHTML en un nodo solo si cambia (clave propia en el nodo: otros pueden rehacerlo). */
+  function setSep(node, parts, kind, html) { if (!node) return; var h = sepHTML(parts, kind, html); if (node._sepH !== h || node._sepT !== node.textContent) { node._sepH = h; node.innerHTML = h; node._sepT = node.textContent; } }
   function restartAnim(node, cls) { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); }
 
   // ---------- Dispositivo / glifos de teclas ----------
@@ -363,7 +398,7 @@
   }
   function safe(fn) { try { return fn(); } catch (e) { return false; } }
   var GLYPH = {
-    keyboard: { serve: '<span class="key">Espacio</span>', hit: '<span class="key">Espacio</span>', jump: '<span class="key">K</span>', move: '<span class="key">←</span><span class="key">→</span>', aim: 'las flechas', hitT: 'ESPACIO', jumpT: 'K', sw: '<span class="key">C</span>' },
+    keyboard: { serve: '<span class="key">J</span>', hit: '<span class="key">J</span>', jump: '<span class="key">Espacio</span>', move: '<span class="key">←</span><span class="key">→</span>', aim: 'las flechas', hitT: 'J', jumpT: 'ESPACIO', sw: '<span class="key">C</span>' },
     gamepad: { serve: '<span class="key pad pa">A</span>', hit: '<span class="key pad pa">A</span>', jump: '<span class="key pad pb">B</span>', move: '<span class="key">Stick</span>', aim: 'el stick', hitT: 'A', jumpT: 'B', sw: '<span class="key pad py">Y</span>' },
     touch: { serve: '<span class="key tch">Sacar</span>', hit: '<span class="key tch">Golpear</span>', jump: '<span class="key tch j">Saltar</span>', move: '<span class="key">Joystick</span>', aim: 'el joystick', hitT: 'GOLPEAR', jumpT: 'SALTAR', sw: '<span class="key">⇄</span>' }
   };
@@ -437,12 +472,20 @@
   //  Lee VB.Sim.canChallenge(g, 0), g.challenges y g.review (todo opcional: sin sim de challenge no se ve nada)
   // =====================================================================
   var chal = { key: '', cnt: '', n: '', bar: -1 };
-  function srSay(t) { if (el.sr) { el.sr.textContent = ''; el.sr.textContent = t; } }
+  function srSay(t) { if (el.sr) { el.sr.textContent = ''; el.sr.textContent = cpuTxt(t); } }
+  /** En un partido de Carrera el rival no es «la CPU» sino un club: «Remate de la CPU» → «Remate del rival», «Tú 3, CPU 1» →
+   *  «Tú 3, PUE 1». Se aplica en las cintas, los avisos, el consejo, el lector de pantalla y el rótulo del challenge. */
+  function cpuTxt(s) {
+    var g = ctx && ctx.game, cr = g && !g.demo && g.career;
+    if (!cr || typeof s !== 'string' || s.indexOf('CPU') < 0) return s;
+    return s.replace(/de la CPU/g, 'del rival').replace(/a la CPU/g, 'al rival').replace(/la CPU/g, 'el rival').replace(/La CPU/g, 'El rival')
+      .replace(/\bCPU\b/g, cr.rival || 'RIVAL');
+  }
   function chalTick(g) {
     if (!el.chal) return;
     var live = !g.demo && (ctx.state === 'playing' || ctx.state === 'paused') && !(ctx.introLeft > 0);
     // contador (2 iconos): challenges que te quedan en el set
-    var ck = live && g.challenges ? String(g.challenges[0]) : '';
+    var ck = live && g.challenges && g.chalPerSet !== 0 ? String(g.challenges[0]) : ''; // competición sin challenge (Carrera, opts.ref.chal 0): sin contador
     if (chal.cnt !== ck) {
       chal.cnt = ck; el.sbChal.hidden = !ck;
       var ic = el.sbChal.children; for (var i = 0; i < ic.length; i++) ic[i].className = +ck > i ? 'on' : '';
@@ -461,7 +504,7 @@
         el.chal.setAttribute('aria-label', 'Pedir challenge');
       } else if (mode === 'rev') {
         el.chalK.textContent = 'REVISIÓN';
-        el.chalKey.textContent = 'Challenge · ' + (rv.team === 0 ? 'TÚ' : 'CPU');
+        el.chalKey.textContent = cpuTxt('Challenge: ' + (rv.team === 0 ? 'TÚ' : 'CPU'));
         el.chal.setAttribute('aria-label', 'Revisión del challenge');
       }
     }
@@ -477,7 +520,9 @@
   // =====================================================================
   /** Banner central. cls: 'win'|'lose'|'gold'|'ace'|'neutral' */
   function banner(t1, t2, t3, cls, dur, kind) {
-    el.bn1.textContent = t1 || ''; el.bn2.textContent = t2 || '';
+    t1 = cpuTxt(t1); t2 = cpuTxt(t2);
+    el.bn1.textContent = t1 || '';
+    if (t2 && t2.indexOf(' · ') >= 0) setSep(el.bn2, t2, 'd'); else el.bn2.textContent = t2 || ''; // trozos « · » → rombo dibujado
     el.bn2.hidden = !t2; el.bn3.hidden = !t3; el.bn3.textContent = t3 || '';
     el.bn3.classList.toggle('so', t3 === 'CAMBIO DE SAQUE'); // el icono ⇄ solo en el cambio de saque
     el.banner.className = '';
@@ -530,6 +575,7 @@
    *  jugador (UI-17: blanco con filo rojo-naranja / dorado; c0/c1 = color del equipo, solo para lo que hace un equipo).
    *  o (opcional): {html: texto con glifos de teclas, propio}, {gauge: -1..1} = medidor ◀ ● ▶ de pronto (−) / tarde (+). */
   function callout(text, team, cls, dur, o) {
+    text = cpuTxt(text);
     if (o && o.html) el.callout.innerHTML = text; else el.callout.textContent = text;
     if (o && typeof o.gauge === 'number') {
       // medidor: pista con la marca del instante bueno en el centro y el punto donde se pulsó (izquierda = pronto, derecha = tarde)
@@ -612,10 +658,11 @@
       if (g.demo) continue;
       if (ovr && e.type === 'point') { untally(); e._ovr = true; }
       tally(e);
+      if (VB.Badges) VB.Badges.ingest(e, g); // insignias: cuenta remates, aces, recepciones… del equipo 0 (js/badges.js)
       switch (e.type) {
         case 'newMatch':
           if (ctx.introLeft > 0 || introUI.on) break;           // la tarjeta de presentación ya lo dice (UI-14)
-          banner('Set 1', 'Al mejor de 3 sets · a ' + (g.points || 25) + ' · ' + (g.serving === 0 ? 'Sacas tú' : 'Saca la CPU'), '', 'neutral', BAN.info, 'newSet');
+          banner('Set 1', 'Al mejor de 3 sets a ' + (g.points || 25) + ' · ' + (g.serving === 0 ? 'Sacas tú' : 'Saca la CPU'), '', 'neutral', BAN.info, 'newSet');
           break;
         case 'point': {
           var me = e.team === 0, k = e._uiKind;
@@ -646,7 +693,7 @@
             break;
           }
           if (e.kind === 'free' && e.shot !== 'tip' && e.touch === 3 && ctx.settings.showHelp !== false && !e.dive)
-            callout('Balón libre · ' + G().jump + ' para rematar', 0, 'tip', 1.6, { html: true });
+            callout('Balón libre: ' + G().jump + ' para rematar', 0, 'tip', 1.6, { html: true });
           else {
             // UI-09: sello junto al punto de contacto (PERFECTO / BIEN); el aviso de arriba a la izquierda ya no sale
             // (el lector de pantalla lo sigue oyendo por #srLive)
@@ -693,7 +740,7 @@
           // reglas 18.2.1 / 18.2.2: cuando la cámara pasa al plano 'court' (grúa); se va antes de que la grúa acabe (ccU = 1)
           pendCourt = { t2: e.why === 'eight' ? 'Set decisivo · ' + Math.ceil(decT(g) / 2) + ' puntos' : 'Fin del ' + (ORD[e.setNo] || e.setNo + '.º') + ' set', dur: e.why === 'eight' ? 1.6 : 1.9, rt: ctx.time };
           // fin de set: «Set N» entra en la bajada de la grúa, en cuanto se va «Cambio de campo» (no al empezar el saque)
-          courtNext = e.why === 'set' && e.sets ? { n: e.setNo + 1, sub: e.setNo + 1 === 3 ? 'Set decisivo · a ' + decT(g) + ' puntos' : 'Sets ' + e.sets[0] + '-' + e.sets[1] } : null;
+          courtNext = e.why === 'set' && e.sets ? { n: e.setNo + 1, sub: e.setNo + 1 === 3 ? 'Set decisivo · ' + decT(g) + ' puntos' : 'Sets ' + e.sets[0] + '-' + e.sets[1] } : null;
           break;
         case 'challenge':
           if (e.team === 1) callout('La CPU pide challenge', 1, null, 2.4);
@@ -711,7 +758,7 @@
           courtNext = null;
           if (newSetShown === e.setNo) { newSetShown = 0; break; } // ya salió en la bajada de la grúa
           newSetShown = 0;
-          banner('Set ' + e.setNo, e.setNo === 3 ? 'Set decisivo · a ' + decT(g) + ' puntos' : 'Sets ' + g.sets[0] + '-' + g.sets[1], '', 'neutral', BAN.info, 'newSet');
+          banner('Set ' + e.setNo, e.setNo === 3 ? 'Set decisivo · ' + decT(g) + ' puntos' : 'Sets ' + g.sets[0] + '-' + g.sets[1], '', 'neutral', BAN.info, 'newSet');
           break;
         case 'gameOver':
           showEnd(e);
@@ -721,7 +768,7 @@
     }
   }
   var missT = -9999;
-  var ORD = ['', '1r', '2.º', '3.er'], pendCourt = null, courtNext = null, newSetShown = 0, bodyTipT = 0, lastBn2 = '', lastSub = '', held = null;
+  var ORD = ['', '1.er', '2.º', '3.er'], pendCourt = null, courtNext = null, newSetShown = 0, bodyTipT = 0, lastBn2 = '', lastSub = '', held = null;
   var OUTK = { serve: 'Saque fuera', pass: 'Recepción fuera', set: 'Colocación fuera', spike: 'Remate fuera', free: 'Balón fuera' };
   // sin 'free': un balón libre (3.er toque sin saltar) es la opción floja y no se celebra
   var PERFECT = { pass: 'Recepción perfecta', set: 'Colocación perfecta', spike: '¡Remate perfecto!', serve: '¡Saque perfecto!' };
@@ -739,6 +786,7 @@
   var srLast = '', srT = 0;
   function srSay(txt) {
     if (!el.sr) return;
+    txt = cpuTxt(txt);
     var now = performance.now(); if (txt === srLast && now - srT < 1500) return;
     srLast = txt; srT = now; el.sr.textContent = ''; el.sr.textContent = txt;
   }
@@ -754,8 +802,8 @@
     introUI.on = true; introUI.hudT = 0; introUI.quiet = true;   // sin avisos ni consejos hasta el primer silbato
     var di = optIndex('difficulty'), nm = g && VB.DIFF && VB.DIFF[g.difficulty] && VB.DIFF[g.difficulty].name;
     el.introDiff.textContent = 'Nivel ' + (nm || OPT.difficulty.labels[di]);
-    el.introSrv.textContent = g && g.serving === 1 ? 'Saca la CPU' : 'Sacas tú';
-    if (el.introFmt) el.introFmt.textContent = 'Al mejor de 3 sets · a ' + ((g && g.points) || 25);
+    el.introSrv.textContent = cpuTxt(g && g.serving === 1 ? 'Saca la CPU' : 'Sacas tú');
+    if (el.introFmt) el.introFmt.textContent = 'Al mejor de 3 sets a ' + ((g && g.points) || 25);
     var d = device();
     el.introHint.innerHTML = d === 'touch' ? 'Toca para empezar ya' : d === 'gamepad' ? padKey('a') + 'para empezar ya' : 'Pulsa cualquier tecla para empezar ya';
     el.intro.className = ''; void el.intro.offsetWidth; el.intro.className = 'show';
@@ -1097,6 +1145,7 @@
   var BIG_GAP = 2, bigGap = 9, atSP = false;
   var cam = { shot: '', prev: '', cutN: -1, pointRt: -99, pointCut0: -1, courtRt: -1 };
   function queuePres(o) {
+    o.t1 = cpuTxt(o.t1); o.t2 = cpuTxt(o.t2);
     var d = camDbg(); // contador de cortes ACTUAL (cam.cutN solo se refresca durante el punto)
     o.rt = ctx.time; o.cut0 = d && typeof d.cutN === 'number' ? d.cutN : -1; pres = o;
   }
@@ -1375,7 +1424,7 @@
     var k = nt === 1 ? 'Primer toque' : nt === 2 ? 'Segundo toque' : 'Tercer toque';
     var shortT = device() === 'touch' && ctx.height <= 420; // móvil apaisado: tarjeta de una línea
     var txt = shortT ? (nt === 1 ? 'Al círculo y ' + gl.hit : nt === 2 ? 'Bajo el balón y ' + gl.hit : gl.jump + ' y ' + gl.hit + ' arriba')
-      : nt === 1 ? 'Ve al círculo y pulsa ' + gl.hit : nt === 2 ? 'Ponte bajo el balón y pulsa ' + gl.hit : gl.jump + ' para saltar · ' + gl.hit + ' arriba';
+      : nt === 1 ? 'Ve al círculo y pulsa ' + gl.hit : nt === 2 ? 'Ponte bajo el balón y pulsa ' + gl.hit : gl.jump + ' para saltar y ' + gl.hit + ' arriba';
     el.guideK.textContent = k.toUpperCase(); el.guideT.innerHTML = txt;
     el.guide.className = ''; void el.guide.offsetWidth; el.guide.className = 'show';
     guideT = 2.4;
@@ -1427,11 +1476,32 @@
     return 0;
   }
 
+  /** Nombres de los equipos en la presentación, la pausa y la hoja final: TÚ / CPU, o los clubes en un partido de Carrera
+   *  (g.career de main.js: me/rival = abreviaturas, meName/rivalName = nombres). Solo reescribe al cambiar. */
+  function teamNames(cr) {
+    var a = (cr && cr.me) || 'TÚ', b = (cr && cr.rival) || 'CPU', key = a + '|' + b + '|' + (cr ? cr.rivalName : '');
+    if (last.tnames === key) return; last.tnames = key;
+    var q = function (sel) { return document.querySelector(sel); };
+    var txt = function (node, first, v) { // primer/último nodo de texto del elemento (el resto son <b>/<i> con cifras)
+      if (!node) return; var ns = node.childNodes;
+      for (var i = first ? 0 : ns.length - 1; first ? i < ns.length : i >= 0; i += first ? 1 : -1) if (ns[i].nodeType === 3 && ns[i].nodeValue.trim()) { ns[i].nodeValue = v; return; }
+    };
+    var e;
+    if ((e = q('.in-t.t0 b'))) e.textContent = a;
+    if ((e = q('.in-t.t1 b'))) e.textContent = b;
+    if ((e = q('.in-t.t0 small'))) e.textContent = cr && cr.meName ? cr.meName : '+ compañero';
+    if ((e = q('.in-t.t1 small'))) e.textContent = cr && cr.rivalName ? cr.rivalName : 'Pareja rival';
+    txt(q('.p-team.t0'), true, a + ' '); txt(q('.p-team.t1'), false, ' ' + b);
+    txt(q('.es-t.t0'), true, a + ' '); txt(q('.es-t.t1'), false, ' ' + b);
+  }
   function hud(g, dt) {
     var demo = g.demo;
     chalTick(g);
-    setText(el.sbSet, 'set', demo ? 'DEMO' : ('SET ' + g.setNo + (g.setNo === 3 ? ' · A 15' : '')));
-    setText(el.name0, 'n0', demo ? 'ROJO' : 'TÚ'); setText(el.name1, 'n1', demo ? 'AZUL' : 'CPU');
+    setHTML(el.sbSet, 'set', demo ? 'DEMO' : sepHTML(['SET ' + g.setNo, g.setNo === 3 ? 'A 15' : ''], 's'));
+    // partido de Carrera (g.career, main.js): abreviaturas de los dos clubes en vez de TÚ / CPU
+    var cr = !demo && g.career;
+    setText(el.name0, 'n0', demo ? 'ROJO' : (cr && cr.me) || 'TÚ'); setText(el.name1, 'n1', demo ? 'AZUL' : (cr && cr.rival) || 'CPU');
+    if (!demo) teamNames(cr);
     setText(el.pts0, 'p0', g.score[0]); setText(el.pts1, 'p1', g.score[1]);
     var sk = g.sets[0] * 8 + g.sets[1];
     if (last.sets !== sk) {
@@ -1441,7 +1511,7 @@
     var hk = (g.setScores || []).length;
     if (last.hist !== hk) {
       last.hist = hk; el.hist.hidden = !hk;
-      el.hist.innerHTML = (g.setScores || []).map(function (s, j) { return 'S' + (j + 1) + ' <b>' + s[0] + '-' + s[1] + '</b>'; }).join(' · ');
+      el.hist.innerHTML = sepHTML((g.setScores || []).map(function (s, j) { return 'S' + (j + 1) + ' <b>' + s[0] + '-' + s[1] + '</b>'; }), 'v', true);
     }
     var srv = g.serving;
     if (last.srv !== srv) { last.srv = srv; el.row0.classList.toggle('serving', srv === 0); el.row1.classList.toggle('serving', srv === 1); }
@@ -1453,7 +1523,7 @@
     if (tag && tagT === 1) tag += ' · CPU';
     // (UI-18) mientras la cinta «Punto de set/partido» lo anuncia, la etiqueta no lo repite debajo del marcador
     if (tag && banKind === 'sp' && banT > 0) tag = '';
-    if (last.tag !== tag) { last.tag = tag; el.tag.hidden = !tag; el.tag.textContent = tag; el.tag.classList.toggle('cpu', tagT === 1); }
+    if (last.tag !== tag) { last.tag = tag; el.tag.hidden = !tag; if (tag.indexOf(' · ') >= 0) setSep(el.tag, tag, 'v'); else el.tag.textContent = tag; el.tag.classList.toggle('cpu', tagT === 1); }
 
     var playing = ctx.state === 'playing' && !demo;
     rallyTick(g, dt, playing);
@@ -1493,7 +1563,12 @@
         // también si tapa a un jugador (en táctil, a 844×390, tapaba al rematador y al bloqueador de la CPU junto a la red):
         // se prueban el pecho y la cabeza de los 4 (8 proyecciones, solo con consejo visible). Clase propia (.thrup): el
         // consejo sigue legible (es justo lo que hay que hacer), solo pierde el fondo opaco
-        if (!coachThru && g.teams) {
+        // diana del saque dirigible (g.aim3.kind 'serve'): en 844×390 el consejo «Tu saque…» caía justo encima (revisión de fx)
+        if (!coachThru && g.aim3 && g.aim3.on && g.aim3.kind === 'serve') {
+          VB.toThree(g.aim3.x, g.aim3.y, 0, _bv); _bv.project(ctx.camera);
+          coachThruP = _bv.z < 1 && inRect((_bv.x + 1) * 0.5 * ctx.width, (1 - _bv.y) * 0.5 * ctx.height, coachRect, 40);
+        }
+        if (!coachThru && !coachThruP && g.teams) {
           for (var ct = 0; ct < 2 && !coachThruP; ct++) for (var ci = 0; ci < g.teams[ct].length && !coachThruP; ci++) {
             var cpl = g.teams[ct][ci];
             for (var ch = 1.0; ch < 2.2 && !coachThruP; ch += 0.9) {
@@ -1508,12 +1583,23 @@
         guideThru = bOn && inRect(bpx, bpy, guideRect, 12);
       } else guideRect = null;
     }
+    // diana del saque dirigible detrás del marcador (esquina del fondo rival en 844×390): el marcador se vuelve translúcido
+    var sbAim = false;
+    if (svAim(g) && ctx.state === 'playing' && ctx.camera && VB.toThree && ctx.THREE && el.sb) {
+      if (!_bv) _bv = new ctx.THREE.Vector3();
+      if (!sbRect || (ctx.frame & 31) === 0) sbRect = el.sb.getBoundingClientRect();
+      VB.toThree(g.aim3.x, g.aim3.y, 0, _bv); _bv.project(ctx.camera);
+      // margen = radio del aro en pantalla (fx: mínimo 24 px) + holgura: la cámara del saque se mueve durante el lanzamiento
+      sbAim = _bv.z < 1 && inRect((_bv.x + 1) * 0.5 * ctx.width, (1 - _bv.y) * 0.5 * ctx.height, sbRect, 56);
+    }
+    if (last.sbAim !== sbAim) { last.sbAim = sbAim; el.sb.classList.toggle('aimthru', sbAim); }
     if (last.tbDim !== tbDim) { last.tbDim = tbDim; el.touchbar.classList.toggle('thru', tbDim); }
     if (el.guide.classList.contains('thru') !== guideThru) el.guide.classList.toggle('thru', guideThru);
     if (last.coachThru !== coachThru) { last.coachThru = coachThru; el.coach.classList.toggle('thru', coachThru); }
     if (last.coachThruP !== coachThruP) { last.coachThruP = coachThruP; el.coach.classList.toggle('thrup', coachThruP); }
     // con la mira libre (3.er toque en el aire) el consejo es la instrucción clave: translúcido, pero legible
-    var aimOn = !!(g.aim3 && g.aim3.on);
+    // (la diana del saque, kind 'serve', no: el consejo se aparta de ella con .thrup, ver arriba)
+    var aimOn = !!(g.aim3 && g.aim3.on && g.aim3.kind !== 'serve');
     if (last.coachAim !== aimOn) { last.coachAim = aimOn; el.coach.classList.toggle('aimtip', aimOn); }
     // ---- aviso contextual + consejo ----
     var help = ctx.settings.showHelp !== false, gl = G(), touchDev = device() === 'touch';
@@ -1532,9 +1618,11 @@
       } else if (myServe && !tossed) {
         // táctil: los dos saques van en el MISMO aviso junto al sacador, en dos líneas compactas («SACAR Flotante» /
         // «SALTAR En salto»; la tecla SACAR es la de siempre, #promptKey, y el resto se coloca en rejilla: ver .two en index.html); arriba, en un móvil apaisado, la pastilla del consejo tapaba la red y a los receptores de la CPU
-        pk = 'serve'; ptext = touchDev ? (help ? '<span>Flotante</span>' + gl.jump + '<span>En salto</span>' : 'Lanza el balón') : 'Lanzar';
+        // («SALTAR En salto» sonaba repetido: el saque en salto se anuncia como «Potente»)
+        pk = 'serve'; ptext = touchDev ? (help ? '<span>Flotante</span>' + gl.jump + '<span>Potente</span>' : 'Lanza el balón') : 'Lanzar';
         pcls = touchDev && help ? 'hit two' : 'hit';
         coach = touchDev ? ''
+          : svAim(g) ? 'Tu saque · ' + gl.move + ' te mueves · ' + gl.serve + ' flotante · ' + gl.jump + ' en salto · al lanzar, <b>diana</b> con ' + gl.aim
           : g.serveState ? 'Tu saque · ' + gl.move + ' te mueves · ' + gl.serve + ' saque flotante · ' + gl.jump + ' saque en salto'
           : 'Tu saque · ' + gl.move + ' para colocarte en el fondo, apunta con ' + gl.aim + ' (la <b>diana naranja</b> marca adónde va) y pulsa ' + gl.serve;
         // reloj de 8 s (UI-05): aro alrededor de la tecla en los últimos 5 s (ámbar → rojo en los 2 últimos); la cifra y la
@@ -1559,8 +1647,9 @@
         if (down && wp < HINT_ON && wp > HINT_OFF) { pk = 'serve'; ptext = device() === 'touch' ? '¡Golpea!' : '¡Golpea ahora!'; pcls = 'hit go bar'; }
         else if (tl > 0 && !(down && wp <= HINT_OFF)) { pk = 'serve'; ptext = 'Espera… golpea al bajar'; pcls = 'hit soon bar'; }
         // balón en el aire: sin consejo arriba (tapaba el balón y el marcador colgado justo al golpear);
-        // basta el aviso "¡Golpea ahora!" junto al jugador
-        coach = '';
+        // basta el aviso "¡Golpea ahora!" junto al jugador. Con el saque dirigible, mientras el balón SUBE, una línea corta
+        // para la diana (se quita al bajar, antes de golpear)
+        coach = tips && svAim(g) && b.vz > 0 && !(down && wp < HINT_ON) ? (touchDev ? 'Apunta la diana con ' + gl.aim : 'Saque · <b>apunta la diana</b> con ' + gl.aim + ' · con buen timing va exacto') : '';
       } else if (g.mode === 'serve') {
         coach = !tips ? '' : sv && sv.team === 0 ? 'Saca tu compañero' // modo uno: saca la IA de tu equipo
           : (touchDev ? 'Saca la CPU · a recibir' : 'Saca la CPU · prepárate para la <b>recepción</b>');
@@ -1585,7 +1674,7 @@
           else if (nt === 3) coach = aim3(g, p) ? 'Apunta con ' + gl.aim : gl.jump + ' y ' + gl.hit + ' arriba';
           else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump : '<b>Defiende</b> el círculo' + (one ? '' : ' · ' + gl.sw + ' bloqueas tú');
         } else if (tips) {
-          if (nt === 1) coach = '1r toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al círculo y pulsa ' + gl.hit;
+          if (nt === 1) coach = '1.er toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al círculo y pulsa ' + gl.hit;
           else if (nt === 2) coach = '2.º toque · <b>Colocación</b>: ponte bajo el balón y pulsa ' + gl.hit;
           else if (nt === 3) coach = aim3(g, p) ? '3.er toque · <b>Apunta con ' + gl.aim + '</b> y golpea con ' + gl.hit + ' en lo alto'
             : '3.er toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
@@ -1659,8 +1748,8 @@
       coachSeen[ckey] = (coachSeen[ckey] || 0) + (dt || 0); // tiempo de juego: congelado o en pausa no cuenta
       if (coachSeen[ckey] > 3) showCoach = false;
     }
-    var ck = showCoach ? coach : '';
-    if (last.coach !== ck) { last.coach = ck; coachRect = null; if (ck) el.coach.innerHTML = ck; el.coach.classList.toggle('off', !ck); }
+    var ck = showCoach ? cpuTxt(coach) : '';
+    if (last.coach !== ck) { last.coach = ck; coachRect = null; if (ck) el.coach.innerHTML = coachHTML(ck); el.coach.classList.toggle('off', !ck); }
     // con un aviso de "¡ahora!" en marcha, el consejo se atenúa: los ojos van al jugador
     var dimC = !!ck && promptOk && promptCls.indexOf('go') >= 0;
     if (last.dimC !== dimC) { last.dimC = dimC; el.coach.classList.toggle('faint', dimC); }
@@ -1848,7 +1937,9 @@
   /** UI-21: hoja desplazable → desvanecido con flecha abajo (.has-more) mientras quede algo por debajo del borde. */
   function checkMore(node) {
     var sh = node && node.querySelector ? node.querySelector('.sheet') : null; if (!sh || node.hidden) return;
-    var more = sh.scrollHeight - sh.clientHeight > 2 && sh.scrollTop + sh.clientHeight < sh.scrollHeight - 4;
+    // margen de 20 px: si solo sobra el relleno de abajo (hoja final a 667×375: 11 px), el desvanecido de 46 px taparía los
+    // últimos botones sin que haya nada más que ver
+    var more = sh.scrollHeight - sh.clientHeight > 20 && sh.scrollTop + sh.clientHeight < sh.scrollHeight - 20;
     if (sh.classList.contains('has-more') !== more) sh.classList.toggle('has-more', more);
   }
   function showNode(node, on) {
@@ -1915,15 +2006,19 @@
 
   function renderMenu() {
     var d = device();
-    var h = d === 'gamepad' ? '<span class="key">Stick</span> elegir · ' + padKey('a') + ' aceptar · ' + padKey('b') + ' volver'
-      : d === 'touch' ? '' : '<span class="key">↑</span><span class="key">↓</span> elegir · <span class="key">Intro</span> aceptar · <span class="key">←</span><span class="key">→</span> cambiar · <span class="key">Esc</span> volver';
+    // grupos tecla + acción (.kh) con raya fina entre ellos (CSS), sin «·»
+    var kh = function (k, t) { return '<span class="kh">' + k + ' ' + t + '</span>'; };
+    var h = d === 'gamepad' ? kh('<span class="key">Stick</span>', 'elegir') + kh(padKey('a'), 'aceptar') + kh(padKey('b'), 'volver')
+      : d === 'touch' ? '' : kh('<span class="key">↑</span><span class="key">↓</span>', 'elegir') + kh('<span class="key">Intro</span>', 'aceptar') + kh('<span class="key">←</span><span class="key">→</span>', 'cambiar') + kh('<span class="key">Esc</span>', 'volver');
     setHTML(el.navHint, 'navh', h);
-    setText(el.ctlSub, 'ctls', d === 'gamepad' ? 'Mando conectado' : d === 'touch' ? 'Táctil' : 'Teclado · mando');
+    setText(el.ctlSub, 'ctls', d === 'gamepad' ? 'Mando conectado' : d === 'touch' ? 'Táctil' : 'Teclado y mando');
     var rec = record.played ? '<span><b>' + record.wins + '/' + record.played + '</b>Victorias</span>' + (record.bestStreak ? '<span><b>' + record.bestStreak + '</b>Mejor racha</span>' : '') : '<span><b>Estreno</b>Primer partido</span>';
     setHTML(el.menuRecord, 'rec', rec);
     if (el.squadSub && VB.Prog) {
       var sq = VB.Prog.get().a, pt = sq[0].pts + sq[1].pts;
-      setText(el.squadSub, 'sqs', pt ? pt + (pt === 1 ? ' punto de mejora' : ' puntos de mejora') : 'Nv ' + sq[0].lvl + ' · Nv ' + sq[1].lvl);
+      // sin puntos: una pastilla por jugador con su dorsal en círculo («(1) Nv 3  (2) Nv 2»)
+      setHTML(el.squadSub, 'sqs', pt ? pt + (pt === 1 ? ' punto de mejora' : ' puntos de mejora')
+        : sepHTML(sq.map(function (a) { return { h: '<i class="dn" aria-label="N.º ' + a.num + '">' + a.num + '</i>Nv ' + a.lvl }; }), 'c'));
       el.btnSquad.classList.toggle('has-pts', pt > 0);
     }
   }
@@ -1933,7 +2028,7 @@
     var P = VB.Prog, d = P.get(), html = '';
     d.a.forEach(function (a, i) {
       var nd = P.need(a.lvl);
-      html += '<div class="sq-card"><div class="sq-top"><span class="sq-num">' + a.num + '</span><span class="sq-name">N.º ' + a.num + '<small>' + a.role + ' · Nivel ' + a.lvl + ' · ' + a.matches + (a.matches === 1 ? ' partido' : ' partidos') + '</small></span>' +
+      html += '<div class="sq-card"><div class="sq-top"><span class="sq-num">' + a.num + '</span><span class="sq-name">N.º ' + a.num + '<small>' + sepHTML([a.role, 'Nivel ' + a.lvl, a.matches + (a.matches === 1 ? ' partido' : ' partidos')], 'c') + '</small></span>' +
         '<span class="sq-ovr">' + P.ovr(a.st) + '<small>MEDIA</small></span></div>' +
         '<div class="sq-xp"><span class="trk"><i style="width:' + Math.round(100 * a.xp / nd) + '%"></i></span>' + a.xp + ' / ' + nd + ' XP</div>' +
         '<div class="sq-pts' + (a.pts ? ' has' : '') + '">Puntos de mejora: <b>' + a.pts + '</b></div>';
@@ -1942,16 +2037,57 @@
         gr[1].forEach(function (k) {
           var v = a.st[k], c = P.cost(v), can = v < P.MAX && a.pts >= c;
           html += '<div class="sq-r' + (upKey === i + ':' + k ? ' up' : '') + '" title="' + P.HINT[k] + '"><span>' + P.LABEL[k] + '</span><span class="bar"><i style="width:' + v + '%"></i></span><b>' + v + '</b>' +
-            '<button data-i="' + i + '" data-up="' + k + '"' + (can ? '' : ' disabled') + ' aria-label="Mejorar ' + P.LABEL[k] + ' del ' + a.num + ' (' + c + (c === 1 ? ' punto' : ' puntos') + ')"><i>+</i><small>' + (v >= P.MAX ? 'máx' : c + ' pt') + '</small></button></div>';
+            '<button data-i="' + i + '" data-up="' + k + '"' + (can ? '' : ' disabled') + ' aria-label="Mejorar ' + P.LABEL[k] + ' del ' + a.num + ' (' + c + (c === 1 ? ' punto' : ' puntos') + ')">' + (v >= P.MAX ? 'máx' : '+' + c) + '</button></div>';
         });
       });
+      html += badgesHTML(a, i);
       html += '</div>';
     });
-    var foc = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute('data-up') ? document.activeElement : null;
-    var fk = foc ? foc.getAttribute('data-i') + ':' + foc.getAttribute('data-up') : upKey;
+    // conserva el foco (botón «+» de un atributo o insignia) al repintar
+    var ae = document.activeElement, fa = ae && ae.getAttribute && el.sqBody.contains(ae) ? (ae.getAttribute('data-up') ? 'data-up' : ae.getAttribute('data-bd') ? 'data-bd' : '') : '';
+    var fsel = fa ? 'button[data-i="' + ae.getAttribute('data-i') + '"][' + fa + '="' + ae.getAttribute(fa) + '"]' : upKey ? 'button[data-i="' + upKey.split(':')[0] + '"][data-up="' + upKey.split(':')[1] + '"]' : '';
+    var fkb = ae && ae.classList && ae.classList.contains('kf');
     el.sqBody.innerHTML = html;
-    if (fk) { var nb = el.sqBody.querySelector('button[data-i="' + fk.split(':')[0] + '"][data-up="' + fk.split(':')[1] + '"]'); if (nb && !nb.disabled) focusEl(nb, true); }
+    if (fsel) { var nb = el.sqBody.querySelector(fsel); if (nb && !nb.disabled) { focusEl(nb, fa ? fkb : true); if (fa === 'data-bd') badgeInfo(nb); } }
     renderMenu();
+  }
+  // ---------- Jugadores: insignias (js/badges.js) ----------
+  function bdTile(a, i, b, eqList) {
+    var B = VB.Badges, pr = B.progress(a, b.id), on = eqList.indexOf(b.id) >= 0;
+    var sub = pr.lvl ? sepHTML([B.TIERS[pr.lvl].replace(/^./, function (c) { return c.toUpperCase(); }), pr.next != null ? pr.n + '/' + pr.next : 'máximo'], 'v')
+      : pr.n + '/' + pr.next + ' ' + pr.unit;
+    var aria = b.name + ', ' + (pr.lvl ? 'nivel ' + B.TIERS[pr.lvl] + (on ? ', equipada' : ', sin equipar') : 'bloqueada, ' + pr.n + ' de ' + pr.next + ' ' + pr.unit) + '. ' + b.desc + '.';
+    return '<button class="bd-t l' + pr.lvl + (on ? ' eq' : '') + '" data-i="' + i + '" data-bd="' + b.id + '"' + (pr.lvl ? ' aria-pressed="' + on + '"' : '') + ' aria-label="' + aria + '">' +
+      '<span class="bd-ic">' + b.icon + '</span><span class="bd-tx"><b>' + b.name + '</b><small>' + sub + '</small></span>' +
+      '<span class="bd-pb"><i style="width:' + Math.round(pr.frac * 100) + '%"></i></span>' + (on ? '<em class="bd-on">EQUIPADA</em>' : '') + '</button>';
+  }
+  function badgesHTML(a, i) {
+    var B = VB.Badges; if (!B) return '';
+    var eq = B.equipped(a), sl = B.slots(a), h = '<p class="sq-g bd-h">Insignias <span>' + eq.length + '/' + sl + ' equipadas</span></p><div class="bd-grid">';
+    B.LIST.forEach(function (b) { h += bdTile(a, i, b, eq); });
+    return h + '</div><p class="bd-info" data-i="' + i + '" aria-live="polite">' + badgeHint(a) + '</p>';
+  }
+  function badgeHint(a) {
+    var sl = VB.Badges.slots(a);
+    return 'Elige una insignia desbloqueada para equiparla o quitarla. Huecos: ' + sl + (sl < 6 ? ' (uno más cada 5 niveles, hasta 6).' : ' (el máximo).');
+  }
+  /** Línea de detalle de la insignia enfocada o señalada (sin repintar el panel). */
+  function badgeInfo(btn, msg) {
+    if (!btn || !VB.Badges) return;
+    var i = +btn.getAttribute('data-i'), a = VB.Prog.squad()[i], b = VB.Badges.BY[btn.getAttribute('data-bd')], info = el.sqBody.querySelector('.bd-info[data-i="' + i + '"]');
+    if (!a || !b || !info) return;
+    var T = ['Bronce', 'Plata', 'Oro'], fx = b.fx.map(function (f, k) { return '<span class="t' + (k + 1) + '">' + T[k] + '</span> ' + f; }); fx = sepHTML(fx, 'v', true);
+    info.innerHTML = (msg ? '<strong class="warn">' + msg + '</strong> ' : '') + '<b>' + b.name + '</b>: ' + b.desc + '. ' + fx + '.<br><small>Se consigue: ' + b.cond.toLowerCase() + ' (' + b.th.join(' / ') + ' ' + b.unit[1] + ').</small>';
+  }
+  /** Novedades de insignias en la hoja final («¡Insignia nueva: Cañón (bronce)!»). */
+  function endBadgesHTML(list) {
+    if (!list || !list.length || !VB.Badges) return '';
+    var h = '';
+    list.forEach(function (u) {
+      var b = VB.Badges.BY[u.id];
+      h += '<span class="l' + u.lvl + '"' + (u.eq && !u.prev ? ' title="Equipada"' : '') + '><i class="bd-ic">' + (b ? b.icon : '') + '</i>N.º ' + u.num + ': <b>' + VB.Badges.label(u) + '</b></span>';
+    });
+    return '<div class="end-bd">' + h + '</div>';
   }
   var restartArm = 0, restartTo = 0;
   function disarmRestart() {
@@ -1970,7 +2106,7 @@
     disarmRestart();
     el.pS0.textContent = g.score[0]; el.pS1.textContent = g.score[1];
     el.pMid.innerHTML = 'SETS<b>' + g.sets[0] + '-' + g.sets[1] + '</b>';
-    if (el.pKick) el.pKick.textContent = pauseKicker(g);
+    if (el.pKick) setSep(el.pKick, pauseKicker(g), 'd');
   }
 
   // ---------- Celebración previa a la pantalla final ----------
@@ -1980,8 +2116,8 @@
   // ---------- Final ----------
   function showEnd(e) {
     var win = e.team === 0, T = stats.t;
-    var isNew = false;
-    if (!ctx.debug) {
+    var isNew = false, career = !!(ctx.game && ctx.game.career && !ctx.game.demo);
+    if (!ctx.debug && !career) {   // los partidos de Carrera no cuentan para el récord de Partido rápido
       record.played++; if (win) { record.wins++; record.winRun++; } else record.winRun = 0;
       // los consejos del partido acompañan hasta la primera victoria; luego se apagan (se reactivan en Ajustes · Juego · Consejos)
       if (win && record.wins === 1 && ctx.settings.coachTips !== false) ctx.actions.setSetting('coachTips', false);
@@ -1991,7 +2127,7 @@
     el.end.classList.toggle('win', win); el.end.classList.toggle('lose', !win);
     // (UI-18) antetítulo con contexto, sin repetir el título: «Palau del Mar · Nivel Normal · 3 sets»
     var nSets = (e.setScores || []).length || ((e.sets ? e.sets[0] + e.sets[1] : 0) | 0), dn = VB.DIFF && ctx.game && VB.DIFF[ctx.game.difficulty] && VB.DIFF[ctx.game.difficulty].name;
-    el.endKicker.textContent = 'Palau del Mar · Nivel ' + (dn || OPT.difficulty.labels[optIndex('difficulty')]) + ' · ' + nSets + (nSets === 1 ? ' set' : ' sets');
+    setSep(el.endKicker, [venueName(), 'Nivel ' + (dn || OPT.difficulty.labels[optIndex('difficulty')]), nSets + (nSets === 1 ? ' set' : ' sets')], 'd');
     el.endTitle.textContent = win ? '¡Victoria!' : 'Gana la CPU';
     el.endS0.textContent = e.sets[0]; el.endS1.textContent = e.sets[1];
     el.endSets.innerHTML = (e.setScores || []).map(function (s, i) {
@@ -2007,22 +2143,24 @@
     });
     el.endStats.innerHTML = html;
     var rec = '<span>Jugada más larga: <b>' + stats.longest + ' toques</b></span>';
-    if (!ctx.debug) rec += '<span>Partidos ganados: <b>' + record.wins + ' de ' + record.played + '</b></span>';
+    if (!ctx.debug && !career) rec += '<span>Partidos ganados: <b>' + record.wins + ' de ' + record.played + '</b></span>';
     var bs = record.bestStreak;
     if (isNew) rec += '<span class="new">¡Nueva mejor racha: ' + (bs === 1 ? '1 punto seguido' : bs + ' puntos seguidos') + '!</span>';
-    else if (record.winRun > 1) rec += '<span class="new">' + record.winRun + ' victorias seguidas</span>';
+    else if (record.winRun > 1 && !career) rec += '<span class="new">' + record.winRun + ' victorias seguidas</span>';
     // siguiente paso en un clic: tras ganar, revancha un nivel por encima; tras perder (salvo en Fácil), uno por debajo
     var di = optIndex('difficulty'), alt = win ? (di < OPT.difficulty.vals.length - 1 ? di + 1 : -1) : (di > 0 ? di - 1 : -1);
-    if (!win && alt >= 0) rec += '<span class="new">¿Te cuesta? Prueba el nivel <b>' + OPT.difficulty.labels[alt] + '</b></span>';
+    if (!win && alt >= 0 && !career) rec += '<span class="new">¿Te cuesta? Prueba el nivel <b>' + OPT.difficulty.labels[alt] + '</b></span>';
     el.btnAgainAlt.hidden = alt < 0;
     if (alt >= 0) { el.btnAgainAlt.textContent = 'Revancha en ' + OPT.difficulty.labels[alt]; el.btnAgainAlt.setAttribute('data-d', OPT.difficulty.vals[alt]); }
-    if (!ctx.debug && VB.Prog && ctx.game && !ctx.game.autopilot) {
+    // (partido de Carrera, g.career: la experiencia y las insignias de su atleta las reparte VB.Career.matchDone, no el escuadrón)
+    if (!ctx.debug && VB.Prog && ctx.game && !ctx.game.autopilot && !ctx.game.career) {
       var dfk = ctx.game.difficulty, perP = [stats.p[0], stats.p[1]];
       var aw = VB.Prog.award(perP, { win: win, setsWon: e.sets ? e.sets[0] : 0, difficulty: dfk }), sqa = VB.Prog.get().a, xh = '';
       aw.forEach(function (r, i) {
         xh += '<span>N.º ' + sqa[i].num + ': <b>+' + r.xp + ' XP</b>' + (r.lvlUp ? ' <span class="lv">¡NIVEL ' + r.lvl + '! +' + r.pts + ' PT</span>' : '') + '</span>';
       });
       rec += '<div class="end-xp">' + xh + '</div>';
+      if (VB.Badges) rec += endBadgesHTML(VB.Badges.endMatch(ctx.game, win));
     }
     el.endRecord.innerHTML = rec;
     // MVP de cada equipo (UI-11). UI-18: una tabla pequeña: un solo rótulo «MVP», la cabecera «Ataque · Bloqueo · Saque» una vez y en
@@ -2114,7 +2252,7 @@
     if (!firstAsked && !record.played && !record.tut && !ctx.debug) {
       firstAsked = true; uiSound('click');
       var di = optIndex('difficulty');
-      el.firstDiff.textContent = 'Nivel ' + OPT.difficulty.labels[di] + (di === 0 ? ' (recomendado para empezar)' : '') + ' · se cambia en el menú';
+      el.firstDiff.textContent = 'Nivel ' + OPT.difficulty.labels[di] + (di === 0 ? ' (recomendado para empezar)' : '') + '. Se cambia en el menú';
       openPanel('first', 'menu'); return;
     }
     uiSound('start'); goMatch();
@@ -2154,6 +2292,14 @@
   var ctlView = 'keyboard';
   function K(t) { return '<kbd>' + t + '</kbd>'; }
   function S(t) { return '<span class="key">' + t + '</span>'; }
+  /** Botón del ratón como tecla: un ratón dibujado con el botón izquierdo ('l') o derecho ('r') relleno. */
+  function M(side) {
+    var b = side === 'r' ? 'M8 2.6V8.4H13.4V8.2A5.4 5.4 0 0 0 8 2.6Z' : 'M8 2.6V8.4H2.6V8.2A5.4 5.4 0 0 1 8 2.6Z';
+    return '<kbd class="ms" aria-label="clic ' + (side === 'r' ? 'derecho' : 'izquierdo') + '"><svg viewBox="0 0 16 22" width="15" height="20" aria-hidden="true" style="display:block">' +
+      '<rect x="1.4" y="1.4" width="13.2" height="19.2" rx="6.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 1.6V8.4M1.6 8.4H14.4" stroke="currentColor" stroke-width="1.4"/>' +
+      // botón pulsado en ámbar (con currentColor no se distinguía el izquierdo del derecho)
+      '<path d="' + b + '" fill="#ffb238" stroke="#ffb238" stroke-width=".6"/></svg></kbd><small aria-hidden="true">' + (side === 'r' ? 'der.' : 'izq.') + '</small>';
+  }
   function T(t, j) { return '<span class="key tch' + (j ? ' j' : '') + '">' + t + '</span>'; }
   function ctlRows(dv) {
     var R = ctlRowsAll(dv);
@@ -2164,13 +2310,13 @@
   function ctlRowsAll(dv) {
     if (dv === 'gamepad') {
       var P = padSet();
-      return [[S('Stick') + S('Cruceta'), 'Moverse'], [padKey('a'), 'Golpear · sacar'], [padKey('b') + padKey('x'), 'Saltar <small>(en el aire: dejada)</small>'],
-        [padKey('y') + S(P.lb) + S(P.rb), 'Cambiar jugador'], [S(P.start), 'Pausa'], [S(P.select), 'Sonido'], [S(padFam() === 'ps' ? 'L2' : 'LT'), 'Challenge <small>(7 s tras el punto)</small>'], [padKey('a') + padKey('b'), 'Menús: aceptar · volver']];
+      return [[S('Stick') + S('Cruceta'), 'Moverse'], [padKey('a'), 'Golpear y sacar <small>(stick: diana del saque)</small>'], [padKey('b') + padKey('x'), 'Saltar <small>(en el aire: dejada)</small>'],
+        [padKey('y') + S(P.lb) + S(P.rb), 'Cambiar jugador'], [S(P.start), 'Pausa'], [S(P.select), 'Sonido'], [S(padFam() === 'ps' ? 'L2' : 'LT'), 'Challenge <small>(7 s tras el punto)</small>'], [padKey('a') + padKey('b'), 'Menús: aceptar y volver']];
     }
-    if (dv === 'touch') return [[S('Joystick') + '<small>mitad izquierda</small>', 'Moverse'], [T('Golpear'), 'Golpear <small>(SACAR en el saque)</small>'],
+    if (dv === 'touch') return [[S('Joystick') + '<small>mitad izquierda</small>', 'Moverse'], [T('Golpear'), 'Golpear y sacar <small>(joystick: diana del saque)</small>'],
       [T('Saltar', 1), 'Saltar <small>(en el aire: dejada)</small>'], [S('⇄'), 'Cambiar jugador'], [S('CHALLENGE'), 'Challenge <small>(7 s tras el punto)</small>'], [S('II'), 'Pausa']];
-    return [[K('W') + K('A') + K('S') + K('D') + '<small>o</small>' + K('↑') + K('←') + K('↓') + K('→'), 'Moverse'], [K('Espacio') + K('J'), 'Golpear · sacar'],
-      [K('K') + K('X'), 'Saltar <small>(en el aire: dejada)</small>'], [K('C'), 'Cambiar jugador'], [K('V'), 'Challenge <small>(7 s tras el punto)</small>'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
+    return [[K('W') + K('A') + K('S') + K('D') + '<small>o</small>' + K('↑') + K('←') + K('↓') + K('→'), 'Moverse'], [K('J') + K('X') + '<small>o</small>' + M('l'), 'Golpear y sacar <small>(flechas: diana)</small>'],
+      [K('Espacio') + '<small>o</small>' + M('r'), 'Saltar <small>(en el aire: dejada)</small>'], [K('C'), 'Cambiar jugador'], [K('V'), 'Challenge <small>(7 s tras el punto)</small>'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
   }
   function renderCtl() {
     var cur = device(), tabs = el.pnCtl ? el.pnCtl.querySelectorAll('.ctl-tab') : [];
@@ -2182,8 +2328,8 @@
     for (var j = 0; j < R.length; j++) h += '<div><dt>' + R[j][0] + '</dt><dd>' + R[j][1] + '</dd></div>';
     el.ctlGrid.innerHTML = h;
     var note = el.pnCtl.querySelector('.ctl-note');
-    if (note) note.innerHTML = oneMode() ? '<b>Arriba</b> es siempre hacia la red · llevas siempre al <b>n.º ' + oneNum() + '</b> y la IA a tu compañero · mantén una dirección al golpear para apuntar.'
-      : '<b>Arriba</b> es siempre hacia la red · el control pasa solo a quien da el siguiente toque · mantén una dirección al golpear para apuntar.';
+    if (note) note.innerHTML = oneMode() ? '<b>Arriba</b> es siempre hacia la red. Llevas siempre al <b>n.º ' + oneNum() + '</b> y la IA a tu compañero. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.'
+      : '<b>Arriba</b> es siempre hacia la red. El control pasa solo a quien da el siguiente toque. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.';
     if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
   }
   function ctlStep(d) {
@@ -2203,9 +2349,10 @@
     // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS); el set decisivo va a min(15, puntos)
     setPoints: { vals: [11, 15, 21, 25], labels: ['11', '15', '21', '25'] },
     // control: los dos jugadores (el control pasa a quien toca) o solo uno (la IA lleva al compañero; sim: g.ctrlMode)
-    // Contrato del sprint cartoon: en modo Uno se elige a cuál de los dos (ajuste ctrlPlayer → createGame({ctrlIdx})). La fila
-    // del menú es UNA sola con tres valores virtuales: los dos / Uno · n.º 7 / Uno · n.º 11 (ver ctrlSel y optIndex)
-    ctrlMode: { vals: ['both', 'one0', 'one1'], labels: ['Los dos', 'Uno · n.º 7', 'Uno · n.º 11'] },
+    // En modo Uno llevas siempre al n.º 1 (ya no se elige a cuál; el ajuste antiguo ctrlPlayer se ignora). desc: ayuda de la fila
+    // La fila se lee entera: «Controlar ‹ a los dos jugadores ›» / «Controlar ‹ un jugador ›» (petición de Ferran); en pantallas
+    // estrechas «jugadores» (.cv-x) se oculta por CSS y queda «Controlar ‹ a los dos ›»
+    ctrlMode: { vals: ['both', 'one'], labels: ['A los dos<span class="cv-x"> jugadores</span>', 'Un jugador'], desc: ['Controlar a los dos jugadores', 'Controlar un jugador'] },
     coachTips: { vals: [true, false], labels: ['Sí', 'No'] },
     // Equipación (Ajustes · Equipación): muestras de color; players.js setKit deriva el resto de tonos
     kitShirt: { vals: [0xff5a2c, 0xd8262e, 0xf2c230, 0x1f9a4a, 0x32b5e8, 0x7b3fd1, 0x22252c, 0xf2f4f8], labels: ['<i class="sw" style="background:#ff5a2c" title="Naranja"></i>', '<i class="sw" style="background:#d8262e" title="Rojo"></i>', '<i class="sw" style="background:#f2c230" title="Amarillo"></i>', '<i class="sw" style="background:#1f9a4a" title="Verde"></i>', '<i class="sw" style="background:#32b5e8" title="Celeste"></i>', '<i class="sw" style="background:#7b3fd1" title="Morado"></i>', '<i class="sw" style="background:#22252c" title="Negro"></i>', '<i class="sw" style="background:#f2f4f8" title="Blanco"></i>'] },
@@ -2216,12 +2363,30 @@
     camStable: { vals: [true, false], labels: ['Sí', 'No'] },
     rumble: { vals: [true, false], labels: ['Sí', 'No'] },
     hudScale: { vals: [1, 1.15, 1.3], labels: ['100%', '115%', '130%'] },
-    softFlash: { vals: [true, false], labels: ['Sí', 'No'] }
+    softFlash: { vals: [true, false], labels: ['Sí', 'No'] },
+    // sede (Ajustes · Imagen): arena.js la cambia en vivo, también con la demo del menú de fondo
+    arena: { vals: ['hall', 'beach'], labels: ['Pabellón', 'Playa'] }
   };
-  /** Dorsales del equipo humano (sim: teams[0][i].num; 7 y 11 si aún no hay partido). */
+  /** Nombre de la sede (arena.js: ajuste `arena` o ?map=): Palau del Mar / Platja Llarga. */
+  function venueName() { return VB.Arena && VB.Arena.venueName ? VB.Arena.venueName() : 'Palau del Mar'; }
+  /** Pone el nombre de la sede en los textos fijos del HTML (antetítulo del menú, tarjeta de presentación, cortinilla,
+   *  marcador, final). Busca cada vez (otros pueden rehacer esos nodos) y respeta MAYÚSCULAS. */
+  function applyVenue() {
+    var nm = venueName(), re = /Palau del Mar|Platja Llarga/gi, w, n;
+    try { w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false); } catch (e) { return; }
+    while ((n = w.nextNode())) {
+      var v = n.nodeValue; if (!v || v.length < 12) continue; re.lastIndex = 0; if (!re.test(v)) continue;
+      if (/Palau del Mar/i.test(v) && /Platja Llarga/i.test(v)) continue; // «Palau del Mar o Platja Llarga» (ayuda de Escenario) nombra las dos
+      var nv = v.replace(re, function (m) { return m === m.toUpperCase() ? nm.toUpperCase() : nm; }); if (nv !== v) n.nodeValue = nv;
+    }
+    // lema del menú: en la playa no es «pista cubierta» (las reglas siguen siendo las de pista: TRASPASO.md)
+    var tg = document.querySelector('#menu .tagline'), tn = tg && tg.firstChild, beach = VB.Arena && VB.Arena.venue && VB.Arena.venue() === 'beach';
+    if (tn && tn.nodeType === 3) tn.nodeValue = tn.nodeValue.replace(beach ? 'Vóley en pista cubierta' : 'Vóley en la playa', beach ? 'Vóley en la playa' : 'Vóley en pista cubierta');
+  }
+  /** Dorsales del equipo humano (sim: teams[0][i].num; 1 y 2 si aún no hay partido). */
   function teamNums() {
     var g = ctx && ctx.game, t = g && g.teams && g.teams[0];
-    return [t && t[0] && t[0].num || 7, t && t[1] && t[1].num || 11];
+    return [t && t[0] && t[0].num || 1, t && t[1] && t[1].num || 2];
   }
   /** ¿Modo «Control: Uno»? En partido manda el partido (g.ctrlMode); en el menú, el ajuste. */
   function oneMode() {
@@ -2229,19 +2394,13 @@
     if (g && !g.demo && (ctx.state === 'playing' || ctx.state === 'paused' || ctx.state === 'over')) return g.ctrlMode === 'one';
     return ctx.settings.ctrlMode === 'one';
   }
-  /** Dorsal del jugador que llevas en modo Uno (en partido, g.ctrl; si no, el del ajuste ctrlPlayer). */
+  /** Dorsal del jugador que llevas en modo Uno (en partido, g.ctrl; si no, el primero de tu equipo: el n.º 1). */
   function oneNum() {
     var g = ctx && ctx.game;
     if (g && !g.demo && g.ctrl && g.ctrlMode === 'one' && ctx.state !== 'menu') return g.ctrl.num;
-    return teamNums()[ctx.settings.ctrlPlayer === 1 ? 1 : 0];
-  }
-  /** Fila «Control» (valor virtual 0..2) → ajustes ctrlMode + ctrlPlayer. */
-  function ctrlSel(i) {
-    if (i > 0) ctx.actions.setSetting('ctrlPlayer', i === 2 ? 1 : 0);
-    ctx.actions.setSetting('ctrlMode', i > 0 ? 'one' : 'both');
+    return teamNums()[0];
   }
   function optIndex(k) {
-    if (k === 'ctrlMode') return ctx.settings.ctrlMode === 'one' ? (ctx.settings.ctrlPlayer === 1 ? 2 : 1) : 0;
     var o = OPT[k], v = ctx.settings[k]; for (var i = 0; i < o.vals.length; i++) if (o.vals[i] === v) return i; return k === 'difficulty' ? 1 : 0; }
   var SLIDERS = { camSens: { min: 0.5, max: 1.5, def: 1 }, sfxVol: { min: 0, max: 1, def: 1 }, musicVol: { min: 0, max: 1, def: 0.75 } };
   function slVal(k) { var c = SLIDERS[k], v = +ctx.settings[k]; return isFinite(v) ? Math.max(c.min, Math.min(c.max, v)) : c.def; }
@@ -2254,7 +2413,7 @@
       if (k === 'sfxVol' && VB.Audio && VB.Audio.play) try { VB.Audio.play('pass', 0.8); } catch (e) { }
     } else {
       var o = OPT[k], i = absIdx != null ? absIdx : (optIndex(k) + d + o.vals.length) % o.vals.length;
-      if (k === 'ctrlMode') ctrlSel(i); else ctx.actions.setSetting(k, o.vals[i]);
+      ctx.actions.setSetting(k, o.vals[i]);
     }
     optSound(k, arrowDir);
   }
@@ -2297,7 +2456,7 @@
     var snd = document.querySelector('.opt-snd');
     if (snd) { snd.classList.toggle('muted', !!ctx.settings.muted); var mb = snd.querySelector('[data-mute]'); if (mb) mb.setAttribute('aria-checked', ctx.settings.muted ? 'true' : 'false'); }
     var q = ctx.quality && ctx.quality.level, qn = { high: 'alta', medium: 'media', low: 'baja' }[q] || '';
-    el.qualNote.textContent = ctx.settings.quality === 'auto' ? 'Auto la ajusta sola' + (qn ? ' · ahora: ' + qn : '') : 'Fija · ' + (qn || '');
+    el.qualNote.textContent = ctx.settings.quality === 'auto' ? 'Auto la ajusta sola' + (qn ? ' (ahora: ' + qn + ')' : '') : 'Fija' + (qn ? ': ' + qn : '');
     // menú: dificultad
     var di = optIndex('difficulty');
     if (el.diffVal.textContent !== OPT.difficulty.labels[di]) {
@@ -2320,15 +2479,17 @@
     if (pas.length === 2) { pas[0].classList.toggle('end', pi === 0); pas[1].classList.toggle('end', pi === OPT.setPoints.vals.length - 1); }
     // menú: control (los dos / uno), misma fila que los puntos
     var ci = optIndex('ctrlMode'), tn = teamNums();
-    OPT.ctrlMode.labels[1] = 'Uno · n.º ' + tn[0]; OPT.ctrlMode.labels[2] = 'Uno · n.º ' + tn[1];
-    if (el.ctrlVal.textContent !== OPT.ctrlMode.labels[ci]) {
-      el.ctrlVal.textContent = OPT.ctrlMode.labels[ci];
+    var cd = OPT.ctrlMode.desc[ci] + (ci > 0 ? ' (el n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] + ')' : '');
+    if (el.optCtrl.title !== cd) { el.optCtrl.title = cd; el.optCtrl.setAttribute('aria-label', 'Control: ' + cd); }
+    if (el.ctrlVal.innerHTML !== OPT.ctrlMode.labels[ci]) {
+      el.ctrlVal.innerHTML = OPT.ctrlMode.labels[ci];
       if (lastCtrlI >= 0) { var cv = el.ctrlVal.parentNode; cv.classList.remove('sl-l', 'sl-r'); void cv.offsetWidth; cv.classList.add(ci > lastCtrlI ? 'sl-r' : 'sl-l'); }
     }
     lastCtrlI = ci;
     var cas = el.optCtrl.querySelectorAll('.arr');
     if (cas.length === 2) { cas[0].classList.toggle('end', ci === 0); cas[1].classList.toggle('end', ci === OPT.ctrlMode.vals.length - 1); }
-    el.playSub.textContent = 'Partido rápido · ' + OPT.difficulty.labels[di] + ' · Sets a ' + OPT.setPoints.vals[pi] + (ci > 0 ? ' · Solo el n.º ' + tn[ci - 1] : '');
+    // pastillas (CSS .mi.primary .mi-s .chip; el nivel en amarillo); el lector lee «Partido rápido, Normal, Sets a 25»
+    setSep(el.playSub, ['Partido rápido', { t: OPT.difficulty.labels[di], c: 'hi' }, 'Sets a ' + OPT.setPoints.vals[pi], ci > 0 ? 'Solo el n.º ' + tn[0] : ''], 'c');
     el.optCtrl.classList.toggle('one', ci > 0);
   }
 
@@ -2401,13 +2562,17 @@
     return out;
   }
 
+  /** Saque dirigible (sim: g.aim3.kind 'serve' con la diana encendida). */
+  var sbRect = null;
+  function svAim(g) { return !!(g && g.aim3 && g.aim3.on && g.aim3.kind === 'serve'); }
+
   var TUT = [
     { step: 'Paso 1 de 6', title: 'El saque', fig: {
         players: [{ t: 0, x: 10.3, y: -1.5, you: 1, lbl: 'TÚ' }, { t: 0, x: 3.5, y: 2 }, { t: 1, x: -6.5, y: -2.2 }, { t: 1, x: -6.5, y: 2.2 }],
         segs: [{ a: [10.0, -1.5, 2.7], b: [-6.2, 1.6, 0.2], apex: 4.3, dur: 1.5, who: 0 }], ring: [-6.2, 1.6], swing: [[0, 0, 0.3]] },
-      text: function (g) { return 'Con ' + g.move + ' te desplazas por el fondo. ' + g.serve + ' lanza el balón para un saque flotante; ' + g.jump + ', para un <b>saque en salto</b>. Vuelve a pulsar ' + g.serve + ' cuando baje a tu mano y apunta con ' + g.aim + '.'; },
+      text: function (g) { return 'Con ' + g.move + ' te desplazas por el fondo. ' + g.serve + ' lanza el balón para un saque flotante; ' + g.jump + ', para un <b>saque en salto</b>. Mientras sube, mueve la <b>diana</b> del campo rival con ' + g.aim + ' y vuelve a pulsar ' + g.serve + ' cuando baje a tu mano: con <b>timing perfecto</b>, el saque va exacto a la diana.'; },
       rule: '<b>Ace</b> (punto directo de saque): el balón cae en el campo rival o la recepción no se controla. Tienes <b>8 segundos</b> para sacar; si sale fuera o pasa por fuera de las antenas, punto para el rival.' },
-    { step: 'Paso 2 de 6', title: '1r toque · Recepción', fig: {
+    { step: 'Paso 2 de 6', title: '1.er toque · Recepción', fig: {
         players: [{ t: 0, x: 6, y: -1.5, you: 1, lbl: '1' }, { t: 0, x: 1.8, y: 1.2, lbl: '2' }, { t: 1, x: -9.8, y: 1 }, { t: 1, x: -3.5, y: -2 }],
         segs: [{ a: [-9.5, 1, 2.7], b: [5.9, -1.5, 0.85], apex: 4.1, dur: 1.3 }, { a: [5.9, -1.5, 0.85], b: [1.8, 1.2, 2.3], apex: 4.4, dur: 1.0, who: 0 }], ring: [6, -1.5], swing: [[0, 1.25, 0.3]] },
       text: function (g) { return 'Cuando el balón viene a tu campo aparece un <b>círculo</b> donde tienes que jugarlo; se hace más pequeño hasta el momento de pulsar. Llega al círculo y pulsa ' + g.hit + ': el juego hace la <b>recepción</b> de antebrazos hacia tu compañero.'; },
@@ -2418,7 +2583,7 @@
       // modo «Control: Uno»: no hay cambio de jugador; el compañero (IA) coloca tus recepciones
       figOne: { players: [{ t: 0, x: 4.2, y: -2.4, you: 1, lbl: '1' }, { t: 0, x: 1.8, y: 1.2, lbl: '2' }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }] },
       text: function (g) {
-        if (oneMode()) return 'Llevas siempre al mismo jugador: tu compañero (la IA) hace la <b>colocación</b>, un balón alto junto a la red, y tú te preparas para rematar. Si el 1r toque lo da él, la colocación es tuya: ponte bajo el balón y pulsa ' + g.hit + '.';
+        if (oneMode()) return 'Llevas siempre al mismo jugador: tu compañero (la IA) hace la <b>colocación</b>, un balón alto junto a la red, y tú te preparas para rematar. Si el 1.er toque lo da él, la colocación es tuya: ponte bajo el balón y pulsa ' + g.hit + '.';
         return 'El control pasa solo a tu compañero (la cámara se desliza hacia él). Ponte bajo el balón y pulsa ' + g.hit + ': es la <b>colocación</b>, un balón alto junto a la red.';
       },
       rule: 'Cada equipo tiene <b>3 toques</b>. Un jugador no puede tocar dos veces seguidas: eso son <b>dobles</b>.' },
@@ -2460,7 +2625,7 @@
     i = Math.max(0, Math.min(TUT.length - 1, i));
     tut.i = i; tut.seen[i] = 1;
     var S = TUT[i], g = G();
-    el.tutStep.textContent = S.step; el.tutTitle.textContent = S.title;
+    el.tutStep.textContent = S.step; el.tutTitle.innerHTML = coachHTML(escT(S.title)); // «1r toque» en pastilla
     el.tutText.innerHTML = S.faults ? faultsHtml() : '<p class="tut-text">' + S.text(g) + '</p>' + (S.rule ? '<div class="tut-rule">' + S.rule + '</div>' : '');
     restartAnim(el.tutBody, 'tut-anim');
     el.tutFig.hidden = !!S.faults;
@@ -2550,6 +2715,7 @@
     if (panel === 'ctl') { ctlStep(d > 0 ? 1 : -1); return true; }
     if (panel === 'tut' && (!a || !a.getAttribute || !a.getAttribute('data-opt'))) { if (d > 0) { if (tut.i < TUT.length - 1) tutGo(tut.i + 1); } else tutGo(tut.i - 1); click(); return true; }
     if (a && a.getAttribute && a.getAttribute('data-opt') && !a.closest('[hidden]')) { changeOpt(a.getAttribute('data-opt'), d); return true; }
+    if (panel === 'squad' && a && a.getAttribute && a.getAttribute('data-bd')) { navMove(d > 0 ? 1 : -1); return true; } // rejilla de insignias: ←/→ = vecina
     return false;
   }
   function onKey(e) {
@@ -2586,6 +2752,7 @@
   VB.UI = {
     banner: banner,
     callout: callout,
+    sep: sepHTML,          // separadores con diseño (career-ui.js también): sep(trozos, 'd'|'v'|'s'|'c', html)
     bootReady: bootReady,
     preboot: preboot,
     bootBusy: function () { return bootBusy(); },
@@ -2623,7 +2790,7 @@
       if (kind === 'disconnected') { padGone = true; if (el.pKick) el.pKick.textContent = 'Mando desconectado'; }
       else if (kind === 'connected') {
         padGone = false; padFamF = -999; GLYPH_PS = null;
-        if (ctx.game && el.pKick) el.pKick.textContent = pauseKicker(ctx.game);
+        if (ctx.game && el.pKick) setSep(el.pKick, pauseKicker(ctx.game), 'd');
         if (ctx.state === 'playing') callout('Mando conectado', 0, 'good');
       }
     },
@@ -2669,6 +2836,19 @@
         var i = +b.getAttribute('data-i'), k = b.getAttribute('data-up');
         if (VB.Prog.bump(i, k, 1)) { uiSound('click'); renderSquad(i + ':' + k); } else uiSound2('optHover');
       });
+      if (el.sqBody) {
+        // insignias: equipar / quitar (ratón, táctil, teclado y mando: son botones de [data-nav]) y detalle al enfocar o señalar
+        el.sqBody.addEventListener('click', function (ev) {
+          var b = ev.target && ev.target.closest ? ev.target.closest('button[data-bd]') : null;
+          if (!b || !VB.Badges || !VB.Prog) return;
+          var a = VB.Prog.squad()[+b.getAttribute('data-i')], id = b.getAttribute('data-bd'), r = a ? VB.Badges.toggle(a, id) : '';
+          if (r) { VB.Prog.save(); uiSound(r === 'on' ? 'click' : 'back'); renderSquad(); return; }
+          uiSound2('optHover');
+          badgeInfo(b, a && VB.Badges.level(a, id) ? 'Sin huecos libres: quita otra insignia.' : 'Bloqueada.');
+        });
+        el.sqBody.addEventListener('focusin', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('button[data-bd]') : null; if (b) badgeInfo(b); });
+        el.sqBody.addEventListener('pointerover', function (ev) { if (ev.pointerType !== 'mouse') return; var b = ev.target && ev.target.closest ? ev.target.closest('button[data-bd]') : null; if (b) badgeInfo(b); });
+      }
       on(el.btnResume, function () { ctx.actions.resume(); });
       on(el.btnPControls, function () { openPanel('ctl', 'paused'); });
       on(el.btnPSettings, function () { openPanel('set', 'paused'); });
@@ -2733,16 +2913,17 @@
       el.icoSound.innerHTML = s.muted ? '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 6M21 9l-5 6" stroke="#f7f2ea" stroke-width="2" stroke-linecap="round"/>'
         : '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="#f7f2ea" stroke-width="2" stroke-linecap="round"/>';
       // UI-16: tamaño del HUD (variable --hs en #app: marcador, contador, avisos, botones y hojas) y destellos suaves
-      var hs = [1, 1.15, 1.3].indexOf(+s.hudScale) >= 0 ? +s.hudScale : 1;
-      if (hudScale !== hs) { hudScale = hs; el.app.style.setProperty('--hs', String(hs)); el.app.classList.toggle('hs-big', hs > 1); promptW = 0; tbRect = coachRect = guideRect = null; joyR = null; }
+      hudSet = [1, 1.15, 1.3].indexOf(+s.hudScale) >= 0 ? +s.hudScale : 1;
+      vpFit(); // --hs = ajuste × --vs (pantallas grandes)
       el.app.classList.toggle('soft-flash', !!s.softFlash);
+      if (!arguments[1] || arguments[1] === 'arena') applyVenue(); // sede: nombre en el menú y demás textos fijos
       kitTick();
       hudFit();
       renderOpts();
       [el.pause, el.end, el.panel].forEach(function (n) { if (n && !n.hidden) { fitSheet(n); checkMore(n); } });
     },
     setQuality: function () { if (panel === 'set') renderOpts(); vigTick(); },
-    resize: function () { offA.obsF = -999; tbx.ok = false; tbx.f = -9999; hudFit(); [el.pause, el.end, el.panel].forEach(function (n) { if (n && !n.hidden) { fitSheet(n); checkMore(n); } }); tbRect = coachRect = guideRect = null; joyR = null; promptW = 0; },
+    resize: function () { vpFit(); offA.obsF = -999; tbx.ok = false; tbx.f = -9999; hudFit(); [el.pause, el.end, el.panel].forEach(function (n) { if (n && !n.hidden) { fitSheet(n); checkMore(n); } }); tbRect = coachRect = guideRect = null; joyR = null; promptW = 0; },
     onState: function (s, prev) {
       shown = '';
       // UI-04: la pausa aparta banner, pestaña y aviso corto; al volver solo reaparecen si les quedaban > 0,4 s

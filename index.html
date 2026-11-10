@@ -1080,6 +1080,14 @@ h2 span{color:var(--hot)}
   .faults li{padding:5px 10px 6px;font-size:12px;line-height:1.3}
   .faults li b{font-size:13.5px}
 }
+/* móvil apaisado muy bajo (667×375): el paso 1 (saque + recuadro del ace) no cabía y el recuadro quedaba tapado por los
+   puntos de paso → más ancho para el texto (dibujo algo más estrecho) y letra un punto más pequeña */
+@media (max-height:400px) and (min-width:600px){
+  .tut{grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr);gap:12px}
+  .tut-title{font-size:22px;margin:1px 0 4px}
+  .tut-text{font-size:12.5px;line-height:1.36}
+  .tut-rule{font-size:11.5px;line-height:1.3;margin-top:6px;padding:5px 9px}
+}
 @media (max-height:560px) and (min-width:600px){
   #end .sheet{max-width:820px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);column-gap:28px;align-items:start}
   #end .sheet>*{grid-column:1}
@@ -1267,6 +1275,35 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
   #menu .mlist>#btnTut,#menu .mlist>#btnControls,#menu .mlist>#btnSettings{grid-column:auto;grid-template-columns:minmax(0,1fr);padding:0 6px;text-align:center;font-size:16px}
   #menu .mlist>#btnTut .mi-n,#menu .mlist>#btnControls .mi-n,#menu .mlist>#btnSettings .mi-n,#menu .mlist>#btnTut .mi-s,#menu .mlist>#btnControls .mi-s,#menu .mlist>#btnSettings .mi-s{display:none}
   #menu .mlist>#btnTut:hover,#menu .mlist>#btnControls:hover,#menu .mlist>#btnSettings:hover,#menu .mlist>#btnTut.kf,#menu .mlist>#btnControls.kf,#menu .mlist>#btnSettings.kf{padding-left:6px}
+  /* Carrera (02) a la derecha de Jugar, en la misma fila de 48 px: con ella el menú sigue cabiendo a 844×390 y 667×375 */
+  #menu .mlist>#btnPlay{grid-column:1/span 2}
+  #menu .mlist>#btnPlay>.mi-n{display:none}
+  #menu .mlist>#btnPlay{grid-template-columns:1fr auto}
+  #menu .mlist>#btnCareer{grid-column:auto;height:48px;grid-template-columns:minmax(0,1fr);padding:0 6px;text-align:center;font-size:19px}
+  #menu .mlist>#btnCareer .mi-n,#menu .mlist>#btnCareer .mi-s{display:none}
+  #menu .mlist>#btnCareer:hover,#menu .mlist>#btnCareer.kf{padding-left:6px}
+}
+/* Carrera (02) bajo Jugar = 9 filas. Entre 421 y 820 px de alto «Cómo se juega», «Controles» y «Ajustes» van juntas en una fila de
+   tres botones (como en el teléfono): el menú queda en 7 filas y ya no pisa la ayuda de teclas de abajo (a 1280×720 la pisaba con 8) */
+@media (min-height:421px) and (max-height:820px){
+  #menu .mlist{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:6px}
+  #menu .mlist>.mi{grid-column:1/-1}
+  #menu .mlist>#btnTut,#menu .mlist>#btnControls,#menu .mlist>#btnSettings{grid-column:auto;grid-template-columns:minmax(0,1fr);padding:0 8px;text-align:center;font-size:19px}
+  #menu .mlist>#btnTut .mi-n,#menu .mlist>#btnControls .mi-n,#menu .mlist>#btnSettings .mi-n,#menu .mlist>#btnTut .mi-s,#menu .mlist>#btnControls .mi-s,#menu .mlist>#btnSettings .mi-s{display:none}
+  #menu .mlist>#btnTut:hover,#menu .mlist>#btnControls:hover,#menu .mlist>#btnSettings:hover,#menu .mlist>#btnTut.kf,#menu .mlist>#btnControls.kf,#menu .mlist>#btnSettings.kf{padding-left:8px}
+}
+/* portátiles con poco alto útil (561-700 px, p. ej. 1366×768 con la barra del navegador): con 7 filas de 50 px la última fila
+   pisaba la ayuda de teclas. Logo, subtítulo y filas más bajos, y el menú centrado por encima de la ayuda */
+@media (min-height:561px) and (max-height:700px){
+  #menu{padding-bottom:calc(44px + var(--sbm))}
+  .menu-col{gap:10px}
+  .kicker{margin-bottom:4px}
+  .logo{font-size:clamp(44px,9vh,64px)}
+  .tagline{margin-top:8px;font-size:14px;line-height:1.35}
+  .mlist{gap:4px}
+  #menu .mlist>.mi{height:44px;font-size:21px}
+  #menu .mlist>.mi.primary{height:54px;font-size:28px}
+  .mi-s{font-size:12px}
 }
 
 /* ---- Jugadores: estadísticas y mejoras (js/prog.js) ---- */
@@ -1292,9 +1329,7 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 .sq-r .bar{height:9px;border-radius:5px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
 .sq-r .bar i{display:block;height:100%;background:var(--t1)}
 .sq-r b{text-align:right;font:900 17px var(--display);color:var(--fg);font-variant-numeric:tabular-nums}
-.sq-r button{height:30px;padding:0;border-radius:9px;font:900 15px var(--display);background:var(--t0);color:#fff;box-shadow:0 0 0 2px var(--tk);line-height:1}
-.sq-r button i{display:block;font:900 19px/15px var(--ui);font-style:normal;text-shadow:none}
-.sq-r button small{display:block;font:700 9px/1 var(--ui);opacity:.85}
+.sq-r button{height:30px;padding:0;border-radius:9px;font:800 16px/1 var(--ui);letter-spacing:0;text-shadow:none;text-transform:uppercase;background:var(--t0);color:#fff;box-shadow:0 0 0 2px var(--tk)}
 .sq-r button:disabled{background:rgba(255,255,255,.08);color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
 .sq-r button.kf,.sq-r button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
 .sq-r.up b{animation:sqUp .5s var(--spring)}
@@ -1303,10 +1338,51 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 .end-xp{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
 .end-xp span{font:700 13px var(--ui);color:var(--fg2)}
 .end-xp b{color:var(--gold)}
-.end-xp .lv{color:#fff;background:var(--t0);padding:1px 7px;border-radius:7px;box-shadow:0 0 0 2px var(--tk);font:900 13px var(--display);letter-spacing:.06em}
+.end-xp .lv{color:#fff;background:var(--t0);padding:1px 7px;border-radius:7px;box-shadow:0 0 0 2px var(--tk);font:900 13px var(--display);letter-spacing:.06em;white-space:nowrap}
+/* táctil: botones de la hoja final de al menos 44 px (a 844×390 los secundarios medían 37 px y «Ver celebración» 29 px) */
+#app.is-touch #end .row-btn button,#app.is-touch #end .end-peek button{min-height:44px}
+/* ---- Jugadores: insignias (js/badges.js). Nivel: l0 bloqueada (gris), l1 bronce, l2 plata, l3 oro ---- */
+.bd-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:10px}
+.bd-h span{font:700 12px var(--ui);letter-spacing:0;text-transform:none;color:var(--muted)}
+.bd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:8px}
+.bd-t{--bt:#6b7488;position:relative;display:grid;grid-template-columns:34px minmax(0,1fr);grid-template-rows:auto 6px;column-gap:7px;row-gap:5px;align-items:center;
+  min-height:56px;padding:7px 8px 7px 7px;border-radius:11px;text-align:left;background:rgba(0,0,0,.28);color:var(--fg2);box-shadow:0 0 0 2px var(--tk),0 3px 0 var(--tk);cursor:pointer;
+  font:600 12px/1.2 var(--ui);letter-spacing:0;text-transform:none;text-shadow:none}
+.bd-t.l1{--bt:#e08a45}.bd-t.l2{--bt:#cfdbe9}.bd-t.l3{--bt:#ffd23f}
+.bd-t:not(.l0){background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(0,0,0,.2))}
+.bd-ic{grid-row:1/3;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:rgba(29,21,48,.85);box-shadow:0 0 0 2px var(--bt);color:var(--bt)}
+.bd-ic svg{width:24px;height:24px;overflow:visible}
+.bd-t.l0 .bd-ic{filter:grayscale(1);opacity:.55}
+.bd-tx{min-width:0}
+.bd-tx b{display:block;font:800 15px/1.02 var(--display);letter-spacing:.02em;text-transform:uppercase;color:var(--fg);overflow-wrap:anywhere}
+.bd-tx small{display:block;margin-top:2px;font:600 11.5px/1.2 var(--ui);letter-spacing:0;text-transform:none;color:var(--muted)}
+.bd-t:not(.l0) .bd-tx small{color:var(--bt);font-weight:800}
+.bd-t.l0 .bd-tx b{color:var(--dim-text)}
+.bd-pb{height:6px;border-radius:4px;background:rgba(0,0,0,.45);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.bd-pb i{display:block;height:100%;background:var(--bt)}
+.bd-t.l0 .bd-pb i{background:var(--dim-text)}
+.bd-t.eq{background:linear-gradient(180deg,rgba(255,210,63,.2),rgba(255,210,63,.06));box-shadow:0 0 0 2px var(--tk),0 0 0 4px var(--gold),0 3px 0 4px var(--tk)}
+.bd-on{position:absolute;top:-9px;right:6px;padding:1px 6px;border-radius:6px;background:var(--gold);color:var(--tk);font:800 10.5px/1.35 var(--display);letter-spacing:.1em;font-style:normal;text-shadow:none;box-shadow:0 0 0 1.5px var(--tk)}
+.bd-t:hover{filter:brightness(1.12)}
+.bd-t.kf,.bd-t:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
+.bd-info{margin:2px 0 0;min-height:2.6em;font:600 12.5px/1.35 var(--ui);color:var(--fg2)}
+.bd-info b{color:var(--fg)}
+.bd-info small{color:var(--muted);font-size:11.5px}
+.bd-info .t1{color:#e08a45;font-weight:800}.bd-info .t2{color:#cfdbe9;font-weight:800}.bd-info .t3{color:var(--gold);font-weight:800}
+.bd-info .warn{color:var(--hot)}
+.end-bd{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px}
+.end-bd>span{--bt:#e08a45;display:inline-flex;align-items:center;gap:5px;font:700 12.5px var(--ui);color:var(--fg2);white-space:nowrap}
+.end-bd>span.l2{--bt:#cfdbe9}.end-bd>span.l3{--bt:#ffd23f}
+.end-bd b{color:var(--bt)}
+.end-bd small{color:var(--muted);font-size:11.5px}
+.end-bd .bd-ic{width:22px;height:22px;box-shadow:0 0 0 1.5px var(--bt)}
+.end-bd .bd-ic svg{width:16px;height:16px}
+@media (max-width:640px),(max-height:560px){.bd-grid{grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:7px}.bd-t{min-height:52px;padding:6px 7px 6px 6px}.bd-tx b{font-size:13px}}
 
 /* ---- marcador: tarjeta de cómic ---- */
 .sb{filter:none}
+/* diana del saque dirigible detrás del marcador (ui.js .aimthru): translúcido mientras dura */
+.sb.aimthru>*{opacity:.3;transition:opacity .15s}
 .sb-venue{background:#fff7e8;color:var(--tk);box-shadow:0 0 0 2px var(--tk)}
 .sb-set,.sb-chal{background:var(--tp2);border-color:var(--tk);box-shadow:0 0 0 2px var(--tk);color:#ffd23f}
 .sb-chal i{background:rgba(29,21,48,.8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
@@ -1485,6 +1561,80 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
 #boot .bt-bar i{background:#ff6a2e}
 #rotate{background:radial-gradient(100% 80% at 50% 40%,#3a3168,#1d1530)}
 #rotate b{text-shadow:var(--ring2),3px 4px 0 var(--tk)}
+/* =====================================================================
+   SEPARADORES CON DISEÑO (pulido 10-nov-2026, Ferran: «no acabo de ser fan de que TODO lo separes con "·"»)
+   ui.js sepHTML(trozos, tipo) (VB.UI.sep): 'd' rombo naranja con tinta (antetítulos), 'v' raya vertical fina (grupos de teclas,
+   parciales del marcador, consejos), 'c' pastillas (metadatos de una opción: modo, nivel, puntos), 's' barra inclinada (pares
+   cortos dentro de una línea). Entre trozos va una coma .sr: el lector de pantalla lee «Partido rápido, Normal, Sets a 25».
+   ===================================================================== */
+.sep{display:inline-block;vertical-align:middle;flex:none;position:relative}
+.sep>.sr{left:0;top:0}
+.sep-d{width:.44em;height:.44em;margin:-.12em .75em 0;transform:rotate(45deg);border-radius:1.5px;background:#ff6a2e;box-shadow:0 0 0 1.5px var(--tk)}
+.sep-v{width:2px;height:1.05em;margin:-.1em .62em 0;border-radius:1px;background:currentColor;opacity:.4}
+.sep-s{width:2.5px;height:.95em;margin:-.1em .5em 0;border-radius:1px;background:#ffb238;transform:skewX(-20deg);box-shadow:0 0 0 1px var(--tk)}
+.chip{display:inline-flex;align-items:center;gap:.32em;padding:.14em .6em .16em;margin:.1em .34em .1em 0;border-radius:999px;vertical-align:middle;
+  background:rgba(29,21,48,.5);box-shadow:inset 0 0 0 1.5px rgba(29,21,48,.92);font-weight:700;line-height:1.15;letter-spacing:.01em;white-space:nowrap;text-shadow:none}
+.chip:last-child{margin-right:0}
+.chip .dn{display:inline-flex;align-items:center;justify-content:center;min-width:1.35em;height:1.35em;margin-left:-.42em;border-radius:50%;
+  background:var(--k0,#ff6a2e);color:#fff;font:900 .86em/1 var(--display);box-shadow:0 0 0 1.5px var(--tk)}
+/* chips de JUGAR (fondo naranja): pastilla blanca translúcida con tinta, el nivel en amarillo */
+.mi.primary .mi-s{display:flex;flex-wrap:wrap;margin-top:5px;font-size:12px}
+.mi.primary .mi-s .chip{background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1.5px rgba(29,21,48,.78);color:#fff;text-shadow:0 1px 0 rgba(29,21,48,.55)}
+.mi.primary .mi-s .chip.hi{background:#ffd23f;color:var(--tk);text-shadow:none}
+.mlist:has(.mi.kf) .mi.primary:not(.kf) .mi-s .chip{background:rgba(29,21,48,.5);color:var(--fg2)}
+.mi:not(.primary) .mi-s .chip{font-size:12px;color:#e6e0ff}
+/* móvil apaisado (JUGAR a media anchura): sin «Partido rápido» (ya lo dice el botón) y en una sola línea */
+@media (max-height:420px){
+  .mi.primary .mi-s{flex-wrap:nowrap;overflow:hidden;margin-top:3px;font-size:11px}
+  .mi.primary .mi-s .chip:first-child{display:none}
+}
+/* antetítulos: el rombo hereda el tamaño del texto; el hueco del flex ya separa */
+.kicker .sep-d{margin:-.1em .2em 0}
+.sh-k .sep-d{margin:-.14em .7em 0 .55em}
+.in-k span span::before{content:none}
+.in-k>span::before{content:"";width:.42em;height:.42em;margin:0 12px 0 2px;display:inline-block;vertical-align:middle;transform:rotate(45deg);background:#ff6a2e;box-shadow:0 0 0 1.5px var(--tk)}
+.live .sep-v{height:.9em;margin:0 .35em;opacity:.55}
+/* pistas de teclas: grupos con raya fina entre ellos */
+.kh{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.kh+.kh::before{content:"";width:2px;height:14px;margin:0 8px 0 7px;border-radius:1px;background:currentColor;opacity:.35}
+.opt-foot{display:flex;align-items:center;flex-wrap:wrap;row-gap:4px}
+.is-touch .opt-foot{display:none}
+/* parciales del marcador: raya fina */
+.sb-hist .sep-v{height:.95em;margin:0 .1em;opacity:.35}
+/* paso del tutorial / consejo: «1r toque» como pastilla */
+.tchip{display:inline-block;padding:1px 7px 2px;margin-right:6px;border-radius:7px;background:#ffd23f;color:var(--tk);font:800 .82em/1.2 var(--display);letter-spacing:.06em;
+  text-transform:uppercase;text-shadow:none;box-shadow:0 0 0 1.5px var(--tk);vertical-align:.08em}
+#coach .sep-v{margin:-.1em .36em 0}
+#coach .tchip{margin-right:5px;padding:0 5px 1px}
+.tut-title .tchip{font-size:.5em;vertical-align:.35em;margin-right:10px}
+
+/* =====================================================================
+   PANTALLAS GRANDES (pulido 10-nov-2026): --vs en #app (ui.js vpFit: 1 hasta ~1280×760, 1,34 a 1920×1080, 1,71 a 2560×1440).
+   Menú: zoom en sus bloques (no en #menu, que ocupa toda la pantalla); hojas y HUD: ui.js multiplica --hs por --vs (fitSheet y
+   las reglas de UI-16 de arriba ya lo usan). Por debajo de 1280×760 --vs = 1 y no cambia nada (las reglas max-height siguen igual).
+   ===================================================================== */
+#app{--vs:1}
+/* fila Controlar del menú: «a los dos jugadores» no cabe en filas estrechas → «a los dos» (ui.js OPT.ctrlMode) */
+#ctrlVal{white-space:nowrap}
+/* ratoncito del panel Controles (ui.js M()): la tecla crece a su alto para que se vea qué botón va relleno */
+kbd.ms{height:auto;padding:2px 6px 1px}
+.ctl dt:has(kbd.ms){flex-wrap:nowrap;white-space:nowrap}
+.ctl dt kbd.ms+small{margin-left:1px}
+@media (max-width:900px),(max-height:560px){#ctrlVal .cv-x{display:none}}
+#menu .menu-col,#menu .menu-foot,#menu .live,#menu .fs-btn{zoom:var(--vs)}
+/* con zoom, el alto útil del menú es alto/--vs (~840 px a 2560×1440): misma rejilla compacta que 1280×720 (Cómo se juega,
+   Controles y Ajustes en una fila de 3), si no las 9 filas pisan la ayuda de teclas. ui.js pone .vs-up con --vs > 1,05 */
+#app.vs-up #menu .mlist{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:6px}
+#app.vs-up #menu .mlist>.mi{grid-column:1/-1}
+#app.vs-up #menu .mlist>#btnTut,#app.vs-up #menu .mlist>#btnControls,#app.vs-up #menu .mlist>#btnSettings{grid-column:auto;grid-template-columns:minmax(0,1fr);padding:0 8px;text-align:center;font-size:19px}
+#app.vs-up #menu .mlist>#btnTut .mi-n,#app.vs-up #menu .mlist>#btnControls .mi-n,#app.vs-up #menu .mlist>#btnSettings .mi-n,
+#app.vs-up #menu .mlist>#btnTut .mi-s,#app.vs-up #menu .mlist>#btnControls .mi-s,#app.vs-up #menu .mlist>#btnSettings .mi-s{display:none}
+#app.vs-up #menu .mlist>#btnTut:hover,#app.vs-up #menu .mlist>#btnControls:hover,#app.vs-up #menu .mlist>#btnSettings:hover,
+#app.vs-up #menu .mlist>#btnTut.kf,#app.vs-up #menu .mlist>#btnControls.kf,#app.vs-up #menu .mlist>#btnSettings.kf{padding-left:8px}
+/* Carrera (DOM y estilos de career-ui.js): mismo zoom en su contenedor; alto y ancho divididos para que ocupe lo mismo */
+/* tarjeta de presentación del partido: también crece (si no, a 2560 se queda en ~500 px con letra de 9-11 px) */
+#app #intro .in-card{zoom:var(--vs)}
+#app #career .cr-in{zoom:var(--vs);height:calc(100% / var(--vs));width:min(1000px,calc(100% / var(--vs)))}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -1527,9 +1677,9 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
     </div>
 
     <div id="coach" class="off"></div>
-    <div id="offArrow" aria-hidden="true"><i class="oa-rot"><svg viewBox="0 0 24 24"><path d="M6 4l12 8-12 8z"/></svg></i><b id="offNum">7</b></div>
+    <div id="offArrow" aria-hidden="true"><i class="oa-rot"><svg viewBox="0 0 24 24"><path d="M6 4l12 8-12 8z"/></svg></i><b id="offNum">1</b></div>
     <div id="stamp" aria-hidden="true"><div class="st-in"><b id="stampT">Perfecto</b><span id="stampS" hidden></span></div></div>
-    <div id="prompt" class="off"><div class="pr-in"><span class="pr-kw"><svg class="pr-ring" id="promptRing" aria-hidden="true"><rect class="tr" pathLength="100"/><rect class="fi" pathLength="100"/></svg><span class="key" id="promptKey">ESPACIO</span></span><span class="pr-hg" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="sand" d="M8.6 5.2h6.8c0 2.2-1.6 3.6-3.4 5-1.8-1.4-3.4-2.8-3.4-5zM12 15.6c1.4.9 3 2 3.2 3.4H8.8c.2-1.4 1.8-2.5 3.2-3.4z"/><path d="M6.5 3h11M6.5 21h11M8 3.2c0 4.2 4 6 4 8.8S8 16.6 8 20.8M16 3.2c0 4.2-4 6-4 8.8s4 4.6 4 8.8"/></svg></span><span id="promptText">¡Golpea!</span><i class="pr-bar"><b id="promptBar"></b><u class="pr-notch"></u></i></div></div>
+    <div id="prompt" class="off"><div class="pr-in"><span class="pr-kw"><svg class="pr-ring" id="promptRing" aria-hidden="true"><rect class="tr" pathLength="100"/><rect class="fi" pathLength="100"/></svg><span class="key" id="promptKey">J</span></span><span class="pr-hg" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="sand" d="M8.6 5.2h6.8c0 2.2-1.6 3.6-3.4 5-1.8-1.4-3.4-2.8-3.4-5zM12 15.6c1.4.9 3 2 3.2 3.4H8.8c.2-1.4 1.8-2.5 3.2-3.4z"/><path d="M6.5 3h11M6.5 21h11M8 3.2c0 4.2 4 6 4 8.8S8 16.6 8 20.8M16 3.2c0 4.2-4 6-4 8.8s4 4.6 4 8.8"/></svg></span><span id="promptText">¡Golpea!</span><i class="pr-bar"><b id="promptBar"></b><u class="pr-notch"></u></i></div></div>
 
     <div class="hud-btns">
       <button id="btnHudFs" aria-label="Pantalla completa" title="Pantalla completa (F)" hidden><span class="fs-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span><span class="fs-out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></span></button>
@@ -1542,7 +1692,7 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
   <div id="guide" aria-live="polite"><div class="gd-k" id="guideK">PRIMER TOQUE</div><div class="gd-t" id="guideT"></div></div>
   <div id="skip" hidden></div>
   <div id="intro" aria-live="polite"><div class="in-card">
-    <p class="in-k"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 2c3 3 4 7 3 11M4 7c4 0 8 2 10 6M3 15c4 2 9 1 12-2" fill="none" stroke="currentColor" stroke-width="2"/></svg>Palau del Mar<span>Vóley · 2 contra 2</span></p>
+    <p class="in-k"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 2c3 3 4 7 3 11M4 7c4 0 8 2 10 6M3 15c4 2 9 1 12-2" fill="none" stroke="currentColor" stroke-width="2"/></svg>Palau del Mar<span><span class="sr">, </span>2 contra 2</span></p>
     <div class="in-vs"><div class="in-t t0"><b>TÚ</b><small>+ compañero</small></div><div class="in-x">vs</div><div class="in-t t1"><b>CPU</b><small>Pareja rival</small></div></div>
     <div class="in-meta"><span class="in-chip" id="introDiff">Nivel Normal</span><span id="introFmt">Al mejor de 3 sets</span><span class="in-srv" id="introSrv">Sacas tú</span></div>
     <p class="in-skip" id="introHint">Pulsa cualquier tecla para empezar ya</p>
@@ -1553,11 +1703,11 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
   <div id="fsTip" role="status" hidden></div>
   <!-- ================= MENÚ ================= -->
   <div id="menu" class="screen intro" hidden>
-    <div class="live">EN DIRECTO · DEMO</div>
+    <div class="live">EN DIRECTO<span class="sep sep-v"><span class="sr">, </span></span>DEMO</div>
     <button class="fs-btn" id="btnFs" data-ui hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Pantalla completa</span></button>
     <div class="menu-col">
       <div class="brand">
-        <p class="kicker">Palau del Mar · 2 contra 2</p>
+        <p class="kicker">Palau del Mar<span class="sep sep-d"><span class="sr">, </span></span>2 contra 2</p>
         <h1 class="logo" aria-label="Make the Cut">
           <svg class="lg-arc" viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true"><path d="M8 96 Q 190 -40 392 70"/></svg>
           <span class="lg-voley">MAKE THE<br>CUT</span>
@@ -1565,14 +1715,15 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
         <p class="tagline">Vóley en pista cubierta, con la cámara detrás de tu jugador: <b>tú y tu pareja contra la CPU</b>.</p>
       </div>
       <nav class="mlist" data-nav aria-label="Menú principal">
-        <button class="mi primary" id="btnPlay"><span class="mi-n">01</span><span>Jugar<br><span class="mi-s" id="playSub">Partido · Al mejor de 3 sets</span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
-        <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">02</span><span>Dificultad</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Más fácil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span></span><span class="arr" data-d="1" aria-label="Más difícil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-n">03</span><span>Puntos por set</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="optCtrl" data-opt="ctrlMode"><span class="mi-n">04</span><span>Control</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Control anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ctrlVal">Los dos</b></span><span class="arr" data-d="1" aria-label="Control siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="btnSquad"><span class="mi-n">05</span><span>Jugadores</span><span class="mi-s" id="squadSub">Estadísticas y mejoras</span></button>
-        <button class="mi" id="btnTut"><span class="mi-n">06</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
-        <button class="mi" id="btnControls"><span class="mi-n">07</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
-        <button class="mi" id="btnSettings"><span class="mi-n">08</span><span>Ajustes</span><span class="mi-s"></span></button>
+        <button class="mi primary" id="btnPlay"><span class="mi-n">01</span><span>Jugar<br><span class="mi-s" id="playSub"><span class="chip">Partido rápido</span></span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
+        <button class="mi" id="btnCareer"><span class="mi-n">02</span><span>Carrera</span><span class="mi-s" id="careerSub">Crea tu jugador · Liga y ofertas</span></button>
+        <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">03</span><span>Dificultad</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Más fácil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span></span><span class="arr" data-d="1" aria-label="Más difícil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-n">04</span><span>Puntos por set</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="optCtrl" data-opt="ctrlMode"><span class="mi-n">05</span><span>Controlar</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Control anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ctrlVal">A los dos<span class="cv-x"> jugadores</span></b></span><span class="arr" data-d="1" aria-label="Control siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="btnSquad"><span class="mi-n">06</span><span>Jugadores</span><span class="mi-s" id="squadSub">Estadísticas y mejoras</span></button>
+        <button class="mi" id="btnTut"><span class="mi-n">07</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
+        <button class="mi" id="btnControls"><span class="mi-n">08</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
+        <button class="mi" id="btnSettings"><span class="mi-n">09</span><span>Ajustes</span><span class="mi-s"></span></button>
       </nav>
     </div>
     <div class="menu-foot">
@@ -1584,7 +1735,7 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
   <!-- ================= PAUSA ================= -->
   <div id="pause" class="screen dim" hidden>
     <div class="sheet" role="dialog" aria-labelledby="pauseTitle">
-      <p class="sh-k" id="pauseKick">Set 1 · 0-0 · Normal</p>
+      <p class="sh-k" id="pauseKick">Set 1</p>
       <h2 id="pauseTitle">Pausa</h2>
       <div class="p-score">
         <div class="p-team t0"><i></i>TÚ <b id="pS0">0</b></div>
@@ -1644,8 +1795,8 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
       <div id="pnFirst" hidden>
         <p class="first-lead">¿Quieres ver antes cómo se juega? Son 6 pasos cortos con dibujos: saque, recepción, colocación, remate, bloqueo y reglas.</p>
         <div class="first-opts" data-nav>
-          <button id="btnFirstTut"><span>Ver cómo se juega<small>1 minuto · luego empieza el partido</small></span><span class="ic">▶</span></button>
-          <button class="ghost" id="btnFirstPlay"><span>Jugar ya<small id="firstDiff">Nivel Fácil · se cambia en el menú</small></span><span class="ic">›</span></button>
+          <button id="btnFirstTut"><span>Ver cómo se juega<small>1 minuto y luego empieza el partido</small></span><span class="ic">▶</span></button>
+          <button class="ghost" id="btnFirstPlay"><span>Jugar ya<small id="firstDiff">Nivel Fácil. Se cambia en el menú</small></span><span class="ic">›</span></button>
         </div>
       </div>
       <div id="pnCtl" hidden>
@@ -1656,7 +1807,7 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
           <button class="ctl-tab" data-ctl="touch" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10l5.2 1.1a2 2 0 0 1 1.6 2.2l-.6 5.2A2 2 0 0 1 16.2 20H11a2 2 0 0 1-1.6-.8l-3.6-4.8a1.4 1.4 0 0 1 2.1-1.8z"/></svg>Táctil</button>
         </div>
         <dl class="ctl" id="ctlGrid" role="tabpanel"></dl>
-        <p class="ctl-note"><b>Arriba</b> es siempre hacia la red · el control pasa solo a quien da el siguiente toque · mantén una dirección al golpear para apuntar.</p>
+        <p class="ctl-note"><b>Arriba</b> es siempre hacia la red. El control pasa solo a quien da el siguiente toque. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.</p>
       </div>
       <div id="pnSquad" hidden>
         <!-- Estadísticas de tus jugadores (js/prog.js): nivel, experiencia, puntos de mejora y los 10 atributos con «+» -->
@@ -1675,12 +1826,13 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
           <div class="opt-g">
             <p class="opt-h">Imagen</p>
             <button class="opt" data-opt="quality"><span>Calidad<small id="qualNote">Auto la ajusta sola</small></span><span class="seg" data-seg="quality"></span></button>
+            <button class="opt" data-opt="arena"><span>Escenario<small>Palau del Mar o Platja Llarga</small></span><span class="seg" data-seg="arena"></span></button>
             <button class="opt" data-opt="camSens"><span>Cámara<small>Rapidez con la que sigue a tu jugador</small></span><span class="slider" data-sl="camSens"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></button>
           </div>
           <div class="opt-g">
             <p class="opt-h">Juego</p>
             <button class="opt" data-opt="showHelp"><span>Ayudas en pantalla<small>Avisos de «¡Golpea!» y «¡Salta!»</small></span><span class="seg" data-seg="showHelp"></span></button>
-            <button class="opt" data-opt="coachTips"><span>Consejos<small>Qué hacer en cada toque · se apagan al ganar tu primer partido</small></span><span class="seg" data-seg="coachTips"></span></button>
+            <button class="opt" data-opt="coachTips"><span>Consejos<small>Qué hacer en cada toque. Se apagan al ganar tu primer partido</small></span><span class="seg" data-seg="coachTips"></span></button>
           </div>
           <div class="opt-g" id="optKit">
             <p class="opt-h">Equipación</p>
@@ -1697,7 +1849,7 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
             <button class="opt" data-opt="softFlash"><span>Destellos suaves<small>Menos destellos en los puntos y las celebraciones</small></span><span class="seg" data-seg="softFlash"></span></button>
           </div>
         </div>
-        <p class="opt-foot" id="optFoot"><span class="key">←</span><span class="key">→</span> cambia el valor · <span class="key">Intro</span> pasa al siguiente</p>
+        <p class="opt-foot" id="optFoot"><span class="kh"><span class="key">←</span><span class="key">→</span> cambia el valor</span><span class="kh"><span class="key">Intro</span> pasa al siguiente</span></p>
       </div>
     </div>
   </div>
@@ -1744,11 +1896,14 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
 <script src="js/sim.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/prog.js"></script>
+<script src="js/badges.js"></script>
 <script src="js/arena.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/players.js"></script>
 <script src="js/camera.js"></script>
 <script src="js/input.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/career.js"></script>
+<script src="js/career-ui.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>

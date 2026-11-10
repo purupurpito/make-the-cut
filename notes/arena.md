@@ -563,3 +563,51 @@ después `tools/out/cartoon/despues/arena/` (las mismas + `fx-spike.png`, `fx-bl
   colores de bloque (mismo número de entradas: la secuencia aleatoria no cambia); caída con la altura 0,42 → 0,6 y desaturación
   0,33 + k·0,3 → 0,12 + k·0,22 (también en los impostores, mismo GLSL). Programa `vb-crowd-7`. Triángulos y dibujos iguales.
 - **Red con contorno**: tinta #1d1530 pintada en la textura de la red (filo de las dos bandas y de los extremos, ~2,5 cm): 0 dibujos.
+
+### Sprint Carrera — diana del saque dirigible (9-nov-2026)
+- fx.js dibuja la diana del **saque dirigible** cuando `g.mode === 'serve' && g.aim3.on && g.aim3.kind === 'serve'` (sacador
+  humano; la sim decide cuándo está encendida). Posición = `g.aim3.x/y` exacta (sin suavizar); radio = `Sim.aimPoint().spreadNow`
+  (si no, `spread`; si aimPoint no devuelve `kind:'serve'`, 0,6 m). Sin `aim3.kind` todo va como antes (vista previa naranja del saque).
+- Estilo: misma diana cartoon (aro + 4 marcas + punto con filo oscuro) pero en **turquesa #1fe0d0** → dorado #ffe23a cuando la
+  dispersión «si pulsaras ahora» baja de ~0,45 m (perfecto). Textura propia `aimSvTex` (aro de 22 px / 256 en vez de 9: a 15-20 m el
+  aro fino se quedaba en ~1 px). No gira: se alinea con la mirada de la cámara y se alarga en profundidad ×`aimSt` (0,55·d/altura de
+  cámara, de 1 a 3) para compensar lo rasante de la cámara de saque. Radio mínimo del aro = 24 px CSS a esa distancia (`AIM_SVPX`,
+  suelo 0,45 m); el disco tenue (`aimFill`) es la dispersión REAL (mín. 0,18 m), así que se encoge dentro del aro con el buen timing.
+  El arco punteado del lanzamiento sale en turquesa.
+- Coste: 0 dibujos (la diana va en el lote de calcomanías). El atlas del lote pasa de 1024×512 (4×2) a 1024×1024 (4×4, `DEC_ROWS`)
+  para la celda 8; +2 MB de textura. perf.js baja: pico 33 dibujos (≤ 35).
+- Capturas: `tools/out/carrera/fx/` (serve/toss forzando `g.aim3`, `real-*` con la sim nueva, 844×390 y 1280×720).
+
+## Playa — sede «Platja Llarga» (arena + ui_main, 10-nov-2026)
+Segunda sede, SOLO escenario: la sim no cambia (18×9, reglas de pista cubierta; reglas de playa en TRASPASO.md).
+- **Elegir**: ajuste `arena` (`'hall'` | `'beach'`, main.js `loadSettings`; Ajustes · Imagen · «Escenario»: Pabellón / Playa) o `?map=beach`
+  (`?map=hall`; el parámetro manda al arrancar, un cambio en Ajustes manda después). Cambia EN VIVO (`Arena.onSettings(s, 'arena')` →
+  `setVenue`), también con la demo del menú de fondo.
+- **Cómo**: `buildBeach()` crea el grupo `beach` en `root`; el pabellón NO se destruye: `venueVis()` oculta sus piezas (`HALL_ONLY`, nombres
+  de los hijos de `root`; lo llama `setQuality` al final para que la calidad no vuelva a encenderlas). Se comparten red, postes (la protección
+  se repinta con `VENUE.pad`), oficiales/banquillos (personas; los bancos de madera de la playa están en `CREW_BENCH_*`) y luces
+  (`venueLook`: otro tono, fog y bruma del público; `beachQuality`: multiplicadores `BL` sobre la fila `LT`; mismo número de luces).
+  Al volver: `disposeBeach()` libera geometrías, materiales y texturas (no el material del público ni el de tinta, que son compartidos;
+  el público de la playa usa COPIAS de los buffers base del pabellón para no tocar su VAO). Medido: 3 idas y vueltas en el menú →
+  geometrías 64↔72, texturas 42↔46, programas 46↔53, siempre de vuelta al valor de partida.
+- **Escena**: cielo (esfera con degradado y sol de dibujo; horizonte = color de la niebla), nubes de dibujo (11 tarjetas, 1 atlas,
+  giran despacio), mar (shader: oleaje, bandas de olas, festón de espuma y resaca en la orilla x ≈ −27), arena (mosaico 512 px / 7,5 m +
+  variación por vértice + franja mojada), capa de pista transparente (cintas azules de 5 cm dentro de la pista, cordel discontinuo en la
+  línea de ataque, piquetas, rastrillado, hoyuelos y huellas), vallas de lona (marcas de siempre + PLATJA LLARGA), 2 gradas de aluminio
+  de 5 filas con toldo a rayas y ~140 aficionados por lado (material animado del pabellón: botes, ola, tensión), palmeras, sombrillas,
+  hamacas, toallas, pelotas, chiringuito, torre de socorrista, banderas de vela, tensores de los postes, veleros e islotes.
+- **API**: `VB.Arena.venue()` → `'hall'|'beach'`, `VB.Arena.venueName(id?)` → «Palau del Mar» / «Platja Llarga». ui.js `applyVenue()`
+  cambia el nombre en los textos fijos (antetítulo del menú, tarjeta, cortinilla, marcador, final) y el lema «Vóley en la playa».
+- **Coste** (dibujos): cielo, nubes, mar, arena, capa de pista, lona, estática (+ tinta en media/alta) y público.
+  `perf.js 844x390 12 high,medium,low 4` (partido real, dpr 2,75, CPU ×4; PC cargado por el otro flujo, fps orientativos), dibujos medio/pico y triángulos:
+  | nivel | pabellón | playa (`EXTRA=map=beach`) |
+  |---|---|---|
+  | alta | 45/50 · 1 245 k · 80 fps | 41/43 · 459 k · 78 fps |
+  | media | 46/50 · 268 k · 88 fps | 39/43 · 287 k · 85 fps |
+  | baja | 32/34 · 113 k · (medida no válida) | 28/30 · 140 k · 83 fps |
+  «objetivos cumplidos» en los dos; baja ≤ 35 dibujos de pico, media < 350 k triángulos. Capturas en `tools/out/pulido/playa/`
+  (`d1280/` 1280×720, `m844/` 844×390 táctil: menu, serve, rally, spike, point). `console.sh all` limpio con y sin `map=beach`.
+
+### LED: repetición sin solaparse (10-nov-2026)
+`drawMsg` reparte las repeticiones del mensaje con `floor(W / unidad)` (antes `ceil`): el reparto exacto solo agranda el hueco. Con
+`ceil` la unidad encogía y el texto pisaba las flechas y la repetición siguiente («PUNTO DE SETPUNTO DE SET»).

@@ -386,7 +386,12 @@ function makeBot(bp, seed) {
         const a = rng() * 6.283; aimv[0] = Math.cos(a); aimv[1] = Math.sin(a); useAim = rng() < bp.aim;
       }
       S.hitWindow(g, p, w);
-      if (useAim) out.move = aimv;
+      if (g.aim3 && g.aim3.on && g.aim3.kind === 'serve') {
+        // saque dirigible: lleva la diana con el stick al punto que antes elegía con la dirección (centro a 6 m + dir * (2,4 ; 3,4))
+        const tx = -Math.max(2, Math.min(8.4, 6 - (useAim ? aimv[0] * 2.4 : 0))), ty = useAim ? Math.max(-4, Math.min(4, aimv[1] * 3.4)) : 0;
+        const dx = tx - g.aim3.x, dy = ty - g.aim3.y, d = Math.hypot(dx, dy), f = d > 1e-6 ? Math.min(1, d / 0.25) / d : 0;
+        aimSt[0] = dx * f; aimSt[1] = dy * f; out.move = aimSt;
+      } else if (useAim) out.move = aimv;
       if (presses < 2 && !g.swingLive && w.t <= lead) { out.hit = true; presses++; }
       return out;
     }
@@ -1072,14 +1077,17 @@ if (ONLY !== 'matrix') {
         for (let i = 0; i < 120 * 12 && !res; i++) {
           const inp = { move: [0, 0], hit: false, jump: false, switchPlayer: false };
           if (g.mode === 'serve' && g.serveAuth && g.serveState === 'ready' && !tossed) { inp.hit = true; tossed = true; }
-          if (g.mode === 'serve' && g.serveState === 'toss' && !pressed && g.ball.vz < 0) { const w = S.hitWindow(g, h); if (w.t <= C.WINDUP) { inp.hit = true; pressed = true; if (aim) inp.move = [-0.7, (s % 2 ? 1 : -1) * 0.7]; } }
+          if (aim && g.mode === 'serve' && g.serveState === 'toss') { // saque dirigible: lleva la diana a la esquina de antes (-7,68 ; ±2,38)
+            const dx = -7.68 - g.aim3.x, dy = (s % 2 ? 1 : -1) * 2.38 - g.aim3.y, d = Math.hypot(dx, dy), f = d > 1e-6 ? Math.min(1, d / 0.25) / d : 0; inp.move = [dx * f, dy * f]; }
+          if (g.mode === 'serve' && g.serveState === 'toss' && !pressed && g.ball.vz < 0) { const w = S.hitWindow(g, h); if (w.t <= C.WINDUP) { inp.hit = true; pressed = true; } }
           S.step(g, DT, inp);
           for (const e of S.drainEvents(g)) { if (e.type === 'hit' && e.kind === 'serve') n++; if (e.type === 'point') { res = e; if (e.team === 0 && e.how === 'ace') ace++; } }
         }
       } return ace / n; };
     const fn = aceRate('normal', false), fa = aceRate('normal', true);
     const msg = 'aces de flotante perfecto en Normal: sin apuntar ' + (100 * fn).toFixed(0) + '%, apuntado ' + (100 * fa).toFixed(0) + '%';
-    if (!(fn >= 0.02 && fn <= 0.09 && fa >= 0.07 && fa <= 0.16 && fa > fn)) fail(msg + ' (objetivo 2-9 / 7-16)'); else console.log(msg + ' OK');
+    // (saque dirigible, sprint Carrera: el flotante cae en la diana con un 25 % del baile; antes el apuntado era 7-16 %)
+    if (!(fn >= 0.02 && fn <= 0.09 && fa >= 0.09 && fa <= 0.25 && fa > fn + 0.05)) fail(msg + ' (objetivo 2-9 / 9-25)'); else console.log(msg + ' OK');
   }
   // rol defensivo: el control pasa al defensor cuando la CPU COLOCA (no tras el remate) y la cámara tiene tiempo
   {
@@ -1145,17 +1153,21 @@ if (ONLY !== 'matrix') {
     S.step(ga, DT, null);
     if (S.aimPoint(ga, {}) !== null) { ok = false; msg.push('antes del silbato'); }
     for (let i = 0; i < 120 && !ga.serveAuth; i++) S.step(ga, DT, null);
-    const a1 = S.aimPoint(ga, {}, [-1, 0]), a2 = S.aimPoint(ga, {}, [0, 1]), a0 = S.aimPoint(ga, {});
-    if (!a1 || a1.mode !== 1 || a1.kind !== 'serve' || Math.abs(a1.x + 8.4) > 1e-9 || Math.abs(a2.y - 3.4) > 1e-9 || a0.aimed || a0.x !== -6) { ok = false; msg.push('saque ' + JSON.stringify([a1, a2, a0])); }
-    // saque real apuntado con timing perfecto: el destino del evento hit es el de aimPoint
-    let tossed = false, hitE = null, ap = null;
+    // saque dirigible: con el balón en la mano la diana está en el centro del fondo rival y el stick (que mueve al sacador) no la mueve
+    const a1 = Object.assign({}, S.aimPoint(ga, {}, [-1, 0]));
+    for (let i = 0; i < 30; i++) S.step(ga, DT, { move: [-1, 0.5], hit: false, jump: false });
+    const a0 = Object.assign({}, S.aimPoint(ga, {}));
+    if (!a1 || a1.mode !== 1 || a1.kind !== 'serve' || !a1.aimed || a1.x !== -7 || a1.y !== 0 || a0.x !== -7 || a0.y !== 0 || !ga.aim3.on || ga.aim3.kind !== 'serve') { ok = false; msg.push('saque ' + JSON.stringify([a1, a0])); }
+    // saque real: la diana se lleva con el stick durante el lanzamiento; con timing perfecto el destino del hit es la diana (aimPoint)
+    let tossed = false, hitE = null, ap = null, moved = null;
     for (let i = 0; i < 600 && !hitE; i++) {
-      const inp = { move: [-0.6, 0.8], hit: false, jump: false };
+      const inp = { move: [0, 0], hit: false, jump: false };
       if (ga.serveState === 'ready' && !tossed) { inp.hit = true; tossed = true; }
-      else if (ga.serveState === 'toss' && ga.ball.vz < 0 && S.hitWindow(ga, ga.ctrl).t <= C.WINDUP && !ga.swingLive) { inp.hit = true; ap = Object.assign({}, S.aimPoint(ga, {}, inp.move)); }
+      else if (ga.serveState === 'toss' && ga.ball.vz > 0) inp.move = [-0.6, 0.8];
+      else if (ga.serveState === 'toss' && S.hitWindow(ga, ga.ctrl).t <= C.WINDUP && !ga.swingLive) { inp.hit = true; ap = Object.assign({}, S.aimPoint(ga, {})); moved = [ga.aim3.x, ga.aim3.y]; }
       S.step(ga, DT, inp); hitE = S.drainEvents(ga).find(e => e.type === 'hit');
     }
-    if (!hitE || !ap || ap.mode !== 2 || Math.hypot(hitE.target[0] - ap.x, hitE.target[1] - ap.y) > 1e-6) { ok = false; msg.push('saque real ' + JSON.stringify([hitE && hitE.target, ap])); }
+    if (!hitE || !ap || ap.mode !== 2 || !(moved[0] < -7.5 && moved[1] > 0.5) || Math.hypot(hitE.target[0] - ap.x, hitE.target[1] - ap.y) > 1e-6 || ga.aim3.on) { ok = false; msg.push('saque real ' + JSON.stringify([hitE && hitE.target, ap, moved])); }
     // remate del humano en el aire: hit.target = aimPoint
     for (const mv of [[-0.5, 0.8], [0.9, -0.3], null]) {
       const gr = S.createGame({ demo: false, seed: 97 }), h = gr.teams[0][0];
@@ -1398,14 +1410,15 @@ if (ONLY !== 'matrix') {
       for (let i = 0; i < 120; i++) S.step(g, DT, { move: [0, 1], hit: false, jump: false }); // hasta la lateral
       res.push(['mira libre: empieza en la diagonal y se mueve', on0 && Math.abs(d0[0] + 6) < 0.01 && Math.abs(d0[1] + 1.6) < 0.01 && dx < -1.8 && dx > -2.6 &&
         (!g.aim3.on || (g.aim3.y <= 3.9 + 1e-9 && g.aim3.x <= -1.4 && g.aim3.x >= -8.3)), [on0, d0, dx.toFixed(2), g.aim3.y.toFixed(2)]]); }
-    { const g = S.createGame({ demo: false, seed: 62 }); S.step(g, DT, null); res.push(['mira libre apagada fuera del ataque', !g.aim3.on, g.aim3.on]); }
+    { const g = S.createGame({ demo: false, seed: 62 }); S.step(g, DT, null); const g2 = S.createGame({ demo: false, seed: 62 }); g2.serving = 1; S._setupServe(g2); S.step(g2, DT, null);
+      res.push(['mira libre apagada fuera del ataque', g.aim3.kind === 'serve' && !g2.aim3.on, [g.aim3.on, g.aim3.kind, g2.aim3.on]]); }
     // el remate cae en la diana: perfecto <= ~0,25 m; tarde 0,12 s claramente más disperso
     const errAt = (te) => {
       const errs = [];
       for (let k = 0; k < 24; k++) {
         const g = setup(100 + k, 0.6); g.ball.z = C.NET_H + 0.6; g.ball.x = 1.4; g.ball.y = 0.5; g.ball.vz = -0.5;
         const h = g.ctrl; h.x = 1.6; h.y = 0.5; h.z = 0.6; h.vz = 0.3;
-        g.aim3.on = true; g.aim3.x = -(3 + (k % 5)); g.aim3.y = -3 + (k % 7);
+        g.aim3.on = true; g.aim3.kind = 'spike'; g.aim3.x = -(3 + (k % 5)); g.aim3.y = -3 + (k % 7);
         const tx = g.aim3.x, ty = g.aim3.y;
         S._hit(g, h, null, te, ''); const hv = S.drainEvents(g).find(e => e.type === 'hit');
         if (!hv || hv.kind !== 'spike') { errs.push(99); continue; }
@@ -1522,15 +1535,15 @@ if (ONLY !== 'matrix') {
   {
     const f0 = failures, sum = { mate: 0, mateServe: 0, mateSet: 0, human: 0, mateBlock: 0, humanBlock: 0, matches: 0, pts: 0, mate11: 0, mate11Serve: 0, mate11Block: 0 };
     if (S.createGame({ seed: 1 }).ctrlMode !== 'both' || S.createGame({ seed: 1, ctrl: 'x' }).ctrlMode !== 'both') fail('ctrlMode por defecto no es both');
-    // ctrlIdx (contrato del sprint): 0 = teams[0][0] (n.º 7, por defecto), 1 = teams[0][1] (n.º 11); fuera del modo 'one' o con
-    // un valor raro, 0. Con el n.º 11 el orden de saque del equipo 0 va en espejo: el jugador del humano saca primero.
+    // ctrlIdx (contrato del sprint): 0 = teams[0][0] (n.º 1, por defecto; el único que usa el juego), 1 = teams[0][1] (n.º 2, solo pruebas); fuera del modo 'one' o con
+    // un valor raro, 0. Con el n.º 2 el orden de saque del equipo 0 va en espejo: el jugador del humano saca primero.
     { const gi = (o) => S.createGame(Object.assign({ demo: false, seed: 3 }, o));
       const a = gi({ ctrl: 'one', ctrlIdx: 1 }), b = gi({ ctrl: 'one' }), c = gi({ ctrl: 'both', ctrlIdx: 1 }), d = gi({ ctrl: 'one', ctrlIdx: 7 }), e = gi({ ctrl: 'one', ctrlIdx: '1' });
-      if (a.ctrlIdx !== 1 || a.ctrl !== a.teams[0][1] || a.ctrl.num !== 11 || a.server !== a.ctrl) fail('ctrlIdx 1: ctrl/saque inicial ' + [a.ctrlIdx, a.ctrl.num, a.server && a.server.num]);
+      if (a.ctrlIdx !== 1 || a.ctrl !== a.teams[0][1] || a.ctrl.num !== 2 || b.ctrl.num !== 1 || a.server !== a.ctrl) fail('ctrlIdx 1: ctrl/saque inicial ' + [a.ctrlIdx, a.ctrl.num, a.server && a.server.num]);
       if (b.ctrlIdx !== 0 || b.ctrl !== b.teams[0][0] || b.server !== b.ctrl) fail('ctrlIdx por defecto no es 0');
       if (c.ctrlIdx !== 0 || c.ctrl !== c.teams[0][0] || d.ctrlIdx !== 0 || e.ctrlIdx !== 1) fail('ctrlIdx fuera de modo uno / valor raro: ' + [c.ctrlIdx, d.ctrlIdx, e.ctrlIdx]); }
     for (let s = 1; s <= 6; s++) {
-      const ci = s > 4 ? 1 : 0; // semillas 5-6: el humano lleva al n.º 11
+      const ci = s > 4 ? 1 : 0; // semillas 5-6: el humano lleva al n.º 2
       const g = S.createGame({ demo: false, seed: 9100 + s, difficulty: 'normal', ctrl: 'one', ctrlIdx: ci, points: 11 }), bot = makeBot(BOTS.bueno, s * 7 + 3);
       const me = g.ctrl, mate = S.other(g, me), ev = [];
       let ctrlBad = 0, sw = 0, aiFault = 0, lastT0 = null;
@@ -1547,7 +1560,8 @@ if (ONLY !== 'matrix') {
             lastT0 = e;
           } else if (e.type === 'hit') lastT0 = null;
           else if (e.type === 'block' && e.team === 0) { if (e.player === mate) { sum.mateBlock++; if (ci) sum.mate11Block++; } else sum.humanBlock++; }
-          else if (e.type === 'point') { sum.pts++; if ((e.reason === 'double' || e.reason === 'four') && e.team === 1 && g.lastPlayer === mate) aiFault++; lastT0 = null; }
+          // (point.player = el que comete la falta: un 4.º toque del humano tras el 3.º del compañero no es falta de la IA)
+          else if (e.type === 'point') { sum.pts++; if ((e.reason === 'double' || e.reason === 'four') && e.team === 1 && e.player === mate) aiFault++; lastT0 = null; }
         }
       }
       if (g.finished) sum.matches++;
@@ -1587,7 +1601,7 @@ if (ONLY !== 'matrix') {
       out.push(st);
       if (st.human < 30 || st.mate > 2 || st.mateJump > 0 || st.net > 2) fail('modo uno, bloqueo del humano (ctrlIdx ' + ci + '): ' + JSON.stringify(st));
     }
-    if (failures === f0) console.log('modo uno: bloqueo del humano OK n.º 7 ' + JSON.stringify(out[0]) + ' · n.º 11 ' + JSON.stringify(out[1]));
+    if (failures === f0) console.log('modo uno: bloqueo del humano OK n.º 1 ' + JSON.stringify(out[0]) + ' · n.º 2 ' + JSON.stringify(out[1]));
   }
 }
 
@@ -1609,6 +1623,159 @@ if (ONLY !== 'matrix') {
     // (c) multiplicadores del humano a 50 = 1 (spike/serve son sumandos: 0)
     const k = S.attrK(all(50)); for (const n in k) { const want = n === 'spike' || n === 'serve' ? 0 : 1; if (Math.abs(k[n] - want) > 1e-9) fail('attrK(50).' + n + ' = ' + k[n]); }
     if (failures === f0) console.log('estadísticas de jugador OK · % puntos CPU con atributos 15/50/85: ' + [lo, mid, hi].map(x => (x * 100).toFixed(1)).join(' / '));
+  }
+
+  // ---------- Insignias (opts.badges), eventos para desbloquearlas y saque dirigible (sprint Carrera) ----------
+  {
+    const f0 = failures, res = [], ev = [], ids = S.BADGE_IDS;
+    const all3 = id => [[null, null], [{ [id]: 3 }, { [id]: 3 }]];
+    if (!Array.isArray(ids) || ids.length !== 12 || ids.join() !== 'canon,mira,rompemanos,seda,bombardero,flotador,muro,ancla,red,motor,sangrefria,lider') fail('Sim.BADGE_IDS: ' + ids);
+    // (a) sin insignias = idéntico: misma huella (puntos y velocidad de cada toque) con badges ausente, nulo, vacío o con ids desconocidos
+    { const play = (badges, sd, demo) => { const g = S.createGame({ seed: sd, autopilot: !demo, demo: !!demo, difficulty: 'normal', badges }), sig = [];
+        for (let i = 0; i < 240 * 120; i++) { S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+          for (const e of ev) if (e.type === 'point') sig.push(e.team + e.reason + e.how); else if (e.type === 'hit') sig.push(e.kind[0] + e.speed.toFixed(5)); }
+        return sig.join(','); };
+      let same = true;
+      for (const sd of [11, 222]) { const a = play(undefined, sd), b = play([[null, null], [null, null]], sd), c = play([[{}, null], [{ inventada: 3 }, { canon: 0 }]], sd);
+        if (a !== b || a !== c) same = false; }
+      if (play(undefined, 33, true) !== play(all3('canon'), 33, true)) same = false; // la demo no lleva insignias
+      const g = S.createGame({ seed: 1, badges: [[{ canon: 2, mira: 7, foo: 1 }, null], [{ red: '1' }, { motor: 0 }]] });
+      const norm = JSON.stringify(g.teams[0][0].badges) === '{"canon":2,"mira":3}' && g.teams[0][1].badges === null && g.teams[1][0].badges.red === 1 && g.teams[1][1].badges === null;
+      res.push(['(a) sin insignias idéntico y p.badges normalizado', same && norm, [same, norm]]); }
+    // CPU contra CPU (autopilot vs Normal): el equipo 1 lleva la insignia en sus dos jugadores; media de una métrica de sus golpes
+    const cpuStat = (badges, pick, seeds) => { let sum = 0, n = 0;
+      for (let sd = 1; sd <= (seeds || 8); sd++) { const g = S.createGame({ seed: 700 + sd, autopilot: true, difficulty: 'normal', badges }); let prev = null;
+        for (let i = 0; i < 300 * 120; i++) { S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+          for (const e of ev) { if (e.type === 'hit') { const r = pick(e, g, prev); if (r != null) { sum += r; n++; } prev = e; } else if (e.type === 'point') prev = null; } } }
+      return { m: sum / Math.max(1, n), n }; };
+    // (b1) Cañón: velocidad media de remate del equipo 1
+    { const sp = e => e.team === 1 && e.kind === 'spike' ? e.speed : null, a = cpuStat(null, sp), b = cpuStat(all3('canon'), sp);
+      res.push(['Cañón: remate más rápido', b.m - a.m > 1.0 && a.n > 100, [a.m.toFixed(2), b.m.toFixed(2), a.n]]); }
+    // (b2) Manos de seda: remate tras colocación buena/perfecta del compañero
+    { const sp = (e, g, pv) => e.team === 1 && e.kind === 'spike' && pv && pv.team === 1 && pv.kind === 'set' && pv.grade !== 'poor' && pv.player !== e.player ? e.speed : null;
+      const a = cpuStat(null, sp), b = cpuStat(all3('seda'), sp);
+      res.push(['Manos de seda: remate asistido más rápido', b.m - a.m > 0.7 && a.n > 100, [a.m.toFixed(2), b.m.toFixed(2), a.n]]); }
+    // (b3) Bombardero: saque en salto más frecuente (CPU contra CPU) y más rápido (mismo saque forzado en salto, con y sin la insignia)
+    { const sv = e => e.team === 1 && e.kind === 'serve' ? (e.shot === 'jump' ? 1 : 0) : null, fa = cpuStat(null, sv), fb = cpuStat(all3('bombardero'), sv);
+      const jsp = (s, badges) => { const g = S.createGame({ seed: 4400 + s, autopilot: true, difficulty: 'normal', badges }); g.serving = 1; S._setupServe(g); g.serveAuth = true; S._toss(g, g.server, true);
+        for (let i = 0; i < 120 * 3; i++) { S.step(g, DT, null); const h = S.drainEvents(g).find(e => e.type === 'hit' && e.kind === 'serve'); if (h) return h.speed; } return NaN; };
+      let d = 0, n = 0; for (let s = 1; s <= 30; s++) { const a = jsp(s, null), b = jsp(s, all3('bombardero')); if (a > 0 && b > 0) { d += b - a; n++; } }
+      res.push(['Bombardero: saque en salto', fb.m > fa.m + 0.2 && n >= 25 && d / n > 1.3, [fa.m.toFixed(2), fb.m.toFixed(2), (d / Math.max(1, n)).toFixed(2), n]]); }
+    // (b4) Hoja seca: baile del flotante x1,45
+    { const wb = (e, g) => e.team === 1 && e.kind === 'serve' && e.shot === 'float' && g.ball.wobA > 0 ? g.ball.wobA : null, a = cpuStat(null, wb), b = cpuStat(all3('flotador'), wb);
+      res.push(['Hoja seca: el flotante baila más', b.m / a.m > 1.35 && a.n > 40, [a.m.toFixed(2), b.m.toFixed(2), a.n]]); }
+    // bloqueo aislado: remate del equipo 1 contra el bloqueador (IA) teams[0][0]
+    const blockRun = (badges, N) => { const out = [];
+      for (let s = 0; s < N; s++) { const g = S.createGame({ autopilot: true, seed: 500 + s, badges }), blk = g.teams[0][0];
+        rallyAt(g, { x: -0.5, y: 0, z: 3.0, vx: 9, vz: -1.5 }); g.touchTeam = 1; g.lastTeam = 1; g.touches = 3; g.lastKind = 'spike'; g.lastPlayer = g.teams[1][0];
+        blk.x = 0.5; blk.y = 0; blk.z = 0.8; blk.vz = 0.3; g.teams[0][1].x = 6; g.teams[1][0].x = -1.5; g.teams[1][1].x = -5;
+        const evs = stepUntil(g, 'point', 600), bk = evs.find(e => e.type === 'block'), pt = evs.find(e => e.type === 'point');
+        out.push(bk ? { r: bk.result, tool: !!(pt && pt.tool) } : null); }
+      return out; };
+    // (b5) Rompemanos: +24 puntos de block-out
+    { const a = blockRun(null, 400), b = blockRun([[null, null], [{ rompemanos: 3 }, null]], 400), rate = r => r.filter(x => x && x.r === 'tool').length / Math.max(1, r.filter(x => x).length);
+      const tp = b.filter(x => x && x.tool).length;
+      res.push(['Rompemanos: más block-out', rate(b) - rate(a) > 0.15 && rate(b) - rate(a) < 0.33 && tp > 0, [rate(a).toFixed(3), rate(b).toFixed(3), tp]]); }
+    // (b6) Muro (IA): más bloqueos directos; mismo dado, umbral mayor -> todo directo sin la insignia sigue siéndolo con ella
+    { const a = blockRun(null, 400), b = blockRun([[{ muro: 3 }, null], null], 400);
+      let mono = true, sa = 0, sb = 0; for (let i = 0; i < a.length; i++) { const x = a[i] && a[i].r === 'stuff', y = b[i] && b[i].r === 'stuff'; if (x) sa++; if (y) sb++; if (x && !y) mono = false; }
+      res.push(['Muro: más bloqueos directos', mono && sb > sa * 1.08, [sa, sb]]); }
+    // (b7) Ancla (IA): el receptor previsto falla menos (mismo dado: nunca peor) y el humano tiene la ventana x1,18
+    { let okA = 0, okB = 0, mono = true;
+      const r = (s, badges) => { const g = S.createGame({ seed: 3000 + s, autopilot: true, difficulty: 'normal', badges });
+        for (let i = 0; i < 120 * 8; i++) { S.step(g, DT, null); const h = S.drainEvents(g).find(e => e.type === 'hit' && e.kind === 'serve'); if (h) return h.team === 0 && g.recvRisk > 0.3 ? g.digOk : null; } return null; };
+      for (let s = 1; s <= 300; s++) { const a = r(s, null), b = r(s, [[null, null], [{ ancla: 3 }, { ancla: 3 }]]); if (a == null || b == null) continue; if (a) okA++; if (b) okB++; if (a && !b) mono = false; }
+      const hq = (te, badges) => { const g = S.createGame({ demo: false, seed: 66, badges }), h = g.teams[0][0];
+        rallyAt(g, { x: 6, y: 0, z: 0.9, vx: 9, vz: -2 }); g.touchTeam = 1; g.touches = 3; g.lastTeam = 1; g.lastKind = 'serve'; g.lastPlayer = g.teams[1][0];
+        g.ctrl = h; h.x = 6.2; h.y = 0; S._hit(g, h, null, te, ''); return S.drainEvents(g).find(e => e.type === 'hit'); };
+      const h0 = hq(0.06, null), h1 = hq(0.06, [[{ ancla: 3 }, null], null]);
+      res.push(['Ancla: recepción', mono && okB > okA && h1 && Math.abs(h1.timing - 0.06 / 1.18) < 1e-9 && h1.quality > h0.quality && h1.recv && !h1.dig, [okA, okB, h0 && h0.quality.toFixed(3), h1 && h1.quality.toFixed(3)]]); }
+    // (b8) Ojo de halcón: el error del remate con mira (timing tardío) x0,68 (mismo dado); aimPoint lo dibuja igual
+    { const err = badges => { let s0 = 0, ap = null; for (let k = 0; k < 24; k++) {
+          const g = S.createGame({ demo: false, seed: 100 + k, badges }), h = g.teams[0][0], m = g.teams[0][1];
+          rallyAt(g, { x: 1.4, y: 0.5, z: C.NET_H + 0.6, vz: -0.5 }); g.touchTeam = 0; g.touches = 2; g.lastTeam = 0; g.lastPlayer = m; g.lastKind = 'set';
+          g.ctrl = h; h.x = 1.6; h.y = 0.5; h.z = 0.6; h.vz = 0.3; m.x = 6; for (const q of g.teams[1]) { q.x = -8; q.y = q.idx ? 4.5 : -4.5; }
+          g.aim3.on = true; g.aim3.kind = 'spike'; g.aim3.x = -(3 + (k % 5)); g.aim3.y = -3 + (k % 7); const tx = g.aim3.x, ty = g.aim3.y;
+          if (!ap) ap = Object.assign({}, S.aimPoint(g, {}));
+          S._hit(g, h, null, 0.12, ''); S.drainEvents(g); const ld = S.predictLanding(g, {}); s0 += Math.hypot(ld.x - tx, ld.y - ty); } return [s0 / 24, ap.spread]; };
+      const a = err(null), b = err([[{ mira: 3 }, null], null]);
+      res.push(['Ojo de halcón: remate más preciso', b[0] / a[0] > 0.6 && b[0] / a[0] < 0.76 && Math.abs(b[1] / a[1] - 0.68) < 1e-9, [a[0].toFixed(3), b[0].toFixed(3)]]); }
+    // (b9) Red de seguridad: alcance de defensa y de plancha x1,15; ventana de la defensa de remate x1,15
+    { const g = S.createGame({ autopilot: true, seed: 5, badges: [[{ red: 3 }, null], null] }), p = g.teams[0][0], q = g.teams[0][1];
+      rallyAt(g, { x: 5, y: 1.45, z: 1.0, vz: -1 }); g.touchTeam = 1; g.touches = 3; g.lastTeam = 1; g.lastKind = 'spike'; g.lastPlayer = g.teams[1][0];
+      p.x = 5; p.y = 0; q.x = 8; q.y = -3;
+      const cr = S.canReach(g, p); p.badges = null; const cr0 = S.canReach(g, p); p.badges = { red: 3 };
+      g.ball.y = 2.6; g.ball.z = 0.6; const cd = S.canDive(g, p); p.badges = null; const cd0 = S.canDive(g, p);
+      const gh = S.createGame({ demo: false, seed: 67, badges: [[{ red: 3 }, null], null] }), h = gh.teams[0][0];
+      rallyAt(gh, { x: 5, y: 0, z: 0.8, vx: 8, vz: -3 }); gh.touchTeam = 1; gh.touches = 3; gh.lastTeam = 1; gh.lastKind = 'spike'; gh.lastPlayer = gh.teams[1][0];
+      gh.ctrl = h; h.x = 5.2; h.y = 0; S._hit(gh, h, null, 0.046, ''); const hv = S.drainEvents(gh).find(e => e.type === 'hit');
+      res.push(['Red de seguridad: alcance y ventana', cr && !cr0 && cd && !cd0 && hv && Math.abs(hv.timing - 0.04) < 1e-9 && hv.dig && !hv.recv, [cr, cr0, cd, cd0, hv && hv.timing]]); }
+    // (b10) Motor: carrera x VB.BADGE.motor[3] (1,045 desde los arreglos finales) en el peloteo (humano e IA)
+    { const run = (badges, human) => { const g = S.createGame({ demo: false, autopilot: !human, seed: 8, badges }), p = g.teams[0][0]; rallyAt(g, { x: -5, z: 3 }); p.x = 6; p.y = -3;
+        for (let i = 0; i < 60; i++) S._stepPlayer(g, p, DT, 0, 1); return p.y + 3; };
+      const a = run(null, false), b = run([[{ motor: 3 }, null], null], false), c = run([[{ motor: 3 }, null], null], true), c0 = run(null, true);
+      res.push(['Motor: corre más', Math.abs(b / a - VB.BADGE.motor[3]) < 1e-6 && Math.abs(c / c0 - VB.BADGE.motor[3]) < 1e-6 && VB.BADGE.motor[3] > 1, [a.toFixed(3), b.toFixed(3), c.toFixed(3)]]); }
+    // (b11) Sangre fría (con punto de set: ventanas x1,25; IA timing x0,7) y (b12) Líder (compañero IA: reacción y timing de VB.BADGE.liderReact/liderT)
+    { const g = S.createGame({ demo: false, seed: 9, badges: [[{ sangrefria: 3 }, { lider: 3 }], null] }), h = g.teams[0][0], m = g.teams[0][1], pr = g.prof[0];
+      const tOff = S.aiTiming(g, m, pr), tOffH = S.aiTiming(g, h, pr); g.setPoint = 1; const tOn = S.aiTiming(g, h, pr);
+      rallyAt(g, { x: 5, y: 0, z: 0.8, vx: 8, vz: -3 }); g.touchTeam = 1; g.touches = 3; g.lastTeam = 1; g.lastKind = 'spike'; g.lastPlayer = g.teams[1][0];
+      g.ctrl = h; h.x = 5.2; h.y = 0; S._hit(g, h, null, 0.05, ''); const hv = S.drainEvents(g).find(e => e.type === 'hit');
+      const mateR = S.aiReact(g, h, pr), selfR = S.aiReact(g, m, pr);
+      res.push(['Sangre fría: ventanas en punto de set', tOff === pr.timing && Math.abs(tOffH - pr.timing * VB.BADGE.liderT[3]) < 1e-12 && Math.abs(tOn - pr.timing * VB.BADGE.liderT[3] * 0.7) < 1e-12 && hv && Math.abs(hv.timing - 0.04) < 1e-9, [tOff, tOn, hv && hv.timing]]);
+      res.push(['Líder: el compañero lee antes', Math.abs(mateR - Math.max(0.02, pr.react - VB.BADGE.liderReact[3])) < 1e-12 && selfR === pr.react, [mateR, selfR, tOffH]]); }
+    // (c) saque dirigible: humano guionizado que lleva la diana a las 4 esquinas y saca con timing perfecto / tardío (0,13 s)
+    { const corners = [[-8.4, -3.9], [-8.4, 3.9], [-2.2, -3.9], [-2.2, 3.9]];
+      const serve = (seed, tgt, late, jump) => {
+        const g = S.createGame({ demo: false, seed, serveClock: false }), h = g.ctrl;
+        for (const q of g.teams[1]) { q.x = -11; q.y = q.idx ? 6 : -6; q.down = 1e9; }
+        let tossed = false, pressed = false, ld = null, dmax = 0;
+        for (let i = 0; i < 120 * 6 && !ld; i++) {
+          const inp = { move: [0, 0], hit: false, jump: false };
+          if (g.mode === 'serve' && g.serveAuth && g.serveState === 'ready' && !tossed) { if (jump) inp.jump = true; else inp.hit = true; tossed = true; }
+          else if (g.mode === 'serve' && g.serveState === 'toss') {
+            const dx = tgt[0] - g.aim3.x, dy = tgt[1] - g.aim3.y, d = Math.hypot(dx, dy), f = d > 1e-6 ? Math.min(1, d / 0.25) / d : 0; inp.move = [dx * f, dy * f];
+            if (!pressed && g.ball.vz < 0) { const w = S.hitWindow(g, h); if (w.t <= C.WINDUP - (late ? 0.13 : 0)) { inp.hit = true; pressed = true; dmax = d; } }
+          }
+          S.step(g, DT, inp);
+          for (const e of S.drainEvents(g)) { if (e.type === 'land') ld = e; if (e.type === 'point' && !ld) ld = { x: 0, y: 0, none: true }; }
+        }
+        return ld ? { e: Math.hypot(ld.x - tgt[0], ld.y - tgt[1]), steer: dmax } : { e: 9, steer: dmax };
+      };
+      const meanE = (late, jump) => { let s0 = 0, st = 0; for (let k = 0; k < 24; k++) { const r = serve(4000 + k, corners[k % 4], late, jump); s0 += r.e; st = Math.max(st, r.steer); } return [s0 / 24, st]; };
+      const pj = meanE(false, true), pf = meanE(false, false), lj = meanE(true, true), lf = meanE(true, false);
+      const spr = [0.95, 0.78, 0.5, 0.2].map(q => S.serveSpread(q, true)), sprF = [0.95, 0.5].map(q => S.serveSpread(q, false));
+      res.push(['(c) saque dirigible a las esquinas', pj[0] < 1 && pf[0] < 1 && pj[0] < pf[0] && lj[0] > pj[0] + 0.3 && lf[0] > pf[0] + 0.2 && Math.max(pj[1], pf[1]) < 0.05 && spr[0] <= 0.0501 && sprF[0] > spr[0] && sprF[1] < S.serveSpread(0.5, true),
+        { saltoPerfecto: pj[0].toFixed(3), flotantePerfecto: pf[0].toFixed(3), saltoTarde: lj[0].toFixed(3), flotanteTarde: lf[0].toFixed(3), dianaSinLlegar: Math.max(pj[1], pf[1]).toFixed(3), serveSpread: spr.map(x => x.toFixed(2)).join('/') }]); }
+    // (d) eventos para desbloquear insignias en CPU contra CPU: point.assist, point.tool, hit.dig, hit.recv
+    { let pts = 0, kills = 0, assists = 0, tools = 0, digs = 0, recvs = 0, serves = 0, ptDigs = 0, bad = 0;
+      for (let sd = 1; sd <= 4; sd++) { const g = S.createGame({ seed: 8800 + sd, demo: true });
+        for (let i = 0; i < 600 * 120; i++) { S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+          for (const e of ev) {
+            if (e.type === 'hit') { if (e.dig) digs++; if (e.recv) recvs++; if (e.kind === 'serve') serves++; if ((e.dig && e.touch !== 1) || (e.recv && e.touch !== 1) || typeof e.dig !== 'boolean' || typeof e.recv !== 'boolean') bad++; }
+            if (e.type === 'point') { pts++; ptDigs += e.digs; if (e.how === 'kill') kills++;
+              if (e.assist) { assists++; if (e.how !== 'kill' || e.assist.team !== e.team) bad++; } else if (e.assist !== null) bad++;
+              if (e.tool) { tools++; if (e.lastKind !== 'block' || e.how !== 'kill') bad++; } else if (e.tool !== false) bad++; } } } }
+      res.push(['(d) assist/tool/dig/recv en CPU contra CPU', !bad && assists > kills * 0.5 && assists <= kills && tools > pts * 0.01 && digs > pts * 0.15 && digs <= ptDigs + 3 /* + la jugada a medias al cortar */ && recvs > serves * 0.6 && recvs <= serves,
+        { puntos: pts, remates: kills, asistencias: assists, blockOut: tools, defensas: digs, defensasPunto: ptDigs, recepciones: recvs, saques: serves, mal: bad }]); }
+    const bad = res.filter(r => !r[1]);
+    if (bad.length) fail('insignias / eventos / saque dirigible: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+    if (failures === f0) console.log('insignias, eventos y saque dirigible OK\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));
+  }
+
+  // ---- Carrera: opts.ref (error arbitral / challenge por competición) y opts.nums (dorsales) ----
+  {
+    const f0 = failures, ev = [], pts = o => { const g = S.createGame(Object.assign({ seed: 4242, autopilot: true }, o)), out = [];
+      for (let i = 0; i < 240 * 120 && !g.finished; i++) { S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev); for (const e of ev) if (e.type === 'point') out.push(e.team + e.reason); }
+      return out.join(','); };
+    const base = pts({});
+    if (pts({ ref: null }) !== base || pts({ nums: [[4, null], null] }) !== base) fail('Carrera: sin ref / con dorsales la sim debe ser idéntica');
+    const g = S.createGame({ seed: 1, ref: { p1: 0.55, p2: 0.4, p3: 0.22, d3: 0.25, chal: 0 }, nums: [[23, 5], [0, 'x']] });
+    if (g.chalPerSet !== 0 || g.challenges[0] !== 0 || g.refErr.d3 !== 0.25 || g.refErr.d1 !== VB.REF_ERR.d1) fail('Carrera: opts.ref no se aplica ' + JSON.stringify([g.refErr, g.chalPerSet, g.challenges]));
+    if (Math.abs(S.refErrP(0.2, g) - 0.22) > 1e-9 || S.refErrP(0.2) !== 0) fail('Carrera: refErrP con g.refErr');
+    if (g.teams[0][0].num !== 23 || g.teams[0][1].num !== 5 || g.teams[1][0].num !== 3 || g.teams[1][1].num !== 9) fail('Carrera: opts.nums');
+    const g2 = S.createGame({ seed: 1, ref: { p1: 0.2, p2: 0.08, p3: 0.02, d3: 0.1, chal: 2 } });
+    if (g2.challenges[0] !== 2 || g2.chalPerSet !== 2) fail('Carrera: challenge 2 por set');
+    if (failures === f0) console.log('Carrera: opts.ref y opts.nums OK');
   }
 
   console.log(failures ? `\n${failures} FALLOS` : '\nTODO OK');

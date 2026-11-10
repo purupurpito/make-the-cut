@@ -6,9 +6,14 @@
  * main.js las convierte a mundo con VB.CameraRig.getBasis().
  *
  * Teclado: flechas / WASD (por código físico: vale en AZERTY/QWERTZ),
- *   Espacio o J golpear/sacar, K o X saltar, C cambiar, V challenge, P/Esc pausa, M sonido.
+ *   Espacio saltar (pulgar), J o X golpear/sacar (J: mano derecha con WASD; X: mano
+ *   izquierda con las flechas), C cambiar, V challenge, P/Esc pausa, M sonido.
+ *   K sigue saltando (alias mudo del mapa antiguo: no se anuncia).
  *   Sin auto‑repetición (e.repeat se ignora) y con prioridad a la última
  *   tecla pulsada si se aprietan dos opuestas (izq+der).
+ * Ratón (solo en partido, sobre la pista): clic izquierdo golpear/sacar, clic
+ *   derecho saltar (sin menú contextual en el canvas). Mantener pulsado = mantener
+ *   la tecla. No cuenta si el clic cae en un botón/panel ni con el overlay táctil.
  * Mando (mapeo estándar): stick izq./cruceta mover, A golpear, B o X saltar,
  *   RB/LB/Y cambiar, LT (L2) challenge, Start pausa, Select sonido. Zona muerta radial (medida
  *   desde el reposo de cada mando: la deriva de un stick gastado no mueve ni
@@ -38,12 +43,12 @@
   var CODE = {
     ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
     ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
-    Space: 'hit', KeyJ: 'hit', KeyK: 'jump', KeyX: 'jump', KeyC: 'switch', KeyV: 'challenge',
+    Space: 'jump', KeyJ: 'hit', KeyX: 'hit', KeyK: 'jump', KeyC: 'switch', KeyV: 'challenge',
     KeyP: 'pause', Escape: 'pause', KeyM: 'mute', Enter: 'confirm', NumpadEnter: 'confirm'
   };
   var KEY = {
     arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down',
-    ' ': 'hit', spacebar: 'hit', j: 'hit', k: 'jump', x: 'jump', c: 'switch', v: 'challenge', p: 'pause', escape: 'pause', esc: 'pause', m: 'mute', enter: 'confirm'
+    ' ': 'jump', spacebar: 'jump', j: 'hit', x: 'hit', k: 'jump', c: 'switch', v: 'challenge', p: 'pause', escape: 'pause', esc: 'pause', m: 'mute', enter: 'confirm'
   };
   var down = {};          // acción -> número de teclas físicas que la mantienen
   var held = {};          // código -> acción (para soltar bien aunque cambie el layout)
@@ -78,6 +83,40 @@
     var n = isDown(neg), p = isDown(pos);
     if (n && p) return (stamp[pos] || 0) > (stamp[neg] || 0) ? 1 : -1;
     return p ? 1 : n ? -1 : 0;
+  }
+
+  // ---------------- Ratón ----------------
+  // Clic izquierdo = golpear, derecho = saltar: entran en el mismo mapa que las teclas (ids 'Mouse0'/'Mouse2'), así que
+  // mantener pulsado da hitHeld/jumpHeld igual que una tecla. Se lee e.buttons (no e.button) en pointerdown/move/up: con un
+  // botón ya pulsado, el 2.º solo llega como pointermove «acordado» (e.button !== -1). Solo pointerType 'mouse' (el dedo y
+  // el lápiz van por el overlay táctil), solo en partido y nunca sobre un control de la UI, un panel o el overlay táctil.
+  var MOUSE_UI = 'button,a,input,select,textarea,label,[role="button"],[data-ui],[data-opt],[data-nav],.screen,.sheet,#touch';
+  function mouseOk(e) {
+    if (!ctx || ctx.state !== 'playing' || ctx.portraitBlock || T.shown) return false;
+    var tg = e.target;
+    return !(tg && tg.closest && tg.closest(MOUSE_UI));
+  }
+  function mouseBtn(id, a, on, e, canPress) {
+    if (on) {
+      if (held[id] || !canPress || !mouseOk(e)) return;
+      held[id] = a; down[a] = (down[a] || 0) + 1; stamp[a] = ++seq; edge[a] = true;
+      it.device = 'keyboard'; stats.mouse[a]++;
+      if (e.cancelable) e.preventDefault();          // sin selección de texto ni arrastres al hacer clic en la pista
+    } else if (held[id]) {
+      delete held[id]; down[a] = Math.max(0, (down[a] || 0) - 1);
+    }
+  }
+  function onMouse(e) {
+    if (e.pointerType !== 'mouse') return;
+    var b = e.buttons | 0, canPress = e.type === 'pointerdown' || (e.type === 'pointermove' && e.button >= 0);
+    mouseBtn('Mouse0', 'hit', (b & 1) !== 0, e, canPress);
+    mouseBtn('Mouse2', 'jump', (b & 2) !== 0, e, canPress);
+  }
+  function onCtxMenu(e) {
+    // el clic derecho salta: sin menú contextual sobre la pista (sí en los menús y paneles)
+    var tg = e.target;
+    if (tg && (tg === (ctx && ctx.canvas) || tg.tagName === 'CANVAS') && e.cancelable) e.preventDefault();
+    else if (held.Mouse2 && e.cancelable) e.preventDefault();
   }
 
   // ---------------- Mando ----------------
@@ -198,7 +237,7 @@
             touchN: 0, touchEvT: 0, lastW: 0, lastH: 0, lastRing: -2, lastCue: false, dead: false };
   var el = {};
   // estadística/diagnóstico (VB.Input._debug(): pruebas táctiles y de mando con eventos reales vía DevTools)
-  var stats = { press: { hit: 0, jump: 0, sw: 0, pause: 0 }, out: { hit: 0, jump: 0, sw: 0, pause: 0, confirm: 0, chal: 0 }, slide: 0, lost: 0, adopt: 0,
+  var stats = { press: { hit: 0, jump: 0, sw: 0, pause: 0 }, out: { hit: 0, jump: 0, sw: 0, pause: 0, confirm: 0, chal: 0 }, mouse: { hit: 0, jump: 0 }, slide: 0, lost: 0, adopt: 0,
                 promote: 0, resets: 0, padLost: 0, padPause: 0 };
   // punteros táctiles activos: pointerId -> { role:'joy'|'hit'|'jump'|'sw'|'pause'|'none', x, y, touch }
   var ptrs = {}, nPtr = 0, cnt = { hit: 0, jump: 0, sw: 0, pause: 0 };
@@ -669,6 +708,12 @@
       it.device = ctx.isTouch ? 'touch' : 'keyboard';
       window.addEventListener('keydown', onKeyDown);
       window.addEventListener('keyup', onKeyUp);
+      // ratón (fase de burbuja: el overlay táctil para la propagación de sus punteros y no se duplica el golpe)
+      window.addEventListener('pointerdown', onMouse, { passive: false });
+      window.addEventListener('pointermove', onMouse, { passive: false });
+      window.addEventListener('pointerup', onMouse);
+      window.addEventListener('pointercancel', function (e) { if (e.pointerType === 'mouse') { mouseBtn('Mouse0', 'hit', false, e, false); mouseBtn('Mouse2', 'jump', false, e, false); } });
+      window.addEventListener('contextmenu', onCtxMenu);
       window.addEventListener('blur', function () { clearKeys(); resetTouch(); });
       document.addEventListener('visibilitychange', function () { if (document.hidden) { clearKeys(); resetTouch(); } });
       // un toque en cualquier sitio en un equipo no detectado como táctil activa los controles táctiles;
@@ -692,7 +737,7 @@
       });
       buildTouch();
     },
-    /** Limpia pulsaciones al cambiar de estado (p. ej. el Espacio que pulsa "Jugar" no saca). */
+    /** Limpia pulsaciones al cambiar de estado (p. ej. el Intro/Espacio que pulsa "Jugar" no saca ni salta). */
     onState: function () { for (var ek in edge) edge[ek] = false; T.hit = T.jump = T.pause = T.sw = false; T.chal = false; },
     /** OPCIONAL (B4/B7): glifo de texto de una acción para el dispositivo dado ('keyboard'|'gamepad'|'touch'; por defecto el
      *  activo). fam = 'ps' para mandos PlayStation. Hoy solo 'challenge': «V» / «LT» (PS: «L2») / «CHALLENGE». '' si no hay. */

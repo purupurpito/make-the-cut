@@ -74,6 +74,16 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     for (let i = 0; i < 6 && f0 !== 'btnPlay'; i++) { await stick(0, -0.95, 110); f0 = await focused(); }
     check(f0 === 'btnPlay', 'el stick lleva el foco a JUGAR (' + f0 + ')');
     await stick(0, 0.95, 110);
+    const fc = await focused();
+    check(fc === 'btnCareer', 'stick abajo → CARRERA (' + fc + ')');
+    // Carrera con el mando: A la abre (crear jugador o hub), B vuelve al menú con el foco en CARRERA
+    await press('A'); await sleep(450);
+    check(await evalJs("!!(VB.CareerUI&&VB.CareerUI.isOpen())"), 'A en CARRERA abre la pantalla de Carrera');
+    await shot('carrera');
+    await press('B'); await sleep(450);
+    check(await evalJs("!!(VB.CareerUI&&!VB.CareerUI.isOpen())&&!document.getElementById('menu').hidden"), 'B cierra la Carrera');
+    for (let i = 0; i < 3 && (await focused()) !== 'btnCareer'; i++) await sleep(150);
+    await stick(0, 0.95, 110);
     const f1 = await focused();
     check(f1 === 'optDiff', 'stick abajo → NIVEL (' + f1 + ')');
     const nh = await evalJs("(document.getElementById('navHint')||{}).textContent||''");

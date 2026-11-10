@@ -188,9 +188,29 @@
     S._jump(g, p, jvx, jvy);
   }
 
+  /** ¿Deja botar el saque rival? Se decide UNA vez por saque, cuando el balón ya ha pasado a su campo, con el bote previsto
+   *  (S.predictLanding, sin el baile del flotante) y S.lineDist (+ dentro, − fuera). Lejos de la línea acierta siempre; cerca
+   *  se equivoca a veces (la juega aunque vaya fuera o la deja aunque entre), más cuanto peor recibe el perfil (pr.recv).
+   *  La duda está centrada 10 cm por fuera: ante un balón dudoso el receptor prefiere jugarlo. */
+  var _land = { x: 0, y: 0, z: 0, t: 0 };
+  function leaveServe(g, p, pr) {
+    var b = g.ball, sd = side(p.team), lv = g._lv || (g._lv = [{ t: -1, on: false }, { t: -1, on: false }]), L = lv[p.team];
+    if (L.t === g.lastTouchT) return L.on;                   // una decisión por saque y equipo (aunque cambie quién va)
+    if (b.x * sd <= 0.2) return false;                       // aún no ha pasado la red: todavía no decide
+    L.t = g.lastTouchT; L.on = false;
+    S.predictLanding(g, _land);
+    if (_land.x * sd <= 0) return false;                     // se queda en la red / su propio campo
+    var d = S.lineDist(_land.x, _land.y), w = 0.22 + (1 - (pr.recv || 0.8)) * 0.9;
+    var x = clamp((d + 0.1 + w) / (2 * w), 0, 1), play = x * x * (3 - 2 * x);
+    L.on = play < 1 && g.rng() >= play;
+    return L.on;
+  }
+
   /** Un paso de IA para el jugador p (mueve, salta, golpea). */
   function update(g, p, dt) {
     var t = p.team, sd = side(t), pr = p.prof || g.prof[t], mx = 0, my = 0, b = g.ball;
+    // insignias (Líder del compañero, Sangre fría): reacción y timing efectivos; sin insignias = los del perfil
+    var react = S.aiReact(g, p, pr), timing = S.aiTiming(g, p, pr);
     // balón que esta IA "no va a sacar" (dado de defensa/recepción en contra): lee tarde y va lenta.
     // Se ve el fallo (llega tarde, se tira y no llega, o la toca y sale desviada); nunca se queda quieta.
     // (g.digOk solo es false tras un remate/saque/toque de bloqueo que el dado de defensa/recepción da por perdido)
@@ -199,7 +219,7 @@
     var tx, ty, attack, block, since = g.time - g.lastTouchT;
     // recepción/defensa del compañero que sale desviada: sorpresa, tarda en leerla (no la intercepta al vuelo)
     var shankT = (g.lastShot === 'shank' || g.lastShot === 'body') && g.touchTeam === t ? SHANK_SURPRISE : 0;
-    if (since < pr.react + (beaten ? 0.12 : 0) + shankT) {
+    if (since < react + (beaten ? 0.12 : 0) + shankT) {
       if (p.tgTime != null && p.tgTime <= g.lastTouchT && g.lastTouchT - p.tgTime < 0.3) {
         tx = p.tgx; ty = p.tgy; attack = p.tgA; block = p.tgB; // sigue con lo que hacía
       } else { tx = p.x; ty = p.y; attack = block = false; }   // aún no ha leído la jugada
@@ -217,8 +237,8 @@
     // nuevo toque: muestrea los desfases de esta jugada
     if (p.aiTeT !== g.lastTouchT) {
       p.aiTeT = g.lastTouchT;
-      p.aiTe = clamp(S._gauss(g) * pr.timing, -0.25, 0.25);
-      p.aiJt = clamp(S._gauss(g) * pr.timing * 0.8, -0.15, 0.15);
+      p.aiTe = clamp(S._gauss(g) * timing, -0.25, 0.25);
+      p.aiJt = clamp(S._gauss(g) * timing * 0.8, -0.15, 0.15);
       p.aiDv = g.rng();
     }
     if (p.z === 0 && p.vz === 0 && p.down <= 0) {
@@ -232,9 +252,11 @@
     if (g.jobs[t] !== p || p.cool > 0 || since < shankT) return;
     // no se ataca el saque rival por encima de la red (regla 13.3.4): en el aire, deja pasar el saque
     if (g.lastKind === 'serve' && p.z > 0.25 && b.z > C.NET_H) return;
+    // saque rival que se va fuera: se deja botar (si no, apuntar a las líneas no tenía ningún riesgo)
+    if (g.lastKind === 'serve' && g.touchTeam !== t && leaveServe(g, p, pr)) return;
     if (!S.canReach(g, p)) {
       // plancha: el balón se va al suelo fuera del alcance normal
-      if (g.time - g.lastTouchT > pr.react && S.canDive(g, p) && b.vz < 0 && b.z < 0.95) {
+      if (g.time - g.lastTouchT > react && S.canDive(g, p) && b.vz < 0 && b.z < 0.95) {
         var wd = S.hitWindow(g, p, _w);
         if (beaten) { if (b.z < 0.55 && p.aiDv < 0.75) S._diveMiss(g, p); } // se lanza tarde y no llega
         else if (!wd.reach || b.z < 0.5) S._dive(g, p, null, -wd.t + p.aiTe * 0.5);

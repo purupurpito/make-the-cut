@@ -28,7 +28,16 @@
   var hwOut = { t: 0, press: 0 }, focusVis = false;
   // A4 (remate apuntado): la retícula del remate mide lo que dice Sim.aimPoint().spreadNow (dispersión si pulsaras AHORA).
   // AIM_R1 = radio (m) del aro de aimTex con escala 1 (88/128 de un plano de 1,7 m); mínimo visible AIM_RMIN, tope AIM_RMAX.
-  var AIM_R1 = 0.584, AIM_RMIN = 0.25, AIM_RMAX = 2.2, AIM_OR = null, AIM_OK = null, aimR = { r: 0.5, on: false, p: 0 };
+  var AIM_R1 = 0.584, AIM_RMIN = 0.25, AIM_RMAX = 2.2, AIM_OR = null, AIM_OK = null, aimR = { r: 0.5, on: false, p: 0, f: 0.5 }; // f: radio REAL de la dispersión (disco del saque dirigible)
+  // Saque dirigible (g.aim3.kind === 'serve'): misma diana cartoon con acento turquesa (AIM_SV) para no confundirla con la del
+  // remate; dorada (AIM_OK) cuando la dispersión «si pulsaras ahora» es mínima. Desde la cámara de saque la diana está a
+  // 9-18 m y se ve muy rasante: radio mínimo según la distancia a la cámara (AIM_SVK·d, con suelo AIM_SVMIN) para que el
+  // aro siga siendo legible en 844×390. aimSv = ¿la diana de este frame es la del saque dirigible?
+  // aimSvMap = textura propia (aro y marcas más gruesos que aimTex: a 15-20 m el aro de 9 px se quedaba en ~1 px); no gira:
+  // se alinea con la mirada de la cámara y se alarga en profundidad (AIM_SVST, hasta ×3) para compensar lo rasante de la vista.
+  // AIM_SVPX = radio mínimo del aro en píxeles CSS (de alto de visor) a la distancia de la diana.
+  var AIM_SVR = 84 / 256 * 1.7; // radio (m) del aro de aimSvTex con escala 1
+  var AIM_SV = null, AIM_SVMIN = 0.45, AIM_SVPX = 24, AIM_SVST = 3, aimSv = false, aimSvMap = null, aimSpMap = null, aimSt = 1;
   var DIG_TIGHT = 0.7; // g.digTight: el aro de golpeo del defensor humano se ve más pequeño tras un remate perfecto
   // B6 (challenge): huella del bote + línea resaltada durante g.review (3 calcomanías más en el lote del suelo, 0 dibujos)
   var aimFill = null; // A4: zona de dispersión del remate (disco tenue bajo la retícula, en el lote de calcomanías)
@@ -96,6 +105,21 @@
       g.beginPath(); g.arc(128, 128, 13 + extra / 2, 0, 6.283); g.fill();
     }
     draw(10, 'rgba(0,0,0,0.5)'); draw(0, '#ffffff');
+    return tex(cv);
+  }
+  /** Diana del saque dirigible: aro grueso con filo oscuro, 4 marcas hacia dentro (en cruz: no gira) y punto central. */
+  function aimSvTex() {
+    var cv = canvas(256, 256), g = cv.getContext('2d');
+    function draw(extra, style) {
+      g.strokeStyle = style; g.fillStyle = style; g.lineCap = 'round';
+      g.lineWidth = 22 + extra; g.beginPath(); g.arc(128, 128, 84, 0, 6.283); g.stroke();
+      for (var k = 0; k < 4; k++) {
+        var a = k * Math.PI / 2;
+        g.lineWidth = 18 + extra; g.beginPath(); g.moveTo(128 + Math.cos(a) * 46, 128 + Math.sin(a) * 46); g.lineTo(128 + Math.cos(a) * 70, 128 + Math.sin(a) * 70); g.stroke();
+      }
+      g.beginPath(); g.arc(128, 128, 15 + extra / 2, 0, 6.283); g.fill();
+    }
+    draw(16, 'rgba(10,6,20,0.62)'); draw(0, '#ffffff');
     return tex(cv);
   }
   /** Relleno de la marca del bote (ARN-04): disco translúcido CLARO teñido con el color de la llamada (material.color),
@@ -285,12 +309,12 @@
    * que el aro y la línea de altura: los picos de dibujos en baja). Las mallas de siempre siguen existiendo FUERA de la escena
    * como «estado» (posición, giro, escala, color, opacidad, textura, visible): el código que las anima no cambia y writeDecals
    * las copia cada frame en instancias, en el orden de antes (rellenos → filos y ondas → marcador → retícula).
-   * Atlas 1024×512 = 4×2 celdas de 256 px (potencia de 2: cada mip divide las celdas exactamente; con celdas de 272 px y
+   * Atlas 1024×1024 = 4×4 celdas de 256 px (9 usadas: la 8 es la diana del saque dirigible; antes 1024×512 = 4×2) (potencia de 2: cada mip divide las celdas exactamente; con celdas de 272 px y
    * margen los mips no potencia de 2 emborronaban la retícula lejana). */
-  var decals = null, DEC_CELL = 256, decTex = [], decOrder = [], decSz = [], decM = null, decV = null, decP = null, decQ = null, decY = null;
+  var decals = null, DEC_CELL = 256, DEC_ROWS = 4, decTex = [], decOrder = [], decSz = [], decM = null, decV = null, decP = null, decQ = null, decY = null;
   var DROP_TONE = 0.763; // la Line de antes pasaba por ACES (blanco 1 → 0,763); el lote no lleva tono: mismo blanco en pantalla
   function buildDecals(texs) {
-    var cv = canvas(4 * DEC_CELL, 2 * DEC_CELL), g = cv.getContext('2d');
+    var cv = canvas(4 * DEC_CELL, DEC_ROWS * DEC_CELL), g = cv.getContext('2d');
     for (var i = 0; i < texs.length; i++) {
       var cx = (i % 4) * DEC_CELL, cy = Math.floor(i / 4) * DEC_CELL;
       g.drawImage(texs[i].image, cx, cy, 256, 256);
@@ -302,7 +326,7 @@
     var inst = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({
       uniforms: { map: { value: at } }, transparent: true, depthWrite: false, toneMapped: false,
       vertexShader: 'attribute vec4 aCol; attribute vec2 aCell; varying vec4 vCol; varying vec2 vUv;\n' +
-        'void main(){ vCol = aCol; vUv = aCell.x < 0.0 ? vec2(0.625, 0.25) : (aCell + uv * 256.0) / vec2(1024.0, 512.0);\n' +
+        'void main(){ vCol = aCol; vUv = aCell.x < 0.0 ? vec2(0.625, 1.0 - 1.5 / ' + DEC_ROWS + '.0) : (aCell + uv * 256.0) / vec2(1024.0, ' + DEC_ROWS * DEC_CELL + '.0);\n' +
         ' gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }',
       fragmentShader: 'uniform sampler2D map; varying vec4 vCol; varying vec2 vUv;\n' +
         'void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vCol.rgb, t.a * vCol.a);\n#include <encodings_fragment>\n}' }), N);
@@ -341,7 +365,7 @@
       var slot = decTex.indexOf(mt.map); if (slot < 0) continue;
       o.updateMatrix(); var sz = decSz[i]; decals.setMatrixAt(n, sz === 1 ? o.matrix : decM.copy(o.matrix).scale(decV.set(sz, sz, 1)));
       A[n * 4] = mt.color.r; A[n * 4 + 1] = mt.color.g; A[n * 4 + 2] = mt.color.b; A[n * 4 + 3] = op;
-      B[n * 2] = (slot % 4) * DEC_CELL; B[n * 2 + 1] = (1 - Math.floor(slot / 4)) * DEC_CELL; // v hacia arriba: fila 0 del lienzo = arriba
+      B[n * 2] = (slot % 4) * DEC_CELL; B[n * 2 + 1] = (DEC_ROWS - 1 - Math.floor(slot / 4)) * DEC_CELL; // v hacia arriba: fila 0 del lienzo = arriba
       n++;
     }
     decals.count = n; decals.visible = n > 0;
@@ -638,7 +662,18 @@
    *  (doServe sin objetivo de IA y attackTarget con dd = 6). Sin el error aleatorio de ejecución. */
   function aimTarget(g, out) {
     if (g.demo || g.autopilot) return 0;
-    var b = g.ball, a, tx, ty, mode = 0;
+    var b = g.ball, a, tx, ty, mode = 0, a3s = g.aim3;
+    aimSv = false;
+    // Saque dirigible: sim pone g.aim3 = {on, kind:'serve', x, y} mientras saca el humano. La posición es la de la diana
+    // (exacta, sin suavizar) y el radio, la dispersión que da Sim.aimPoint (spreadNow; si no, spread). Sin kind: como antes.
+    if (g.mode === 'serve' && a3s && a3s.on && a3s.kind === 'serve' && isFinite(a3s.x) && isFinite(a3s.y)) {
+      aimSv = true; out.spreadNow = -1;
+      var rs = Sim.aimPoint ? Sim.aimPoint(g, out, ctx.simMove) : null, sn = -1;
+      if (rs && rs.kind === 'serve') sn = typeof rs.spreadNow === 'number' && rs.spreadNow >= 0 ? rs.spreadNow : rs.spread;
+      out.spreadNow = typeof sn === 'number' && isFinite(sn) && sn >= 0 ? sn : -1; // sin dato (sim antigua): radio por defecto
+      out.x = a3s.x; out.y = a3s.y;
+      return 2;
+    }
     if (g.mode === 'serve') {
       var sv = g.server; if (!sv || sv.team !== 0) return 0;
       mode = g.serveState === 'toss' ? 2 : (g.serveAuth ? 1 : 0);
@@ -723,7 +758,8 @@
     else revFill.material.color.setRGB(0.95, 0.95, 1);
   }
   /** Arco punteado del balón al objetivo, pasando por encima de la red (vista previa de la dirección, no física). */
-  function updateAimArc(b, tx, ty, a) {
+  function updateAimArc(b, tx, ty, a, col) {
+    var cr = col ? col.r : 1, cg = col ? col.g : 0.36, cb = col ? col.b : 0.09;
     var pa = aimArc.geometry.attributes.position.array, ca = aimArc.geometry.attributes.color.array;
     var sx = b.x, sy = b.y, sz = b.z, t0 = sx !== tx ? sx / (sx - tx) : 0.5;
     t0 = clampN(t0, 0.15, 0.85);
@@ -733,7 +769,7 @@
       var t = (i + scroll) / AIM_N, x = sx + (tx - sx) * t, y = sy + (ty - sy) * t, z = sz * (1 - t) + 4 * h * t * (1 - t);
       pa[i * 3] = x; pa[i * 3 + 1] = Math.max(0.03, z); pa[i * 3 + 2] = -y;
       var k = a * 0.95 * Math.min(1, 0.3 + t * 4);
-      ca[i * 4] = 1; ca[i * 4 + 1] = 0.36; ca[i * 4 + 2] = 0.09; ca[i * 4 + 3] = k;
+      ca[i * 4] = cr; ca[i * 4 + 1] = cg; ca[i * 4 + 2] = cb; ca[i * 4 + 3] = k;
     }
     aimArc.geometry.attributes.position.needsUpdate = true; aimArc.geometry.attributes.color.needsUpdate = true;
   }
@@ -1003,7 +1039,7 @@
       // retícula de apuntado en el campo rival (saque y remate del humano)
       aimMat = new THREE.MeshBasicMaterial({ map: aimTex(), transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
       aimMat.color.set('#ff6326'); // (setRGB es LINEAL con ColorManagement: (1,0.5,0.24) salía color melocotón pálido)
-      AIM_OR = aimMat.color.clone(); AIM_OK = new THREE.Color('#ffe23a'); // naranja → amarillo dorado cuando el timing va a ser perfecto
+      AIM_OR = aimMat.color.clone(); AIM_OK = new THREE.Color('#ffe23a'); AIM_SV = new THREE.Color('#1fe0d0'); // naranja → amarillo dorado cuando el timing va a ser perfecto
       aimRet = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), aimMat);
       aimRet.rotation.x = -Math.PI / 2; aimRet.position.y = 0.019; aimRet.renderOrder = 4; aimRet.visible = false; aimRet.name = 'aimRet'; // (decals)
       // puntos opacos con filo oscuro (mezcla normal: el aditivo desaparecía sobre la tarima clara)
@@ -1072,7 +1108,8 @@
       revGlow = rvMk(markTex, 0.0158, 3, 'revGlow'); revLine = rvMk(whiteTex, 0.0162, 3, 'revLine'); revFill = rvMk(revTex(), 0.0166, 3, 'revMark');
       aimFill = rvMk(markTex, 0.0185, 4, 'aimFill');
       revGlow.material.color.setRGB(0.25, 0.85, 1); revLine.material.color.setRGB(0.55, 0.95, 1);
-      buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map, whiteTex, revFill.material.map]);
+      aimSpMap = aimMat.map; aimSvMap = aimSvTex();
+      buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map, whiteTex, revFill.material.map, aimSvMap]);
       // polvo de parquet (plancha, aterrizajes): Points con alfa por vértice y mezcla normal
       var dPos = new Float32Array(DUST_N * 3), dCol = new Float32Array(DUST_N * 4);
       for (var dI = 0; dI < DUST_N; dI++) { du.push(dblFields({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s: 1 })); dPos[dI * 3 + 1] = -50; }
@@ -1246,11 +1283,21 @@
       var am = aimTarget(g, aimOut), rdt = ctx.realDt || 0;
       // A4: en el remate con spreadNow, el RADIO de la diana = dispersión si pulsaras ahora (mín. AIM_RMIN): se encoge hacia el
       // momento perfecto y crece si te pasas. Saque (o sim sin spreadNow): como antes.
-      var spr = am === 2 && g.mode === 'rally' && typeof aimOut.spreadNow === 'number' && aimOut.spreadNow >= 0 && isFinite(aimOut.spreadNow) ? aimOut.spreadNow : -1;
+      var spr = am === 2 && (g.mode === 'rally' || aimSv) && typeof aimOut.spreadNow === 'number' && aimOut.spreadNow >= 0 && isFinite(aimOut.spreadNow) ? aimOut.spreadNow : -1;
+      if (aimSv && spr < 0) spr = 0.6; // saque dirigible con una sim que aún no da la dispersión: aro de tamaño medio
       if (spr >= 0) {
-        var rt = clampN(spr, AIM_RMIN, AIM_RMAX);
-        if (!aimR.on) aimR.r = rt;
-        aimR.on = true; aimR.r += (rt - aimR.r) * (1 - Math.exp(-22 * rdt)); aimR.p = spr <= 0.12 ? 1 : 0;
+        var rmin = AIM_RMIN;
+        aimSt = 1;
+        if (aimSv) { // radio mínimo legible (AIM_SVPX px CSS a esa distancia) y alargamiento en profundidad según lo rasante de la vista
+          var cm = ctx.camera, cp = cm.position, dxc = aimOut.x - cp.x, dzc = -aimOut.y - cp.z, dc = Math.sqrt(dxc * dxc + dzc * dzc + cp.y * cp.y);
+          var mpp = 2 * dc * Math.tan((cm.fov || 54) * Math.PI / 360) / Math.max(200, ctx.height || 720);
+          rmin = Math.max(AIM_SVMIN, AIM_SVPX * mpp);
+          aimSt = clampN(0.55 * dc / Math.max(0.3, cp.y), 1, AIM_SVST);
+        }
+        var rt = clampN(spr, rmin, AIM_RMAX);
+        var ft = clampN(spr, 0.18, AIM_RMAX);
+        if (!aimR.on) { aimR.r = rt; aimR.f = ft; }
+        aimR.on = true; aimR.r += (rt - aimR.r) * (1 - Math.exp(-22 * rdt)); aimR.f += (ft - aimR.f) * (1 - Math.exp(-22 * rdt)); aimR.p = spr <= 0.12 ? 1 : 0;
       } else if (!am) aimR.on = aimR.on && aim.a > 0.01; else aimR.on = false;
       if (am) {
         if (!aim.on) { aim.x = aimOut.x; aim.y = aimOut.y; }
@@ -1268,23 +1315,30 @@
         var asz;
         if (aimR.on) { // remate apuntado: tamaño = dispersión; dorado y latido rápido cuando va a ir exacto
           asz = aimR.r / AIM_R1 * (1 + Math.sin(ctx.time * (aimR.p ? 14 : 5)) * (aimR.p ? 0.05 : 0.025));
-          aimMat.color.copy(AIM_OR).lerp(AIM_OK, clampN((0.45 - aimR.r) / 0.2, 0, 1));
+          if (aimSv) aimMat.color.copy(AIM_SV).lerp(AIM_OK, clampN((0.45 - spr) / 0.2, 0, 1));
+          else aimMat.color.copy(AIM_OR).lerp(AIM_OK, clampN((0.45 - aimR.r) / 0.2, 0, 1));
           aimMat.opacity = 0.97 * aim.a;
         } else {
           asz = 1 + (1 - Math.min(1, aim.a * 2)) * 0.35 + Math.sin(ctx.time * 5) * 0.03;
           aimMat.color.copy(AIM_OR); aimMat.opacity = 0.9 * aim.a;
         }
-        aimRet.scale.set(asz, asz, asz); aimRet.rotation.z = -ctx.time * 0.6;
+        // saque dirigible: textura gruesa, sin giro, eje local Y del plano hacia donde mira la cámara (alargado ×aimSt)
+        var svRot = aimSv ? Math.atan2(ctx.camera.position.x - aim.x, ctx.camera.position.z + aim.y) : 0;
+        aimMat.map = aimSv ? aimSvMap : aimSpMap;
+        if (aimSv) { aimRet.scale.set(asz * AIM_R1 / AIM_SVR, asz * AIM_R1 / AIM_SVR * aimSt, asz); aimRet.rotation.z = svRot; }
+        else { aimRet.scale.set(asz, asz, asz); aimRet.rotation.z = -ctx.time * 0.6; }
         aimFill.visible = aimR.on;
         if (aimR.on) { // disco del radio de la dispersión (el relleno de fillTex llega a ~0,9 del plano)
-          var fz = 2 * aimR.r / 0.9; aimFill.position.x = aim.x; aimFill.position.z = -aim.y; aimFill.scale.set(fz, fz, 1);
-          aimFill.material.color.copy(aimMat.color); aimFill.material.opacity = 0.26 * aim.a;
+          // (saque dirigible: el aro tiene un radio mínimo legible; el disco es la dispersión REAL, que se encoge con el buen timing)
+          var fz = 2 * (aimSv ? Math.min(aimR.f, aimR.r) : aimR.r) / 0.9; aimFill.position.x = aim.x; aimFill.position.z = -aim.y;
+          aimFill.scale.set(fz, aimSv ? fz * aimSt : fz, 1); aimFill.rotation.z = svRot;
+          aimFill.material.color.copy(aimMat.color); aimFill.material.opacity = (aimSv ? 0.38 : 0.26) * aim.a;
         }
       }
       // arco: solo con el apuntado activo (balón lanzado / en el aire para rematar)
       if (!aimRet.visible) aimFill.visible = false;
       aimArc.visible = aimRet.visible && aim.on && am === 2 && !b.held;
-      if (aimArc.visible) updateAimArc(b, aim.x, aim.y, aim.a);
+      if (aimArc.visible) updateAimArc(b, aim.x, aim.y, aim.a, aimSv ? AIM_SV : null);
 
       updateReview(g, rdt);
       updateTrail(dt);

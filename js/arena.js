@@ -370,13 +370,13 @@
    *  dos caras del cilindro (se lee desde los dos campos). Antes salía cortado ("ALAU DEL MA"). */
   function drawPad(cv) {
     var g = cv.getContext('2d'), W = cv.width, H = cv.height;
-    var gr = g.createLinearGradient(0, 0, W, 0);
-    gr.addColorStop(0, '#163a5c'); gr.addColorStop(0.25, '#1f5076'); gr.addColorStop(0.5, '#163a5c'); gr.addColorStop(0.75, '#1f5076'); gr.addColorStop(1, '#163a5c');
+    var gr = g.createLinearGradient(0, 0, W, 0), pb = VENUE.id === 'beach', pa = pb ? '#0f7f9e' : '#163a5c', pc = pb ? '#1aa6c4' : '#1f5076';
+    gr.addColorStop(0, pa); gr.addColorStop(0.25, pc); gr.addColorStop(0.5, pa); gr.addColorStop(0.75, pc); gr.addColorStop(1, pa);
     g.fillStyle = gr; g.fillRect(0, 0, W, H);
     // franjas: naranja abajo (cerca del suelo), amarilla arriba; costuras horizontales suaves
     g.fillStyle = '#ff6b3d'; g.fillRect(0, H - 52, W, 20); g.fillStyle = '#ffd23f'; g.fillRect(0, 26, W, 8);
     g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 12, W, 3); g.fillRect(0, H - 15, W, 3);
-    var y0 = 44, y1 = H - 62, avail = (y1 - y0) * 0.86, text = 'PALAU DEL MAR', fs = 62;
+    var y0 = 44, y1 = H - 62, avail = (y1 - y0) * 0.86, text = VENUE.pad[VENUE.id] || 'PALAU DEL MAR', fs = 62;
     g.font = '900 ' + fs + 'px ' + FONT;
     while (g.measureText(text).width > avail && fs > 20) { fs -= 2; g.font = '900 ' + fs + 'px ' + FONT; }
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffffff';
@@ -2057,7 +2057,9 @@
     g.fillStyle = '#0b0f18'; g.fillRect(0, 0, W, H);
     g.fillStyle = gr; g.globalAlpha = 0.85; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
     g.font = 'italic 900 ' + Math.round(H * 0.66) + 'px ' + FONT; g.textBaseline = 'middle'; g.textAlign = 'left';
-    var unit = g.measureText(text).width + H * (both ? 3.6 : 2.2), n = Math.ceil(W / unit);
+    // floor y no ceil: el reparto exacto solo puede AGRANDAR el hueco (con ceil encogía la unidad y el texto pisaba las
+    // flechas y la repetición siguiente: «PUNTO DE SETPUNTO DE SET»)
+    var unit = g.measureText(text).width + H * (both ? 3.6 : 2.2), n = Math.max(1, Math.floor(W / unit));
     unit = W / n; // repetición exacta: la textura enlaza sin costura
     for (var i = 0; i < n; i++) {
       var x = i * unit;
@@ -3053,11 +3055,11 @@
     M.win += ((M.winOn ? 1 : 0) - M.win) * (1 - Math.exp(-rdt * 0.9));
     var soft = softK(), pe = pfEnv(M.pfT), hlK = 0.4 + 0.6 * M.pfHl, tn = M.tense, wn = M.win;
     // grada y peldaños
-    var cl = 1 - CROWD_DIM * tn;
+    var cl = 1 - (BEACH.on ? 0.08 : CROWD_DIM) * tn; // a pleno sol (playa) la grada apenas se apaga
     cl = cl * (1 - wn) + wn * (1.04 + 0.1 * soft * Math.sin(M.t * 1.9)); // pulso de 0,3 Hz en la celebración
     moodSet('crowd', cl, function (v) { crowdU.uCrowdLight.value = v; });
     // y la bruma del pabellón se espesa sobre la grada lejana: el foco se queda en la pista
-    moodSet('haze', HAZE0 + 0.14 * tn, function (v) { crowdU.uHaze.value = v; });
+    moodSet('haze', BEACH.on ? 0.12 : HAZE0 + 0.14 * tn, function (v) { crowdU.uHaze.value = v; });
     // haces de luz: más marcados en la tensión, barrido en la celebración
     if (coneMat) {
       moodSet('cone', M.coneBase * (1 + 0.8 * tn + 0.6 * wn), function (v) { coneMat.uniforms.k.value = v; });
@@ -3250,6 +3252,639 @@
     });
     return out;
   }
+  /* =====================================================================
+   * ESCENARIO «PLAYA» — Platja Llarga (9-nov-2026). Segunda sede, SOLO escenario: la sim no cambia (pista 18×9 y reglas de
+   * pista cubierta; el modo de reglas de playa queda anotado en TRASPASO.md). Ajuste `arena` ('hall' | 'beach', Ajustes ·
+   * Imagen) o ?map=beach (pruebas). Se construye al elegirla en un grupo propio (`beach`) y se libera entera (dispose de
+   * geometrías, materiales y texturas) al volver al pabellón. El pabellón NO se destruye: sus piezas se ocultan (0 dibujos)
+   * y se comparten red, postes (protección repintada con el nombre de la sede), oficiales, banquillos (las personas) y
+   * luces (otro tono e intensidad, mismo número: no recompila nada).
+   * Escena: cielo (degradado + sol de dibujo), nubes de dibujo, mar con oleaje y espuma en la orilla (detrás del fondo
+   * rival: es el fondo de la cámara de juego), arena (mosaico + variación por vértice + franja mojada), capa de pista
+   * (cintas azules, arena rastrillada, hoyuelos y huellas), vallas de lona con marcas, dos gradas pequeñas de aluminio con
+   * toldo y público (el MISMO material animado del pabellón: botes, ola, tensión), palmeras, sombrillas, hamacas, toallas,
+   * chiringuito, torre de socorrista, banderas de vela, veleros e islotes en el horizonte.
+   * Dibujos: cielo, nubes, mar, arena, capa de pista, lona, estática (+ tinta en media/alta) y público = 8-9.
+   * ===================================================================== */
+  var VENUE = { id: 'hall', names: { hall: 'Palau del Mar', beach: 'Platja Llarga' }, pad: { hall: 'PALAU DEL MAR', beach: 'PLATJA LLARGA' } };
+  var BEACH = { on: false, grp: null, hallObjs: null, seaU: null, clouds: null, crowd: null, stat: null, ink: null, sandMat: null, courtMat: null,
+    texs: [], save: null, bannerCv: null, bannerTex: null, courtCv: null, courtTex: null, courtPpm: 40 };
+  // piezas del pabellón que se ocultan en la playa (nombres de los hijos de `root`)
+  var HALL_ONLY = { floor: 1, outerFloor: 1, ledBoards: 1, ledRefl: 1, crowd0: 1, crowd1: 1, crowd2: 1, crowd3: 1, crowdImp: 1, flags: 1, endScreen: 1,
+    hungScreens: 1, hallShell: 1, halos: 1, lightCones: 1, banners: 1, hallName: 1, camFlashes: 1, 'static': 1, emissive: 1 };
+  var SHORE_X = -27;                 // orilla media (sim)
+  var BLY = 12.2, BLX = 9.5;         // gradas de la playa: primera fila a |y| = 12,2; de x = -9,5 a 9,5
+  var BSKY = { zen: '#2f8ff2', hor: '#9fd6ff', fog: '#cce8f6', sun: '#fff3c4' };
+  // luces de día: multiplicadores sobre la fila LT del nivel (key, hemi, fill, rim, floor = tinte de la arena)
+  var BL = { key: 1.0, hemi: 2.3, fill: 0.8, rim: 0.7, floor: 1.14 };
+  var _mo = null, _ml = null, BT = null, BGEO = null, lastQ = null;
+
+  /** Matriz del objeto (coords de sim del pie, giro en three, escala). Las piezas se dan en coords locales de three. */
+  function objM(sx, sy, yaw, sc) { VB.toThree(sx, sy, 0, _p); _e.set(0, yaw || 0, 0, 'YXZ'); _q.setFromEuler(_e); _s.set(sc || 1, sc || 1, sc || 1); return _mo.compose(_p, _q, _s); }
+  function part(B, g, x, y, z, color, rx, ry, rz, w, h, d) {
+    _e.set(rx || 0, ry || 0, rz || 0, 'YXZ'); _q.setFromEuler(_e); _s.set(w || 1, h || w || 1, d || w || 1); _p.set(x, y, z);
+    _ml.compose(_p, _q, _s).premultiply(_mo); B.add(g, _ml, color);
+  }
+  /** Barra (cilindro de radio r) entre dos puntos locales; g opcional (tronco que se estrecha). */
+  function lrod(B, ax, ay, az, bx, by, bz, r, color, g) {
+    BT.a.set(ax, ay, az); BT.b.set(bx, by, bz); var len = BT.a.distanceTo(BT.b);
+    BT.m.addVectors(BT.a, BT.b).multiplyScalar(0.5); BT.b.sub(BT.a).normalize(); BT.q.setFromUnitVectors(BT.up, BT.b); BT.s.set(r, len, r);
+    _ml.compose(BT.m, BT.q, BT.s).premultiply(_mo); B.add(g || BGEO.rod, _ml, color);
+  }
+  /** Tira de dos caras (lista de pares [izq, der] de puntos locales): hojas, velas, banderas. */
+  function stripGeo(rows) {
+    var P = [];
+    function tri(a, b, c) { P.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]); P.push(a[0], a[1], a[2], c[0], c[1], c[2], b[0], b[1], b[2]); }
+    for (var i = 0; i < rows.length - 1; i++) {
+      var r0 = rows[i], r1 = rows[i + 1];
+      for (var k = 0; k < r0.length - 1; k++) { tri(r0[k], r0[k + 1], r1[k + 1]); tri(r0[k], r1[k + 1], r1[k]); }
+    }
+    var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.computeVertexNormals(); return g;
+  }
+  function taperGeo(k) {
+    k = Math.round(k * 20) / 20; var key = 't' + k;
+    if (!BGEO[key]) BGEO[key] = new THREE.CylinderGeometry(k, 1, 1, 7, 1, true);
+    return BGEO[key];
+  }
+  function beachGeos() {
+    BGEO = { rod: new THREE.CylinderGeometry(1, 1, 1, 6, 1, true), cyl: new THREE.CylinderGeometry(1, 1, 1, 10, 1), sph: new THREE.SphereGeometry(1, 10, 7),
+      hemi: new THREE.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), cone4: new THREE.ConeGeometry(1, 1, 4, 1), cone6: new THREE.ConeGeometry(1, 1, 6, 1),
+      torus: new THREE.TorusGeometry(1, 0.3, 6, 14) };
+    // hoja de palmera: nervio que cae, borde dentado (anchos alternos) y en V (las bandas del toon la leen)
+    var rows = [], n = 12, L = 2.5, W = 0.46;
+    for (var i = 0; i <= n; i++) {
+      var t = i / n, w = W * Math.sin(Math.PI * Math.min(1, 0.08 + t * 1.02)) * (i % 2 ? 1 : 0.72), x = t * L, y = -1.15 * t * t;
+      rows.push([[x, y + w * 0.3, w], [x, y, 0], [x, y + w * 0.3, -w]]);
+    }
+    BGEO.frond = stripGeo(rows);
+    // cuña de sombrilla (1/8): vértice, anillo medio y borde festoneado
+    var th = Math.PI / 4, A = [0, 1, 0], m0 = [0.6, 0.7, 0], m1 = [0.6 * Math.cos(th), 0.7, -0.6 * Math.sin(th)];
+    var r0 = [1, 0.18, 0], r1 = [Math.cos(th), 0.18, -Math.sin(th)], rm = [0.92 * Math.cos(th / 2), 0.04, -0.92 * Math.sin(th / 2)];
+    var P = [];
+    [[A, m0, m1], [m0, r0, rm], [m0, rm, m1], [m1, rm, r1]].forEach(function (t) { P.push.apply(P, t[0].concat(t[1], t[2], t[0], t[2], t[1])); });
+    var wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); wg.computeVertexNormals(); BGEO.wedge = wg;
+    // vela de bandera (2,6 m): borde exterior que se curva hacia el mástil arriba, algo de viento
+    var fr = [];
+    for (var j = 0; j <= 8; j++) {
+      var u = j / 8, yy = 0.5 + u * 2.6, wd = 0.72 * (0.7 + 0.3 * u) * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, (u - 0.7) / 0.3), 2)));
+      fr.push([[0, yy, 0], [wd * 0.5, yy, 0.08], [wd, yy, 0.02]]);
+    }
+    BGEO.flag = stripGeo(fr);
+    BGEO.sail = stripGeo([[[0, 0.6, 0], [1.6, 0.6, 0]], [[0, 4.2, 0], [0.05, 4.2, 0]]]);
+    var sn = BGEO.sail.attributes.normal; for (var q = 0; q < sn.count; q++) sn.setXYZ(q, 0, 1, 0); // vela siempre al sol (de lejos, la cara en sombra salía negra)
+  }
+
+  /* ---------- cielo y nubes ---------- */
+  var SKY_VS = 'varying vec3 vD; void main(){ vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+  var SKY_FS = [
+    'uniform vec3 uZen; uniform vec3 uHor; uniform vec3 uSunC; uniform vec3 uSun; uniform vec3 fogColor; varying vec3 vD;',
+    'void main(){ vec3 d = normalize(vD); float h = d.y;',
+    ' vec3 c = mix(uHor, uZen, smoothstep(0.0, 0.4, h));',
+    ' float s = dot(d, uSun);',
+    // CARTOON: disco de borde duro, aro claro y halo amplio y suave
+    ' float disc = smoothstep(0.9978, 0.9983, s);',
+    ' c += vec3(1.0, 0.92, 0.75) * (0.16 * pow(max(s, 0.0), 18.0) + 0.22 * smoothstep(0.990, 0.9972, s) * (1.0 - disc));',
+    ' c = mix(c, uSunC * 1.25, disc);',
+    ' gl_FragColor = vec4(c, 1.0);',
+    '#include <tonemapping_fragment>',
+    '#include <encodings_fragment>',
+    // horizonte = color de la niebla (igual que fog_fragment de three r149): el mar y la arena se funden sin costura
+    ' gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, 1.0 - smoothstep(-0.02, 0.09, h));',
+    '}'].join('\n');
+  function cloudAtlas() {
+    var cv = canvas(1024, 512), g = cv.getContext('2d');
+    for (var k = 0; k < 4; k++) {
+      var ox = (k % 2) * 512, oy = Math.floor(k / 2) * 256, base = oy + 206, n = 5 + (k % 3), P = [];
+      for (var i = 0; i < n; i++) { var t = (i + 0.5) / n, r = 34 + Math.sin(t * Math.PI) * (46 + rnd() * 34); P.push([ox + 62 + t * 388, base - r * 0.7 - rnd() * 12, r]); }
+      var circ = function (pad) { g.beginPath(); for (var q = 0; q < P.length; q++) { g.moveTo(P[q][0] + P[q][2] + pad, P[q][1]); g.arc(P[q][0], P[q][1], P[q][2] + pad, 0, Math.PI * 2); } g.fill(); };
+      g.save(); g.beginPath(); g.rect(ox, oy, 512, base - oy + 6); g.clip(); g.fillStyle = '#1d1530'; circ(6); g.restore();
+      g.save(); g.beginPath(); g.rect(ox, oy, 512, base - oy); g.clip(); g.fillStyle = '#ffffff'; circ(0);
+      g.globalCompositeOperation = 'source-atop'; g.fillStyle = '#cfe2f6'; g.fillRect(ox, base - 40, 512, 40);
+      g.fillStyle = '#e6f0fb'; g.fillRect(ox, base - 58, 512, 18);
+      g.restore();
+    }
+    return cv;
+  }
+  function beachSky(G) {
+    var U = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uZen: { value: new THREE.Color(BSKY.zen) }, uHor: { value: new THREE.Color(BSKY.hor) },
+      uSunC: { value: new THREE.Color(BSKY.sun) }, uSun: { value: new THREE.Vector3() } }]);
+    VB.toThree(-0.82, 0.36, 0.44, U.uSun.value); U.uSun.value.normalize(); // sol sobre el mar, delante de la cámara de juego
+    var sky = new THREE.Mesh(new THREE.SphereGeometry(190, 32, 16),
+      new THREE.ShaderMaterial({ uniforms: U, vertexShader: SKY_VS, fragmentShader: SKY_FS, side: THREE.BackSide, depthWrite: false, fog: true }));
+    sky.name = 'beachSky'; sky.renderOrder = -10; sky.frustumCulled = false; G.add(sky);
+    // nubes: tarjetas mirando al centro, en un anillo a 140-165 m, con un atlas de 4 nubes (1 dibujo; giran muy despacio)
+    var tex = texOf(cloudAtlas()); BEACH.texs.push(tex);
+    var P = [], UV = [], up = new THREE.Vector3(0, 1, 0), c = new THREE.Vector3(), r = new THREE.Vector3();
+    for (var i = 0; i < 11; i++) {
+      var a = i / 11 * TAU + rnd() * 0.35, D = 145 + rnd() * 25, hh = 26 + rnd() * 30, w = 24 + rnd() * 20, h = w * 0.5, k = i % 4;
+      c.set(Math.cos(a) * D, hh, Math.sin(a) * D); r.set(-Math.sin(a), 0, Math.cos(a));
+      var u0 = (k % 2) * 0.5, v1 = 1 - Math.floor(k / 2) * 0.5, v0 = v1 - 0.5;
+      var q = [[-1, -1, u0, v0], [1, -1, u0 + 0.5, v0], [1, 1, u0 + 0.5, v1], [-1, -1, u0, v0], [1, 1, u0 + 0.5, v1], [-1, 1, u0, v1]];
+      for (var j = 0; j < 6; j++) { P.push(c.x + r.x * q[j][0] * w / 2, c.y + q[j][1] * h / 2, c.z + r.z * q[j][0] * w / 2); UV.push(q[j][2], q[j][3]); }
+    }
+    var cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); cg.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+    var cl = new THREE.Mesh(cg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+    cl.name = 'beachClouds'; cl.renderOrder = -9; cl.frustumCulled = false; G.add(cl); BEACH.clouds = cl;
+  }
+
+  /* ---------- mar ---------- */
+  var SEA_VS = [
+    'uniform float uT; varying vec3 vW;',
+    '#include <fog_pars_vertex>',
+    'void main(){ vec4 wp = modelMatrix * vec4(position, 1.0);',
+    ' float far = smoothstep(-34.0, -70.0, wp.x);',
+    ' wp.y += far * (sin(wp.x * 0.21 + uT * 1.1) * 0.16 + sin(wp.z * 0.17 - uT * 0.7) * 0.1);',
+    ' vW = wp.xyz; vec4 mvPosition = viewMatrix * wp; gl_Position = projectionMatrix * mvPosition;',
+    '#include <fog_vertex>',
+    '}'].join('\n');
+  var SEA_FS = [
+    'uniform float uT; uniform float uShore; uniform vec3 uDeep; uniform vec3 uShal; uniform vec3 uFoam; varying vec3 vW;',
+    '#include <fog_pars_fragment>',
+    'void main(){ float x = vW.x, z = vW.z;',
+    // la orilla sube y baja (resaca) y se ondula a lo largo de la playa
+    ' float sh = uShore + sin(uT * 0.55) * 1.1 + sin(z * 0.13 + uT * 0.4) * 0.5 + sin(z * 0.31 - uT * 0.23) * 0.25;',
+    ' float d = sh - x; if (d < 0.0) discard;',
+    ' vec3 c = mix(uShal, uDeep, smoothstep(1.5, 30.0, d));',
+    // olas de dibujo: bandas claras que llegan a la orilla, más tenues mar adentro
+    ' float wv = fract(d * 0.085 - uT * 0.11 + sin(z * 0.07) * 0.25 + sin(z * 0.023 + 1.7) * 0.6);',
+    ' float fw = fwidth(d * 0.085) * 1.5;',
+    ' float band = smoothstep(0.0, 0.02 + fw, wv) * (1.0 - smoothstep(0.05, 0.08 + fw, wv));',
+    ' c = mix(c, uFoam, band * 0.55 * (1.0 - smoothstep(25.0, 80.0, d)));',
+    // espuma de la orilla: festón blanco con una segunda línea fina detrás
+    ' float sc = 0.55 + 0.22 * sin(z * 1.7 + uT * 1.3) + 0.14 * sin(z * 3.1 - uT * 0.9);',
+    ' float foam = 1.0 - smoothstep(sc, sc + 0.07, d);',
+    ' float f2 = smoothstep(sc + 0.5, sc + 0.56, d) * (1.0 - smoothstep(sc + 0.66, sc + 0.72, d));',
+    ' c = mix(c, uFoam, max(foam, f2 * 0.8));',
+    ' gl_FragColor = vec4(c, 1.0);',
+    '#include <tonemapping_fragment>',
+    '#include <encodings_fragment>',
+    '#include <fog_fragment>',
+    '}'].join('\n');
+  function beachSea(G) {
+    var U = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uT: { value: 0 }, uShore: { value: SHORE_X }, uDeep: { value: new THREE.Color('#1c82d4') },
+      uShal: { value: new THREE.Color('#4fd8d2') }, uFoam: { value: new THREE.Color('#ffffff') } }]);
+    var m = new THREE.ShaderMaterial({ uniforms: U, vertexShader: SEA_VS, fragmentShader: SEA_FS, fog: true });
+    m.extensions.derivatives = true;
+    var geo = new THREE.PlaneGeometry(220, 470, 44, 24); geo.rotateX(-Math.PI / 2); geo.translate(SHORE_X + 3 - 110, 0.025, 0);
+    var sea = new THREE.Mesh(geo, m); sea.name = 'beachSea'; sea.frustumCulled = false; G.add(sea); BEACH.seaU = U;
+  }
+
+  /* ---------- arena y capa de la pista ---------- */
+  function sandTile() {
+    var N = 512, cv = canvas(N, N), g = cv.getContext('2d');
+    g.fillStyle = '#f6d396'; g.fillRect(0, 0, N, N);
+    function wrapAt(x, y, r, fn) { for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) { var X = x + dx * N, Y = y + dy * N; if (X + r > 0 && X - r < N && Y + r > 0 && Y - r < N) fn(X, Y); } }
+    // manchas grandes y suaves (dunas)
+    for (var i = 0; i < 26; i++) {
+      var bx = rnd() * N, by = rnd() * N, br = 40 + rnd() * 70, lt = rnd() < 0.5;
+      wrapAt(bx, by, br, function (X, Y) { var gr = g.createRadialGradient(X, Y, 0, X, Y, br); gr.addColorStop(0, lt ? 'rgba(255,240,205,0.22)' : 'rgba(200,150,85,0.12)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(X - br, Y - br, br * 2, br * 2); });
+    }
+    // rizos del viento: arcos claros con su sombra debajo
+    // (pocos, cortos, de tamaño y giro variados y tenues: muchos e iguales se leían como escamas al repetirse el mosaico)
+    for (var j = 0; j < 22; j++) {
+      var rx = rnd() * N, ry = rnd() * N, rr = 24 + rnd() * 70, rot = (rnd() - 0.5) * 0.9, sp = 0.18 + rnd() * 0.22, a0 = -Math.PI / 2 + rot - sp, a1 = -Math.PI / 2 + rot + sp;
+      wrapAt(rx, ry, rr, function (X, Y) {
+        g.lineWidth = 2; g.strokeStyle = 'rgba(190,135,70,0.12)'; g.beginPath(); g.arc(X, Y + 3, rr, a0, a1); g.stroke();
+        g.lineWidth = 2.5; g.strokeStyle = 'rgba(255,246,222,0.32)'; g.beginPath(); g.arc(X, Y, rr, a0, a1); g.stroke();
+      });
+    }
+    // granos
+    for (var k = 0; k < 2400; k++) { var dk = rnd() < 0.55; g.fillStyle = dk ? 'rgba(175,125,65,0.32)' : 'rgba(255,248,228,0.55)'; var s = rnd() < 0.8 ? 1 : 2; g.fillRect(Math.floor(rnd() * N), Math.floor(rnd() * N), s, s); }
+    // conchas y piedrecitas
+    for (var c = 0; c < 7; c++) { var cx = 8 + rnd() * (N - 16), cy = 8 + rnd() * (N - 16); g.fillStyle = rnd() < 0.5 ? '#ffe2d6' : '#fff7ee'; g.beginPath(); g.ellipse(cx, cy, 4, 3, rnd() * 3, 0, Math.PI * 2); g.fill(); g.strokeStyle = 'rgba(160,100,80,0.5)'; g.lineWidth = 1; g.stroke(); }
+    for (var p = 0; p < 9; p++) { var px = 6 + rnd() * (N - 12), py = 6 + rnd() * (N - 12); g.fillStyle = rnd() < 0.5 ? '#a89c8e' : '#8a8178'; g.beginPath(); g.ellipse(px, py, 2.5 + rnd() * 2, 2, rnd() * 3, 0, Math.PI * 2); g.fill(); }
+    return cv;
+  }
+  function drawBeachCourt(cv, ppm) {
+    var g = cv.getContext('2d'), W = cv.width, H = cv.height, HL = C.HL, HW = C.HW;
+    function X(x) { return (x + TX) * ppm; }
+    function Y(y) { return (TY - y) * ppm; }
+    function rect(x0, y0, x1, y1) { g.fillRect(X(x0), Y(y1), (x1 - x0) * ppm, (y1 - y0) * ppm); }
+    function ell(x, y, rx, ry, a) { g.beginPath(); g.ellipse(x, y, Math.max(0.5, rx), Math.max(0.5, ry), a || 0, 0, Math.PI * 2); g.fill(); }
+    var sd = _seed; _seed = 55117;
+    g.clearRect(0, 0, W, H);
+    // velo de arena casi transparente: los mips de la textura no oscurecen los bordes de cintas y huellas
+    g.fillStyle = 'rgba(243,214,160,0.03)'; g.fillRect(0, 0, W, H);
+    // pista rastrillada: más clara y lisa, con surcos finos a lo largo
+    g.fillStyle = 'rgba(255,246,222,0.2)'; rect(-HL, -HW, HL, HW);
+    for (var ry = -HW + 0.09; ry < HW; ry += 0.2) { g.fillStyle = 'rgba(175,120,60,0.08)'; rect(-HL, ry, HL, ry + 0.025); g.fillStyle = 'rgba(255,250,236,0.12)'; rect(-HL, ry + 0.025, HL, ry + 0.05); }
+    // hoyuelos de pisadas: muchos junto a las líneas y en la zona de saque, menos en el centro de cada campo
+    for (var i = 0; i < 1700; i++) {
+      var x = (rnd() * 2 - 1) * (HL + 3.6), y = (rnd() * 2 - 1) * (HW + 2.8);
+      var edge = Math.min(Math.abs(Math.abs(x) - HL), Math.abs(Math.abs(y) - HW)), keep = edge < 1.4 ? 1 : (Math.abs(x) < HL && Math.abs(y) < HW ? 0.45 : 0.7);
+      if (rnd() > keep) continue;
+      var r = (0.05 + rnd() * 0.07) * ppm, px = X(x), py = Y(y);
+      g.fillStyle = 'rgba(150,98,42,0.15)'; ell(px, py + r * 0.22, r, r * 0.62, 0);
+      g.fillStyle = 'rgba(255,249,230,0.2)'; ell(px, py - r * 0.36, r * 0.78, r * 0.32, 0);
+    }
+    // huellas de pies descalzos en algunos caminos (banquillo → pista, saque → fondo)
+    var trails = [[5.2, 9.9, 3.0, 4.6], [-5.2, 9.9, -3.4, 4.2], [11.5, 1.5, 9.4, 0.4], [-11.2, -1.8, -9.3, -0.6], [0.6, -9.6, 1.6, -4.6], [12.2, -3.4, 10.4, -6.8]];
+    for (var t = 0; t < trails.length; t++) {
+      var T = trails[t], len = Math.hypot(T[2] - T[0], T[3] - T[1]), n = Math.floor(len / 0.36), ang = Math.atan2(-(T[3] - T[1]), T[2] - T[0]);
+      for (var s = 0; s < n; s++) {
+        var u = s / n, side = s % 2 ? 1 : -1, fx = T[0] + (T[2] - T[0]) * u, fy = T[1] + (T[3] - T[1]) * u;
+        var ox = -Math.sin(-ang) * 0.09 * side, oy = Math.cos(-ang) * 0.09 * side, cx = X(fx + ox), cy = Y(fy + oy);
+        g.fillStyle = 'rgba(140,90,40,0.2)'; ell(cx, cy, 0.12 * ppm, 0.05 * ppm, ang);
+        for (var d = 0; d < 3; d++) ell(cx + Math.cos(ang) * 0.15 * ppm + Math.sin(ang) * (d - 1) * 0.03 * ppm, cy + Math.sin(ang) * 0.15 * ppm - Math.cos(ang) * (d - 1) * 0.03 * ppm, 0.02 * ppm, 0.018 * ppm, 0);
+      }
+    }
+    // cintas (5 cm, DENTRO de la pista como las líneas del pabellón): azul de playa con filo oscuro y brillo central
+    var L = 0.05;
+    function tape(x0, y0, x1, y1) {
+      g.fillStyle = 'rgba(29,21,48,0.5)'; rect(x0 - 0.012, y0 - 0.012, x1 + 0.012, y1 + 0.012);
+      g.fillStyle = '#1e6fe0'; rect(x0, y0, x1, y1);
+      g.fillStyle = 'rgba(255,255,255,0.28)'; if (x1 - x0 > y1 - y0) rect(x0, (y0 + y1) / 2 - 0.006, x1, (y0 + y1) / 2 + 0.006); else rect((x0 + x1) / 2 - 0.006, y0, (x0 + x1) / 2 + 0.006, y1);
+    }
+    tape(-HL, HW - L, HL, HW); tape(-HL, -HW, HL, -HW + L); tape(-HL, -HW, -HL + L, HW); tape(HL - L, -HW, HL, HW);
+    // líneas de ataque (no existen en la playa, pero la sim usa las reglas de pista cubierta): cordel discontinuo
+    var A = C.ATTACK;
+    for (var sx = -1; sx <= 1; sx += 2) for (var dy = -HW + 0.1; dy < HW - 0.1; dy += 0.5) {
+      g.fillStyle = 'rgba(30,111,224,0.55)'; var xa = sx > 0 ? A - 0.035 : -A;
+      rect(xa, dy, xa + 0.035, Math.min(HW - 0.1, dy + 0.3));
+    }
+    // anclajes de las cintas: piquetas rojas en las esquinas y bajo la red
+    g.fillStyle = '#d8342c';
+    [[HL, HW], [HL, -HW], [-HL, HW], [-HL, -HW], [0, HW], [0, -HW]].forEach(function (p) { var ax = p[0] + (p[0] > 0 ? 0.06 : p[0] < 0 ? -0.06 : 0), ay = p[1] + (p[1] > 0 ? 0.06 : -0.06); ell(X(ax), Y(ay), 0.05 * ppm, 0.05 * ppm, 0); });
+    _seed = sd;
+  }
+  function beachSand(G) {
+    var tile = texOf(sandTile()); tile.wrapS = tile.wrapT = THREE.RepeatWrapping; tile.anisotropy = Math.min(16, ctx.renderer.capabilities.getMaxAnisotropy());
+    var SW = 210, SH = 340; tile.repeat.set(SW / 7.5, SH / 7.5); BEACH.texs.push(tile);
+    var geo = new THREE.PlaneGeometry(SW, SH, 42, 68); geo.rotateX(-Math.PI / 2); geo.translate(-40 + SW / 2, 0, 0);
+    var pa = geo.attributes.position, cols = new Float32Array(pa.count * 3);
+    for (var i = 0; i < pa.count; i++) {
+      var x = pa.getX(i), y = -pa.getZ(i);
+      var n = 0.5 + 0.5 * (Math.sin(x * 0.071 + 0.4) * Math.sin(y * 0.053 + 1.3) * 0.6 + Math.sin(x * 0.19 - y * 0.13) * 0.4);
+      var k = 0.93 + 0.1 * n, wet = Math.min(1, Math.max(0, (-21 - x) / 5.5)); wet = wet * wet * (3 - 2 * wet);
+      cols[i * 3] = k * (1 - wet * 0.24); cols[i * 3 + 1] = k * (1 - wet * 0.3); cols[i * 3 + 2] = k * (1 - wet * 0.36);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    var sand = new THREE.Mesh(geo, BEACH.sandMat = VB.TOON.toonMat({ map: tile, vertexColors: true }));
+    sand.name = 'beachSand'; sand.receiveShadow = true; G.add(sand);
+    // capa de la pista (cintas, rastrillado, huellas): transparente sobre la arena, sin costura en sus bordes
+    var ppm = BEACH.courtPpm = ctx.isMobile ? 26 : 40, cv = BEACH.courtCv = canvas(Math.round(2 * TX * ppm), Math.round(2 * TY * ppm));
+    drawBeachCourt(cv, ppm);
+    var ct = BEACH.courtTex = texOf(cv); ct.anisotropy = Math.min(16, ctx.renderer.capabilities.getMaxAnisotropy()); BEACH.texs.push(ct);
+    var court = new THREE.Mesh(new THREE.PlaneGeometry(2 * TX, 2 * TY), BEACH.courtMat = VB.TOON.toonMat({ map: ct, transparent: true, depthWrite: false }));
+    court.rotation.x = -Math.PI / 2; court.position.y = 0.006; court.renderOrder = -1; court.receiveShadow = true; court.name = 'beachCourt'; G.add(court);
+  }
+
+  /* ---------- vallas de lona con marcas ---------- */
+  function beachBrands() {
+    return BRANDS.map(function (b) { return b.name === 'PALAU DEL MAR' ? { name: 'PLATJA LLARGA', fg: '#ffffff', bg: ['#0f8fb3', '#22b8d6'], deco: 'sun' } : b; });
+  }
+  function drawBeachBanners(cv) {
+    var g = cv.getContext('2d'), W = cv.width, H = cv.height, BB = beachBrands(), seg = W / BB.length;
+    for (var i = 0; i < BB.length; i++) {
+      var b = BB[i], x0 = i * seg, gr = g.createLinearGradient(x0, 0, x0, H);
+      gr.addColorStop(0, b.bg[1]); gr.addColorStop(1, b.bg[0]); g.fillStyle = gr; g.fillRect(x0, 0, seg, H);
+      // lona: dobladillo claro arriba y abajo con ojales
+      g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(x0, 0, seg, H * 0.07); g.fillRect(x0, H * 0.93, seg, H * 0.07);
+      g.fillStyle = 'rgba(29,21,48,0.55)'; for (var o = x0 + H * 0.3; o < x0 + seg; o += H * 0.9) { g.fillRect(o, H * 0.015, H * 0.04, H * 0.04); g.fillRect(o, H * 0.945, H * 0.04, H * 0.04); }
+      drawDeco(g, b.deco, x0 + H * 0.62, H * 0.5, H * 0.86, b.fg);
+      g.fillStyle = b.fg; g.textAlign = 'left'; g.textBaseline = 'middle';
+      var fs = Math.round(H * 0.56); g.font = 'italic 900 ' + fs + 'px ' + FONT;
+      while (g.measureText(b.name).width > seg - H * 1.6 && fs > 10) { fs -= 2; g.font = 'italic 900 ' + fs + 'px ' + FONT; }
+      g.fillText(b.name, x0 + H * 1.12, H * 0.53);
+      g.fillStyle = '#1d1530'; g.fillRect(x0 + seg - 3, 0, 3, H);
+    }
+  }
+  function beachBanners(G, B) {
+    var hi = !ctx.isMobile, cv = BEACH.bannerCv = canvas(hi ? 4096 : 2048, hi ? 128 : 64); drawBeachBanners(cv);
+    var tex = BEACH.bannerTex = texOf(cv); tex.wrapS = THREE.RepeatWrapping; BEACH.texs.push(tex);
+    var P = [], UV = [], h = 0.8, z0 = 0.12, uPerM = cv.height / (h * cv.width), pa = new THREE.Vector3(), pb = new THREE.Vector3(), pc = new THREE.Vector3(), pd = new THREE.Vector3();
+    var frame = col('#e9eef3'), dark = col('#2a3550');
+    function put(v, u, vv) { P.push(v.x, v.y, v.z); UV.push(u, vv); }
+    function banner(cx, cy, len, nx, ny) {
+      var rx = -ny, ry = nx, u0 = rnd(), u1 = u0 + len * uPerM;
+      for (var side = 0; side < 2; side++) {
+        var off = side ? -0.012 : 0, ox = nx * off, oy = ny * off, sg = side ? -1 : 1, ua = side ? u1 : u0, ub = side ? u0 : u1;
+        VB.toThree(cx - rx * len / 2 + ox, cy - ry * len / 2 + oy, z0, pa); VB.toThree(cx + rx * len / 2 + ox, cy + ry * len / 2 + oy, z0, pb);
+        VB.toThree(cx + rx * len / 2 + ox, cy + ry * len / 2 + oy, z0 + h, pc); VB.toThree(cx - rx * len / 2 + ox, cy - ry * len / 2 + oy, z0 + h, pd);
+        // cara delantera (mira a la pista) y trasera (el texto se lee también desde fuera)
+        if (sg > 0) { put(pa, ua, 0); put(pb, ub, 0); put(pc, ub, 1); put(pa, ua, 0); put(pc, ub, 1); put(pd, ua, 1); }
+        else { put(pa, ua, 0); put(pc, ub, 1); put(pb, ub, 0); put(pa, ua, 0); put(pd, ua, 1); put(pc, ub, 1); }
+      }
+      // bastidor: postes cada ~3 m y travesaño de arriba, detrás de la lona
+      objM(0, 0, 0, 1);
+      var np = Math.max(2, Math.round(len / 3) + 1);
+      for (var k = 0; k < np; k++) {
+        var f = k / (np - 1) - 0.5, px = cx + rx * len * f - nx * 0.04, py = cy + ry * len * f - ny * 0.04;
+        lrod(B, px, 0, -py, px, z0 + h + 0.05, -py, 0.03, frame);
+      }
+      lrod(B, cx - rx * len / 2 - nx * 0.04, z0 + h + 0.03, -(cy - ry * len / 2 - ny * 0.04), cx + rx * len / 2 - nx * 0.04, z0 + h + 0.03, -(cy + ry * len / 2 - ny * 0.04), 0.022, dark);
+    }
+    banner(0, BY, 2 * FZX, 0, -1); banner(0, -BY, 2 * FZX, 0, 1); banner(BX, 0, 2 * FZY, -1, 0); banner(-BX, 0, 2 * FZY, 1, 0);
+    var geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+    geo.computeVertexNormals();
+    var m = new THREE.Mesh(geo, VB.TOON.toonMat({ map: tex })); m.name = 'beachBanners'; m.receiveShadow = true; G.add(m);
+  }
+
+  /* ---------- gradas de aluminio con toldo (y sus asientos para el público) ---------- */
+  function beachStands(B) {
+    var seats = [], alu = col('#c9d3de'), aluD = col('#9aa6b4'), frame = col('#2f6fb6'), canA = col('#ffffff'), canB = col('#22b8d6'), canC = col('#ff6b5a');
+    objM(0, 0, 0, 1);
+    for (var s = -1; s <= 1; s += 2) {
+      var rows = 5;
+      for (var r = 0; r < rows; r++) {
+        var yc = s * (BLY + 0.55 + r * 0.8), zs = 0.45 + r * 0.42;
+        B.sbox(2 * BLX, 0.32, 0.05, 0, yc, zs - 0.025, alu);                                  // asiento
+        B.sbox(2 * BLX, 0.3, 0.035, 0, s * (BLY + 0.18 + r * 0.8), zs - 0.42 + 0.03, aluD);    // reposapiés
+        for (var sx = -BLX; sx <= BLX + 0.01; sx += 3.8) { var y0 = s * (BLY + 0.55 + r * 0.8 + 0.12); lrod(B, sx, 0, -y0, sx, zs - 0.03, -y0, 0.035, frame); }
+        for (var si = -BLX + 0.42; si < BLX - 0.3; si += SEAT_W) if (rnd() < 0.74) seats.push({ x: si + (rnd() - 0.5) * 0.12, y: yc + s * 0.02, z: zs, fx: 0, fy: -s, row: r });
+      }
+      // largueros inclinados y barandilla trasera
+      var ytop = s * (BLY + 0.55 + (rows - 1) * 0.8 + 0.22), ztop = 0.45 + (rows - 1) * 0.42;
+      for (var lx = -BLX; lx <= BLX + 0.01; lx += 3.8) {
+        lrod(B, lx, 0, -(s * BLY), lx, ztop, -ytop, 0.045, frame);
+        lrod(B, lx, ztop, -ytop, lx, ztop + 1.0, -ytop, 0.03, frame);
+      }
+      lrod(B, -BLX, ztop + 1.0, -ytop, BLX, ztop + 1.0, -ytop, 0.03, frame);
+      lrod(B, -BLX, ztop + 0.5, -ytop, BLX, ztop + 0.5, -ytop, 0.025, frame);
+      // toldo a rayas sobre las filas altas, con faldón festoneado delante (lo sujetan postes en los extremos y detrás)
+      var y1 = s * (BLY + 1.0), zc1 = 3.15, zc2 = 3.75, dy = ytop - y1, rxT = Math.atan2(zc2 - zc1, Math.abs(dy)) * s, nseg = 10, segL = 2 * BLX / nseg;
+      for (var k = 0; k < nseg; k++) {
+        var cx = -BLX + (k + 0.5) * segL, cc = k % 2 ? canA : (k % 4 === 0 ? canB : canC);
+        B.box(segL, 0.05, Math.hypot(dy, zc2 - zc1) + 0.1, cx, (zc1 + zc2) / 2, -(y1 + ytop) / 2, cc, 0, rxT);
+        for (var v = 0; v < 2; v++) B.geo(BGEO.cone4, cx - segL / 4 + v * segL / 2, zc1 - 0.2, -y1, cc, Math.PI / 4, Math.PI, 0, segL * 0.36, 0.3, 0.06);
+      }
+      [-BLX, 0, BLX].forEach(function (px) { lrod(B, px, ztop + 1.0, -ytop, px, zc2, -ytop, 0.035, frame); });
+      [-BLX, BLX].forEach(function (px) { lrod(B, px, 0, -y1, px, zc1, -y1, 0.04, frame); });
+    }
+    return seats;
+  }
+
+  /* ---------- atrezo de playa ---------- */
+  var LEAF = ['#3fae49', '#2f9440', '#56c24f'], BARK = ['#8a5a32', '#a9753f'];
+  function palm(B, x, y, H, lean, yaw) {
+    objM(x, y, yaw, 1);
+    var n = 7, px0 = 0, py0 = 0, la = col(LEAF[0]), lb = col(LEAF[1]), lc = col(LEAF[2]), ba = col(BARK[0]), bb = col(BARK[1]);
+    for (var i = 1; i <= n; i++) {
+      var t = i / n, px = lean * H * Math.pow(t, 1.8), py = H * t, r0 = 0.21 - 0.08 * (i - 1) / n, r1 = 0.21 - 0.08 * t;
+      lrod(B, px0, py0 - (i > 1 ? 0.05 : 0.1), 0, px, py, 0, r0, i % 2 ? ba : bb, taperGeo(r1 / r0));
+      px0 = px; py0 = py;
+    }
+    var nut = col('#5a3a1a');
+    for (var c = 0; c < 3; c++) part(B, BGEO.sph, px0 + Math.cos(c * 2.1) * 0.13, py0 - 0.14, Math.sin(c * 2.1) * 0.13, nut, 0, 0, 0, 0.13, 0.13, 0.13);
+    var nf = 9;
+    for (var f = 0; f < nf; f++) part(B, BGEO.frond, px0, py0 + 0.04, 0, f % 3 === 0 ? la : f % 3 === 1 ? lb : lc, 0, f / nf * TAU + rnd() * 0.3, 0.42 - (f % 2) * 0.32 + rnd() * 0.1, 1, 1, 1);
+  }
+  function umbrella(B, x, y, cA, cB, sc) {
+    objM(x, y, rnd() * TAU, sc || 1);
+    var wh = col('#f4f2ec'), a = col(cA), b = col(cB);
+    lrod(B, 0, -0.1, 0, 0, 2.15, 0, 0.028, wh);
+    for (var k = 0; k < 8; k++) part(B, BGEO.wedge, 0, 1.75, 0, k % 2 ? a : b, 0, k * Math.PI / 4, 0, 1.25, 0.5, 1.25);
+    part(B, BGEO.sph, 0, 2.27, 0, wh, 0, 0, 0, 0.06, 0.06, 0.06);
+  }
+  function lounger(B, x, y, yaw, cA, cB) {
+    objM(x, y, yaw, 1);
+    var wh = col('#f4f2ec'), a = col(cA), b = col(cB);
+    part(B, UNIT_BOX, 0.25, 0.3, 0, a, 0, 0, 0, 1.25, 0.05, 0.6);
+    part(B, UNIT_BOX, -0.62, 0.52, 0, a, 0, 0, -0.72, 0.72, 0.05, 0.6);
+    for (var s = 0; s < 3; s++) part(B, UNIT_BOX, -0.05 + s * 0.38, 0.33, 0, b, 0, 0, 0, 0.12, 0.012, 0.6);
+    part(B, UNIT_BOX, -0.62, 0.55, 0, b, 0, 0, -0.72, 0.12, 0.012, 0.6);
+    for (var lx = -1; lx <= 1; lx += 2) for (var lz = -1; lz <= 1; lz += 2) part(B, UNIT_BOX, 0.25 + lx * 0.55, 0.14, lz * 0.27, wh, 0, 0, 0, 0.05, 0.28, 0.05);
+  }
+  function towel(B, x, y, yaw, cA, cB) {
+    objM(x, y, yaw, 1);
+    part(B, UNIT_BOX, 0, 0.012, 0, col(cA), 0, 0, 0, 1.7, 0.02, 0.85);
+    for (var s = -1; s <= 1; s += 2) part(B, UNIT_BOX, s * 0.62, 0.024, 0, col(cB), 0, 0, 0, 0.14, 0.006, 0.85);
+  }
+  function beachBall(B, x, y) {
+    objM(x, y, rnd() * TAU, 1);
+    part(B, BGEO.hemi, 0, 0.18, 0, col('#ff5b3a'), 0, 0, 0, 0.18, 0.18, 0.18);
+    part(B, BGEO.hemi, 0, 0.18, 0, col('#ffd23f'), Math.PI, 0, 0, 0.18, 0.18, 0.18);
+  }
+  function featherFlag(B, x, y, c1, yaw) {
+    objM(x, y, yaw, 1);
+    lrod(B, 0, 0, 0, 0, 3.25, 0, 0.025, col('#4a4f5a'));
+    part(B, BGEO.flag, 0, 0, 0, col(c1));
+  }
+  function chiringuito(B, x, y, yaw) {
+    objM(x, y, yaw, 1);
+    var wood = col('#b07a46'), woodD = col('#8a5a32'), straw = col('#e2b65c'), strawD = col('#c9973f'), red = col('#e8504a'), wh = col('#f4f2ec'), teal = col('#22b8d6');
+    part(B, UNIT_BOX, 0, 0.08, 0, woodD, 0, 0, 0, 4.6, 0.16, 3.6);
+    for (var cx = -1; cx <= 1; cx += 2) for (var cz = -1; cz <= 1; cz += 2) lrod(B, cx * 2.0, 0.1, cz * 1.5, cx * 2.0, 2.7, cz * 1.5, 0.09, wood);
+    part(B, UNIT_BOX, 0, 1.4, 1.5, wood, 0, 0, 0, 4.0, 2.6, 0.12);                  // pared del fondo
+    part(B, UNIT_BOX, 0, 0.62, -1.15, wood, 0, 0, 0, 4.1, 1.05, 0.5);              // barra
+    part(B, UNIT_BOX, 0, 1.17, -1.2, woodD, 0, 0, 0, 4.3, 0.07, 0.68);             // tablero
+    for (var s = 0; s < 5; s++) part(B, UNIT_BOX, -1.6 + s * 0.8, 0.62, -1.41, s % 2 ? wh : teal, 0, 0, 0, 0.8, 1.0, 0.02);
+    part(B, BGEO.cone4, 0, 3.35, 0, straw, 0, Math.PI / 4, 0, 3.6, 1.4, 3.1);
+    part(B, BGEO.cone4, 0, 2.78, 0, strawD, 0, Math.PI / 4, 0, 3.75, 0.25, 3.25);
+    part(B, UNIT_BOX, 0, 2.55, -1.85, red, 0, 0, 0, 2.6, 0.55, 0.08);             // rótulo
+    part(B, UNIT_BOX, 0, 2.55, -1.9, wh, 0, 0, 0, 2.2, 0.16, 0.02);
+    for (var b = 0; b < 4; b++) { var bx = -1.5 + b; lrod(B, bx, 0.16, -1.85, bx, 0.75, -1.85, 0.03, woodD); part(B, BGEO.cyl, bx, 0.78, -1.85, red, 0, 0, 0, 0.17, 0.06, 0.17); }
+    part(B, BGEO.sph, 2.4, 1.1, 0.4, teal, 0, 0, 0.18, 0.28, 1.1, 0.07);            // tabla de surf apoyada
+    part(B, BGEO.sph, 2.45, 1.05, -0.3, col('#ffd23f'), 0, 0, 0.22, 0.26, 1.0, 0.07);
+  }
+  function lifeguard(B, x, y, yaw) {
+    objM(x, y, yaw, 1);
+    var wh = col('#f4f2ec'), red = col('#e8504a'), wood = col('#b07a46'), yel = col('#ffd23f'), org = col('#ff7a2a');
+    for (var cx = -1; cx <= 1; cx += 2) for (var cz = -1; cz <= 1; cz += 2) lrod(B, cx * 0.95, 0, cz * 0.95, cx * 0.65, 2.25, cz * 0.65, 0.07, wh);
+    lrod(B, -0.8, 1.1, -0.8, 0.8, 1.1, 0.8, 0.035, wh); lrod(B, -0.8, 1.1, 0.8, 0.8, 1.1, -0.8, 0.035, wh);
+    part(B, UNIT_BOX, 0, 2.3, 0, wood, 0, 0, 0, 1.9, 0.1, 1.9);
+    part(B, UNIT_BOX, 0, 2.95, 0.2, red, 0, 0, 0, 1.5, 1.2, 1.2);
+    part(B, UNIT_BOX, 0, 3.05, -0.41, wh, 0, 0, 0, 1.52, 0.22, 0.02);
+    part(B, UNIT_BOX, 0, 3.62, 0.15, wh, 0, 0, 0, 1.9, 0.12, 1.7);
+    for (var r = 0; r < 6; r++) part(B, UNIT_BOX, 0, 0.3 + r * 0.36, -1.35 + r * 0.06, wood, 0, 0, 0, 0.6, 0.05, 0.16);
+    lrod(B, -0.3, 0, -1.4, -0.3, 2.3, -1.0, 0.03, wh); lrod(B, 0.3, 0, -1.4, 0.3, 2.3, -1.0, 0.03, wh);
+    lrod(B, 0.85, 2.3, -0.85, 0.85, 4.9, -0.85, 0.025, wh);
+    part(B, UNIT_BOX, 1.15, 4.6, -0.85, red, 0, 0, 0, 0.6, 0.38, 0.02);
+    part(B, UNIT_BOX, 1.15, 4.6, -0.84, yel, 0, 0, 0, 0.6, 0.12, 0.02);
+    part(B, BGEO.torus, -0.77, 2.95, 0.2, org, 0, Math.PI / 2, 0, 0.3, 0.3, 0.3);
+  }
+  function sailboat(B, x, y, yaw, sc) {
+    objM(x, y, yaw, sc);
+    part(B, UNIT_BOX, 0, 0.2, 0, col('#f4f2ec'), 0, 0, 0, 3.2, 0.5, 1.1);
+    part(B, UNIT_BOX, 0, 0.12, 0, col('#2f6fb6'), 0, 0, 0, 3.25, 0.12, 1.12);
+    lrod(B, 0.2, 0.4, 0, 0.2, 4.4, 0, 0.05, col('#4a4f5a'));
+    part(B, BGEO.sail, 0.25, 0, 0, col('#ffffff'), 0, Math.PI, 0, 1, 1, 1);
+  }
+  function beachProps(B) {
+    var wood = col('#b98a55'), woodD = col('#8a5a32'), ropeC = col('#f2ead8'), bagC = col('#d8342c');
+    // banquillos de playa (las personas son las del pabellón: mismas posiciones) con sombrilla del color del equipo
+    for (var t = 0; t < 2; t++) {
+      var sx = t === 0 ? 1 : -1, bx = sx * CREW_BENCH_X, tc = col(TEAMC[t]), seatZ = CREW_RISER + 0.45;
+      B.cbox(3.4, 0.9, CREW_RISER, bx - sx * 0.25, 10.62, CREW_RISER / 2, woodD, 0.03, 0.02);
+      B.cbox(2.2, 0.42, 0.06, bx, CREW_BENCH_Y + 0.12, seatZ, wood, 0.03, 0.02);
+      B.cbox(2.2, 0.06, 0.4, bx, CREW_BENCH_Y + 0.36, seatZ + 0.3, wood, 0.02, 0.02);
+      for (var lg = -1; lg <= 1; lg += 2) B.sbox(0.06, 0.36, 0.42, bx + lg * 1.0, CREW_BENCH_Y + 0.12, CREW_RISER + 0.21, woodD);
+      B.cbox(0.5, 0.36, 0.38, bx + sx * 1.45, CREW_BENCH_Y + 0.05, CREW_RISER + 0.19, col('#2f6fb6'), 0.03, 0.02); // nevera
+      B.sbox(0.52, 0.38, 0.05, bx + sx * 1.45, CREW_BENCH_Y + 0.05, CREW_RISER + 0.4, col('#f4f2ec'));
+      umbrella(B, bx, CREW_BENCH_Y + 0.75, TEAMC[t], '#ffffff', 1.25);
+    }
+    B.cbox(1.3, 0.9, 0.42, -2.7, -10.62, 0.21, woodD, 0.03, 0.02); // tarima de la cámara de TV
+    // tensores de los postes de la red (cuerda a una piqueta con saco de arena)
+    objM(0, 0, 0, 1);
+    for (var s = -1; s <= 1; s += 2) {
+      var py = s * 5.5, ay = s * 7.4;
+      for (var dx = -1; dx <= 1; dx += 2) {
+        lrod(B, 0, 2.5, -py, dx * 1.1, 0.05, -ay, 0.011, ropeC);
+        B.cbox(0.34, 0.26, 0.16, dx * 1.1, ay, 0.08, bagC, 0.05, 0.05);
+      }
+    }
+    // palmeras: enmarcan el mar al fondo y rodean las gradas
+    var PALMS = [[-20.5, 17.5, 7.6, 0.14, 2.6], [-23.5, -12.8, 8.4, 0.18, -2.2], [-26, -19.5, 6.8, 0.1, -2.9], [-19, 24, 8.8, 0.2, 2.2], [-17.5, -23, 7.4, 0.12, -1.8],
+      [-12, 18.6, 8.0, 0.1, 1.3], [3.5, 18.8, 7.2, 0.16, 1.7], [12.5, 18.2, 8.6, 0.12, 1.0], [-6, -18.8, 7.8, 0.14, -1.5], [8, -19.4, 8.4, 0.1, -1.2],
+      [21, 12.5, 8.2, 0.18, 0.6], [26.5, 2.5, 7.0, 0.12, 0.1], [22, -14.5, 7.8, 0.16, -0.7], [31, -6, 8.6, 0.1, 0.3], [30, 16, 7.2, 0.14, 0.9]];
+    for (var p = 0; p < PALMS.length; p++) { var P = PALMS[p]; palm(B, P[0], P[1], P[2], P[3], P[4] + rnd() * 0.4); }
+    // sombrillas, hamacas y toallas (junto a la orilla a los lados y detrás de las gradas)
+    var UMB = [['#ff5b3a', '#ffffff'], ['#22b8d6', '#ffffff'], ['#ffd23f', '#ff6b5a'], ['#7ad36a', '#ffffff'], ['#5a7dff', '#ffd23f'], ['#ff7aa8', '#ffffff']];
+    var spots = [[-21, 13], [-22.5, 21], [-20, 28], [-22, -17], [-20.5, -26], [-23.5, -31], [-15, 22.5], [-14, -21], [0, 22.5], [9, 23.5], [-3, -22.5], [4, -23.5],
+      [17.5, 20], [19, -19], [26, 10], [27, -12]];
+    for (var u = 0; u < spots.length; u++) {
+      var S = spots[u], cc = UMB[u % UMB.length];
+      umbrella(B, S[0], S[1], cc[0], cc[1], 1);
+      if (u % 3 !== 2) { var ly = rnd() < 0.5 ? -1 : 1; lounger(B, S[0] + 1.3, S[1] + ly * 0.6, Math.PI + (rnd() - 0.5) * 0.4, cc[0], '#ffffff'); }
+      if (u % 2 === 0) towel(B, S[0] - 1.2, S[1] - 1.0, rnd() * TAU, UMB[(u + 2) % UMB.length][0], '#ffffff');
+      if (u % 5 === 1) beachBall(B, S[0] + 0.6, S[1] - 1.5);
+    }
+    chiringuito(B, 25, -5.5, Math.PI / 2 + 0.25);
+    lifeguard(B, -22.5, 9.5, -Math.PI / 2);
+    var FL = ['#ff5b3a', '#22b8d6', '#ffd23f', '#3f8cff', '#ff6b5a', '#7ad36a'];
+    [[-17.4, 7.5], [-17.4, -7.5], [17.2, 8.2], [17.2, -8.2], [-11.5, 11.7], [11.5, -11.7]].forEach(function (f, i) { featherFlag(B, f[0], f[1], FL[i], Math.atan2(f[1], -f[0]) + 1.2); });
+    // horizonte: veleros e islotes (la niebla los funde con el cielo)
+    sailboat(B, -78, 26, 0.4, 1.4); sailboat(B, -118, -38, -0.3, 1.8); sailboat(B, -60, -14, 2.4, 1.1);
+    objM(-168, -52, 0, 1); part(B, BGEO.hemi, 0, -1, 0, col('#3f7a5e'), 0, 0, 0, 48, 8, 20); part(B, BGEO.hemi, 12, -1, 3, col('#4f8a68'), 0, 0, 0, 20, 12, 12);
+    objM(-160, 70, 0, 1); part(B, BGEO.hemi, 0, -1, 0, col('#4a8466'), 0, 0, 0, 26, 6, 12);
+    // dunas con matas detrás del chiringuito
+    for (var d = 0; d < 6; d++) {
+      var dx2 = 36 + rnd() * 8, dy2 = -30 + d * 12 + rnd() * 4;
+      objM(dx2, dy2, rnd() * TAU, 1); part(B, BGEO.hemi, 0, -0.3, 0, col('#f0cf95'), 0, 0, 0, 5 + rnd() * 3, 1.5 + rnd(), 3 + rnd() * 2);
+      for (var gm = 0; gm < 5; gm++) part(B, BGEO.cone6, (rnd() - 0.5) * 6, 1.0, (rnd() - 0.5) * 3, col(LEAF[gm % 3]), 0, 0, 0, 0.18, 0.7, 0.18);
+    }
+  }
+
+  /* ---------- público de la playa (el material animado del pabellón: mismos uniformes de alegría, ola y tensión) ---------- */
+  var BEACH_SHIRTS = ['#ff5b3a', '#ffd23f', '#2fb6c9', '#ff7aa8', '#7ad36a', '#f4f2ec', '#5a7dff', '#ffb43c', '#e8504a', '#3fd0b0', '#b58cff'];
+  var BEACH_PANTS = ['#2e4466', '#f4f2ec', '#3fa0d8', '#ff8a3d', '#1f2a3d', '#7ad36a', '#e8504a', '#ffd23f'];
+  function beachCrowd(G, seats) {
+    var n = seats.length; if (!n || !crowdMeshes.length || !crowdGeos.hi) return;
+    var c = new THREE.Color(), anim = new Float32Array(n * 4), skin = new Float32Array(n * 3), hair = new Float32Array(n * 3), pants = new Float32Array(n * 3), acc = new Float32Array(n * 4);
+    var mesh = new THREE.InstancedMesh(crowdGeos.hi, crowdMeshes[0].material, n);
+    for (var k = 0; k < n; k++) {
+      var st = seats[k], rr = rnd(), team = rr < 0.2 ? 1 : rr < 0.5 ? 0 : 0.5;
+      c.set(team === 0 ? pick(SHIRTS.t0) : team === 1 ? pick(SHIRTS.t1) : pick(BEACH_SHIRTS)).multiplyScalar(0.84 + rnd() * 0.16); mesh.setColorAt(k, c);
+      var sk = pick(SKINS); c.set(sk); skin[k * 3] = c.r; skin[k * 3 + 1] = c.g; skin[k * 3 + 2] = c.b;
+      if (rnd() < 0.06) c.set(sk).multiplyScalar(0.85); else c.set(pick(HAIRS)); hair[k * 3] = c.r; hair[k * 3 + 1] = c.g; hair[k * 3 + 2] = c.b;
+      c.set(pick(BEACH_PANTS)); pants[k * 3] = c.r; pants[k * 3 + 1] = c.g; pants[k * 3 + 2] = c.b;
+      anim[k * 4] = rnd() * 6.283; anim[k * 4 + 1] = 0.55 + rnd() * 0.45; anim[k * 4 + 2] = team; anim[k * 4 + 3] = Math.atan2(st.y, st.x) / 6.2832 + 0.5;
+      var kid = rnd() < 0.08, sh = kid ? 0.78 : 0.92 + rnd() * 0.16, sw = kid ? 0.8 : 0.9 + rnd() * 0.24;
+      VB.toThree(st.x, st.y, st.z, _p); _e.set(0, Math.atan2(st.fx, -st.fy) + (rnd() - 0.5) * 0.3, 0); _q.setFromEuler(_e); _s.set(sw, sh, (sw + 1) / 2);
+      _m.compose(_p, _q, _s); mesh.setMatrixAt(k, _m);
+    }
+    var ga = { aAnim: new THREE.InstancedBufferAttribute(anim, 4), aSkin: new THREE.InstancedBufferAttribute(skin, 3), aHair: new THREE.InstancedBufferAttribute(hair, 3),
+      aPants: new THREE.InstancedBufferAttribute(pants, 3), aAcc: new THREE.InstancedBufferAttribute(acc, 4) };
+    var bs = new THREE.Sphere(new THREE.Vector3(0, 1.6, 0), Math.hypot(BLX, BLY + 4.5) + 2), lods = {};
+    ['hi', 'lo'].forEach(function (lv) {
+      // copias propias de los buffers base: liberar esta geometría no debe tocar los del pabellón (su VAO los sigue usando)
+      var g = new THREE.BufferGeometry(), src = crowdGeos[lv];
+      g.setAttribute('position', src.attributes.position.clone()); g.setAttribute('normal', src.attributes.normal.clone()); g.setAttribute('color', src.attributes.color.clone()); g.setIndex(src.index.clone());
+      for (var an in ga) g.setAttribute(an, ga[an]);
+      g.boundingSphere = bs; lods[lv] = g;
+    });
+    mesh.geometry = lods.lo; mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.userData.full = n; mesh.userData.lods = lods; mesh.userData.sharedMat = true; mesh.name = 'beachCrowd'; mesh.frustumCulled = true;
+    G.add(mesh); BEACH.crowd = mesh;
+  }
+
+  function buildBeach() {
+    var sd = _seed; _seed = 4242017;
+    if (!_mo) { _mo = new THREE.Matrix4(); _ml = new THREE.Matrix4(); BT = { a: new THREE.Vector3(), b: new THREE.Vector3(), m: new THREE.Vector3(), s: new THREE.Vector3(), q: new THREE.Quaternion(), up: new THREE.Vector3(0, 1, 0) }; }
+    beachGeos();
+    var G = new THREE.Group(); G.name = 'beach'; BEACH.grp = G; BEACH.texs = [];
+    beachSky(G); beachSea(G); beachSand(G);
+    var B = new Builder();
+    beachBanners(G, B); beachProps(B); var seats = beachStands(B);
+    var stat = new THREE.Mesh(B.build(), VB.TOON.toonMat({ vertexColors: true }));
+    stat.name = 'beachStatic'; stat.castShadow = true; stat.receiveShadow = true; G.add(stat); BEACH.stat = stat; casters.push(stat);
+    BEACH.ink = VB.TOON.outline(stat, 0.008);
+    beachCrowd(G, seats);
+    // las geometrías de las piezas solo se copian en las mallas fusionadas: nunca llegan a la GPU
+    for (var k in BGEO) BGEO[k].dispose(); BGEO = null;
+    root.add(G); G.updateMatrixWorld(true);
+    G.traverse(function (o) { if (o !== BEACH.clouds) { o.updateMatrix(); o.matrixAutoUpdate = false; } });
+    _seed = sd;
+    try {
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () {
+        if (BEACH.grp === G && BEACH.bannerCv) { drawBeachBanners(BEACH.bannerCv); BEACH.bannerTex.needsUpdate = true; }
+      });
+    } catch (e) { }
+  }
+  function disposeBeach() {
+    var G = BEACH.grp; if (!G) return;
+    if (BEACH.ink) { VB.TOON.drop(BEACH.ink); BEACH.ink = null; } // material de tinta compartido (caché de VB.TOON): no se libera
+    var ci = casters.indexOf(BEACH.stat); if (ci >= 0) casters.splice(ci, 1);
+    if (BEACH.crowd) { var L = BEACH.crowd.userData.lods; L.hi.dispose(); L.lo.dispose(); }
+    G.traverse(function (o) {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material && !o.userData.sharedMat) o.material.dispose(); // el del público es el del pabellón
+    });
+    for (var i = 0; i < BEACH.texs.length; i++) BEACH.texs[i].dispose();
+    root.remove(G);
+    BEACH.grp = BEACH.seaU = BEACH.clouds = BEACH.crowd = BEACH.stat = BEACH.sandMat = BEACH.courtMat = null;
+    BEACH.bannerCv = BEACH.bannerTex = BEACH.courtCv = BEACH.courtTex = null; BEACH.texs = [];
+  }
+  /** Oculta el pabellón en la playa (lo llama setQuality al final: así no vuelve a enseñar lo que la calidad enciende). */
+  function venueVis() {
+    if (!BEACH.hallObjs) { BEACH.hallObjs = []; for (var i = 0; i < root.children.length; i++) if (HALL_ONLY[root.children[i].name]) BEACH.hallObjs.push(root.children[i]); }
+    if (BEACH.on) for (var j = 0; j < BEACH.hallObjs.length; j++) BEACH.hallObjs[j].visible = false;
+    if (BEACH.grp) BEACH.grp.visible = BEACH.on;
+  }
+  /** Cielo, niebla, tono de las luces y bruma del público de cada sede (guarda los del pabellón la primera vez). */
+  function venueLook() {
+    var fog = ctx.scene.fog;
+    if (BEACH.on && !BEACH.save) BEACH.save = { fog: fog.color.clone(), near: fog.near, far: fog.far, hemiC: hemi.color.clone(), hemiG: hemi.groundColor.clone(),
+      key: keyLight.color.clone(), fill: fillLight ? fillLight.color.clone() : null, rim: rimLight ? rimLight.color.clone() : null, haze: crowdU.uHazeC.value.clone() };
+    var S = BEACH.save; if (!S) return;
+    if (BEACH.on) {
+      fog.color.set(BSKY.fog); fog.near = 60; fog.far = 200;
+      hemi.color.set(0xd4ecff); hemi.groundColor.set(0xf2d29c); keyLight.color.set(0xfff0d4);
+      if (fillLight) fillLight.color.set(0xcfe4ff); if (rimLight) rimLight.color.set(0xffe2b4);
+      var hc = new THREE.Color(BSKY.fog); crowdU.uHazeC.value.set(hc.r, hc.g, hc.b);
+    } else {
+      fog.color.copy(S.fog); fog.near = S.near; fog.far = S.far; hemi.color.copy(S.hemiC); hemi.groundColor.copy(S.hemiG); keyLight.color.copy(S.key);
+      if (fillLight && S.fill) fillLight.color.copy(S.fill); if (rimLight && S.rim) rimLight.color.copy(S.rim); crowdU.uHazeC.value.copy(S.haze);
+    }
+    if (MOOD.keyC) MOOD.keyC.copy(keyLight.color); if (MOOD.rimC && rimLight) MOOD.rimC.copy(rimLight.color); MOOD.dirty = true;
+  }
+  /** Ajustes por calidad de la playa (al final de setQuality, con la fila LT del nivel ya aplicada). */
+  function beachQuality(q, L) {
+    var cm = BEACH.crowd;
+    if (cm) { var ud = cm.userData; cm.geometry = ud.lods[q.rank >= 2 ? 'hi' : 'lo']; cm.count = Math.max(1, Math.floor(ud.full * Math.max(0.6, q.crowdDensity == null ? 1 : q.crowdDensity))); }
+    if (!BEACH.on) return;
+    keyLight.intensity = L.key * BL.key; hemi.intensity = L.hemi * BL.hemi;
+    if (fillLight && fillLight.intensity > 0) fillLight.intensity = L.fill * BL.fill;
+    if (rimLight && rimLight.intensity > 0) rimLight.intensity = MOOD.rimBase = L.rim * BL.rim;
+    if (BEACH.sandMat) BEACH.sandMat.color.setScalar(L.floor * BL.floor);
+    if (BEACH.courtMat) BEACH.courtMat.color.setScalar(L.floor * BL.floor);
+    MOOD.dirty = true;
+  }
+  function wantVenue() {
+    var p = ctx.params && ctx.params.map;
+    if (p === 'beach' || p === 'playa') return 'beach';
+    if (p === 'hall') return 'hall';
+    return ctx.settings && ctx.settings.arena === 'beach' ? 'beach' : 'hall';
+  }
+  function setVenue(id) {
+    id = id === 'beach' ? 'beach' : 'hall';
+    if (id === VENUE.id && (id === 'hall' || BEACH.grp)) return;
+    VENUE.id = id;
+    if (id === 'beach') { if (!BEACH.grp) buildBeach(); BEACH.on = true; }
+    else {
+      BEACH.on = false;
+      if (BEACH.hallObjs) for (var i = 0; i < BEACH.hallObjs.length; i++) BEACH.hallObjs[i].visible = true; // setQuality vuelve a ocultar lo de cada nivel
+      disposeBeach();
+    }
+    venueLook(); padRedraw();
+    if (lastQ) VB.Arena.setQuality(lastQ); else venueVis();
+    if (ctx.fixShadowDepth) { try { ctx.fixShadowDepth(); } catch (e) { } }
+  }
+  function beachStep() {
+    if (BEACH.seaU) BEACH.seaU.uT.value = ctx.time % 3600;
+    if (BEACH.clouds) BEACH.clouds.rotation.y = (ctx.time * 0.0035) % TAU;
+  }
+
   // ---------- Interfaz del módulo ----------
   VB.Arena = {
     init: function (c) {
@@ -3296,7 +3931,10 @@
         });
       } catch (e) { }
       this.setQuality(c.quality);
+      setVenue(wantVenue()); // playa: ajuste `arena` o ?map=beach
     },
+    /** Ajuste `arena` ('hall' | 'beach'): cambia la sede en vivo (también en el menú, con la demo de fondo). */
+    onSettings: function (s, k) { if (k === 'arena' && s) setVenue(s.arena); },
     onGameStart: function (g) {
       RT.cheerT[0] = RT.cheerT[1] = 0; RT.waveAmp = 0; RT.waveT = 0; netRip.t = 9; led.msgT = 0; setLedMode(false); led.w = 0;
       SB.msgT = 0; SB.msg = ''; SB.next = null; led.next = null; RT.ccT = 0; scoreFromGame(g);
@@ -3305,6 +3943,7 @@
     onState: function (s) { if (s === 'menu') RT.menuWave = 6; },
     setQuality: function (q) {
       if (!q || !keyLight) return;
+      lastQ = q;
       keyLight.castShadow = !!q.shadows;
       // calidad baja: el utillaje, los postes y los oficiales no entran en el mapa de sombras (solo jugadores y balón)
       for (var ca = 0; ca < casters.length; ca++) casters[ca].castShadow = q.rank >= 1;
@@ -3354,6 +3993,8 @@
       if (hemi) hemi.intensity = L.hemi;
       if (floorMat) floorMat.color.setScalar(L.floor); // tinte de la tarima por nivel (ARN-01: pista ≥ 189 en todos)
       if (VB.TOON) VB.TOON.setQuality(q); // contornos de tinta fuera en baja
+      if (BEACH.grp) beachQuality(q, L);
+      venueVis(); // en la playa, el pabellón sigue oculto aunque el nivel encienda sus piezas
       setPost(wantPost(q)); haloScale();
     },
     resize: function () { postResize(); },
@@ -3381,13 +4022,13 @@
       RT.tension += (tens - RT.tension) * Math.min(1, rdt * 2); crowdU.uTension.value = RT.tension;
       updateLED(rdt);
       if (SB.msgT > 0) { SB.msgT -= rdt; if (SB.msgT <= 0) { SB.dirty = true; if (SB.next) { var nx = SB.next; SB.next = null; screenMsg(nx[0], nx[1], nx[2], nx[3], nx[4]); } } }
-      if (SB.dirty) redrawScreens();
+      if (SB.dirty && !BEACH.on) redrawScreens(); // en la playa no hay marcadores: se repintan al volver (sigue dirty)
       if (screens.flash > 0) {
         screens.flash = Math.max(0, screens.flash - rdt * 1.5);
         var fb = (screens.base || 1) * (1 + screens.flash * 0.45 * softK());
         for (var j = 0; j < screens.mats.length; j++) screens.mats[j].uniforms.boost.value = fb;
       }
-      screenVis(rdt, g);
+      if (BEACH.on) beachStep(); else screenVis(rdt, g);
       updateNet(dt > 0 ? dt : 0, g);
       updateOfficials(g, dt, rdt);
       updateFlashes(rdt);
@@ -3396,6 +4037,9 @@
     // ---- añadidos opcionales (ver notes/arena.md) ----
     /** Límites útiles para la cámara (coordenadas de sim). */
     bounds: { freeX: FZX, freeY: FZY, boardsX: BX, boardsY: BY, standsX: SX0, standsY: SY0, hallX: HALL_X, hallY: HALL_Y, hallH: HALL_H },
+    /** Sede actual: 'hall' (Palau del Mar) | 'beach' (Platja Llarga) y su nombre para la interfaz. */
+    venue: function () { return VENUE.id; },
+    venueName: function (id) { return VENUE.names[id || VENUE.id] || VENUE.names.hall; },
     /** Fuerza un mensaje en las vallas LED. */
     message: function (text, team, dur) { if (led.mcv) ledMessage(String(text), TEAMC[team === 1 ? 1 : 0], dur || 2.5); },
     /** Hace saltar al público de un equipo (0/1) durante `sec` segundos. */

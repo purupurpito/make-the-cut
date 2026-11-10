@@ -212,14 +212,52 @@ Desde el 9-nov-2026 el proyecto va por **sprints**, para controlar el gasto de t
 Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apuntado, NO empezado.
 
 ### To-do
-- **Prioridad nueva de Ferran (9-nov-2026): modo Carrera ANTES del 6v6, y solo en 2v2** («luego adaptarlo al 6v6 no debería ser
-  tan difícil»). Orden: estadísticas + mejora (hecho, ver Hecho) → Carrera 2v2 (liga, calendario, ofertas, progresión; el plan del
-  §3 de `notes/diseno-6v6-carrera.md` sin la parte de 6v6) → 6v6 después.
-- **Mapa de playa** (pedido de Ferran, 9-nov-2026): una segunda sede, de vóley playa (arena, cielo, sin pabellón). Pendiente de diseñar:
-  ¿solo escenario o también reglas de playa (pista 16×8, sin rotación de campo cada 7 puntos, etc.)?
+- **Carrera en 6v6** (prioridad de Ferran, 9-nov-2026: «luego adaptarlo al 6v6 no debería ser tan difícil»): la Carrera 2v2 ya está
+  hecha (ver Hecho). Falta llevarla al 6v6 cuando exista (posiciones, plantilla del club en vez de un compañero, VNL / Olimpiadas
+  como competiciones de arriba). Plan en el §3 de `notes/diseno-6v6-carrera.md`.
+- **Pendiente del sprint Carrera 2v2** (10-nov-2026, de los revisores; nada roto):
+  - **Circuito Mundial**: manda la habilidad, no los atributos (bot medio 0 de 20 con media 35, 60 y 85; bot bueno 15/25/45 %), y
+    los 1-2 clubes de élite (IA Experto, media 80-84) no los gana nadie (0 de 8 con media 85). ¿Subir el umbral de Experto
+    (`DIFF_AT`, career.js) o dejarlo como reto final? Decisión de diseño de Ferran.
+  - **Diana del saque en el móvil**: el campo rival mide ~48 px de alto a 844×390 (~5 px por metro), así que la profundidad casi no se
+    distingue y el radio de dispersión bueno/malo es < 1 px frente a 6 px; la diana corta del lado derecho cerca de la red la tapan
+    el compañero y el balón. Toca cámara del saque (camera.js) o la diana (fx.js).
+  - **Muro casi imposible en Carrera con control «uno»**: el bot de simtest no salta nunca a bloquear en ese modo (0 saltos en 6
+    partidos; con «Los dos», 188). Sospecha de fallo del bot, no del juego: probar a mano.
+  - Sin volver a medir con la tanda larga de los revisores (`tools/out/carrera/verif/career_balance.js`, `badge_matrix.js`): los
+    umbrales nuevos de las insignias (calculados con sus ritmos), Líder subido y Motor a la mitad.
+  - La nota del bot «bueno» en la Regional sale alta (media 9,1, máx. 9,7; ningún 10). Con «Los dos» la nota cuenta a la pareja
+    (remates ×0,85): sin medir.
+  - A 667×375 la hoja final de Carrera con subida de nivel e insignias necesita scroll para llegar a «Menú principal» (ya pasaba).
+  - Recargar a mitad de partido o «Reiniciar partido» evita una derrota sin penalización (¿diseño?).
+  - Sin probar a mano: mando, teclado y móvil reales en la Carrera, una temporada entera jugada, la copa jugada y el control «Los dos».
+- **Mapa de playa** (pedido de Ferran, 9-nov-2026): **escenario HECHO el 10-nov-2026** (sede «Platja Llarga», Ajustes · Imagen ·
+  Escenario, `?map=beach`; detalle en `notes/arena.md` §Playa). Pendiente:
+  - **Modo reglas de playa**: pista 16×8, cambio de campo cada 7 puntos (5 en el 3.er set), sin línea de ataque ni de centro,
+    sets a 21 (3.º a 15), bloqueo cuenta como toque, toque abierto con dedos (dejada) falta… Toca sim.js (dimensiones de `VB.C`,
+    reglas), la capa de pista de arena.js (cintas a 16×8) y la cámara (límites). Hoy la playa usa la pista 18×9 y las reglas de pista cubierta.
+  - **Jugadores descalzos / ropa de playa** en la playa (players.js, bandera de escenario `VB.Arena.venue() === 'beach'`): hoy llevan
+    zapatillas, calcetines y rodilleras. No es solo color: el pie es la geometría de la zapatilla.
+  - Partículas: más arena al caer/plancharse en la playa (fx.js `dustAt`) y huellas que se queden en la arena durante el punto.
+  - Marcador en la playa: no hay videomarcadores ni marcador colgado (las vallas LED con mensajes tampoco). Un marcador de playa
+    (torre pequeña con cifras) y la cámara del cambio de campo, que mira a `landmarks.scoreHung` (en la playa mira al cielo).
+  - Idea (NO hecha, no tocar la Carrera ahora): que en la Carrera cada club tenga su sede (pabellón o playa).
+  - Piezas del pabellón que desentonan en la arena (revisión visual 10-nov): silla del árbitro oscura con luz naranja, mesa de
+    anotadores negra y protecciones grandes de los postes. Las banderas vistas de canto parecen palos oscuros; hacia la grada lateral
+    la arena se funde con el cielo sin mar. La calidad baja de la playa va a 140k triángulos (tope 150k): cualquier objeto nuevo puede pasarse.
+- **Pendiente del pulido 10-nov-2026** (controles PC, dorsales, separadores, pantallas grandes; menores, nada roto):
+  - A 2560 Ajustes y Jugadores ocupan casi todo el alto (en Ajustes, hueco entre Destellos y Equipación); la Carrera se queda en la
+    mitad de arriba con la cabecera pegada al borde y «Colocación25» pegado en la tabla de atributos.
+  - El consejo de arriba se vuelve casi transparente (`.thru`) cuando la acción pasa por detrás: a 1280×720 en el saque se lee mal. Es
+    deliberado; si molesta, subir el fondo de `#coach.thru`.
+  - Saque táctil: el aviso «SACAR Flotante / SALTAR Potente» pisa el balón del sacador a 667×375.
+  - En el tutorial la tecla «ESPACIO» parece más pequeña que la «J» (mismo tamaño medido, 12,5 px; es la palabra larga en mayúsculas condensadas).
+  - Portátil táctil con ratón: tras tocar la pantalla el clic deja de golpear (a propósito, para no contar doble) sin avisar.
+  - Lanzar con clic izquierdo y pulsar el derecho no saca: es falta (como J y luego Espacio). El texto lo explica.
+  - La ampliación usa CSS `zoom` (Firefox ≥ 126). Sin probar: ratón físico, Firefox, Safari, monitor con escalado de Windows, pestañas internas de la Carrera a 2560.
 - **Modo 6v6** (9-nov-2026): llevar el juego de 2 contra 2 a 6 contra 6. Campo más grande (pista reglamentaria de 18×9 m
   con 6 por equipo), rotaciones y posiciones. Cambiar de jugador será poco habitual, así que el primer modo 6v6 será
-  **controlando solo a un jugador** (ya existe: «Control: Uno», con elección del n.º 7 o el n.º 11). Se mantiene todo el motor de toques y reglas,
+  **controlando solo a un jugador** (ya existe: «Controlar ‹ un jugador ›», siempre el n.º 1). Se mantiene todo el motor de toques y reglas,
   que ya funciona bien. **Diseño hecho:** [`notes/diseno-6v6-carrera.md`](notes/diseno-6v6-carrera.md) (solo diseño, nada empezado).
 - **Posiciones y estadísticas de jugador** (para el 6v6): colocador, opuesto, central, receptor, líbero; atributos (salto,
   remate, recepción, saque, bloqueo, velocidad…) que influyan en la sim. Diseño en [`notes/diseno-6v6-carrera.md`](notes/diseno-6v6-carrera.md).
@@ -227,21 +265,11 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - El error arbitral casi no se ve jugando (30 partidas con piloto: 23 botes a <= 10 cm, 1 mal cantado). Si Ferran quiere verlo
     más, subir `VB.REF_ERR` (p1/p2/p3) o ampliar d1-d3.
   - Sin probar a mano: diana con mando y en táctil, estrechez de `digTight`, LT/L2 (solo padtest).
-- **Modo Carrera** (9-nov-2026, el que más ilusión le hace a Ferran; el más largo): un jugador con estadísticas bajas que se
-  inscribe en equipos modestos, recibe ofertas de equipos mejores, mejora sus estadísticas y acaba jugando VNL, Olimpiadas, etc.
-  Depende del 6v6, del modo de un solo jugador y de las posiciones/estadísticas. Diseño en [`notes/diseno-6v6-carrera.md`](notes/diseno-6v6-carrera.md).
-- **Error arbitral y challenge por nivel de competición** (concepto de Ferran, 9-nov-2026; para Carrera y modos futuros):
-  | Competición | Error arbitral | Challenge |
-  |---|---|---|
-  | Partido rápido | el de base actual (`VB.REF_ERR`), sin modificador | sí |
-  | Ligas bajas | alto | no |
-  | Ligas medias | medio | no |
-  | Ligas altas | bajo, porque hay jueces de línea | no |
-  | Ligas muy altas | bajo | sí |
-  | Olímpicas y similares | casi nulo | sí (casi no hace falta) |
+- **Error arbitral por competición, lo que falta**: hecho para las 5 ligas de la Carrera 2v2 (ver Hecho). Falta la fila «Olímpicas
+  y similares» (casi nulo, con challenge) cuando haya esas competiciones (Carrera 6v6) y cualquier modo nuevo fuera de la Carrera.
 - **Más modos de juego**: el selector de puntos por set es la base de «Partido rápido»; los modos nuevos irán al lado.
 - **Textos**: Ferran revisará el resto de textos y botones (lista numerada A–D que se le pasó el 9-nov-2026).
-  Pregunta abierta: ¿«3.er» → «3r» y «2.º» → «2º»?
+  Pregunta abierta: ¿«3.er» → «3r» y «2.º» → «2º»? (10-nov: «1r» pasó a «1.er» en set y toque, que era la abreviatura catalana.)
 - **Pulido profundo pausado**: el flujo de pulido se paró a mitad (oleadas 1-2 subidas en 94ba33d); falta la oleada 3,
   su verificación y el QA final. Solo si Ferran lo pide.
 - **Pendiente del sprint cartoon** (9-nov-2026, menores, nada roto):
@@ -254,6 +282,45 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **Pulido 10-nov-2026** (pedido de Ferran, en paralelo a la Carrera 2v2):
+  - **Mapa de playa — escenario**: sede «Platja Llarga» (Ajustes · Imagen · Escenario, `?map=beach`): cielo con sol y nubes, mar con olas,
+    arena con huellas, cinta azul, gradas con toldo y público animado, palmeras, socorrista, barcos. Se construye al elegirla y se libera al
+    volver (sin fugas). Las reglas de playa siguen pendientes (To-do).
+  - **Controles PC**: Espacio salta, J o X golpean, clic izquierdo golpea y clic derecho salta sobre la pista (K, alias oculto de saltar).
+    Todos los textos salen de una tabla (`GLYPH`); el panel Controles dibuja el ratón con el botón en ámbar.
+  - **Dorsales 1 y 2** para tu pareja (CPU 3 y 9); escuadrones guardados 7/11 renumerados sin perder progreso; Carrera con dorsal 1 por defecto.
+  - **Control simplificado**: «Controlar ‹ a los dos jugadores ›» / «Controlar ‹ un jugador ›» (siempre el n.º 1); la Carrera usa las mismas palabras.
+  - **Separadores con diseño**: rombo en antetítulos, raya fina en ayudas, barra inclinada en pares, pastillas en datos (`VB.UI.sep`); frases sin «·».
+  - **Pantallas grandes**: menú, Carrera, presentación del partido, HUD y paneles crecen con `--vs` (1,34 a 1920×1080, 1,71 a 2560×1440).
+  - Arreglos de la revisión: hoja final a 667×375 sin desvanecido sobre los botones, tutorial que cabe a 667×375, LED sin «PUNTO DE SETPUNTO DE SET»,
+    «1.er set», textos táctiles del panel Controles.
+- **Carrera 2v2** (sprint del 9/10-nov-2026; botón «02 Carrera»): creas tu jugador (nombre, dorsal, rol atacante / universal /
+  colocador-receptor, puntos por set, control «uno» o «Los dos»; media 35) y empiezas en un club modesto de la Liga Regional con un
+  compañero que pone el club. 5 ligas de 8 clubes inventados (Regional, Nacional, Superliga, Continental, Circuito Mundial), liga a doble
+  vuelta (14 jornadas) + copa de los 4 primeros; cada jornada se juega de verdad o se simula (mitad de XP). Nota del partido 1-10,
+  objetivo del club, confianza del entrenador, ofertas a mitad (solo con nota media ≥ 7) y al final de temporada, ascensos y
+  descensos en todas las ligas, palmarés. Progresión propia (más generosa que la de Partido rápido) y las insignias en tu atleta.
+  Arbitraje por liga (`createGame({ref})`): alto / medio / medio / jueces de línea / jueces + challenge. Calibrado con la sim en
+  autopilot (la IA rival sale de la media del club: Fácil en toda la Regional, Normal, Difícil, Experto ≥ 80) y en los arreglos finales
+  con los bots de simtest: nota (antes casi siempre 10 con control «uno»; ahora novato 6,1 / medio 7,8 / bueno 9,1, techo suave), XP
+  jugada 242-339 por partido frente a 123 simulada, ofertas con la media real de la temporada siguiente, guardado dañado reparado o
+  apartado (`voley3d.career.bak`) sin romper la pantalla, foco seguro con teclado y mando (doble Intro en «Simular» ya no arranca un
+  partido ni rechaza las ofertas). Detalle en `notes/carrera.md`; prueba `tools/careertest.js`.
+- **Insignias** (sprint Carrera): 12 insignias con bronce, plata y oro (nombres inventados: Cañón, Ojo de halcón, Rompemanos, Manos de
+  seda, Bombardero, Hoja seca, Muro, Ancla, Red de seguridad, Motor, Sangre fría, Líder) que se desbloquean haciendo cosas en los
+  partidos (`VB.Badges`, eventos de la sim) y se equipan en huecos (2 + 1 cada 5 niveles, hasta 6), en Partido rápido (escuadrón) y en
+  la Carrera. Efectos en la sim (`createGame({badges})`, `VB.BADGE`). Calibrado en los arreglos finales: Cañón, Ojo de halcón, Red y
+  Manos de seda salían de bronce en 2-3 partidos y de oro en ~20 → umbrales ×3-4 (bronce ~7-10 partidos, oro ~60-110); Ancla al revés
+  (oro en ~200 → ~120-150); Motor, que llega sola, a la mitad (+3,3 puntos de % con oro); Líder subido (con oro no se notaba). Combos de 6
+  de oro: +5-6 puntos de %. Prueba `tools/badgetest.js` y simtest «insignias».
+- **Saque dirigible** (sprint Carrera): al lanzar, una diana que mueves con flechas / stick / joystick por todo el campo rival; con
+  buen timing el saque va exacto (dispersión `serveSpread` según la calidad: salto perfecto ~1 cm, tarde 0,13 s ~0,7 m). En los
+  arreglos finales: la IA deja botar los saques que se van fuera (antes los tocaba todos y apuntar a la esquina no tenía riesgo: 35-42 %
+  de aces y 0-2 % de fallos; ahora 30-47 % de aces con 13-37 % de fallos, +2-4,5 puntos de % frente a no apuntar), el término de línea
+  de `serveRisk` baja de 0,4 a 0,27, y en el saque ↑/↓/←/→ van por los ejes de la pista (antes ↑ desviaba la diana hacia un lado).
+- **Error arbitral y challenge por competición** (concepto de Ferran, 9-nov-2026), en la Carrera 2v2: Liga Regional alto y sin
+  challenge; Nacional y Superliga medio, sin challenge; Continental jueces de línea, sin challenge; Circuito Mundial jueces de línea
+  y challenge (2 por set). Partido rápido sigue con `VB.REF_ERR` y challenge. (`career.js` `REF`, `sim.js` `opts.ref`.)
 - **Estadísticas de jugador y sistema de mejora** (9-nov-2026): 10 atributos 1-99 por atleta (Salto, Velocidad, Reacción, Recepción,
   Defensa, Bloqueo, Colocación, Potencia, Control, Saque). En la sim (`createGame({attrs})`): perfil de IA por jugador (`statProf`) y,
   al humano, ventanas de timing por toque ±12 %, velocidad de remate/saque, tamaño de la diana, salto ±6 % y carrera ±8 %; 50 = neutro

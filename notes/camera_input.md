@@ -918,3 +918,14 @@ Spike (escena `spike` 1280×720 low): en el árbol actual el aviso de toques va 
   `from 'point'` (la cortinilla de ui.js lo trata como la salida normal del punto), o al final con `'over'`.
 - `heroShot()` devuelve null durante la revisión (players no orienta la celebración a la cámara del héroe).
 - Medido (1280×720, revisión simulada): giro máx. ~34°/s (combinado) con y sin Cámara estable; 0 errores JS.
+
+## Controles de PC (9-nov-2026)
+- Teclado: **Espacio saltar** (pulgar), **J o X golpear/sacar** (J: mano derecha jugando con WASD; X: mano izquierda jugando
+  con las flechas, junto a C cambiar y V challenge). K sigue saltando como alias mudo (no se anuncia). Resto igual.
+- Ratón (solo `ctx.state === 'playing'`, overlay táctil oculto, y nunca si el clic cae en `button,a,input,…,[data-ui],[data-opt],
+  [data-nav],.screen,.sheet,#touch`): **clic izquierdo = golpear, derecho = saltar**. Entra en el mismo mapa que las teclas
+  (ids `Mouse0`/`Mouse2`), así que mantener pulsado da `hitHeld`/`jumpHeld`. Lee `e.buttons` en pointerdown/move/up (el 2.º botón
+  con otro ya pulsado llega como pointermove acordado). Solo `pointerType 'mouse'`: dedo y lápiz siguen en el overlay, que además
+  para la propagación (sin golpe doble). Sin menú contextual sobre el canvas. `_debug().stats.mouse = {hit, jump}`.
+- Textos: `GLYPH.keyboard` de ui.js (hit/serve «J», jump «Espacio»; `hitT 'J'`, `jumpT 'ESPACIO'`) y filas de teclado del panel
+  Controles (ratón dibujado con `M('l'|'r')`). tools/drive.js juega con J, clic y Espacio.
