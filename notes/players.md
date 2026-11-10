@@ -760,17 +760,33 @@ Ferran rechazó TAJO y los presets `?body=` («son los actuales modificados; qui
 (Switch Sports / Sackboy: figura redondeada y limpia, tubos con bolas en las articulaciones, cara sencilla y expresiva, ropa pintada) +
 **caricatura de cómic** (Windjammers 2 / Mario Strikers: cabeza grande, manos enormes, poses chulescas). Fichero NUEVO `js/doll.js`
 (`VB.Doll`), cargado tras players.js en index.html; solo actúa en `?debug=doll`. players.js no cambia salvo `VB.Players.dims()` (solo
-lectura: longitudes del rig, alcance y orden de los 27 huesos). main.js: escena `doll` (`&view=fila|poses|cara|cuerpo|peinados`), gancho
-`VB.Doll.update` tras la cámara solo con esa escena; tools/shot.js la incluye en `all`. Capturas: `tools/out/arte/doll/doll-{fila,cara,
-cuerpo,poses,peinados,fila-baja}.png` (borradores en `w/`).
+lectura: longitudes del rig, alcance y orden de los 27 huesos). main.js: escena `doll` (`&view=fila|poses|cara|cuerpo|peinados|solo`,
+`&body=v1|chibi`), gancho `VB.Doll.update` tras la cámara solo con esa escena; tools/shot.js la incluye en `all`. Capturas (cuerpo chibi):
+`tools/out/arte/doll/doll-{fila,cara,cuerpo,poses,peinados,fila-baja,chibi-antes-despues}.png` (borradores y las dos mitades de la hoja en `w/`).
+Las alturas de cámara de las vistas están pensadas para v1 y `viewY` las escala con el cuerpo activo (`face`: con el centro de la cabeza).
 - **Esqueleto**: los MISMOS 27 huesos, nombres, jerarquía y orden que players.js (`body, pelvis, spine, chest, head, eyes, mouth, teeth,
   browL, browR, hair, [sh, up, el, hand, hip, th, kn, ft] × izq/der`): la animación, la IK y la sim de la fase 2 se enganchan sin cambiar.
-  Longitudes nuevas (`VB.Doll.dims()`): cadera 0,78 (muslo 0,33 + espinilla 0,33 + zapatón 0,12), tronco 0,22 + 0,22, hombro a **1,45**
-  (atleta 1,535), SH_X 0,17, sin cuello (`NECK_Y = SH_Y`: la cabeza nace a la altura de los hombros y se apoya en el domo del tronco),
-  brazo 0,335 + antebrazo 0,307 + palma 0,10. **Alcance comprobado**: `fitReach()` reparte brazo/antebrazo para que hombro + brazo +
-  antebrazo + palma = `VB.Players.dims().reach` → **2,192 m = 2,192 m del atleta** (lo imprime la consola y `VB.Doll.reach()`). Cabeza hasta
-  1,86 m: **4,4 cabezas** (cabeza de 0,42 m). Escalas de huesos en reposo todas 1 (cabeza y manos van en la geometría: la fase 2 NO debe aplicar
-  `HEAD_K`/`HAND_K` al muñeco).
+  Sin cuello (`NECK_Y = SH_Y`: la cabeza nace a la altura de los hombros y se apoya en el domo del tronco). Escalas de huesos en reposo
+  todas 1 (cabeza y manos van en la geometría: la fase 2 NO debe aplicar `HEAD_K`/`HAND_K` al muñeco).
+- **Presets de cuerpo** (`BODIES`, `applyDims`; `?body=v1|chibi`, `VB.Doll.setBody(n)` en caliente, `VB.Doll.dims()` / `reach()`); cada rig
+  guarda sus medidas en `r.D` (poses y balón las leen de ahí: v1 y chibi conviven en la comparación). **Alcance comprobado en los dos**:
+  `fitReach()` reparte brazo/antebrazo (0,52/0,48) para que hombro + brazo + antebrazo + palma = `VB.Players.dims().reach` →
+  **2,192 m = 2,192 m del atleta** (consola y `VB.Doll.reach()`).
+  | | v1 (primera maqueta) | **chibi** (por defecto; Ferran: «¿más chibi?», 10-nov) |
+  |---|---|---|
+  | de pie / cabezas | 1,86 m / 4,4 | **1,64 m / 3,3** |
+  | cabeza (alto × ancho) | 0,42 × 0,40 | **0,50 × 0,49** (×1,2, algo más ancha que alta) |
+  | piernas (muslo + espinilla + zapatón) | 0,33 + 0,33 + 0,12 = 0,78 | **0,23 + 0,23 + 0,12 = 0,58** (×0,7) |
+  | tronco (pelvis → hombro) | 0,22 + 0,22 + 0,23 = 0,67 | **0,20 + 0,20 + 0,205 = 0,605**, ×1,12 de ancho por abajo (`TORSO_W`) |
+  | hombro | 1,45 | **1,185** |
+  | brazo + antebrazo + palma | 0,334 + 0,308 + 0,10 = 0,742 | **0,464 + 0,428 + 0,115 = 1,007** (brazos de muñeco) |
+  | manoplas / zapatones | ×1 | **×1,15** (`HAND_K`, `FOOT_K`; la planta sigue en −0,12) |
+  | tubos brazo / pierna; bolas hombro, codo, rodilla | 0,047 / 0,054; 0,08 / 0,056 / 0,066 | **0,05 / 0,058; 0,085 / 0,06 / 0,07** |
+  | manos colgando (de pie, brazo recto) | a 0,65 m del suelo | a 0,11 m: por eso `stand`/`idle` llevan el codo doblado (−0,42 / −0,5) |
+  Cara y pelo se dibujan en metros de v1 y se escalan ×`FK` = HEAD_RY/0,21 (1,19 en chibi) alrededor del centro de la cabeza
+  (`faceCell`, complementos, mechones): ojos, cejas y boca crecen en proporción. Poses: la flexión de rodillas de `recv` y del remate en el
+  suelo baja la pelvis 0,26 / 0,18 × largo de pierna (antes metros fijos). Hoja antes/después: `doll-chibi-antes-despues.png` (vista `solo`,
+  cámara FIJA para los dos, compuesta con `tools/out/arte/presets/sheet.js`).
 - **Piezas** (una `SkinnedMesh` por muñeco, color por vértice + atlas; acumulador `Geo` propio con modos de UV `flat/wrap/strip/own`):
   tronco = pera limpia (lathe, piel a DOS huesos pelvis→chest con `sstep(0.1, 0.5, y)`: se dobla sin costura; sin pecho en V ni músculos);
   bolas de hombro (un punto más oscuras que la camiseta para leerse como pieza), codo (piel) y rodilla (= **rodillera**, oscuro del equipo);
@@ -813,8 +829,8 @@ cuerpo,poses,peinados,fila-baja}.png` (borradores en `w/`).
   (anticipación aplastado → despegue estirado → golpe con estirón del brazo → aterrizaje aplastado → rebote); celebración = saltitos con
   brazos que bombean. `VB.Doll.freeze({idx: t})` congela el bucle para capturas (remate en el golpe t = 0,8; celebración en el aire 0,38).
 - **API** (`VB.Doll`): `start(ctx, g)`, `update(g, realDt)`, `view(nombre)`, `setFace(i, expr)`, `setPose(i, pose)`, `restyle(i, peinado,
-  complemento)`, `setLod(0|1|2)`, `freeze(map)`, `stats()` → `{tris, draws, reach}`, `reach()`, `dims()`, `build(L, idx)` (construye un
-  muñeco fuera de la escena de depuración), constantes `LOOKS, STYLES, ACCS, EXPR, POSES`.
+  complemento)`, `setBody(v1|chibi)`, `body()`, `bodies()`, `setLod(0|1|2)`, `freeze(map)`, `stats()` → `{tris, draws, reach}`, `reach()`,
+  `dims()`, `build(L, idx)` (construye un muñeco fuera de la escena de depuración), constantes `LOOKS, STYLES, ACCS, EXPR, POSES`.
 - **Fase 2 (integración en players.js)**, lo que hará falta: (1) `buildRig` con un conmutador de modelo (`?model=doll` o ajuste) que use
   la geometría de doll.js y las longitudes de `VB.Doll.dims()` en vez de las TAJO (HIP_H, SPINE_Y, CHEST_Y, SH_Y, UPPER, FORE, PALM, NECK_Y):
   el resto del código ya lee esas variables (como hace `applyBody`); (2) las poses de players van en metros absolutos desde hombros a 1,535:
