@@ -475,15 +475,17 @@
   function srSay(t) { if (el.sr) { el.sr.textContent = ''; el.sr.textContent = cpuTxt(t); } }
   /** En un partido de Carrera el rival no es «la CPU» sino un club: «Remate de la CPU» → «Remate del rival», «Tú 3, CPU 1» →
    *  «Tú 3, PUE 1». Se aplica en las cintas, los avisos, el consejo, el lector de pantalla y el rótulo del challenge. */
+  // 6v6 espectador (g.watch de main.js, sprint 2: CPU contra CPU): rótulos de local / visitante en vez de TÚ / CPU
+  var WATCH_CR = { me: 'LOC', rival: 'VIS', meName: 'Equipo local', rivalName: 'Equipo visitante' };
   function cpuTxt(s) {
-    var g = ctx && ctx.game, cr = g && !g.demo && g.career;
+    var g = ctx && ctx.game, cr = g && !g.demo && (g.career || (g.watch && WATCH_CR));
     if (!cr || typeof s !== 'string' || s.indexOf('CPU') < 0) return s;
     return s.replace(/de la CPU/g, 'del rival').replace(/a la CPU/g, 'al rival').replace(/la CPU/g, 'el rival').replace(/La CPU/g, 'El rival')
       .replace(/\bCPU\b/g, cr.rival || 'RIVAL');
   }
   function chalTick(g) {
     if (!el.chal) return;
-    var live = !g.demo && (ctx.state === 'playing' || ctx.state === 'paused') && !(ctx.introLeft > 0);
+    var live = !g.demo && !g.watch && (ctx.state === 'playing' || ctx.state === 'paused') && !(ctx.introLeft > 0);
     // contador (2 iconos): challenges que te quedan en el set
     var ck = live && g.challenges && g.chalPerSet !== 0 ? String(g.challenges[0]) : ''; // competición sin challenge (Carrera, opts.ref.chal 0): sin contador
     if (chal.cnt !== ck) {
@@ -559,6 +561,9 @@
   }
   // ---- Marcador de punto (nivel 1): pestaña del color del equipo que sale del marcador, junto a su fila ----
   function showBug(team, title, sub, tag, dur) {
+    // 6v6 espectador: «Remate de la CPU» → «Remate del rival» con rótulos LOC/VIS (revisión juego6 M1). En Carrera 2v2 se deja
+    // como estaba (la regla del sprint: el 2v2 no cambia nada); queda anotado en TRASPASO.
+    var gw = ctx && ctx.game; if (gw && gw.watch) { title = cpuTxt(title); sub = cpuTxt(sub); }
     el.pbT.textContent = title; el.pbS.textContent = sub || ''; el.pbS.hidden = !sub;
     el.pbX.hidden = !tag; el.pbX.textContent = tag || '';
     el.pbug.className = '';
@@ -1499,7 +1504,7 @@
     chalTick(g);
     setHTML(el.sbSet, 'set', demo ? 'DEMO' : sepHTML(['SET ' + g.setNo, g.setNo === 3 ? 'A 15' : ''], 's'));
     // partido de Carrera (g.career, main.js): abreviaturas de los dos clubes en vez de TÚ / CPU
-    var cr = !demo && g.career;
+    var cr = !demo && (g.career || (g.watch && WATCH_CR));
     setText(el.name0, 'n0', demo ? 'ROJO' : (cr && cr.me) || 'TÚ'); setText(el.name1, 'n1', demo ? 'AZUL' : (cr && cr.rival) || 'CPU');
     if (!demo) teamNames(cr);
     setText(el.pts0, 'p0', g.score[0]); setText(el.pts1, 'p1', g.score[1]);
@@ -1606,7 +1611,7 @@
     // consejos (franja de arriba): ajuste propio, Ajustes · Juego · Consejos (se apaga solo al ganar el 1r partido)
     var tips = ctx.settings.coachTips !== false || ctx.params.coach === '1';
     var pk = '', ptext = '', pcls = '', coach = '', progress = 0, clockF = -1;
-    var p = g.ctrl, humanSide = playing && (!g.autopilot || ctx.debug) && !(ctx.introLeft > 0) && !introUI.quiet;
+    var p = g.ctrl, humanSide = playing && (!g.autopilot || ctx.debug) && !g.watch && !(ctx.introLeft > 0) && !introUI.quiet;
     if (humanSide && p) {
       var one = g.ctrlMode === 'one'; // modo «controlar 1 jugador»: sin cambio de jugador; el compañero IA saca y toca solo
       var sv = g.server || (g.ball.held || null), myServe = g.mode === 'serve' && sv && sv.team === 0 && (!one || sv === p);
@@ -1787,7 +1792,7 @@
   function obBox(i) { return _ob[i] || (_ob[i] = { l: 0, r: 0, t: 0, b: 0, w: 1 }); }
   function collectObstacles(g, p, W, H) {
     _obN = 0;
-    for (var t = 0; t < 2; t++) for (var i = 0; i < 2; i++) {
+    for (var t = 0; t < 2; t++) for (var i = 0; i < (g.teams && g.teams[t] ? g.teams[t].length : 0); i++) {
       var q = g.teams && g.teams[t] && g.teams[t][i];
       if (!q || q === p) continue;
       VB.toThree(q.x, q.y, (q.z || 0) + 0.95, _pv); _pv.project(ctx.camera);
@@ -2124,7 +2129,8 @@
   function showEnd(e) {
     var win = e.team === 0, T = stats.t;
     var isNew = false, career = !!(ctx.game && ctx.game.career && !ctx.game.demo);
-    if (!ctx.debug && !career) {   // los partidos de Carrera no cuentan para el récord de Partido rápido
+    var watch = !!(ctx.game && ctx.game.watch && !ctx.game.demo);   // 6v6 espectador: tampoco cuenta
+    if (!ctx.debug && !career && !watch) {   // los partidos de Carrera no cuentan para el récord de Partido rápido
       record.played++; if (win) { record.wins++; record.winRun++; } else record.winRun = 0;
       // los consejos del partido acompañan hasta la primera victoria; luego se apagan (se reactivan en Ajustes · Juego · Consejos)
       if (win && record.wins === 1 && ctx.settings.coachTips !== false) ctx.actions.setSetting('coachTips', false);
@@ -2135,7 +2141,7 @@
     // (UI-18) antetítulo con contexto, sin repetir el título: «Palau del Mar · Nivel Normal · 3 sets»
     var nSets = (e.setScores || []).length || ((e.sets ? e.sets[0] + e.sets[1] : 0) | 0), dn = VB.DIFF && ctx.game && VB.DIFF[ctx.game.difficulty] && VB.DIFF[ctx.game.difficulty].name;
     setSep(el.endKicker, [venueName(), 'Nivel ' + (dn || OPT.difficulty.labels[optIndex('difficulty')]), nSets + (nSets === 1 ? ' set' : ' sets')], 'd');
-    el.endTitle.textContent = win ? '¡Victoria!' : 'Gana la CPU';
+    el.endTitle.textContent = watch ? (win ? 'Gana el equipo local' : 'Gana el visitante') : win ? '¡Victoria!' : 'Gana la CPU';
     el.endS0.textContent = e.sets[0]; el.endS1.textContent = e.sets[1];
     el.endSets.innerHTML = (e.setScores || []).map(function (s, i) {
       return '<span class="w' + (s[0] > s[1] ? 0 : 1) + '"><small>SET ' + (i + 1) + '</small>' + s[0] + '-' + s[1] + '</span>';
@@ -2160,7 +2166,8 @@
     el.btnAgainAlt.hidden = alt < 0;
     if (alt >= 0) { el.btnAgainAlt.textContent = 'Revancha en ' + OPT.difficulty.labels[alt]; el.btnAgainAlt.setAttribute('data-d', OPT.difficulty.vals[alt]); }
     // (partido de Carrera, g.career: la experiencia y las insignias de su atleta las reparte VB.Career.matchDone, no el escuadrón)
-    if (!ctx.debug && VB.Prog && ctx.game && !ctx.game.autopilot && !ctx.game.career) {
+    // (6v6 de pruebas, ?format=6v6: tampoco reparte al escuadrón de 2v2)
+    if (!ctx.debug && VB.Prog && ctx.game && !ctx.game.autopilot && !ctx.game.career && ctx.game.size !== 6) {
       var dfk = ctx.game.difficulty, perP = [stats.p[0], stats.p[1]];
       var aw = VB.Prog.award(perP, { win: win, setsWon: e.sets ? e.sets[0] : 0, difficulty: dfk }), sqa = VB.Prog.get().a, xh = '';
       aw.forEach(function (r, i) {

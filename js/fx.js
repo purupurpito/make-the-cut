@@ -781,7 +781,8 @@
    * multiplica el destino por ese valor (CustomBlending ZERO, SRC_COLOR). El valor sale de linearToOutputTexel(v^2,2):
    * a pantalla (salida sRGB) multiplica por ~v; al destino lineal del post, por v^2,2. Así «un 20 % más oscuro» es lo
    * mismo en baja (sin post) que en alta (con post). */
-  var BLOB_N = 5, blobs = null, blobK = null, blobM = null, blobQ = null, blobS = null, blobP = null;
+  // capacidad: balón + 12 atletas (6v6); se dibujan solo 1 + max(4, atletas) (blobs.count): en 2v2, 5 como siempre
+  var BLOB_N = 13, blobs = null, blobK = null, blobM = null, blobQ = null, blobS = null, blobP = null;
   var BLOB_VS = 'attribute float aK; varying vec2 vUv; varying float vK;\n' +
     'void main(){ vUv = uv; vK = aK; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }';
   var BLOB_FS = [
@@ -803,7 +804,7 @@
       blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.ZeroFactor, blendDst: THREE.SrcColorFactor, toneMapped: false });
     blobs = new THREE.InstancedMesh(geo, mat, BLOB_N);
     blobs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    blobs.frustumCulled = false; blobs.renderOrder = 2; blobs.name = 'contactBlobs';
+    blobs.frustumCulled = false; blobs.renderOrder = 2; blobs.name = 'contactBlobs'; blobs.count = 5;
     blobM = new THREE.Matrix4(); blobQ = new THREE.Quaternion(); blobS = new THREE.Vector3(); blobP = new THREE.Vector3();
     for (var i = 0; i < BLOB_N; i++) setBlob(i, 0, 0, 0.01, 0.01, 0, 0);
     root.add(blobs);
@@ -821,7 +822,8 @@
    *  salto (0 a 1,5 m) y se alarga en la dirección del cuerpo cuando está tumbado (plancha). Lee la posición VISUAL del rig
    *  (VB.Players: incluye la convergencia de la celebración y el desfase de la plancha); sin rigs, la de sim. */
   function updateAthleteBlobs(g) {
-    var P = VB.Players, rigs = P && P.rigs, ps = g.players, n = ps ? Math.min(4, ps.length) : 0;
+    var P = VB.Players, rigs = P && P.rigs, ps = g.players, n = ps ? Math.min(BLOB_N - 1, ps.length) : 0, nb = n > 4 ? n : 4;
+    if (blobs.count !== nb + 1) blobs.count = nb + 1;
     for (var i = 0; i < n; i++) {
       var p = ps[i], r = null;
       if (rigs) for (var j = 0; j < rigs.length; j++) if (rigs[j] && rigs[j].p === p) { r = rigs[j]; break; }
@@ -833,7 +835,7 @@
       var off = 0.85 * lie; // la raíz queda en los pies: el centro del cuerpo tumbado está ~0,85 m por delante
       setBlob(i + 1, x + Math.cos(yaw) * off, y + Math.sin(yaw) * off, sx, sy, yaw, blobKq * fade * (1 - 0.18 * lie));
     }
-    for (var k = n; k < 4; k++) setBlob(k + 1, 0, 0, 0.01, 0.01, 0, 0);
+    for (var k = n; k < nb; k++) setBlob(k + 1, 0, 0, 0.01, 0.01, 0, 0);
   }
 
   // ---------- Confeti ----------
@@ -1241,7 +1243,7 @@
         dropLine.material.opacity = Math.min(0.22, (b.z - 1.4) * 0.12);
       }
       // ---- aro amarillo (dónde jugará el balón tu equipo): el objetivo principal ----
-      var showFocus = inPlay && !g.demo && g.jobs && g.jobs[0] && Sim.focusPoint;
+      var showFocus = inPlay && !g.demo && !g.watch && g.jobs && g.jobs[0] && Sim.focusPoint;
       var fp = showFocus ? Sim.focusPoint(g) : null;
       focusVis = !!fp;
       focusRing.visible = focusVis;

@@ -611,3 +611,28 @@ anterior: `tools/out/cartoon/players/players.antes.js`.
   El contorno es hijo de `r.skin`; `outlineMesh` queda de respaldo si arena no publica VB.TOON. Al reconstruir por cambio de equipación: `VB.TOON.drop(r.ink)`.
 - A 844×390 el grosor mínimo en píxeles lo fija arena (factor de alto limitado a ≥ 0,75): el trazo es algo más grueso que antes en pantallas bajas
   (~1,8 px frente a ~1,3). Comprobado en las capturas táctiles: no empasta.
+
+## Aplicado (log, 10-nov-2026, sprint 2 del 6v6, agente atletas6)
+Todo detrás de `p.role` (solo existe en 6v6) o `g.size > 2`: en 2v2 el código hace exactamente lo de antes (mismas mallas, claves
+de caché, LOOKS, sombras y LOD). players.js no usa `g.rng` (solo `Math.random` cosmético).
+- **12 rigs**: `onGameStart` ya recorría `g.players`. Nuevo `syncRigs(g)` (solo 6v6, cada frame compara `g.players.length`
+  referencias): cuando el líbero entra/sale (evento `libero`, sim cambia la referencia en `teams[t]` y llama a `refreshTeams`) o hay
+  un cambio, rehace la lista sin tocar a los demás; el que entra aparece ya en su sitio (`resetRig`, primera pose sin amortiguar).
+- **Líbero** (`role 'L'`): `liberoKit(t)` deriva una cuarta equipación (camiseta = el candidato más distinto a la vez de la camiseta
+  propia, la rival y el acento rival, entre acento propio, complementario y la paleta `LIB_PAL`; nunca oscuro, a igualdad mejor vivo
+  que blanco; el del equipo 1, además, distinto del líbero del 0), detalles con la camiseta del equipo, mismo pantalón, diseño liso.
+  Con las equipaciones por defecto: líbero naranja → verde `#2bd96b`, líbero azul → blanco. `VB.Players.liberoColor(t)` para la UI.
+  `atlasMaterial(num, tc)` recibe ya la equipación (antes el equipo). Clave de caché con `:role` en 6v6.
+- **Aspecto**: `lookOf(p)`: en 6v6 `LOOKS6` (10 combinaciones de piel/pelo/peinado, por dorsal) y altura visual por puesto
+  (`ROLE_H`: central 1,05, opuesto 1,03, receptor 1,015, colocador 0,985, líbero 0,955, ±1 % por dorsal). Dorsales = `p.num` de la sim
+  (1-6 / 7-12, líberos 13 / 14).
+- **Rendimiento (§1.8)** en `screenLod(g)` (solo 6v6): en media, los lejanos (> 14 m de profundidad, o rivales a > 10 m; histéresis
+  1 m; nunca en primer plano) usan la malla baja y sin contorno; sombras parciales en media/baja (`SHADOW_N = [2, 6]`: proyectan solo
+  los más cercanos a la cámara; el resto, la mancha de contacto de FX, que ya admite 13). Alta sin cambios.
+- `cvYaw`: el compañero del choque es `c.pA/c.pB` (en 2v2 = `teams[t][0/1]`, igual que antes); `sepOffset` usa `mateOf`.
+- Medido (`node tools/perf.js 844x390 15 auto,high,medium,low 4`, con otros dos agentes usando el PC): **2v2 igual que antes**
+  (media 45-48 dibujos / 269-273 k, baja 29-33 / 112-113 k). **6v6** con `EXTRA=format=6v6`: alta 70-74 / 1,54-1,57 M; media 58-60 /
+  315-340 k (antes de esto 68-75 / 379-393 k); baja 38-41 / 138-145 k (antes 45-48 / 174-177 k). fps 60-75 con el PC al 50-60 %.
+  **No cumple**: baja > 35 dibujos (ARN-12). Ver TRASPASO (6v6) para las opciones.
+- Capturas: `tools/out/6v6/s2-1280/{rally6,serve6,point6}.png`, `tools/out/6v6/s2-844t/{rally6,serve6}.png` (táctil),
+  `tools/out/6v6/libero-serve6-1280.png` (líbero de prueba con stub, antes de que la sim lo tuviera).

@@ -258,7 +258,79 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - **Modo 6v6** (9-nov-2026): llevar el juego de 2 contra 2 a 6 contra 6. Campo más grande (pista reglamentaria de 18×9 m
   con 6 por equipo), rotaciones y posiciones. Cambiar de jugador será poco habitual, así que el primer modo 6v6 será
   **controlando solo a un jugador** (ya existe: «Controlar ‹ un jugador ›», siempre el n.º 1). Se mantiene todo el motor de toques y reglas,
-  que ya funciona bien. **Diseño hecho:** [`notes/diseno-6v6-carrera.md`](notes/diseno-6v6-carrera.md) (solo diseño, nada empezado).
+  que ya funciona bien. **Diseño hecho:** [`notes/diseno-6v6-carrera.md`](notes/diseno-6v6-carrera.md).
+  **Sprint 1 hecho (10-nov-2026, «Sim a N jugadores»)**: sim/IA/cámara/atletas sin supuestos de 4 jugadores; 2v2 idéntico, comprobado con
+  la huella `tools/fingerprint6.js` → `tools/fp-2v2.json` (150 partidas: puntos, eventos, posiciones finales exactas, nº de llamadas a
+  `g.rng`; simtest la exige). `createGame({format:'6v6'})` y `?format=6v6` (NO en el menú) crean 6 por equipo (ids 0-5 / 16-21, dorsales
+  1-6 / 7-12, alineación 5-1 S-OH-MB-OPP-OH-MB), `g.size`, `g.rot`/`g.lineup`, rotación al recuperar el saque, sacador `rot[t][0]`,
+  colocación provisional en las zonas base y una IA de reserva genérica (`computeJobN`/`posN` en ai.js) que juega pero NO es vóley 6v6.
+  API nueva en `VB.Sim`: `mates, nearestMate, mateBadge, zoneOf, zonePos, isFront, ZONE, rotate, serverOf, refreshTeams`; ganchos `VB.AI6`
+  (`computeJob`, `pos`) ya despachados en `AI.computeJob`/`AI.pos` cuando `g.size !== 2`.
+  - **Sim 6v6 (sprint 2, hecho, CPU contra CPU)**: `js/ai6.js` nuevo (`VB.AI6`, cargado tras ai.js en index.html y en simtest/huella).
+    Líbero (`g.libero`, `g.roster`, `applyLibero` en cada `setupServe`: entra por el central zaguero salvo si saca; eventos `libero`),
+    evento `rotation`, formaciones legales del saque (`AI6.placeServe`: el que saca en sus zonas, el que recibe en «W» con OH-OH-L y
+    `legalize()` sin solapamientos), falta de posición CONTADA (`overlapCount`, `g.stats.overlap`; aún no se pita: no hay humano en 6v6),
+    faltas de zaguero/líbero pitadas (`backAttack` con el mecanismo de `atkServe`, `backBlock` en `checkBlock`). IA: 1.er toque por
+    tiempo + puesto, 2.º el colocador, 3.º el atacante elegido (`g.setPlan`); recepción al punto de colocación (`passTarget`), colocador
+    con bola alta a punta, tensa al opuesto o rápida al central en sistema (`chooseSet`); bloqueo de zona con doble del central, defensa
+    perímetro, carrera de batida y cobertura. Afinado solo-6v6: `VB.SIX {stuff 0.6, dig 0.75}`, `FORM.blockErr 1.8`, `sysDig/oosDig`,
+    lectura del 2.º bloqueador en `openSpot` (solo con `g.rot`). simtest «6v6 CPU contra CPU» (16 semillas × 15 min) exige los objetivos
+    del diseño: side-out ~60 %, mediana ~7 s, 0 faltas de posición/zaguero, líbero nunca delante ni sacando, colocador ~85 % de 2.os toques.
+  - **Pendiente sim 6v6**: humano en 6v6 (sprint 3: hoy la IA le aparta del 2.º toque y de los remates; si es el colocador y no hace
+    nada, su equipo pierde casi todo); pitar la falta de posición del humano (Difícil/Experto) e «imán» en Fácil/Normal; regla del
+    líbero colocando de dedos delante de 3 m (`g.liberoSet`, hoy la IA solo evita que coloque ahí); «pipe» y ataque de segunda; tiempos
+    muertos y cambios; bloqueo de lectura y triple; `serveRisk`/`serveTarget` sin pensar en formaciones (sacan a `openSpot`).
+  - Cámara: `mateOf` = el compañero más cercano al humano (el diseño pide «el más cercano al eje cámara-jugador», y mirar solo los 2 más
+    cercanos para la oclusión). Atletas: celebración en corro (hoy solo convergen el protagonista y su compañero más cercano: `cvPair`).
+  - ui.js: `teamNums()` y el marcador siguen pensando en 2 dorsales; `perP = stats.p[0], [1]` (el reparto al escuadrón está desactivado
+    con `g.size === 6`). (Escenas `serve6/rally6/point6` y perf 6v6: ver «Cámara y arranque 6v6» y «Atletas 6v6».)
+  - **Atletas 6v6 (sprint 2, hecho)**: 12 rigs, líbero con camiseta propia (`liberoKit`, verde/blanco por defecto), aspecto y altura
+    por puesto, `syncRigs` para entradas/salidas del líbero, LOD lejano sin contorno en media y sombras parciales (2 en baja, 6 en
+    media). Detalle en notes/players.md. perf.js 844×390 CPU ×4 en 6v6: alta 70-74 dibujos; media 58-60 dibujos / 315-340 k
+    triángulos (antes 68-75 / 379-393 k); baja 38-41 dibujos / 138-145 k (antes 45-48 / 174-177 k). 2v2 sin cambios (baja 29-33 / 113 k).
+    **Pendiente**: baja 6v6 sigue por encima de 35 dibujos (ARN-12; el diseño §1.8 admitía 60): con 12 mallas con piel separadas no
+    baja de ~36 ni sin sombras; haría falta fundir los atletas lejanos en una SkinnedMesh con esqueleto conjunto y un atlas de atlas
+    (sprint 4), o aceptar ≤ 45 en 6v6 en perf.js (owner ui_main). Media 6v6 queda justa (340 k de pico de 350 k) y su JS por frame
+    sube de ~8,5 a ~12-13 ms (Players.update con 12): animación de los lejanos a 30 Hz si hace falta. Faltan también: celebración en
+    corro, animaciones nuevas (batida de 3 pasos, paso cruzado de bloqueo, rápida del central), fundido al entrar el líbero.
+  - **Cámara y arranque 6v6 (sprint 2, hecho)**: `?format=6v6` (sigue SIN estar en el menú) → «Jugar» empieza un partido **de espectador**:
+    CPU contra CPU con el HUD y las pausas de partido (`autopilot` + `present`, sin presentación) y `g.watch = true` (main.js). Decidido así
+    porque la IA 6v6 aparta al humano del 2.º y 3.er toque: el humano entra en el sprint 3. Cámara de televisión `tv` (camera.js `tvShot`):
+    alta (7,8 m) tras el fondo del equipo 0 (x 14,2), encuadra a los 12 (abre/cierra con la formación, sigue un poco el balón a lo ancho,
+    lente según el aspecto), también en el punto (corte al saque siguiente); cambio de campo y final como en 2v2; sin plano de reacción
+    (entre 12 quedaba tapado por la silla del árbitro), cierre de set ni plano del sacador rival en 6v6. ui.js: rótulos LOC / VIS (`WATCH_CR`, también en cintas y lector), sin avisos de mando, hoja final «Gana el
+    equipo local / el visitante» y el partido no cuenta en el récord. input.js: sin mandos táctiles con `g.watch`. Escenas `?debug=serve6`,
+    `rally6`, `point6` (en `shot.js all`). `node tools/tv6test.js [WxH] [s] [semilla]`: 12 jugadores en cuadro el 100 % de los frames, balón,
+    límites, rótulos y sin mandos (1280×720 y 844×390 táctil: TODO OK). 2v2: todo lo nuevo va tras `g.size === 6` / `g.watch` / plano `tv`.
+    **Pendiente (sprint 3)**: plano detrás del humano en 6v6 (`gameplayShot` con más FOV, §1.6), oclusión con los 2 compañeros más
+    cercanos al eje cámara-jugador, plano de cierre de set y del sacador rival en 6v6, `bench`, plano de reacción que prefiera al
+    ganador (hoy a veces enfoca a los que pierden entre 12), indicador de rotación (mini pista) y sacador por dorsal en el marcador, menú
+    «Formato», rótulos de la hoja final (nivel, «Revancha en Normal», «Partidos ganados» no pintan nada en espectador).
+  - **Revisión de los sprints 1 y 2 (10-nov-2026, arreglado)**: revisión de regresión 2v2 sin hallazgos (diferencial estado a estado contra HEAD:
+    60 semillas × 240 s, todo igual). Del 6v6: **M1** la pestaña del punto decía «Remate / Error de la CPU» en espectador (`showBug` no pasaba
+    por `cpuTxt`): ahora con `g.watch` sale «del rival»; **M2** «Defensa fuera» en el 26 % de los puntos → ~16 % (`BEAT6` en ai.js, solo con
+    `g.rot`: el defensor «perdido» lee 0,4 s tarde y va al 30 %); **M3** receptor y central zagueros superpuestos en la cobertura (`offPos`):
+    el central cubre en el sitio del líbero; **M4** en espectador ya no salen el halo/flecha del controlado (players.js) ni el aro amarillo
+    (fx.js) y el partido va con `ctrl:'one'` (sin eventos `switch`); **G1** perf.js con `EXTRA=format=6v6` usa un tope **provisional** de 45
+    llamadas de dibujo en baja (2v2 sigue en 35; el diseño §1.8 contaba con ~60). **Decisión para Ferran**: aceptar ese tope o hacer en el
+    sprint 4 la malla única de los atletas lejanos. En Carrera 2v2 la pestaña sigue diciendo «de la CPU» (bug de antes, fuera del 6v6: no
+    se tocó para no cambiar nada del 2v2; arreglo de una línea en `showBug` cuando se quiera).
+  - **Qué falta para el sprint 3 (humano en 6v6 + menú «Formato»)**:
+    1. Sim/IA: `AI6.decide` (2.º/3.er toque del humano y «¡Pídela!»; hoy la IA le aparta del 2.º toque y de los remates), responsabilidad
+       («¡mía!») del 1.er toque, posición asistida e imán en Fácil/Normal, falta de posición pitada al humano en Difícil/Experto, sin
+       `switch` en 6v6 (control Uno por rol `ctrlRole6`, receptor por defecto), medir toques del humano por rally (objetivo ≥ 0,7).
+    2. Cámara: plano detrás del humano (`gameplayShot` con más FOV, §1.6), oclusión con los 2 compañeros más cercanos al eje
+       cámara-jugador, planos de reacción, cierre de set y sacador rival en 6v6.
+    3. ui_main: fila **«Formato» 2v2 / 6v6** en el menú (`ctx.settings.format`; hoy solo `?format=6v6`), elección de rol, tutorial y
+       Controles en 6v6, marcador con sacador por dorsal e indicador de rotación (ojo: el líbero queda con la zona de su central durante la
+       pausa del punto, hasta `setupServe`), panel «Primer partido» que no salga en 6v6, hoja final sin textos de 2v2 (nivel, «Revancha en
+       Normal», «Partidos ganados»), `teamNums()` con 2 dorsales, «Avanzar» o partido más corto en espectador (un 2-0 dura 18-27 min).
+    4. Atletas/arena (sprint 4): baja 6v6 ≤ 35 llamadas (malla única de lejanos) o ratificar 45; equipo del fondo diminuto a 844×390
+       (dorsales ilegibles); celebración en corro; animaciones nuevas.
+    5. Menores de la revisión: recepción de la rotación 1 (colocador en zona 1 muy al fondo, 4 en línea), cruces entre compañeros (la sim
+       no separa), pocos aces (2-3 %; `serveTarget` sin formación), colocación previsible con el colocador delante (sin pipe), simtest 6v6
+       sin prueba de la secuencia del orden de saque y la del líbero solo en `rally`/`serve`; la huella 2v2 no cubre COLOCAR, `present`,
+       `ritual`, `serveClock`, challenge, `nums`, `ctrlIdx` (el diferencial de la revisión está en el scratchpad de esa sesión, no en tools/).
 - **Posiciones y estadísticas de jugador** (para el 6v6): colocador, opuesto, central, receptor, líbero; atributos (salto,
   remate, recepción, saque, bloqueo, velocidad…) que influyan en la sim. Diseño en [`notes/diseno-6v6-carrera.md`](notes/diseno-6v6-carrera.md).
 - **Pendiente del sprint remate apuntado + challenge** (9-nov-2026, menores):
@@ -282,6 +354,9 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **6v6, sprints 1 y 2 + revisión** (10-nov-2026): sim a N jugadores (2v2 idéntico, huella en simtest), 6v6 CPU contra CPU con rotaciones,
+  líbero, formaciones, reglas de zaguero e IA 5-1 (`js/ai6.js`), 12 atletas, cámara de televisión y partido espectador con `?format=6v6`
+  (NO en el menú). Detalle, arreglos de la revisión y lo que falta para el sprint 3 en «Modo 6v6» (To-do).
 - **Colocación en salto** (10-nov-2026, pedido de Ferran: «colocar saltando, incluyendo móvil y mando siempre»): en el aire GOLPEAR remata y
   **COLOCAR** coloca en salto hacia la zona de ataque del compañero (2.º toque, o 1.º con el balón alto en la red: el compañero ataca en el 2.º).
   Teclado **K**, ratón **clic central**, mando **X** (□), táctil botón **COLOCAR** que solo sale en el aire; en el suelo COLOCAR salta. Más rápida
@@ -407,7 +482,10 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 
 ## Pruebas
 
-- `node tools/simtest.js` — simulación CPU contra CPU + jugador con teclas al azar. Debe acabar sin errores.
+- `node tools/simtest.js` — simulación CPU contra CPU + jugador con teclas al azar. Debe acabar sin errores. Incluye la huella del 2v2
+  (`node tools/fingerprint6.js`, 15 s: compara con `tools/fp-2v2.json`; `--write` la regenera, SOLO si se cambia el 2v2 a propósito).
+- 6v6: `EXTRA=format=6v6 node tools/perf.js 844x390 20 high,medium,low 4 2.75` (tope provisional de 45 llamadas en baja) y
+  `node tools/tv6test.js [WxH] [s] [semilla]` (partido espectador: 12 en cuadro, sin ayudas del humano).
 - `node tools/perf.js`, `touchplay.js`, `padplay.js`, `touchtest.js`, `padtest.js`, `courttest.js`, `audiotest.js`, `drive.js` — ver CONTRACT.md §6.
 - `tools/shot.sh <escena> <ancho> <alto> <salida.png>` — captura. Escenas: `?debug=menu|serve|rally|spike|block|point|switch|mobile|end` (ver `CONTRACT.md`).
 - `tools/console.sh` — errores de consola.

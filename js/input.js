@@ -561,7 +561,7 @@
     if (!T.rects || !GEO.ok || ctx.frame - T.rectAt > 30 || ctx.frame < T.rectAt) measure();
     if (!T.rects) return;
     var W = ctx.width || 1, H = ctx.height || 1, tm = g.teams[0], hitAny0 = false, hitAny1 = false, hitAny2 = false;
-    for (var k = 0; k < 2; k++) {
+    for (var k = 0; k < tm.length; k++) {
       var q = tm[k];
       for (var zz = 0; zz < 2; zz++) {   // pecho y cadera
         VB.toThree(q.x, q.y, q.z + (zz ? 0.9 : 1.35), pv3); pv3.project(cam);
@@ -881,7 +881,7 @@
 
       // --- overlay táctil: en partido, en horizontal, si se está jugando con el dedo
       var touchy = T.used || ctx.isTouch;
-      var show = touchy && it.device === 'touch' && ctx.state === 'playing' && !ctx.portraitBlock;
+      var show = touchy && it.device === 'touch' && ctx.state === 'playing' && !ctx.portraitBlock && !(ctx.game && ctx.game.watch);   // (6v6 espectador, g.watch: sin mandos)
       if (show !== T.shown) setShown(show);
       if (show) { touchContext(); touchVisibility(); }
       return it;

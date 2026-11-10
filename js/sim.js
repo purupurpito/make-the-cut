@@ -139,9 +139,12 @@
   }
 
   // ---------- Entidades ----------
-  function mkPlayer(team, num, idx) {
+  /** Jugador nuevo. base = separación de ids entre equipos (2 en 2v2: ids 0-3 como siempre; 16 en 6v6: plantillas de hasta
+   *  16, ids 0-15 y 16-31; los .id son claves, no índices contiguos). */
+  function mkPlayer(team, num, idx, base) {
     return dblFields({
-      id: team * 2 + idx, team: team, idx: idx, num: num,
+      id: team * (base || 2) + idx, team: team, idx: idx, num: num,
+      role: '', zone: 0, front: false, // 6v6: puesto ('S'|'OH'|'MB'|'OPP'|'L'), zona 1-6 y delantero (zonas 2-4); en 2v2 vacíos
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, // vx,vy = velocidad real del último paso (para animación)
       anim: 0,        // >0 mientras dura un gesto de golpeo/brazos arriba (s)
       cool: 0,        // enfriamiento tras tocar
@@ -175,9 +178,12 @@
   function setTarget(g) { var p = g.points || 25; return g.setNo === 3 ? Math.min(15, p) : p; }
   function createGame(opts) {
     opts = opts || {};
-    var teams = [[mkPlayer(0, 1, 0), mkPlayer(0, 2, 1)], [mkPlayer(1, 3, 0), mkPlayer(1, 9, 1)]];
+    // formato (sprint 1 del 6v6): '2v2' por defecto (idéntico a siempre); '6v6' solo con opts.format === '6v6' (en pruebas:
+    // ?format=6v6). El 6v6 aún NO tiene reglas ni IA propias (sprint 2): seis por equipo con la IA de 2v2 generalizada.
+    var six = opts.format === '6v6', size = six ? 6 : 2;
+    var teams = six ? [mkTeam6(0), mkTeam6(1)] : [[mkPlayer(0, 1, 0), mkPlayer(0, 2, 1)], [mkPlayer(1, 3, 0), mkPlayer(1, 9, 1)]];
     // dorsales propios (Carrera): opts.nums = [[n1, n2], [n3, n9]] (cada hueco o equipo puede ser null = el de siempre). Solo cambia p.num.
-    if (opts.nums) for (var nt = 0; nt < 2; nt++) for (var ni = 0; ni < 2; ni++) {
+    if (opts.nums) for (var nt = 0; nt < 2; nt++) for (var ni = 0; ni < teams[nt].length; ni++) {
       var nv = opts.nums[nt] && opts.nums[nt][ni];
       if (nv === (nv | 0) && nv >= 1 && nv <= 99) teams[nt][ni].num = nv;
     }
@@ -185,6 +191,19 @@
     var seed = opts.seed != null ? opts.seed : (Date.now() & 0x7fffffff);
     var g = {
       opts: opts,
+      format: six ? '6v6' : '2v2',
+      size: size,              // jugadores en pista por equipo (2 o 6): todo bucle sobre jugadores va con g.players.length
+      // 6v6: rotación por equipo, rot[t][z - 1] = jugador en la zona z (rot[t][0] saca); lineup = la del inicio de set.
+      // En 2v2, null (el sacador sale de serverIdx como siempre)
+      rot: six ? [teams[0].slice(), teams[1].slice()] : null,
+      lineup: six ? [teams[0].slice(), teams[1].slice()] : null,
+      // 6v6 (sprint 2): libero[t] (rol 'L', en banquillo hasta que entra), liberoFor[t] = central al que sustituye ahora (o null),
+      // roster[t] = los 7 (6 de la rotación + líbero; bench = true el que está fuera), setPlan[t] = decisión del colocador
+      // en curso {to, tempo, x, y, apex, t} (VB.AI6). En 2v2, null
+      libero: six ? [mkLibero(0), mkLibero(1)] : null,
+      liberoFor: six ? [null, null] : null,
+      roster: null,
+      setPlan: six ? [null, null] : null,
       demo: !!opts.demo,
       autopilot: !!opts.autopilot,
       // control del humano: 'both' = el control pasa a quien da el siguiente toque; 'one' = siempre el mismo jugador
@@ -269,6 +288,8 @@
       } : null
     };
     dblFields(g); dblFields(g.ball); dblFields(g.pr1); dblFields(g.pr3); dblFields(g.rally);
+    if (six) { g.roster = [teams[0].concat([g.libero[0]]), teams[1].concat([g.libero[1]])]; if (g.stats) { g.stats.overlap = [0, 0]; g.stats.liberoSwaps = 0; } }
+    refreshTeams(g);
     applyAttrs(g, opts.attrs);
     applyBadges(g, opts.badges);
     g.server = g.ctrl;
@@ -310,7 +331,7 @@
   }
   function applyAttrs(g, attrs) {
     if (!attrs || g.demo) return;
-    for (var t = 0; t < 2; t++) for (var i = 0; i < 2; i++) {
+    for (var t = 0; t < 2; t++) for (var i = 0; i < g.teams[t].length; i++) {
       var st = attrs[t] && attrs[t][i]; if (!st) continue;
       var p = g.teams[t][i], c = {}; for (var j = 0; j < ATTR_KEYS.length; j++) c[ATTR_KEYS[j]] = clamp(Math.round(+st[ATTR_KEYS[j]] || 50), 1, 99);
       p.st = c; p.prof = statProf(g.prof[t], c); p.ak = attrK(c);
@@ -350,7 +371,7 @@
   };
   function applyBadges(g, badges) {
     if (!badges || g.demo) return;
-    for (var t = 0; t < 2; t++) for (var i = 0; i < 2; i++) {
+    for (var t = 0; t < 2; t++) for (var i = 0; i < g.teams[t].length; i++) {
       var b = badges[t] && badges[t][i]; if (!b || typeof b !== 'object') continue;
       var o = null;
       for (var j = 0; j < BADGE_IDS.length; j++) {
@@ -367,9 +388,9 @@
   /** Factor de las ventanas de timing del humano por Sangre fría (1 sin ella o sin punto de set/partido). */
   function sangreW(g, p) { var l = bl(p, 'sangrefria'); return l && clutchOn(g) ? BADGE.sangreW[l] : 1; }
   /** Reacción y timing efectivos de la IA del jugador p (perfil + Líder del compañero + Sangre fría). Sin insignias = perfil. */
-  function aiReact(g, p, pr) { var l = bl(other(g, p), 'lider'); return l ? Math.max(0.02, pr.react - BADGE.liderReact[l]) : pr.react; }
+  function aiReact(g, p, pr) { var l = mateBadge(g, p, 'lider'); return l ? Math.max(0.02, pr.react - BADGE.liderReact[l]) : pr.react; }
   function aiTiming(g, p, pr) {
-    var k = 1, l = bl(other(g, p), 'lider'), s = bl(p, 'sangrefria');
+    var k = 1, l = mateBadge(g, p, 'lider'), s = bl(p, 'sangrefria');
     if (l) k *= BADGE.liderT[l];
     if (s && clutchOn(g)) k *= BADGE.sangreAI[s];
     return k === 1 ? pr.timing : pr.timing * k;
@@ -443,7 +464,122 @@
   /** ¿Toca atacar al equipo t en su siguiente toque? Tras su 2.º toque o tras una colocación en salto en el 1.º. */
   function atkPhase(g, t) { return g.touchTeam === t && (g.touches === 2 || (g.touches === 1 && g.lastKind === 'set')); }
 
-  function other(g, p) { var t = g.teams[p.team]; return t[0] === p ? t[1] : t[0]; }
+  /* ---------- Equipos de N jugadores (sprint 1 del 6v6, notes/diseno-6v6-carrera.md §1.1) ----------
+   * En 2v2 todo da exactamente lo de siempre: other() es «el compañero», mates() = [el compañero], nearestMate() = él.
+   * Ninguna de estas funciones gasta g.rng ni asigna memoria por frame (mates() devuelve un array cacheado). */
+  /** El compañero (2v2). Con más jugadores: el compañero en pista más cercano a p (vale de reserva donde la lógica de 2v2
+   *  necesite «el otro»; la IA de 6v6 decide con sus propias tablas). */
+  function other(g, p) {
+    var t = g.teams[p.team];
+    if (t.length === 2) return t[0] === p ? t[1] : t[0];
+    return nearestMate(g, p, p.x, p.y);
+  }
+  /** Compañeros en pista de p (sin p), array cacheado en g._mates[team][idx]: no modificar. refreshTeams lo rehace. */
+  function mates(g, p) { var m = g._mates && g._mates[p.team]; return (m && m[p.idx]) || EMPTY; }
+  var EMPTY = [];
+  /** Compañero en pista de p más cercano al punto (x, y) (por defecto, a p). null si juega solo. */
+  function nearestMate(g, p, x, y) {
+    var m = mates(g, p), best = null, bd = 1e9;
+    if (x == null) { x = p.x; y = p.y; }
+    for (var i = 0; i < m.length; i++) { var q = m[i], d = (q.x - x) * (q.x - x) + (q.y - y) * (q.y - y); if (d < bd) { bd = d; best = q; } }
+    return best;
+  }
+  /** Nivel (0-3) más alto de la insignia id entre los compañeros de p (Líder). En 2v2, la del compañero. */
+  function mateBadge(g, p, id) {
+    var m = mates(g, p), lv = 0;
+    for (var i = 0; i < m.length; i++) { var l = bl(m[i], id); if (l > lv) lv = l; }
+    return lv;
+  }
+  /** Rehace las cachés de equipo tras crear el partido o cambiar quién está en pista (líbero, cambios: sprint 2):
+   *  g.players, p.idx, g._mates y, en 6v6, p.zone/p.front desde g.rot. */
+  function refreshTeams(g) {
+    g.players = g.teams[0].concat(g.teams[1]);
+    g._mates = [[], []];
+    for (var t = 0; t < 2; t++) {
+      var tm = g.teams[t];
+      for (var i = 0; i < tm.length; i++) {
+        tm[i].idx = i;
+        var m = []; for (var j = 0; j < tm.length; j++) if (j !== i) m.push(tm[j]);
+        g._mates[t].push(m);
+      }
+    }
+    refreshZones(g);
+  }
+  /** Zonas reglamentarias (d = metros desde la red, yl = lateral LOCAL del equipo, + = su derecha). Índice = zona (1-6). */
+  var ZONE = [null, { d: 7.5, yl: 3 }, { d: 1.5, yl: 3 }, { d: 1.5, yl: 0 }, { d: 1.5, yl: -3 }, { d: 7.5, yl: -3 }, { d: 7.5, yl: 0 }];
+  /** Zona (1-6) de p según g.rot; 0 en 2v2 (sin rotación). */
+  function zoneOf(g, p) { return g.rot ? (p.bench ? 0 : p.zone) : 0; }
+  /** ¿Delantero (zona 2, 3 o 4)? En 2v2, false. */
+  function isFront(g, p) { var z = zoneOf(g, p); return z >= 2 && z <= 4; }
+  /** Punto base de la zona z del equipo t en coordenadas de la sim: x = side(t)·d, y = side(t)·yl (el equipo 0 mira a −x y su
+   *  derecha es +y; el 1 mira a +x y su derecha es −y). out = {x, y} reutilizable (opcional). */
+  function zonePos(t, z, out) {
+    var Z = ZONE[z] || ZONE[6], sd = side(t); out = out || {};
+    out.x = sd * Z.d; out.y = sd * Z.yl; return out;
+  }
+  function refreshZones(g) {
+    if (!g.rot) return;
+    for (var t = 0; t < 2; t++) for (var z = 0; z < g.rot[t].length; z++) {
+      var p = g.rot[t][z]; p.zone = z + 1; p.front = z >= 1 && z <= 3;
+      if (g.liberoFor && p === g.liberoFor[t]) { var l = g.libero[t]; l.zone = z + 1; l.front = p.front; } // el líbero ocupa su zona
+    }
+  }
+  /** Rota el equipo t (6v6): el de zona 2 pasa a zona 1 y saca. */
+  function rotate(g, t) {
+    if (!g.rot) return;
+    g.rot[t].push(g.rot[t].shift()); refreshZones(g);
+  }
+  /** Sacador del equipo t: rot[t][0] en 6v6; teams[t][serverIdx[t]] en 2v2. */
+  function serverOf(g, t) { return g.rot ? g.rot[t][0] : g.teams[t][g.serverIdx[t]]; }
+  /** Equipo de 6 (6v6) con la alineación 5-1 por defecto en orden de rotación desde zona 1: S, OH1, MB1, OPP, OH2, MB2.
+   *  Dorsales 1-6 (equipo 0) y 7-12 (equipo 1); ids team·16 + idx. */
+  var ROLES6 = ['S', 'OH', 'MB', 'OPP', 'OH', 'MB'];
+  function mkTeam6(team) {
+    var a = [];
+    for (var i = 0; i < 6; i++) { var p = mkPlayer(team, team * 6 + i + 1, i, 16); p.role = ROLES6[i]; mk6Fields(p); a.push(p); }
+    return a;
+  }
+  /** Campos solo de 6v6 (no se añaden en 2v2: el objeto del 2v2 no cambia). fx/fy = sitio de la formación de recepción;
+   *  toX = x del despegue del último salto (falta de ataque de zaguero); bench = en el banquillo (líbero o central sustituido). */
+  function mk6Fields(p) { p.fx = 0.5; p.fx = 0; p.fy = 0.5; p.fy = 0; p.toX = 0.5; p.toX = 9; p.bench = false; return p; }
+  /** Líbero del equipo t (6v6): dorsal 13 / 14, id team·16 + 6, rol 'L'. Empieza en el banquillo (applyLibero lo mete). */
+  function mkLibero(team) { var p = mk6Fields(mkPlayer(team, 13 + team, 6, 16)); p.role = 'L'; p.bench = true; return p; }
+  /** Jugador en pista en la zona z (1-6) del equipo t: el de la rotación o, si es el central sustituido, el líbero. */
+  function onCourt(g, t, z) { var q = g.rot[t][z - 1]; return q === g.liberoFor[t] ? g.libero[t] : q; }
+  /** Líbero (reglas FIVB 19.3): entra por el central que está en zaguero (zonas 5, 6, 1), salvo cuando ese central va a sacar
+   *  (el líbero no saca: saca el central y el líbero vuelve a entrar al perder el saque). Se llama al preparar cada saque
+   *  (setupServe, ya rotado). Cambia la referencia en teams[t] (mismo índice: el líbero ocupa el hueco del central) y deja
+   *  bench = true al que sale. Evento {type:'libero', team, inP, outP} por cada entrada o salida. No cuenta como cambio. */
+  function applyLibero(g) {
+    if (!g.rot) return;
+    var ch = false;
+    for (var t = 0; t < 2; t++) {
+      var lib = g.libero[t]; if (!lib) continue;
+      var want = null;
+      for (var k = 0; k < 3; k++) { var z = [0, 4, 5][k], q = g.rot[t][z]; if (q.role === 'MB') want = (z === 0 && g.serving === t) ? null : q; }
+      var cur = g.liberoFor[t];
+      if (want === cur) continue;
+      var tm = g.teams[t];
+      if (cur) { tm[tm.indexOf(lib)] = cur; cur.bench = false; lib.bench = true; g.liberoFor[t] = null; cur.x = lib.x; cur.y = lib.y; emit(g, { type: 'libero', team: t, inP: cur, outP: lib }); }
+      if (want) { tm[tm.indexOf(want)] = lib; lib.bench = false; want.bench = true; g.liberoFor[t] = want; lib.x = want.x; lib.y = want.y; emit(g, { type: 'libero', team: t, inP: lib, outP: want }); }
+      ch = true;
+    }
+    if (ch) refreshTeams(g);
+  }
+  /** Falta de posición (reglas 7.4-7.5) en el momento del saque: pares delante/detrás (2-1, 3-6, 4-5: el zaguero más lejos de
+   *  la red) y derecha/izquierda en cada fila (4-3-2 y 5-6-1, lateral LOCAL creciente). El sacador no cuenta. Devuelve cuántos
+   *  pares están mal (0 = legal). Con los centros de los jugadores (sin la regla del pie). */
+  var OVL_FB = [[2, 1], [3, 6], [4, 5]], OVL_LR = [[4, 3], [3, 2], [5, 6], [6, 1]];
+  function overlapCount(g, t) {
+    if (!g.rot) return 0;
+    var sd = side(t), sv = g.mode === 'serve' || g.lastKind === 'serve' ? g.server : null, n = 0, i, a, b;
+    for (i = 0; i < 3; i++) { a = onCourt(g, t, OVL_FB[i][0]); b = onCourt(g, t, OVL_FB[i][1]); if (a !== sv && b !== sv && a.x * sd >= b.x * sd) n++; }
+    for (i = 0; i < 4; i++) { a = onCourt(g, t, OVL_LR[i][0]); b = onCourt(g, t, OVL_LR[i][1]); if (a !== sv && b !== sv && a.y * sd >= b.y * sd) n++; }
+    return n;
+  }
+  /** Afinado del 6v6 (solo con g.rot; el 2v2 no lo lee). stuff: multiplicador de la prob. de bloqueo directo por contacto;
+   *  dig: multiplicador de la prob. de defender un remate (digOk). */
+  var SIX = VB.SIX = { stuff: 0.6, dig: 0.75 };
   function isHuman(g, p) { return !g.demo && !g.autopilot && p.team === 0 && p === g.ctrl; }
   // Representación de campos en V8 (integración, ronda 2 de verificación): un campo numérico que nace entero (Smi: 0, -1, 99)
   // y luego recibe un double obliga a V8 a generalizar el mapa del objeto y deprecar todo su árbol de transiciones; eso,
@@ -620,7 +756,7 @@
     var lx = o.x + v[0] * ft, ly = o.y + v[1] * ft;
     if (Math.abs(lx) > C.HL + 0.3 || Math.abs(ly) > C.HW + 0.3 || lx * side(dt) <= 0) return 2;
     var AI = VB.AI, best = 9;
-    for (var i = 0; i < 2; i++) {
+    for (var i = 0; i < g.teams[dt].length; i++) {
       var q = g.teams[dt][i];
       var tq = AI && AI.timeTo ? AI.timeTo(g, q, lx, ly) : Math.hypot(q.x - lx, q.y - ly) / C.SPEED;
       if (tq < best) best = tq;
@@ -651,6 +787,11 @@
     // recepción alta dirigida al propio campo no lo es. Se anota aquí y se pita en stepBall/checkBlock.
     var atkSrv = shot !== 'body' && g.lastKind === 'serve' && g.lastTeam !== t && p.z > 0.25 && b.z - 0.1 > C.NET_H && Math.abs(b.x) < C.ATTACK;
     g.atkServe = atkSrv ? { team: t, player: p } : null;
+    // 6v6 (reglas 13.2.2 y 19.3.1.3): el zaguero que despegó delante de la línea de 3 m, o el líbero desde cualquier sitio, no
+    // puede golpear en el aire con el balón entero por encima de la red. Igual que el ataque sobre el saque, solo es falta si
+    // el ataque se COMPLETA (cruza la red o lo toca el rival): se anota aquí con su motivo y se pita en stepBall/checkBlock
+    if (g.rot && !atkSrv && shot !== 'body' && p.z > 0.25 && b.z - 0.1 > C.NET_H && (p.role === 'L' || (!p.front && Math.abs(p.toX) < C.ATTACK)))
+      g.atkServe = { team: t, player: p, reason: 'backAttack', text: p.role === 'L' ? 'Ataque del líbero' : 'Ataque de zaguero' };
     var human = isHuman(g, p), mate = other(g, p);
     te = te || 0; shot = shot || '';
     if (human && count === 1 && g.digTight) te *= 1.5; // A3: tras un remate perfecto rival la ventana es más justa
@@ -746,6 +887,7 @@
         // medio colocar. No tras la del 1.er toque: ahí ya sale sola (balón regalado en la red) y con el ×dig colocar ganaba
         // más que rematarlo uno mismo
         if (setIn && count === 3 && inShot === 'jump' && prevPlayer && prevPlayer.grade !== 'poor') tightK *= JSET.dig;
+        if (g.rot) tightK *= SIX.dig * (VB.AI6 ? VB.AI6.digK(g, t) : 1); // 6v6: con 3 zagueros el margen de defensa sale alto; en sistema, más
         g.digOk = g.rng() < dp.dig * tightK * clamp(1.55 - 0.9 * power, 0.3, 1.25) * clamp(1.21 + 1.3 * g.digMargin, 0.35, 1.7);
         g.digTight = grade === 'perfect' && 1 - t === 0 && !g.demo && !g.autopilot;
       } else { g.digOk = true; g.digTight = false; }
@@ -769,6 +911,9 @@
       } else if (q < 0.3 && g.rng() < 0.55 * (0.3 - q) / 0.3) { // recepción fallida: sale desviada
         var wy = (g.rng() < 0.5 ? -1 : 1) * (3.5 + g.rng() * 2.5);
         v = launchApex(o, sd * (2.5 + g.rng() * 6), wy, 0, 2.6 + g.rng() * 2); sub = 'shank';
+      } else if (g.rot && VB.AI6) { // 6v6: al punto de colocación (VB.AI6.passTarget), el error en profundidad sin pasar la red
+        var pt = VB.AI6.passTarget(g, p, hardIn, q);
+        v = launchApex(o, sd * Math.max(0.5, pt.d + rnd(g, er * 1.0)), clamp(sd * pt.yl + rnd(g, er * 1.3), -4.2, 4.2), 1.9, pt.apex);
       } else {
         v = launchApex(o, sd * (2 + rnd(g, er * 1.1)), clamp(mate.y, -2.5, 2.5) + rnd(g, er * 1.3), 1.9, hardIn ? 4.1 : 4.4);
       }
@@ -777,6 +922,10 @@
     } else {
       er = (0.1 + 1.15 * (1 - q)) * mul;
       if (q < 0.35 && g.rng() < 0.12) v = launchApex(o, -sd * (1 + g.rng() * 2), b.y + rnd(g, 1.5), 0, 4.6); // pasa la red sin querer
+      else if (g.rot && VB.AI6) { // 6v6: el colocador elige atacante y tempo (VB.AI6.chooseSet: bola alta, tensa o rápida)
+        var sp = VB.AI6.chooseSet(g, p);
+        v = launchApex(o, sd * Math.max(0.6, sp.d + rnd(g, er * 0.5)), clamp(sd * sp.yl + rnd(g, er * 0.9), -4.2, 4.2), 3, sp.apex);
+      }
       else v = launchApex(o, sd * (1.35 + rnd(g, er * 0.5)), clamp(mate.y, -3.6, 3.6) + rnd(g, er * 0.9), 3, 5.3);
       kind = 'set'; sub = sub || 'overhead';
       // error de colocación del bloqueador IA rival (el bloqueo es geométrico: peor bloqueador = manos más lejos del balón)
@@ -851,13 +1000,14 @@
   function checkBlock(g) {
     var b = g.ball;
     if (g.blockCD > 0 || Math.abs(b.x) > 0.6) return;
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < g.players.length; i++) {
       var q = g.players[i], sq = side(q.team);
       if (q.z < 0.15 || Math.abs(q.x) > 1.1 || g.lastTeam === q.team || Math.sign(b.vx) !== sq) continue;
       if (!inBlockVol(q, b)) continue;
       g.blockCD = 0.5; g.blockBy = q;
       if (g.lastKind === 'serve') { fault(g, q.team, 'block', 'Bloqueo del saque', q); return; }
-      if (g.atkServe) { fault(g, g.atkServe.team, 'attackServe', 'Ataque sobre el saque', g.atkServe.player); return; } // lo toca el rival: ataque completado
+      if (g.rot && !q.front) { fault(g, q.team, 'backBlock', q.role === 'L' ? 'Bloqueo del líbero' : 'Bloqueo de zaguero', q); return; } // 6v6: solo bloquean los delanteros (14.6.2, 19.3.1.3)
+      if (g.atkServe) { fault(g, g.atkServe.team, g.atkServe.reason || 'attackServe', g.atkServe.text || 'Ataque sobre el saque', g.atkServe.player); return; } // lo toca el rival: ataque completado
       var human = isHuman(g, q), prof = profOf(g, q), kindB;
       var qb = blockQ(q), hands = b.z > q.z + BLK_HANDS, hw = hands ? blockHalfW(qb) : BLK_BODY;
       var pw = clamp((b.speed - 11) / 8, 0, 1), spike = g.lastKind === 'spike';
@@ -868,6 +1018,7 @@
       var k = human ? 0.9 : clamp(0.3 + prof.block + BADGE.muroAI[ml], 0.3, 0.95); // oficio del bloqueador
       // resultado (probabilidades condicionadas, en este orden): directo, amortiguado, block-out, toque que sigue
       var pStuff = spike ? clamp(k * (0.15 + 0.6 * cq) - 0.15 * pw, 0.03, 0.65) : 0.12 * k * cq;
+      if (g.rot) pStuff *= SIX.stuff; // 6v6: con doble bloqueo hay más manos; el directo, menos probable por contacto
       var pSoft = clamp(0.12 + 0.45 * k * cq + (spike ? 0 : 0.4), 0, 0.9);
       var pTool = clamp(0.1 + 0.15 * pw + 0.25 * (1 - cen), 0, 0.5);
       // Rompemanos (atacante): +x de prob. ABSOLUTA de block-out. Dado previo con x / (1 − P(tool)) para que la prob. total
@@ -924,7 +1075,7 @@
   function checkBody(g, dt) {
     var b = g.ball;
     if (g.mode !== 'rally') return;
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < g.players.length; i++) {
       var p = g.players[i], sd = side(p.team), dz = b.z - p.z;
       if (p === g.blockBy && g.time - g.lastTouchT < 0.35) continue;      // el que acaba de bloquear
       if (b.x * sd < 0.25 || dz < BODY_Z0 || dz > BODY_Z1 || p.down > 0) continue;
@@ -1168,7 +1319,7 @@
         emit(g, { type: 'net', x: 0, y: b.y, z: b.z, tape: tape });
       }
       // ataque del saque completado: el balón cruza entero el plano de la red (también tras pasar por la cinta)
-      if (g.atkServe && (px > 0) !== (b.x > 0)) { fault(g, g.atkServe.team, 'attackServe', 'Ataque sobre el saque', g.atkServe.player); return; }
+      if (g.atkServe && (px > 0) !== (b.x > 0)) { fault(g, g.atkServe.team, g.atkServe.reason || 'attackServe', g.atkServe.text || 'Ataque sobre el saque', g.atkServe.player); return; }
     }
     if (checkAntenna(g)) return;
     checkBlock(g);
@@ -1265,7 +1416,7 @@
    * el flujo del partido (salvo la duración de la pausa con g.present = true). Ver notes/sim.md §P1. */
   /** Señal oficial del árbitro por motivo (reason 'out' y 'serve' se resuelven aparte, ver point()). */
   var SIGNAL = { in: 'in', out: 'out', four: 'four', double: 'double', net: 'net', under: 'under', antenna: 'antenna',
-    attackServe: 'attackFault', block: 'attackFault', serve: 'serveFault' };
+    attackServe: 'attackFault', block: 'attackFault', serve: 'serveFault', backAttack: 'attackFault', backBlock: 'attackFault' };
   /** Pausa del punto con g.present (partido humano): normal, punto grande (highlight >= HOLD.bigAt), set, partido;
    *  `eight` se suma por el cambio de campo a los 8 del set decisivo. */
   var HOLD = VB.HOLD = { routine: 1.9, big: 2.4, bigAt: 0.55, set: 4.0, match: 4.2, eight: 1.4, skipAfter: 0.8, skipTo: 0.3 };
@@ -1360,8 +1511,10 @@
       signal: signal, touchedOut: touchedOut, landSide: landSide, hold: hold, setWon: setWon, matchWon: matchWon, assist: assist, tool: tool };
     if (g.stats) g.stats.how[how] = (g.stats.how[how] || 0) + 1;
     if (sideout) { // cambio de saque: rota el sacador del equipo que recupera el saque
-      g.serving = w; g.serverIdx[w] = (g.serverIdx[w] + 1) % 2;
+      g.serving = w;
+      if (g.rot) rotate(g, w); else g.serverIdx[w] = (g.serverIdx[w] + 1) % g.teams[w].length; // 6v6: rota el equipo
       emit(g, { type: 'sideout', team: w });
+      if (g.rot) emit(g, { type: 'rotation', team: w, rot: g.rot[w].map(function (q) { return q.num; }), server: g.rot[w][0] }); // dorsales por zona 1-6
     }
     if (setWon) {
       g.sets[w]++; g.setScores.push([a, bb]);
@@ -1475,6 +1628,7 @@
         var jl = Math.hypot(jvx, jvy); if (jl > 0.6) { jvx *= 0.6 / jl; jvy *= 0.6 / jl; }
       }
       p.jvx = jvx; p.jvy = jvy || 0;
+      if (g.rot) p.toX = p.x; // 6v6: despegue (falta de ataque de zaguero)
       emit(g, { type: 'jump', player: p });
     }
   }
@@ -1614,12 +1768,25 @@
   }
 
   // ---------- Flujo del partido ----------
+  var _zp = { x: 0, y: 0 };
+  /** 6v6: todos a su zona base (ZONE) y el sacador detrás de la línea de fondo, en su lado derecho. */
+  function placeZones(g, t, sv) {
+    for (var u = 0; u < 2; u++) for (var z = 0; z < g.rot[u].length; z++) {
+      var p = g.rot[u][z]; zonePos(u, z + 1, _zp); p.x = _zp.x; p.y = _zp.y;
+    }
+    sv.x = side(t) * 10.3; sv.y = side(t) * 2.5;
+  }
   function setupServe(g) {
     g.mode = 'serve';
-    var t = g.serving, sd = side(t), sv = g.teams[t][g.serverIdx[t]], mate = other(g, sv), b = g.ball;
-    sv.x = sd * 10.3; sv.y = g.serverIdx[t] ? 1.5 : -1.5; mate.x = sd * 3.5; mate.y = -sv.y * 1.3;
-    for (var i = 0; i < 2; i++) { var q = g.teams[1 - t][i]; q.x = -sd * 6.5; q.y = i ? 2.2 : -2.2; }
-    for (var j = 0; j < 4; j++) {
+    if (g.rot) { applyLibero(g); g.setPlan[0] = g.setPlan[1] = null; } // 6v6: entra/sale el líbero (ya rotado)
+    var t = g.serving, sd = side(t), sv = serverOf(g, t), b = g.ball;
+    if (!g.rot) {
+      var mate = other(g, sv);
+      sv.x = sd * 10.3; sv.y = g.serverIdx[t] ? 1.5 : -1.5; mate.x = sd * 3.5; mate.y = -sv.y * 1.3;
+      for (var i = 0; i < 2; i++) { var q = g.teams[1 - t][i]; q.x = -sd * 6.5; q.y = i ? 2.2 : -2.2; }
+    } else if (VB.AI6 && VB.AI6.placeServe) VB.AI6.placeServe(g, t, sv); // 6v6: formaciones legales (saque y recepción)
+    else placeZones(g, t, sv); // 6v6 sin ai6.js: cada uno en su zona base
+    for (var j = 0; j < g.players.length; j++) {
       var p = g.players[j]; p.z = 0; p.vz = 0; p.vx = 0; p.vy = 0; p.anim = 0; p.bd = 0; p.bdT = 0.05 + g.rng() * 0.15;
       p.onGround = true; p.lastAction = ''; p.actionT = 99; p.jvx = p.jvy = p.lvx = p.lvy = 0; p.down = 0; p.cool = 0;
       p.shot = ''; p.aiTeT = -1;
@@ -1682,6 +1849,11 @@
 
   function doServe(g, sv, aim, te, tgt) {
     var sd = side(sv.team), b = g.ball, prof = profOf(g, sv), human = isHuman(g, sv);
+    if (g.rot) { // 6v6: falta de posición en el golpe de saque. La IA nunca la comete (formaciones de VB.AI6); v1: solo se cuenta
+      var ov0 = overlapCount(g, 0), ov1 = overlapCount(g, 1);
+      g.overlap = [ov0, ov1];
+      if (g.stats && g.stats.overlap) { g.stats.overlap[0] += ov0 ? 1 : 0; g.stats.overlap[1] += ov1 ? 1 : 0; }
+    }
     b.held = null;
     te = te || 0;
     if (human && sv.ak) te /= sv.ak.wSrv;
@@ -1795,7 +1967,7 @@
     var pace = smooth01((1.5 - ft) / 0.55);
     var dev = b.wobA ? 2 * b.wobA / (b.wobF * b.wobF) : 0, wob = smooth01(dev / 0.6);
     var AI = VB.AI, best = 9, mind = 9, who = null;
-    for (var i = 0; i < 2; i++) {
+    for (var i = 0; i < g.teams[rt].length; i++) {
       var q = g.teams[rt][i], tq = AI && AI.timeTo ? AI.timeTo(g, q, lx, ly) : Math.hypot(q.x - lx, q.y - ly) / C.SPEED;
       if (tq < best) { best = tq; who = q; }
       var dq = Math.hypot(q.x - lx, q.y - ly); if (dq < mind) mind = dq;
@@ -1860,22 +2032,30 @@
         fault(g, sv.team, 'serve', 'Falta de saque: el balón cae sin golpearlo', sv, 'serveFault'); return;
       }
     }
-    for (i = 0; i < 4; i++) { p = g.players[i]; if (p !== sv) stepPlayer(g, p, dt, 0, 0); }
+    for (i = 0; i < g.players.length; i++) { p = g.players[i]; if (p !== sv) stepPlayer(g, p, dt, 0, 0); }
     stepBall(g, dt);
   }
 
+  /** 6v6: al empezar set o partido, la rotación vuelve a la alineación inicial (g.lineup). Nada en 2v2. */
+  function resetRot(g) {
+    if (!g.rot) return;
+    for (var t = 0; t < 2; t++) for (var z = 0; z < g.lineup[t].length; z++) g.rot[t][z] = g.lineup[t][z];
+    refreshZones(g);
+  }
   function nextSet(g) {
     g.pendingSet = false; g.setNo++; g.score = [0, 0]; g.serving = (g.setNo - 1) % 2; g.courtSwap3 = false;
     g.streakTeam = -1; g.streakN = 0; // la racha es dentro del set
     g.challenges = [perSet(g), perSet(g)]; // los challenges no se acumulan entre sets
     g.serverIdx = g.serving === 0 ? [0, 1] : [1, 0];
     if (g.ctrlIdx) g.serverIdx[0] = 1 - g.serverIdx[0]; // modo 'one' con el n.º 2: el orden de saque del equipo 0, en espejo
+    resetRot(g);
     emit(g, { type: 'newSet', setNo: g.setNo });
   }
   function newGame(g) {
     g.score = [0, 0]; g.sets = [0, 0]; g.setNo = 1; g.serving = 0; g.serverIdx = [0, 1]; g.setScores = [];
     // modo 'one' con el n.º 2 (ctrlIdx 1): orden de saque en espejo, así el jugador del humano saca primero como con el n.º 1
     if (g.ctrlIdx) g.serverIdx[0] = 1;
+    resetRot(g);
     g.pendingSet = false; g.finished = false; g.lastPoint = null; g.courtSwap3 = false;
     g.challenges = [perSet(g), perSet(g)]; g.call = null; g.review = null; g.cpuChal = null; g._snap = null; g._pendCall = null;
     g.streakTeam = -1; g.streakN = 0;
@@ -1910,7 +2090,7 @@
 
     if (g.review) { // B2: revisión en curso: todo en espera (el reloj del punto no corre)
       g.review.t += dt;
-      for (i = 0; i < 4; i++) stepPlayer(g, g.players[i], dt, 0, 0);
+      for (i = 0; i < g.players.length; i++) stepPlayer(g, g.players[i], dt, 0, 0);
       if (g.mode === 'point' || g.mode === 'over') stepBall(g, dt);
       if (g.review.t >= g.review.dur) endReview(g);
       return;
@@ -1918,7 +2098,7 @@
     if (g.cpuChal && g.time >= g.cpuChal.at) { var cc = g.cpuChal; g.cpuChal = null; if (challenge(g, cc.team)) return; }
 
     if (g.mode === 'point' || g.mode === 'over') {
-      for (i = 0; i < 4; i++) stepPlayer(g, g.players[i], dt, 0, 0);
+      for (i = 0; i < g.players.length; i++) stepPlayer(g, g.players[i], dt, 0, 0);
       stepBall(g, dt); g.timer -= dt;
       if (g.timer <= 0) {
         if (g.mode === 'over') {
@@ -1967,7 +2147,7 @@
       if (g.mode === 'rally') processSwing(g, hp, aim);
       if (g.lastTouchT === g.time && g.mode === 'rally') refreshPred(g); // la IA de este paso ya ve el balón nuevo
     }
-    for (i = 0; i < 4; i++) { p = g.players[i]; if (p !== hp && g.mode === 'rally') AI.update(g, p, dt); }
+    for (i = 0; i < g.players.length; i++) { p = g.players[i]; if (p !== hp && g.mode === 'rally') AI.update(g, p, dt); }
     for (i = 0; i < 2 && g.mode === 'rally'; i++) stepBall(g, dt / 2);
     refreshPred(g);
   }
@@ -2136,6 +2316,11 @@
     createGame: createGame, step: step, drainEvents: drainEvents, setTarget: setTarget, SET_POINTS: SET_POINTS,
     predict: predict, predictLanding: predictLanding, focusPoint: focusPoint,
     canReach: canReach, other: other, isHuman: isHuman, side: side, clamp: clamp,
+    // equipos de N jugadores (sprint 1 del 6v6): compañeros, zonas y rotación
+    mates: mates, nearestMate: nearestMate, mateBadge: mateBadge, zoneOf: zoneOf, zonePos: zonePos, isFront: isFront, ZONE: ZONE,
+    rotate: rotate, serverOf: serverOf, refreshTeams: refreshTeams,
+    // 6v6 (sprint 2): líbero, falta de posición, jugador en pista por zona, puestos de la alineación 5-1
+    applyLibero: applyLibero, overlapCount: overlapCount, onCourt: onCourt, ROLES6: ROLES6,
     // añadidos (opcionales)
     hitWindow: hitWindow, aimPoint: aimPoint, predictKind: predictKind, canDive: canDive, timingQ: timingQ, gradeOf: gradeOf,
     normDiff: normDiff, DIFF: DIFF, TIMING: TIMING,

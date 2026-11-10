@@ -35,7 +35,7 @@ function load() {
   const ctx = { console, Math, Date };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
-  for (const f of ['js/sim.js', 'js/ai.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
+  for (const f of ['js/sim.js', 'js/ai.js', 'js/ai6.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
   return ctx.VB;
 }
 const VB = load();
@@ -44,7 +44,8 @@ const DT = 1 / C.SIM_HZ;
 let failures = 0;
 const fail = m => { failures++; console.error('FALLO:', m); };
 const KNOWN = ['hit', 'block', 'net', 'land', 'point', 'set', 'match', 'gameOver', 'whistle', 'jump', 'switch', 'serveReady',
-  'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange', 'dribble', 'challenge', 'challengeResult'];
+  'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange', 'dribble', 'challenge', 'challengeResult',
+  'rotation', 'libero']; // (los dos últimos, solo 6v6)
 const pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '-';
 // Vocabulario del árbitro (FCVB): cada motivo de punto con sus textos válidos. Un texto nuevo debe pasar por aquí.
 const POINT_TEXTS = {
@@ -1884,6 +1885,95 @@ if (ONLY !== 'matrix') {
     const bad = res.filter(r => !r[1]);
     if (bad.length) fail('colocación en salto: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
     if (failures === f0) console.log('colocación en salto OK\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));
+  }
+
+  // Sim a N jugadores (sprint 1 del 6v6): API de equipo en 2v2 y humo del 6v6 provisional (?format=6v6, aún sin IA propia)
+  if (ONLY !== 'matrix') {
+    const f0 = failures, res = [];
+    { const g = S.createGame({ seed: 5 }); let ok = g.size === 2 && g.format === '2v2' && g.rot === null && g.players.map(p => p.id).join() === '0,1,2,3';
+      for (const p of g.players) { const m = S.mates(g, p); ok = ok && m.length === 1 && m[0] === S.other(g, p) && S.nearestMate(g, p) === m[0] && S.zoneOf(g, p) === 0 && !S.isFront(g, p); }
+      ok = ok && S.serverOf(g, 0) === g.teams[0][g.serverIdx[0]];
+      res.push(['(a) 2v2: mates/nearestMate = other, sin zonas', ok, {}]); }
+    { const zp = S.zonePos(0, 4), zq = S.zonePos(1, 4), z1 = S.zonePos(0, 1);
+      res.push(['(b) zonePos con el lateral del equipo', zp.x === 1.5 && zp.y === -3 && zq.x === -1.5 && zq.y === 3 && z1.x === 7.5 && z1.y === 3, { z4eq0: [zp.x, zp.y], z4eq1: [zq.x, zq.y] }]); }
+    for (const o of [{ demo: true }, { demo: false, ctrl: 'one' }]) {
+      let ex = null, pts = 0, rots = 0, nan = 0, newSet = false, lineupOk = true, srvOk = true;
+      const g = S.createGame(Object.assign({ format: '6v6', seed: 66, stats: true }, o)), ev = [];
+      try {
+        // plantilla de 7 (6 + líbero, id team·16 + 6); en pista 6 por equipo: el líbero ya ha entrado por el central zaguero
+        const ids = g.roster.map(r => r.map(p => p.id).join()).join(), onC = g.players.filter(p => !p.bench).length;
+        if (ids !== '0,1,2,3,4,5,6,16,17,18,19,20,21,22' || g.size !== 6 || g.players.length !== 12 || onC !== 12) throw new Error('ids/size ' + ids + ' ' + g.size + ' ' + onC);
+        for (let i = 0; i < 120 * 240; i++) {
+          S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+          for (const e of ev) {
+            if (e.type === 'point') pts++;
+            if (e.type === 'sideout') rots++;
+            if (e.type === 'newSet') { newSet = true; for (let t = 0; t < 2; t++) lineupOk = lineupOk && g.rot[t].every((p, z) => p === g.lineup[t][z] && p.zone === z + 1); }
+            if (e.type === 'serveReady') srvOk = srvOk && e.player === g.rot[e.team][0] && e.player.zone === 1;
+          }
+          if (i % 60 === 0) for (const p of g.players) if (!Number.isFinite(p.x + p.y + p.z)) nan++;
+        }
+      } catch (e) { ex = e && e.stack || String(e); }
+      res.push(['(c) 6v6 provisional ' + JSON.stringify(o), !ex && !nan && pts >= 10 && rots >= 3 && srvOk && lineupOk, { puntos: pts, cambiosDeSaque: rots, sacaZona1: srvOk, nuevoSet: newSet, alineacionAlSet: lineupOk, nan, ex }]);
+    }
+    const bad = res.filter(r => !r[1]);
+    if (bad.length) fail('N jugadores: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+    if (failures === f0) console.log('\nN jugadores (sprint 1 del 6v6) OK\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));
+  }
+
+  // 6v6 CPU contra CPU (sprint 2, notes/diseno-6v6-carrera.md §4 «objetivos medibles»): VB.AI6 con rotaciones, líbero,
+  // formaciones y reglas de zaguero. Side-out 58-66 %, mediana del rally 5-8 s, 0 faltas de posición y de zaguero de la IA,
+  // líbero nunca delante ni sacando, >= 70 % de 2.os toques del colocador; sin excepciones ni NaN.
+  if (ONLY !== 'matrix') {
+    const f0 = failures, NS6 = 16, MIN6 = 15; // ~1200 puntos: con menos, el side-out baila ±3 %
+    let pts = 0, so = 0, sec = 0, secS = 0, ovl = 0, back = 0, libBad = 0, libSrv = 0, libEv = 0, rotEv = 0, sideEv = 0, nan = 0, ex = null;
+    const rallies = [], tempos = {}, atkRole = {}, t0 = Date.now();
+    try {
+      for (let s = 0; s < NS6; s++) {
+        const g = S.createGame({ format: '6v6', demo: true, seed: 600 + s, stats: true }), ev = [];
+        for (let i = 0; i < MIN6 * 60 * 120; i++) {
+          S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+          for (const e of ev) {
+            if (e.type === 'point') { pts++; if (e.sideout) so++; rallies.push(e.rallyTime); if (e.reason === 'backAttack' || e.reason === 'backBlock') back++; }
+            else if (e.type === 'hit' && e.touch === 2) { sec++; if (e.player.role === 'S') secS++; if (e.kind === 'set' && g.setPlan[e.team]) tempos[g.setPlan[e.team].tempo] = (tempos[g.setPlan[e.team].tempo] || 0) + 1; }
+            else if (e.type === 'hit' && e.kind === 'spike') atkRole[e.player.role] = (atkRole[e.player.role] || 0) + 1;
+            else if (e.type === 'serveReady' && (e.player.role === 'L' || e.player.bench)) libSrv++;
+            else if (e.type === 'libero') libEv++;
+            else if (e.type === 'rotation') rotEv++;
+            else if (e.type === 'sideout') sideEv++;
+          }
+          if (g.mode === 'rally' || g.mode === 'serve') for (let t = 0; t < 2; t++) {
+            const L = g.libero[t]; if (!L.bench && (L.front || [1, 5, 6].indexOf(L.zone) < 0 || g.teams[t].indexOf(L) < 0)) libBad++;
+            if (g.mode === 'serve' && g.server.role === 'L') libSrv++;
+          }
+          if (i % 120 === 0) for (const p of g.players) if (!Number.isFinite(p.x + p.y + p.z)) nan++;
+        }
+        ovl += g.stats.overlap[0] + g.stats.overlap[1];
+      }
+    } catch (e) { ex = e && e.stack || String(e); }
+    rallies.sort((a, b) => a - b);
+    const sidePct = pts ? 100 * so / pts : 0, med = rallies.length ? rallies[rallies.length >> 1] : 0, setPct = sec ? 100 * secS / sec : 0;
+    const res = [
+      ['(a) sin excepciones ni NaN', !ex && !nan && pts > 200, { puntos: pts, nan, ex }],
+      ['(b) side-out 58-66 %', sidePct >= 58 && sidePct <= 66, { sideOut: sidePct.toFixed(1) + '%' }],
+      ['(c) mediana del rally 5-8 s', med >= 5 && med <= 8, { mediana: +med.toFixed(2) }],
+      ['(d) 0 faltas de posición de la IA', ovl === 0, { solapamientos: ovl }],
+      ['(e) 0 faltas de zaguero (ataque/bloqueo) de la IA', back === 0, { faltas: back }],
+      ['(f) líbero nunca delante ni sacando', libBad === 0 && libSrv === 0 && libEv > 0, { delante: libBad, sacando: libSrv, cambiosLibero: libEv }],
+      ['(g) >= 70 % de 2.os toques del colocador', setPct >= 70, { colocador: setPct.toFixed(1) + '%' }],
+      ['(h) evento rotation en cada cambio de saque', rotEv === sideEv && rotEv > 0, { rotation: rotEv, sideout: sideEv }]
+    ];
+    const bad = res.filter(r => !r[1]);
+    if (bad.length) fail('6v6 CPU contra CPU: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+    console.log('\n6v6 CPU contra CPU (sprint 2, ' + NS6 + ' semillas x ' + MIN6 + ' min, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)' + (failures === f0 ? ' OK' : '') +
+      '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  ') + '\n  tempos ' + JSON.stringify(tempos) + ' remates por puesto ' + JSON.stringify(atkRole));
+  }
+
+  // Huella 2v2 (sprint 1 del 6v6): 150 partidas de referencia deben dar EXACTAMENTE lo mismo que tools/fp-2v2.json
+  if (ONLY !== 'matrix') {
+    console.log('\n== Huella 2v2 (tools/fingerprint6.js) ==');
+    try { if (require('./fingerprint6.js').main() !== 0) fail('huella 2v2 distinta de tools/fp-2v2.json'); }
+    catch (e) { fail('huella 2v2 excepción: ' + (e && e.stack || e)); }
   }
 
   console.log(failures ? `\n${failures} FALLOS` : '\nTODO OK');

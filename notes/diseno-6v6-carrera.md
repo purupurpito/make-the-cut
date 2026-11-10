@@ -403,15 +403,21 @@ juego publicable y con todas las pruebas en verde (`simtest` TODO OK, `console.s
 
 | # | sprint | contenido | módulos | puntos | depende de |
 |---|---|---|---|---|---|
-| 1 | Sim a N jugadores | bucles `< 4` → `players.length`, `mates/nearestMate`, `id` con base, `rot` y `size`, `profOf` (sin estadísticas aún); camera.js y players.js sin el «compañero» fijo. 2v2 idéntico | sim, camera_input, players | 5 | — |
-| 2 | 6v6 jugable (CPU contra CPU) | `format:'6v6'`, rotaciones, líbero, formaciones, reglas de zaguero/posición, `ai6.js` v1 (recepción → colocador → bola alta/opuesto, bloqueo de zona, defensa perímetro), 12 rigs, `?debug=rally6`, demo del menú opcional en 6v6 | sim, players, ui_main, camera_input | 13 | 1 |
+| 1 | Sim a N jugadores — **HECHO 10-nov-2026** | bucles `< 4` → `players.length`, `mates/nearestMate`, `id` con base, `rot` y `size`, `profOf` (sin estadísticas aún); camera.js y players.js sin el «compañero» fijo. 2v2 idéntico | sim, camera_input, players | 5 | — |
+| 2 | 6v6 jugable (CPU contra CPU) — **HECHO 10-nov-2026** (espectador con `?format=6v6`; sin demo del menú en 6v6) | `format:'6v6'`, rotaciones, líbero, formaciones, reglas de zaguero/posición, `ai6.js` v1 (recepción → colocador → bola alta/opuesto, bloqueo de zona, defensa perímetro), 12 rigs, `?debug=rally6`, demo del menú opcional en 6v6 | sim, players, ui_main, camera_input | 13 | 1 |
 | 3 | 6v6 con humano (Receptor) | control Uno por rol, responsabilidad/«¡mía!», posición asistida, marca de posición, «¡Pídela!», cámara de 6v6, menú «Formato», tutorial y controles en 6v6 | sim, camera_input, ui_main, players | 8 | 2 |
-| 4 | Rendimiento y arte de 12 atletas | LOD por distancia, sombras parciales + manchas instanciadas, densidad de público, contornos cartoon por calidad, líbero con camiseta propia, banquillos | players, arena, ui_main | 5 | 2 (y el sprint cartoon) |
+| 4 | Rendimiento y arte de 12 atletas — **PARCIAL** (adelantado en el sprint 2: LOD lejano, sombras parciales, líbero con camiseta; falta baja ≤ 35 llamadas, banquillos, público) | LOD por distancia, sombras parciales + manchas instanciadas, densidad de público, contornos cartoon por calidad, líbero con camiseta propia, banquillos | players, arena, ui_main | 5 | 2 (y el sprint cartoon) |
 | 5 | IA de equipo avanzada | tempos (rápida, tensa, pipe), ataque de segunda, bloqueo de lectura y doble/triple, cobertura, transición, tiempos muertos de la CPU, colocador humano | sim, players (animaciones), camera_input | 8 | 3 |
 | 6 | Estadísticas + árbitro por competición | `p.st`, `statProf`, física por jugador, ventanas del humano, pruebas de monotonía, `g.ref` y tabla §3.5, jueces de línea en arena | sim, arena, players | 5 | 1 (mejor tras 3) |
 | 7 | Carrera: núcleo | `career.js`, creación de jugador, liga regional + calendario, `quickSim`, guardado, pantalla de Carrera, jugar jornada, valoración y XP | nuevo career, ui_main, sim | 13 | 3, 6 |
 | 8 | Carrera: progresión y mercado | entrenamiento, edad, titular/suplente y «Avanzar», ofertas y fichajes, niveles 2-5, sedes por nivel (`VB.Arena.setVenue({size, crowd, linesmen})`) | career, ui_main, arena, camera_input | 8 | 7 |
 | 9 | Carrera: selección | convocatoria, Liga de Naciones, Torneo Olímpico, palmarés, otras posiciones jugables (colocador, opuesto; central/líbero con «Avanzar») | career, ui_main, sim | 8 | 5, 8 |
+
+**Estado (10-nov-2026, tras la revisión del sprint 2)**: sprints 1 y 2 hechos y revisados (2v2 idéntico: huella de 150 partidas en
+simtest y diferencial estado a estado contra el código de antes). Objetivos medibles del riesgo 3, todos en simtest: side-out ~63 %,
+mediana del rally 5-6,5 s, 0 faltas de posición/zaguero de la IA, líbero bien, colocador ~85-88 % de 2.os toques. Riesgo 2: perf.js
+con `EXTRA=format=6v6` cumple con un tope provisional de 45 llamadas en baja (2v2 sigue en 35), pendiente de ratificar o de la malla
+única del sprint 4. Lo que falta para el sprint 3 está en TRASPASO («Modo 6v6»).
 
 **Orden recomendado**: 1 → 2 → 3 → 4 → 6 → 7 → 5 → 8 → 9. Se adelanta Carrera (7) a la IA avanzada (5) porque es lo que más
 ilusión le hace a Ferran y la IA v1 basta para jugarla; 4 va pronto porque el móvil es el primer sitio donde el 6v6 puede

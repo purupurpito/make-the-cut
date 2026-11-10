@@ -309,14 +309,21 @@
     ctx.frozen = false;
     // present (SIM-03): en los partidos de verdad la pausa del punto se alarga en los momentos grandes (y se puede recortar)
     var cs = opts.career || null, own = !opts.autopilot && !Q.debug;
-    var g = Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: !!opts.autopilot, rookie: cs ? false : isRookie(), present: !opts.autopilot,
-      points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: opts.ctrl || Q.ctrl || ctx.settings.ctrlMode, ctrlIdx: ctrlIdxOf(opts),
+    // 6v6 (NO está en el menú): solo con ?format=6v6, sin atributos ni insignias del escuadrón. Sprint 2: MODO ESPECTADOR, CPU contra
+    // CPU con el HUD y las pausas de un partido de verdad (autopilot + present) y la cámara de televisión (camera.js 'tv'); el humano
+    // (control Uno por rol) llega en el sprint 3. g.watch lo marca para ui.js (rótulos de los equipos).
+    var fmt = !cs && Q.format === '6v6' ? '6v6' : undefined; if (fmt) own = false;
+    var auto = !!opts.autopilot || !!fmt;
+    var g = Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: auto, rookie: cs ? false : isRookie(), present: !opts.autopilot,
+      points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: fmt ? 'one' : (opts.ctrl || Q.ctrl || ctx.settings.ctrlMode), // (6v6 espectador: 'one', sin eventos switch)
+      ctrlIdx: ctrlIdxOf(opts),
       attrs: opts.attrs || (own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null),
       badges: cs ? (opts.badges || null) : (own && !Q.nobadges ? squadBadges() : null),
-      ref: opts.ref || undefined, nums: opts.nums || undefined });
+      ref: opts.ref || undefined, nums: opts.nums || undefined, format: fmt });
     // partido de Carrera: marca para ui.js/badges.js (no reparten experiencia ni insignias al escuadrón de Partido rápido) y
     // para el hub (VB.Career.matchDone al llegar gameOver)
     if (cs) g.career = cs;
+    if (fmt && !opts.autopilot) g.watch = true;
     endTweaked = false; careerEnd = null;
     if (!cs) restoreEndButtons();
     setGame(g, opts.kit || null);
@@ -325,7 +332,7 @@
     // (sin pintar: aquí no hay telón que tape los objetos ocultos)
     if (Q.prewarm !== '0') { prewarm('t'); prewarmPrograms(false); }
     // UI-14: tarjeta de presentación (partidos humanos; en depuración solo con &intro=1)
-    if (!opts.autopilot && !opts.noIntro && Q.intro !== '0' && (!ctx.debug || Q.intro === '1')) introStart();
+    if (!auto && !opts.noIntro && Q.intro !== '0' && (!ctx.debug || Q.intro === '1')) introStart();
   };
   /** Insignias equipadas del escuadrón de Partido rápido para createGame({badges}) (null sin js/badges.js o sin ninguna). */
   function squadBadges() {
@@ -423,7 +430,7 @@
     if (fromCareer && !careerEnd && VB.Career && VB.Career.abortMatch) VB.Career.abortMatch(); // partido abandonado: la jornada sigue pendiente
     ctx.frozen = false;
     restoreEndButtons();
-    setGame(Sim.createGame({ demo: true, seed: seed(), difficulty: 'normal' }));
+    setGame(Sim.createGame({ demo: true, seed: seed(), difficulty: 'normal', format: Q.format === '6v6' ? '6v6' : undefined }));
     setState('menu');
     if (fromCareer && !menuOnly && VB.CareerUI && VB.CareerUI.open) { try { VB.CareerUI.open('hub', { fresh: !!careerEnd }); } catch (e) { reportError('CareerUI.open', e); } }
     else if (fromCareer && VB.CareerUI && VB.CareerUI.syncMenu) { try { VB.CareerUI.syncMenu(); } catch (e) { } }
@@ -863,6 +870,22 @@
       case 'switch':
         g = mk(true);
         keep = advanceUntil(g, function (e) { return e && e.type === 'switch' && e.auto && !e.reset; }, 0.18); break;
+      // 6v6 (sprint 2, espectador: CPU contra CPU con el HUD de partido y la cámara de televisión). serve6: el sacador con el balón
+      // lanzado (&n=N el N-ésimo saque, por defecto el 3.º: ya ha habido rotación); rally6: la colocación del equipo 0 tras la
+      // recepción (como 'rally'); point6: el punto (con su plano). &live=1 sigue jugando.
+      case 'serve6': case 'rally6': case 'point6':
+        g = Sim.createGame({ demo: false, autopilot: true, seed: sd, difficulty: diff, format: '6v6', present: true });
+        g.watch = true;
+        if (name === 'serve6') {
+          var s6 = 0, n6 = Q.n ? +Q.n : 3;
+          keep = advanceUntil(g, function (e) { return e && e.type === 'toss' && ++s6 >= n6; }, Q.t ? +Q.t : 0.3, 900, uiIngest);
+        } else if (name === 'rally6') {
+          keep = advanceUntil(g, function (e) { return e && e.type === 'hit' && (e.kind === 'set' || e.touch === 2) && e.team === 0; }, 0.35, 900);
+        } else {
+          keep = advanceUntil(g, function (e) { return e && e.type === 'point'; }, 0.5, 900, uiIngest);
+          if (preLand) keep.unshift(preLand);
+        }
+        break;
       case 'over': case 'end':
         g = mk(true);
         keep = advanceUntil(g, function (e) { return e && e.type === 'gameOver'; }, 0, 3000, uiIngest); state = 'over'; break;

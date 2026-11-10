@@ -17,7 +17,7 @@
  * Cada nivel mide también la CPU del PC anfitrión (os.cpus, todas las CPU): con el PC cargado los fps caen a la mitad (39 vs 86
  *   fps el mismo comando con 93-99 % frente a 50-72 %), así que la tabla y el JSON la llevan y avisan.
  * Objetivos (CONTRACT §2 y TRASPASO): medium/low ≥ 55 fps; low ≤ 150k triángulos y ≤ 35 draw calls de pico (ARN-12; antes
- *   solo ≤ 60); medium ≤ 350k triángulos;
+ *   solo ≤ 60; 6v6 con EXTRA=format=6v6: ≤ 45, provisional hasta el sprint 4); medium ≤ 350k triángulos;
  *   heap estable (sin crecimiento sostenido) y pocas recolecciones.
  */
 'use strict';
@@ -231,6 +231,10 @@ async function runLevel(page, level) {
     if (lg.length) console.log('  ' + r.level + ' · calidad adaptativa: ' + lg.map(e => `${e.t}s ${e.why}→${e.level}${e.scale < 1 ? '×' + e.scale : ''} (${e.fps} fps, pr ${e.pr})`).join(' · '));
   }
   // --- objetivos
+  // 6v6 (EXTRA con format=6v6): 12 atletas son 8 mallas más que en 2v2 (1 llamada cada una en baja, sin contorno y con sombra solo
+  // en los 2 más cercanos); el diseño (notes/diseno-6v6-carrera.md §1.8) ya contaba con ~60. Tope provisional 45 en baja hasta
+  // fundir los atletas lejanos en una malla (sprint 4, TRASPASO). El 2v2 sigue con 35.
+  const SIX = /(^|&)format=6v6(&|$)/.test(process.env.EXTRA || ''), CALLS_LOW = SIX ? 45 : 35;
   const issues = [], invalid = results.filter(r => !r.valid);
   if (invalid.length) console.log(`
 ⚠ MEDIDA NO VÁLIDA en ${invalid.map(r => r.level + ' (' + r.hostCpu + ' %)').join(', ')}: la CPU del PC anfitrión pasó del ${HOSTMAX} % de media.
@@ -239,7 +243,7 @@ async function runLevel(page, level) {
     const lv = r.endLevel;
     if ((r.level === 'medium' || r.level === 'low' || r.level === 'auto') && r.fps < 55) issues.push(`${r.level}: ${r.fps} fps < 55` + (r.valid ? '' : ` (CPU del PC ${r.hostCpu} %: no válido)`));
     if (lv === 'low' && r.triMaxK > 150) issues.push(`${r.level}: ${r.triMaxK}k triángulos > 150k en baja`);
-    if (lv === 'low' && r.callsMax > 35) issues.push(`${r.level}: ${r.callsMax} draw calls de pico > 35 en baja (ARN-12)`);
+    if (lv === 'low' && r.callsMax > CALLS_LOW) issues.push(`${r.level}: ${r.callsMax} draw calls de pico > ${CALLS_LOW} en baja (${SIX ? '6v6, ' : ''}ARN-12)`);
     if (lv === 'medium' && r.triMaxK > 350) issues.push(`${r.level}: ${r.triMaxK}k triángulos > 350k en media`);
     // umbral 2 MB: los búferes de medida (~0,4 MB) y el calentamiento de cachés de V8/three (0,4-1 MB, no crece con el tiempo:
     // 20 s → 0,4-1,1 MB, 60 s → 0,9 MB) aparecen como retenidos sin ser una fuga

@@ -162,6 +162,15 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
   - `opts.ref = {p1, p2, p3, d1?, d2?, d3?, chal}` (Carrera: error arbitral y challenge por competición, `VB.Career.matchSetup().ref`): sustituye a `VB.REF_ERR` en ese partido
     (`g.refErr`) y `chal` = challenges por set (`g.chalPerSet`; 0 = sin challenge, la UI oculta el contador). Sin `ref`, idéntico (`VB.Sim.refErrP(dist, g?)`).
   - `opts.nums = [[n1, n2], [n3, n9]]` (cada hueco o equipo puede ser null): dorsal propio (`p.num`); players.js y ui.js ya leen `p.num`.
+  - **N jugadores (sprint 1 del 6v6, 10-nov-2026)**: `opts.format = '2v2' | '6v6'` (por defecto '2v2', idéntico byte a byte; '6v6' solo con
+    `?format=6v6`; reglas, líbero e IA propia desde el sprint 2, ver §4.3). Estado: `g.format`, `g.size` (2 | 6), `g.rot[t][z-1]` (jugador en la zona z; `rot[t][0]` saca) y
+    `g.lineup` (rotación de inicio de set), ambos `null` en 2v2. Jugador: `role` ('S'|'OH'|'MB'|'OPP'|'L', '' en 2v2), `zone` (1-6), `front`;
+    `id = team·2 + idx` en 2v2 y `team·16 + idx` en 6v6 (claves dispersas: nadie debe suponer ids contiguos). Ningún módulo debe suponer 4
+    jugadores: bucles con `g.players.length` / `g.teams[t].length`; «el compañero» = `VB.Sim.other(g, p)` (2v2: el otro; con más, el más
+    cercano). Helpers puros (sin azar, sin asignar por frame): `mates(g, p)` (array cacheado, no modificar), `nearestMate(g, p, x?, y?)`,
+    `mateBadge(g, p, id)`, `zoneOf(g, p)`, `zonePos(t, z, out?)`, `isFront(g, p)`, `ZONE`, `rotate(g, t)`, `serverOf(g, t)`,
+    `refreshTeams(g)` (tras cambiar quién está en pista). Ganchos: si existe `VB.AI6`, `AI.computeJob` y `AI.pos` le delegan con `g.size !== 2`.
+    Huella del 2v2: `tools/fingerprint6.js` + `tools/fp-2v2.json` (simtest la exige).
 - **Saque**: `serveReady` → silbato a los 0,7 s (antes no se puede lanzar) → GOLPEAR lanza flotante / SALTAR lanza en salto (`toss`)
   → GOLPEAR en el momento justo golpea (`hit kind:'serve'`). Si el balón cae sin golpearlo o pasan 8 s → falta de saque (`point reason:'serve'`).
 - Solo sim escribe en `game`. Los demás módulos lo leen y NUNCA lo modifican.
@@ -199,6 +208,23 @@ Todos llevan `type` y `t` (tiempo de juego). `player` es la referencia al objeto
 **Añadidos del sprint Carrera a los eventos**: `hit.dig` (bool, defensa controlada de un remate rival), `hit.recv` (bool, 1r toque tras un saque);
 `point.assist` (jugador de la colocación del remate que gana el punto, solo con `how 'kill'`, o null) y `point.tool` (bool, remate que toca el bloqueo rival y sale fuera);
 `g.lastPoint` copia los dos. Los cuenta `VB.Badges.ingest` (insignias) y `VB.Career.ingest` (nota del partido).
+
+**6v6 (sprint 2, solo con `createGame({format:'6v6'})`; el 2v2 no cambia y no emite nada de esto)**:
+- Estado: `g.roster[t]` = los 7 del equipo (6 de la rotación + líbero); `g.libero[t]` (rol `'L'`, dorsal 13/14, id `team·16 + 6`);
+  `g.liberoFor[t]` = central al que sustituye ahora (o null); `g.setPlan[t]` = decisión del colocador `{to, tempo:'high'|'shoot'|'quick', d, yl, apex, t, sys}`
+  (válida mientras `t === g.lastTouchT`); `g.overlap = [n0, n1]` (pares solapados en el último saque; la IA siempre 0).
+  Jugador 6v6: `p.bench` (true = en el banquillo, NO está en `g.players`), `p.fx/fy` (sitio de su formación de recepción), `p.toX`.
+- **`g.players` y `g.teams[t]` = solo los que están en pista** (12). El líbero ocupa el hueco (índice) del central que sale. Quien
+  dibuje a los atletas (players.js) debe crear rigs para **`g.roster`** (14) y ocultar/teletransportar a los `p.bench` al recibir `libero`.
+- Eventos nuevos: `rotation` `{team, rot: [dorsales de zona 1..6], server}` (justo después de `sideout`, el equipo ha rotado);
+  `libero` `{team, inP, outP}` (al preparar el saque, en `setupServe`, antes de `serveReady`: entra o sale el líbero; sin contar como cambio).
+- Motivos nuevos de `point` (solo 6v6): `'backAttack'` («Ataque de zaguero» / «Ataque del líbero», como `attackServe`: se pita al cruzar la red
+  o tocarlo el rival) y `'backBlock'` («Bloqueo de zaguero» / «Bloqueo del líbero»); `signal 'attackFault'`. La IA no los comete nunca.
+- `VB.Sim`: `applyLibero(g)`, `overlapCount(g, t)`, `onCourt(g, t, zona)`, `ROLES6`; `VB.SIX` (afinado del 6v6). `VB.AI6` (js/ai6.js, cargado
+  tras ai.js): `computeJob, pos, placeServe, passTarget, chooseSet, blockPlan, digK, canAttack, setterOf, FORM`.
+- Revisión del sprint 2 (10-nov-2026, solo 6v6, detrás de `g.rot`): el defensor «perdido» (dado `g.digOk` en contra) lee 0,4 s tarde y va
+  al 30 % (`BEAT6` en ai.js; en 2v2 0,12 s y 60 %, como siempre); el central zaguero cubre la colocación en el sitio del líbero.
+  Pendiente (sprint 3): humano en 6v6 (control Uno por rol, «¡Pídela!», `AI6.decide`), sin eventos `switch` en 6v6, faltas de posición pitadas.
 
 ### 4.4 Módulos de presentación (todas las funciones son opcionales; main.js las llama con guarda y try/catch)
 Objetos: `VB.Arena`, `VB.FX`, `VB.Players`, `VB.CameraRig`, `VB.Input`, `VB.Audio`, `VB.UI`.
@@ -386,6 +412,15 @@ El cambio de campo (`courtChange`, plano `'court'`) usa un corte deliberado (rea
 - `node tools/eval.js "<query>" "<expr>" [ms] [WxH]` — evalúa JS en la página (p. ej. `JSON.stringify(VB.ctx.renderer.info.render)`); espera Promises;
   `SHOT=out.png` captura DESPUÉS de evaluar (aislar artefactos, inyectar eventos con `VB.FX._event`, mover la cámara…).
 - Escenas `?debug=`: `menu serve hud rally spike block point ace setpoint switch over|end mobile pause tutorial controls settings toss jumpserve dive`
+  y, del 6v6 (espectador, sprint 2; no hace falta `&format=6v6`): `serve6` (sacador con el balón lanzado, `&n=N` el N-ésimo saque, 3.º por defecto; `&t=s`),
+  `rally6` (colocación del equipo 0 tras la recepción) y `point6` (el punto con su plano). Están en `shot.js all` / `console.sh all`.
+- **6v6 espectador (sprint 2)**: `?format=6v6` (NO en el menú) hace que «Jugar» empiece CPU contra CPU (`autopilot` + `present`, sin presentación)
+  con `g.watch = true` (marca de main.js, la sim no la lee) y `ctrl: 'one'` (sin eventos `switch`): ui.js rotula LOC / VIS (también en la pestaña del punto: «Remate del rival», nunca «de la CPU»), no enseña avisos de mando ni cuenta el partido en el récord;
+  input.js no enseña los mandos táctiles; players.js no pinta el halo ni la flecha del controlado y fx.js no pinta el aro amarillo; camera.js usa el plano `tv` (cámara de televisión alta tras el fondo del equipo 0, encuadre de los 12
+  jugadores; con `g.size === 6` también en partidos de autopilot) para saque, peloteo y punto (corte al saque siguiente); cambio de campo y final como en 2v2;
+  sin plano de reacción, cierre de set ni plano del sacador rival. `node tools/tv6test.js [WxH] [s] [semilla]` lo comprueba (12 en cuadro).
+  Rendimiento 6v6: `EXTRA=format=6v6 node tools/perf.js …` (tope provisional de 45 llamadas de dibujo en baja, frente a 35 en 2v2, hasta
+  fundir los atletas lejanos en el sprint 4).
   (detalle en notes/ui_main.md). Avanzan la sim (autopilot, semilla fija `&seed=N`)
   hasta el momento y congelan (`ctx.frozen`); `&live=1` sigue jugando. `&guide=1` fuerza los toques guiados del primer partido,
   `&hold=1` la celebración de victoria en depuración, `&prewarm=0|t|c|r` el modo de precalentado, `&diff=` el nivel. `&quality=low|medium|high` fuerza calidad.

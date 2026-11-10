@@ -1031,3 +1031,39 @@ Pedido: «añadir (incluyendo móvil y mando siempre) la posibilidad de colocar 
   rápida 30/30 y (i) COLOCAR no coloca el remate rival.
 - Pendiente: GOLPEAR en el bloqueo de un remate CPU lo devuelve como remate (45 % frente al 23 % solo bloqueando; anterior a la colocación en
   salto). Que la IA use la colocación en salto. El 1.er toque en «controlar a los dos» sin medir (el harness pierde el control).
+
+## 6v6, sprints 1 y 2 (10-nov-2026) — sim
+
+Diseño en notes/diseno-6v6-carrera.md (§1, §4); contrato en CONTRACT §4.2 (N jugadores) y §4.3 (estado, eventos y motivos del 6v6).
+Todo lo nuevo va detrás de `g.size === 6` / `g.rot` (null en 2v2) / `p.role` ('' en 2v2). El 2v2 no cambia: `tools/fingerprint6.js`
+juega 150 partidas (demo, bot humano con azar propio en las 4 dificultades y los dos controles, atributos e insignias) y simtest exige la
+huella `tools/fp-2v2.json` (generada con el código de antes del sprint 1): «150 partidas, 1649 puntos, 565775 llamadas a g.rng».
+`node tools/fingerprint6.js --write` la regenera: solo si se cambia el 2v2 a propósito.
+
+- **Sprint 1, N jugadores**: `createGame({format:'6v6'})` → `g.format`, `g.size`, `g.rot[t][z-1]`, `g.lineup` (5-1: S, OH, MB, OPP, OH, MB);
+  ids `team·16 + idx`; todos los bucles fijos (`< 4`, `< 2`) recorren `g.players` / `g.teams[t]` en el mismo orden. API: `other`, `mates`,
+  `nearestMate`, `mateBadge` (Líder mira a todos los compañeros), `zoneOf`, `isFront`, `zonePos`/`ZONE`, `rotate`, `serverOf`, `refreshTeams`
+  (llamarla tras cualquier cambio de quién está en pista: rehace `g.players`, `p.idx`, la caché `g._mates` y zona/delantero).
+  `point()` rota al equipo que recupera el saque; `nextSet`/`newGame` reponen la alineación.
+- **Sprint 2, 6v6 CPU contra CPU**: líbero por equipo (`g.libero`, `g.roster`, `g.liberoFor`; entra por el central zaguero en cada
+  `setupServe`, salvo si ese central va a sacar), eventos `rotation` y `libero`, ataque y bloqueo de zaguero pitados (`backAttack`,
+  `backBlock`), faltas de posición solo contadas (`overlapCount`, `g.overlap`; la IA siempre 0 gracias a `legalize`), formación de recepción
+  en «W» (dos receptores + líbero), `js/ai6.js` v1 (1.er toque por tiempo de llegada + rol, 2.º el colocador, 3.º el atacante elegido;
+  `chooseSet` alta/tensa/rápida según la recepción; bloqueo de zona con doble del central; defensa perímetro; batida y cobertura).
+  Afinado solo 6v6: `VB.SIX {stuff 0.6, dig 0.75}`, `FORM.blockErr` 1.8, `AI6.digK` (en sistema cuesta más defender), lectura del
+  segundo bloqueador en `openSpot`.
+- **simtest «6v6 CPU contra CPU»** (16 semillas × 15 min, falla si no cumple): side-out 58-66 %, mediana del rally 5-8 s, 0 faltas de
+  posición y de zaguero de la IA, líbero nunca delante ni sacando, ≥ 70 % de 2.os toques del colocador, un `rotation` por side-out.
+
+### Arreglos tras la revisión del sprint 2 (10-nov-2026)
+- **M2, «Defensa fuera» en 1 de cada 4 puntos** (26 % frente al 4 % del 2v2): con 3 zagueros el defensor «perdido» (dado `g.digOk` en
+  contra) llegaba casi siempre y mandaba el balón a la grada (rama `shank`). En ai.js `update`, con `g.rot`: `BEAT6 = {react 0.4, speed 0.3}`
+  (el 2v2 sigue con 0,12 s y 60 %; sin azar nuevo). Sonda de 6 semillas × 10 min (demo): «Defensa fuera» 26 % antes →
+  18 % con 0,3/0,35 → 12 % con 0,5/0,2 (pero la mediana del rally de simtest bajaba a 5,16 s, límite 5) → 16 % con 0,4/0,3 (elegido).
+- **M3, receptor zaguero y central zaguero en el mismo sitio** al cubrir la colocación (`offPos`, los dos con `lv 0` cuando saca el
+  central y el líbero aún no ha entrado): el central zaguero cubre ahora en el sitio del líbero (`lv -1`).
+- **M4 (con main.js / players.js / fx.js)**: el partido espectador va con `ctrl:'one'` (sin eventos `switch`).
+- Pendiente para el sprint 3 (humano): `AI6.decide` (2.º/3.er toque del humano, «¡Pídela!»), sin `switch` en 6v6 también con humano,
+  faltas de posición pitadas al humano en Difícil/Experto e imán en Fácil/Normal, regla del líbero colocando de dedos delante de 3 m,
+  saque que lea la formación (aces 2-3 % frente al 4 % del 2v2), recepción de la rotación 1 (el colocador en zona 1 acaba muy al fondo),
+  cruces entre compañeros (la sim no los separa), el líbero «delantero» durante la pausa del punto (zona del central hasta `setupServe`).

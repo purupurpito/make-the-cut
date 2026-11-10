@@ -111,6 +111,32 @@
     }
     return true;
   }
+  // ---------- 6v6: camiseta del líbero (role 'L') ----------
+  // Cuarta equipación derivada de la del equipo: el color de la camiseta es el candidato que más se separa A LA VEZ de la
+  // camiseta de su equipo y de la del rival (acento del equipo, complementario, y una paleta fija de colores vivos); detalles
+  // con la camiseta del equipo (se lee que es de los suyos), mismo pantalón y diseño liso. Se recalcula al cambiar la
+  // equipación (kitSig). En 2v2 no se usa nunca (no hay role).
+  var LIB_PAL = [0xffd23a, 0x2bd96b, 0xff3fa4, 0x18c8d8, 0xf4f8ff, 0x9a5cff, 0xff8a1e];
+  var LIBK = [null, null], LIBSIG = -1;
+  function compHex(h) { return ((255 - (h >> 16 & 255)) << 16) | ((255 - (h >> 8 & 255)) << 8) | (255 - (h & 255)); }
+  function liberoKit(team) {
+    if (LIBSIG !== kitSig) { LIBK[0] = LIBK[1] = null; LIBSIG = kitSig; }
+    if (LIBK[team]) return LIBK[team];
+    var own = TEAMS[team], riv = TEAMS[1 - team], cands = [own.accent, compHex(own.base)].concat(LIB_PAL), best = cands[0], bd = -1;
+    var o0 = team === 1 ? liberoKit(0).base : -1;   // el líbero rival, además, distinto del tuyo
+    for (var i = 0; i < cands.length; i++) {
+      var c = cands[i], d = Math.min(kitDist(c, own.base), kitDist(c, riv.base), kitDist(c, riv.accent) + 0.4);
+      if (o0 >= 0) d = Math.min(d, kitDist(c, o0) + 0.2);
+      if (lumHex(c) < 0.18) continue;                    // oscuro: se funde con la tinta del contorno (mkKit lo volvería pizarra)
+      if (hueSat(c)[1] < 0.25) d -= 0.35;                // a igualdad, mejor un color vivo que el blanco
+      if (d > bd + 1e-6) { bd = d; best = c; }
+    }
+    var k = mkKit(best, own.base, own.shorts, 'liso');
+    k.libero = true;
+    return (LIBK[team] = k);
+  }
+  /** Equipación de un jugador: la del equipo o, si es el líbero (6v6), la suya. */
+  function kitOf(p) { return p.role === 'L' ? liberoKit(p.team) : TEAMS[p.team]; }
   // Por id de jugador: piel, pelo, peinado, escala de altura
   var LOOKS = [
     { skin: 0xdba27a, hair: 0x3a2416, style: 'crop', h: 1.0 },   // CARTOON: pelos algo más claros (se separan de la tinta del contorno)
@@ -118,6 +144,22 @@
     { skin: 0xc68a5f, hair: 0x4b2a18, style: 'bun', h: 0.985 },
     { skin: 0xf0c6a4, hair: 0x2e2420, style: 'buzz', h: 1.04 }
   ];
+  // 6v6: más variedad (12 en pista). LOOKS (2v2) no cambia: estos solo se usan con p.role.
+  var LOOKS6 = LOOKS.concat([
+    { skin: 0xb07650, hair: 0x6a4424, style: 'crop', h: 1.0 },
+    { skin: 0xe6b48e, hair: 0x9a6a3a, style: 'bun', h: 1.0 },
+    { skin: 0x6e4430, hair: 0x1e1612, style: 'buzz', h: 1.0 },
+    { skin: 0xf3d0b0, hair: 0xb88a4e, style: 'curly', h: 1.0 },
+    { skin: 0xa36a48, hair: 0x2b1d17, style: 'bun', h: 1.0 },
+    { skin: 0xd9a07c, hair: 0x241a14, style: 'curly', h: 1.0 }
+  ]);
+  // escala de altura por puesto (solo visual): centrales y opuestos altos, colocador y líbero algo más bajos
+  var ROLE_H = { MB: 1.05, OPP: 1.03, OH: 1.015, S: 0.985, L: 0.955 };
+  function lookOf(p) {
+    if (!p.role) return LOOKS[p.id % LOOKS.length];
+    var b = LOOKS6[(p.num * 7 + p.team * 5) % LOOKS6.length], h = ROLE_H[p.role] || 1;
+    return { skin: b.skin, hair: b.hair, style: b.style, h: h * (1 + ((p.num * 13) % 5 - 2) * 0.006) };
+  }
 
   var rigs = [], byId = [], cache = {}, lastBlocker = null;
   var groupRoot, marker, markerCone, markerMat, coneMat;
@@ -302,8 +344,8 @@
     one(256, chest0 + 0.19, chest0 - 0.03, 0.95);           // espalda (~20 cm)
     one(0, chest0 + 0.175, chest0 + 0.08, 1.3); one(512, chest0 + 0.175, chest0 + 0.08, 1.3); // pecho (cruza la costura; más ancho: la curva lo estrecha)
   }
-  function atlasMaterial(num, team) {
-    var cv = canvas(512, 512), tc = TEAMS[team]; paintAtlas(cv, tc, num);
+  function atlasMaterial(num, tc) {
+    var cv = canvas(512, 512); paintAtlas(cv, tc, num);
     var t = texOf(cv);
     // CARTOON: material toon (bandas de luz duras con el gradientMap de VB.TOON, sin especular) en vez del estándar
     var m = new THREE.MeshToonMaterial({ map: t, vertexColors: true, gradientMap: toon().gradientMap });
@@ -659,7 +701,7 @@
   //  CONSTRUCCIÓN DEL RIG
   // =====================================================================
   function buildRig(p) {
-    var id = p.id, team = p.team, L = LOOKS[id % LOOKS.length], tc = TEAMS[team];
+    var id = p.id, team = p.team, L = lookOf(p), tc = kitOf(p);
     var root = new THREE.Group(); root.name = 'athlete' + id;
     var bones = [];
     function bone(parent, x, y, z) { var b = new THREE.Bone(); b.position.set(x || 0, y || 0, z || 0); parent.add(b); bones.push(b); return b; }
@@ -708,7 +750,7 @@
     root.updateMatrixWorld(true);
     r.bones = bones; r.rest = []; r.geos = [null, null, null]; r.look = L; r.tc = tc;
     for (k = 0; k < bones.length; k++) r.rest.push(bones[k].matrixWorld.clone()); // pose de reposo (para reconstruir el LOD)
-    var skin = new THREE.SkinnedMesh(rigGeometry(r, LODR), atlasMaterial(p.num, team));
+    var skin = new THREE.SkinnedMesh(rigGeometry(r, LODR), atlasMaterial(p.num, tc));
     skin.castShadow = true; skin.receiveShadow = true; skin.name = 'athleteSkin' + id;
     root.add(skin); root.updateMatrixWorld(true);
     skin.bind(new THREE.Skeleton(bones), skin.matrixWorld);
@@ -747,17 +789,28 @@
    *  Usa la cámara del frame anterior (la cámara se actualiza después de Players). La geometría alta ya está
    *  preparada desde onGameStart, así que el cambio no construye nada. */
   var LOD_UP = 0.58, LOD_DOWN = 0.5, LODW = null; // peloteo en 3ª persona: el más cercano ocupa <= ~0,55 del alto
-  function screenLod() {
+  // 6v6 (diseño §1.8, rendimiento con 12 atletas). Solo con g.size > 2; el 2v2 no pasa por aquí.
+  //  - LOD por distancia: en calidad media, los atletas lejanos (> FAR_D m de profundidad, o del equipo rival a > FAR_RIV m)
+  //    usan la malla baja y sin contorno de tinta (un dibujo menos cada uno). En baja ya van con la malla baja y sin contorno.
+  //  - Sombras parciales: en media/baja solo proyectan sombra los SHADOW_N más cercanos a la cámara; el resto se queda con la
+  //    mancha de contacto de FX (InstancedMesh, un dibujo para todos).
+  var FAR_D = 14, FAR_RIV = 10, FAR_HYS = 1, SHADOW_N = [2, 6], LODA = null;   // sombras: [baja, media]
+  function screenLod(g) {
     var cam = ctx && ctx.camera;
     if (!cam || !cam.isPerspectiveCamera) return;
     if (!LODW) LODW = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    var six = !!(g && g.size > 2), myTeam = g && g.ctrl ? g.ctrl.team : 0;
+    if (six && (!LODA || LODA.length < rigs.length)) LODA = new Float32Array(Math.max(16, rigs.length));
     var cp = LODW[0], dir = LODW[1]; cp.setFromMatrixPosition(cam.matrixWorld); cam.getWorldDirection(dir);
     var tanH = 2 * Math.tan(cam.fov * PI / 360) / (cam.zoom || 1);
     for (var k = 0; k < rigs.length; k++) {
       var r = rigs[k], rp = r.root.position, want = LODR;
-      if (LODR < 2) {
+      if (LODR < 2 || six) {
         var dx = rp.x - cp.x, dy = rp.y + 1.0 * r.scale - cp.y, dz = rp.z - cp.z;
         var ahead = dx * dir.x + dy * dir.y + dz * dir.z;             // profundidad (la altura en pantalla va con ella)
+        if (six) LODA[k] = dx * dx + dy * dy + dz * dz;
+      }
+      if (LODR < 2) {
         var frac = ahead > 0.05 ? 1.85 * r.scale / (ahead * tanH) : 0;
         if (frac > LOD_DOWN) { // solo si está en el encuadre (no uno pegado a la cámara pero fuera de plano)
           LODW[2].set(rp.x, rp.y + 1.0 * r.scale, rp.z).project(cam);
@@ -766,9 +819,26 @@
         r.lodFrac = frac;
         var big = frac > (r.lodBig ? LOD_DOWN : LOD_UP);
         r.lodBig = big; if (big) want = 2;
-      } else r.lodBig = false;
+        if (six) {
+          var hy = r.far ? -FAR_HYS : 0;
+          r.far = !big && (ahead > FAR_D + hy || (r.team !== myTeam && ahead > FAR_RIV + hy));
+          if (r.far && LODR === 1) want = 0;
+        }
+      } else { r.lodBig = false; r.far = false; }
       var geo = r.geos[want] || (want === LODR ? rigGeometry(r, want) : null);
       if (geo && r.skin.geometry !== geo) r.skin.geometry = geo;
+      if (six && r.ink) { var iv = QRANK > 0 && !r.far; if (r.ink.visible !== iv) r.ink.visible = iv; }
+    }
+    if (six) {
+      for (k = 0; k < rigs.length; k++) {
+        var cast = true;
+        if (QRANK < 2 && rigs.length > SHADOW_N[QRANK]) {
+          var nb = 0, dk = LODA[k];
+          for (var j = 0; j < rigs.length; j++) if (LODA[j] < dk || (LODA[j] === dk && j < k)) nb++;
+          cast = nb < SHADOW_N[QRANK];
+        }
+        if (rigs[k].skin.castShadow !== cast) rigs[k].skin.castShadow = cast;
+      }
     }
   }
   /** Cambia el nivel de detalle de todos los atletas construidos (la geometría de cada nivel se crea una vez). */
@@ -2236,7 +2306,7 @@
     var c = r.celV || 'vamos', ramp = sstep(0.0, 0.12, t);
     copyP(T2, P);
     var s2 = T2.s, v2 = T2.v, p = r.p;
-    var mate = byId[g.teams[r.team][g.teams[r.team][0] === p ? 1 : 0].id], mx = mate ? mate.p.x + mate.offX : p.x, my = mate ? mate.p.y + mate.offY : p.y;
+    var mate = byId[mateOf(g, p).id], mx = mate ? mate.p.x + mate.offX : p.x, my = mate ? mate.p.y + mate.offY : p.y;
     var cv = CVP[r.team], conv = !!(cv && cv.on && cv.ts >= 0 && !cv.solo && r.pointWin);
     var walker = conv && cv.scorer !== r.id;                               // el que va hacia el otro (el héroe se queda)
     var b1 = sstep(CB1 - 0.08, CB1 + 0.08, t), b2 = sstep(CB2 - 0.1, CB2 + 0.1, t);
@@ -2372,10 +2442,26 @@
   var TAB_END = 3.6, TAB_HOLD = 0.6, TAB = { ev: null, g: null, t0: 0, t: 0, max: 0, v: new Float64Array(16) }; // cuadro vivo de la escena congelada del punto (update)
   function cvNew() { return dblFields({ on: false, ts: -1, t0: -99, type: 0, scorer: -1, ax: 0, ay: 0, bx: 0, by: 0, a0x: 0, a0y: 0, b0x: 0, b0y: 0,
     twa: 0, twb: 0, da: 0, db: 0, tc: 0, tr: 0, mx: 0, my: 0, mz: 0, emitted: false, clap: false, clapper: -1, claps: 0, ra: 0, rtA: 0.3, rtB: 0.3,
-    rax: 0, ray: 0, rbx: 0, rby: 0, rStart: false, d0: 0, hs: false, solo: false, hero: 0, hyaw: 0.5, myaw: 0.5, match: false }); }
+    rax: 0, ray: 0, rbx: 0, rby: 0, rStart: false, d0: 0, hs: false, solo: false, hero: 0, hyaw: 0.5, myaw: 0.5, match: false, pA: null, pB: null }); }
+  /** Compañero de p: en 2v2 el otro (como siempre); con más jugadores, el compañero en pista más cercano (VB.Sim.nearestMate). */
+  function mateOf(g, p) {
+    var t = g.teams[p.team];
+    if (t.length === 2) return t[0] === p ? t[1] : t[0];
+    return (VB.Sim.nearestMate && VB.Sim.nearestMate(g, p)) || p;
+  }
+  /** Pareja de la convergencia/ánimo del equipo t (c.pA, c.pB). 2v2: teams[t][0] y [1], como siempre. Con más jugadores: el
+   *  protagonista (hero, o el último que tocó de ese equipo) y su compañero más cercano; el resto no entra en la coreografía. */
+  function cvPair(g, t, c, hero) {
+    var tm = g.teams[t];
+    if (tm.length === 2) { c.pA = tm[0]; c.pB = tm[1]; return; }
+    var h = hero && hero.team === t ? hero : (g.lastPlayer && g.lastPlayer.team === t ? g.lastPlayer : tm[0]);
+    c.pA = h; c.pB = mateOf(g, h);
+  }
+  function inPair(c, p) { return p === c.pA || p === c.pB; }
   function cvPoint(g, e) {
     for (var t = 0; t < 2; t++) { if (!CVP[t]) CVP[t] = cvNew(); CVP[t].on = false; CVP[t].clap = false; }
     var won = e.team, sum = e.score ? e.score[0] + e.score[1] : 0, c = CVP[won];
+    cvPair(g, won, c, g.lastTeam === won ? g.lastPlayer : null); cvPair(g, 1 - won, CVP[1 - won], e.player);
     if (e.matchWon) {
       // fin de partido (PLY-15): la pareja ganadora se junta para un choque de pecho o de las dos manos; no vuelven
       c.on = true; c.ts = -1; c.t0 = e.t != null ? e.t : g.time; c.type = 3 + (sum % 2); c.emitted = false; c.rStart = false; c.match = true; c.scorer = -1;
@@ -2386,7 +2472,7 @@
     c.on = true; c.ts = -1; c.t0 = e.t != null ? e.t : g.time; c.type = sum % 3; c.emitted = false; c.rStart = false;
     c.scorer = (!e.player && g.lastTeam === won && g.lastPlayer) ? g.lastPlayer.id : -1;
     // pareja que pierde: ánimo con palmadas si están cerca (da ánimos el compañero del que cometió la falta)
-    var lt = 1 - won, l = CVP[lt], q0 = g.teams[lt][0], q1 = g.teams[lt][1], r0 = byId[q0.id], r1 = byId[q1.id];
+    var lt = 1 - won, l = CVP[lt], q0 = l.pA, q1 = l.pB, r0 = byId[q0.id], r1 = byId[q1.id];
     if (r0 && r1) {
       var dl = Math.sqrt((q0.x + r0.offX - q1.x - r1.offX) * (q0.x + r0.offX - q1.x - r1.offX) + (q0.y + r0.offY - q1.y - r1.offY) * (q0.y + r0.offY - q1.y - r1.offY));
       if (dl < 4) { l.clap = true; l.t0 = c.t0; l.claps = 0; l.clapper = e.player && e.player.team === lt ? (e.player === q0 ? q1.id : q0.id) : (sum % 2 ? q1.id : q0.id); }
@@ -2394,7 +2480,7 @@
   }
   /** Arranca la convergencia cuando los dos están de pie (tras una plancha, al levantarse). Calcula los puntos de llegada. */
   function cvStart(g, c, won) {
-    var A = g.teams[won][0], B = g.teams[won][1], ra = byId[A.id], rb = byId[B.id], tm = g.time;
+    var A = c.pA || g.teams[won][0], B = c.pB || g.teams[won][1], ra = byId[A.id], rb = byId[B.id], tm = g.time;
     if (!ra || !rb) { c.on = false; return; }
     if (diveActive(ra, tm - ra.diveT) || diveActive(rb, tm - rb.diveT) || tm - c.t0 < 0.12) {
       if (tm - c.t0 > 0.9) c.on = false;
@@ -2450,8 +2536,8 @@
   /** Desfase visual del jugador en la convergencia (sustituye a la recuperación de diveOffset mientras dura). */
   function cvOffset(g, r) {
     var c = CVP[r.team];
-    if (!c || !c.on || c.ts < 0) return false;
-    var p = r.p, A = g.teams[r.team][0] === p, tm = g.time;
+    if (!c || !c.on || c.ts < 0 || !inPair(c, r.p)) return false;
+    var p = r.p, A = c.pA === p, tm = g.time;
     var x0 = A ? c.a0x : c.b0x, y0 = A ? c.a0y : c.b0y, tx = A ? c.ax : c.bx, ty = A ? c.ay : c.by, tw = A ? c.twa : c.twb, dl = A ? c.da : c.db;
     var vx, vy;
     if (!c.rStart && !c.match && tm > c.tc + 0.14 && (g.timer || 0) < 0.42) c.tr = Math.min(c.tr, tm);  // se acaba la pausa: vuelven ya
@@ -2462,7 +2548,7 @@
       if (!c.rStart) { // vuelta: con el tiempo que quede de la pausa del punto (la sim recoloca a todos en serveReady)
         c.rStart = true; var left = Math.max(0.25, (g.timer || 0.4) - 0.06);
         // a trote natural (<= 3 m/s de media): si no da tiempo, lo que falte lo absorbe la recolocación de serveReady
-        var qa = g.teams[r.team][0], qb = g.teams[r.team][1];
+        var qa = c.pA, qb = c.pB;
         c.rtA = Math.max(left, 0.3, Math.sqrt((c.ax - qa.x) * (c.ax - qa.x) + (c.ay - qa.y) * (c.ay - qa.y)) / 3.0);
         c.rtB = Math.max(left, 0.3, Math.sqrt((c.bx - qb.x) * (c.bx - qb.x) + (c.by - qb.y) * (c.by - qb.y)) / 3.0);
       }
@@ -2487,7 +2573,7 @@
       r.cvRx = cx + fy * sep; r.cvRy = cy - fx * sep; r.cvRz = cz; r.cvLx = cx - fy * sep; r.cvLy = cy + fx * sep; r.cvLz = cz;
       return true;
     }
-    if (!c.on || c.ts < 0 || c.solo) return false;
+    if (!c.on || c.ts < 0 || c.solo || !inPair(c, r.p)) return false;
     var dtc = tm - c.tc, w1 = sstep(-0.3, 0, dtc) * (1 - sstep(0.12, 0.34, dtc)), w0 = 0;
     if (c.type === 3) {
       // choque de pecho en el aire: saltito, brazos atrás y pecho fuera en el contacto
@@ -2499,7 +2585,7 @@
       return true;
     }
     // de frente al compañero: muñeca derecha en el punto de contacto, palmas que se tocan (desplazada hacia uno mismo)
-    var A = g.teams[r.team][0] === r.p, mex = (A ? c.ax : c.bx), mey = (A ? c.ay : c.by);
+    var A = c.pA === r.p, mex = (A ? c.ax : c.bx), mey = (A ? c.ay : c.by);
     var ux = mex - c.mx, uy = mey - c.my, ul = Math.sqrt(ux * ux + uy * uy) || 1, gap = c.type === 2 ? 0.055 : 0.03;
     r.cvRx = c.mx + ux / ul * gap; r.cvRy = c.my + uy / ul * gap; r.cvRz = c.mz;
     if (c.type === 4) {
@@ -2510,7 +2596,7 @@
     } else
     // palmada en el hombro del compañero (choque arriba y puños)
     if (c.type !== 1) {
-      var mate = byId[g.teams[r.team][A ? 1 : 0].id];
+      var mate = byId[(A ? c.pB : c.pA).id];
       if (mate) {
         w0 = sstep(0.1, 0.22, dtc) * (1 - sstep(0.42, 0.56, dtc));
         if (w0 > 0) { mate.sh[0].getWorldPosition(tV3); r.cvLx = tV3.x - ux / ul * 0.06; r.cvLy = -tV3.z - uy / ul * 0.06; r.cvLz = tV3.y + 0.05; }
@@ -2549,16 +2635,16 @@
   function cvYaw(g, r) {
     var c = CVP[r.team];
     if (!c) return NaN;
-    var p = r.p, A = g.teams[r.team][0] === p;
+    var p = r.p, A = c.pA === p;
     if (c.clap && p.id === c.clapper) {
-      var m = byId[g.teams[r.team][A ? 1 : 0].id]; if (!m) return NaN;
+      var m = byId[(A ? c.pB : c.pA).id]; if (!m) return NaN;
       return Math.atan2(m.p.y + m.offY - p.y - r.offY, m.p.x + m.offX - p.x - r.offX);
     }
-    if (!c.on || c.ts < 0) return NaN;
+    if (!c.on || c.ts < 0 || !inPair(c, p)) return NaN;
     // (CAM-02) tras el choque de manos, el que anotó sigue de cara a la cámara del plano de héroe hasta que acaba la pausa
     if (c.hs && (A ? 0 : 1) === c.hero && g.time >= c.tr + 0.05 && g.mode === 'point' && (g.timer || 0) > 0.3) return c.hyaw;
     if (c.hs && g.time < c.tr + 0.05) {
-      var mh = byId[g.teams[r.team][A ? 1 : 0].id], dtc = g.time - c.tc, isH = (A ? 0 : 1) === c.hero;
+      var mh = byId[(A ? c.pB : c.pA).id], dtc = g.time - c.tc, isH = (A ? 0 : 1) === c.hero;
       var toM = mh ? Math.atan2(mh.p.y + mh.offY - p.y - r.offY, mh.p.x + mh.offX - p.x - r.offX) : NaN;
       var hf = !c.solo && dtc > -0.28 && dtc < 0.22 && toM === toM;   // el choque de manos: cara a cara un instante
       if (isH) return hf ? toM : c.hyaw;
@@ -2567,7 +2653,7 @@
       return hf ? toM : c.myaw;
     }
     if (g.time < c.tr + 0.05) {
-      var mt = byId[g.teams[r.team][A ? 1 : 0].id]; if (!mt) return NaN;
+      var mt = byId[(A ? c.pB : c.pA).id]; if (!mt) return NaN;
       var aM = Math.atan2(mt.p.y + mt.offY - p.y - r.offY, mt.p.x + mt.offX - p.x - r.offX);
       // (CAM-09) victoria del PARTIDO: medio segundo después del choque, los dos ganadores se abren hacia la cámara de la órbita
       // (≤ 35° vueltos hacia el compañero), en vez de quedarse de cara el uno al otro. La órbita lo detecta (frentes a < 60°) y
@@ -3078,7 +3164,7 @@
   }
 
   function rigFor(p) {
-    var key = p.id + ':' + p.team + ':' + p.num + ':' + kitSig;
+    var key = p.id + ':' + p.team + ':' + p.num + ':' + kitSig + (p.role ? ':' + p.role : '');   // 6v6: el puesto cambia aspecto y equipación
     var r = cache[key];
     if (!r) { r = cache[key] = buildRig(p); }
     r.p = p; return r;
@@ -3089,6 +3175,26 @@
     r.hitKind = ''; r.hitShot = ''; r.hitGrade = ''; r.jumpKind = ''; r.hasFace = false; r.yawRate = 0; r.yawV = 0; r.vf = r.vl = 0;
     r.diveUp = 1; r.diveDz = 0; r.ozGiven = 0; r.upBoost = 0; r.offX = r.offY = r.ox0 = r.oy0 = 0; r.lpx = r.p.x; r.lpy = r.p.y;
     r.fk[0].lock = r.fk[1].lock = false; r.locoOwn = 0; r.aw0 = r.aw1 = 0; r.hitMode = ''; r.pdW = 0; r.pdLive = false; r.diveTc = 0;
+  }
+
+  /** 6v6: si cambió quién está en pista (líbero que entra por un central, cambios: VB.Sim.refreshTeams), rehace la lista de
+   *  rigs sin tocar a los que siguen; el que entra aparece ya en su sitio (resetRig: primera pose sin amortiguar) y el que sale
+   *  desaparece. Coste por frame sin cambios: comparar g.players.length referencias. */
+  function syncRigs(g) {
+    var pl = g.players, same = rigs.length === pl.length;
+    for (var i = 0; same && i < pl.length; i++) if (rigs[i].p !== pl[i]) same = false;
+    if (same) return false;
+    var old = rigs.slice();
+    rigs.length = 0; byId.length = 0;
+    for (i = 0; i < pl.length; i++) {
+      var r = rigFor(pl[i]);
+      if (old.indexOf(r) < 0) { resetRig(r); r.far = false; r.skin.castShadow = true; if (LODR > 0) rigGeometry(r, LODR - 1); if (LODR < 2) rigGeometry(r, 2); }
+      if (QRANK > 0) ensureInk(r);
+      rigs.push(r); byId[pl[i].id] = r;
+      if (r.root.parent !== groupRoot) groupRoot.add(r.root);
+    }
+    for (i = 0; i < old.length; i++) if (rigs.indexOf(old[i]) < 0) groupRoot.remove(old[i].root);   // los que salen de pista
+    return true;
   }
 
   /** Tipo de salto: remate (o saque en salto) / bloqueo. */
@@ -3171,7 +3277,7 @@
    *  Mientras se solapan no se recupera el desfase; cuando la sim los separa, vuelve a cero como el de la plancha. */
   var SEP_MIN = 0.5;
   function sepOffset(g, r, dt) {
-    var p = r.p, tp = g.teams[r.team], q = tp[0] === p ? tp[1] : tp[0], m = q && byId[q.id];
+    var p = r.p, q = mateOf(g, p), m = q && q !== p && byId[q.id];
     if (!m || !m.inited) return false;
     var dx = p.x + r.offX - q.x - m.offX, dy = p.y + r.offY - q.y - m.offY, d2 = dx * dx + dy * dy;
     if (d2 >= SEP_MIN * SEP_MIN) return false;
@@ -3309,12 +3415,14 @@
      *  visible (la demo del menú o el partido en pausa). Devuelve true si cambió algo. */
     setKit: function (st, g) { var ch = setKit(st); if (ch && g) this.onGameStart(g); return ch; },
     /** Colores actuales (para la UI): {t0: {base, accent, shorts}, t1: {...}}. */
+    /** 6v6: color de la camiseta del líbero del equipo t (0xRRGGBB; para la UI o pruebas). */
+    liberoColor: function (t) { return liberoKit(t ? 1 : 0).base; },
     kitColors: function () { return { t0: { base: TEAMS[0].base, accent: TEAMS[0].accent, shorts: TEAMS[0].shorts }, t1: { base: TEAMS[1].base, accent: TEAMS[1].accent, shorts: TEAMS[1].shorts } }; },
     onGameStart: function (g) {
       for (var i = 0; i < rigs.length; i++) groupRoot.remove(rigs[i].root);
       rigs.length = 0; byId.length = 0;
       for (var j = 0; j < g.players.length; j++) {
-        var r = rigFor(g.players[j]); resetRig(r);
+        var r = rigFor(g.players[j]); resetRig(r); r.skin.castShadow = true; r.far = false;
         rigs.push(r); byId[g.players[j].id] = r; groupRoot.add(r.root);
         // la calidad adaptativa solo baja: el nivel inferior se prepara ya (el paso a menos calidad no espera a la geometría)
         if (LODR > 0) rigGeometry(r, LODR - 1);
@@ -3379,6 +3487,7 @@
     },
     _update: function (g, dt, events) {
       if (!rigs.length || rigs[0].p !== g.players[0]) this.onGameStart(g);
+      else if (g.size > 2) syncRigs(g);   // 6v6: el líbero (o un cambio) entra/sale de pista sin rehacer a los demás
       var i;
       // los rigs recién creados se orientan antes de leer eventos (puntos de contacto en su espacio)
       for (i = 0; i < rigs.length; i++) if (!rigs[i].inited) rigs[i].yaw = desiredYaw(g, rigs[i]);
@@ -3419,11 +3528,11 @@
         hairSpring(r, dt, snap);
         r.inited = true;
       }
-      screenLod();
+      screenLod(g);
       for (i = 0; i < rigs.length; i++) { var ik = rigs[i].ink; if (ik && ik.geometry !== rigs[i].skin.geometry) ik.geometry = rigs[i].skin.geometry; }
       cvEmit(g, dt);
       // marcador del jugador controlado
-      var show = !g.demo && ctx.state !== 'menu' && g.ctrl;
+      var show = !g.demo && !g.watch && ctx.state !== 'menu' && g.ctrl; // (6v6 espectador, g.watch: sin halo ni flecha)
       marker.visible = markerCone.visible = !!show;
       if (show) {
         var c = g.ctrl, reach = VB.Sim.canReach(g, c), rc0 = byId[c.id];

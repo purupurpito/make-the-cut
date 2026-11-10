@@ -28,12 +28,15 @@
     // remate (atk): con un bloqueador rival arriba, evitar las líneas que cruzan la red por sus manos.
     // Cuanto mejor la IA (menos aimNoise), mejor "lee" el bloqueo y remata por fuera de él.
     var blk = null, read = clamp(1 - pr.aimNoise / 4.5, 0.1, 1);
-    if (atk) for (var b2 = 0; b2 < 2; b2++) { var o2 = opp[b2]; if (o2.z > 0.15 && Math.abs(o2.x) < 1.2 && (!blk || Math.abs(o2.y - p.y) < Math.abs(blk.y - p.y))) blk = o2; }
+    if (atk) for (var b2 = 0; b2 < opp.length; b2++) { var o2 = opp[b2]; if (o2.z > 0.15 && Math.abs(o2.x) < 1.2 && (!blk || Math.abs(o2.y - p.y) < Math.abs(blk.y - p.y))) blk = o2; }
+    // 6v6: con doble bloqueo también se lee el segundo bloqueador (el más cercano después del primero). En 2v2, nunca
+    var blk2 = null;
+    if (atk && blk && g.rot) for (var b3 = 0; b3 < opp.length; b3++) { var o3 = opp[b3]; if (o3 !== blk && o3.z > 0.15 && Math.abs(o3.x) < 1.2 && (!blk2 || Math.abs(o3.y - p.y) < Math.abs(blk2.y - p.y))) blk2 = o3; }
     for (var i = 0; i < DEPTHS.length; i++) {
       if (DEPTHS[i] < minDepth) continue;
       for (var j = 0; j < LATS.length; j++) {
         var x = -sd * DEPTHS[i], y = LATS[j], m = 1e9;
-        for (var k = 0; k < 2; k++) {
+        for (var k = 0; k < opp.length; k++) {
           var q = opp[k], dd = Math.hypot(q.x - x, q.y - y);
           if (q.z > 0.1 && Math.abs(q.x) < 1.2) dd += 1.2; // el bloqueador en el aire no defiende
           if (dd < m) m = dd;
@@ -44,6 +47,7 @@
         if (blk && Math.abs(x - p.x) > 0.5) { // dónde cruza la red la línea atacante -> zona
           var y0 = p.y + (y - p.y) * (0 - p.x) / (x - p.x), gapB = Math.abs(y0 - blk.y);
           if (gapB < 0.9) sc -= 3 * read * (1 - gapB / 0.9);
+          if (blk2) { var gapC = Math.abs(y0 - blk2.y); if (gapC < 0.9) sc -= 3 * read * (1 - gapC / 0.9); }
         }
         if (sc > best) { best = sc; out[0] = x; out[1] = y; }
       }
@@ -55,7 +59,7 @@
   function serveTarget(g, sv) {
     var pr = (sv.prof || g.prof[sv.team]), sd = side(sv.team), opp = g.teams[1 - sv.team];
     if (g.rng() < (pr.seam != null ? pr.seam : 1)) return openSpot(g, sv, 4, _t2).slice();
-    var q = opp[g.rng() < 0.5 ? 0 : 1], n = pr.srvNoise != null ? pr.srvNoise : 1;
+    var q = opp[Math.floor(g.rng() * opp.length)], n = pr.srvNoise != null ? pr.srvNoise : 1;
     var depth = clamp(Math.abs(q.x) + S._rnd(g, 1.4), 4.2, 8.2);
     var y = clamp(q.y + S._rnd(g, n), -3.9, 3.9);
     return [-sd * depth, y];
@@ -87,10 +91,12 @@
    *  con memoria por trayectoria: solo se cambia si el otro llega claramente antes (0,3 s ~ 1,5 m),
    *  como mucho cada 0,5 s y nunca en los últimos 0,4 s (salvo que el elegido no llegue de ninguna manera). */
   function computeJob(g, t) {
+    if (g.size !== 2 && VB.AI6 && VB.AI6.computeJob) return VB.AI6.computeJob(g, t); // 6v6 con su IA propia (sprint 2)
     var sd = side(t), b = g.ball, pr = g.pr1;
     if (g.mode !== 'rally' || b.held) return null;
     if (pr.x * sd <= 0) return null; // aún va al otro campo (la memoria se conserva para esta trayectoria)
     if (g.touchTeam === t && g.touches >= 3) return null;
+    if (g.teams[t].length !== 2) return computeJobN(g, t, pr);
     if (g.touchTeam === t && g.touches >= 1 && g.lastPlayer) return other(g, g.lastPlayer);
     var mem = g.jobMem && g.jobMemT[t] === g.lastTouchT ? g.jobMem[t] : null;
     var a = g.teams[t][0], bb = g.teams[t][1];
@@ -115,18 +121,50 @@
     return pick;
   }
 
+  /** computeJob con N jugadores (reserva genérica hasta VB.AI6): el mismo criterio que el de 2v2 (tiempo hasta el balón,
+   *  memoria por trayectoria, cambio solo si otro llega claramente antes o el elegido no llega) entre todos los que pueden
+   *  tocar (no repite el que acaba de tocar). Sin asignaciones. */
+  function computeJobN(g, t, pr) {
+    var tm = g.teams[t], excl = g.touchTeam === t && g.touches >= 1 ? g.lastPlayer : null;
+    var mem = g.jobMem && g.jobMemT[t] === g.lastTouchT ? g.jobMem[t] : null;
+    if (mem === excl) mem = null;
+    var bias = t === 0 && !g.demo ? 0.12 : 0, best = null, bc = 1e9, alt = null, ac = 1e9, cm = 1e9;
+    for (var i = 0; i < tm.length; i++) {
+      var q = tm[i]; if (q === excl) continue;
+      var c = jobCost(g, q, pr);
+      if (q === mem) { cm = c; continue; }
+      var cb = c - (!mem && g.ctrl === q ? bias : 0);
+      if (cb < bc) { bc = cb; best = q; }
+      if (c < ac) { ac = c; alt = q; }
+    }
+    var pick;
+    if (mem) {
+      var clearly = alt && ac < cm - 0.3 && g.time - g.jobSwT[t] > 0.5 && pr.t > 0.4;
+      var hopeless = alt && pr.t > 0.15 && cm > pr.t + 0.35 && ac < pr.t + 0.1 && ac < cm - 0.2 && g.time - g.jobSwT[t] > 0.25 && !(g.jobHop && g.jobHop[t] === g.lastTouchT);
+      if (hopeless && g.jobHop) g.jobHop[t] = g.lastTouchT;
+      pick = (clearly || hopeless) ? alt : mem;
+    } else pick = best;
+    if (g.jobMem && pick) {
+      if (!mem || pick !== mem) g.jobSwT[t] = g.time;
+      g.jobMem[t] = pick; g.jobMemT[t] = g.lastTouchT;
+    }
+    return pick;
+  }
+
   // Objetivo reutilizable (sin asignaciones por frame)
   var _tg = { x: 0, y: 0, attack: false, block: false };
   function setTg(x, y, attack, block) { _tg.x = x; _tg.y = y; _tg.attack = !!attack; _tg.block = !!block; return _tg; }
 
   /** Posición objetivo de un jugador según la fase del rally. */
   function pos(g, p) {
+    if (g.size !== 2 && VB.AI6 && VB.AI6.pos) return VB.AI6.pos(g, p); // 6v6 con su IA propia (sprint 2)
     var t = p.team, sd = side(t), mate = other(g, p), job = g.jobs[t], idx = p.idx, mine = g.touchTeam === t;
     if (job === p) {
       // a atacar: tras el 2.º toque propio o tras una colocación en salto en el 1.º (S.atkPhase)
       if (S.atkPhase(g, t) && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) return setTg(g.pr3.x + sd * 0.35, g.pr3.y, true, false);
       return setTg(g.pr1.x + sd * 0.2, g.pr1.y);
     }
+    if (g.teams[t].length !== 2) return posN(g, p);
     if (job === mate) {
       if (!mine) {
         // El balón aún viene: no se abandona la defensa. Con un ataque o un saque potente en camino, el que no va
@@ -174,7 +212,22 @@
     return setTg(sd * 6.2, idx ? 2.2 : -2.2);
   }
 
+  var _zp = { x: 0, y: 0 };
+  /** pos con N jugadores (reserva genérica hasta VB.AI6) para quien no va al balón: con ataque rival en camino, el delantero
+   *  más cercano a la colocación bloquea; el resto, a su zona base (S.zonePos). */
+  function posN(g, p) {
+    var t = p.team, sd = side(t), opp = 1 - t;
+    if (S.atkPhase(g, opp) && g.pr3.x * side(opp) > 0 && p.front) {
+      var tm = g.teams[t], bl = null, bd = 1e9;
+      for (var i = 0; i < tm.length; i++) { var q = tm[i]; if (!q.front) continue; var d = Math.abs(q.y - g.pr3.y); if (d < bd) { bd = d; bl = q; } }
+      if (bl === p) return setTg(sd * 0.6, clamp(g.pr3.y + g.blockOff[t], -4.2, 4.2), false, true);
+    }
+    S.zonePos(t, p.zone || 6, _zp);
+    return setTg(_zp.x, _zp.y);
+  }
+
   var SHANK_SURPRISE = 0.4; // s que tarda en reaccionar al balón desviado por su compañero
+  var BEAT6 = { react: 0.4, speed: 0.3 }; // 6v6: el defensor «perdido» (dado digOk en contra) lee tarde y va lento (ver aiUpdate)
   var TEAM_GAP = 0.2;       // s mínimos entre el toque de un compañero y el siguiente toque de la IA (salvo balón que se va)
   var DODGE_R = 0.9;        // m: el que acaba de tocar se aparta de la caída de su propio balón (evita dobles de cuerpo)
   /** El jugador que acaba de tocar no puede volver a tocar (dobles): si su balón le va a caer encima (cruce a 1 m de
@@ -227,11 +280,14 @@
     // Se ve el fallo (llega tarde, se tira y no llega, o la toca y sale desviada); nunca se queda quieta.
     // (g.digOk solo es false tras un remate/saque/toque de bloqueo que el dado de defensa/recepción da por perdido)
     var beaten = !g.digOk && g.jobs[t] === p;
+    // 6v6 (g.rot): con 3 zagueros el «perdido» llegaba casi siempre y la mandaba a la grada (26 % de puntos en «Defensa fuera»,
+    // revisión juego6 M2): lee aún más tarde y va más lenta, así más remates caen sin tocar. En 2v2 (g.rot null), como siempre.
+    var bt6 = beaten && g.rot ? BEAT6 : null;
     // reacción: tras cada toque, durante pr.react sigue con el objetivo anterior
     var tx, ty, attack, block, since = g.time - g.lastTouchT;
     // recepción/defensa del compañero que sale desviada: sorpresa, tarda en leerla (no la intercepta al vuelo)
     var shankT = (g.lastShot === 'shank' || g.lastShot === 'body') && g.touchTeam === t ? SHANK_SURPRISE : 0;
-    if (since < react + (beaten ? 0.12 : 0) + shankT) {
+    if (since < react + (beaten ? (bt6 ? bt6.react : 0.12) : 0) + shankT) {
       if (p.tgTime != null && p.tgTime <= g.lastTouchT && g.lastTouchT - p.tgTime < 0.3) {
         tx = p.tgx; ty = p.tgy; attack = p.tgA; block = p.tgB; // sigue con lo que hacía
       } else { tx = p.x; ty = p.y; attack = block = false; }   // aún no ha leído la jugada
@@ -242,7 +298,7 @@
     }
     if (p.z === 0) {
       var dx = tx - p.x, dy = ty - p.y, dl = Math.hypot(dx, dy);
-      if (dl > 0.05) { var f = Math.min(1, dl / 0.35) * pr.speed * (beaten ? 0.6 : 1); mx = dx / dl * f; my = dy / dl * f; }
+      if (dl > 0.05) { var f = Math.min(1, dl / 0.35) * pr.speed * (beaten ? (bt6 ? bt6.speed : 0.6) : 1); mx = dx / dl * f; my = dy / dl * f; }
     }
     S._stepPlayer(g, p, dt, mx, my);
     if (g.mode !== 'rally') return;
@@ -256,7 +312,8 @@
     if (p.z === 0 && p.vz === 0 && p.down <= 0) {
       if (attack && g.pr3.t < 0.47 + p.aiJt && Math.hypot(g.pr3.x + sd * 0.35 - p.x, g.pr3.y - p.y) < 1) aiJump(g, p);
       if (block) {
-        var opp = g.teams[1 - t], att = (opp[0].z > 0.1 && Math.abs(opp[0].x) < 4) || (opp[1].z > 0.1 && Math.abs(opp[1].x) < 4);
+        var opp = g.teams[1 - t], att = false;
+        for (var a = 0; a < opp.length && !att; a++) att = opp[a].z > 0.1 && Math.abs(opp[a].x) < 4;
         if (att && Math.abs(p.x) < 1.3) { p.bd += dt; if (p.bd > p.bdT) { aiJump(g, p); p.bd = 0; p.bdT = pr.blockReact + g.rng() * 0.1; } }
         else p.bd = 0;
       }
@@ -289,7 +346,7 @@
     var shot = '', tgt = null, count = g.touchTeam === t ? g.touches + 1 : 1;
     if (p.z > 0.25 && Math.abs(b.x) < 3.8 && b.z > C.NET_H + 0.1) {
       var opp2 = g.teams[1 - t], blockUp = false;
-      for (var k = 0; k < 2; k++) if (opp2[k].z > 0.3 && Math.abs(opp2[k].x) < 1.2 && Math.abs(opp2[k].y - p.y) < 1.2) blockUp = true;
+      for (var k = 0; k < opp2.length; k++) if (opp2[k].z > 0.3 && Math.abs(opp2[k].x) < 1.2 && Math.abs(opp2[k].y - p.y) < 1.2) blockUp = true;
       if (blockUp && g.rng() < pr.tip) { shot = 'tip'; tgt = [-sd * (1.3 + g.rng() * 1.4), clamp(-p.y * 0.6 + S._rnd(g, 1.5), -3.6, 3.6)]; }
       else tgt = openSpot(g, p, 2.2, [0, 0], true);
     } else if (count === 3) tgt = openSpot(g, p, 4, [0, 0]);

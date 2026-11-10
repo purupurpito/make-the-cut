@@ -948,3 +948,26 @@ Spike (escena `spike` 1280×720 low): en el árbol actual el aviso de toques va 
   es falso bloqueando un remate rival. En menús, X/□ ya no hace «volver» (ui.js `nav`: `it.jump && !it.jset`). Sin verificar en headless: si el
   `preventDefault` de `pointerdown` suprime el `mousedown` (y con él `onAux`) y si la rueda abre el autodesplazamiento sobre controles de la
   interfaz (ahí no hay `preventDefault`, a propósito: el panel Controles se desplaza). Mirar con un ratón real en Windows.
+
+## 6v6, sprint 2 (10-nov-2026): plano de televisión `tv`
+
+- `pickShot`: con `g.size === 6` (y fuera del menú) saque, peloteo y punto usan `tv` (corte del punto al saque: `TVS.cut`); `court`, `over` y `review` como en 2v2. Sin
+  `intro`, `clinch` ni `cutaway` en 6v6 (guardas `g.size !== 6` en `clinchDetect`, el cierre por `setWon` y `cutawayStart`).
+- `tvShot`: cámara fija a x = min(14,2, bX − 0,8), z = 7,8, y = 0,25·balón.y (suavizado 0,9 s), mirando a −x. Cabeceo y lente con `fit2`:
+  cabezas (z 2,1) del jugador más lejano − 0,9 m a +0,6 NDC (el marcador y la guía de toques encima) y pies del más cercano + 1,2 m (o el
+  sacador cercano) a −0,84 NDC; como poco ±6,5 m. Abre deprisa (0,3 s) y cierra despacio (0,8 s). Si los laterales (±5 m en el fondo
+  cercano) no caben en ±0,92 NDC, abre la lente. Suavizado del rig 0,4 s. Del `point` al `tv` siempre por corte (`backPending` + `PF.backCut`).
+- Prueba: `node tools/tv6test.js [WxH] [s] [semilla]` (12 en cuadro el 100 % de los frames, balón ≤ 2 % fuera, límites, rótulos LOC/VIS,
+  sin mandos táctiles). El 2v2 no pasa por nada de esto (todo tras `g.size === 6` o el plano `tv`).
+
+## 6v6, revisión del sprint 2 (10-nov-2026)
+
+- Sprint 1: camera.js recorre `g.players.length` en todos los bucles; `mateOf` / `mateOfP` / `mateIn` dan lo mismo en 2v2 y, con más
+  jugadores, el compañero más cercano; atacante rival y bloqueador más cercano a la red sin índices fijos (mismo desempate). input.js: la
+  transparencia de los botones táctiles recorre a todo el equipo y, con `g.watch`, no hay mandos táctiles.
+- Espectador (`g.watch`, solo `?format=6v6`): main.js crea el partido con `ctrl:'one'` (antes iba con 'both' y `g.ctrl` saltaba de jugador:
+  17 eventos `switch` en 70 s); players.js no pinta el halo ni la flecha del controlado y fx.js no pinta el aro amarillo (`focusRing`).
+  La cámara `tv` no lee `g.ctrl`. El 2v2 no cambia (todo tras `g.watch`).
+- Pendiente (sprint 3): plano detrás del humano (`gameplayShot` con más FOV, §1.6), oclusión mirando los 2 compañeros más cercanos al eje
+  cámara-jugador (hoy `mateOf` = el más cercano al humano), planos de reacción / cierre de set / sacador rival en 6v6, `bench`, y quitar
+  `switch` del 6v6 con humano (control Uno por rol).
