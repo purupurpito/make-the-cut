@@ -174,10 +174,10 @@
     gr.addColorStop(0.88, 'rgba(255,255,255,1)'); gr.addColorStop(0.93, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = gr; g.fillRect(0, 0, 256, 256); return tex(cv);
   }
-  /** Balón: cada cara de la esfera-cubo es un grupo de 3 paneles (colores originales). */
+  /** Balón: cada cara de la esfera-cubo es un grupo de 3 paneles. Teal (decisión de Ferran, 10-nov-2026): teal, crema y teal oscuro. */
   function ballTexture() {
     var S = 256, cv = canvas(S, S), g = cv.getContext('2d');
-    var cols = ['#ff6a3d', '#fffaf0', '#2456c8'];
+    var cols = ['#1cc4b4', '#fffaf0', '#0b8a86'];
     for (var i = 0; i < 3; i++) {
       var x0 = i * S / 3; // CARTOON: paneles planos (el sombreado lo ponen las bandas del toon)
       g.fillStyle = cols[i]; g.fillRect(x0, 0, S / 3 + 1, S);
@@ -187,7 +187,7 @@
     g.fillRect(S / 3 - 3, 0, 6, S); g.fillRect(2 * S / 3 - 3, 0, 6, S);
     g.fillStyle = 'rgba(29,21,48,0.9)'; g.fillRect(0, 0, S, 5); g.fillRect(0, S - 5, S, 5); g.fillRect(0, 0, 5, S); g.fillRect(S - 5, 0, 5, S);
     // logotipo diminuto en el panel blanco
-    g.save(); g.translate(S / 2, S / 2); g.rotate(-Math.PI / 2); g.fillStyle = 'rgba(29,63,122,0.55)';
+    g.save(); g.translate(S / 2, S / 2); g.rotate(-Math.PI / 2); g.fillStyle = 'rgba(8,92,90,0.55)';
     g.font = '900 22px "Barlow Condensed", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('SALT·9', 0, 0); g.restore();
     var t = tex(cv); t.anisotropy = 4; return t;
   }

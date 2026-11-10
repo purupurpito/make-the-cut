@@ -338,15 +338,16 @@
   var casters = []; // mallas del pabellón que proyectan sombra (en calidad baja solo la proyectan jugadores y balón)
   var net = null, netRip = { a: 0, y: 0, z: 0, t: 9, dir: 1 };
   var NET_W = 10, NET_HH = 1, NSX = 50, NSY = 6;
-  function netTexture() {
+  /** beach: malla de cuerda amarillenta (red de playa, decisión de Ferran, 10-nov-2026); si no, la negra del pabellón. */
+  function netTexture(beach) {
     var Wd = ctx.isMobile ? 1024 : 2048, Ht = Wd / 8, cv = canvas(Wd, Ht), g = cv.getContext('2d');
     var ppm = Wd / NET_W, cell = 0.1 * ppm, top = 0.07 * ppm, bot = 0.05 * ppm;
     g.clearRect(0, 0, Wd, Ht);
-    g.strokeStyle = 'rgba(14,16,20,0.96)'; g.lineWidth = Math.max(1.5, ppm * 0.011);
+    g.strokeStyle = beach ? 'rgba(232,196,72,0.98)' : 'rgba(14,16,20,0.96)'; g.lineWidth = Math.max(1.5, ppm * (beach ? 0.013 : 0.011));
     for (var x = cell / 2; x <= Wd; x += cell) { g.beginPath(); g.moveTo(x, top); g.lineTo(x, Ht - bot); g.stroke(); }
     for (var y = top + cell; y < Ht - bot; y += cell) { g.beginPath(); g.moveTo(0, y); g.lineTo(Wd, y); g.stroke(); }
     // nudos
-    g.fillStyle = 'rgba(10,10,12,1)';
+    g.fillStyle = beach ? 'rgba(176,138,34,1)' : 'rgba(10,10,12,1)';
     for (var nx = cell / 2; nx <= Wd; nx += cell) for (var ny = top + cell; ny < Ht - bot; ny += cell) g.fillRect(nx - 1.5, ny - 1.5, 3, 3);
     // bandas superior e inferior (lona blanca con costuras)
     g.fillStyle = '#f3f0e8'; g.fillRect(0, 0, Wd, top); g.fillRect(0, Ht - bot, Wd, bot);
@@ -4055,7 +4056,7 @@
     }
   }
   /** Silla del 1.er árbitro de playa: torre de madera con tarima a la MISMA altura que la del pabellón (el árbitro es el
-   *  mismo), barandilla, peto de lona con el tajo, escalera detrás y toldo a rayas. */
+   *  mismo), barandilla, peto de lona con el tajo y escalera detrás. Sin toldo. */
   function beachRefStand(B, hw) {
     var ry = -(hw + 1.62), PZ = 1.25, rd = 0.43, wood = col(BCOL.wood), woodD = col(BCOL.woodD), woodL = col(BCOL.woodL);
     var canA = col(BCOL.canA), canB = col(BCOL.canB), coral = col(BCOL.coral), alu = col(BCOL.alu);
@@ -4077,8 +4078,7 @@
     var y0 = ry - rd, y1 = ry - rd - 0.78;                                                         // escalera de mano detrás
     for (var sl = -1; sl <= 1; sl += 2) lrod(B, sl * 0.25, 0, -y1, sl * 0.25, PZ + 0.85, -(y0 + 0.04), 0.025, woodD);
     for (var st = 1; st <= 4; st++) { var t = st / 5, yy = y1 + (y0 - y1) * t, zz = PZ * t; lrod(B, -0.25, zz, -yy, 0.25, zz, -yy, 0.02, woodL); }
-    for (var ax = -1; ax <= 1; ax += 2) { lrod(B, ax * (rd + 0.02), rz, -(ry + rd), ax * (rd + 0.02), PZ + 2.02, -(ry + rd), 0.022, alu); lrod(B, ax * (rd + 0.02), rz, -(ry - rd), ax * (rd + 0.02), PZ + 2.22, -(ry - rd), 0.022, alu); }
-    beachAwning(B, -rd - 0.14, rd + 0.14, ry + rd + 0.22, PZ + 1.97, ry - rd - 0.12, PZ + 2.24, 4, canA, coral);
+    // sin toldo ni sombrilla (decisión de Ferran, 10-nov-2026)
   }
   /** Mesa de anotadores de playa: tablero de madera sobre caballetes, faldón de lona con el tajo, sillas plegables, marcador
    *  de láminas con los colores de los equipos, nevera y toldo de cuatro postes. */
@@ -4124,6 +4124,10 @@
     if (!net || !net.mesh) return;
     var k = (2 * hw + 1) / NET_W, m = net.mesh, mb = m.parent ? m.parent.getObjectByName('netBack') : null;
     [m, mb].forEach(function (o) { if (o && Math.abs(o.scale.x - k) > 1e-6) { o.scale.x = k; o.updateMatrix(); } });
+    // textura de la malla según la sede: amarillenta en la playa (se crea la primera vez), negra en el pabellón
+    if (!net.texHall) net.texHall = m.material.map;
+    var want = BEACH.on ? (net.texBeach || (net.texBeach = netTexture(true))) : net.texHall;
+    [m, mb].forEach(function (o) { if (o && o.material.map !== want) { o.material.map = want; o.material.needsUpdate = true; } });
   }
   /** Oficiales a la pista de la partida: árbitros y anotadores se mueven en y con la lateral; los jueces de línea, en x e y. */
   function placeOfficials(hl, hw) {

@@ -1,7 +1,33 @@
 # Cuentas (Firebase): diseño y estado
 
-**Estado (10-nov-2026):** proyecto e infraestructura creados y probados. **Código del juego sin empezar**: se hace después del
-sprint de menús, porque toca `ui.js`, `main.js` e `index.html`.
+**Estado (10-nov-2026): hecho.** Código en `js/account.js` (VB.Account), cargado justo después de three.js y antes del resto,
+para que vea todas las escrituras de los guardados.
+
+## Cómo funciona el código
+- **Detección de cambios:** envuelve `Storage.prototype.setItem` y `removeItem`. Cuando el juego escribe una de las cuatro claves
+  (`voley3d.squad`, `voley3d.career`, `voley3d.settings`, `voley3d.record`), apunta la hora en `voley3d.account.meta` y, con sesión,
+  sube ese documento a los ~1,5 s. El resto del juego no sabe nada de las cuentas.
+- **Cuándo se sube:** también al ocultar la pestaña (`keepalive`) y al volver la red. En `voley3d.account.meta.up` queda lo que ya
+  está subido.
+- **Al entrar en la cuenta** se une lo de este dispositivo con lo de la cuenta, documento a documento:
+  - si solo hay en uno de los dos lados, se copia al otro;
+  - la primera vez en un dispositivo, el escuadrón se queda con el de más progreso y el récord con el de más partidos;
+  - si hay dos Carreras distintas, se pregunta cuál quedarse;
+  - si llega algo de la cuenta, la página se recarga con un aviso.
+- **Al abrir el juego con sesión** (y al volver a la pestaña) se baja lo que sea más nuevo en la cuenta, comparando con la hora local.
+  La recarga solo se hace en el menú, y una vez por sesión de pestaña.
+- **Interfaz:** botón «Cuenta» (`#btnAcc`), solo en la página principal del menú y debajo de «Pantalla completa». Un punto indica el
+  estado: turquesa sincronizado, amarillo sincronizando, rojo error. Abre el panel `#account` con:
+  - sin sesión: entrar o crear cuenta;
+  - con sesión: usuario, cuándo se guardó, «Sincronizar ahora», «Cerrar sesión» (lo del dispositivo se queda) y «Borrar la cuenta»
+    (pide confirmación; borra los documentos y la cuenta).
+- **Probado contra el Firebase real** con `tools/eval.js`:
+  - crear una cuenta, subir experiencia y ver que llega;
+  - entrar desde un navegador limpio y recibir el progreso;
+  - dos Carreras distintas: pregunta con cuál quedarse;
+  - borrar la cuenta y comprobar que ya no deja entrar.
+
+  Las cuentas de prueba se borraron.
 
 ## Proyecto
 - Proyecto Firebase **`make-the-cut-vb`** («Make the Cut»), es de la cuenta de Google de pruebas de Ferran. No escribir su correo en
@@ -21,7 +47,7 @@ sprint de menús, porque toca `ui.js`, `main.js` e `index.html`.
   - el correo es ficticio: `<usuario>@cuentas.make-the-cut.invalid`;
   - usuario en minúsculas, que cumpla `^[a-z0-9][a-z0-9._-]{2,29}$`.
 - Documentos `users/{uid}/saves/{key}`:
-  - `key` es `squad`, `career` o `settings`;
+  - `key` es `squad`, `career`, `settings` o `record`;
   - campos `{data: JSON en texto (≤ 400 kB), updatedAt: ms, v: int}`.
 - Las reglas solo dejan leer y escribir al dueño y solo esas claves y campos (`firebase/firestore.rules`).
   Comprobado contra el Firebase real:

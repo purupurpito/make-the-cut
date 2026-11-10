@@ -377,6 +377,12 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **Cuentas** (10-nov-2026, pedido de Ferran, como emPat Data pero sin cifrar): `js/account.js` (botón «Cuenta» en el menú
+  principal; entrar, crear, cerrar sesión, borrar) con Firebase `make-the-cut-vb` por REST. Sincroniza escuadrón, Carrera, ajustes
+  y récord; pregunta si hay dos Carreras distintas. Diseño y pruebas en [`notes/cuentas.md`](notes/cuentas.md). También: el **balón
+  es teal** (paneles teal, crema y teal oscuro), y en la playa la **silla del árbitro va sin toldo** y la **red es amarillenta**.
+  Pendiente: «cerrar sesión» no borra lo del dispositivo (si se comparte el móvil, el siguiente ve tu progreso); sin probar en un
+  móvil real.
 - **Menús v2 + atributos que se notan + gestión de Carrera, integrados** (10-nov-2026; pedido de Ferran: menú sin números, submenús
   por pestañas como EA FC, «Jugar» con los modos, en Carrera solo tu jugador, que se noten las estadísticas, elegir club al empezar):
   principal con 5 entradas sin números → JUGAR (Partido rápido · Carrera · 6v6 «Próximamente») → preparación; pestañas comunes
