@@ -74,19 +74,32 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     let f0 = await focused();
     for (let i = 0; i < 6 && f0 !== 'btnPlay'; i++) { await stick(0, -0.95, 110); f0 = await focused(); }
     check(f0 === 'btnPlay', 'el stick lleva el foco a JUGAR (' + f0 + ')');
+    // menús v2: principal (JUGAR, Jugadores, Cómo se juega, Controles, Ajustes) → JUGAR (tarjetas de modos) → Partido rápido
     await stick(0, 0.95, 110);
+    const fq = await focused();
+    check(fq === 'btnSquad', 'stick abajo → JUGADORES (' + fq + ')');
+    await stick(0, -0.95, 110);
+    await press('A'); await sleep(450);
+    check(await evalJs("VB.UI.menuPage()==='play'") && (await focused()) === 'btnQuick', 'A en JUGAR abre los modos con el foco en Partido rápido (' + (await focused()) + ')');
+    await stick(0.95, 0, 110);
     const fc = await focused();
-    check(fc === 'btnCareer', 'stick abajo → CARRERA (' + fc + ')');
-    // Carrera con el mando: A la abre (crear jugador o hub), B vuelve al menú con el foco en CARRERA
+    check(fc === 'btnCareer', 'stick → pasa a la tarjeta CARRERA (' + fc + ')');
+    // Carrera con el mando: A la abre (crear jugador o hub), B vuelve a JUGAR con el foco en CARRERA
     await press('A'); await sleep(450);
     check(await evalJs("!!(VB.CareerUI&&VB.CareerUI.isOpen())"), 'A en CARRERA abre la pantalla de Carrera');
     await shot('carrera');
     await press('B'); await sleep(450);
-    check(await evalJs("!!(VB.CareerUI&&!VB.CareerUI.isOpen())&&!document.getElementById('menu').hidden"), 'B cierra la Carrera');
+    check(await evalJs("!!(VB.CareerUI&&!VB.CareerUI.isOpen())&&!document.getElementById('menu').hidden&&VB.UI.menuPage()==='play'"), 'B cierra la Carrera (de vuelta en JUGAR)');
     for (let i = 0; i < 3 && (await focused()) !== 'btnCareer'; i++) await sleep(150);
-    await stick(0, 0.95, 110);
-    const f1 = await focused();
-    check(f1 === 'optDiff', 'stick abajo → NIVEL (' + f1 + ')');
+    check((await focused()) === 'btnCareer', 'el foco vuelve a la tarjeta CARRERA');
+    await press('B'); await sleep(450);
+    check(await evalJs("VB.UI.menuPage()==='main'") && (await focused()) === 'btnPlay', 'B en JUGAR vuelve al menú principal con el foco en JUGAR');
+    await press('A'); await sleep(450);
+    await press('A'); await sleep(450);
+    check(await evalJs("VB.UI.menuPage()==='quick'") && (await focused()) === 'btnGo', 'A en Partido rápido abre la preparación con el foco en ¡A JUGAR!');
+    let f1 = await focused();
+    for (let i = 0; i < 6 && f1 !== 'optDiff'; i++) { await stick(0, -0.95, 110); f1 = await focused(); }
+    check(f1 === 'optDiff', 'stick arriba → DIFICULTAD (' + f1 + ')');
     const nh = await evalJs("(document.getElementById('navHint')||{}).textContent||''");
     check(/Stick/.test(nh) && /aceptar/.test(nh), 'la ayuda del menú muestra los botones del mando (' + nh.trim().slice(0, 50) + ')');
     const d0 = await evalJs('VB.ctx.settings.difficulty');
@@ -95,17 +108,26 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     check(d1 !== d0, 'stick → cambia el nivel (' + d0 + ' → ' + d1 + ')');
     for (let i = 0; i < 5 && (await evalJs('VB.ctx.settings.difficulty')) !== 'easy'; i++) await stick(-0.95, 0, 110);
     await shot('menu');
-    // Ajustes con A y vuelta con B
+    // Ajustes con A, pestañas con LB/RB y vuelta con B
+    await press('B'); await sleep(400); await press('B'); await sleep(400);
     let fs_ = await focused();
-    for (let i = 0; i < 12 && fs_ !== 'btnSettings'; i++) { await stick(0, 0.95, 110); fs_ = await focused(); }
+    for (let i = 0; i < 8 && fs_ !== 'btnSettings'; i++) { await stick(0, 0.95, 110); fs_ = await focused(); }
     await press('A'); await sleep(350);
     check(await evalJs("VB.UI.isPanelOpen()&&!document.getElementById('pnSet').hidden"), 'A en AJUSTES abre el panel');
+    const tb0 = await evalJs("(document.querySelector('#setTabs .tab.on')||{}).getAttribute('data-tab')");
+    await press('RB'); await sleep(300);
+    const t1 = await evalJs("document.querySelector('#setTabs .tab.on').getAttribute('data-tab')");
+    await press('LB'); await sleep(300);
+    const t2 = await evalJs("document.querySelector('#setTabs .tab.on').getAttribute('data-tab')");
+    check(tb0 === 'audio' && t1 === 'image' && t2 === 'audio', 'RB / LB cambian de pestaña en Ajustes (' + [tb0, t1, t2].join(' → ') + ')');
     await shot('ajustes');
     await press('B'); await sleep(350);
     check(await evalJs("!VB.UI.isPanelOpen()&&!document.getElementById('menu').hidden"), 'B cierra el panel');
-    // JUGAR
+    // JUGAR → Partido rápido → ¡A JUGAR!
     let fp = await focused();
-    for (let i = 0; i < 12 && fp !== 'btnPlay'; i++) { await stick(0, -0.95, 110); fp = await focused(); } // (10 botones desde la fila Escenario)
+    for (let i = 0; i < 8 && fp !== 'btnPlay'; i++) { await stick(0, -0.95, 110); fp = await focused(); }
+    await press('A'); await sleep(450); await press('A'); await sleep(450);
+    fp = await focused();
     await press('A'); await sleep(450);
     if (await evalJs("!document.getElementById('pnFirst').hidden")) {
       let ff = await focused();
@@ -113,7 +135,7 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
       check(ff === 'btnFirstPlay', 'primer partido: stick hasta "Jugar ya"');
       await press('A');
     }
-    check(await waitFor("VB.ctx.state==='playing'", 5000), 'A en JUGAR empieza el partido (foco: ' + fp + ')');
+    check(await waitFor("VB.ctx.state==='playing'", 5000), 'A en ¡A JUGAR! empieza el partido (foco: ' + fp + ')');
     await evalJs(`(function(){var T=window.__pp={hits:0,serves:0,tosses:0,swManual:0,points:0,rally:0};var o=VB.Sim.step;VB.Sim.step=function(g,dt,i){var n=g.events.length;o(g,dt,i);
       for(var k=n;k<g.events.length;k++){var e=g.events[k];if(e.type==='hit'&&e.human){T.hits++;if(e.kind==='serve')T.serves++;}if(e.type==='toss'&&e.human)T.tosses++;
       if(e.type==='switch'&&!e.auto)T.swManual++;if(e.type==='point')T.points++;}T.rally=g.mode==='rally'&&g.rally?g.rally.hits:0;};})()`);
@@ -191,7 +213,7 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     check(await waitFor("VB.ctx.state==='paused'", 2000), 'Start pausa');
     await sleep(300); await shot('pausa');
     // UI-22: el panel de controles enseña los glifos del mando conectado (abierto desde la pausa)
-    const ctl = await evalJs("(function(){document.getElementById('btnPControls').click();var r=document.getElementById('ctlGrid').textContent;var on=(document.querySelector('.ctl-tab.on')||{}).getAttribute?document.querySelector('.ctl-tab.on').getAttribute('data-ctl'):'';VB.UI.back();return JSON.stringify({on:on,txt:r})})()");
+    const ctl = await evalJs("(function(){document.getElementById('btnPControls').click();var r=document.getElementById('ctlGrid').textContent;var tb=document.querySelector('#ctlTabs .tab.on'),on=tb?tb.getAttribute('data-tab'):'';VB.UI.back();return JSON.stringify({on:on,txt:r})})()");
     const cj = JSON.parse(ctl);
     check(cj.on === 'gamepad' && cj.txt.indexOf(GL_HIT) >= 0 && (PS ? cj.txt.indexOf('A') < 0 || !/A/.test(cj.txt) : true), 'el panel de controles abre en Mando con ' + GL_HIT + ' (' + cj.txt.slice(0, 60) + '…)');
     await sleep(200);

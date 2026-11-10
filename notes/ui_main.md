@@ -1253,3 +1253,56 @@ Pruebas: simtest TODO OK; console.sh all sin errores JS; perf «objetivos cumpli
 - **Consejo y guía bajo el contador de toques:** `#coach` y `#guide` bajan con `--hs` (`top: 14px + 38px·--hs`); a 2560×1440 (y con Tamaño del
   HUD grande) el consejo tapaba la tira de TOQUES.
 - Pendiente: regla de 5 s del saque de playa; dibujo del tutorial a 16×8; Luz de tarde en Ajustes (`beachLight`); torneos de playa en la Carrera.
+
+## Menús v2: páginas y pestañas (10-nov-2026, agente de menús)
+Petición de Ferran: quitar los números del menú, dividirlo en submenús (móvil primero, como EA FC), sacar los modos del principal a
+«Jugar» y elegir las opciones al entrar en el modo.
+- **Menú principal** (`.menu-col`, sin `.mi-n`): JUGAR (grande, pastillas «Partido rápido · Carrera»), JUGADORES, CÓMO SE JUEGA,
+  CONTROLES, AJUSTES. Fuera del principal: Dificultad, Puntos por set, Controlar y Escenario.
+- **Páginas** dentro de `#menu` (misma demo, `ctx.state === 'menu'`): `#mpPlay` (JUGAR: tarjetas `.mode` #btnQuick, #btnCareer —la
+  abre career-ui.js como siempre y su `#careerSub` sigue ahí—, #btn6v6 deshabilitada «Próximamente»; el 6v6 sigue tras `?format=6v6`)
+  y `#mpQuick` (PARTIDO RÁPIDO: filas #optVenue, #optDiff, #optPts, #optCtrl con una línea de ayuda `.mi-h` —con Playa, Puntos dice
+  «Reglas de playa: sets a 21 y el 3.º a 15» y queda fijo— y #btnGo «¡A jugar!» con el resumen en pastillas `#playSub`).
+  ui.js: `mpage`, `mstack`, `menuGo(p)`, `menuBack()` (Esc / B / botón `.mp-back`; vuelve al botón que abrió la página), `menuReset()`
+  (al volver de un partido), foco por defecto JUGAR → Partido rápido → ¡A jugar! (tres Intro / tres A desde el arranque). ←/→ en las
+  tarjetas mueven a la vecina. Con la Carrera abierta el menú se pone solo en Jugar (cada 8 frames), así al cerrarla el foco vuelve a
+  su tarjeta. `?menu=play|quick` abre la página (capturas). La hoja final («Menú principal», «Revancha») y «Salir al menú» van al
+  principal; el panel «Primer partido» sale al pulsar ¡A jugar!.
+- **Carrera**: main.js arranca SIEMPRE con `ctrl: 'one', ctrlIdx: 0` (también carreras guardadas con «los dos»). career-ui.js ya no
+  tiene el selector (lo quitó el agente de gestión); no se ha tocado career-ui.js.
+- **Pestañas** `VB.UI.tabs(host, items, opts)` → `{el, get(), set(id, how), step(d, how), refresh(items?), hint(), focus(kb)}`:
+  `items = [{id, label, icon?, badge?, cls?}]`, `opts = {value, label, onChange(id, dir, how), pane, swipe, wrap, sound}`. Barra
+  `role=tablist`, pestañas `role=tab` con `aria-selected`/`aria-controls`, pane `role=tabpanel` con `aria-labelledby` y animación
+  `.tp-n`/`.tp-p`. Solo la pestaña elegida entra en ↑/↓ (las demás `tabindex=-1` + `data-skip`, que `focusables` salta); con ella
+  enfocada ←/→ cambian. En los paneles de ui.js: Q/E (y RePág/AvPág) y LB/RB (o Y) cambian estés donde estés (`activeTabs()`,
+  `padTabDir()` lee el botón 4/5 del mando). Deslizar el dedo ≥ 56 px en horizontal sobre el pane (no en deslizadores ni muestras)
+  cambia de pestaña (`.tab-swipe{touch-action:pan-y}`). Pistas Q/E o LB/RB (L1/R1 en PlayStation) a los lados, ocultas en táctil.
+  **Para la Carrera**: crea la barra con `VB.UI.tabs(nodo, items, {pane, onChange})` y, como su teclado y su mando no pasan por
+  ui.js, llama a `api.step(±1)` desde sus manejadores (Q/E) y `if (it.switchPlayer) api.step(VB.UI.padTabDir())` en su `nav`.
+  Estilos: `.tabs`, `.tab`, `.tab.on`, `.tb-b`, `.tb-k` en index.html (bloque «MENÚS v2»); funcionan fuera de `#menu`.
+- **Usos**: Jugadores (selector de atleta n.º 1 / n.º 2 `.sq-pick` —←/→ con el foco en él— + resumen de una línea `.sq-sum` +
+  pestañas Físico · Defensa · Ataque desde `VB.Prog.GROUPS` e Insignias con «equipadas/huecos»; una columna en todas las
+  resoluciones; cada atributo lleva su `HINT` debajo), Ajustes (Audio · Imagen · Juego · Equipación · Accesibilidad: un grupo cada
+  vez; la fila Escenario sale de Ajustes, se elige en Partido rápido), Controles (Teclado · Mando · Táctil con «en uso»; sustituye a
+  `.ctl-tabs`). Cómo se juega se queda con sus pasos (no le hacen falta pestañas). `?panel=squad&tab=bd` abre una pestaña (capturas).
+- CSS quitado: rejilla compacta de Escenario/Puntos del principal y Carrera junto a Jugar (≤ 420 px). Capturas en `tools/out/menus/`
+  (`<pantalla>-<WxH>.png`; antes en `tools/out/menus/antes/`).
+- Herramientas: drive.js (Intro ×3, Esc vuelve), padplay.js (A ×3, B por la pila, tarjeta Carrera con →, RB/LB en Ajustes),
+  touchplay.js (tarjetas ≥ 44 px, ¡A jugar! visible, Volver ×2, tocar y deslizar pestañas).
+
+## Integración de menús v2 (10-nov-2026)
+- **Jugar**: ←/→ entre tarjetas activas sin salirse (la 6v6 deshabilitada ya no lleva el foco a «Volver»); desde «Volver», ←/→
+  vuelven a Partido rápido (`modeStep` en ui.js).
+- Pistas de teclado/mando por página (`renderMenu` con `mpage`): principal «↑↓ elegir · Intro aceptar»; Jugar «←→ elegir · Intro ·
+  Esc volver»; Partido rápido añade «←→ cambiar».
+- Pausa → Controles/Ajustes → Esc: el foco vuelve a ese botón (antes «Seguir jugando»).
+- Táctil: `#btnPanelBack` ≥ 44 px (`.is-touch .pn-close`). A ≤ 420 px de alto: Jugadores sin el resumen (la media va en la línea del
+  selector, `.sq-pm`), los 3 atributos con su ayuda caben; insignias en 3 columnas; el récord del pie solo en el principal.
+- Textos HINT de prog.js acordes a los efectos (Recepción/Defensa/Colocación/Control: «margen y precisión»; Reacción más corto).
+- **Escuadrón v3** (prog.js): BASE a media 50 (antes 40), los guardados v1/v2 suben +10 una vez; `attrs()` da atributos a la CPU
+  cuando el escuadrón pasa de 50 (`cpuSt`, 50 + 0,6·(m − 50)). Ojo: con 50 cada mejora cuesta 2 puntos desde el principio.
+- Carrera con el componente de pestañas: ver notes/carrera.md «Integración».
+- Cartel «MAKE THE CUT» de las vallas (arena.js `drawGameBall`): el balón del juego (tres costuras en remolino y franjas naranja y
+  azul, como pages/icon.svg) dibujado con Path2D en el canvas.
+- Capturas finales: `tools/out/menus/final/` (principal, jugar, preparacion, jugadores, jugadores-ataque, ajustes y cr-* a 1280×720,
+  844×390 táctil y 2560×1440).

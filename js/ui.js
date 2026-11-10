@@ -373,6 +373,7 @@
       'btnPlay', 'optDiff', 'optVenue', 'venueVal', 'optPts', 'ptsVal', 'optCtrl', 'ctrlVal', 'btnTut', 'btnControls', 'btnSettings', 'btnSquad', 'squadSub', 'sqBody', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
       'btnAgain', 'btnMenu', 'btnPanelBack', 'btnTutPrev', 'btnTutNext', 'btnHudPause', 'btnHudMute', 'icoSound',
       'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord',
+      'btnQuick', 'btnGo', 'btnPlayBack', 'btnQuickBack', 'mpPlay', 'mpQuick', 'venueHelp', 'ptsHelp', 'ctrlHelp', 'diffHelp', 'sqPick', 'ctlTabs', 'sqTabs', 'setTabs', 'optList',
       'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack'].forEach(function (k) { el[k] = $(k); });
     el.bn1 = $('bn1'); el.bn2 = $('bn2'); el.bn3 = $('bn3'); el.pbug = $('pbug'); el.pbT = $('pbT'); el.pbS = $('pbS'); el.pbX = $('pbX'); el.sbBody = document.querySelector('.sb-body'); el.sb = $('sb'); el.sbSet = $('sbSet'); el.tag = $('sbTag'); el.hist = $('sbHist');
     el.row0 = $('sbRow0'); el.row1 = $('sbRow1'); el.name0 = $('sbName0'); el.name1 = $('sbName1');
@@ -385,6 +386,7 @@
     el.wipe = $('wipe'); el.wpBand = el.wipe.firstChild;
     el.intro = $('intro'); el.introDiff = $('introDiff'); el.introFmt = $('introFmt'); el.introSrv = $('introSrv'); el.introHint = $('introHint');
     el.off = $('offArrow'); el.offNum = $('offNum'); el.offRot = el.off.firstChild;
+    el.menuCol = document.querySelector('#menu .menu-col');
     el.pnCtl = $('pnCtl'); el.pKick = document.querySelector('#pause .sh-k');
     el.stamp = $('stamp'); el.stampIn = el.stamp.firstChild; el.stampT = $('stampT'); el.stampS = $('stampS'); el.sr = $('srLive');
     el.chal = $('chal'); el.chalK = el.chal ? el.chal.firstChild : null; el.chalKey = $('chalKey'); el.chalN = $('chalN'); el.chalBar = $('chalBar'); el.sbChal = $('sbChal');
@@ -1991,10 +1993,12 @@
   }
   function focusables(layer) {
     if (!layer) return [];
-    var all = layer.querySelectorAll('[data-nav] button, .pn-head button'), out = [];
-    for (var i = 0; i < all.length; i++) if (!all[i].closest('[hidden]') && !all[i].disabled) out.push(all[i]);
-    // en paneles: primero el contenido y "Volver" al final
-    if (panel) out.sort(function (a, b) { return (a.id === 'btnPanelBack') - (b.id === 'btnPanelBack'); });
+    var all = layer.querySelectorAll('[data-nav] button, .pn-head button, .mp-head button'), out = [];
+    // (las pestañas no elegidas y las pistas Q/E llevan data-skip: solo la pestaña activa entra en el recorrido ↑/↓)
+    for (var i = 0; i < all.length; i++) if (!all[i].closest('[hidden]') && !all[i].disabled && !all[i].hasAttribute('data-skip')) out.push(all[i]);
+    // en paneles y páginas del menú: primero el contenido y "Volver" al final
+    var isBack = function (b) { return b.id === 'btnPanelBack' || b.classList.contains('mp-back') ? 1 : 0; };
+    out.sort(function (a, b) { return isBack(a) - isBack(b); });
     return out;
   }
   function focusEl(b, kb) {
@@ -2006,7 +2010,7 @@
   function focusLayer(pref) {
     setTimeout(function () {
       var L = activeLayer(); if (!L) return;
-      var f = pref || (ctx.state === 'menu' && !panel ? el.btnPlay : null) || focusables(L)[0];
+      var f = pref || (ctx.state === 'menu' && !panel ? pageFocus() : null) || focusables(L)[0];
       focusEl(f, false);
     }, 30);
   }
@@ -2021,8 +2025,10 @@
     var d = device();
     // grupos tecla + acción (.kh) con raya fina entre ellos (CSS), sin «·»
     var kh = function (k, t) { return '<span class="kh">' + k + ' ' + t + '</span>'; };
-    var h = d === 'gamepad' ? kh('<span class="key">Stick</span>', 'elegir') + kh(padKey('a'), 'aceptar') + kh(padKey('b'), 'volver')
-      : d === 'touch' ? '' : kh('<span class="key">↑</span><span class="key">↓</span>', 'elegir') + kh('<span class="key">Intro</span>', 'aceptar') + kh('<span class="key">←</span><span class="key">→</span>', 'cambiar') + kh('<span class="key">Esc</span>', 'volver');
+    // según la página (antes la misma en todas: en el principal no hay nada que «cambiar» ni adónde «volver»)
+    var pg = mpage, ud = '<span class="key">↑</span><span class="key">↓</span>', lr = '<span class="key">←</span><span class="key">→</span>';
+    var h = d === 'gamepad' ? kh('<span class="key">Stick</span>', pg === 'quick' ? 'elegir y cambiar' : 'elegir') + kh(padKey('a'), 'aceptar') + (pg === 'main' ? '' : kh(padKey('b'), 'volver'))
+      : d === 'touch' ? '' : kh(pg === 'play' ? lr : ud, 'elegir') + kh('<span class="key">Intro</span>', 'aceptar') + (pg === 'quick' ? kh(lr, 'cambiar') : '') + (pg === 'main' ? '' : kh('<span class="key">Esc</span>', 'volver'));
     setHTML(el.navHint, 'navh', h);
     setText(el.ctlSub, 'ctls', d === 'gamepad' ? 'Mando conectado' : d === 'touch' ? 'Táctil' : 'Teclado y mando');
     var rec = record.played ? '<span><b>' + record.wins + '/' + record.played + '</b>Victorias</span>' + (record.bestStreak ? '<span><b>' + record.bestStreak + '</b>Mejor racha</span>' : '') : '<span><b>Estreno</b>Primer partido</span>';
@@ -2036,33 +2042,66 @@
     }
   }
   // ---------- Jugadores: estadísticas y mejoras (js/prog.js) ----------
+  // Menús v2: un atleta cada vez (selector n.º 1 / n.º 2 arriba) y pestañas Físico · Defensa · Ataque (VB.Prog.GROUPS) · Insignias.
+  var sqSel = 0;
+  var SQ_IC = { 'Físico': 'phys', 'Defensa': 'def', 'Ataque': 'atk' };
+  function sqItems() {
+    var G = (VB.Prog && VB.Prog.GROUPS) || [], it = G.map(function (g, i) { return { id: 'g' + i, label: g[0], icon: TAB_IC[SQ_IC[g[0]]] || '' }; });
+    if (VB.Badges) it.push({ id: 'bd', label: 'Insignias', icon: TAB_IC.badge });
+    return it;
+  }
   function renderSquad(upKey) {
     if (!el.sqBody || !VB.Prog) return;
-    var P = VB.Prog, d = P.get(), html = '';
+    var P = VB.Prog, d = P.get();
+    if (sqSel >= d.a.length) sqSel = 0;
+    // selector de atleta (radio): dorsal, rol, nivel y aviso de puntos sin gastar
+    var ph = '';
     d.a.forEach(function (a, i) {
-      var nd = P.need(a.lvl);
-      html += '<div class="sq-card"><div class="sq-top"><span class="sq-num">' + a.num + '</span><span class="sq-name">N.º ' + a.num + '<small>' + sepHTML([a.role, 'Nivel ' + a.lvl, a.matches + (a.matches === 1 ? ' partido' : ' partidos')], 'c') + '</small></span>' +
-        '<span class="sq-ovr">' + P.ovr(a.st) + '<small>MEDIA</small></span></div>' +
-        '<div class="sq-xp"><span class="trk"><i style="width:' + Math.round(100 * a.xp / nd) + '%"></i></span>' + a.xp + ' / ' + nd + ' XP</div>' +
-        '<div class="sq-pts' + (a.pts ? ' has' : '') + '">Puntos de mejora: <b>' + a.pts + '</b></div>';
-      P.GROUPS.forEach(function (gr) {
-        html += '<p class="sq-g">' + gr[0] + '</p>';
-        gr[1].forEach(function (k) {
-          var v = a.st[k], c = P.cost(v), can = v < P.MAX && a.pts >= c;
-          html += '<div class="sq-r' + (upKey === i + ':' + k ? ' up' : '') + '" title="' + P.HINT[k] + '"><span>' + P.LABEL[k] + '</span><span class="bar"><i style="width:' + v + '%"></i></span><b>' + v + '</b>' +
-            '<button data-i="' + i + '" data-up="' + k + '"' + (can ? '' : ' disabled') + ' aria-label="Mejorar ' + P.LABEL[k] + ' del ' + a.num + ' (' + c + (c === 1 ? ' punto' : ' puntos') + ')">' + (v >= P.MAX ? 'máx' : '+' + c) + '</button></div>';
-        });
-      });
-      html += badgesHTML(a, i);
-      html += '</div>';
+      var on = i === sqSel;
+      ph += '<button class="sq-pk' + (on ? ' on' : '') + (a.pts ? ' has-pts' : '') + '" role="radio" aria-checked="' + on + '" data-pick="' + i + '"' + (on ? '' : ' tabindex="-1"') + '>' +
+        '<span class="sq-num">' + a.num + '</span><span class="sq-pn">N.º ' + a.num + '<small>' + escT(a.role || '') + ' · Nv ' + a.lvl + '<span class="sq-pm"> · Media ' + P.ovr(a.st) + '</span></small></span>' +
+        (a.pts ? '<em class="sq-pp" aria-label="' + a.pts + ' puntos de mejora">+' + a.pts + '</em>' : '') + '</button>';
     });
+    var ae0 = document.activeElement, pickF = ae0 && el.sqPick && el.sqPick.contains(ae0), pickKb = pickF && ae0.classList.contains('kf');
+    if (el.sqPick && el.sqPick._h !== ph) { el.sqPick._h = ph; el.sqPick.innerHTML = ph; if (pickF) { var pb = el.sqPick.querySelector('.sq-pk.on'); if (pb) focusEl(pb, pickKb); } }
+    // insignias: «equipadas/huecos» en su pestaña
+    if (sqTabs) {
+      var items = sqItems(), a0 = d.a[sqSel];
+      if (VB.Badges && a0) items.forEach(function (it) { if (it.id === 'bd') it.badge = VB.Badges.equipped(a0).length + '/' + VB.Badges.slots(a0); });
+      var key = JSON.stringify(items.map(function (it) { return it.id + it.badge; }));
+      if (sqTabs._k !== key) { sqTabs._k = key; sqTabs.refresh(items); }
+    }
+    var tab = sqTabs ? sqTabs.get() : 'g0', a = d.a[sqSel], i = sqSel, nd = P.need(a.lvl);
+    // resumen en una línea (el dorsal, el rol y el nivel ya los dice el selector): media, experiencia y puntos de mejora
+    var html = '<div class="sq-sum"><span class="sq-ovr">' + P.ovr(a.st) + '<small>MEDIA</small></span>' +
+      '<div class="sq-xp"><span class="sq-xl">Nivel ' + a.lvl + '</span><span class="trk"><i style="width:' + Math.round(100 * a.xp / nd) + '%"></i></span>' + a.xp + ' / ' + nd + ' XP</div>' +
+      '<div class="sq-pts' + (a.pts ? ' has' : '') + '">Puntos<b>' + a.pts + '</b></div></div>';
+    if (tab === 'bd') html += '<div class="sq-pane">' + badgesHTML(a, i) + '</div>';
+    else {
+      var gr = P.GROUPS[+String(tab).slice(1)] || P.GROUPS[0];
+      html += '<div class="sq-pane sq-attrs">';
+      gr[1].forEach(function (k) {
+        var v = a.st[k], c = P.cost(v), can = v < P.MAX && a.pts >= c;
+        html += '<div class="sq-r' + (upKey === i + ':' + k ? ' up' : '') + '" title="' + (P.HINT[k] || '') + '"><span>' + P.LABEL[k] + '<small>' + (P.HINT[k] || '') + '</small></span><span class="bar"><i style="width:' + v + '%"></i></span><b>' + v + '</b>' +
+          '<button data-i="' + i + '" data-up="' + k + '"' + (can ? '' : ' disabled') + ' aria-label="Mejorar ' + P.LABEL[k] + ' del ' + a.num + ' (' + c + (c === 1 ? ' punto' : ' puntos') + ')">' + (v >= P.MAX ? 'máx' : '+' + c) + '</button></div>';
+      });
+      html += '</div>';
+    }
     // conserva el foco (botón «+» de un atributo o insignia) al repintar
     var ae = document.activeElement, fa = ae && ae.getAttribute && el.sqBody.contains(ae) ? (ae.getAttribute('data-up') ? 'data-up' : ae.getAttribute('data-bd') ? 'data-bd' : '') : '';
     var fsel = fa ? 'button[data-i="' + ae.getAttribute('data-i') + '"][' + fa + '="' + ae.getAttribute(fa) + '"]' : upKey ? 'button[data-i="' + upKey.split(':')[0] + '"][data-up="' + upKey.split(':')[1] + '"]' : '';
     var fkb = ae && ae.classList && ae.classList.contains('kf');
     el.sqBody.innerHTML = html;
     if (fsel) { var nb = el.sqBody.querySelector(fsel); if (nb && !nb.disabled) { focusEl(nb, fa ? fkb : true); if (fa === 'data-bd') badgeInfo(nb); } }
+    if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
     renderMenu();
+  }
+  /** Selector de atleta: elige el n.º 1 / n.º 2 (clic, toque, ←/→ con el foco en él). */
+  function sqPick(i, kb) {
+    var n = VB.Prog ? VB.Prog.get().a.length : 2; i = (i + n) % n; if (i === sqSel) return;
+    var d = i > sqSel ? 1 : -1; sqSel = i; click(); renderSquad();
+    restartAnim(el.sqBody, d > 0 ? 'tp-n' : 'tp-p');
+    var b = el.sqPick && el.sqPick.querySelector('.sq-pk.on'); if (b && kb != null) focusEl(b, kb);
   }
   // ---------- Jugadores: insignias (js/badges.js) ----------
   function bdTile(a, i, b, eqList) {
@@ -2257,6 +2296,176 @@
   }
 
   // =====================================================================
+  //  PESTAÑAS (menús v2, nov-2026): componente reutilizable estilo EA FC
+  // =====================================================================
+  // VB.UI.tabs(host, items, opts) → api. Pinta en `host` una barra role="tablist" con un botón role="tab" por elemento y, a los
+  // lados, la pista de la tecla (Q / E con teclado, LB / RB o L1 / R1 con mando, nada en táctil; con ratón también se pulsan).
+  //   items: [{id, label, icon? (svg en HTML), badge? (texto pequeño: «en uso», «2/3»), cls?}]
+  //   opts:  {value (id inicial), label (aria-label), onChange(id, dir, how) (how: 'click' | 'key' | 'pad' | 'swipe' | 'api'),
+  //           pane (elemento del contenido: role="tabpanel", aria-labelledby y animación de entrada desde el lado del cambio),
+  //           swipe (elemento donde deslizar el dedo cambia de pestaña; por defecto el pane), wrap (true: da la vuelta), sound (true)}
+  //   api:   {el, get(), set(id, how), step(d, how), refresh(items?), hint(), focus(kb)}
+  // Foco: solo la pestaña elegida entra en el recorrido ↑/↓ (las demás llevan tabindex=-1 y data-skip); con ella enfocada, ←/→
+  // cambian de pestaña. En los menús de ui.js (paneles), Q/E y LB/RB cambian de pestaña estés donde estés (ui.js busca la barra
+  // visible de la capa activa). Fuera de ui.js (p. ej. #career, con su propio teclado y su nav de mando) llama tú a
+  // api.step(±1) desde tus manejadores; con mando, `if (it.switchPlayer) api.step(VB.UI.padTabDir())` (LB = −1, RB/Y = +1).
+  var tabReg = [];
+  var TAB_IC = {
+    keyboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm2 3v2h2V9zm4 0v2h2V9zm4 0v2h2V9zm4 0v2h2V9zM7 13v2h10v-2z"/></svg>',
+    gamepad: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10a5 5 0 0 1 4.9 6l-.8 4a2.5 2.5 0 0 1-4.3 1.2L14.5 16h-5l-2.3 2.2A2.5 2.5 0 0 1 2.9 17l-.8-4A5 5 0 0 1 7 7zm0 3v1.5H5.5v1.5H7v1.5h1.5V13H10v-1.5H8.5V10zm9.5 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-2 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>',
+    touch: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10l5.2 1.1a2 2 0 0 1 1.6 2.2l-.6 5.2A2 2 0 0 1 16.2 20H11a2 2 0 0 1-1.6-.8l-3.6-4.8a1.4 1.4 0 0 1 2.1-1.8z"/></svg>',
+    // Jugadores: físico (rayo), defensa (escudo), ataque (balón con estela), insignias (medalla)
+    phys: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2 5 13.5h5.5L9 22l9-12h-5.6z"/></svg>',
+    def: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6.5c0 5 3.4 9 8 10.5 4.6-1.5 8-5.5 8-10.5V5z"/></svg>',
+    atk: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="15" cy="10" r="6.5"/><path d="M2 15.5h7M4 19.5h7M6.5 11.5H2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>',
+    badge: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h4l1.5 4L14 2h3l-3 7.2A6.5 6.5 0 1 1 9.8 9.2zM12 11.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg>',
+    // Ajustes
+    audio: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    image: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-3z"/><circle cx="8.5" cy="9" r="1.6"/></svg>',
+    game: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3c-2.4 2.4-3.4 5.6-3 9M21 12c-3.2-1-6.4-.6-9 1.2M6.4 19c2.2-2 5-3 8.4-2.6" fill="none" stroke="#1d1530" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    kit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6l2 5 2.2-1V21h9.6V10l2.2 1 2-5-5.5-3c-.5 1.6-1.8 2.6-3.5 2.6S9 4.6 8.5 3z"/></svg>',
+    a11y: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2.2"/><path d="M4 8.2l8 1.6 8-1.6.5 2-5.5 1.4V15l2 6.5-2 .6-3-6.1-3 6.1-2-.6 2-6.5v-3.4L3.5 10.2z"/></svg>'
+  };
+  function makeTabs(host, items, o) {
+    if (!host) return null;
+    o = o || {};
+    var api = { el: host, items: (items || []).slice(), cur: null, o: o };
+    var hid = host.id || ('tabs' + tabReg.length);
+    host.classList.add('tabs'); host.setAttribute('role', 'tablist'); host.setAttribute('data-nav', '');
+    if (o.label) host.setAttribute('aria-label', o.label);
+    api.cur = o.value != null && idx(o.value) >= 0 ? o.value : (api.items[0] && api.items[0].id);
+    function idx(id) { for (var i = 0; i < api.items.length; i++) if (api.items[i].id === id) return i; return -1; }
+    function draw() {
+      var a = document.activeElement, hadF = !!(a && host.contains(a) && a.classList.contains('tab')), kb = hadF && a.classList.contains('kf');
+      var h = '<button type="button" class="tb-k tb-l" tabindex="-1" data-skip data-step="-1" aria-hidden="true"></button><div class="tb-row">';
+      api.items.forEach(function (it) {
+        var on = it.id === api.cur;
+        h += '<button type="button" class="tab' + (on ? ' on' : '') + (it.cls ? ' ' + it.cls : '') + '" role="tab" id="' + hid + '-' + it.id + '" data-tab="' + it.id + '" aria-selected="' + on + '"' +
+          (on ? '' : ' tabindex="-1" data-skip') + (o.pane && o.pane.id ? ' aria-controls="' + o.pane.id + '"' : '') + '>' + (it.icon || '') + '<span class="tb-t">' + it.label + '</span>' +
+          (it.badge ? '<em class="tb-b">' + it.badge + '</em>' : '') + '</button>';
+      });
+      host.innerHTML = h + '</div><button type="button" class="tb-k tb-r" tabindex="-1" data-skip data-step="1" aria-hidden="true"></button>';
+      if (o.pane) o.pane.setAttribute('aria-labelledby', hid + '-' + api.cur);
+      api.hint();
+      if (hadF) api.focus(kb);
+    }
+    api.get = function () { return api.cur; };
+    api.focus = function (kb) { var b = host.querySelector('.tab.on'); if (b) focusEl(b, !!kb); };
+    api.hint = function () {
+      var d = ctx ? device() : 'keyboard', P = padSet(), L = host.querySelector('.tb-l'), R = host.querySelector('.tb-r');
+      var l = d === 'gamepad' ? P.lb : d === 'touch' ? '' : 'Q', r = d === 'gamepad' ? P.rb : d === 'touch' ? '' : 'E';
+      host.classList.toggle('tb-touch', d === 'touch');
+      if (L && L.textContent !== l) L.textContent = l;
+      if (R && R.textContent !== r) R.textContent = r;
+    };
+    api.set = function (id, how) {
+      var i = idx(id), j = idx(api.cur); if (i < 0 || id === api.cur) return false;
+      var a = document.activeElement, onTab = !!(a && host.contains(a)), kb = onTab && a.classList.contains('kf');
+      api.cur = id;
+      var bs = host.querySelectorAll('.tab');
+      for (var k = 0; k < bs.length; k++) {
+        var on = bs[k].getAttribute('data-tab') === id;
+        bs[k].classList.toggle('on', on); bs[k].setAttribute('aria-selected', on ? 'true' : 'false');
+        if (on) { bs[k].removeAttribute('tabindex'); bs[k].removeAttribute('data-skip'); } else { bs[k].setAttribute('tabindex', '-1'); bs[k].setAttribute('data-skip', ''); }
+      }
+      var nb = host.querySelector('.tab.on');
+      if (nb && nb.scrollIntoView) try { nb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { }
+      if (onTab && nb) focusEl(nb, kb || how === 'key' || how === 'pad');
+      if (o.pane) { o.pane.setAttribute('aria-labelledby', hid + '-' + id); restartAnim(o.pane, i > j ? 'tp-n' : 'tp-p'); }
+      if (o.sound !== false && how !== 'api') click();
+      if (o.onChange) o.onChange(id, i > j ? 1 : -1, how || 'api');
+      return true;
+    };
+    api.step = function (d, how) {
+      var n = api.items.length, i = idx(api.cur); if (n < 2) return false;
+      var j = i + (d > 0 ? 1 : -1);
+      if (o.wrap === false) { if (j < 0 || j >= n) { uiSound2('arrowEdge', d); return false; } } else j = (j + n) % n;
+      return api.set(api.items[j].id, how || 'api');
+    };
+    api.refresh = function (list) { if (list) api.items = list.slice(); if (idx(api.cur) < 0) api.cur = api.items[0] && api.items[0].id; draw(); };
+    host.addEventListener('click', function (ev) {
+      var t = ev.target && ev.target.closest ? ev.target.closest('button') : null; if (!t || !host.contains(t)) return;
+      if (t.hasAttribute('data-step')) { api.step(+t.getAttribute('data-step'), 'click'); return; }
+      var id = t.getAttribute('data-tab'); if (id) api.set(id, 'click');
+    });
+    var sw = o.swipe || o.pane, sp = null;
+    if (sw) {
+      sw.classList.add('tab-swipe');
+      // deslizar (dedo o lápiz): ≥ 56 px en horizontal, bastante más que en vertical y en menos de 0,7 s. Los deslizadores de
+      // Ajustes y las muestras no cuentan (allí arrastrar es cambiar el valor)
+      sw.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'mouse' || (e.target.closest && e.target.closest('.trk,.slider,.seg,input,textarea'))) { sp = null; return; }
+        sp = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId };
+      }, { passive: true });
+      sw.addEventListener('pointerup', function (e) {
+        if (!sp || e.pointerId !== sp.id) return;
+        var dx = e.clientX - sp.x, dy = e.clientY - sp.y, dt = performance.now() - sp.t; sp = null;
+        if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.6 && dt < 700) api.step(dx < 0 ? 1 : -1, 'swipe');
+      }, { passive: true });
+      sw.addEventListener('pointercancel', function () { sp = null; }, { passive: true });
+    }
+    draw();
+    tabReg.push(api);
+    return api;
+  }
+  /** Barra de pestañas visible en la capa activa de ui.js (panel abierto), o null. */
+  function activeTabs() {
+    var L = activeLayer(); if (!L) return null;
+    for (var i = 0; i < tabReg.length; i++) { var t = tabReg[i]; if (L.contains(t.el) && !t.el.closest('[hidden]') && t.el.offsetParent !== null) return t; }
+    return null;
+  }
+  /** Dirección del botón de hombro pulsado en el mando: LB/L1 → −1; RB/R1 (o Y, que también es «cambiar») → +1. */
+  function padTabDir() {
+    try {
+      var ps = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (var i = 0; i < ps.length; i++) {
+        var p = ps[i]; if (!p || !p.buttons) continue;
+        var b4 = p.buttons[4], b5 = p.buttons[5];
+        if (b4 && (b4.pressed || b4.value > 0.5)) return -1;
+        if (b5 && (b5.pressed || b5.value > 0.5)) return 1;
+      }
+    } catch (e) { }
+    return 1;
+  }
+
+  // =====================================================================
+  //  PÁGINAS DEL MENÚ (menús v2): principal → Jugar (modos) → Partido rápido (preparación)
+  // =====================================================================
+  // Todas viven dentro de #menu (misma demo de fondo y mismo estado 'menu'); solo se ve una. La pila guarda de qué página y de
+  // qué botón se vino, para volver con Esc / B / «Volver» al mismo sitio. La Carrera (career-ui.js) se abre desde la tarjeta
+  // #btnCareer de Jugar: mientras está abierta, el menú se queda en Jugar (al cerrarla, el foco vuelve a esa tarjeta).
+  var mpage = 'main', mstack = [];
+  function pageEl(p) { return p === 'play' ? el.mpPlay : p === 'quick' ? el.mpQuick : el.menuCol; }
+  function pageFocus() { return mpage === 'play' ? el.btnQuick : mpage === 'quick' ? el.btnGo : el.btnPlay; }
+  function setPage(p, anim) {
+    mpage = p;
+    ['main', 'play', 'quick'].forEach(function (k) { var n = pageEl(k); if (n) n.hidden = k !== p; });
+    el.menu.setAttribute('data-page', p);
+    var n = pageEl(p);
+    if (anim && n) { n.classList.remove('pg-in', 'pg-back'); void n.offsetWidth; n.classList.add(anim === 'back' ? 'pg-back' : 'pg-in'); }
+    if (p === 'quick') renderOpts();
+    if (ctx && ctx.state === 'menu') renderMenu();   // pistas de teclado/mando de esta página
+    if (p === 'play' && VB.CareerUI && VB.CareerUI.syncMenu) try { VB.CareerUI.syncMenu(); } catch (e) { }
+  }
+  function kbNow() { var a = document.activeElement; return !!(a && a.classList && a.classList.contains('kf')); }
+  function focusSoon(b, kb) { setTimeout(function () { if (b && !b.closest('[hidden]') && ctx.state === 'menu' && !panel) focusEl(b, kb); }, 30); }
+  function menuGo(p) {
+    if (mpage === p) return;
+    var a = document.activeElement, kb = kbNow();
+    mstack.push({ p: mpage, f: a && a.id && el.menu.contains(a) ? a.id : '' });
+    setPage(p, 'go'); uiSound('click');
+    focusSoon(pageFocus(), kb);
+  }
+  function menuBack() {
+    if (!mstack.length || ctx.state !== 'menu' || panel) return false;
+    var kb = kbNow(), s = mstack.pop();
+    setPage(s.p, 'back'); uiSound('back');
+    focusSoon($(s.f) || pageFocus(), kb);
+    return true;
+  }
+  function menuReset() { mstack.length = 0; if (mpage !== 'main') setPage('main'); }
+
+  // =====================================================================
   //  PANELES: tutorial, controles, ajustes
   // =====================================================================
   // (UI-18: el antetítulo da contexto, nunca repite el título ni las pestañas)
@@ -2267,7 +2476,7 @@
     if (!firstAsked && !record.played && !record.tut && !ctx.debug) {
       firstAsked = true; uiSound('click');
       var di = optIndex('difficulty');
-      el.firstDiff.textContent = 'Nivel ' + OPT.difficulty.labels[di] + (di === 0 ? ' (recomendado para empezar)' : '') + '. Se cambia en el menú';
+      el.firstDiff.textContent = 'Nivel ' + OPT.difficulty.labels[di] + (di === 0 ? ' (recomendado para empezar)' : '') + '. Se cambia en Partido rápido';
       openPanel('first', 'menu'); return;
     }
     uiSound('start'); goMatch();
@@ -2283,11 +2492,14 @@
     el.pnKick.textContent = PANELS[name][1]; el.pnTitle.textContent = PANELS[name][2];
     if (name === 'tut') { tutGo(0); }
     if (name === 'ctl') { ctlView = device(); renderCtl(); }
-    if (name === 'set') renderOpts();
+    if (name === 'set') { renderOpts(); setTab(setTabs ? setTabs.get() : 'audio'); }
     if (name === 'squad') renderSquad();
+    var tb = name === 'set' ? setTabs : name === 'squad' ? sqTabs : name === 'ctl' ? ctlTabs : null;
+    if (tb) { tb.hint(); if (ctx.params.tab && !openPanel._t) { openPanel._t = 1; tb.set(ctx.params.tab, 'api'); } }
     var psh = el.panel.querySelector('.sheet');
     psh.classList.toggle('first', name === 'first');
-    psh.classList.toggle('wide', name === 'set' || name === 'squad');
+    psh.classList.remove('wide');
+    psh.classList.toggle('tabbed', !!tb);
     psh.scrollTop = 0;
     shown = '';
     syncScreens(ctx.game);
@@ -2298,7 +2510,9 @@
     if (!panel) return false;
     var was = panel; panel = null; tutStop();
     shown = ''; syncScreens(ctx.game);
-    focusLayer(ctx.state === 'menu' ? (was === 'squad' ? el.btnSquad : was === 'tut' ? el.btnTut : was === 'ctl' ? el.btnControls : was === 'first' ? el.btnPlay : el.btnSettings) : null);
+    // en pausa, el foco vuelve al botón que abrió el panel (antes caía en «Seguir jugando»)
+    focusLayer(ctx.state === 'menu' ? (was === 'squad' ? el.btnSquad : was === 'tut' ? el.btnTut : was === 'ctl' ? el.btnControls : was === 'first' ? el.btnGo : el.btnSettings)
+      : ctx.state === 'paused' ? (was === 'ctl' ? $('btnPControls') : was === 'set' ? $('btnPSettings') : null) : null);
     return true;
   }
 
@@ -2334,10 +2548,12 @@
       [K('Espacio') + '<small>o</small>' + M('r'), 'Saltar <small>(en el aire: dejada)</small>'], [K('K') + '<small>o</small>' + M('c'), 'Colocar en salto <small>(en el aire, 1.er o 2.º toque; en el 3.º, dejada; en el suelo salta)</small>'], [K('C'), 'Cambiar jugador'], [K('V'), 'Challenge <small>(7 s tras el punto)</small>'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
   }
   function renderCtl() {
-    var cur = device(), tabs = el.pnCtl ? el.pnCtl.querySelectorAll('.ctl-tab') : [];
-    for (var i = 0; i < tabs.length; i++) {
-      var k = tabs[i].getAttribute('data-ctl'), on = k === ctlView;
-      tabs[i].classList.toggle('on', on); tabs[i].classList.toggle('cur', k === cur); tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
+    var cur = device();
+    if (ctlTabs) {
+      // «en uso» en la pestaña del dispositivo activo; la elegida es ctlView
+      var items = CTL_TABS.map(function (t) { return { id: t[0], label: t[1], icon: TAB_IC[t[0]], badge: t[0] === cur ? 'en uso' : '', cls: t[0] === cur ? 'cur' : '' }; });
+      var key = cur + '|' + ctlView;
+      if (ctlTabs._k !== key) { ctlTabs._k = key; ctlTabs.cur = ctlView; ctlTabs.refresh(items); }
     }
     var R = ctlRows(ctlView), h = '';
     for (var j = 0; j < R.length; j++) h += '<div><dt>' + R[j][0] + '</dt><dd>' + R[j][1] + '</dd></div>';
@@ -2347,10 +2563,22 @@
       : '<b>Arriba</b> es siempre hacia la red. El control pasa solo a quien da el siguiente toque. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.';
     if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
   }
-  function ctlStep(d) {
-    var L = ['keyboard', 'gamepad', 'touch'], i = L.indexOf(ctlView);
-    ctlView = L[(i + d + L.length) % L.length]; renderCtl(); click();
-    var t = el.pnCtl.querySelector('.ctl-tab[data-ctl="' + ctlView + '"]'); if (t && document.activeElement && document.activeElement.classList.contains('ctl-tab')) focusEl(t, true);
+  function ctlStep(d, how) { if (ctlTabs) ctlTabs.step(d, how || 'key'); }
+  var CTL_TABS = [['keyboard', 'Teclado'], ['gamepad', 'Mando'], ['touch', 'Táctil']];
+  var ctlTabs = null, sqTabs = null, setTabs = null;
+  /** Ajustes: solo se ve el grupo de la pestaña elegida (Audio · Imagen · Juego · Equipación · Accesibilidad). */
+  function setTab(id) {
+    var gs = el.optList ? el.optList.querySelectorAll('.opt-g[data-tab]') : [];
+    for (var i = 0; i < gs.length; i++) gs[i].hidden = gs[i].getAttribute('data-tab') !== id;
+    if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
+  }
+  /** Crea las barras de pestañas de los paneles (una vez, en init). */
+  function buildTabs() {
+    ctlTabs = makeTabs(el.ctlTabs, CTL_TABS.map(function (t) { return { id: t[0], label: t[1], icon: TAB_IC[t[0]] }; }),
+      { value: 'keyboard', label: 'Dispositivo', pane: el.ctlGrid, swipe: el.pnCtl, onChange: function (id) { ctlView = id; renderCtl(); } });
+    setTabs = makeTabs(el.setTabs, [['audio', 'Audio'], ['image', 'Imagen'], ['game', 'Juego'], ['kit', 'Equipación'], ['a11y', 'Accesibilidad']].map(function (t) { return { id: t[0], label: t[1], icon: TAB_IC[t[0]] }; }),
+      { value: 'audio', label: 'Apartado de ajustes', pane: el.optList, onChange: function (id) { setTab(id); } });
+    sqTabs = makeTabs(el.sqTabs, sqItems(), { value: 'g0', label: 'Apartado', pane: el.sqBody, onChange: function () { renderSquad(); } });
   }
 
   // ---------- Opciones ----------
@@ -2529,9 +2757,16 @@
     var cas = el.optCtrl.querySelectorAll('.arr');
     if (cas.length === 2) { cas[0].classList.toggle('end', ci === 0); cas[1].classList.toggle('end', ci === OPT.ctrlMode.vals.length - 1); }
     // pastillas (CSS .mi.primary .mi-s .chip; el nivel en amarillo); el lector lee «Partido rápido, Normal, Sets a 25»
-    setSep(el.playSub, [vb ? 'Vóley playa' : 'Partido rápido', { t: OPT.difficulty.labels[di], c: 'hi' }, vb ? 'Sets a 21' : 'Sets a ' + OPT.setPoints.vals[pi], ci > 0 ? 'Solo el n.º ' + tn[0] : ''], 'c');
+    setSep(el.playSub, [vb ? 'Playa' : 'Pabellón', { t: OPT.difficulty.labels[di], c: 'hi' }, vb ? 'Sets a 21' : 'Sets a ' + OPT.setPoints.vals[pi], ci > 0 ? 'Solo el n.º ' + tn[0] : 'A los dos'], 'c');
     el.optCtrl.classList.toggle('one', ci > 0);
+    // Partido rápido: una línea de ayuda bajo cada fila (con Playa, Puntos explica las reglas de playa)
+    setText(el.venueHelp, 'vh', vb ? 'Platja Llarga · vóley playa en pista de 16 × 8' : 'Palau del Mar · pista cubierta de 18 × 9');
+    setText(el.diffHelp, 'dh', DIFF_HELP[di] || 'Nivel de la CPU');
+    setText(el.ptsHelp, 'ph', vb ? 'Reglas de playa: sets a 21 y el 3.º a 15' : 'Al mejor de 3 sets; el 3.º, a ' + Math.min(15, OPT.setPoints.vals[pi]));
+    setText(el.ctrlHelp, 'ch', ci > 0 ? 'Llevas al n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] : 'El control pasa a quien va a tocar');
   }
+  /** Una línea por nivel de dificultad (fila Dificultad de Partido rápido). */
+  var DIFF_HELP = ['Para empezar: la CPU saca suave y falla más', 'Un rival equilibrado', 'Ataca fuerte y defiende casi todo', 'Casi no falla: solo para expertos'];
 
   // ---------- Tutorial ----------
   // Diagramas con proyección en perspectiva de la pista vista desde detrás del
@@ -2765,11 +3000,24 @@
   // =====================================================================
   function adjustFocused(d) {
     var a = document.activeElement;
+    // tarjetas de modos en fila: ←/→ = vecina activa, sin salirse (antes → en Carrera saltaba la 6v6 deshabilitada y caía en
+    // «Volver», y ← se quedaba allí); desde «Volver» de Jugar, ←/→ vuelven a una tarjeta
+    if (a && a.classList && a.classList.contains('mode') && !panel) { modeStep(a, d); return true; }
+    if (a && a.classList && a.classList.contains('mp-back') && !panel && mpage === 'play') { focusEl(el.btnQuick, true); hoverSound(); return true; }
+    if (a && a.getAttribute && a.getAttribute('role') === 'tab') { var tb = activeTabs(); if (tb) { tb.step(d, 'key'); return true; } }
+    if (a && a.getAttribute && a.getAttribute('data-pick') != null && panel === 'squad') { sqPick(sqSel + (d > 0 ? 1 : -1), true); return true; }
     if (panel === 'ctl') { ctlStep(d > 0 ? 1 : -1); return true; }
     if (panel === 'tut' && (!a || !a.getAttribute || !a.getAttribute('data-opt'))) { if (d > 0) { if (tut.i < TUT.length - 1) tutGo(tut.i + 1); } else tutGo(tut.i - 1); click(); return true; }
     if (a && a.getAttribute && a.getAttribute('data-opt') && !a.closest('[hidden]')) { changeOpt(a.getAttribute('data-opt'), d); return true; }
     if (panel === 'squad' && a && a.getAttribute && a.getAttribute('data-bd')) { navMove(d > 0 ? 1 : -1); return true; } // rejilla de insignias: ←/→ = vecina
     return false;
+  }
+  /** ←/→ entre las tarjetas de Jugar: la vecina activa (la 6v6 «Próximamente» está deshabilitada); en el borde, se queda. */
+  function modeStep(a, d) {
+    var L = Array.prototype.filter.call(el.mpPlay ? el.mpPlay.querySelectorAll('.mode') : [], function (m) { return !m.disabled && !m.closest('[hidden]'); });
+    var i = L.indexOf(a), j = Math.max(0, Math.min(L.length - 1, i + (d > 0 ? 1 : -1)));
+    if (i < 0 || j === i) { uiSound2('arrowEdge', d); return; }
+    focusEl(L[j], true); hoverSound();
   }
   function onKey(e) {
     ctx.lastKeyT = ctx.time;
@@ -2780,10 +3028,13 @@
       e.preventDefault(); navMove(k === 'ArrowUp' || (k === 'Tab' && e.shiftKey) ? -1 : 1); return;
     }
     if (k === 'ArrowLeft' || k === 'ArrowRight') { if (adjustFocused(k === 'ArrowRight' ? 1 : -1)) e.preventDefault(); return; }
+    if ((k === 'q' || k === 'Q' || k === 'e' || k === 'E' || k === 'PageUp' || k === 'PageDown') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      var tq = activeTabs(); if (tq) { e.preventDefault(); tq.step(k === 'q' || k === 'Q' || k === 'PageUp' ? -1 : 1, 'key'); } return;
+    }
     if (k === 'Enter') {
       var a = document.activeElement;
       if (a && a.tagName === 'BUTTON' && !a.closest('[hidden]')) { e.preventDefault(); a.click(); return; }
-      if (ctx.state === 'menu' && !panel) play();
+      if (ctx.state === 'menu' && !panel) { var pf = pageFocus(); if (pf) pf.click(); }
       else if (ctx.state === 'paused' && !panel) ctx.actions.resume();
       else if (ctx.state === 'over' && endWait) endSkip();
       else if (ctx.state === 'over' && endPeek) setPeek(false);
@@ -2837,6 +3088,14 @@
     /** Pruebas (UI-20): última caja del aviso anclado {x, y, w, h} (px CSS), solo la tecla (konly) y zonas de los botones táctiles. */
     _prompt: function () { return { x: prLast.x, y: prLast.y, w: prLast.w, h: prLast.h, konly: prKonly, side: prSide, tb: tbx.L.slice() }; },
     isPanelOpen: function () { return !!panel; },
+    /** Pestañas reutilizables (ver «PESTAÑAS» arriba): VB.UI.tabs(host, items, opts) → api {get, set, step, refresh, hint, focus}. */
+    tabs: makeTabs,
+    /** Mando: −1 con LB/L1 pulsado, +1 con RB/R1 (o Y). Para cambiar de pestaña con it.switchPlayer fuera de ui.js. */
+    padTabDir: padTabDir,
+    /** Página del menú visible: 'main' | 'play' | 'quick'; menuGo(p) abre una (apilando la actual), menuBack() vuelve. */
+    menuPage: function () { return mpage; },
+    menuGo: function (p) { if (p === 'play' || p === 'quick') menuGo(p); },
+    menuBack: function () { return menuBack(); },
     /** Mando conectado / desconectado (main.js con Input.poll().padEvent). Al desconectarse jugando con él, input.js pausa:
      *  la hoja de pausa lo dice ("Mando desconectado") en el antetítulo, en vez del set y el tanteo. */
     padEvent: function (kind) {
@@ -2858,7 +3117,13 @@
         ev.preventDefault(); ev.stopPropagation();
         if (ctx.actions && ctx.actions.challenge) ctx.actions.challenge();
       });
-      el.btnPlay.addEventListener('click', play);
+      // menús v2: JUGAR → modos; Partido rápido → preparación; ¡A JUGAR! → partido (la Carrera la abre career-ui.js en #btnCareer)
+      el.btnPlay.addEventListener('click', function () { menuGo('play'); });
+      if (el.btnQuick) el.btnQuick.addEventListener('click', function () { menuGo('quick'); });
+      if (el.btnGo) el.btnGo.addEventListener('click', play);
+      [el.btnPlayBack, el.btnQuickBack].forEach(function (b) { if (b) b.addEventListener('click', function () { menuBack(); }); });
+      if (el.sqPick) el.sqPick.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-pick]') : null; if (b) sqPick(+b.getAttribute('data-pick'), b.classList.contains('kf') ? true : null); });
+      buildTabs();
       el.btnFirstTut.addEventListener('click', function () { click(); openPanel('tut', 'menu'); });
       el.btnFirstPlay.addEventListener('click', function () { uiSound('start'); goMatch(); });
       // Dificultad: ‹ baja y › sube (zonas propias, UI-06); un clic en el resto de la fila sigue avanzando en ciclo
@@ -2935,8 +3200,6 @@
       // sonido suave al pasar por encima de un botón de menú (solo ratón)
       var hb = document.querySelectorAll('.screen button');
       for (var h = 0; h < hb.length; h++) hb[h].addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') { if (this.classList.contains('opt')) uiSound2('optHover'); else hoverSound(); } });
-      var ctabs = el.pnCtl.querySelectorAll('.ctl-tab');
-      for (var ct = 0; ct < ctabs.length; ct++) (function (b) { b.addEventListener('click', function () { click(); ctlView = b.getAttribute('data-ctl'); renderCtl(); }); })(ctabs[ct]);
       el.btnTutPrev.addEventListener('click', function () { click(); tutGo(tut.i - 1); });
       el.btnTutNext.addEventListener('click', tutNext);
       on(el.btnHudPause, function () { ctx.actions.pause(); });
@@ -2964,6 +3227,7 @@
       window.addEventListener('gamepadconnected', function () { last.navh = null; last.ctls = null; padFamF = -999; GLYPH_PS = null; if (ctx.state === 'menu') renderMenu(); if (panel === 'ctl') { ctlView = 'gamepad'; renderCtl(); } });
       this.onSettings(ctx.settings);
       var pn = ctx.params.panel || (ctx.debug === 'tutorial' ? 'tut' : ctx.debug === 'controls' ? 'ctl' : ctx.debug === 'settings' ? 'set' : '');
+      if (ctx.params.menu === 'play' || ctx.params.menu === 'quick') setTimeout(function () { mstack.push({ p: 'main', f: 'btnPlay' }); if (ctx.params.menu === 'quick') { mstack.push({ p: 'play', f: 'btnQuick' }); } setPage(ctx.params.menu); focusLayer(); }, 0);
       if (pn && PANELS[pn]) setTimeout(function () { openPanel(pn, 'menu'); if (ctx.params.step) tutGo(+ctx.params.step - 1); }, 0);
     },
     onSettings: function (s) {
@@ -3001,7 +3265,7 @@
         if (panel) { panel = null; tutStop(); }
         var a = document.activeElement; if (a && a.blur && a.tagName === 'BUTTON') a.blur(); // que el Espacio no pulse un botón oculto
       }
-      if (s === 'menu') { panel = null; tutStop(); }
+      if (s === 'menu') { panel = null; tutStop(); if (prev && prev !== 'menu') menuReset(); } // (al volver de un partido; no en los setState('menu') del arranque)
     },
     onGameStart: function (g) {
       last = {}; banT = 0; hideBanner(); promptCur = ''; promptHold = 0; // las estadísticas se reinician con 'newMatch'
@@ -3020,7 +3284,7 @@
     /** Cierra el panel abierto. true si se ha consumido (Esc / B / Start). */
     back: function () {
       if (panel) { uiSound('back'); return closePanel(); }
-      return false;
+      return menuBack();
     },
     /** Navegación con mando fuera del partido (main.js la llama con las intenciones del frame). */
     nav: function (it, dt) {
@@ -3032,6 +3296,7 @@
       var dy = axisRepeat(it.my || 0, 'y', 'ty', dt), dx = axisRepeat(it.mx || 0, 'x', 'tx', dt);
       if (dy) navMove(-dy);
       if (dx) adjustFocused(dx);
+      if (it.switchPlayer) { var tp = activeTabs(); if (tp) tp.step(padTabDir(), 'pad'); }
       if (it.hit) { var a = document.activeElement; if (a && a.tagName === 'BUTTON' && !a.closest('[hidden]')) a.click(); else focusLayer(); }
       if (it.jump && !it.jset) { if (!this.back() && ctx.state === 'paused') ctx.actions.resume(); } // volver: B/○, no X/□ (COLOCAR)
       if (ctx.state === 'menu' && last.navDev !== 'gamepad') { last.navDev = 'gamepad'; last.navh = null; renderMenu(); }
@@ -3074,6 +3339,7 @@
       // la hoja puede cambiar de alto tras abrirse (fuentes, cifras, celebración que se aparta): el desvanecido se revisa a menudo
       if ((ctx.frame & 15) === 5) { if (!el.panel.hidden) checkMore(el.panel); if (!el.end.hidden) checkMore(el.end); if (!el.pause.hidden) checkMore(el.pause); }
       if (ctx.state === 'menu' && (ctx.frame & 63) === 0) renderMenu();
+      if (ctx.state === 'menu' && (ctx.frame & 7) === 2 && mpage !== 'play' && VB.CareerUI && VB.CareerUI.isOpen && safe(VB.CareerUI.isOpen)) { mstack.length = 0; mstack.push({ p: 'main', f: 'btnPlay' }); setPage('play'); }
       if ((ctx.frame & 7) === 0) sbDimTick(g);
       if ((ctx.frame & 31) === 1) vigTick();
       if ((ctx.frame & 31) === 0 && !el.app.classList.contains('is-touch') && VB.Input && VB.Input.isTouchActive && safe(VB.Input.isTouchActive)) el.app.classList.add('is-touch');

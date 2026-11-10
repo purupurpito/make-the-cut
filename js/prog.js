@@ -19,22 +19,29 @@
 (function () {
   'use strict';
   var VB = window.VB = window.VB || {};
-  var KEY = 'voley3d.squad', VER = 2;
+  var KEY = 'voley3d.squad', VER = 3;   // v3 (10-nov-2026): escuadrón inicial a media 50 (+10 a los guardados v1/v2, una vez)
   var KEYS = ['jump', 'speed', 'react', 'recv', 'dig', 'set', 'spike', 'ctl', 'block', 'serve'];
   var LABEL = { jump: 'Salto', speed: 'Velocidad', react: 'Reacción', recv: 'Recepción', dig: 'Defensa', set: 'Colocación',
     spike: 'Potencia', ctl: 'Control', block: 'Bloqueo', serve: 'Saque' };
-  var HINT = { jump: 'Altura del salto', speed: 'Rapidez al correr', react: 'Lectura de la jugada cuando lo lleva la IA',
-    recv: 'Margen de timing al recibir el saque', dig: 'Margen de timing al defender un remate', set: 'Margen de timing al colocar',
-    spike: 'Velocidad del remate', ctl: 'Margen al rematar y diana más pequeña', block: 'Bloqueo cuando lo lleva la IA',
-    serve: 'Margen y fuerza del saque' };
+  var HINT = { jump: 'Altura del salto y margen de timing al rematar y bloquear', speed: 'Velocidad punta y aceleración al correr',
+    react: 'Recuperación tras plancha o fallo; la IA lee antes la jugada',
+    recv: 'Margen y precisión al recibir el saque', dig: 'Margen y precisión al defender un remate', set: 'Margen y precisión al colocar',
+    spike: 'Velocidad del remate', ctl: 'Margen y precisión del remate', block: 'Margen de timing, anchura de manos y acierto en el bloqueo',
+    serve: 'Margen, fuerza y precisión del saque' };
   // Grupos para el panel
   var GROUPS = [['Físico', ['jump', 'speed', 'react']], ['Defensa', ['recv', 'dig', 'block']], ['Ataque', ['set', 'spike', 'ctl', 'serve']]];
   var START = 40, MAX = 99, PTS_LVL = 3, MAX_EQ = 6;
-  // Perfil inicial de cada atleta (misma suma: 400): el 1 es más rematador, el 2 más de recepción y colocación
+  // Perfil inicial de cada atleta (misma suma: 500, media 50 = la CPU, que juega sin atributos): el 1 es más rematador, el 2 más de
+  // recepción y colocación. Antes sumaban 400 (media 40) y, desde que los atributos se notan, el jugador nuevo jugaba con un
+  // handicap invisible (revisión de estadísticas, 10-nov-2026): los guardados v1/v2 suben +10 cada atributo al cargarse (UP3).
   var BASE = [
-    { num: 1, role: 'Atacante', st: { jump: 45, speed: 40, react: 40, recv: 36, dig: 38, set: 34, spike: 46, ctl: 41, block: 42, serve: 38 } },
-    { num: 2, role: 'Universal', st: { jump: 38, speed: 42, react: 42, recv: 45, dig: 42, set: 44, spike: 35, ctl: 38, block: 34, serve: 40 } }
+    { num: 1, role: 'Atacante', st: { jump: 55, speed: 50, react: 50, recv: 46, dig: 48, set: 44, spike: 56, ctl: 51, block: 52, serve: 48 } },
+    { num: 2, role: 'Universal', st: { jump: 48, speed: 52, react: 52, recv: 55, dig: 52, set: 54, spike: 45, ctl: 48, block: 44, serve: 50 } }
   ];
+  var UP3 = 10;
+  // CPU de Partido rápido con un escuadrón por encima de 50: lleva atributos (todos iguales) = 50 + CPU_K × (media − 50). Sin esto,
+  // con 90 se ganaba el 75 % de los puntos al Experto (sets 25-8). Con media ≤ 50 la CPU sigue sin atributos (sim idéntica).
+  var CPU_K = 0.6;
   var DIFF_MUL = { easy: 0.7, normal: 1, hard: 1.3, expert: 1.6 };
 
   function clampI(v, a, b) { v = Math.round(+v); return isFinite(v) ? Math.max(a, Math.min(b, v)) : a; }
@@ -109,6 +116,8 @@
       if (!o.a[i]) continue;
       var d = f.a[i];
       saneAthlete(o.a[i], d);
+      // v1/v2 → v3: el escuadrón inicial pasó de media 40 a 50; los guardados de antes suben lo mismo (una vez, tope 99)
+      if (!(o.v >= 3) && o.a[i].st) KEYS.forEach(function (k) { d.st[k] = Math.min(MAX, d.st[k] + UP3); });
       // el escuadrón de Partido rápido siempre es el 1 y el 2 (los guardados de antes, con el 7 y el 11, se renumeran sin perder nada)
       if (o.a[i].num !== BASE[i].num) f.renum = true;
       d.num = BASE[i].num; d.role = BASE[i].role;
@@ -134,14 +143,25 @@
   function award(perP, r) { return [0, 1].map(function (i) { return addXP(i, matchXP(perP[i], r)); }); }
   /** Sube (d = 1) un atributo del atleta i del escuadrón y guarda. true si ha cambiado. */
   function bump(i, k, d) { var ok = athleteBump(load().a[i], k, d); if (ok) save(); return ok; }
-  /** Atributos para createGame({attrs}): [[n.º 1, n.º 2], null] (la CPU juega con el perfil de su nivel). */
-  function attrs() { var d = load(); return [[athleteAttrs(d.a[0]), athleteAttrs(d.a[1])], null]; }
+  /** Atributos para createGame({attrs}): [[n.º 1, n.º 2], cpu]. La CPU juega con el perfil de su nivel (cpu = null) mientras la
+   *  media del escuadrón no pase de 50; por encima lleva cpuSt(media) en sus dos jugadores (CPU_K). */
+  function attrs() {
+    var d = load(), a = athleteAttrs(d.a[0]), b = athleteAttrs(d.a[1]), c = cpuSt((ovr(a) + ovr(b)) / 2);
+    return [[a, b], c ? [c, copy(c)] : null];
+  }
+  /** Atributos de la CPU de Partido rápido para un escuadrón de media m (null si m ≤ 50). */
+  function cpuSt(m) {
+    if (!(m > 50)) return null;
+    var v = clampI(50 + CPU_K * (m - 50), 1, MAX), st = {};
+    KEYS.forEach(function (k) { st[k] = v; });
+    return st;
+  }
   function reset() { data = fresh(); save(); return data; }
   /** Pruebas: olvida lo cargado (vuelve a leer localStorage en el siguiente get). */
   function _reload() { data = null; return load(); }
 
   VB.Prog = { KEYS: KEYS, LABEL: LABEL, HINT: HINT, GROUPS: GROUPS, MAX: MAX, PTS_LVL: PTS_LVL, MAX_EQ: MAX_EQ, VER: VER, STORE: KEY,
     get: load, save: save, squad: squad, need: need, cost: cost, ovr: ovr, matchXP: matchXP, addXP: addXP, award: award, bump: bump,
-    attrs: attrs, reset: reset, _fresh: fresh, _reload: _reload,
+    attrs: attrs, cpuSt: cpuSt, CPU_K: CPU_K, reset: reset, _fresh: fresh, _reload: _reload,
     newAthlete: newAthlete, saneAthlete: saneAthlete, athleteAddXP: athleteAddXP, athleteBump: athleteBump, athleteAttrs: athleteAttrs };
 })();

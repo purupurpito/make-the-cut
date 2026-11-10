@@ -1626,10 +1626,107 @@ if (ONLY !== 'matrix') {
     // (b) monotonía: el equipo CPU con 85 en todo gana más puntos que con 50, y con 15 menos
     const pct = v => { let w = 0, n = 0; for (let sd = 1; sd <= 12; sd++) { const r = play(v == null ? null : [null, [all(v), all(v)]], 900 + sd, 300); w += r.w[1]; n += r.w[0] + r.w[1]; } return w / Math.max(1, n); };
     const lo = pct(15), mid = pct(null), hi = pct(85);
-    if (!(hi > mid + 0.03 && lo < mid - 0.03)) fail('atributos sin efecto claro: 15→' + lo.toFixed(3) + ' 50→' + mid.toFixed(3) + ' 85→' + hi.toFixed(3));
+    // (revisión «que se noten», 10-nov-2026: medido 15/50/85 = 19,9/42,4/61,8 %, antes 31,3/42,4/49,6; antes el margen exigido era ±3 puntos)
+    if (!(hi > mid + 0.06 && lo < mid - 0.10)) fail('atributos sin efecto claro: 15→' + lo.toFixed(3) + ' 50→' + mid.toFixed(3) + ' 85→' + hi.toFixed(3));
     // (c) multiplicadores del humano a 50 = 1 (spike/serve son sumandos: 0)
-    const k = S.attrK(all(50)); for (const n in k) { const want = n === 'spike' || n === 'serve' ? 0 : 1; if (Math.abs(k[n] - want) > 1e-9) fail('attrK(50).' + n + ' = ' + k[n]); }
+    const k = S.attrK(all(50)); for (const n in k) { const want = n === 'spike' || n === 'serve' || n === 'accT' ? 0 : 1; if (k[n] !== want) fail('attrK(50).' + n + ' = ' + k[n] + ' (debe ser exactamente ' + want + ')'); }
     if (failures === f0) console.log('estadísticas de jugador OK · % puntos CPU con atributos 15/50/85: ' + [lo, mid, hi].map(x => (x * 100).toFixed(1)).join(' / '));
+  }
+
+  // ---------- Atributos que se notan (10-nov-2026): tablas medidas, monotonía y Carrera jugable ----------
+  // Velocidad y Salto del humano con st 15/30/50/70/90 (el resto a 50) medidos con la física real (stepPlayer/jump), más la
+  // ventana de timing del remate y la del bloqueo. 50 = sin atributos, EXACTO. Ver notes/sim.md, «Atributos que se notan».
+  {
+    const f0 = failures, all = v => { const o = {}; for (const k of S.ATTR_KEYS) o[k] = v; return o; }, LV = [15, 30, 50, 70, 90];
+    const meas = v => {
+      const g = S.createGame({ seed: 1, ctrl: 'one', ctrlIdx: 0, attrs: v == null ? null : [[Object.assign(all(50), { speed: v, jump: v }), null], null] }), p = g.teams[0][0];
+      g.ctrl = p; g.mode = 'rally'; p.x = 10.5; p.y = 0;
+      let d05 = 0, x09 = 0, t4 = NaN;
+      for (let i = 1; i <= 160; i++) { S._stepPlayer(g, p, DT, -1, 0); if (i === 60) d05 = 10.5 - p.x; if (i === 108) x09 = p.x; if (i === 120) var d1 = 10.5 - p.x, vmax = (x09 - p.x) / 0.1; if (isNaN(t4) && 10.5 - p.x >= 4) t4 = i * DT; }
+      p.x = 5; p.z = 0; p.vz = 0; let jump = 0, air = 0;
+      S._jump(g, p, 0, 0); for (let i = 0; i < 400 && (p.z > 0 || p.vz > 0); i++) { S._stepPlayer(g, p, DT, 0, 0); jump = Math.max(jump, p.z); air += DT; }
+      const k = p.ak || { jump: 1, wJmp: 1, wBlk: 1, wAtk: 1 }, jv = C.JUMP_V * k.jump, bw = jv * k.wJmp * k.wBlk;
+      return { vmax, d05, d1, t4, jump, spikeZ: jump + C.ZC.spike, handZ: jump + 2.8, air, wPerf: C.W_PERFECT * k.wAtk * k.wJmp * 1000, wGood: C.W_GOOD * k.wAtk * k.wJmp * 1000,
+        blk: 2 * Math.min(jv, 0.22 / 0.8 * bw) / C.G * 1000 };
+    };
+    const T = LV.map(meas), N = meas(null), cols = ['vmax', 'd05', 'd1', 'jump', 'spikeZ', 'wPerf', 'wGood', 'blk'];
+    console.log('atributos (Velocidad y Salto = st, resto 50): st | vel. máx m/s | 0,5 s m | 1 s m | 4 m en s | salto m | contacto remate m | manos bloqueo m | aire s | ventana remate perfecto/bueno ±ms | bloqueo perfecto ms');
+    T.forEach((r, i) => console.log('  ' + LV[i] + ' | ' + r.vmax.toFixed(2) + ' | ' + r.d05.toFixed(2) + ' | ' + r.d1.toFixed(2) + ' | ' + r.t4.toFixed(2) + ' | ' + r.jump.toFixed(2) + ' | ' +
+      r.spikeZ.toFixed(2) + ' | ' + r.handZ.toFixed(2) + ' | ' + r.air.toFixed(2) + ' | ' + r.wPerf.toFixed(0) + '/' + r.wGood.toFixed(0) + ' | ' + r.blk.toFixed(0)));
+    for (const c of cols) { if (T[2][c] !== N[c]) fail('atributos: con 50, ' + c + ' ' + T[2][c] + ' != sin atributos ' + N[c]);
+      for (let i = 1; i < LV.length; i++) if (!(T[i][c] > T[i - 1][c])) fail('atributos: ' + c + ' no crece de ' + LV[i - 1] + ' a ' + LV[i] + ' (' + T[i - 1][c] + ' → ' + T[i][c] + ')'); }
+    // que se NOTEN (umbrales holgados sobre lo medido el 10-nov-2026: 1 s 3,98/5,60/6,42 m; salto 0,74/1,06/1,28 m; ventana 28/35/39 ms; bloqueo 177/269/331 ms)
+    if (!(T[0].d1 <= 0.75 * T[2].d1 && T[4].d1 >= 1.12 * T[2].d1)) fail('Velocidad: alcance en 1 s poco distinto ' + T[0].d1 + ' / ' + T[2].d1 + ' / ' + T[4].d1);
+    if (!(T[0].t4 - T[2].t4 >= 0.2)) fail('Velocidad: con 15 llega a 4 m menos de 0,2 s más tarde que con 50');
+    if (!(T[0].jump <= T[2].jump - 0.25 && T[4].jump >= T[2].jump + 0.15)) fail('Salto: altura poco distinta ' + T[0].jump + ' / ' + T[2].jump + ' / ' + T[4].jump);
+    if (!(T[0].wPerf <= 0.82 * T[2].wPerf && T[0].blk <= 0.7 * T[2].blk && T[4].blk >= 1.15 * T[2].blk)) fail('Salto: ventanas de timing poco distintas');
+    // resto de atributos: cada multiplicador del humano se mueve en el sentido bueno y de forma perceptible (≥ 10 % entre 15 y 90)
+    { const lo = S.attrK(all(15)), hi = S.attrK(all(90)), up = ['jump', 'speed', 'wJmp', 'wRecv', 'wDig', 'wSet', 'wAtk', 'wSrv', 'wBlk', 'blk', 'hands'], down = ['spread', 'srvSpread', 'rec'];
+      for (const n of up) if (!(hi[n] / lo[n] >= 1.1)) fail('attrK.' + n + ' casi no cambia: ' + lo[n] + ' → ' + hi[n]);
+      for (const n of down) if (!(lo[n] / hi[n] >= 1.1)) fail('attrK.' + n + ' casi no cambia: ' + lo[n] + ' → ' + hi[n]);
+      if (!(hi.spike - lo.spike >= 4 && hi.serve - lo.serve >= 3.5 && lo.accT > 0.25 && hi.accT === 0)) fail('attrK: potencia/saque/aceleración ' + JSON.stringify([lo.spike, hi.spike, lo.serve, hi.serve, lo.accT])); }
+    // Bloqueo del humano: remate rival que cruza la red a ~3 m, el humano despega con un desfase aleatorio (−0,3..+0,1 s) y un error
+    // lateral (±0,6 m). Bloqueo 15/50/90 (resto 50) y Salto 15/90. Medido el 10-nov-2026 (400 remates): Bloqueo 15/50/90 → toca 91/100/100 %,
+    // directos 36/52/57 %; Salto 15/90 → toca 91/100 %, directos 46/54 %. 50 = sin atributos, exacto.
+    { const blkRun = (st, N) => { const o = { n: 0, blk: 0, stuff: 0 }, r = S._makeRng(77);
+        for (let s = 0; s < N; s++) { const g = S.createGame({ seed: 500 + s, ctrl: 'one', ctrlIdx: 0, attrs: st ? [[st, null], null] : null }), p = g.teams[0][0], ev = []; g.ctrl = p;
+          rallyAt(g, { x: -1.6, y: 0, z: 3.25, vx: 14, vz: -1 }); g.touchTeam = 1; g.lastTeam = 1; g.touches = 3; g.lastKind = 'spike'; g.lastPlayer = g.teams[1][0];
+          g.teams[1][0].x = -1.8; g.teams[1][1].x = -5; g.teams[0][1].x = 6;
+          const jv = C.JUMP_V * (p.ak ? p.ak.jump : 1), tj = 1.6 / 14 - jv / C.G - 0.3 + 0.4 * r(); p.x = 0.5; p.y = (r() - 0.5) * 1.2;
+          if (tj <= 0) { S._jump(g, p, 0, 0); for (let k = 0; k < Math.round(-tj * 120); k++) S._stepPlayer(g, p, DT, 0, 0); }
+          let t = 0, done = false;
+          for (let i = 0; i < 600 && !done; i++) { t += DT; if (tj > 0 && Math.abs(t - tj) < DT / 2 + 1e-9) S._jump(g, p, 0, 0);
+            S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+            for (const e of ev) { if (e.type === 'block' && e.player === p) { o.blk++; if (e.result === 'stuff') o.stuff++; } if (e.type === 'point') done = true; } }
+          o.n++; }
+        return o; };
+      const b = v => Object.assign(all(50), { block: v }), j = v => Object.assign(all(50), { jump: v }), N = 300;
+      const B0 = blkRun(null, N), B = [15, 50, 90].map(v => blkRun(b(v), N)), J = [15, 90].map(v => blkRun(j(v), N));
+      const pc = o => (100 * o.blk / o.n).toFixed(0) + '/' + (100 * o.stuff / o.n).toFixed(0);
+      console.log('bloqueo del humano (toca/directo %): sin atributos ' + pc(B0) + ' · Bloqueo 15/50/90 ' + B.map(pc).join(' ') + ' · Salto 15/90 ' + J.map(pc).join(' '));
+      if (B[1].blk !== B0.blk || B[1].stuff !== B0.stuff) fail('bloqueo: con 50 distinto de sin atributos');
+      if (!(B[0].stuff < B[1].stuff - 0.08 * N && B[2].stuff > B[1].stuff && B[0].blk < B[1].blk && J[0].stuff < B[1].stuff && J[0].blk < B[1].blk && J[1].stuff >= B[1].stuff)) fail('bloqueo: Bloqueo/Salto sin efecto claro en el bloqueo del humano'); }
+    // Carrera, Liga Regional: tú con la media inicial (35, Atacante y Colocador-receptor) + compañero del club (+3) con control
+    // «solo tu jugador», contra Fácil con rivales del club (genSt(media ± 1)). Bots novato y medio. Medido el 10-nov-2026 (8 semillas
+    // × 360 s): novato 50-56 % (sin atributos, 48 %), medio 63-70 % (sin atributos, 71 %): sigue siendo jugable.
+    if (MIN >= 10) {
+      const cx = { console, Math, Date, JSON, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } }; cx.globalThis = cx; cx.window = cx; vm.createContext(cx);
+      let G = null;
+      try { for (const f of ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/career.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), cx, { filename: f }); G = cx.VB.Career && cx.VB.Career.genSt; } catch (e) { G = null; }
+      if (!G) console.log('Carrera Regional: sin js/career.js (genSt), se salta');
+      else {
+        const out = [], ev = [];
+        for (const bot of ['novato', 'medio']) { let w = 0, n = 0;
+          for (const club of [28, 34, 40]) for (const role of ['atk', 'cr']) for (let s = 1; s <= 3; s++) {
+            const r = S._makeRng(s * 31 + club), attrs = [[G(35, role, null), G(club + 3, role === 'atk' ? 'cr' : 'atk', null)], [G(club + 1, 'atk', r), G(club - 1, 'cr', r)]];
+            const g = S.createGame({ seed: 3000 + s * 7 + club, serveClock: true, difficulty: 'easy', ctrl: 'one', ctrlIdx: 0, attrs, points: 15 }), bf = makeBot(BOTS[bot], s * 11 + club);
+            for (let i = 0; i < 300 * 120 && !(g.finished && g.mode === 'over'); i++) { S.step(g, DT, bf(g)); ev.length = 0; S.drainEvents(g, ev); for (const e of ev) if (e.type === 'point') { n++; if (e.team === 0) w++; } }
+          }
+          out.push(bot + ' ' + (100 * w / n).toFixed(1) + ' % (' + n + ' puntos)');
+          if (!(w / n >= (bot === 'medio' ? 0.57 : 0.43))) fail('Carrera Regional poco jugable con la media inicial: ' + bot + ' ' + (w / n).toFixed(3));
+        }
+        console.log('Carrera Regional con la media inicial (35) contra Fácil: ' + out.join(' · '));
+      }
+    }
+    // integración (10-nov-2026): con Velocidad baja frenar y girar es al momento (antes se pasaba 0,74 m en un giro con 15); la
+    // precisión (eRecv/eDig/eSet/eAtk) y el alcance (rRecv/rDig) valen 1 con 50 y van en el sentido del atributo
+    {
+      const turn = v => {
+        const g = S.createGame({ seed: 1, ctrl: 'one', ctrlIdx: 0, attrs: [[Object.assign(all(50), { speed: v }), null], null] }), p = g.teams[0][0];
+        g.ctrl = p; g.mode = 'rally'; p.x = 8; p.y = 0;
+        for (let i = 0; i < 120; i++) S._stepPlayer(g, p, DT, -1, 0);   // a toda velocidad hacia la red (x baja)
+        const x0 = p.x; let over = 0;
+        for (let i = 0; i < 60; i++) { S._stepPlayer(g, p, DT, 1, 0); over = Math.max(over, x0 - p.x); }
+        return over;
+      };
+      const o15 = turn(15), o35 = turn(35);
+      console.log('  giro de 180° a toda velocidad: se pasa ' + o15.toFixed(3) + ' m con Velocidad 15, ' + o35.toFixed(3) + ' m con 35');
+      if (!(o15 < 0.02 && o35 < 0.02)) fail('Velocidad baja: el giro aún desliza (' + o15.toFixed(3) + ' / ' + o35.toFixed(3) + ' m)');
+      const K = v => S.attrK(all(v)), k15 = K(15), k50 = K(50), k90 = K(90);
+      for (const f of ['eRecv', 'eDig', 'eSet', 'eAtk']) if (!(k50[f] === 1 && k15[f] > 1.4 && k90[f] < 0.7)) fail('precisión ' + f + ': ' + k15[f] + ' / ' + k50[f] + ' / ' + k90[f]);
+      for (const f of ['rRecv', 'rDig']) if (!(k50[f] === 1 && k15[f] < 0.96 && k90[f] > 1.03)) fail('alcance ' + f + ': ' + k15[f] + ' / ' + k50[f] + ' / ' + k90[f]);
+    }
+    if (failures === f0) console.log('atributos que se notan OK (tablas, monotonía, 50 = sin atributos, Carrera Regional, giro, precisión y alcance)');
   }
 
   // ---------- Insignias (opts.badges), eventos para desbloquearlas y saque dirigible (sprint Carrera) ----------

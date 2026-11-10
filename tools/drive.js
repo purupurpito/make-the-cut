@@ -25,7 +25,7 @@ setTimeout(() => { console.error('TIEMPO AGOTADO'); process.exit(2); }, (SECS + 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let send, errors = [], logs = [];
 async function evalJs(expr) { const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true }); return r.result && r.result.value; }
-const KEYS = { ' ': ['Space', 32], Enter: ['Enter', 13], ArrowUp: ['ArrowUp', 38], ArrowDown: ['ArrowDown', 40], ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39], p: ['KeyP', 80], j: ['KeyJ', 74], c: ['KeyC', 67], k: ['KeyK', 75] };
+const KEYS = { ' ': ['Space', 32], Enter: ['Enter', 13], ArrowUp: ['ArrowUp', 38], ArrowDown: ['ArrowDown', 40], ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39], p: ['KeyP', 80], j: ['KeyJ', 74], c: ['KeyC', 67], k: ['KeyK', 75], Escape: ['Escape', 27], e: ['KeyE', 69], q: ['KeyQ', 81] };
 async function key(type, k) { const [code, kc] = KEYS[k]; await send('Input.dispatchKeyEvent', { type, key: k, code, windowsVirtualKeyCode: kc, text: type === 'keyDown' && k.length === 1 ? k : undefined }); }
 async function press(k, ms) { await key('keyDown', k); await sleep(ms || 60); await key('keyUp', k); }
 // clic izquierdo (golpear) en el centro de la pista, como un ratón de verdad (pointerType 'mouse')
@@ -67,6 +67,15 @@ const state = () => evalJs('JSON.stringify({s:VB.ctx.state,m:VB.ctx.game&&VB.ctx
     await sleep(3000);
     let st = await state(); check(st.s === 'menu' && st.demo, 'arranca en el menú con demo detrás (' + JSON.stringify(st) + ')');
     await shot('1-menu');
+    // menús v2: JUGAR (Intro) → Partido rápido (Intro) → ¡A JUGAR! (Intro); cada página deja el foco en su botón principal
+    await press('Enter'); await sleep(400);
+    check(await evalJs("VB.UI.menuPage&&VB.UI.menuPage()==='play'&&document.activeElement.id==='btnQuick'"), 'Intro en JUGAR abre los modos con el foco en Partido rápido');
+    await press('Escape'); await sleep(400);
+    check(await evalJs("VB.UI.menuPage()==='main'&&document.activeElement.id==='btnPlay'"), 'Esc vuelve al menú principal con el foco en JUGAR');
+    await press('Enter'); await sleep(400);
+    await press('Enter'); await sleep(400);
+    check(await evalJs("VB.UI.menuPage()==='quick'&&document.activeElement.id==='btnGo'"), 'Intro en Partido rápido abre la preparación con el foco en ¡A JUGAR!');
+    await shot('1b-preparacion');
     await press('Enter');
     // perfil nuevo: la primera vez JUGAR ofrece "Ver cómo se juega" / "Jugar ya" (foco en el tutorial)
     await sleep(500);

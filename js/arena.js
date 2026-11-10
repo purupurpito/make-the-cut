@@ -2049,7 +2049,28 @@
     else if (kind === 'leaf') { g.beginPath(); g.moveTo(x, y - h * 0.35); g.quadraticCurveTo(x + h * 0.3, y, x, y + h * 0.35); g.quadraticCurveTo(x - h * 0.3, y, x, y - h * 0.35); g.fill(); }
     else if (kind === 'dots') { for (var dx = 0; dx < 3; dx++) for (var dy = 0; dy < 3; dy++) { g.beginPath(); g.arc(x + (dx - 1) * h * 0.18, y + (dy - 1) * h * 0.18, h * 0.05, 0, 6.283); g.fill(); } }
     else if (kind === 'cut') { for (var c2 = 0; c2 < 2; c2++) { g.beginPath(); g.moveTo(x - h * 0.3 + c2 * h * 0.26, y + h * 0.36); g.lineTo(x - h * 0.06 + c2 * h * 0.26, y - h * 0.36); g.lineTo(x + h * 0.08 + c2 * h * 0.26, y - h * 0.36); g.lineTo(x - h * 0.16 + c2 * h * 0.26, y + h * 0.36); g.fill(); } }
-    else if (kind === 'ball') { g.beginPath(); g.arc(x, y, h * 0.3, 0, 6.283); g.stroke(); g.beginPath(); g.arc(x - h * 0.3, y - h * 0.3, h * 0.42, 0.1, 1.45); g.stroke(); g.beginPath(); g.arc(x + h * 0.32, y + h * 0.05, h * 0.4, 2.2, 3.5); g.stroke(); }
+    else if (kind === 'ball') drawGameBall(g, x, y, h * 0.37);
+    g.restore();
+  }
+  /* Balón del juego (el mismo de pages/icon.svg y del botón GOLPEAR, ICON_HIT de input.js): tres costuras en remolino desde el
+   * centro y una franja curva por panel (naranja y azul; el tercero, crema), con contorno de tinta. Geometría en la caja 24×24
+   * del SVG (radio 10), escalada a radio r. Sin Path2D(string) (navegadores viejos): el balón de antes, de arcos. */
+  var BALL_SEAM = 'M12 12C12 8 10.5 4.5 8 2.8M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8';
+  var BALL_PANEL = 'M12 12C12 8 10.5 4.5 8 2.8A10 10 0 0 1 13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8C15.98 13.86 13.73 13 12 12Z';
+  function drawGameBall(g, x, y, r) {
+    var s = r / 10, ink = '#140d26';
+    var P = typeof Path2D !== 'undefined' ? Path2D : null, seam = null, panel = null;
+    try { seam = P && new P(BALL_SEAM); panel = P && new P(BALL_PANEL); } catch (e) { seam = panel = null; }
+    if (!seam || !panel) { g.beginPath(); g.arc(x, y, r * 0.8, 0, 6.283); g.stroke(); return; }
+    g.save();
+    g.translate(x, y); g.scale(s, s); g.translate(-12, -12);
+    g.beginPath(); g.arc(12, 12, 10, 0, 6.283); g.fillStyle = '#fff6e6'; g.fill();
+    var fills = ['#ff6a2e', '#3a83ff'];
+    for (var i = 0; i < 2; i++) { g.save(); g.translate(12, 12); g.rotate(i * 2.0944); g.translate(-12, -12); g.fillStyle = fills[i]; g.fill(panel); g.restore(); }
+    g.strokeStyle = ink; g.lineWidth = 1.3; g.lineCap = 'round'; g.lineJoin = 'round';
+    for (var j = 0; j < 3; j++) { g.save(); g.translate(12, 12); g.rotate(j * 2.0944); g.translate(-12, -12); g.stroke(seam); g.restore(); }
+    g.beginPath(); g.arc(12, 12, 10, 0, 6.283); g.lineWidth = 1.5; g.stroke();
+    g.beginPath(); g.arc(12, 12, 7.6, 3.6, 4.15); g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 1; g.stroke();   // brillo
     g.restore();
   }
   function drawBrands(cv) {

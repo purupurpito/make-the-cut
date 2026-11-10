@@ -1083,3 +1083,76 @@ huella `tools/fp-2v2.json` (generada con el código de antes del sprint 1): «15
   `scratchpad` bench: autopilot Difícil playa side-out 57,8 %, 6,9 toques/rally.
 - No hecho: regla de 5 s del saque de playa (sigue 8 s y los textos «8 segundos»); el bloqueo tras el que el bloqueador toca no se marca
   como «2.º toque» en la UI; el 6v6 con `venue:'beach'` juega en pabellón (`g.beach = false`).
+
+## Atributos que se notan (10-nov-2026) — sim
+Petición de Ferran: «si tienes baja la velocidad, no corres tanto; si tienes bajo el salto, saltas poquito y dependes más de tu timing».
+Antes: velocidad ×0,92-1,08, salto ×0,94-1,06, ventanas ±12 %: casi no se notaba. Ficheros: `js/sim.js` (statProf, attrK, VB.ATTR_K,
+stepPlayer, jump, blockQ/blkHands, checkBlock, digMargin/serveRisk), `js/ai.js` (timeTo con aceleración, salto de ataque con su salto),
+`js/players.js` (una línea: fase del salto con la velocidad de despegue real), `js/prog.js` (solo HINT), `tools/simtest.js`, `tools/fp-2v2.json`.
+
+**Neutro exacto**: todo es `1 + c·d` (o `c·d` si suma) con `d = (st − 1)/98 − 0,5`, que vale 0 EXACTO con 50, así que con 50 en todo
+la sim es idéntica (simtest lo exige: `attrK(50)` exactamente 1/0, misma secuencia de puntos, mismas tablas). Sin `opts.attrs` no hay
+`p.ak` ni `p.prof` y nada cambia: las variantes cpu/human de la huella dan 100/100 partidas idénticas byte a byte; la variante attrs
+se ha regenerado a propósito (antes 475 puntos, 50,5 % del equipo 0; ahora 497, 48,9 %). Pendiente distinta bajo y sobre 50 (bajar
+duele más que subir ayuda). Constantes en `VB.ATTR_K`.
+
+| atributo | humano | IA con atributos (rivales de Carrera, compañero) |
+|---|---|---|
+| Velocidad | velocidad punta ×0,78-1,18; con < 50 acelera en `accT = 0,9·(−d)` s (15 → 0,32 s; frena el doble de rápido) | igual (stepPlayer con `p.ak`); `prof.speed` con el mismo factor; `AI.timeTo` suma `accT/2` |
+| Salto | despegue ×0,775-1,12 (altura ×0,60-1,25); ventana del remate ×`wJmp` (0,70-1,15); bloqueo: qb medido sobre SU despegue × wJmp × wBlk (tiempo con qb alto ∝ jump·wJmp·wBlk); el que salta > 50 llega con las manos más abajo (`blkHands`); sus remates bloqueados: directo ×(1 + 2·(1 − jump)) | igual (física); salto de ataque 0,47·jump s antes |
+| Recepción / Defensa / Colocación / Control / Saque | ventana ×0,70-1,22 (antes ±12 %) | recv +0,3·d, dig +0,3·d (y el dado de defensa/recepción usa el perfil del defensor/receptor PREVISTO, no el del equipo), err ×(1 − 0,6·d), timing ×(1 − 0,8·d), atkErr ×(1 − 1,2·d), srvErr ×(1 − 0,8·d) |
+| Potencia | remate ±3 m/s (antes ±2) | igual |
+| Control | diana ×(1 − 0,8·d) (1,4-0,6) | ver arriba |
+| Saque | saque en salto ±2,5 m/s, diana ×(1 − 0,8·d) | jserve +5·d |
+| Bloqueo | oficio ×(1 + 0,5·d) (antes fijo 0,9), manos ×(1 + 0,3·d) de ancho, ventana wBlk | block +0,3·d; manos igual |
+| Reacción | plancha: en el suelo 0,9·(1 − 0,6·d) s; bloqueo tras gesto fallido ×(1 − 0,6·d) | react −0,16·d, blockReact −0,1·d; plancha igual |
+
+Medido (simtest «atributos que se notan»; Velocidad y Salto = st, resto 50):
+
+| st | vel. máx m/s | 0,5 s | 1 s | 4 m en | salto | contacto remate | manos bloqueo | aire | ventana remate perfecto/bueno | bloqueo perfecto (qb ≥ 0,78) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 15 | 4,72 | 1,62 m | 3,98 m | 1,01 s | 0,74 m | 3,19 m | 3,54 m | 0,82 s | ±28/79 ms | 177 ms |
+| 30 | 5,10 | 2,10 | 4,65 | 0,88 | 0,87 | 3,32 | 3,67 | 0,88 | ±31/88 | 214 |
+| 50 | 5,60 | 2,80 | 5,60 | 0,72 | 1,06 | 3,51 | 3,86 | 0,97 | ±35/100 | 269 |
+| 70 | 6,01 | 3,01 | 6,01 | 0,67 | 1,16 | 3,61 | 3,96 | 1,02 | ±37/106 | 299 |
+| 90 | 6,42 | 3,21 | 6,42 | 0,63 | 1,28 | 3,73 | 4,08 | 1,07 | ±39/112 | 331 |
+
+- Remate perfecto del humano desde lo alto del salto: Salto 15 cruza la red a 2,96 m (18° hacia abajo), 50 a 3,25 m (20°), 90 a 3,45 m (22°);
+  contra un bloqueador neutro con el despegue al azar (−0,35..+0,15 s) le tapa el 100 / 94 / 81 % de los casos, y el directo ×1,32 / 1 / 0,80.
+- Bloqueo del humano (escena de simtest, 300 remates, despegue −0,3..+0,1 s, error lateral ±0,6 m), toca/directo: Bloqueo 15/50/90 →
+  90/34, 100/51, 100/55 %; Salto 15/90 → 90/44, 100/52 %.
+- CPU contra CPU (autopilot vs Normal, 12 semillas × 300 s, % de puntos del equipo con atributos): todo a 15/30/50/70/90 → 19,9 / 27,0 / 42,4 /
+  49,6 / 63,1; simtest 15/50/85 → 19,9 / 42,4 / 61,8 (antes 31,3 / 42,4 / 49,6). Por atributo (resto 50): Velocidad 33/35/42/42/46, Salto (30 semillas) 37/36/42/40/45, Defensa
+  35/35/42/44/46, Potencia 40/41/42/46/49, Bloqueo 40/43/42/44/47, Reacción 36/38/42/42/42; Recepción, Colocación, Control y Saque mueven ±2-3
+  (en la IA casi solo se nota el lado bajo; el ruido de esta medida es ±1,3).
+- Bot humano «medio» con control «uno» contra Normal (10 semillas × 300 s, ±3,3 puntos): todo a 15/30/50/70/90 → 31,6 / 37,1 / 49,6 / 57,6 /
+  56,0 %; solo Velocidad 34,1 / 44,5 / 49,6 / 51,5 / 54,9; solo Salto 45,8 / 46,9 / 49,6 / 49,0 / 51,5. El resto, dentro del ruido del bot (su
+  σ de timing es 70 ms: una ventana ±22 % le cambia poco; a una persona que afina el timing, más). El bot nunca bloquea con control «uno» (lo
+  hace el compañero), por eso Bloqueo se mide con la escena de arriba.
+- **Carrera, Liga Regional** (tú con media 35 del rol + compañero club+3, control «uno», contra Fácil con rivales genSt(club ± 1), 8 semillas ×
+  360 s): novato 48-52 % (sin atributos 48 %), medio 65-76 % (sin atributos 71 %). Sigue jugable: los rivales de la Regional (28-41) también
+  corren y saltan menos. simtest lo comprueba (3 semillas × 6 casos × 300 s: novato ≥ 43 %, medio ≥ 57 %; medido 51,8 / 66,0).
+- Lo que notará el jugador: con Velocidad 15 corre a 4,7 m/s en vez de 5,6 y tarda 0,3 s en arrancar (a 4 m llega 0,3 s más tarde que con 50 y
+  0,4 s más que con 90: los balones a 4-5 m que con 90 alcanza, con 15 caen); con Salto 15 sube 74 cm en vez de 106 (contacto de remate 32 cm más
+  bajo, 54 cm menos que con 90), el remate pasa la red más bajo y se lo bloquean más, la ventana del remate es un 21 % más justa y la del bloqueo
+  un 34 % más corta; con Salto 90 llega más arriba, con más ángulo y algo más de margen.
+- `VB.ATTR_K`, `attrK()` y `statProf()` exportados como antes (`VB.Sim.attrK/statProf`); campos nuevos de `attrK`: `accT, wJmp, blk, hands, rec`.
+  Jugador: campos `rvx, rvy` (velocidad de carrera, solo se usan con `accT > 0`). Partido: `g._digWho` (defensor previsto del último remate).
+
+## Integración de menús v2 + atributos + Carrera (10-nov-2026) — sim
+Tras las revisiones (Recepción, Defensa, Colocación, Control, Saque y Reacción no cambiaban el resultado; giro «resbaladizo» con
+Velocidad < 50). Todo solo con `p.ak` (atributos): sin atributos o con 50 la sim es idéntica (huella cpu/human 100 de 100 iguales;
+la variante attrs regenerada con `fingerprint6.js --write`).
+- **Precisión del toque del humano** (`VB.ATTR_K.err = [1,4, 1,0]`, `attrK` → `eRecv/eDig/eSet/eAtk`, 15 → ×1,5, 90 → ×0,59): multiplica
+  la dispersión del balón que sale (`mul`/`er`) y la prob. de los fallos gordos que ya existían (recepción desviada con q < 0,3,
+  colocación que pasa la red con q < 0,35, remate a la red con q < 0,45). Mismos dados: no hay gasto de azar nuevo.
+- **Calidad del pase/colocación** (`ATTR_K.errQ = [0,5, 0,8]`, no en el ataque): bajo → q × (1 − 0,5·(ek − 1)) (15 → ×0,75); alto →
+  q + (1 − q)·(1 − ek)·0,8. Se recalcula `grade`.
+- **Alcance del 1.er toque** del humano (`ATTR_K.reach = [0,16, 0,12]`, `rRecv/rDig`, ×0,94-1,05) en `reachOf`.
+- **Frenar y girar al momento** con Velocidad < 50: solo cuenta la velocidad que ya lleva en la dirección pedida; la rampa `accT` es
+  solo para arrancar (simtest: giro de 180° a toda velocidad, 0,000 m de deslizamiento con 15 y con 35; antes 0,74 / 0,34 m).
+- Medido con el harness de la revisión (`scratchpad/h.js`, 24 semillas × 360 s, % de puntos; ruido ±2): bot medio contra Normal
+  Defensa 15/90 = 45,6/51,5 (sin atributos 49,9), Control 45,9/50,3, Recepción 50,1/50,8, Colocación 50,2/52,3; bot bueno contra
+  Difícil Defensa 52,8/56,5, Control 52,6/54,9 (sin 54,7). **Recepción y Colocación siguen notándose poco** en el resultado: la IA del
+  compañero remata casi igual tras un pase regular. Probado y descartado: un fallo gordo fijo con el atributo bajo (recepción 15 daba
+  59 % por caos del bot). Pendiente: que la calidad del pase cuente en el remate del compañero IA (ai.js).

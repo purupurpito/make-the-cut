@@ -3590,7 +3590,7 @@
       if (la === 'spike' || la === 'free' || la === 'serve') { r.hitC.y -= 0.06; r.hitC.z -= 0.06; r.hitC.x = Math.min(r.hitC.x, 0.05); }
     }
     if (p.z > 0.012) {
-      var since = (C.JUMP_V - p.vz) / G, tj = tm - r.jumpT;
+      var since = (C.JUMP_V * (p.ak ? p.ak.jump : 1) - p.vz) / G, tj = tm - r.jumpT; // con atributos, su salto (Salto)
       if (!(tj > since - 0.12 && tj < since + 0.12)) {
         r.jumpT = tm - since;
         r.jumpKind = p.lastAction === 'block' ? 'block' : p.lastAction === 'spike' || p.lastAction === 'serve' ? 'attack' : classifyJump(g, p);

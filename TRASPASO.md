@@ -212,6 +212,18 @@ Desde el 9-nov-2026 el proyecto va por **sprints**, para controlar el gasto de t
 Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apuntado, NO empezado.
 
 ### To-do
+- **Pendiente de la integración de menús v2** (10-nov-2026):
+  - Recepción y Colocación aún se notan poco en el resultado (bot medio ±1-2 puntos; Defensa y Control ya ±3-6): que la calidad del
+    pase cuente en el remate del compañero IA (ai.js). Reacción del humano solo afecta a levantarse.
+  - Escalón Regional → Nacional (IA Fácil → Normal): con la prueba superada a media 35 el bot medio gana 0 de 8. Decidir si la
+    Nacional baja empieza en Fácil (careertest exige Normal) o se endurece la prueba.
+  - Carrera: rol prometido sin efecto en minutos, sueldo solo texto, química de suplentes se pierde en verano, firmar en mitad de
+    temporada sin confirmación.
+  - Escuadrón a media 50: cada mejora cuesta ya 2 puntos (antes 1 hasta 50); valorar abaratar `cost()`.
+  - Hoja final: «Menú principal» vuelve al principal (cambiar dificultad/puntos son 2 pasos más); ¿botón «Cambiar opciones»?
+  - Primera visita en móvil: aviso de instalar (`js/install.js`) + panel «Primer partido» seguidos: decidir.
+  - Siguen los dorsales «N.º 1 / N.º 2» en Jugadores (son dorsales, no ordinales de menú): decidir con Ferran.
+  - Sin probar a mano: mando y táctil reales en las páginas nuevas y en la Carrera.
 - **Carrera en 6v6** (prioridad de Ferran, 9-nov-2026: «luego adaptarlo al 6v6 no debería ser tan difícil»): la Carrera 2v2 ya está
   hecha (ver Hecho). Falta llevarla al 6v6 cuando exista (posiciones, plantilla del club en vez de un compañero, VNL / Olimpiadas
   como competiciones de arriba). Plan en el §3 de `notes/diseno-6v6-carrera.md`.
@@ -365,6 +377,16 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **Menús v2 + atributos que se notan + gestión de Carrera, integrados** (10-nov-2026; pedido de Ferran: menú sin números, submenús
+  por pestañas como EA FC, «Jugar» con los modos, en Carrera solo tu jugador, que se noten las estadísticas, elegir club al empezar):
+  principal con 5 entradas sin números → JUGAR (Partido rápido · Carrera · 6v6 «Próximamente») → preparación; pestañas comunes
+  `VB.UI.tabs` en Jugadores (Físico · Defensa · Ataque · Insignias), Ajustes, Controles **y la Carrera** (Q/E, LB/RB, RePág/AvPág,
+  LT/RT, deslizar); atributos en la física (velocidad, aceleración, salto, ventanas, precisión y alcance del toque; frenar al momento);
+  Carrera que empieza sin club (ofertas, prueba, comparar, negociar con riesgo), entreno/fatiga que se recupera, contrato con coste
+  de salida, estilo del club que entrena, bandeja, química, plantilla. Escuadrón de Partido rápido a media 50 (v3) y CPU con
+  atributos si el escuadrón pasa de 50. Cartel «MAKE THE CUT» con el balón nuevo. Todas las pruebas OK (huella attrs regenerada,
+  cpu/human idénticas). Capturas `tools/out/menus/final/`; detalle en CONTRACT y notes (ui_main «Menús v2» e «Integración de menús
+  v2», sim, carrera, arena).
 - **Personajes propios (dirección «TAJO») y playa completa** (10-nov-2026; pedido de Ferran tras ver «SetPoint Volleyball»): atletas
   cabezones (~5 cabezas, rig y alcance iguales), superficies lisas, contorno grueso del color del equipo, cara grande dibujada en el atlas
   (8×8 expresiones con 2 uniformes, halo claro en pieles oscuras), raya de guerra / zinc neón como sello, 7 peinados de mechones, manopla,

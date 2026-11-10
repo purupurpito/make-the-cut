@@ -690,3 +690,8 @@ jugador vería caer «dentro» de la cinta balones que se cantan fuera.
   cae sobre la cinta coral de 16×8 (antes 1 m por fuera: un bote fuera a 8,45 m parecía dentro) y el marcador de caída se atenúa al salir de
   la pista de la partida. Captura `tools/out/arte/final/review-playa.png`.
 - **fx.js:** el `fp` local del aro amarillo tapaba el pool de huellas (TypeError en cada frame al salir de la playa sin partido nuevo): ahora `fpt`.
+
+## Cartel «MAKE THE CUT» con el balón nuevo (10-nov-2026)
+`drawDeco(..., 'ball')` llama a `drawGameBall(g, x, y, r)`: el balón del juego de pages/icon.svg (caja 24×24, radio 10), panel naranja
+y azul con `Path2D` de los mismos trazados que ICON_HIT de input.js, tres costuras de tinta en remolino, contorno y brillo. Sin
+`Path2D(string)` (navegador viejo) sale un círculo. Vale para la valla LED y para el otro uso de `drawDeco` (marcas a 0,86 de alto).

@@ -43,12 +43,15 @@ console.log('Migración');
     { num: 11, role: 'Universal', lvl: 3, xp: 10, pts: 0, matches: 12, st: { jump: 38, speed: 42, react: 42, recv: 55, dig: 42, set: 44, spike: 35, ctl: 38, block: 34, serve: 40 } }] };
   const st = fakeStorage({ 'voley3d.squad': JSON.stringify(v1) });
   const VB = load(st), P = VB.Prog, sq = P.squad();
-  ok('conserva nivel, XP, puntos, partidos y atributos', sq[0].lvl === 6 && sq[0].xp === 33 && sq[0].pts === 4 && sq[0].matches === 12 && sq[0].st.spike === 60 && sq[1].st.recv === 55 && sq[1].lvl === 3);
+  ok('conserva nivel, XP, puntos y partidos; atributos +10 (escuadrón a media 50, v3)', sq[0].lvl === 6 && sq[0].xp === 33 && sq[0].pts === 4 && sq[0].matches === 12 && sq[0].st.spike === 70 && sq[1].st.recv === 65 && sq[1].lvl === 3);
   ok('añade bp/bd/beq vacíos', JSON.stringify([sq[0].bp, sq[0].bd, sq[0].beq]) === '[{},{},[]]');
   const saved = JSON.parse(st.getItem('voley3d.squad'));
-  ok('reescribe el guardado como v2 sin perder nada', saved.v === 2 && saved.a[0].lvl === 6 && saved.a[0].st.spike === 60 && Array.isArray(saved.a[1].beq));
+  ok('reescribe el guardado como v3 sin perder nada', saved.v === 3 && saved.a[0].lvl === 6 && saved.a[0].st.spike === 70 && Array.isArray(saved.a[1].beq));
+  const VBr = load(st);   // recargar el ya migrado: no vuelve a sumar
+  ok('migrar dos veces no suma dos veces', VBr.Prog.squad()[0].st.spike === 70);
   ok('renumera el escuadrón: 7 y 11 → 1 y 2 (en memoria y en el guardado)', sq[0].num === 1 && sq[1].num === 2 && saved.a[0].num === 1 && saved.a[1].num === 2);
-  ok('attrs() sigue dando [[1, 2], null]', JSON.stringify(P.attrs()[0][0]) === JSON.stringify(v1.a[0].st) && P.attrs()[1] === null);
+  ok('attrs() da [[1, 2], cpu]: media 51,5 → CPU con 51 en todo', P.attrs()[0][0].spike === 70 && P.attrs()[1] && P.attrs()[1][0].spike === 51 && P.attrs()[1][1].recv === 51);
+  ok('CPU sin atributos con media ≤ 50 y 50 + 0,6·(m − 50) por encima', P.cpuSt(50) === null && P.cpuSt(40) === null && P.cpuSt(90).jump === 74 && P.cpuSt(99).serve === 79);
   // guardado roto / basura
   const VB2 = load(fakeStorage({ 'voley3d.squad': '{"v":2,"a":[{"lvl":"x","bd":{"canon":9,"zz":2},"beq":["canon","canon","mira",5]}]}' }));
   const a0 = VB2.Prog.squad()[0];
@@ -66,7 +69,7 @@ console.log('Atleta genérico');
   const r = P.athleteAddXP(a, P.need(1) + P.need(2) + 5);
   ok('athleteAddXP sube dos niveles y da 6 puntos', r.lvlUp === 2 && a.lvl === 3 && a.pts === 6 && a.xp === 5 && a.matches === 1);
   ok('athleteBump gasta puntos y no baja', P.athleteBump(a, 'spike', 1) && a.st.spike === 31 && a.pts === 5 && !P.athleteBump(a, 'spike', -1));
-  ok('athleteBump no toca el guardado del escuadrón', P.squad()[0].st.spike === 46);
+  ok('athleteBump no toca el guardado del escuadrón', P.squad()[0].st.spike === 56);
   const b = P.saneAthlete(JSON.parse(JSON.stringify(a)));
   ok('saneAthlete hace ida y vuelta', JSON.stringify(b) === JSON.stringify(a));
 }

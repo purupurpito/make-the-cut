@@ -74,12 +74,25 @@ async function runSize(size) {
     // ================= MENÚ =================
     await page.navigate(EXTRA);
     await sleep(2500);
+    // tutorial de «instalar» (js/install.js): sale solo la primera vez en un móvil y tapa el menú; se cierra con «Ahora no»
+    if (await evalJs('!!(VB.Install&&VB.Install.isOpen&&VB.Install.isOpen())')) { console.log('  tutorial de instalar abierto: se cierra'); await evalJs('VB.Install.close()'); await sleep(400); }
     const env = await evalJs('JSON.stringify({t:VB.ctx.isTouch,m:VB.ctx.isMobile,dpr:devicePixelRatio,w:innerWidth,h:innerHeight,s:VB.ctx.state})');
     console.log('  entorno', env);
     const E = JSON.parse(env);
     check(E.t && E.m && E.s === 'menu', 'detecta móvil táctil y arranca en el menú');
     check(E.w === W && E.h === H, 'viewport exacto ' + E.w + 'x' + E.h);
     await shot('menu');
+    // menús v2: JUGAR → tarjetas de modos → Partido rápido (preparación con las filas de nivel, puntos, control y escenario)
+    await tap('#btnPlay'); await sleep(500);
+    check(await evalJs("VB.UI.menuPage()==='play'"), 'tocar JUGAR abre los modos de juego');
+    const cz = await evalJs(`JSON.stringify([].map.call(document.querySelectorAll('#mpPlay .mode, #btnPlayBack'),function(a){var r=a.getBoundingClientRect();return [a.id,Math.round(r.width),Math.round(r.height),Math.round(r.right),Math.round(r.bottom)]}))`);
+    check(JSON.parse(cz).every(z => z[1] >= 44 && z[2] >= 44 && z[3] <= W + 1 && z[4] <= H + 1), 'tarjetas y Volver de al menos 44 px y dentro de la pantalla (' + cz + ')');
+    await shot('jugar');
+    await tap('#btnQuick'); await sleep(500);
+    check(await evalJs("VB.UI.menuPage()==='quick'"), 'tocar Partido rápido abre la preparación');
+    const gz = await rectOf('#btnGo');
+    check(gz && gz.vis && gz.b <= H && gz.h >= 44, '¡A JUGAR! visible y de al menos 44 px (' + (gz && [Math.round(gz.h), Math.round(gz.b)]) + ')');
+    await shot('partido-rapido');
     // nivel (UI-06): la flecha › sube un nivel, la ‹ lo baja (zonas propias de ≥ 44 px); ninguna da la vuelta
     const d0 = await evalJs('VB.ctx.settings.difficulty');
     await tap('#optDiff .arr[data-d="1"]'); await sleep(250);
@@ -93,14 +106,23 @@ async function runSize(size) {
     check(JSON.parse(az).every(z => z[0] >= 44 && z[1] >= 44), 'zonas ‹ › de al menos 44x44 px (' + az + ')');
     // vuelve a Fácil (el bot humano no es un jugador de élite)
     for (let i = 0; i < 4 && (await evalJs('VB.ctx.settings.difficulty')) !== 'easy'; i++) { await tap('#optDiff .arr[data-d="-1"]'); await sleep(200); }
-    // ajustes y vuelta
+    // Volver (dos veces: preparación → modos → principal), ajustes y vuelta
+    await tap('#btnQuickBack'); await sleep(450); await tap('#btnPlayBack'); await sleep(450);
+    check(await evalJs("VB.UI.menuPage()==='main'"), 'tocar Volver dos veces vuelve al menú principal');
     await tap('#btnSettings'); await sleep(450);
     check(await evalJs("VB.UI.isPanelOpen&&VB.UI.isPanelOpen()&&!document.getElementById('pnSet').hidden"), 'tocar AJUSTES abre el panel');
+    // pestañas: tocar una y deslizar el dedo sobre el contenido
+    await tap('#setTabs .tab[data-tab="kit"]'); await sleep(350);
+    const tk = await evalJs("document.querySelector('#setTabs .tab.on').getAttribute('data-tab')+'/'+document.querySelector('#optKit').hidden");
+    check(tk === 'kit/false', 'tocar la pestaña Equipación la abre (' + tk + ')');
+    { const r = await rectOf('#optList'); await down(8, r.x + 90, r.y); for (let k = 1; k <= 6; k++) { await move(8, r.x + 90 - k * 30, r.y + k); await sleep(16); } await up(8); await sleep(400); }
+    const ts = await evalJs("document.querySelector('#setTabs .tab.on').getAttribute('data-tab')");
+    check(ts === 'a11y', 'deslizar a la izquierda pasa a la pestaña siguiente (' + ts + ')');
     await shot('ajustes');
     await tap('#btnPanelBack'); await sleep(450);
     check(await evalJs("!(VB.UI.isPanelOpen&&VB.UI.isPanelOpen())&&!document.getElementById('menu').hidden"), 'tocar VOLVER cierra el panel');
     // JUGAR → primer partido: "Ver cómo se juega / Jugar ya"
-    await tap('#btnPlay'); await sleep(500);
+    await tap('#btnPlay'); await sleep(500); await tap('#btnQuick'); await sleep(500); await tap('#btnGo'); await sleep(500);
     if (await evalJs("!document.getElementById('pnFirst').hidden")) {
       console.log('  primer partido: elección tutorial / jugar ya');
       await shot('primer-partido');

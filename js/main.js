@@ -67,7 +67,10 @@
     // coachTips: consejos del partido (franja de arriba). Se ven hasta la primera victoria: ui.js los apaga al ganar el 1r partido
     // y se pueden volver a encender en Ajustes · Juego.
     var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, camSens: 1, sfxVol: 1, musicVol: 0.75,
-      camStable: false, rumble: true, hudScale: 1, softFlash: false, arena: 'hall' }; // arena: sede ('hall' Palau del Mar | 'beach' Platja Llarga; ?map=beach en pruebas)
+      camStable: false, rumble: true, hudScale: 1, softFlash: false, arena: Q.debug ? 'hall' : 'beach', arenaV: 2 };
+    // arena: sede ('hall' Palau del Mar | 'beach' Platja Llarga; ?map=beach en pruebas). Desde el 10-nov-2026 la Playa es el
+    // escenario por defecto del 2v2 (decisión de Ferran); el 6v6 y la Carrera juegan en pabellón. Las escenas de depuración
+    // siguen en el pabellón para que las capturas y las pruebas sean comparables.
     var saved = false;
     var o = null;
     try { var raw = localStorage.getItem('voley3d.settings'); if (raw) { saved = true; o = JSON.parse(raw); for (var k in o) if (k in s && typeof o[k] === typeof s[k]) s[k] = o[k]; } } catch (e) { }
@@ -78,6 +81,8 @@
     if (!saved && !Q.debug) {
       if (!rec || !(rec.played > 0)) s.difficulty = 'easy';
     }
+    // migración arenaV 2 (una sola vez, para todos): los ajustes guardados de antes pasan a la Playa. Luego se respeta lo que se elija.
+    if (o && !(o.arenaV >= 2) && !Q.debug) s.arena = 'beach';
     // ajustes de antes de existir coachTips: quien ya ha ganado algún partido empieza sin consejos (como si acabara de ganar)
     if (!Q.debug && rec && rec.wins > 0 && !(o && 'coachTips' in o)) s.coachTips = false;
     if (DIFFS.indexOf(s.difficulty) < 0) s.difficulty = 'normal';
@@ -375,7 +380,7 @@
     var m = null; try { m = K.matchSetup(); } catch (e) { reportError('Career.matchSetup', e); }
     if (!m) { if (VB.CareerUI && VB.CareerUI.open) VB.CareerUI.open(); return false; }
     if (K.abortMatch) K.abortMatch();
-    ctx.actions.startMatch({ career: m.career, attrs: m.attrs, badges: m.badges, points: m.points, difficulty: m.difficulty, ctrl: m.ctrl, ctrlIdx: m.ctrlIdx, ref: m.ref,
+    ctx.actions.startMatch({ career: m.career, attrs: m.attrs, badges: m.badges, points: m.points, difficulty: m.difficulty, ctrl: 'one', ctrlIdx: 0, ref: m.ref, // en la Carrera solo llevas a tu jugador (menús v2: ni las carreras guardadas con «los dos»)
       kit: m.kit ? Object.assign({}, m.kit, { rival: m.rivalKit || null }) : null, // + equipación del club rival (Players.setKit st.rival)
       nums: m.career ? [[m.career.num | 0 || null, m.career.mateNum | 0 || null], null] : undefined }); // tus dorsales (sim: opts.nums)
     return true;

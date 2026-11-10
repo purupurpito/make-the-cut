@@ -76,7 +76,8 @@
     }
     if (p.down > 0) tl = Math.max(tl, p.down + 0.05);
     var d = Math.max(0, Math.hypot(px - x, py - y) - 0.45);
-    return tl + d / (C.SPEED * (p.prof || g.prof[p.team]).speed);
+    // con Velocidad < 50 (p.ak.accT > 0) arranca desde parado: pierde accT/2 s respecto a la carrera instantánea
+    return tl + d / (C.SPEED * (p.prof || g.prof[p.team]).speed) + (p.ak && p.ak.accT > 0 && d > 0 ? p.ak.accT * 0.5 : 0);
   }
   function airLand(g, p) { // s hasta que aterriza (0 en el suelo)
     return (p.z > 0 || p.vz > 0) ? (p.vz + Math.sqrt(p.vz * p.vz + 2 * C.G * Math.max(0, p.z))) / C.G : 0;
@@ -311,7 +312,7 @@
       p.aiDv = g.rng();
     }
     if (p.z === 0 && p.vz === 0 && p.down <= 0) {
-      if (attack && g.pr3.t < 0.47 + p.aiJt && Math.hypot(g.pr3.x + sd * 0.35 - p.x, g.pr3.y - p.y) < 1) aiJump(g, p);
+      if (attack && g.pr3.t < 0.47 * (p.ak ? p.ak.jump : 1) + p.aiJt && Math.hypot(g.pr3.x + sd * 0.35 - p.x, g.pr3.y - p.y) < 1) aiJump(g, p);
       if (block) {
         var opp = g.teams[1 - t], att = false;
         for (var a = 0; a < opp.length && !att; a++) att = opp[a].z > 0.1 && Math.abs(opp[a].x) < 4;

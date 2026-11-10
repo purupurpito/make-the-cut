@@ -10,13 +10,13 @@ ligas, copas y nombres de jugadores.
 
 ## Bucle
 
-1. **Crear jugador**: nombre (18 car.), dorsal 1-99, rol y puntos por set (11/15/21/25; 15 por defecto) y control
-   (Solo tu jugador = `ctrl:'one'`, por defecto; Los dos = `'both'`). Media inicial 35 con el perfil del rol:
+1. **Crear jugador**: nombre (18 car.), dorsal 1-99, rol y puntos por set (11/15/21/25; 15 por defecto). Control: siempre solo
+   tu jugador (v2; antes había «Los dos»). Media inicial 35 con el perfil del rol:
    - Atacante: salto +6, potencia +7, control +3, bloqueo +4, saque +1 · recepción −7, defensa −4, colocación −10.
    - Universal: casi plano (velocidad y reacción +2, bloqueo −3).
    - Colocador-receptor: colocación +9, recepción +7, defensa +4, reacción +2 · salto −5, potencia −8, bloqueo −7, saque −4.
    El atleta es el de VB.Prog (`newAthlete`): `st, lvl, xp, pts, matches, bp, bd, beq` + `name, num, role, roleKey, age` (18 años).
-2. **Club**: empiezas en uno de los 2-3 peores clubes de la Liga Regional. El club pone compañero con el rol complementario
+2. **Club**: lo eliges tú entre las ofertas de inicio (v2, ver §Gestión; antes te tocaba uno de los 2-3 peores de la Regional). El club pone compañero con el rol complementario
    (atacante ↔ colocador-receptor; universal ↔ universal) y media = media del club + 3.
 3. **Temporada**: liga a doble vuelta (método del círculo, 14 jornadas de 4 partidos) en las 5 ligas a la vez + copa de los 4
    primeros de tu liga (semifinales 1-4 y 2-3, final; si no te clasificas se juega sola). Puntos: 2-0 = 3, 2-1 = 2, 1-2 = 1, 0-2 = 0.
@@ -29,6 +29,47 @@ ligas, copas y nombres de jugadores.
 6. **Fin de temporada**: posición, objetivo (cumplido ±15 de confianza del entrenador), campeón de liga/copa, ascensos (los 2
    primeros suben) y descensos (los 2 últimos bajan) de TODAS las ligas, tu club incluido. Hasta 3 ofertas: «Fichar» o «Seguir en
    tu club». Empieza la temporada siguiente (+1 año; calendario nuevo; el club renueva al compañero si se ha quedado 4+ por debajo).
+
+## Gestión (v2, 10-nov-2026; pedido de Ferran: «self-management»)
+
+Guardado `v: 2`. `migrate()` pasa los v1 sin perder nada: un jugador que ya estaba en un club sigue en él (no elige de nuevo),
+`ctrl: 'both'` → `'one'`, contrato por defecto (2 temporadas, rol según el entrenador), plantilla nueva, química = 4 × partidos de
+la temporada (tope 60), entrenamiento «Equilibrado», fatiga 0 y un mensaje «Novedades en la Carrera». Idempotente.
+
+- **Solo tu jugador**: la Carrera ya no ofrece «Controlar»; `matchSetup().ctrl` siempre `'one'` y la nota es solo tuya.
+- **Inicio sin club** (`phase: 'pick'`, `myClub: -1`, `mate: null`, `window: 'start'`): `genStartOffers` da 3-4 clubes de entre
+  los 6 peores de la Regional y (75 %) una **prueba** en el peor de la Nacional (`trial`, `chance` = 0,3 + 0,04 × (media − 35), 0,1-0,75).
+  Ficha de cada oferta: club, liga, prestigio (`clubInfo().stars` 1-5), media, estilo del club (fijo por nombre), ciudad, compañero
+  completo (`mateP`: nombre, rol, media, estilo; es el que te dan al firmar), objetivo, rol prometido, años, sueldo ficticio
+  (`SALARY` por liga × nivel × rol). `acceptOffer(i, años)` firma (prueba: si falla, la oferta desaparece y sigues eligiendo);
+  `moreTime()` (una vez): el de menos interés se va y llama otro; `rejectAll()`: ofertas nuevas de los 3 peores clubes, sin prueba
+  y algo peor pagadas. `create({autoClub: true})` asigna club como antes (solo pruebas).
+- **Contrato** `c.contract {club, years, left, role, salary, since}`: `left` cuenta la temporada en curso. Al acabar la última,
+  `review.renew` (rol por la confianza: ≥ 70 indiscutible, ≥ 45 titular) y `stay(años)` renueva. El rol fija la confianza inicial
+  del entrenador (45/55/65). En 2v2 no hay minutos: el rol es eso y el sueldo (texto).
+- **Negociar** `negotiate(i)`: pide un rol más; sale si `interés + 3 + azar(0-4) > umbral` (3 titular, 8 indiscutible); después la
+  oferta queda «firme». Las ofertas de mitad/fin de temporada también traen `mateP` y sueldo.
+- **Traspaso** `requestTransfer(on)`: −8 de confianza, +5 en `offerScore`, a mitad de temporada basta nota 6,5 (sin él, 7). Se quita
+  al cambiar de club; retirarlo da +3.
+- **Entrenamiento** `setTraining(k)`: tras cada partido (jugado o simulado) `trainWeek` suma progreso: Equilibrado +15 a Físico,
+  Defensa y Ataque (fatiga +4); Físico/Defensa/Ataque +50 a su grupo (fatiga +12); Descanso nada (fatiga −35). Cada 100 → +1 gratis
+  en el atributo más bajo del grupo (grupos de `VB.Prog.GROUPS`). Fatiga > 40 → −1..−4 a TODOS tus atributos en el partido
+  (`matchSetup`) y −0,5 por punto en `teamOvr`; aviso del preparador al pasar de 60. Curva (careertest, todo simulado, Equilibrado):
+  media 39 → 43 → 48 → 51 → 54 → 56 → 59 → 61 en 8 temporadas (antes 57: el entreno suma ~+7 puntos por temporada).
+- **Compañero y química**: `c.squad` = otros 2 del club (uno del mismo rol con media del club, un universal −1); se rehace cada
+  verano y al fichar. `changeMate(i)` exige confianza ≥ 40; la química se guarda con cada uno. Química +5 por partido jugado, +3
+  simulado; `chemBonus` = mín(3, química / 30) suma a los DOS en reacción, colocación y recepción (`matchSetup`, solo ese partido;
+  sim.js no se toca) y +0,5 por punto en `teamOvr`.
+- **Bandeja** `c.inbox` (tope 40): bienvenida y objetivo, cambios de estado del entrenador (con frase), mitad de temporada (posición
+  frente al objetivo y ofertas), fin de temporada (resumen, ofertas, renovación), entrenamiento/fatiga, traspaso, compañero,
+  negociación, prueba. `unread`, `readMsg`, `readAll` (la pestaña Mensajes marca como leído al abrirla).
+
+**Interfaz (career-ui.js)**: pestañas Partido · Mensajes (n) · Jugador (Ataque/Defensa/Físico/Insignias/Entreno) · Club
+(Ficha/Compañero/Contrato/Ofertas) · Liga (Clasificación/Calendario) · Palmarés (Palmarés/Temporadas/Opciones). Eligiendo club: una
+pestaña por oferta + «Comparar» (tabla). ←/→ con el foco en una pestaña pasa a la siguiente de su barra (teclado y stick).
+Todas las pestañas salen de `tabsBar()`: cuando el agente de menús publique su componente común (VB.UI.tabs o similar) se cambia
+solo esa función. Arreglo: a 2560×1440 la Carrera se quedaba en la mitad de arriba (zoom de index.html + `height: calc(100%/--vs)`);
+career-ui.js fuerza `#app #career .cr-in{height:100%}` (medido: 1420 de 1420 px).
 
 ## Ligas
 
@@ -152,3 +193,28 @@ Resuelto en la integración del 9-nov-2026 (ver notes/ui_main.md, «Integración
 
 - Sin probar a mano: mando real y táctil real en las pantallas de Carrera (probado: ratón/clic, teclado simulado y el flujo
   jugar → gameOver → hub en Chrome headless).
+
+## Integración (10-nov-2026): decisiones con efecto y pestañas comunes
+- **Fatiga**: Equilibrado ya no cansa (`fat: 0`); los enfoques dan 60 por semana (antes 50) con +12 de fatiga; en verano
+  (`newSeason`) la fatiga vuelve a 0 (mensaje «Vacaciones» si pasaba de 40); el preparador avisa **cada vez** que sube la resta.
+- **Contrato**: fichar por otro club con contrato en vigor y sin ser transferible (`earlyExit(c)`) se puede, pero el entrenador nuevo
+  empieza con `EARLY_COACH` (10) menos de confianza (mensaje del agente; aviso en la ficha). `contract.since` = temporada en la que
+  empieza (antes la que acababa).
+- **Negociar**: sale si `interés + 0..4 > ROLE_NEED` (antes +3..7: 93 %; ahora 57 % en 127 negociaciones de careertest); si no
+  sale, `oferta.negNo` y al firmar el entrenador empieza con `NEG_COACH` (8) menos. La ficha enseña la confianza inicial.
+- **Estilo del club** (`STYLE_TRAIN`): sus entrenos suman `STYLE_PROG` (6) por semana a un grupo (Ofensivo → Ataque; Defensivo y
+  Saque y bloqueo → Defensa; Juego rápido → Físico; Equilibrado nada), salvo descansando.
+- **Traspaso**: la petición caduca con la temporada.
+- **UI** (career-ui.js): las dos barras son `VB.UI.tabs` (`#crTabs`, `#crSub`): Q/E y LB/RB (o Y) apartado u oferta; RePág/AvPág y
+  LT/RT sub-pestaña; ←/→ con el foco en la pestaña; deslizar sobre `#crBody`; solo la pestaña elegida entra en ↑/↓ (↓ baja al
+  contenido). Jugador: Físico · Defensa · Ataque (el orden de Jugadores). Pestañas de oferta con el nombre del club. «‹ Jugar» (antes
+  «‹ Menú»). A ≤ 420 px de alto «‹ Jugar» y la media comparten fila con los apartados (contenido 264 px a 844×390 y 249 a 667×375;
+  antes 224/209) y en la ficha de oferta «Firmar» sube debajo del nombre. Botones a 44 px en táctil.
+- Elegir club: «Rechazar todas» pide una segunda pulsación en 3 s y dice la verdad (se pierden, también la prueba; llegan de clubes
+  más modestos con algo más de interés); «Comparar» con objetivo, años y «€/mes»; el último mensaje del agente sale en la pantalla.
+- Fin de temporada: las ofertas viven en Club › Ofertas; arriba un aviso «Ver ofertas» y «Seguir en…» pide confirmación si hay ofertas.
+- Bandeja: se marca leída al abrirla (el contador ya no se queda); lo nuevo sigue resaltado ese pintado. Partido: «Pareja N» (fuerza
+  de los dos) en vez de «Media N»; cabecera «TU MEDIA».
+- Pendiente: escalón a la Liga Nacional (IA Normal; con la prueba superada a media 35 el bot medio gana 0 de 8), rol prometido sin
+  efecto en minutos, sueldo solo texto, química de suplentes que se pierde cada verano, sin confirmación al firmar en mitad de
+  temporada; mando y táctil reales sin probar.

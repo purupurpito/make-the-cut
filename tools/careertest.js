@@ -27,8 +27,57 @@ ok(C, 'VB.Career existe');
 // ------------------------------------------------------------------ crear
 section('Crear carrera');
 ok(!C.exists(), 'sin carrera al principio');
-let c = C.create({ name: 'Ferran Prueba', num: 14, role: 'cr', points: 15, seed: 12345 });
+let c = C.create({ name: 'Ferran Prueba', num: 14, role: 'cr', points: 15, seed: 12345, ctrl: 'both' });
 ok(C.exists(), 'existe tras crear');
+ok(c.ctrl === 'one', 'Carrera: siempre control «uno» aunque se pida «both»');
+ok(c.clubs.length === 40, '40 clubes (' + c.clubs.length + ')');
+
+// ------------------------------------------------------------------ inicio: elegir club (gestión v2)
+section('Inicio sin club: ofertas, rechazar, más tiempo, prueba y firmar');
+{
+  ok(c.phase === 'pick' && C.myClub(c) === null && c.mate === null, 'tras crear no hay club ni compañero (fase pick)');
+  ok(C.next(c) === null && C.matchSetup(c) === null, 'sin club no hay partido');
+  ok(c.offers.length >= 3 && c.offers.length <= 5, 'llegan 3-5 ofertas (' + c.offers.length + ')');
+  const reg = c.offers.filter(o => !o.trial), tri = c.offers.filter(o => o.trial);
+  ok(reg.length >= 3 && reg.every(o => o.lvl === 0 && C.club(c, o.club).lvl === 0), 'al menos 3 de la Liga Regional');
+  ok(tri.every(o => o.lvl === 1 && o.chance > 0 && o.chance < 1), 'la prueba (si la hay) es de la Liga Nacional con probabilidad (' + tri.map(o => o.chance).join(',') + ')');
+  ok(c.offers.every(o => o.mateP && o.mateP.name && o.mateP.style && o.mate === C.ovrOf(o.mateP.st) && o.objective && o.role && o.salary > 0 && o.years >= 1), 'ficha completa: compañero (nombre, rol, media, estilo), objetivo, rol, sueldo, años');
+  ok(c.offers.every(o => { const f = C.clubInfo(c, C.club(c, o.club)); return f.stars >= 1 && f.stars <= 5 && f.style && f.city && f.league; }), 'ficha del club: prestigio, estilo, ciudad, liga');
+  ok(c.inbox.length >= 1 && C.unread(c) >= 1, 'mensaje del agente en la bandeja');
+  // guardar y cargar en plena elección
+  C._reset(); c = C.get();
+  ok(c && c.phase === 'pick' && c.offers.length >= 3, 'se guarda y se carga en plena elección');
+  const avg = l => l.filter(o => !o.trial).reduce((s, o) => s + o.ovr, 0) / l.filter(o => !o.trial).length;
+  const a0 = avg(c.offers), ids0 = c.offers.map(o => o.club).join();
+  const mt = C.moreTime();
+  ok(mt && c.pick.more && c.offers.map(o => o.club).join() !== ids0, 'pedir más tiempo: una oferta se va y llega otra');
+  ok(C.moreTime() === null, 'más tiempo solo una vez');
+  ok(C.rejectAll() && c.pick.round === 1, 'rechazar todas');
+  ok(c.offers.length >= 2 && c.offers.every(o => !o.trial && o.lvl === 0), 'nuevas ofertas, sin prueba');
+  ok(avg(c.offers) <= a0 + 0.01, 'las nuevas son peores (media ' + avg(c.offers).toFixed(1) + ' ≤ ' + a0.toFixed(1) + ')');
+  // la prueba: con suerte o sin ella acaba en firmar o en quitar la oferta (semillas distintas)
+  let passN = 0, failN = 0;
+  for (let s = 1; s <= 30; s++) {
+    const keep = mem['voley3d.career'];
+    const t = C.create({ name: 'Prueba', seed: 5000 + s }); const i = t.offers.findIndex(o => o.trial);
+    if (i < 0) { mem['voley3d.career'] = keep; C._reset(); continue; }
+    const n0 = t.offers.length, r = C.acceptOffer(i);
+    if (r) { passN++; ok(C.myClub(t).lvl === 1 && t.phase === 'league', 'prueba superada: a la Liga Nacional'); }
+    else { failN++; ok(t.phase === 'pick' && t.offers.length === n0 - 1 && t.pick.fail >= 0, 'prueba fallida: se quita la oferta y sigues eligiendo'); }
+    mem['voley3d.career'] = keep; C._reset();
+  }
+  c = C.get();
+  ok(passN > 0 && failN > passN, 'pruebas: ' + passN + ' superadas, ' + failN + ' no (≈30 %)');
+  // firmar
+  const pickI = c.offers.findIndex(o => !o.trial), o = c.offers[pickI], mate = o.mateP;
+  ok(C.acceptOffer(pickI, 3), 'firmar por un club');
+  ok(c.phase === 'league' && c.myClub === o.club && c.week === 0, 'en el club elegido, jornada 1');
+  ok(c.mate.name === mate.name && C.mateOvr(c) === o.mate, 'el compañero es el anunciado (' + c.mate.name + ', ' + o.mate + ')');
+  ok(c.contract && c.contract.years === 3 && c.contract.left === 3 && c.contract.role === o.role && c.contract.salary === o.salary, 'contrato de 3 temporadas con el rol y el sueldo de la oferta');
+  ok(Array.isArray(c.squad) && c.squad.length === 2 && c.squad.every(m => m.num !== c.player.num && m.num !== c.mate.num), 'plantilla con 2 compañeros posibles (dorsales libres)');
+  ok(c.objective && c.objective.text === o.objective, 'objetivo = el anunciado');
+  ok(c.coach === [45, 55, 65][C.ROLE_LV.indexOf(o.role)], 'confianza inicial según el rol (' + c.coach + ')');
+}
 ok(c.clubs.length === 40, '40 clubes (' + c.clubs.length + ')');
 for (let L = 0; L < 5; L++) ok(C.clubsOf(c, L).length === 8, 'liga ' + L + ' con 8 clubes');
 ok(C.myClub(c).lvl === 0, 'empiezas en la Liga Regional');
@@ -37,7 +86,7 @@ ok(c.player.st.set > c.player.st.spike, 'colocador-receptor: más colocación qu
 ok(c.player.name === 'Ferran Prueba' && c.player.num === 14, 'nombre y dorsal');
 ok(c.mate.num === 2, 'el compañero lleva el 2 (' + c.mate.num + ')');
 { const keep = mem['voley3d.career']; // dos carreras de prueba y se vuelve a la de arriba
-  ok(C.create({ name: 'Dos', num: 2, seed: 7 }).mate.num !== 2 && C.create({ name: 'Uno', seed: 7 }).player.num === 1, 'dorsal por defecto 1; si eliges el 2, el compañero otro');
+  ok(C.create({ name: 'Dos', num: 2, seed: 7, autoClub: true }).mate.num !== 2 && C.create({ name: 'Uno', seed: 7, autoClub: true }).player.num === 1, 'dorsal por defecto 1; si eliges el 2, el compañero otro');
   mem['voley3d.career'] = keep; C._reset(); c = C.get(); }
 ok(c.mate && C.mateOvr(c) > 0, 'compañero del club (' + (c.mate && c.mate.name) + ', media ' + C.mateOvr(c) + ')');
 ok(c.mate.roleKey === 'atk', 'compañero complementario (colocador-receptor → atacante)');
@@ -197,7 +246,7 @@ section('Progresión de varias temporadas (todo simulado, gasta puntos en lo má
 {
   C.abandon();
   ok(!C.exists() && !mem['voley3d.career'], 'abandonar borra el guardado');
-  c = C.create({ name: 'Curva', num: 9, role: 'atk', seed: 999 });
+  c = C.create({ name: 'Curva', num: 9, role: 'atk', seed: 999, autoClub: true });
   const rows = [];
   for (let s = 0; s < SEASONS; s++) {
     playSeason();
@@ -214,7 +263,7 @@ section('Progresión de varias temporadas (todo simulado, gasta puntos en lo má
 // ------------------------------------------------------------------ arreglos finales del sprint
 section('Dificultad, ofertas y guardados dañados');
 {
-  C.abandon(); c = C.create({ name: 'Arreglos', num: 9, role: 'atk', seed: 4321 });
+  C.abandon(); c = C.create({ name: 'Arreglos', num: 9, role: 'atk', seed: 4321, autoClub: true });
   ok(C.clubsOf(c, 0).every(k => C.difficultyFor(k) === 'easy'), 'Liga Regional: IA Fácil en todos los clubes');
   ok(C.clubsOf(c, 1).every(k => C.difficultyFor(k) === 'normal'), 'Liga Nacional: IA Normal');
   // mitad de temporada: sin nota media >= 7 no hay ofertas
@@ -242,6 +291,145 @@ section('Dificultad, ofertas y guardados dañados');
   mem['voley3d.career'] = '{roto'; C._reset(); C.abandon(); C._reset();
   mem['voley3d.career'] = '{roto'; ok(C.get() === null && C.lost() && mem['voley3d.career.bak'] === '{roto', 'JSON roto: copia en .bak y aviso (lost)');
   C.create({ name: 'Nueva', seed: 1 }); ok(!C.lost(), 'crear otra carrera quita el aviso');
+}
+
+// ------------------------------------------------------------------ gestión durante la carrera (v2)
+section('Gestión: entrenamiento, fatiga, química, compañero, traspaso, negociar, renovar');
+{
+  C.abandon(); c = C.create({ name: 'Gestor', num: 5, role: 'atk', seed: 2468, autoClub: true });
+  ok(c.phase === 'league' && C.myClub(c), 'autoClub: club asignado (pruebas)');
+  // entrenamiento: enfoque Físico → mejoras gratis en salto/velocidad/reacción y fatiga
+  ok(C.setTraining('phys') && c.train === 'phys', 'enfoque Físico');
+  ok(!C.setTraining('xx'), 'enfoque inválido no cambia');
+  const ph0 = c.player.st.jump + c.player.st.speed + c.player.st.react, other0 = c.player.st.recv + c.player.st.dig + c.player.st.block + c.player.st.set + c.player.st.spike + c.player.st.ctl + c.player.st.serve;
+  const pts0 = c.player.pts;
+  let s1 = null; for (let i = 0; i < 4; i++) s1 = C.simulateNext(c);
+  ok(c.player.st.jump + c.player.st.speed + c.player.st.react === ph0 + 2, 'Físico 4 semanas: +2 en el grupo físico (' + (c.player.st.jump + c.player.st.speed + c.player.st.react - ph0) + ')');
+  ok(c.player.st.recv + c.player.st.dig + c.player.st.block + c.player.st.set + c.player.st.spike + c.player.st.ctl + c.player.st.serve === other0, 'el resto de atributos no cambia (los puntos de mejora siguen aparte: ' + pts0 + ' → ' + c.player.pts + ')');
+  ok(s1 && s1.train && s1.train.focus === 'phys', 'el resumen del partido trae el entrenamiento');
+  ok(c.fatigue === 48 && C.fatigueMalus(c) === 1, 'fatiga 4 × 12 = 48 → −1 en el partido (' + c.fatigue + ', −' + C.fatigueMalus(c) + ')');
+  const msF = C.matchSetup(c);
+  ok(msF.attrs[0][0].spike === c.player.st.spike - 1 && msF.fatigue === 1, 'la fatiga resta en matchSetup (' + msF.attrs[0][0].spike + ' de ' + c.player.st.spike + ')');
+  ok(C.setTraining('rest')); C.simulateNext(c);
+  ok(c.fatigue === 13 && C.fatigueMalus(c) === 0, 'Descanso: −35 de fatiga (' + c.fatigue + ')');
+  c.fatigue = 70; let warn = c.inbox.length; C.setTraining('atk'); c.fatigue = 55; C.simulateNext(c);
+  ok(c.inbox.length > warn && c.inbox.some(m => m.k === 'train'), 'aviso del preparador al pasar de 60 de fatiga');
+  // química: sube jugando juntos y suma en reacción/colocación/recepción a los dos
+  ok(c.mate.chem > 0, 'química con el compañero tras jugar (' + c.mate.chem + ')');
+  c.fatigue = 0; c.mate.chem = 0; const m0 = C.matchSetup(c); c.mate.chem = 95; const m1 = C.matchSetup(c);
+  ok(C.chemBonus(c) === 3 && m1.attrs[0][1].set === Math.min(99, m0.attrs[0][1].set + 3) && m1.attrs[0][0].recv === Math.min(99, m0.attrs[0][0].recv + 3), 'química 95: +3 en colocación/recepción de los dos');
+  ok(m1.attrs[0][0].spike === m0.attrs[0][0].spike, 'la química no toca la potencia');
+  c.mate.chem = 95; const tq1 = C.teamOvr(c); c.mate.chem = 0; const tq0 = C.teamOvr(c);
+  ok(tq1 - tq0 === 1.5, 'química en la simulación rápida: +1,5 de fuerza (' + (tq1 - tq0) + ')');
+  ok(m1.ctrl === 'one', 'matchSetup: control «uno» siempre');
+  // cambio de compañero
+  c.coach = 20; ok(C.changeMate(0) === 'coach', 'con el entrenador descontento no te deja cambiar de compañero');
+  c.coach = 60; c.mate.chem = 40; const old = c.mate.name, nu = c.squad[0].name;
+  ok(C.changeMate(0) === 'ok' && c.mate.name === nu && c.squad[0].name === old, 'cambio de compañero (el anterior vuelve a la plantilla)');
+  ok(c.squad[0].chem === 40 && c.mate.chem === 0, 'la química se guarda con cada compañero');
+  ok(C.matchSetup(c).career.mate === nu, 'el partido usa el compañero nuevo');
+  // traspaso
+  const sc0 = C.offerScore(c), co0 = c.coach;
+  ok(C.requestTransfer(true) && c.listed && c.coach === co0 - 8, 'pedir el traspaso: el entrenador pierde 8 de confianza');
+  ok(C.offerScore(c) === sc0 + 5 - 0.8, 'transferible: +5 de interés para los clubes (−0,8 por la confianza)');
+  ok(!C.requestTransfer(true), 'pedirlo dos veces no hace nada');
+  c.notes = [{ nota: 6.7 }, { nota: 6.7 }]; C.KEYS.forEach(k => { c.player.st[k] = 60; });
+  ok(C._genOffers(c, true).length > 0, 'transferible: ofertas a mitad de temporada con nota 6,7');
+  ok(C.requestTransfer(false) && !c.listed, 'retirar la petición');
+  ok(C._genOffers(c, true).length === 0, 'sin traspaso y nota 6,7: sin ofertas a mitad');
+  // negociar y firmar con duración propia (fin de temporada)
+  c.notes = []; let gd = 0; while (c.phase !== 'off' && gd++ < 40) C.simulateNext(c);
+  C.KEYS.forEach(k => { c.player.st[k] = 70; }); c.offers = C._genOffers(c, false);
+  ok(c.offers.length > 0 && c.offers.every(o => o.mateP && o.salary > 0), 'ofertas de fin de temporada con ficha (compañero y sueldo)');
+  const ni = c.offers.findIndex(o => o.role !== 'Titular indiscutible');
+  if (ni >= 0) {
+    const r0 = c.offers[ni].role, res = C.negotiate(ni);
+    ok(res === 'ok' || res === 'no', 'negociar responde (' + res + ')');
+    ok(c.offers[ni].firm && (res === 'no' ? c.offers[ni].role === r0 : C.ROLE_LV.indexOf(c.offers[ni].role) === C.ROLE_LV.indexOf(r0) + 1), 'negociar: un rol más o la oferta queda firme');
+    ok(C.negotiate(ni) === '', 'tras negociar ya no se puede otra vez');
+  }
+  // renovar: con el contrato acabado, «Seguir» renueva por los años que elijas
+  c.contract.left = 1; c.offers = [];
+  const keep = JSON.stringify(c); c = JSON.parse(keep);   // (copia por si acaso: se trabaja sobre el cargado)
+  mem['voley3d.career'] = keep; C._reset(); c = C.get();
+  c.review.renew = c.review.renew || { role: 'Titular', salary: 900, years: 2 };
+  const myId = c.myClub;
+  ok(C.stay(3) && c.myClub === myId && c.contract.years === 3 && c.contract.left === 3, 'renovar 3 temporadas al seguir (' + JSON.stringify(c.contract) + ')');
+  ok(c.inbox.some(m => /renovado/i.test(m.t)), 'mensaje de renovación');
+  gd = 0; while (c.phase !== 'off' && gd++ < 40) C.simulateNext(c); C.stay();
+  ok(c.contract.left === 2, 'cada temporada en el club resta un año de contrato (' + c.contract.left + ')');
+  // bandeja
+  const un = C.unread(c); ok(un > 0, 'mensajes sin leer (' + un + ')');
+  const first = c.inbox.find(m => !m.r); ok(C.readMsg(first.id) && C.unread(c) === un - 1, 'leer un mensaje');
+  ok(C.readAll() === un - 1 && C.unread(c) === 0, 'leer todos');
+  ok(c.inbox.length <= 40, 'bandeja con tope de 40 (' + c.inbox.length + ')');
+}
+
+// ------------------------------------------------------------------ integración (10-nov-2026): decisiones con efecto
+section('Integración: fatiga que se recupera, contrato, negociar con riesgo, estilo del club');
+{
+  C.abandon(); c = C.create({ name: 'Decide', num: 3, role: 'uni', seed: 777, autoClub: true });
+  ok(C.setTraining('bal') === false || c.train === 'bal', 'Equilibrado por defecto');
+  for (let i = 0; i < 8; i++) C.simulateNext(c);
+  ok((c.fatigue | 0) === 0, 'Equilibrado no cansa (fatiga ' + c.fatigue + ' tras 8 semanas)');
+  C.setTraining('phys'); let n0 = c.inbox.filter(m => m.k === 'train').length; c.fatigue = 50;
+  C.simulateNext(c); C.simulateNext(c);   // 62 (−2) y 74 (−3): un aviso por cada subida de la resta
+  ok(c.inbox.filter(m => m.k === 'train').length - n0 === 2, 'aviso del preparador cada vez que sube la resta (' + (c.inbox.filter(m => m.k === 'train').length - n0) + ')');
+  // estilo del club: suma progreso a su grupo cada semana
+  const sty = C.clubInfo(c, C.myClub(c)).style, grp = C.STYLE_TRAIN[sty];
+  console.log('  estilo ' + sty + ' → ' + (grp || 'ninguno'));
+  if (grp) { C.setTraining('rest'); const tp0 = c.tp[grp] | 0; C.setTraining('bal'); C.simulateNext(c); ok(((c.tp[grp] | 0) - tp0 + 100) % 100 === (15 + C.STYLE_PROG) % 100, 'estilo del club: +' + C.STYLE_PROG + ' de progreso en ' + grp); }
+  // fin de temporada: fatiga a 0, traspaso caduca, contrato con fecha de la temporada nueva
+  C.setTraining('phys'); C.requestTransfer(true);
+  let gd = 0; while (c.phase !== 'off' && gd++ < 40) C.simulateNext(c);
+  ok(c.fatigue > 40, 'con enfoque Físico toda la temporada hay fatiga (' + c.fatigue + ')');
+  const s0 = c.season; c.contract.left = 3; c.listed = true;
+  C.KEYS.forEach(k => { c.player.st[k] = 72; }); c.offers = C._genOffers(c, false);
+  ok(!C.earlyExit(c), 'transferible: salir no es salida con contrato');
+  c.listed = false;
+  ok(C.earlyExit(c), 'con 3 temporadas de contrato, fichar por otro es salida con contrato');
+  if (c.offers.length) {
+    const o = c.offers[0], rl = C.ROLE_LV.indexOf(o.role); c.listed = false;
+    ok(C.acceptOffer(0) && c.season === s0 + 1, 'fichar con contrato en vigor se puede');
+    ok(c.coach === [45, 55, 65][rl] - C.EARLY_COACH - (o.negNo ? C.NEG_COACH : 0), 'pero el entrenador nuevo empieza con ' + C.EARLY_COACH + ' menos (' + c.coach + ')');
+    ok(c.contract.since === s0 + 1, 'el contrato nuevo empieza en la temporada nueva (since ' + c.contract.since + ')');
+    ok((c.fatigue | 0) === 0, 'en verano la fatiga vuelve a 0');
+    ok(!c.listed, 'la petición de traspaso no pasa a la temporada siguiente');
+  }
+  // negociar: no siempre sale y fallar cuesta
+  let tot = 0, yes = 0, costOk = true;
+  for (let sd = 1; sd <= 60; sd++) {
+    C.abandon(); c = C.create({ name: 'N' + sd, seed: 5000 + sd });
+    c.offers.forEach((o, i) => { if (o.trial || o.role === 'Titular indiscutible') return; tot++; const r = C.negotiate(i); if (r === 'ok') yes++; else if (!o.negNo) costOk = false; });
+  }
+  console.log('  negociaciones aceptadas: ' + yes + ' de ' + tot);
+  ok(tot > 0 && yes / tot < 0.85 && yes / tot > 0.2, 'negociar sale a veces, no casi siempre (' + Math.round(100 * yes / Math.max(1, tot)) + ' %)');
+  ok(costOk, 'una negociación rechazada queda marcada (negNo) para la confianza inicial');
+}
+
+// ------------------------------------------------------------------ migración de guardados v1
+section('Migración de un guardado v1 (con club, «Los dos», sin gestión)');
+{
+  C.abandon(); c = C.create({ name: 'Viejo', num: 7, role: 'uni', seed: 1357, autoClub: true });
+  for (let i = 0; i < 5; i++) C.simulateNext(c);
+  const v1 = JSON.parse(JSON.stringify(c));
+  v1.v = 1; v1.ctrl = 'both';
+  ['inbox', 'msgN', 'train', 'tp', 'fatigue', 'listed', 'squad', 'contract', 'pick'].forEach(k => delete v1[k]);
+  delete v1.mate.chem; delete v1.mate.style;
+  v1.offers.forEach(o => { delete o.mateP; delete o.salary; });
+  const raw = JSON.stringify(v1); mem['voley3d.career'] = raw; C._reset();
+  const m = C.get();
+  ok(m && m.v === 2, 'guardado v1 cargado y pasado a v2');
+  ok(m.ctrl === 'one', '«Los dos» migra a «uno»');
+  ok(m.phase === 'league' && m.myClub === v1.myClub && m.week === v1.week && m.season === v1.season, 'sigue en su club y jornada (no se le obliga a elegir)');
+  ok(m.player.lvl === v1.player.lvl && m.player.xp === v1.player.xp && m.player.pts === v1.player.pts && JSON.stringify(m.player.st) === JSON.stringify(v1.player.st), 'jugador intacto (nivel, XP, puntos, atributos)');
+  ok(m.mate.name === v1.mate.name && JSON.stringify(m.mate.st) === JSON.stringify(v1.mate.st), 'compañero intacto');
+  ok(JSON.stringify(m.res) === JSON.stringify(v1.res) && JSON.stringify(m.notes) === JSON.stringify(v1.notes) && m.coach === v1.coach, 'resultados, notas y entrenador intactos');
+  ok(m.contract && m.contract.left >= 1 && m.squad.length === 2 && m.train === 'bal' && m.fatigue === 0 && m.mate.chem === 20, 'gestión con valores por defecto (química de 5 partidos juntos = ' + m.mate.chem + ')');
+  ok(m.inbox.length === 1 && /Novedades/.test(m.inbox[0].t), 'mensaje de novedades');
+  ok(C.next(m) && C.matchSetup(m).ctrl === 'one', 'sigue jugándose');
+  C.save(); C._reset(); const m2 = C.get();
+  ok(m2.inbox.length === 1 && m2.contract.left === m.contract.left, 'migrar dos veces no duplica nada');
 }
 
 // ------------------------------------------------------------------ simulación rápida

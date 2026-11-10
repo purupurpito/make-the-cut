@@ -1279,13 +1279,6 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
   #menu .mlist>#btnTut,#menu .mlist>#btnControls,#menu .mlist>#btnSettings{grid-column:auto;grid-template-columns:minmax(0,1fr);padding:0 6px;text-align:center;font-size:16px}
   #menu .mlist>#btnTut .mi-n,#menu .mlist>#btnControls .mi-n,#menu .mlist>#btnSettings .mi-n,#menu .mlist>#btnTut .mi-s,#menu .mlist>#btnControls .mi-s,#menu .mlist>#btnSettings .mi-s{display:none}
   #menu .mlist>#btnTut:hover,#menu .mlist>#btnControls:hover,#menu .mlist>#btnSettings:hover,#menu .mlist>#btnTut.kf,#menu .mlist>#btnControls.kf,#menu .mlist>#btnSettings.kf{padding-left:6px}
-  /* Carrera (02) a la derecha de Jugar, en la misma fila de 48 px: con ella el menú sigue cabiendo a 844×390 y 667×375 */
-  #menu .mlist>#btnPlay{grid-column:1/span 2}
-  #menu .mlist>#btnPlay>.mi-n{display:none}
-  #menu .mlist>#btnPlay{grid-template-columns:1fr auto}
-  #menu .mlist>#btnCareer{grid-column:auto;height:48px;grid-template-columns:minmax(0,1fr);padding:0 6px;text-align:center;font-size:19px}
-  #menu .mlist>#btnCareer .mi-n,#menu .mlist>#btnCareer .mi-s{display:none}
-  #menu .mlist>#btnCareer:hover,#menu .mlist>#btnCareer.kf{padding-left:6px}
 }
 /* Carrera (02) bajo Jugar = 9 filas. Entre 421 y 820 px de alto «Cómo se juega», «Controles» y «Ajustes» van juntas en una fila de
    tres botones (como en el teléfono): el menú queda en 7 filas y ya no pisa la ayuda de teclas de abajo (a 1280×720 la pisaba con 8) */
@@ -1635,41 +1628,205 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 #app.vs-up #menu .mlist>#btnTut .mi-s,#app.vs-up #menu .mlist>#btnControls .mi-s,#app.vs-up #menu .mlist>#btnSettings .mi-s{display:none}
 #app.vs-up #menu .mlist>#btnTut:hover,#app.vs-up #menu .mlist>#btnControls:hover,#app.vs-up #menu .mlist>#btnSettings:hover,
 #app.vs-up #menu .mlist>#btnTut.kf,#app.vs-up #menu .mlist>#btnControls.kf,#app.vs-up #menu .mlist>#btnSettings.kf{padding-left:8px}
-/* Escenario (04, Pabellón / Playa) y Puntos por set (05) comparten fila en la rejilla compacta (≤ 820 px de alto y .vs-up): un
-   tercio para el escenario (rótulo pequeño encima del valor) y dos tercios para los puntos. Así el menú no crece ni una fila.
-   Con más alto (columna libre, p. ej. 1920×1080) cada uno va en su fila. En la playa los puntos quedan fijos (21 / 15, .lock) */
-#menu .mlist>#optVenue{grid-column:1/span 1}
-#menu .mlist>#optPts{grid-column:2/-1}
 #optPts.lock .mi-v .arr{visibility:hidden}
 #optPts.lock .mv-val b{color:#ffe9a8}
-@media (max-height:820px){
-  #menu .mlist>#optVenue{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;align-content:center;row-gap:1px;padding:0 4px;text-align:center}
-  #menu .mlist>#optVenue:hover,#menu .mlist>#optVenue.kf,#menu .mlist>#optVenue:focus-visible{padding-left:4px}
-  /* (el 04 va dentro del rótulo pequeño y Puntos conserva su 05: la numeración del menú no salta de 03 a 06) */
-  #menu .mlist>#optVenue .mi-n{display:none}
-  #menu .mlist>#optVenue .mi-l::before{content:"04 · ";color:#b9b0e6}
-  #menu .mlist>#optVenue .mi-l{font-size:11px;letter-spacing:.16em;line-height:1;opacity:.82}
-  #menu .mlist>#optVenue .mi-v{margin:0;justify-content:center;align-self:center;font-size:16px;letter-spacing:.06em}
-  #menu .mlist>#optVenue .mi-v .arr{width:24px}
-  #menu .mlist>#optPts{grid-template-columns:auto minmax(0,1fr) auto;white-space:nowrap}
-  #optPts .pt-x{display:none}
-}
-@media (max-height:420px){#menu .mlist>#optVenue .mi-l{font-size:10px}#menu .mlist>#optVenue .mi-v{font-size:15px}#menu .mlist>#optVenue .mi-v .arr{width:20px}}
-#app.vs-up #menu .mlist>#optVenue{grid-column:1/span 1}
-#app.vs-up #menu .mlist>#optPts{grid-column:2/-1}
-#app.vs-up #menu .mlist>#optVenue{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;align-content:center;row-gap:1px;padding:0 4px;text-align:center}
-#app.vs-up #menu .mlist>#optVenue:hover,#app.vs-up #menu .mlist>#optVenue.kf{padding-left:4px}
-#app.vs-up #menu .mlist>#optVenue .mi-n{display:none}
-#app.vs-up #menu .mlist>#optVenue .mi-l::before{content:"04 · ";color:#b9b0e6}
-#app.vs-up #menu .mlist>#optVenue .mi-l{font-size:11px;letter-spacing:.16em;line-height:1;opacity:.82}
-#app.vs-up #menu .mlist>#optVenue .mi-v{margin:0;justify-content:center;align-self:center;font-size:16px;letter-spacing:.06em}
-#app.vs-up #menu .mlist>#optVenue .mi-v .arr{width:24px}
-#app.vs-up #menu .mlist>#optPts{grid-template-columns:auto minmax(0,1fr) auto;white-space:nowrap}
-#app.vs-up #optPts .pt-x{display:none}
 /* Carrera (DOM y estilos de career-ui.js): mismo zoom en su contenedor; alto y ancho divididos para que ocupe lo mismo */
 /* tarjeta de presentación del partido: también crece (si no, a 2560 se queda en ~500 px con letra de 9-11 px) */
 #app #intro .in-card{zoom:var(--vs)}
 #app #career .cr-in{zoom:var(--vs);height:calc(100% / var(--vs));width:min(1000px,calc(100% / var(--vs)))}
+/* =====================================================================
+   MENÚS v2 (nov-2026, petición de Ferran: menús por pasos, móvil primero, pestañas como EA FC)
+   Menú principal sin números y con 5 entradas · JUGAR → tarjetas de modos (#mpPlay) · Partido rápido → preparación (#mpQuick) ·
+   pestañas reutilizables (.tabs, ui.js VB.UI.tabs) en Jugadores, Ajustes y Controles.
+   ===================================================================== */
+#menu .mi{grid-template-columns:minmax(0,1fr) auto;padding-left:18px}
+#menu .mi:hover,#menu .mi:focus-visible,#menu .mi.kf{padding-left:24px}
+#menu .mlist>#btnPlay{height:74px;font-size:36px}
+#menu .mlist>#btnPlay .go{width:38px;height:38px}
+#menu .mlist>#btnPlay .go svg{width:18px;height:18px}
+.mi.primary .mi-s .chip:first-child{display:inline-flex}
+/* ---- páginas del menú ---- */
+.mpage{display:flex;flex-direction:column;width:min(560px,100%);zoom:var(--vs)}
+#mpPlay{width:min(860px,100%)}
+.mpage.pg-in{animation:pgIn .34s var(--ease) both}
+.mpage.pg-back,.menu-col.pg-back{animation:pgBack .34s var(--ease) both}
+.menu-col.pg-in{animation:pgIn .34s var(--ease) both}
+@keyframes pgIn{from{opacity:0;transform:translateX(38px)}to{opacity:1;transform:none}}
+@keyframes pgBack{from{opacity:0;transform:translateX(-38px)}to{opacity:1;transform:none}}
+.mp-head{display:flex;align-items:center;gap:16px;margin:0 0 clamp(12px,2.6vh,24px)}
+.mp-tt{min-width:0}
+.mp-tt .kicker{margin:0 0 2px;font-size:12px;letter-spacing:.3em}
+.mp-t{margin:0;font:900 clamp(38px,4.6vw,58px)/.9 var(--display);font-style:italic;letter-spacing:.01em;text-transform:uppercase;color:#fff8ee;
+  text-shadow:var(--ring2),3px 4px 0 var(--tk)}
+.mp-back{flex:0 0 auto;display:flex;align-items:center;gap:6px;height:46px;padding:0 16px 0 10px;font-size:16px;letter-spacing:.12em;color:var(--fg);
+  background:var(--cel-a);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 4px rgba(255,255,255,.08),3px 4px 0 var(--tk)}
+.mp-back svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.mp-back:hover,.mp-back.kf,.mp-back:focus-visible{background:linear-gradient(180deg,rgba(78,64,140,.97) 0 46%,rgba(62,51,116,.97) 46% 100%);
+  box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffb238,3px 4px 0 var(--tk);outline:none}
+/* ---- JUGAR: tarjetas de modos ---- */
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.mode{position:relative;display:flex;flex-direction:column;align-items:stretch;min-height:clamp(250px,44vh,340px);padding:0 0 16px;text-align:left;overflow:hidden;
+  border-radius:20px;color:var(--fg);background:var(--cel-a);text-shadow:none;letter-spacing:0;text-transform:none;
+  box-shadow:inset 0 0 0 3px var(--tk),inset 0 0 0 5px rgba(255,255,255,.07),5px 7px 0 var(--tk);transition:transform .2s var(--ease),box-shadow .2s,filter .2s}
+.mode:hover,.mode:focus-visible,.mode.kf{transform:translateY(-5px);outline:none;filter:none;
+  box-shadow:inset 0 0 0 3px var(--tk),inset 0 0 0 7px #ffb238,6px 11px 0 var(--tk)}
+.mode:active{transform:translateY(1px)}
+.md-art{position:relative;display:block;flex:1 1 56%;min-height:96px;border-bottom:3px solid var(--tk);
+  background:radial-gradient(circle at 70% 40%,rgba(255,255,255,.35),transparent 55%),linear-gradient(160deg,#ff9a4a,#f65d1d 70%)}
+.m-career .md-art{background:radial-gradient(circle at 50% 35%,rgba(255,236,150,.4),transparent 55%),linear-gradient(160deg,#7d5ad8,#4b3596 75%)}
+.m-6v6 .md-art{background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.25),transparent 60%),linear-gradient(160deg,#3aa6a0,#246a77 75%)}
+.md-art svg{position:absolute;inset:8% 6%;width:88%;height:84%;overflow:visible}
+.md-ball{fill:#fff8ee;stroke:var(--tk);stroke-width:4}
+.md-seam{fill:none;stroke:#ff6a2e;stroke-width:3.4;stroke-linecap:round}
+.md-sp,.md-sp path{fill:none;stroke:#fff8ee;stroke-width:4.5;stroke-linecap:round;opacity:.85}
+.md-bolt{fill:#ffd23f;stroke:var(--tk);stroke-width:3;stroke-linejoin:round}
+.md-cup{fill:#ffd23f;stroke:var(--tk);stroke-width:4;stroke-linejoin:round}
+.md-ear{fill:none;stroke:var(--tk);stroke-width:7;stroke-linecap:round}
+.md-stem{fill:#e2a12a;stroke:var(--tk);stroke-width:4;stroke-linejoin:round}
+.md-star{fill:#fff8ee;stroke:var(--tk);stroke-width:2.6;stroke-linejoin:round}
+.md-net{stroke:#fff8ee;stroke-width:3.4;stroke-dasharray:5 5;stroke-linecap:round}
+.md-a circle{fill:#ff6a2e;stroke:var(--tk);stroke-width:3}
+.md-b circle{fill:#4a8dff;stroke:var(--tk);stroke-width:3}
+.mode:hover .md-art svg,.mode.kf .md-art svg,.mode:focus-visible .md-art svg{animation:mdBob 1.6s ease-in-out infinite}
+@keyframes mdBob{0%,100%{transform:none}50%{transform:translateY(-4px) rotate(-1.5deg)}}
+.md-tx{display:flex;flex-direction:column;gap:6px;padding:14px 18px 0}
+.md-tx b{font:900 28px/.95 var(--display);font-style:italic;letter-spacing:.02em;text-transform:uppercase;color:#fff8ee;text-shadow:var(--ring1),2px 3px 0 var(--tk)}
+.md-tx small{font:600 14px/1.3 var(--ui);color:#d6d0f5;text-shadow:var(--ring1)}
+.md-tx small .chip{font-size:12px;color:#e6e0ff;margin-top:2px}
+.md-go{position:absolute;right:12px;top:12px;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;background:#fff;box-shadow:0 0 0 2.5px var(--tk),2px 3px 0 var(--tk)}
+.md-go svg{width:20px;height:20px;fill:none;stroke:#f65d1d;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.m-career .md-go svg{stroke:#5a3fb0}
+.mode.soon,.mode:disabled{cursor:default;filter:saturate(.45) brightness(.82);transform:none}
+.mode.soon:hover{filter:saturate(.45) brightness(.82);transform:none;box-shadow:inset 0 0 0 3px var(--tk),inset 0 0 0 5px rgba(255,255,255,.07),5px 7px 0 var(--tk)}
+.md-soon{position:absolute;left:12px;top:14px;padding:5px 10px 6px;border-radius:9px;background:#ffd23f;color:var(--tk);font:800 12.5px/1 var(--display);font-style:normal;
+  letter-spacing:.16em;text-transform:uppercase;box-shadow:0 0 0 2.5px var(--tk),2px 3px 0 var(--tk);transform:rotate(-4deg)}
+/* ---- PARTIDO RÁPIDO: preparación ---- */
+.qlist{display:flex;flex-direction:column;gap:8px}
+#mpQuick .mi{height:62px}
+.mi-l{display:flex;flex-direction:column;min-width:0}
+.mi-h{display:block;margin-top:5px;font:600 13px/1.15 var(--ui);letter-spacing:.01em;text-transform:none;color:#cfc8f2;text-shadow:var(--ring1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#optPts.lock .mi-h{color:#ffe08a}
+#mpQuick #btnGo{height:72px;margin-top:6px;font-size:34px}
+#mpQuick #btnGo .go{width:38px;height:38px}
+#mpQuick #btnGo .go svg{width:18px;height:18px}
+#menu .qlist:has(.mi.kf) .mi.primary:not(.kf){background:var(--cel-a);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px rgba(255,106,46,.85),3px 4px 0 var(--tk)}
+.qlist:has(.mi.kf) .mi.primary:not(.kf) .mi-s .chip{background:rgba(29,21,48,.5);color:var(--fg2)}
+/* poco alto (portátiles, 1366×625, 1024×600) */
+@media (max-height:700px){
+  .mp-head{margin-bottom:12px}
+  .mp-t{font-size:clamp(34px,6vh,46px)}
+  .mode{min-height:clamp(230px,52vh,300px)}
+  #mpQuick .mi{height:54px;font-size:21px}
+  .mi-h{font-size:12px;margin-top:3px}
+  #mpQuick #btnGo{height:60px;font-size:30px}
+}
+/* teléfonos apaisados (≤ 420 px de alto: 844×390, 740×360, 667×375) */
+@media (max-height:420px){
+  #menu .mlist>#btnPlay{height:56px;font-size:28px}
+  #menu .mlist>#btnPlay .go{width:32px;height:32px}
+  .mp-head{gap:10px;margin-bottom:8px}
+  .mp-back{height:46px;min-width:50px;justify-content:center;padding:0 10px;font-size:14px}
+  .mp-back span{display:none}
+  .mp-tt .kicker{font-size:10px;margin:0}
+  .mp-t{font-size:30px}
+  .modes{gap:10px}
+  .mode{min-height:0;height:calc(100vh - 118px - var(--st) - var(--sbm));max-height:250px;padding-bottom:10px;border-radius:16px}
+  .md-art{flex-basis:48%;min-height:70px}
+  .md-tx{gap:3px;padding:8px 12px 0}
+  .md-tx b{font-size:21px}
+  .md-tx small{font-size:12px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .md-tx small .chip{font-size:10.5px;margin-top:1px}
+  .md-go{width:30px;height:30px;right:9px;top:9px}
+  .md-go svg{width:16px;height:16px}
+  .md-soon{font-size:10.5px;left:9px;top:10px}
+  .qlist{gap:5px}
+  #mpQuick .mi{height:46px;font-size:18px}
+  .mi-h{font-size:11px;margin-top:2px}
+  #mpQuick #btnGo{height:52px;margin-top:3px;font-size:26px}
+  #mpQuick #btnGo .mi-s{font-size:10.5px}
+}
+@media (max-height:380px){
+  .mp-head{margin-bottom:6px}
+  #mpQuick .mi{height:43px}
+  #mpQuick #btnGo{height:48px}
+}
+/* móvil en vertical o ventanas estrechas: tarjetas en lista (dibujo a la izquierda) */
+@media (max-width:620px){
+  .modes{grid-template-columns:minmax(0,1fr);gap:10px}
+  .mode{flex-direction:row;min-height:0;height:auto;max-height:none;padding:0}
+  .md-art{flex:0 0 112px;min-height:104px;border-bottom:0;border-right:3px solid var(--tk)}
+  .md-tx{padding:12px 50px 12px 14px;justify-content:center}
+}
+/* ---- PESTAÑAS (VB.UI.tabs) ---- */
+.tabs{display:flex;align-items:center;gap:6px;margin:0 0 12px;min-width:0}
+.tb-row{flex:1;min-width:0;display:flex;gap:4px;padding:4px;overflow-x:auto;scrollbar-width:none;border-radius:15px;background:rgba(29,21,48,.6);box-shadow:inset 0 0 0 2px var(--tk)}
+.tb-row::-webkit-scrollbar{display:none}
+.tabs .tab{flex:1 0 auto;display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:6px 10px;border-radius:11px;
+  font:800 15px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;color:#cfc8f2;background:transparent;box-shadow:none;text-shadow:none}
+.tabs .tab svg{flex:0 0 auto;width:17px;height:17px;fill:currentColor}
+.tabs .tab:hover:not(.on){background:rgba(255,255,255,.09);color:#fff;filter:none}
+.tabs .tab:active{transform:none}
+.tabs .tab.on{color:var(--tk);background:linear-gradient(180deg,#ffd23f 0 50%,#ffc21a 50% 100%);box-shadow:inset 0 0 0 2px var(--tk),2px 3px 0 var(--tk)}
+.tabs .tab.kf,.tabs .tab:focus-visible{outline:3px solid #fff;outline-offset:1px}
+.tb-b{font:800 10.5px/1 var(--display);font-style:normal;letter-spacing:.1em;padding:3px 6px;border-radius:6px;background:rgba(75,224,160,.2);color:#8ff0c4}
+.tabs .tab.on .tb-b{background:rgba(29,21,48,.16);color:var(--tk)}
+.tabs .tb-k{flex:0 0 auto;min-width:32px;height:30px;padding:0 7px;border-radius:9px;font:800 13px/1 var(--display);letter-spacing:.04em;color:var(--tk);background:#fff7e8;
+  box-shadow:inset 0 0 0 1.5px var(--tk),0 3px 0 var(--tk);text-shadow:none}
+.tabs .tb-k:empty,.tabs.tb-touch .tb-k{display:none}
+.tab-swipe{touch-action:pan-y}
+.tp-n{animation:tpN .26s var(--ease)}
+.tp-p{animation:tpP .26s var(--ease)}
+@keyframes tpN{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes tpP{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+.is-touch .tabs .tab{min-height:44px}
+@media (max-height:560px){.tabs{margin-bottom:8px}.tabs .tab{min-height:36px;padding:5px 11px;font-size:13.5px}.is-touch .tabs .tab{min-height:44px}}
+@media (max-width:700px){.tabs .tab{padding:5px 10px;gap:5px;letter-spacing:.08em}}
+@media (max-width:560px){.tabs .tab svg{display:none}}
+/* paneles con pestañas: una columna, el grupo elegido */
+#panel .sheet.tabbed{max-width:760px}
+#pnSet .opt-h{display:none}
+#pnSet .opts{display:flex}
+#pnCtl .ctl-tabs{display:none}
+/* ---- JUGADORES: selector de atleta y una columna ---- */
+.sq{display:flex;flex-direction:column;gap:10px}
+.sq-pick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 10px}
+.sq-pk{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:52px;padding:6px 12px 6px 7px;text-align:left;color:var(--fg);
+  text-transform:none;letter-spacing:0;text-shadow:none;background:var(--cel-a);box-shadow:inset 0 0 0 2.5px var(--tk),3px 4px 0 var(--tk)}
+.sq-pk .sq-num{width:38px;height:38px;font-size:21px;border-radius:10px}
+.sq-pk:not(.on) .sq-num{background:#5b4f99}
+.sq-pn{min-width:0;font:800 18px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
+.sq-pn small{display:block;margin-top:3px;font:600 12.5px var(--ui);letter-spacing:0;text-transform:none;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-pk.on{background:linear-gradient(180deg,rgba(78,64,140,.97) 0 46%,rgba(62,51,116,.97) 46% 100%);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffd23f,3px 4px 0 var(--tk)}
+.sq-pk.kf,.sq-pk:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.sq-pp{font:900 14px/1 var(--display);font-style:normal;padding:4px 8px;border-radius:8px;background:#ffd23f;color:var(--tk);box-shadow:0 0 0 2px var(--tk)}
+.sq-attrs{display:flex;flex-direction:column;gap:6px}
+.sq-attrs .sq-r{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 2.2em 46px;min-height:50px;padding:4px 8px 4px 12px;border-radius:12px;background:rgba(29,21,48,.45);box-shadow:inset 0 0 0 2px var(--tk)}
+.sq-attrs .sq-r>span:first-child{font:800 16px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--fg);white-space:normal}
+.sq-attrs .sq-r>span:first-child small{display:block;margin-top:2px;font:600 12px/1.2 var(--ui);letter-spacing:0;text-transform:none;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-attrs .sq-r .bar{height:11px}
+.sq-attrs .sq-r button{height:36px}
+.is-touch .sq-attrs .sq-r button{height:44px}
+@media (max-height:420px){
+  .sq-pick{margin-bottom:6px}.sq-pk{min-height:44px;padding:4px 10px 4px 5px}.sq-pk .sq-num{width:32px;height:32px;font-size:18px}.sq-pn{font-size:15px}.sq-pn small{font-size:11px;margin-top:1px}
+  .sq-attrs .sq-r{min-height:44px}
+  /* integración (10-nov-2026): en el teléfono el resumen sale del selector (media y nivel en su línea pequeña) y así caben los
+     3 atributos con su ayuda (antes: selector + pestañas + resumen ≈ 200 px, se veían 2 y sin la ayuda) */
+  .sq-attrs .sq-r>span:first-child small{font-size:11px;margin-top:1px}
+  #sqBody .sq-sum{display:none}
+  .sq-pn .sq-pm{display:inline}
+  .bd-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+.sq-pm{display:none}
+/* teléfono apaisado: el récord («Estreno / Primer partido») pisaba la tarjeta 6 contra 6 y el borde de ¡A jugar!: solo en el principal */
+@media (max-height:420px){#menu[data-page="play"] #menuRecord,#menu[data-page="quick"] #menuRecord{display:none}}
+/* «Volver» de los paneles con el dedo: 44 px como mínimo (medía 74×30) */
+.is-touch .pn-close{min-height:44px;min-width:64px}
+.sq-sum{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:8px 14px;border-radius:14px;background:var(--cel-a);box-shadow:inset 0 0 0 2.5px var(--tk),3px 4px 0 var(--tk)}
+.sq-sum .sq-ovr{font-size:30px}
+.sq-sum .sq-xl{font:800 13px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--fg2);white-space:nowrap}
+.sq-sum .sq-pts{display:flex;flex-direction:column;align-items:center;font-size:11px;letter-spacing:.18em;line-height:1}
+.sq-sum .sq-pts b{font:900 24px/1 var(--display);margin-top:2px}
+@media (max-height:420px){.sq-sum{padding:5px 12px;gap:10px}.sq-sum .sq-ovr{font-size:24px}.sq-sum .sq-pts b{font-size:20px}}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -1749,18 +1906,41 @@ kbd.ms{height:auto;padding:2px 6px 1px}
         </h1>
         <p class="tagline">Vóley en pista cubierta, con la cámara detrás de tu jugador: <b>tú y tu pareja contra la CPU</b>.</p>
       </div>
+      <!-- Menú principal (menús v2, nov-2026): pocas entradas grandes y sin números. JUGAR abre la página de modos (#mpPlay) y
+           Partido rápido su preparación (#mpQuick); pila de páginas en ui.js (menuGo / menuBack: Esc, B o el botón Volver) -->
       <nav class="mlist" data-nav aria-label="Menú principal">
-        <button class="mi primary" id="btnPlay"><span class="mi-n">01</span><span>Jugar<br><span class="mi-s" id="playSub"><span class="chip">Partido rápido</span></span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
-        <button class="mi" id="btnCareer"><span class="mi-n">02</span><span>Carrera</span><span class="mi-s" id="careerSub">Crea tu jugador · Liga y ofertas</span></button>
-        <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">03</span><span>Dificultad</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Más fácil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span></span><span class="arr" data-d="1" aria-label="Más difícil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="optVenue" data-opt="arena" aria-label="Escenario: Pabellón"><span class="mi-n">04</span><span class="mi-l">Escenario</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Pabellón"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="venueVal">Pabellón</b></span><span class="arr" data-d="1" aria-label="Playa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-n">05</span><span class="mi-l">Puntos<span class="pt-x"> por set</span></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="optCtrl" data-opt="ctrlMode"><span class="mi-n">06</span><span>Controlar</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Control anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ctrlVal">A los dos<span class="cv-x"> jugadores</span></b></span><span class="arr" data-d="1" aria-label="Control siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="btnSquad"><span class="mi-n">07</span><span>Jugadores</span><span class="mi-s" id="squadSub">Estadísticas y mejoras</span></button>
-        <button class="mi" id="btnTut"><span class="mi-n">08</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
-        <button class="mi" id="btnControls"><span class="mi-n">09</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
-        <button class="mi" id="btnSettings"><span class="mi-n">10</span><span>Ajustes</span><span class="mi-s"></span></button>
+        <button class="mi primary" id="btnPlay"><span>Jugar<br><span class="mi-s" id="playModes"><span class="chip">Partido rápido</span><span class="chip">Carrera</span></span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
+        <button class="mi" id="btnSquad"><span>Jugadores</span><span class="mi-s" id="squadSub">Estadísticas y mejoras</span></button>
+        <button class="mi" id="btnTut"><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
+        <button class="mi" id="btnControls"><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
+        <button class="mi" id="btnSettings"><span>Ajustes</span><span class="mi-s">Audio, imagen y equipación</span></button>
       </nav>
+    </div>
+    <!-- JUGAR: modos de juego en tarjetas (el 6 contra 6 sigue oculto tras ?format=6v6: aquí solo su hueco, «Próximamente») -->
+    <div class="mpage" id="mpPlay" data-page="play" hidden>
+      <div class="mp-head">
+        <button class="mp-back" id="btnPlayBack" aria-label="Volver al menú principal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg><span>Volver</span></button>
+        <div class="mp-tt"><p class="kicker">Make the Cut<span class="sep sep-d"><span class="sr">, </span></span>Elige modo</p><h2 class="mp-t">Jugar</h2></div>
+      </div>
+      <nav class="modes" data-nav aria-label="Modos de juego">
+        <button class="mode m-quick" id="btnQuick"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><g class="md-sp"><path d="M10 30h26M4 44h30M12 58h22"/></g><circle class="md-ball" cx="72" cy="44" r="26"/><path class="md-seam" d="M72 18c-9 8-12 18-10 28M98 42c-11-4-22-3-33 4M54 63c8-6 18-9 30-7M72 44c6 7 9 15 9 24M72 44c-9-2-17-8-22-17"/><path class="md-bolt" d="M101 6l-12 20h9l-7 17 17-24h-9l6-13z"/></svg></span><span class="md-tx"><b>Partido rápido</b><small>Un partido contra la CPU, a tu medida</small></span><span class="md-go" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></button>
+        <button class="mode m-career" id="btnCareer"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><path class="md-sp" d="M18 30l-8-4M16 44H6M102 30l8-4M104 44h10"/><path class="md-ear" d="M40 16H28c0 12 6 19 14 20M80 16h12c0 12-6 19-14 20"/><path class="md-stem" d="M53 50h14v12H53zM42 62h36l3 12H39z"/><path class="md-cup" d="M38 8h44v16c0 16-9 27-22 29-13-2-22-13-22-29z"/><path class="md-star" d="M60 17l3.6 7.3 8 1.1-5.8 5.6 1.4 8L60 35.2l-7.2 3.8 1.4-8-5.8-5.6 8-1.1z"/></svg></span><span class="md-tx"><b>Carrera</b><small class="md-s" id="careerSub">Crea tu jugador · Liga y ofertas</small></span><span class="md-go" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></button>
+        <button class="mode m-6v6 soon" id="btn6v6" disabled aria-disabled="true"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><path class="md-net" d="M60 6v72"/><g class="md-a"><circle cx="18" cy="22" r="7"/><circle cx="18" cy="62" r="7"/><circle cx="31" cy="42" r="7"/><circle cx="45" cy="18" r="7"/><circle cx="45" cy="66" r="7"/><circle cx="48" cy="42" r="7"/></g><g class="md-b"><circle cx="102" cy="22" r="7"/><circle cx="102" cy="62" r="7"/><circle cx="89" cy="42" r="7"/><circle cx="75" cy="18" r="7"/><circle cx="75" cy="66" r="7"/><circle cx="72" cy="42" r="7"/></g></svg></span><span class="md-tx"><b>6 contra 6</b><small>Vóley de pista con equipos completos</small></span><em class="md-soon">Próximamente</em></button>
+      </nav>
+    </div>
+    <!-- PARTIDO RÁPIDO: preparación (escenario, dificultad, puntos y control) y ¡A JUGAR! (las mismas filas y ajustes de siempre) -->
+    <div class="mpage" id="mpQuick" data-page="quick" hidden>
+      <div class="mp-head">
+        <button class="mp-back" id="btnQuickBack" aria-label="Volver a los modos de juego"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg><span>Volver</span></button>
+        <div class="mp-tt"><p class="kicker">Jugar<span class="sep sep-d"><span class="sr">, </span></span>Prepara el partido</p><h2 class="mp-t">Partido rápido</h2></div>
+      </div>
+      <div class="qlist" data-nav aria-label="Opciones del partido">
+        <button class="mi" id="optVenue" data-opt="arena" aria-label="Escenario: Pabellón"><span class="mi-l">Escenario<small class="mi-h" id="venueHelp">Palau del Mar · pista de 18 × 9</small></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Pabellón"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="venueVal">Pabellón</b></span><span class="arr" data-d="1" aria-label="Playa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-l">Dificultad<small class="mi-h" id="diffHelp">Nivel de la CPU</small></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Más fácil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span></span><span class="arr" data-d="1" aria-label="Más difícil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-l">Puntos por set<small class="mi-h" id="ptsHelp">Al mejor de 3; el 3.º set, a 15</small></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="optCtrl" data-opt="ctrlMode"><span class="mi-l">Controlar<small class="mi-h" id="ctrlHelp">El control pasa a quien toca</small></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Control anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ctrlVal">A los dos<span class="cv-x"> jugadores</span></b></span><span class="arr" data-d="1" aria-label="Control siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi primary" id="btnGo"><span>¡A jugar!<br><span class="mi-s" id="playSub"><span class="chip">Partido rápido</span></span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
+      </div>
     </div>
     <div class="menu-foot">
       <span class="navhint" id="navHint"></span>
@@ -1832,52 +2012,51 @@ kbd.ms{height:auto;padding:2px 6px 1px}
         <p class="first-lead">¿Quieres ver antes cómo se juega? Son 6 pasos cortos con dibujos: saque, recepción, colocación, remate, bloqueo y reglas.</p>
         <div class="first-opts" data-nav>
           <button id="btnFirstTut"><span>Ver cómo se juega<small>1 minuto y luego empieza el partido</small></span><span class="ic">▶</span></button>
-          <button class="ghost" id="btnFirstPlay"><span>Jugar ya<small id="firstDiff">Nivel Fácil. Se cambia en el menú</small></span><span class="ic">›</span></button>
+          <button class="ghost" id="btnFirstPlay"><span>Jugar ya<small id="firstDiff">Nivel Fácil. Se cambia en Partido rápido</small></span><span class="ic">›</span></button>
         </div>
       </div>
       <div id="pnCtl" hidden>
-        <!-- UI-21: el dispositivo en uso, grande; los otros, en pestañas pequeñas (ui.js renderCtl pinta las filas; ←/→ cambia de pestaña) -->
-        <div class="ctl-tabs" data-nav role="tablist" aria-label="Dispositivo">
-          <button class="ctl-tab" data-ctl="keyboard" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm2 3v2h2V9zm4 0v2h2V9zm4 0v2h2V9zm4 0v2h2V9zM7 13v2h10v-2z"/></svg>Teclado</button>
-          <button class="ctl-tab" data-ctl="gamepad" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10a5 5 0 0 1 4.9 6l-.8 4a2.5 2.5 0 0 1-4.3 1.2L14.5 16h-5l-2.3 2.2A2.5 2.5 0 0 1 2.9 17l-.8-4A5 5 0 0 1 7 7zm0 3v1.5H5.5v1.5H7v1.5h1.5V13H10v-1.5H8.5V10zm9.5 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-2 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>Mando</button>
-          <button class="ctl-tab" data-ctl="touch" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10l5.2 1.1a2 2 0 0 1 1.6 2.2l-.6 5.2A2 2 0 0 1 16.2 20H11a2 2 0 0 1-1.6-.8l-3.6-4.8a1.4 1.4 0 0 1 2.1-1.8z"/></svg>Táctil</button>
-        </div>
-        <dl class="ctl" id="ctlGrid" role="tabpanel"></dl>
+        <!-- pestañas Teclado · Mando · Táctil (componente VB.UI.tabs de ui.js; «en uso» marca el dispositivo activo) -->
+        <div id="ctlTabs" aria-label="Dispositivo"></div>
+        <dl class="ctl tab-pane" id="ctlGrid" role="tabpanel"></dl>
         <p class="ctl-note"><b>Arriba</b> es siempre hacia la red. El control pasa solo a quien da el siguiente toque. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.</p>
       </div>
       <div id="pnSquad" hidden>
         <!-- Estadísticas de tus jugadores (js/prog.js): nivel, experiencia, puntos de mejora y los 10 atributos con «+» -->
-        <div class="sq" id="sqBody" data-nav></div>
+        <div class="sq-pick" id="sqPick" data-nav role="radiogroup" aria-label="Atleta"></div>
+        <div id="sqTabs" aria-label="Apartado"></div>
+        <div class="sq tab-pane" id="sqBody" data-nav role="tabpanel"></div>
         <p class="sq-note">Ganas experiencia en cada partido (más si ganas, si puntúas y cuanto más alto es el nivel). Cada nivel da 3 puntos de mejora. Las mejoras son definitivas.</p>
       </div>
       <div id="pnSet" hidden>
         <!-- UI-21: grupos Audio · Imagen · Juego · Accesibilidad; dos columnas en cuanto hay anchura (móvil apaisado incluido) y, si aun
-             así no cabe, desvanecido abajo (.has-more). La dificultad está en el menú (una sola fila en todo el juego). -->
-        <div class="opts" data-nav id="optList">
-          <div class="opt-g">
+             así no cabe, desvanecido abajo (.has-more). Menús v2: un grupo por pestaña (VB.UI.tabs); dificultad, puntos, control y escenario
+             están en la preparación del Partido rápido (una sola fila de cada en todo el juego). -->
+        <div id="setTabs" aria-label="Apartado de ajustes"></div>
+        <div class="opts tab-pane" data-nav id="optList" role="tabpanel">
+          <div class="opt-g" data-tab="audio">
             <p class="opt-h">Audio</p>
             <button class="opt opt-snd" data-opt="sfxVol"><span>Sonido<small>Golpes, silbato y público</small></span><span class="snd"><span class="mute" data-mute role="switch" aria-label="Silenciar"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="sp" d="M4 9h4l5-4v14l-5-4H4z"/><path class="wv" d="M16 8.5a5 5 0 0 1 0 7"/><path class="x" d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg></span><span class="slider" data-sl="sfxVol"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></span></button>
             <button class="opt" data-opt="musicVol"><span>Música<small>Sintonías y sonidos del menú</small></span><span class="slider" data-sl="musicVol"><span class="trk"><i></i><b></b></span><span class="v">75%</span></span></button>
           </div>
-          <div class="opt-g">
+          <div class="opt-g" data-tab="image">
             <p class="opt-h">Imagen</p>
             <button class="opt" data-opt="quality"><span>Calidad<small id="qualNote">Auto la ajusta sola</small></span><span class="seg" data-seg="quality"></span></button>
-            <button class="opt" data-opt="arena"><span>Escenario<small>Palau del Mar o Platja Llarga (vóley playa)</small></span><span class="seg" data-seg="arena"></span></button>
             <button class="opt" data-opt="camSens"><span>Cámara<small>Rapidez con la que sigue a tu jugador</small></span><span class="slider" data-sl="camSens"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></button>
           </div>
-          <div class="opt-g">
+          <div class="opt-g" data-tab="game">
             <p class="opt-h">Juego</p>
             <button class="opt" data-opt="showHelp"><span>Ayudas en pantalla<small>Avisos de «¡Golpea!» y «¡Salta!»</small></span><span class="seg" data-seg="showHelp"></span></button>
             <button class="opt" data-opt="coachTips"><span>Consejos<small>Qué hacer en cada toque. Se apagan al ganar tu primer partido</small></span><span class="seg" data-seg="coachTips"></span></button>
           </div>
-          <div class="opt-g" id="optKit">
+          <div class="opt-g" id="optKit" data-tab="kit">
             <p class="opt-h">Equipación</p>
             <button class="opt opt-kit" data-opt="kitShirt"><span>Camiseta<small>Color de tu equipo</small></span><span class="seg kit" data-seg="kitShirt"></span></button>
             <button class="opt opt-kit" data-opt="kitAccent"><span>Detalles<small>Franjas, ribetes y zapatillas</small></span><span class="seg kit" data-seg="kitAccent"></span></button>
             <button class="opt opt-kit" data-opt="kitShorts"><span>Pantalón</span><span class="seg kit" data-seg="kitShorts"></span></button>
             <button class="opt" data-opt="kitPattern"><span>Diseño<small>Si la CPU se parece, cambia de equipación</small></span><span class="seg" data-seg="kitPattern"></span></button>
           </div>
-          <div class="opt-g" id="optA11y">
+          <div class="opt-g" id="optA11y" data-tab="a11y">
             <p class="opt-h">Accesibilidad</p>
             <button class="opt" data-opt="camStable"><span>Cámara estable<small>Sin temblores ni sacudidas en los golpes</small></span><span class="seg" data-seg="camStable"></span></button>
             <button class="opt" data-opt="rumble"><span>Vibración<small>Del mando y del móvil en los golpes</small></span><span class="seg" data-seg="rumble"></span></button>
@@ -1885,7 +2064,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
             <button class="opt" data-opt="softFlash"><span>Destellos suaves<small>Menos destellos en los puntos y las celebraciones</small></span><span class="seg" data-seg="softFlash"></span></button>
           </div>
         </div>
-        <p class="opt-foot" id="optFoot"><span class="kh"><span class="key">←</span><span class="key">→</span> cambia el valor</span><span class="kh"><span class="key">Intro</span> pasa al siguiente</span></p>
+        <p class="opt-foot" id="optFoot"><span class="kh"><span class="key">←</span><span class="key">→</span> cambia el valor</span><span class="kh"><span class="key">Intro</span> pasa al siguiente</span><span class="kh"><span class="key">Q</span><span class="key">E</span> apartado</span></p>
       </div>
     </div>
   </div>
