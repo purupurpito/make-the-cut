@@ -561,9 +561,8 @@
   }
   // ---- Marcador de punto (nivel 1): pestaña del color del equipo que sale del marcador, junto a su fila ----
   function showBug(team, title, sub, tag, dur) {
-    // 6v6 espectador: «Remate de la CPU» → «Remate del rival» con rótulos LOC/VIS (revisión juego6 M1). En Carrera 2v2 se deja
-    // como estaba (la regla del sprint: el 2v2 no cambia nada); queda anotado en TRASPASO.
-    var gw = ctx && ctx.game; if (gw && gw.watch) { title = cpuTxt(title); sub = cpuTxt(sub); }
+    // Carrera y 6v6 espectador: «Remate de la CPU» → «Remate del rival» (cpuTxt no cambia nada en Partido rápido)
+    title = cpuTxt(title); sub = cpuTxt(sub);
     el.pbT.textContent = title; el.pbS.textContent = sub || ''; el.pbS.hidden = !sub;
     el.pbX.hidden = !tag; el.pbX.textContent = tag || '';
     el.pbug.className = '';

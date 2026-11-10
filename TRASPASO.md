@@ -313,8 +313,8 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     el central cubre en el sitio del líbero; **M4** en espectador ya no salen el halo/flecha del controlado (players.js) ni el aro amarillo
     (fx.js) y el partido va con `ctrl:'one'` (sin eventos `switch`); **G1** perf.js con `EXTRA=format=6v6` usa un tope **provisional** de 45
     llamadas de dibujo en baja (2v2 sigue en 35; el diseño §1.8 contaba con ~60). **Decisión para Ferran**: aceptar ese tope o hacer en el
-    sprint 4 la malla única de los atletas lejanos. En Carrera 2v2 la pestaña sigue diciendo «de la CPU» (bug de antes, fuera del 6v6: no
-    se tocó para no cambiar nada del 2v2; arreglo de una línea en `showBug` cuando se quiera).
+    sprint 4 la malla única de los atletas lejanos. La pestaña de Carrera 2v2 que decía «de la CPU» ya está arreglada
+    (10-nov-2026: `showBug` pasa siempre por `cpuTxt`).
   - **Qué falta para el sprint 3 (humano en 6v6 + menú «Formato»)**:
     1. Sim/IA: `AI6.decide` (2.º/3.er toque del humano y «¡Pídela!»; hoy la IA le aparta del 2.º toque y de los remates), responsabilidad
        («¡mía!») del 1.er toque, posición asistida e imán en Fácil/Normal, falta de posición pitada al humano en Difícil/Experto, sin
