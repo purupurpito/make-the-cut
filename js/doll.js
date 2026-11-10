@@ -36,7 +36,9 @@
     v1: { ANKLE: 0.12, THIGH: 0.33, SHIN: 0.33, HIP_W: 0.085, SPINE_Y: 0.22, CHEST_Y: 0.22, SH_Y: 0.23, SH_X: 0.17, PALM: 0.10,
       HEAD_C: 0.20, HEAD_RX: 0.20, HEAD_RY: 0.21, HEAD_RZ: 0.195, TUBE_ARM: 0.047, TUBE_LEG: 0.054, BALL_SH: 0.08, BALL_EL: 0.056, BALL_KN: 0.066, BALL_HIP: 0.06,
       HAND_K: 1, FOOT_K: 1, TORSO_W: 1 },
-    chibi: { ANKLE: 0.12, THIGH: 0.23, SHIN: 0.23, HIP_W: 0.09, SPINE_Y: 0.2, CHEST_Y: 0.2, SH_Y: 0.205, SH_X: 0.175, PALM: 0.115,
+    // ARM = hombro→muñeca en REPOSO (0,635 + palma 0,115 = 0,75 hombro→palma: la manopla cuelga a la altura de la cadera); lo que falta
+    // hasta el alcance del atleta lo pone el ESTIRÓN cartoon de la IK (reachTo, hasta ×STRETCH_MAX ≈ 1,41). Sin ARM (v1): brazo a medida.
+    chibi: { ANKLE: 0.12, THIGH: 0.23, SHIN: 0.23, HIP_W: 0.09, SPINE_Y: 0.2, CHEST_Y: 0.2, SH_Y: 0.205, SH_X: 0.175, PALM: 0.115, ARM: 0.635,
       HEAD_C: 0.205, HEAD_RX: 0.245, HEAD_RY: 0.25, HEAD_RZ: 0.235, TUBE_ARM: 0.05, TUBE_LEG: 0.058, BALL_SH: 0.085, BALL_EL: 0.06, BALL_KN: 0.07, BALL_HIP: 0.064,
       HAND_K: 1.15, FOOT_K: 1.15, TORSO_W: 1.12 }
   };
@@ -46,7 +48,7 @@
   // derivados: FK = escala de la cara/pelo respecto a la cabeza de v1 (los rasgos se dibujan en metros de v1 y se escalan);
   // TORSO_K = escala vertical del perfil del tronco (diseñado para un tronco de 0,67); TR_Y0/1 = alturas de reposo que cubre la camiseta
   var HEAD_C0 = 0.20, HEAD_RY0 = 0.21, FK = 1, TORSO_K = 1, TR_Y0 = 0, TR_Y1 = 1;
-  var REACH_WANT = 2.192, REACH = 0;       // alcance del atleta (VB.Players.dims) y el del muñeco
+  var REACH_WANT = 2.192, REACH = 0, REACH_REST = 0, STRETCH_MAX = 1, ARM_REST = 0;   // alcance del atleta; del muñeco estirado / en reposo; tope del estirón
   function applyDims(name) {
     var b = BODIES[name] || BODIES.chibi; BODY = BODIES[name] ? name : 'chibi';
     ANKLE = b.ANKLE; THIGH = b.THIGH; SHIN = b.SHIN; HIP_H = THIGH + SHIN + ANKLE; HIP_W = b.HIP_W;
@@ -58,17 +60,22 @@
     HAND_K = b.HAND_K; FOOT_K = b.FOOT_K; TORSO_W = b.TORSO_W;
     FK = HEAD_RY / HEAD_RY0; TORSO_K = (SPINE_Y + CHEST_Y + SH_Y) / 0.67;
     TR_Y0 = HIP_H - 0.13 * TORSO_K; TR_Y1 = HIP_H + 0.70 * TORSO_K;
+    ARM_REST = b.ARM || 0;
     fitReach();
   }
 
-  /** Reparte UPPER/FORE para que hombro + brazo + antebrazo + palma = alcance del atleta (misma proporción 0,52/0,48). */
+  /** Alcance del atleta (VB.Players.dims().reach). Sin ARM en el preset, el brazo se hace a medida (hombro + brazo + antebrazo + palma =
+   *  alcance, proporción 0,52/0,48) y no hay estirón. Con ARM (chibi), el brazo de reposo es corto y STRETCH_MAX es el factor de
+   *  estiramiento de brazo + antebrazo que cubre el alcance: lo aplica reachTo cuando el objetivo queda fuera. */
   function fitReach() {
     var d = null;
     try { d = VB.Players && VB.Players.dims ? VB.Players.dims() : null; } catch (e) { d = null; }
     if (d && d.reach > 0) REACH_WANT = d.reach;
-    var arm = REACH_WANT - SH_H - PALM;
+    var arm = ARM_REST > 0 ? ARM_REST : REACH_WANT - SH_H - PALM;
     UPPER = arm * 0.52; FORE = arm * 0.48;
-    REACH = SH_H + UPPER + FORE + PALM;
+    REACH_REST = SH_H + UPPER + FORE + PALM;
+    STRETCH_MAX = Math.max(1, (REACH_WANT - SH_H - PALM) / (UPPER + FORE));
+    REACH = SH_H + (UPPER + FORE) * STRETCH_MAX + PALM;
   }
 
   // ---------- Equipos (misma paleta que players) ----------
@@ -624,7 +631,7 @@
     var browL = bone(head, eX, bY, fz(eX, bY)), browR = bone(head, -eX, bY, fz(eX, bY));
     var hair = bone(head, 0, HEAD_C + HEAD_RY - 0.02, -0.06);
     // medidas con las que se construyó ESTE muñeco (las poses y el balón las leen de aquí: así conviven v1 y chibi en la comparación)
-    var D = { body: BODY, HIP_H: HIP_H, NECK_Y: NECK_Y, PALM: PALM, LEG: THIGH + SHIN, SH_H: SH_H, HEAD_C: HEAD_C, HEAD_RY: HEAD_RY, top: SH_H + HEAD_C + HEAD_RY, heads: (SH_H + HEAD_C + HEAD_RY) / (2 * HEAD_RY), reach: REACH };
+    var D = { body: BODY, HIP_H: HIP_H, NECK_Y: NECK_Y, SH_X: SH_X, PALM: PALM, UPPER: UPPER, FORE: FORE, STRETCH: STRETCH_MAX, LEG: THIGH + SHIN, SH_H: SH_H, HEAD_C: HEAD_C, HEAD_RY: HEAD_RY, top: SH_H + HEAD_C + HEAD_RY, heads: (SH_H + HEAD_C + HEAD_RY) / (2 * HEAD_RY), reach: REACH, reachRest: REACH_REST };
     var r = { idx: idx, look: L, tc: tc, D: D, root: root, body: body, pelvis: pelvis, spine: spine, chest: chest, head: head, eyes: eyes, mouth: mouth, teeth: teeth, brow: [browL, browR], hair: hair,
       sh: [], up: [], el: [], hand: [], hip: [], th: [], kn: [], ft: [], face: 'neutra', faceE: 0, faceM: 0, blinkT: 1.5 + idx * 0.9, blinkOn: 0, pose: 'idle', t0: idx * 0.37, tFix: -1, ball: null, geos: [null, null, null], ink: null };
     for (var k = 0; k < 2; k++) {
@@ -699,7 +706,7 @@
     /** de pie, en reposo, con el balón en la mano derecha a la altura de la barriga */
     idle: function (r) {
       rot(r.pelvis, 0.02, 0, 0.02); rot(r.chest, 0, 0.06, -0.02); rot(r.head, 0.04, -0.14, -0.05);
-      rot(r.up[0], -0.1, 0, 0.16); rot(r.el[0], -0.5, 0, 0.12);
+      rot(r.up[0], -0.1, 0, 0.14); rot(r.el[0], -0.3, 0, 0.05);
       rot(r.up[1], -0.55, 0, -0.1); rot(r.el[1], -1.45, 0.0, 0); rot(r.hand[1], 0.3, 0, 0);
       rot(r.th[0], 0.02, 0, 0.06); rot(r.th[1], -0.02, 0, -0.1); rot(r.kn[1], 0.06, 0, 0); rot(r.ft[0], 0, 0.05, -0.06); rot(r.ft[1], -0.04, -0.1, 0.1);
     },
@@ -714,7 +721,7 @@
         rot(r.up[k], -0.78, 0, -s * 0.16); rot(r.el[k], 0.0, 0, -s * 0.06); rot(r.hand[k], 0.15, s * 1.3, 0);
       }
     },
-    /** remate en el aire: brazo derecho arriba, cuerpo arqueado, piernas recogidas; estirón del brazo y del cuerpo */
+    /** remate en el aire: brazo derecho armado, cuerpo arqueado, piernas recogidas (el estirón al golpe lo pone animate con reachTo) */
     spike: function (r) {
       r.body.position.y = 0.72;
       rot(r.pelvis, -0.22, 0.1, 0); rot(r.chest, -0.12, 0.25, 0.08); rot(r.head, -0.45, -0.12, 0);
@@ -722,7 +729,15 @@
       rot(r.up[0], -0.95, 0, 0.45); rot(r.el[0], -1.1, 0, 0);
       rot(r.th[0], -0.55, 0, 0.12); rot(r.kn[0], 1.25, 0, 0); rot(r.ft[0], 0.45, 0, 0);
       rot(r.th[1], 0.35, 0, -0.12); rot(r.kn[1], 0.95, 0, 0); rot(r.ft[1], 0.5, 0, 0);
-      r.up[1].scale.y = 1.18; r.body.scale.set(0.96, 1.08, 0.96);
+      r.body.scale.set(0.96, 1.08, 0.96);
+    },
+    /** bloqueo: en el aire, los dos brazos rectos arriba (animate los lleva con reachTo a los objetivos: estirón), rodillas recogidas */
+    block: function (r) {
+      r.body.position.y = 0.45;
+      rot(r.pelvis, 0.08, 0, 0); rot(r.chest, 0.06, 0, 0); rot(r.head, -0.2, 0, 0);
+      rot(r.up[0], -3.0, 0, 0.2); rot(r.up[1], -3.0, 0, -0.2); rot(r.hand[0], 0.25, 0, 0); rot(r.hand[1], 0.25, 0, 0);
+      rot(r.th[0], -0.35, 0, 0.1); rot(r.kn[0], 0.8, 0, 0); rot(r.ft[0], 0.3, 0, 0);
+      rot(r.th[1], -0.35, 0, -0.1); rot(r.kn[1], 0.8, 0, 0); rot(r.ft[1], 0.3, 0, 0);
     },
     /** celebración: brazos en V, una rodilla arriba, cabeza atrás */
     cel: function (r) {
@@ -736,8 +751,35 @@
   // ---- Ganchos de squash & stretch (escalas de huesos; la fase 2 los llamará desde players.js) ----
   /** Estira (a > 0) o aplasta (a < 0) el cuerpo entero desde el suelo (hueso body): volumen casi constante. */
   function squash(r, a) { var sy = 1 + a, sx = 1 / Math.sqrt(sy); r.body.scale.set(sx, sy, sx); }
-  /** Estirón del brazo k (escala y del hueso del brazo: brazo + antebrazo + mano se alargan desde el hombro). */
-  function stretchArm(r, k, s) { r.up[k].scale.y = s; r.up[k].scale.x = r.up[k].scale.z = 1 / Math.sqrt(s); }
+  /** Estirón del brazo k: brazo + antebrazo se alargan ×s desde el hombro (escala y del hueso del brazo) y adelgazan (volumen,
+   *  ×1/√s); la bola del codo se desplaza con él; la MANO recupera su tamaño (escala inversa en el hueso de la mano). s = 1: reposo. */
+  function stretchArm(r, k, s) {
+    var q = Math.sqrt(s);
+    r.up[k].scale.set(1 / q, s, 1 / q);
+    r.hand[k].scale.set(q, 1 / s, q);
+  }
+  var DOWN = null, QA = null, TMP2 = null;
+  /** IK de un hueso con estirón cartoon (gancho para la fase 2): lleva el centro de la PALMA del brazo k al punto `tw` (mundo) con el
+   *  brazo recto apuntando a él. Si queda fuera del alcance de reposo, brazo + antebrazo se alargan lo que haga falta (tope r.D.STRETCH,
+   *  que cubre el alcance del atleta). `w` (0..1, por defecto 1) = peso del estirón (0 = largo de reposo; valores < 0 lo encogen un poco:
+   *  anticipación, mínimo ×0,9); `blend` (0..1, por defecto 1) = mezcla de la orientación con la pose actual del brazo (entrada suave).
+   *  Devuelve el factor de estiramiento necesario (1 = llega sin estirar; > STRETCH = no llega ni estirado). */
+  function reachTo(r, k, tw, w, blend) {
+    if (!DOWN) { DOWN = new THREE.Vector3(0, -1, 0); QA = new THREE.Quaternion(); TMP2 = new THREE.Vector3(); }
+    if (w == null) w = 1; if (blend == null) blend = 1;
+    var sh = r.sh[k], up = r.up[k], el = r.el[k];
+    r.root.updateMatrixWorld(true);
+    TMP2.copy(tw); sh.worldToLocal(TMP2);
+    var d = TMP2.length(), armL = r.D.UPPER + r.D.FORE, need = Math.max(0.2, (d - r.D.PALM) / armL);
+    var sN = clamp(need, 1, r.D.STRETCH), s = Math.max(0.9, 1 + (sN - 1) * w);
+    if (d > 1e-4) {
+      TMP2.multiplyScalar(1 / d); QA.setFromUnitVectors(DOWN, TMP2);
+      if (blend >= 1) up.quaternion.copy(QA); else up.quaternion.slerp(QA, blend);
+      el.rotation.x *= 1 - blend; el.rotation.z *= 1 - blend;
+    }
+    stretchArm(r, k, s);
+    return need;
+  }
   /** Rebote de la cabeza (sube/baja y se inclina sin cuello: solo el hueso head). */
   function headBob(r, dy, pitch) { r.head.position.y = r.D.NECK_Y + dy; r.head.rotation.x += pitch || 0; }
 
@@ -767,14 +809,22 @@
         else if (T > 0.68 && T < 0.86) a = -0.14 * Math.sin((T - 0.68) / 0.18 * PI); // aterrizaje: aplastado
         else if (T >= 0.86) a = 0.03 * Math.sin((T - 0.86) / 0.14 * PI);           // rebote
         squash(r, a);
-        var hit = Math.exp(-Math.pow((T - 0.42) / 0.07, 2));                        // estirón del brazo justo en el golpe
-        stretchArm(r, 1, 1 + 0.28 * hit);
         r.up[1].rotation.x = lerp(-1.6, -2.85, sstep(0.18, 0.4, T)) + 0.5 * sstep(0.44, 0.6, T);   // armado → golpe → acompañamiento
         r.hand[1].rotation.x = -0.55 + 0.9 * sstep(0.42, 0.52, T);
+        // ESTIRÓN cartoon (reachTo): el balón está a la altura del alcance del atleta sobre el salto (fuera del brazo corto de reposo).
+        // Anticipación: el brazo se ENCOGE un poco (w < 0) justo antes; estirón en pocos fotogramas hasta el golpe; vuelve al soltar.
+        var hitT = 0.42, ws = T < 0.3 ? 0 : T < 0.37 ? -0.3 * Math.sin((T - 0.3) / 0.07 * PI) : T < hitT ? sstep(0.37, hitT, T) : T < 0.48 ? 1 : 1 - sstep(0.48, 0.6, T);
+        var bl = sstep(0.3, hitT, T) * (1 - sstep(0.5, 0.62, T));
+        TMP.set(-r.D.SH_X - 0.1, 0.78 + r.D.reach - 0.03, 0.22); r.root.localToWorld(TMP);   // objetivo: palma a reach m sobre los pies, en el vértice del salto
+        if (bl > 0) reachTo(r, 1, TMP, ws, bl);
+        if (r.ball) {   // el balón del remate: llega, se golpea en hitT y sale disparado
+          r.ball.visible = T > 0.26 && T < 0.64;
+          if (r.ball.visible) { r.root.worldToLocal(r.ball.position.copy(TMP)); if (T < hitT) r.ball.position.y += 0.9 * (hitT - T) / 0.16; else { r.ball.position.z += 7 * (T - hitT); r.ball.position.y -= 3.5 * (T - hitT); } }
+        }
         // en el suelo: piernas de carrera/caída en vez de recogidas
         var gnd = 1 - air;
         if (gnd > 0) { for (var k = 0; k < 2; k++) { r.th[k].rotation.x *= air; r.kn[k].rotation.x = r.kn[k].rotation.x * air + 0.9 * gnd * (T < 0.14 || T > 0.68 ? 1 : 0); r.ft[k].rotation.x *= air; } r.pelvis.position.y = r.D.HIP_H - 0.18 * r.D.LEG * gnd * (T < 0.14 || T > 0.68 ? 1 : 0); }
-        headBob(r, -0.01 * a * 4, -0.12 * hit);
+        headBob(r, -0.01 * a * 4, -0.12 * Math.max(0, ws));
         r.body.scale.y *= 1;   // (ya en squash)
         break; }
       case 'cel': {   // saltitos de alegría: parábola, brazos que bombean, aplastamiento al caer y rebote de la cabeza
@@ -791,9 +841,26 @@
         if (kneeUp < 1) { var kb = (1 - kneeUp) * (Tc < 0.12 || Tc > 0.6 ? 1 : 0); r.kn[0].rotation.x += 0.8 * kb; r.kn[1].rotation.x = 0.8 * kb; r.th[0].rotation.x -= 0.4 * kb; r.th[1].rotation.x = -0.4 * kb; }
         headBob(r, -0.02 * ac * 3 + 0.01 * pump, 0.06 * pump);
         break; }
+      case 'block': {   // ciclo de 1,6 s: agachado → salto con los brazos que se estiran hacia la cinta → aterrizaje
+        var Tb = (t % 1.6) / 1.6, hb = Math.sin(clamp((Tb - 0.12) / 0.56, 0, 1) * PI);
+        r.body.position.y = 0.45 * hb;
+        var ab = 0;
+        if (Tb < 0.12) ab = -0.1 * Math.sin(Tb / 0.12 * PI); else if (Tb < 0.26) ab = 0.08 * Math.sin((Tb - 0.12) / 0.14 * PI);
+        else if (Tb > 0.66 && Tb < 0.84) ab = -0.12 * Math.sin((Tb - 0.66) / 0.18 * PI);
+        squash(r, ab);
+        var wb = sstep(0.2, 0.34, Tb) * (1 - sstep(0.6, 0.72, Tb)), blb = sstep(0.12, 0.3, Tb) * (1 - sstep(0.62, 0.74, Tb));
+        for (var kb2 = 0; kb2 < 2; kb2++) {
+          TMP.set((kb2 ? -1 : 1) * 0.24, 0.45 + r.D.reach - 0.05, 0.28); r.root.localToWorld(TMP);   // manos a reach m sobre los pies del vértice, por encima de la cinta
+          if (blb > 0) reachTo(r, kb2, TMP, wb, blb);
+          else { rot(r.up[kb2], -0.6 - 0.4 * Math.sin(Tb * PI), 0, (kb2 ? -1 : 1) * 0.25); rot(r.el[kb2], -0.9, 0, 0); }
+        }
+        var gb = Tb < 0.12 || Tb > 0.66 ? 1 : 0;
+        if (gb) { for (var kb3 = 0; kb3 < 2; kb3++) { r.th[kb3].rotation.x = -0.5; r.kn[kb3].rotation.x = 1.0; r.ft[kb3].rotation.x = -0.5; } r.pelvis.position.y = r.D.HIP_H - 0.2 * r.D.LEG; }
+        headBob(r, -0.015 * ab * 3, 0);
+        break; }
     }
-    // el balón va en la mano derecha del que está en reposo (apoyado en la manopla)
-    if (r.ball) { r.ball.visible = r.pose === 'idle'; if (r.ball.visible) { r.root.updateMatrixWorld(true); r.hand[1].getWorldPosition(TMP); r.root.worldToLocal(TMP); r.ball.position.set(TMP.x - 0.02, TMP.y - r.D.PALM + 0.03 + BR * 0.95, TMP.z + 0.03); r.ball.rotation.y = t * 0.3; } }
+    // el balón va en la mano derecha del que está en reposo (apoyado en la manopla); en el remate lo mueve el bucle de arriba
+    if (r.ball && r.pose !== 'spike') { r.ball.visible = r.pose === 'idle'; if (r.ball.visible) { r.root.updateMatrixWorld(true); r.hand[1].getWorldPosition(TMP); r.root.worldToLocal(TMP); r.ball.position.set(TMP.x - 0.02, TMP.y - r.D.PALM + 0.03 + BR * 0.95, TMP.z + 0.03); r.ball.rotation.y = t * 0.3; } }
   }
   var TMP = null, BR = 0.21;
 
@@ -823,7 +890,10 @@
     // los otros peinados (rehace los tres primeros muñecos sin complemento): flequillo, rapado, trenzas + moño
     peinados: { pos: [[3, -1.05], [3, -0.35], [3, 0.35], [3, 1.05]], yaw: [0.25, 0.25, 0.25, 0.25], cam: [6.1, 1.75, 0.5], at: [3, 1.45, 0], fov: 32, poses: ['stand', 'stand', 'stand', 'stand'], faces: ['neutra', 'sorpresa', 'pena', 'lengua'], restyle: [['flequillo', ''], ['rapado', ''], ['trenzas', ''], ['mono', '']], face: true },
     // un solo muñeco de pie con cámara FIJA (misma para v1 y chibi): hoja antes/después
-    solo: { pos: [[3, 0]], yaw: [0.12], cam: [7.2, 1.15, 0], at: [3, 0.98, 0], fov: 30, poses: ['stand'], faces: ['neutra'], fixed: true }
+    solo: { pos: [[3, 0]], yaw: [0.12], cam: [7.2, 1.15, 0], at: [3, 0.98, 0], fov: 30, poses: ['stand'], faces: ['neutra'], fixed: true },
+    // estirón del remate (el rematador solo, 3/4, cámara fija: 4 fotogramas con freeze) y bloqueo (dos muñecos)
+    estiron: { pos: [null, null, [3, 0]], yaw: [0, 0, 0.55], cam: [6.7, 2.0, 2.3], at: [3, 1.65, 0.1], fov: 48, fixed: true },
+    bloqueo: { pos: [null, null, [3, -0.55], [3, 0.55]], yaw: [0, 0, 0.3, 0.3], cam: [6.9, 1.9, 1.6], at: [3, 1.75, 0], fov: 44, poses: [null, null, 'block', 'block'], faces: [null, null, 'concentrado', 'esfuerzo'], fixed: true }
   };
   function viewY(V, y) {
     if (V.fixed) return y;
@@ -831,8 +901,7 @@
     return V.face ? y + (hc - 1.65) : y * top / 1.86;
   }
   POSES.stand = function (r) {   // de pie, neutro (hoja de cuerpo)
-    // (brazos de muñeco, largos: los codos van algo doblados para que las manoplas no lleguen a los zapatones)
-    rot(r.up[0], -0.05, 0, 0.14); rot(r.up[1], -0.05, 0, -0.14); rot(r.el[0], -0.42, 0, 0.1); rot(r.el[1], -0.42, 0, -0.1);
+    rot(r.up[0], -0.05, 0, 0.12); rot(r.up[1], -0.05, 0, -0.12); rot(r.el[0], -0.15, 0, 0); rot(r.el[1], -0.15, 0, 0);
     rot(r.th[0], 0, 0, 0.05); rot(r.th[1], 0, 0, -0.05); rot(r.ft[0], 0, 0, -0.05); rot(r.ft[1], 0, 0, 0.05);
   };
   function hideObj(o) { if (o && o.visible) { o.visible = false; hidden.push(o); } }
@@ -851,8 +920,8 @@
       if (!p) continue;
       r.root.position.set(p[0], 0, -p[1]);
       var yaw = V.yaw[i] || 0; r.root.rotation.y = Math.atan2(Math.cos(yaw), -Math.sin(yaw));
-      r.pose = V.poses ? V.poses[i] : r.look.pose;
-      setFace(r, V.faces ? V.faces[i] : r.look.face);
+      r.pose = V.poses && V.poses[i] ? V.poses[i] : r.look.pose;
+      setFace(r, V.faces && V.faces[i] ? V.faces[i] : r.look.face);
     }
     camSet = V;
   }
@@ -864,12 +933,12 @@
   }
   function reachInfo() {
     var d = null; try { d = VB.Players && VB.Players.dims ? VB.Players.dims() : null; } catch (e) { }
-    return { body: BODY, doll: +REACH.toFixed(4), athlete: d ? +d.reach.toFixed(4) : null, shoulder: +SH_H.toFixed(3), upper: +UPPER.toFixed(4), fore: +FORE.toFixed(4), palm: PALM, hip: +HIP_H.toFixed(3), head: +(2 * HEAD_RY).toFixed(3), headW: +(2 * HEAD_RX).toFixed(3), headTop: +(SH_H + HEAD_C + HEAD_RY).toFixed(3), heads: +((SH_H + HEAD_C + HEAD_RY) / (2 * HEAD_RY)).toFixed(2), handLow: +(SH_H - UPPER - FORE - PALM - 0.06 * HAND_K).toFixed(3) };
+    return { body: BODY, doll: +REACH.toFixed(4), rest: +REACH_REST.toFixed(4), stretch: +STRETCH_MAX.toFixed(3), athlete: d ? +d.reach.toFixed(4) : null, shoulder: +SH_H.toFixed(3), upper: +UPPER.toFixed(4), fore: +FORE.toFixed(4), palm: PALM, hip: +HIP_H.toFixed(3), head: +(2 * HEAD_RY).toFixed(3), headW: +(2 * HEAD_RX).toFixed(3), headTop: +(SH_H + HEAD_C + HEAD_RY).toFixed(3), heads: +((SH_H + HEAD_C + HEAD_RY) / (2 * HEAD_RY)).toFixed(2), handLow: +(SH_H - UPPER - FORE - PALM - 0.06 * HAND_K).toFixed(3) };
   }
 
   VB.Doll = {
     rigs: rigs, LOOKS: LOOKS, STYLES: STYLES, ACCS: ACCS, EXPR: EXPR, POSES: POSES,
-    squash: squash, stretchArm: stretchArm, headBob: headBob, setFaceOf: setFace,
+    squash: squash, stretchArm: stretchArm, reachTo: reachTo, headBob: headBob, setFaceOf: setFace,
     /** Dimensiones del muñeco (m): para la fase 2 (players.js) y las pruebas. */
     dims: function () { return { HIP_H: HIP_H, HIP_W: HIP_W, THIGH: THIGH, SHIN: SHIN, ANKLE: ANKLE, SPINE_Y: SPINE_Y, CHEST_Y: CHEST_Y, SH_X: SH_X, SH_Y: SH_Y, NECK_Y: NECK_Y, UPPER: UPPER, FORE: FORE, PALM: PALM, HEAD_C: HEAD_C, HEAD_RX: HEAD_RX, HEAD_RY: HEAD_RY, reach: REACH, shoulder: SH_H }; },
     reach: reachInfo,
@@ -893,6 +962,7 @@
       group = new THREE.Group(); group.name = 'dolls'; ctx.scene.add(group); rigs.length = 0;
       for (var i = 0; i < LOOKS.length; i++) { var r = buildRig(LOOKS[i], i); rigs.push(r); group.add(r.root); }
       rigs[0].ball = makeBall(); rigs[0].root.add(rigs[0].ball);
+      rigs[2].ball = makeBall(); rigs[2].root.add(rigs[2].ball);   // el balón del remate (lo mueve el bucle del estirón)
       hideGame();
       if (g) g.watch = true;   // sin galón ni halo del controlado
       // HUD fuera: solo el pabellón y los muñecos

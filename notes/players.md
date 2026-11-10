@@ -760,9 +760,10 @@ Ferran rechazó TAJO y los presets `?body=` («son los actuales modificados; qui
 (Switch Sports / Sackboy: figura redondeada y limpia, tubos con bolas en las articulaciones, cara sencilla y expresiva, ropa pintada) +
 **caricatura de cómic** (Windjammers 2 / Mario Strikers: cabeza grande, manos enormes, poses chulescas). Fichero NUEVO `js/doll.js`
 (`VB.Doll`), cargado tras players.js en index.html; solo actúa en `?debug=doll`. players.js no cambia salvo `VB.Players.dims()` (solo
-lectura: longitudes del rig, alcance y orden de los 27 huesos). main.js: escena `doll` (`&view=fila|poses|cara|cuerpo|peinados|solo`,
-`&body=v1|chibi`), gancho `VB.Doll.update` tras la cámara solo con esa escena; tools/shot.js la incluye en `all`. Capturas (cuerpo chibi):
-`tools/out/arte/doll/doll-{fila,cara,cuerpo,poses,peinados,fila-baja,chibi-antes-despues}.png` (borradores y las dos mitades de la hoja en `w/`).
+lectura: longitudes del rig, alcance y orden de los 27 huesos). main.js: escena `doll` (`&view=fila|poses|cara|cuerpo|peinados|solo|
+estiron|bloqueo`, `&body=v1|chibi`), gancho `VB.Doll.update` tras la cámara solo con esa escena; tools/shot.js la incluye en `all`. Capturas
+(cuerpo chibi): `tools/out/arte/doll/doll-{fila,cara,cuerpo,poses,peinados,fila-baja,chibi-antes-despues,estiron,bloqueo}.png` (borradores
+y los fotogramas sueltos en `w/`; las hojas se componen con `tools/out/arte/presets/sheet.js`).
 Las alturas de cámara de las vistas están pensadas para v1 y `viewY` las escala con el cuerpo activo (`face`: con el centro de la cabeza).
 - **Esqueleto**: los MISMOS 27 huesos, nombres, jerarquía y orden que players.js (`body, pelvis, spine, chest, head, eyes, mouth, teeth,
   browL, browR, hair, [sh, up, el, hand, hip, th, kn, ft] × izq/der`): la animación, la IK y la sim de la fase 2 se enganchan sin cambiar.
@@ -779,10 +780,24 @@ Las alturas de cámara de las vistas están pensadas para v1 y `viewY` las escal
   | piernas (muslo + espinilla + zapatón) | 0,33 + 0,33 + 0,12 = 0,78 | **0,23 + 0,23 + 0,12 = 0,58** (×0,7) |
   | tronco (pelvis → hombro) | 0,22 + 0,22 + 0,23 = 0,67 | **0,20 + 0,20 + 0,205 = 0,605**, ×1,12 de ancho por abajo (`TORSO_W`) |
   | hombro | 1,45 | **1,185** |
-  | brazo + antebrazo + palma | 0,334 + 0,308 + 0,10 = 0,742 | **0,464 + 0,428 + 0,115 = 1,007** (brazos de muñeco) |
+  | brazo + antebrazo + palma EN REPOSO | 0,334 + 0,308 + 0,10 = 0,742 | **0,330 + 0,305 + 0,115 = 0,75** (`ARM` 0,635: proporción chibi) |
+  | alcance de reposo (hombro + brazo) | 2,192 | 1,935 → el resto lo pone el **estirón ×1,405** (`STRETCH_MAX`) |
   | manoplas / zapatones | ×1 | **×1,15** (`HAND_K`, `FOOT_K`; la planta sigue en −0,12) |
   | tubos brazo / pierna; bolas hombro, codo, rodilla | 0,047 / 0,054; 0,08 / 0,056 / 0,066 | **0,05 / 0,058; 0,085 / 0,06 / 0,07** |
-  | manos colgando (de pie, brazo recto) | a 0,65 m del suelo | a 0,11 m: por eso `stand`/`idle` llevan el codo doblado (−0,42 / −0,5) |
+  | manos colgando (de pie, brazo recto) | a 0,65 m del suelo | a 0,37 m (altura de la cadera / muslo alto; reposo natural) |
+  **Estirón cartoon del brazo (decisión de Ferran, 10-nov: «brazo más corto y que se alargue para golpear»)**: en chibi el preset
+  lleva `ARM` (hombro→muñeca de reposo 0,635) y `fitReach` ya no hace el brazo a medida: calcula `STRETCH_MAX = (alcance del atleta −
+  hombro − palma) / (brazo + antebrazo)` = (2,192 − 1,185 − 0,115) / 0,635 = **×1,405**, el tope de estiramiento que cubre los 2,192 m
+  (con salto incluido: el objetivo va sobre los pies). `VB.Doll.reachTo(r, k, objetivoMundo, w, blend)` = IK de un hueso con estirón
+  (gancho de la fase 2): orienta el brazo recto hacia el punto (centro de la PALMA en el objetivo), y si queda fuera del alcance de reposo
+  estira brazo + antebrazo lo justo (tope `r.D.STRETCH`) con `stretchArm`: escala y del hueso del brazo ×s, adelgazamiento ×1/√s
+  (volumen), la bola del codo se desplaza (y se alarga) con él y la MANO recupera su tamaño (escala inversa en el hueso de la mano). `w`
+  = peso del estirón (0..1; < 0 lo encoge hasta ×0,9: anticipación), `blend` = entrada suave de la orientación desde la pose actual.
+  Devuelve el factor necesario (> STRETCH = no llega). Visto en `doll-estiron.png` (5 fotogramas: agachado → despegue → brazo encogido
+  0,07 s antes → golpe ×1,4 → vuelta en 0,2 s) y `doll-bloqueo.png` (dos brazos estirados sobre la cinta): **×1,405 aguanta
+  visualmente** (tubo delgado pero limpio, manopla del mismo tamaño); no hace falta estirar el tronco. Si en la fase 2 se quisiera menos
+  estirón, bajar `ARM` no: subir SH_Y o repartir con `squash` del cuerpo (+5 % cubre ≈ 0,06 m). Pose `block` nueva (bucle de 1,6 s con
+  salto y los dos brazos a `reachTo`). `recv` (plataforma) y `cel` comprobadas con el brazo corto (`doll-fila.png`, `doll-poses.png`).
   Cara y pelo se dibujan en metros de v1 y se escalan ×`FK` = HEAD_RY/0,21 (1,19 en chibi) alrededor del centro de la cabeza
   (`faceCell`, complementos, mechones): ojos, cejas y boca crecen en proporción. Poses: la flexión de rodillas de `recv` y del remate en el
   suelo baja la pelvis 0,26 / 0,18 × largo de pierna (antes metros fijos). Hoja antes/después: `doll-chibi-antes-despues.png` (vista `solo`,
@@ -820,21 +835,24 @@ Las alturas de cámara de las vistas están pensadas para v1 y `viewY` las escal
   sombra). Escena entera en baja a 1280×720: 25 dibujos, 105k triángulos (`doll-fila-baja.png`). Atlas 1024² por muñeco (4 MB; TAJO 512²:
   si en móvil pesa, `PXK = 1` lo deja en 512 sin tocar nada más).
 - **Poses** (a mano, `POSES`: `idle` con el balón en la manopla derecha, `recv` plataforma con rodillas flexionadas, `spike` en el aire con
-  el brazo arriba, `cel` brazos en V con una rodilla arriba, `stand`). Convención: huesos con identidad en reposo; `rotation.x < 0` lleva
+  el brazo armado (el golpe lo pone `reachTo`), `block` en el aire con los dos brazos a `reachTo`, `cel` brazos en V con una rodilla arriba, `stand`). Convención: huesos con identidad en reposo; `rotation.x < 0` lleva
   la mano/pie hacia delante, `rotation.z > 0` hacia +X (la izquierda del muñeco).
 - **Animación con chispa (demostrada)**: ganchos como escalas de huesos, pensados para que players.js los llame en la fase 2:
   `VB.Doll.squash(r, a)` (hueso body desde el suelo, volumen constante: aplastamiento al aterrizar −14 %, estirón al despegar +10 %),
-  `stretchArm(r, k, s)` (escala y del hueso del brazo: +28 % en el instante del golpe), `headBob(r, dy, pitch)` (rebote de la cabeza sin
-  cuello). El bucle de la maqueta (`animate`): reposo = respiración + cabeza al compás; recepción = balanceo; remate = ciclo de 1,9 s
-  (anticipación aplastado → despegue estirado → golpe con estirón del brazo → aterrizaje aplastado → rebote); celebración = saltitos con
-  brazos que bombean. `VB.Doll.freeze({idx: t})` congela el bucle para capturas (remate en el golpe t = 0,8; celebración en el aire 0,38).
+  `stretchArm(r, k, s)` / `reachTo(r, k, objetivo, w, blend)` (estirón del brazo hasta el objetivo, ver arriba), `headBob(r, dy, pitch)`
+  (rebote de la cabeza sin cuello). El bucle de la maqueta (`animate`): reposo = respiración + cabeza al compás; recepción = balanceo;
+  remate = ciclo de 1,9 s (anticipación aplastado → despegue estirado → brazo encogido → golpe con el brazo estirado al balón, que sale
+  disparado → aterrizaje aplastado → rebote); bloqueo = ciclo de 1,6 s; celebración = saltitos con brazos que bombean. `VB.Doll.freeze({idx: t})`
+  congela el bucle para capturas (remate en el golpe t = 0,8; celebración en el aire 0,38; bloqueo arriba 0,64-0,7).
 - **API** (`VB.Doll`): `start(ctx, g)`, `update(g, realDt)`, `view(nombre)`, `setFace(i, expr)`, `setPose(i, pose)`, `restyle(i, peinado,
   complemento)`, `setBody(v1|chibi)`, `body()`, `bodies()`, `setLod(0|1|2)`, `freeze(map)`, `stats()` → `{tris, draws, reach}`, `reach()`,
   `dims()`, `build(L, idx)` (construye un muñeco fuera de la escena de depuración), constantes `LOOKS, STYLES, ACCS, EXPR, POSES`.
 - **Fase 2 (integración en players.js)**, lo que hará falta: (1) `buildRig` con un conmutador de modelo (`?model=doll` o ajuste) que use
   la geometría de doll.js y las longitudes de `VB.Doll.dims()` en vez de las TAJO (HIP_H, SPINE_Y, CHEST_Y, SH_Y, UPPER, FORE, PALM, NECK_Y):
   el resto del código ya lee esas variables (como hace `applyBody`); (2) las poses de players van en metros absolutos desde hombros a 1,535:
-  usar `SH_DY`/`ARM_K` de applyBody (hombros a 1,45 y brazo ×1,13 = exactamente el caso `arm ≠ 1` del preset chibi); (3) `updateFace` →
+  usar `SH_DY`/`ARM_K` de applyBody (hombros a 1,185; el brazo de reposo es CORTO y el alcance lo da el estirón: en `applyPose`, donde hoy
+  se resuelve `solveIK` con `ARM_STRETCH`, llamar a `VB.Doll.reachTo` con el peso del anclaje (`aw0/aw1`, que ya va 0 → 1 en los últimos
+  `ANC_PRE` s: el estirón entra solo) y el tope `r.D.STRETCH` = 1,405); (3) `updateFace` →
   `setFaceCells` del muñeco (misma técnica de uniformes; las celdas son otras); los huesos eyes/mouth/brow siguen vacíos; (4) el `squash` de
   players ya escala `body`: sustituirlo por `VB.Doll.squash` (más amplitud) y añadir `stretchArm` en `applyPose` donde hoy está la compresión
   del brazo (`r.up[1].scale`) y `headBob` en `aimHead`; (5) `headClear`/`HEAD_R`/`CV_K` con la cabeza de 0,42 m (como el chibi); (6) atlas del
