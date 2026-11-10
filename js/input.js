@@ -332,7 +332,7 @@
       '.vt-sw{right:calc(12px + env(safe-area-inset-right));bottom:calc(118px + env(safe-area-inset-bottom))}' +
       '.vt-set{width:52px;height:52px;right:calc(124px + env(safe-area-inset-right));bottom:calc(84px + env(safe-area-inset-bottom))}}';
 
-  var ICON_HIT = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5c-2.6 3-2.6 14 0 17M4.2 9.2c4.2 1.6 11.4 1.6 15.6 0M5.5 17c3.5-2.4 9.5-2.4 13 0"/></svg>';
+  var ICON_HIT = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><g><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(120 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(240 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g></svg>';
   var ICON_JUMP = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>';
   var ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="#fff"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>';
   var ICON_SET = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18c1.5-8 11-11 16-6"/><path d="M15.5 8.5l4.5 3.5-4 3"/></svg>';
