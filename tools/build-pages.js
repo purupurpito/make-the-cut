@@ -23,7 +23,7 @@ const pwa = '<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon"
   '<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n' +
   '<meta name="apple-mobile-web-app-title" content="Make the Cut">';
 const html = '<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n' + head.trim() + '\n' + pwa +
-  '\n<meta name="description" content="Vóley 2 contra 2 en 3D en el navegador: teclado, mando y táctil.">\n</head>\n<body>\n' + body.trim() + '\n</body>\n</html>\n';
+  '\n</head>\n<body>\n' + body.trim() + '\n</body>\n</html>\n';
 const manifest = { name: 'Make the Cut', short_name: 'Make the Cut', lang: 'es', start_url: './', scope: './', display: 'fullscreen',
   orientation: 'landscape', background_color: '#070b14', theme_color: '#070b14',
   icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
