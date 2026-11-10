@@ -377,6 +377,11 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **Des-IA-ficar los textos** (10-nov-2026, pedido de Ferran: «los separadores con "·" cantan»): ya no hay un pegamento universal « · ».
+  Etiquetas y datos cortos con el separador que toca (barra fina en el HUD y las fichas, barra inclinada en pares, raya larga en
+  enfrentamientos, paréntesis para lo secundario, pastillas solo para metadatos sueltos); consejos, avisos, ayudas y descripciones
+  como frases cortas; rótulos del pabellón «PUNTO PARA TI» / «SET PARA LA CPU» / «REVISIÓN». Guía en notes/ui_main.md «Textos»;
+  capturas en `tools/out/textos/`.
 - **Cuentas** (10-nov-2026, pedido de Ferran, como emPat Data pero sin cifrar): `js/account.js` (botón «Cuenta» en el menú
   principal; entrar, crear, cerrar sesión, borrar) con Firebase `make-the-cut-vb` por REST. Sincroniza escuadrón, Carrera, ajustes
   y récord; pregunta si hay dos Carreras distintas. Diseño y pruebas en [`notes/cuentas.md`](notes/cuentas.md). También: el **balón

@@ -41,10 +41,10 @@
   // xp = multiplicador de la experiencia. ref = error arbitral y challenge (tabla del TRASPASO; sim la aplica con createGame({ref}): g.refErr y g.chalPerSet).
   // Calibrado con la sim en autopilot (notes/carrera.md §Calibrado).
   var REF = {
-    low: { p1: 0.55, p2: 0.40, p3: 0.22, d3: 0.25, chal: 0, judges: false, name: 'Error arbitral alto · sin challenge' },
-    mid: { p1: 0.45, p2: 0.25, p3: 0.12, d3: 0.15, chal: 0, judges: false, name: 'Error arbitral medio · sin challenge' },
-    high: { p1: 0.20, p2: 0.08, p3: 0.02, d3: 0.10, chal: 0, judges: true, name: 'Jueces de línea · sin challenge' },
-    top: { p1: 0.20, p2: 0.08, p3: 0.02, d3: 0.10, chal: 2, judges: true, name: 'Jueces de línea · challenge' }
+    low: { p1: 0.55, p2: 0.40, p3: 0.22, d3: 0.25, chal: 0, judges: false, name: 'Error arbitral alto, sin challenge' },
+    mid: { p1: 0.45, p2: 0.25, p3: 0.12, d3: 0.15, chal: 0, judges: false, name: 'Error arbitral medio, sin challenge' },
+    high: { p1: 0.20, p2: 0.08, p3: 0.02, d3: 0.10, chal: 0, judges: true, name: 'Jueces de línea, sin challenge' },
+    top: { p1: 0.20, p2: 0.08, p3: 0.02, d3: 0.10, chal: 2, judges: true, name: 'Jueces de línea y challenge' }
   };
   var LEAGUES = [
     { lvl: 0, name: 'Liga Regional', short: 'Regional', cup: 'Copa Regional', diff: 'easy', ovr: [28, 40], xp: 1, ref: 'low' },
@@ -73,9 +73,9 @@
   // verano la fatiga vuelve a 0 (newSeason).
   var TRAIN = {
     bal: { name: 'Equilibrado', hint: 'Un poco de todo, sin fatiga', prog: { phys: 15, def: 15, atk: 15 }, fat: 0 },
-    phys: { name: 'Físico', hint: 'Salto, velocidad y reacción · cansa', prog: { phys: 60 }, fat: 12 },
-    def: { name: 'Defensa', hint: 'Recepción, defensa y bloqueo · cansa', prog: { def: 60 }, fat: 12 },
-    atk: { name: 'Ataque', hint: 'Colocación, potencia, control y saque · cansa', prog: { atk: 60 }, fat: 12 },
+    phys: { name: 'Físico', hint: 'Salto, velocidad y reacción (cansa)', prog: { phys: 60 }, fat: 12 },
+    def: { name: 'Defensa', hint: 'Recepción, defensa y bloqueo (cansa)', prog: { def: 60 }, fat: 12 },
+    atk: { name: 'Ataque', hint: 'Colocación, potencia, control y saque (cansa)', prog: { atk: 60 }, fat: 12 },
     rest: { name: 'Descanso', hint: 'Sin progreso; recupera la fatiga', prog: {}, fat: -35 }
   };
   // estilo del club: sus entrenamientos suman STYLE_PROG de progreso por semana a un grupo (siempre, sea cual sea tu enfoque)

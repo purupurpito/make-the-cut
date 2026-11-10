@@ -1306,3 +1306,28 @@ Petición de Ferran: quitar los números del menú, dividirlo en submenús (móv
   azul, como pages/icon.svg) dibujado con Path2D en el canvas.
 - Capturas finales: `tools/out/menus/final/` (principal, jugar, preparacion, jugadores, jugadores-ataque, ajustes y cr-* a 1280×720,
   844×390 táctil y 2560×1440).
+
+## Textos: guía de estilo (10-nov-2026, pedido de Ferran: «los separadores con "·" cantan a texto generado»)
+Lo que cantaba no era abreviar, sino pegar TODO con el mismo « · ». Reglas para cualquier texto nuevo que vea el jugador:
+- **Etiquetas, HUD, marcador, fichas, tablas, pestañas y pastillas: cortas y con abreviaturas**, como en un juego deportivo de verdad
+  («Nv 1», «Media 50», «⇄ Saque», «N.º 1», «T1 J3», «1.er toque» como título de paso). Nunca más largas que antes.
+- **El separador depende del contexto y de la jerarquía** (ui.js `sepHTML`/`setSep`, `VB.UI.sep`; career-ui.js `sp()`):
+  - barra vertical fina `'v'` para datos del HUD y líneas de datos («Set 1 | 24-10», «Entrenador | T1 J3», «S1 25-20 | S2 25-15»);
+    en `banner()`, un subtítulo con « | » se dibuja así («Set 1 | 25-20», «Cada 7 puntos | 21-18»);
+  - barra inclinada `'s'` para pares («21 / 15», «SET 3 / A 15», «Ana / Club»);
+  - raya larga « — » para enfrentamientos («Rocaverde — Castelnube», «CAS — PUE»);
+  - paréntesis para lo secundario («Atacante (Nv 1)», «Salou (prueba)», «Titular (entrenador: 55 de confianza)», «Mensajes (2 sin leer)»);
+  - rombo `'d'` solo en antetítulos y cabeceras con dato («Palau del Mar ◆ 2 contra 2», «Carrera ◆ Temporada 1 ◆ Liga Regional»,
+    «Fatiga ◆ 12 de 100»); se puede mezclar con la barra fina («Set 1 | 24-10 ◆ Normal», «Palau del Mar ◆ Nivel Normal | 3 sets»);
+  - pastillas `'c'` solo para metadatos sueltos (subtítulo de JUGAR, resumen de ¡A JUGAR!, «T1 J2» en la tarjeta Carrera, fichas);
+  - un «·» suelto puede quedar donde sea lo mejor, pero no como pegamento universal.
+- **Lo que es una frase disfrazada de lista pasa a frase corta** (con comas, «y», punto y seguido, dos puntos solo si introducen):
+  consejos del coach (la pastilla corta «Tu saque» / «2.º toque» se queda como etiqueta y detrás UNA frase, sin más « · »), avisos y
+  banners («Al mejor de 3 sets a 25, sacas tú», «Set decisivo, a 15 puntos», «A 3,2 cm de la línea. Se mantiene, te quedan 2»),
+  ayudas de las opciones («Platja Llarga, vóley playa en pista de 16 × 8»), descripciones de entrenos e insignias
+  («Salto, velocidad y reacción (cansa). +60 por semana, fatiga +12»), arbitraje («Jueces de línea y challenge»), reglas de puntos.
+  En frases, ordinales con palabra («Un punto para ganar el primer set»: `ORD`); en etiquetas, «1.er / 2.º / 3.er» se quedan.
+- **Rótulos grandes del pabellón** (arena.js `teamFor`/`teamOf`): «PUNTO PARA TI», «SET PARA LA CPU», «REVISIÓN» con «CHALLENGE TUYO /
+  DE LA CPU» debajo, «IN POR 3,2 cm», «A LOS 8 DEL SET DECISIVO»; en la demo, «EL LOCAL» / «LA VISITA».
+- Los textos del árbitro que vienen de la sim («Dobles», «Falta de saque: 8 segundos»…) no se tocan. Los consejos solo pueden
+  crecer si caben en 1280×720 y 844×390 (comprobado en `tools/out/textos/`).

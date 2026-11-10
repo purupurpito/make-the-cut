@@ -2586,7 +2586,7 @@
   function warmMsgFonts() {
     try {
       var cv = document.createElement('canvas'); cv.width = cv.height = 8;
-      var g = cv.getContext('2d'), list = [screens.big, screens.hung], names = ['TÚ', 'CPU', 'LOCAL', 'VISITA'], subs = ['SAQUE A LA RED', 'BALÓN A LA RED'], k;
+      var g = cv.getContext('2d'), list = [screens.big, screens.hung], names = ['TI', 'LA CPU', 'EL LOCAL', 'LA VISITA'], subs = ['SAQUE A LA RED', 'BALÓN A LA RED'], k;
       for (k in HOW) subs.push(HOW[k]);
       for (k in REASON) subs.push(REASON[k]);
       for (var i = 0; i < list.length; i++) {
@@ -2595,7 +2595,7 @@
         var big = [Math.round(bh * 0.46), Math.round(bh * 0.6)];
         for (var b = 0; b < 2; b++) {
           g.font = 'italic 900 ' + big[b] + 'px ' + FONT;
-          for (var n = 0; n < names.length; n++) { g.measureText('PUNTO ' + names[n]); g.measureText('SET ' + names[n]); g.fillText('PUNTO ' + names[n], 0, 4); }
+          for (var n = 0; n < names.length; n++) { g.measureText('PUNTO PARA ' + names[n]); g.measureText('SET PARA ' + names[n]); g.fillText('PUNTO PARA ' + names[n], 0, 4); }
           g.measureText('¡VICTORIA!');
         }
         g.font = '800 ' + Math.round(bh * 0.22) + 'px ' + FONT;
@@ -2604,7 +2604,7 @@
       if (led.mcv) {                                                    // mensajes de las vallas (drawMsg)
         g.font = 'italic 900 ' + Math.round(led.mcv.height * 0.66) + 'px ' + FONT;
         var lm = ['PUNTO DE PARTIDO', 'PUNTO DE SET', '¡BLOQUEO!', '¡VICTORIA!', 'FIN DEL PARTIDO', 'VIDEO CHALLENGE'];
-        for (var q = 0; q < names.length; q++) lm.push('PUNTO · ' + names[q], 'SET · ' + names[q]);
+        for (var q = 0; q < names.length; q++) lm.push('PUNTO PARA ' + names[q], 'SET PARA ' + names[q]);
         for (var m = 0; m < lm.length; m++) { g.measureText(lm[m]); g.fillText(lm[m], 0, 4); }
       }
     } catch (e) { }
@@ -3163,6 +3163,10 @@
   /** Arranca la alegría de un equipo; si ya estaba saltando no reinicia el escalonado. */
   function startCheer(t, sec) { if (RT.cheerT[t] < 0.3) RT.cheerAge[t] = 0; RT.cheerT[t] = sec; }
   function teamName(t, g) { return g && g.demo ? (t === 0 ? 'LOCAL' : 'VISITA') : (t === 0 ? 'TÚ' : 'CPU'); }
+  /** «PUNTO PARA TI» / «SET PARA LA CPU» (rótulos del pabellón, 10-nov-2026: frases en vez de «PUNTO · TÚ»). */
+  function teamFor(t, g) { return g && g.demo ? (t === 0 ? 'EL LOCAL' : 'LA VISITA') : (t === 0 ? 'TI' : 'LA CPU'); }
+  /** «CHALLENGE TUYO» / «CHALLENGE DE LA CPU». */
+  function teamOf(t, g) { return g && g.demo ? (t === 0 ? 'DEL LOCAL' : 'DE LA VISITA') : (t === 0 ? 'TUYO' : 'DE LA CPU'); }
   var REASON = { 'in': 'DENTRO', out: 'FUERA', antenna: 'ANTENA', 'double': 'DOBLES', four: '4 TOQUES', net: 'TOQUE DE RED',
     serve: 'FALTA DE SAQUE', under: 'BAJO LA RED', block: 'BLOQUEO DEL SAQUE', attackServe: 'ATAQUE SOBRE EL SAQUE' };
   var HOW = { ace: '¡ACE!', kill: 'REMATE', tip: 'DEJADA', block: 'BLOQUEO' };
@@ -3196,8 +3200,8 @@
           RT.cheerT[1 - w] = Math.min(RT.cheerT[1 - w], 0.0);
           flRate = Math.max(flRate, e.matchWon ? 30 : 12);
           if (!e.setWon && !e.matchWon) {
-            ledMessage('PUNTO · ' + teamName(w, g), TEAMC[w], 2.6);
-            screenMsg('PUNTO ' + teamName(w, g), pointSub(e), TEAMC[w], 2.4);
+            ledMessage('PUNTO PARA ' + teamFor(w, g), TEAMC[w], 2.6);
+            screenMsg('PUNTO PARA ' + teamFor(w, g), pointSub(e), TEAMC[w], 2.4);
           }
           refSignal(e, g);
           crewReact(w, (e.highlight || 0) >= 0.6, e.matchWon ? 'match' : e.setWon ? 'set' : 'point');
@@ -3212,16 +3216,16 @@
           var ct = e.team === 1 ? 1 : 0;
           refChallenge();
           ledMessage('VIDEO CHALLENGE', TEAMC[ct], 4.5);
-          screenMsg('CHALLENGE', 'REVISIÓN · ' + teamName(ct, g), TEAMC[ct], 4.6);
+          screenMsg('REVISIÓN', 'CHALLENGE ' + teamOf(ct, g), TEAMC[ct], 4.6);
           RT.cheerT[0] = Math.min(RT.cheerT[0], 0); RT.cheerT[1] = Math.min(RT.cheerT[1], 0);
           break;
         }
         case 'challengeResult': { // IN/OUT con los cm; si se anula, punto para el que lo pidió (marcador desde g)
           var chT = e.team === 1 ? 1 : 0, cmv = Math.abs(+e.dist || 0) * 100, chW = e.overturned ? chT : 1 - chT;
-          var chH = (e.truthIn ? 'IN' : 'OUT') + ' · ' + cmv.toFixed(1).replace('.', ',') + ' cm';
+          var chH = (e.truthIn ? 'IN' : 'OUT') + ' POR ' + cmv.toFixed(1).replace('.', ',') + ' cm';
           scoreFromGame(g);
-          screenMsg(chH, e.overturned ? 'PUNTO ' + teamName(chW, g) : 'SE MANTIENE', TEAMC[chW], 3.2);
-          ledMessage(e.overturned ? 'PUNTO · ' + teamName(chW, g) : chH, TEAMC[chW], 3);
+          screenMsg(chH, e.overturned ? 'PUNTO PARA ' + teamFor(chW, g) : 'SE MANTIENE', TEAMC[chW], 3.2);
+          ledMessage(e.overturned ? 'PUNTO PARA ' + teamFor(chW, g) : chH, TEAMC[chW], 3);
           if (e.overturned) { startCheer(chW, 2.6); RT.cheerMax[chW] = 1; crewReact(chW, true, 'point'); }
           if (R1) { R1.seq = [sideStep(1.2, 12, POSE.side, chW, F_OPEN)]; R1.seqT = 0; R1.seqI = 0; R1.sig = 'challengeResult'; }
           break;
@@ -3231,14 +3235,14 @@
           break;
         case 'set':
           if (e.sets) { SB.sets[0] = e.sets[0]; SB.sets[1] = e.sets[1]; }
-          ledMessage('SET · ' + teamName(e.team, g), TEAMC[e.team], 4);
-          screenMsg('SET ' + teamName(e.team, g), (e.score ? e.score[0] + ' – ' + e.score[1] : ''), TEAMC[e.team], 4);
+          ledMessage('SET PARA ' + teamFor(e.team, g), TEAMC[e.team], 4);
+          screenMsg('SET PARA ' + teamFor(e.team, g), (e.score ? e.score[0] + ' – ' + e.score[1] : ''), TEAMC[e.team], 4);
           RT.waveAmp = 1; RT.waveT = 5;
           break;
         case 'match':
           var win = e.team === 0 && !g.demo;
           ledMessage(win ? '¡VICTORIA!' : 'FIN DEL PARTIDO', TEAMC[e.team], 9);
-          screenMsg(win ? '¡VICTORIA!' : 'GANA ' + teamName(e.team, g), 'SETS ' + (e.sets ? e.sets[0] + ' – ' + e.sets[1] : ''), TEAMC[e.team], 9);
+          screenMsg(win ? '¡VICTORIA!' : 'GANA ' + (g && g.demo ? (e.team === 0 ? 'EL LOCAL' : 'LA VISITA') : 'LA CPU'), 'SETS ' + (e.sets ? e.sets[0] + ' – ' + e.sets[1] : ''), TEAMC[e.team], 9);
           RT.waveAmp = 1; RT.waveT = 10; flRate = 40; MOOD.winOn = true;
           break;
         case 'block':
@@ -3251,7 +3255,7 @@
           // (playa, why 'swap': cada 7 puntos jugados, 5 en el tercer set; mensaje corto, como el de los 8 puntos)
           var eight = e.why === 'eight' || e.why === 'swap', ccDur = (e.pause || (eight ? 1.4 : 1.0)) + (eight ? 2.4 : 2.2);
           // videomarcadores y marcador colgado: encadenado tras el mensaje de SET / PUNTO, con icono de intercambio
-          var ccSub = e.why === 'swap' ? 'CADA ' + (e.every || 7) + ' PUNTOS' : eight ? 'SET DECISIVO · 8 PUNTOS' : 'FIN DEL SET ' + e.setNo;
+          var ccSub = e.why === 'swap' ? 'CADA ' + (e.every || 7) + ' PUNTOS' : eight ? 'A LOS 8 DEL SET DECISIVO' : 'FIN DEL SET ' + e.setNo;
           var ccm = ['CAMBIO DE CAMPO', ccSub, CC_COL, eight ? 2.4 : 2.6, 'swap'];
           if (SB.msgT > 0 && SB.msg) { SB.next = ccm; SB.msgT = Math.min(SB.msgT, eight ? 1.3 : 2.6); } else screenMsg(ccm[0], ccm[1], ccm[2], ccm[3], ccm[4]);
           // vallas LED: "<<< CAMBIO DE CAMPO >>>" en dorado, también encadenado al mensaje en curso

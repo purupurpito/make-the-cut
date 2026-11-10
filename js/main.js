@@ -414,7 +414,7 @@
         var bd = document.createElement('div'); bd.className = 'end-bd'; var bh = '';
         s.badges.forEach(function (u) {
           var b = VB.Badges.BY && VB.Badges.BY[u.id], tier = u.tier || (VB.Badges.TIERS && VB.Badges.TIERS[u.lvl]) || '';
-          bh += '<span class="l' + (u.lvl | 0) + '" title="' + escHtml(VB.Badges.label ? VB.Badges.label(u) : u.name) + '"><i class="bd-ic">' + (b ? b.icon : '') + '</i><b>' + escHtml(u.name) + '</b><small>' + (u.prev ? 'sube a ' + tier : 'nueva · ' + tier) + '</small></span>';
+          bh += '<span class="l' + (u.lvl | 0) + '" title="' + escHtml(VB.Badges.label ? VB.Badges.label(u) : u.name) + '"><i class="bd-ic">' + (b ? b.icon : '') + '</i><b>' + escHtml(u.name) + '</b><small>' + (u.prev ? 'sube a ' + tier : 'nueva (' + tier + ')') + '</small></span>';
         });
         bd.innerHTML = bh; rec.appendChild(bd);
       }

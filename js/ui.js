@@ -148,7 +148,7 @@
     function () { gymBan('¡Remate!', 'Recepción fuera', 'CAMBIO DE SAQUE', 'show win r2 at-l'); gymPr('hit go bar anch', '¡Golpea ahora!', 'key', 1); gymBug('show t0 two', 1);
       el.callout.className = 'show c0'; el.guide.className = 'show'; el.rl.className = 'rl on'; el.rlN.className = 'bump'; el.coach.className = ''; el.touchbar.className = ''; el.tb[0].className = 'tb-seg done'; el.tb[1].className = 'tb-seg next';
       el.tag.hidden = false; el.tag.textContent = 'PUNTO DE SET'; gymTouch(0); gymStamp('on pf', ''); el.off.className = 'on'; el.off.style.transform = 'translate3d(60px,' + Math.round(ctx.height * 0.5) + 'px,0)'; },
-    function () { gymBan('Punto de set', 'Un punto para ganar el 1r set', '', 'show gold compact'); gymPr('jump go anch thru', '¡Salta! · Bloqueo', 'key', 1); gymBug('show t1', 0);
+    function () { gymBan('Punto de set', 'Un punto para ganar el primer set', '', 'show gold compact'); gymPr('jump go anch thru', '¡Salta y bloquea!', 'key', 1); gymBug('show t1', 0);
       el.callout.className = 'show good'; el.coach.className = 'faint'; el.rl.className = 'rl on hot'; el.rlN.className = ''; el.touchbar.className = 'thru'; el.tag.className = 'sb-tag cpu'; el.guide.className = 'out'; gymTouch(1); gymStamp('on gd', 'un pelín tarde'); el.off.className = 'on t1'; },
     function () { gymBan('Gana la CPU', 'Sets 0-2', 'SETS 0-2', 'show lose t3 long'); gymPr('hit clk urg anch', 'Saca ya <span class="nu">1 s</span>', 'key', 1);
       gymBug('show t0 out fast', 0); el.rl.className = 'rl on end'; el.coach.className = 'thru'; gymTouch(2);
@@ -157,7 +157,7 @@
       if (gym.pre) gymTouch(0); else gymTouchOff(); gymWipe('on cutw'); },
     // tarjeta de presentación (UI-14) y cortinilla de pantalla de la casa: sin ensayar, la tarjeta costaba un frame de 55-85 ms
     // ~0,1 s después de startMatch (raster en la GPU con compilación de shaders de Skia; traza de smtrace.js)
-    function () { gymBan('Cambio de campo', 'Fin del 1r set', '', 'show neutral fastin mid'); gymPr('wait anch', 'Espera el silbato', 'key', 0); el.pbug.className = ''; gymTouchOff();
+    function () { gymBan('Cambio de campo', 'Fin del primer set', '', 'show neutral fastin mid'); gymPr('wait anch', 'Espera el silbato', 'key', 0); el.pbug.className = ''; gymTouchOff();
       gymIntro(); gymWipe('on brand cutw'); }
   ];
   // controles táctiles de input.js (solo en táctil): se enseñan con sus estados (listo, aro, pulsado, apagado, en reposo) y se
@@ -526,7 +526,8 @@
   function banner(t1, t2, t3, cls, dur, kind) {
     t1 = cpuTxt(t1); t2 = cpuTxt(t2);
     el.bn1.textContent = t1 || '';
-    if (t2 && t2.indexOf(' · ') >= 0) setSep(el.bn2, t2, 'd'); else el.bn2.textContent = t2 || ''; // trozos « · » → rombo dibujado
+    // subtítulo con datos («Set 1 | 25-20»): trozos « | » → barra vertical fina; el resto es una frase y va tal cual
+    if (t2 && t2.indexOf(' | ') >= 0) setSep(el.bn2, t2.split(' | '), 'v'); else el.bn2.textContent = t2 || '';
     el.bn2.hidden = !t2; el.bn3.hidden = !t3; el.bn3.textContent = t3 || '';
     el.bn3.classList.toggle('so', t3 === 'CAMBIO DE SAQUE'); // el icono ⇄ solo en el cambio de saque
     el.banner.className = '';
@@ -668,7 +669,7 @@
       switch (e.type) {
         case 'newMatch':
           if (ctx.introLeft > 0 || introUI.on) break;           // la tarjeta de presentación ya lo dice (UI-14)
-          banner('Set 1', 'Al mejor de 3 sets a ' + (g.points || 25) + ' · ' + (g.serving === 0 ? 'Sacas tú' : 'Saca la CPU'), '', 'neutral', BAN.info, 'newSet');
+          banner('Set 1', 'Al mejor de 3 sets a ' + (g.points || 25) + (g.serving === 0 ? ', sacas tú' : ', saca la CPU'), '', 'neutral', BAN.info, 'newSet');
           break;
         case 'point': {
           var me = e.team === 0, k = e._uiKind;
@@ -736,7 +737,7 @@
           break;
         case 'set':
           // nivel 3, tras el momento del héroe: espera al corte al plano de reacción; acaba antes de la grúa del cambio de campo
-          if (!e.sets || e.sets[e.team] < 2) queuePres({ t1: e.team === 0 ? 'Set para ti' : 'Set para la CPU', t2: 'Set ' + e.setNo + ' · ' + e.score[0] + '-' + e.score[1],
+          if (!e.sets || e.sets[e.team] < 2) queuePres({ t1: e.team === 0 ? 'Set para ti' : 'Set para la CPU', t2: 'Set ' + e.setNo + ' | ' + e.score[0] + '-' + e.score[1],
             t3: '', chip: 'SETS ' + e.sets[0] + '-' + e.sets[1], cls: (e.team === 0 ? 'win' : 'lose') + ' t3', dur: BAN.set, kind: 'set', gate: 'cut' });
           break;
         case 'match':
@@ -745,10 +746,10 @@
         case 'courtChange':
           // reglas 18.2.1 / 18.2.2: cuando la cámara pasa al plano 'court' (grúa); se va antes de que la grúa acabe (ccU = 1)
           // playa ('swap', cada 7 / cada 5 en el 3.º): sin grúa de cámara, el aviso sale en cuanto se va el del punto (rt adelantado)
-          if (e.why === 'swap') { pendCourt = { t2: 'Cada ' + (e.every || 7) + ' puntos · ' + e.score[0] + '-' + e.score[1], dur: 1.3, rt: ctx.time - 1.6 }; srSay('Cambio de campo.'); break; }
-          pendCourt = { t2: e.why === 'eight' ? 'Set decisivo · ' + Math.ceil(decT(g) / 2) + ' puntos' : 'Fin del ' + (ORD[e.setNo] || e.setNo + '.º') + ' set', dur: e.why === 'eight' ? 1.6 : 1.9, rt: ctx.time };
+          if (e.why === 'swap') { pendCourt = { t2: 'Cada ' + (e.every || 7) + ' puntos | ' + e.score[0] + '-' + e.score[1], dur: 1.3, rt: ctx.time - 1.6 }; srSay('Cambio de campo.'); break; }
+          pendCourt = { t2: e.why === 'eight' ? 'A los ' + Math.ceil(decT(g) / 2) + ' puntos del set decisivo' : 'Fin del ' + (ORD[e.setNo] || e.setNo + '.º') + ' set', dur: e.why === 'eight' ? 1.6 : 1.9, rt: ctx.time };
           // fin de set: «Set N» entra en la bajada de la grúa, en cuanto se va «Cambio de campo» (no al empezar el saque)
-          courtNext = e.why === 'set' && e.sets ? { n: e.setNo + 1, sub: e.setNo + 1 === 3 ? 'Set decisivo · ' + decT(g) + ' puntos' : 'Sets ' + e.sets[0] + '-' + e.sets[1] } : null;
+          courtNext = e.why === 'set' && e.sets ? { n: e.setNo + 1, sub: e.setNo + 1 === 3 ? 'Set decisivo, a ' + decT(g) + ' puntos' : 'Sets ' + e.sets[0] + '-' + e.sets[1] } : null;
           break;
         case 'challenge':
           if (e.team === 1) callout('La CPU pide challenge', 1, null, 2.4);
@@ -757,16 +758,16 @@
         case 'challengeResult': {
           var cm = (Math.abs(e.dist || 0) * 100).toFixed(1).replace('.', ','), io = e.truthIn ? 'IN' : 'OUT';
           var who = e.team === 0 ? 'ti' : 'la CPU', ph = e.overturned ? 'Punto para ' + who : 'Se mantiene';
-          if (!e.overturned && e.team === 0 && e.left) ph += e.left[0] === 1 ? ' · te queda 1 challenge' : e.left[0] ? ' · te quedan ' + e.left[0] : ' · sin challenges';
-          banner(io, cm + ' cm de la línea · ' + ph, '', e.overturned ? (e.team === 0 ? 'win' : 'lose') : 'neutral', 3.2, 'challenge');
-          srSay(io + ', a ' + cm + ' centímetros. ' + ph.replace(' · ', ', ') + '. Tú ' + g.score[0] + ', CPU ' + g.score[1] + '.');
+          if (!e.overturned && e.team === 0 && e.left) ph += e.left[0] === 1 ? ', te queda 1 challenge' : e.left[0] ? ', te quedan ' + e.left[0] : ', sin challenges';
+          banner(io, 'A ' + cm + ' cm de la línea. ' + ph, '', e.overturned ? (e.team === 0 ? 'win' : 'lose') : 'neutral', 3.2, 'challenge');
+          srSay(io + ', a ' + cm + ' centímetros. ' + ph + '. Tú ' + g.score[0] + ', CPU ' + g.score[1] + '.');
           break;
         }
         case 'newSet':
           courtNext = null;
           if (newSetShown === e.setNo) { newSetShown = 0; break; } // ya salió en la bajada de la grúa
           newSetShown = 0;
-          banner('Set ' + e.setNo, e.setNo === 3 ? 'Set decisivo · ' + decT(g) + ' puntos' : 'Sets ' + g.sets[0] + '-' + g.sets[1], '', 'neutral', BAN.info, 'newSet');
+          banner('Set ' + e.setNo, e.setNo === 3 ? 'Set decisivo, a ' + decT(g) + ' puntos' : 'Sets ' + g.sets[0] + '-' + g.sets[1], '', 'neutral', BAN.info, 'newSet');
           break;
         case 'gameOver':
           showEnd(e);
@@ -776,7 +777,8 @@
     }
   }
   var missT = -9999;
-  var ORD = ['', '1.er', '2.º', '3.er'], pendCourt = null, courtNext = null, newSetShown = 0, bodyTipT = 0, lastBn2 = '', lastSub = '', held = null;
+  // (en frases de aviso: «Un punto para ganar el primer set», «Fin del segundo set»; las abreviaturas se quedan en etiquetas)
+  var ORD = ['', 'primer', 'segundo', 'tercer'], pendCourt = null, courtNext = null, newSetShown = 0, bodyTipT = 0, lastBn2 = '', lastSub = '', held = null;
   var OUTK = { serve: 'Saque fuera', pass: 'Recepción fuera', set: 'Colocación fuera', spike: 'Remate fuera', free: 'Balón fuera' };
   // sin 'free': un balón libre (3.er toque sin saltar) es la opción floja y no se celebra
   var PERFECT = { pass: 'Recepción perfecta', set: 'Colocación perfecta', spike: '¡Remate perfecto!', serve: '¡Saque perfecto!' };
@@ -1622,7 +1624,7 @@
       if (myServe && !tossed && g.serveAuth === false) {
         // antes del silbato del árbitro no se puede sacar (regla)
         pk = 'wait'; ptext = 'Espera el silbato';
-        coach = touchDev ? 'Tu saque · espera el silbato' : 'Tu saque · ' + gl.move + ' te mueves por el fondo';
+        coach = touchDev ? 'Tu saque · Espera el silbato' : 'Tu saque · Espera el silbato; con ' + gl.move + ' te mueves por el fondo';
       } else if (myServe && !tossed) {
         // táctil: los dos saques van en el MISMO aviso junto al sacador, en dos líneas compactas («SACAR Flotante» /
         // «SALTAR En salto»; la tecla SACAR es la de siempre, #promptKey, y el resto se coloca en rejilla: ver .two en index.html); arriba, en un móvil apaisado, la pastilla del consejo tapaba la red y a los receptores de la CPU
@@ -1630,9 +1632,9 @@
         pk = 'serve'; ptext = touchDev ? (help ? '<span>Flotante</span>' + gl.jump + '<span>Potente</span>' : 'Lanza el balón') : 'Lanzar';
         pcls = touchDev && help ? 'hit two' : 'hit';
         coach = touchDev ? ''
-          : svAim(g) ? 'Tu saque · ' + gl.move + ' te mueves · ' + gl.serve + ' flotante · ' + gl.jump + ' en salto · al lanzar, <b>diana</b> con ' + gl.aim
-          : g.serveState ? 'Tu saque · ' + gl.move + ' te mueves · ' + gl.serve + ' saque flotante · ' + gl.jump + ' saque en salto'
-          : 'Tu saque · ' + gl.move + ' para colocarte en el fondo, apunta con ' + gl.aim + ' (la <b>diana naranja</b> marca adónde va) y pulsa ' + gl.serve;
+          : svAim(g) ? 'Tu saque · Muévete con ' + gl.move + '. ' + gl.serve + ' saca flotante y ' + gl.jump + ' en salto; al lanzar, apunta la <b>diana</b> con ' + gl.aim
+          : g.serveState ? 'Tu saque · Muévete con ' + gl.move + '. ' + gl.serve + ' saca flotante y ' + gl.jump + ' en salto'
+          : 'Tu saque · Con ' + gl.move + ' te colocas en el fondo, apunta con ' + gl.aim + ' (la <b>diana naranja</b> marca adónde va) y pulsa ' + gl.serve;
         // reloj de 8 s (UI-05): aro alrededor de la tecla en los últimos 5 s (ámbar → rojo en los 2 últimos); la cifra y la
         // unidad van en un span sin mayúsculas («3 s», no «3 S»). El texto del árbitro «Falta de saque: 8 segundos» es de sim.
         if (g.serveClock != null && g.serveAuth && g.serveClock < 5 && g.serveClock > 0 && !(g.opts && g.opts.serveClock === false)) clockF = g.serveClock / 5;
@@ -1657,10 +1659,10 @@
         // balón en el aire: sin consejo arriba (tapaba el balón y el marcador colgado justo al golpear);
         // basta el aviso "¡Golpea ahora!" junto al jugador. Con el saque dirigible, mientras el balón SUBE, una línea corta
         // para la diana (se quita al bajar, antes de golpear)
-        coach = tips && svAim(g) && b.vz > 0 && !(down && wp < HINT_ON) ? (touchDev ? 'Apunta la diana con ' + gl.aim : 'Saque · <b>apunta la diana</b> con ' + gl.aim + ' · con buen timing va exacto') : '';
+        coach = tips && svAim(g) && b.vz > 0 && !(down && wp < HINT_ON) ? (touchDev ? 'Apunta la diana con ' + gl.aim : '<b>Apunta la diana</b> con ' + gl.aim + ': con buen timing el saque va exacto') : '';
       } else if (g.mode === 'serve') {
         coach = !tips ? '' : sv && sv.team === 0 ? 'Saca tu compañero' // modo uno: saca la IA de tu equipo
-          : (touchDev ? 'Saca la CPU · a recibir' : 'Saca la CPU · prepárate para la <b>recepción</b>');
+          : (touchDev ? 'Saca la CPU · A recibir' : 'Saca la CPU · Prepárate para la <b>recepción</b>');
       } else if (g.mode === 'rally') {
         var w = VB.Sim && VB.Sim.hitWindow ? hw(g, p) : null;
         var wpr = w ? (w.press === w.press && w.press != null ? w.press : w.t) : 9;
@@ -1678,26 +1680,26 @@
           var pr = g.pr3;
           if (w && w.attack && w.jumpT > -0.06 && w.jumpT < 0.32) { pk = 'jump'; ptext = '¡Salta!'; pcls = 'jump go'; }
           else if (!w && nt === 3 && g.jobs && g.jobs[0] === p && pr.x > 0 && pr.x < 3.9 && pr.t > 0.08 && pr.t < 0.62 && dist2(p, pr) < 2.9) { pk = 'jump'; ptext = '¡Salta!'; pcls = 'jump go'; }
-          else if (g.touchTeam === 1 && g.touches === 2 && (g.defRole === 'block' || !g.defRole) && pr.x < 0 && pr.x > -3.9 && pr.t < 0.62 && p.x < 2.4 && Math.abs(p.y - pr.y) < 1.8) { pk = 'jump'; ptext = '¡Salta! · Bloqueo'; pcls = 'jump go'; }
+          else if (g.touchTeam === 1 && g.touches === 2 && (g.defRole === 'block' || !g.defRole) && pr.x < 0 && pr.x > -3.9 && pr.t < 0.62 && p.x < 2.4 && Math.abs(p.y - pr.y) < 1.8) { pk = 'jump'; ptext = '¡Salta y bloquea!'; pcls = 'jump go'; }
         }
         if (tips && touchDev) { // táctil: una línea corta (el texto completo no cabe entre marcador y pausa)
           // (el contador de toques ya dice recepción/colocación/ataque)
           if (nt === 1) coach = 'Al círculo y ' + gl.hit;
-          else if (nt === 2) coach = 'Bajo el balón y ' + gl.hit + ' · o salta y ' + gl.jset;
+          else if (nt === 2) coach = 'Bajo el balón y ' + gl.hit + ', o salta y ' + gl.jset;
           else if (nt === 3) coach = aim3(g, p) ? 'Apunta con ' + gl.aim : gl.jump + ' y ' + gl.hit + ' arriba';
-          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump : '<b>Defiende</b> el círculo' + (one ? '' : ' · ' + gl.sw + ' bloqueas tú');
+          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump : '<b>Defiende</b> el círculo' + (one ? '' : ' (' + gl.sw + ' bloqueas tú)');
         } else if (tips) {
           if (nt === 1) coach = '1.er toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al círculo y pulsa ' + gl.hit;
-          else if (nt === 2) coach = '2.º toque · <b>Colocación</b>: ponte bajo el balón y pulsa ' + gl.hit + ' · o salta y coloca en el aire con ' + gl.jset + ', más rápido';
+          else if (nt === 2) coach = '2.º toque · <b>Colocación</b>: ponte debajo del balón y pulsa ' + gl.hit + '. Si saltas y pulsas ' + gl.jset + ', colocas en el aire';
           else if (nt === 3) coach = aim3(g, p) ? '3.er toque · <b>Apunta con ' + gl.aim + '</b> y golpea con ' + gl.hit + ' en lo alto'
             : '3.er toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
           else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? 'La CPU va a atacar: frente al atacante, ' + gl.jump + ' para <b>bloquear</b>'
-            : 'La CPU va a atacar: <b>defiende</b> el círculo · tu compañero bloquea' + (one ? '' : ' · ' + gl.sw + ' para bloquear tú');
+            : 'La CPU va a atacar: <b>defiende</b> el círculo, tu compañero bloquea' + (one ? '' : ' (' + gl.sw + ' para bloquear tú)');
         }
         // (táctil con ayudas: el aviso de dos opciones ya lo dice; la línea de arriba repetía lo mismo a la vez)
-        if (tips && jr) coach = touchDev ? (help ? '' : gl.hit + ' remata · ' + gl.jset + ' coloca') : 'En el aire: ' + gl.hit + ' <b>remata</b> · ' + gl.jset + ' <b>coloca en salto</b> a tu compañero';
+        if (tips && jr) coach = touchDev ? (help ? '' : gl.hit + ' remata, ' + gl.jset + ' coloca') : 'En el aire, ' + gl.hit + ' <b>remata</b> y ' + gl.jset + ' <b>coloca en salto</b> a tu compañero';
         // modo uno: el siguiente toque es del compañero IA (no del humano): solo prepararse
-        if (tips && one && nt > 0 && g.jobs && g.jobs[0] && g.jobs[0] !== p) coach = nt === 2 ? 'Coloca tu compañero · prepárate para atacar' : 'Juega tu compañero · colócate';
+        if (tips && one && nt > 0 && g.jobs && g.jobs[0] && g.jobs[0] !== p) coach = nt === 2 ? 'Coloca tu compañero: prepárate para atacar' : 'Juega tu compañero: colócate';
         if (bodyTipT > 0 && tips && !touchDev) coach = 'Pulsa ' + gl.hit + ' antes de que llegue el balón';
         if (guideOn(g) && !(one && g.jobs && g.jobs[0] && g.jobs[0] !== p)) guideCheck(g, p, w, nt, gl);
       }
@@ -2059,7 +2061,7 @@
     d.a.forEach(function (a, i) {
       var on = i === sqSel;
       ph += '<button class="sq-pk' + (on ? ' on' : '') + (a.pts ? ' has-pts' : '') + '" role="radio" aria-checked="' + on + '" data-pick="' + i + '"' + (on ? '' : ' tabindex="-1"') + '>' +
-        '<span class="sq-num">' + a.num + '</span><span class="sq-pn">N.º ' + a.num + '<small>' + escT(a.role || '') + ' · Nv ' + a.lvl + '<span class="sq-pm"> · Media ' + P.ovr(a.st) + '</span></small></span>' +
+        '<span class="sq-num">' + a.num + '</span><span class="sq-pn">N.º ' + a.num + '<small>' + escT(a.role || '') + ' (Nv ' + a.lvl + ')<span class="sq-pm"><span class="sep sep-v"><span class="sr">, </span></span>Media ' + P.ovr(a.st) + '</span></small></span>' +
         (a.pts ? '<em class="sq-pp" aria-label="' + a.pts + ' puntos de mejora">+' + a.pts + '</em>' : '') + '</button>';
     });
     var ae0 = document.activeElement, pickF = ae0 && el.sqPick && el.sqPick.contains(ae0), pickKb = pickF && ae0.classList.contains('kf');
@@ -2152,8 +2154,10 @@
   function pauseKicker(g) {
     if (padGone) return 'Mando desconectado';
     var nm = VB.DIFF && g && VB.DIFF[g.difficulty] && VB.DIFF[g.difficulty].name;
-    return 'Set ' + g.setNo + ' · ' + g.score[0] + '-' + g.score[1] + ' · ' + (nm || OPT.difficulty.labels[optIndex('difficulty')]);
+    // «Set 1 | 24-10 ◆ Normal»: el set y el tanteo van juntos con la barra fina (datos del HUD) y el nivel tras el rombo
+    return [{ h: 'Set ' + g.setNo + SEP_V + g.score[0] + '-' + g.score[1] }, nm || OPT.difficulty.labels[optIndex('difficulty')]];
   }
+  var SEP_V = '<span class="sep sep-v"><span class="sr">, </span></span>'; // barra vertical fina suelta (entre trozos ya en HTML)
   function renderPause(g) {
     disarmRestart();
     el.pS0.textContent = g.score[0]; el.pS1.textContent = g.score[1];
@@ -2180,7 +2184,8 @@
     el.end.classList.toggle('win', win); el.end.classList.toggle('lose', !win);
     // (UI-18) antetítulo con contexto, sin repetir el título: «Palau del Mar · Nivel Normal · 3 sets»
     var nSets = (e.setScores || []).length || ((e.sets ? e.sets[0] + e.sets[1] : 0) | 0), dn = VB.DIFF && ctx.game && VB.DIFF[ctx.game.difficulty] && VB.DIFF[ctx.game.difficulty].name;
-    setSep(el.endKicker, [venueName(), 'Nivel ' + (dn || OPT.difficulty.labels[optIndex('difficulty')]), nSets + (nSets === 1 ? ' set' : ' sets')], 'd');
+    // «Palau del Mar ◆ Nivel Normal | 3 sets»: la sede tras el rombo del antetítulo; nivel y sets, datos con la barra fina
+    setSep(el.endKicker, [venueName(), { h: 'Nivel ' + escT(dn || OPT.difficulty.labels[optIndex('difficulty')]) + SEP_V + nSets + (nSets === 1 ? ' set' : ' sets') }], 'd');
     el.endTitle.textContent = watch ? (win ? 'Gana el equipo local' : 'Gana el visitante') : win ? '¡Victoria!' : 'Gana la CPU';
     el.endS0.textContent = e.sets[0]; el.endS1.textContent = e.sets[1];
     el.endSets.innerHTML = (e.setScores || []).map(function (s, i) {
@@ -2688,7 +2693,7 @@
   var lastPtsI = -1;
   var lastVenueI = -1;
   /** Puntos de la playa en la fila 05 del menú (fijos: sets a 21 y el 3.º a 15). */
-  var BEACH_PTS = '21 · 15';
+  var BEACH_PTS = '21 / 15';
   /** Escenario que se verá al jugar: el montado en arena (manda ?map= al arrancar) o, sin arena, el ajuste. */
   function menuVenue() { var v = VB.Arena && VB.Arena.venue ? VB.Arena.venue() : ctx.settings.arena; return v === 'beach' ? 'beach' : 'hall'; }
   var lastCtrlI = -1;
@@ -2729,7 +2734,7 @@
       el.venueVal.textContent = OPT.arena.labels[vi];
       if (lastVenueI >= 0) { var vv = el.venueVal.parentNode; vv.classList.remove('sl-l', 'sl-r'); void vv.offsetWidth; vv.classList.add(vi > lastVenueI ? 'sl-r' : 'sl-l'); }
       el.optVenue.setAttribute('aria-label', 'Escenario: ' + OPT.arena.labels[vi] + ' (' + venueName(OPT.arena.vals[vi]) + (vb ? ', reglas de vóley playa' : '') + ')');
-      el.optVenue.title = vb ? 'Platja Llarga · vóley playa: pista de 16 × 8, sets a 21 (el 3.º a 15), cambio de campo cada 7 puntos' : 'Palau del Mar · pista cubierta de 18 × 9';
+      el.optVenue.title = vb ? 'Platja Llarga, vóley playa: pista de 16 × 8, sets a 21 (el 3.º a 15) y cambio de campo cada 7 puntos' : 'Palau del Mar, pista cubierta de 18 × 9';
     }
     lastVenueI = vi;
     var vas = el.optVenue ? el.optVenue.querySelectorAll('.arr') : [];
@@ -2760,7 +2765,7 @@
     setSep(el.playSub, [vb ? 'Playa' : 'Pabellón', { t: OPT.difficulty.labels[di], c: 'hi' }, vb ? 'Sets a 21' : 'Sets a ' + OPT.setPoints.vals[pi], ci > 0 ? 'Solo el n.º ' + tn[0] : 'A los dos'], 'c');
     el.optCtrl.classList.toggle('one', ci > 0);
     // Partido rápido: una línea de ayuda bajo cada fila (con Playa, Puntos explica las reglas de playa)
-    setText(el.venueHelp, 'vh', vb ? 'Platja Llarga · vóley playa en pista de 16 × 8' : 'Palau del Mar · pista cubierta de 18 × 9');
+    setText(el.venueHelp, 'vh', vb ? 'Platja Llarga, vóley playa en pista de 16 × 8' : 'Palau del Mar, pista cubierta de 18 × 9');
     setText(el.diffHelp, 'dh', DIFF_HELP[di] || 'Nivel de la CPU');
     setText(el.ptsHelp, 'ph', vb ? 'Reglas de playa: sets a 21 y el 3.º a 15' : 'Al mejor de 3 sets; el 3.º, a ' + Math.min(15, OPT.setPoints.vals[pi]));
     setText(el.ctrlHelp, 'ch', ci > 0 ? 'Llevas al n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] : 'El control pasa a quien va a tocar');
