@@ -636,3 +636,81 @@ de caché, LOOKS, sombras y LOD). players.js no usa `g.rng` (solo `Math.random` 
   **No cumple**: baja > 35 dibujos (ARN-12). Ver TRASPASO (6v6) para las opciones.
 - Capturas: `tools/out/6v6/s2-1280/{rally6,serve6,point6}.png`, `tools/out/6v6/s2-844t/{rally6,serve6}.png` (táctil),
   `tools/out/6v6/libero-serve6-1280.png` (líbero de prueba con stub, antes de que la sim lo tuviera).
+
+## TAJO — identidad propia de los atletas y versión de playa (10-nov-2026, agente personajes)
+Encargo de Ferran: que los personajes NO se parezcan a los de «SetPoint Volleyball» (ACS Games: low-poly facetado, ~7 cabezas,
+sin cara o con gafas de sol, ropa suelta aleatoria por jugador) y mapa de playa. Dirección de arte «TAJO», en cada eje lo contrario.
+Copia del fichero anterior: `tools/out/arte/personajes/players.antes.js`. Capturas: `tools/out/arte/personajes/antes/` y
+`despues/` (guion `bash tools/out/arte/personajes/caps.sh <carpeta>`), retratos `portrait.js` (cámara delante de la cara;
+`all` = las 8 celdas), rejillas `grid.js`. La sim y la IK NO cambian (longitudes del rig iguales; huella 2v2 idéntica).
+- **Silueta (~5 cabezas)**: `HEAD_K` 1,13 → 1,55, `NECK_Y` 0,37 → 0,345 con cuello corto y ancho, cara redonda de mofletes
+  (`HEAD_RX` 0,108, mandíbula 0,22, mentón 0,016, sin cuencas ni arco superciliar), nariz botón, orejas +20 %. Torso en V
+  (`CHEST_S` [1,38, 1, 0,84], `ABS_S` 1,1: con 1,06 el bajo de la camiseta quedaba a ras del pantalón), hombro ×1,15.
+  Antebrazo y espinilla que se afinan (0,052→0,032 y 0,066→0,033). Manopla de verdad (`HAND_K` 1,32, palma + UNA hoja de dedos
+  + pulgar; `PALM` 0,087 con la mano). Zapatillas ×1,4 con suela 1,5× del acento (la planta sigue en el mismo plano).
+  La cabeza no se echa atrás más de `HEAD_UP` 0,62 rad (+0,12 con la pose): con la cabeza grande la cara desaparecía.
+  `headClear`: cilindro 0,33 m centrado en `HEAD_CY` y banda 6 cm más alta.
+- **Cara dibujada (hoja de caras)**: dos láminas pegadas al cráneo (ojos/cejas/sello 10×6 y boca 8×3 en alta; `faceSheet`,
+  1,6 mm por fuera con la normal de headShape, sin contorno) con UV en la celda 0 del atlas del jugador. Atlas: filas 276-424 =
+  caras (`paintFace`; ojos 8 celdas 128×46 en 4×2, bocas 8 celdas 64×52), el blanco de las piezas de color por vértice baja a
+  `BODY_UV_V` 0,1 / `SKIN_UV_V` 0,04. Shader (`addToon`, mismo programa `vbToonSkin`): la franja de v de cada lámina suma
+  `uEyeOff`/`uMouthOff` (uniformes por material = por atleta) antes de `map_fragment`, cuenta como piel y el blanco de ojos/dientes
+  lleva algo de luz propia. Cambiar de expresión = 2 uniformes. Celdas de ojos: 0 abiertos · 1 parpadeo · 2 entornados ·
+  3 felices ^ ^ · 4 tristes · 5 grito · 6 guiño · 7 concentrado; bocas: 0 neutra · 1 sonrisa · 2 O con dientes · 3 dientes
+  apretados · 4 triste · 5 «o» · 6 lengua · 7 mueca. `updateFace` elige con los pesos de siempre (S/E/J/D, parpadeo) + `faceFocus`
+  (le llega el balón en peloteo → 7/5); alegría alterna sonrisa/lengua y guiño de vez en cuando; fin de partido perdido: mueca.
+  Sello: **raya de guerra** (dos trazos bajo cada ojo, acento con filo oscuro). Pruebas: `VB.Players._face(p, 'c<ojos>/<boca>')`.
+  Los huesos `eyes/mouth/teeth/brow` quedan VACÍOS (siguen existiendo: 27 huesos). Rig: `r.faceE`, `r.faceM` (celdas actuales).
+- **Pelo**: mechones lisos (`tuft`, lathe en lágrima; nada de icosaedros): `tupe`, `puff2`, `coleta` (la única cinta; cola más
+  larga en el hueso con muelle), `cresta`, `flequillo`, `rapado`, `trenzas`. 2v2: tupe / puff2 / coleta / cresta; `LOOKS6` reparte
+  los siete. Fuera la muñequera: **chapa redonda del equipo** en la manga izquierda.
+- **Contorno de color**: tinta = `mixHex(tc.dark, INK, 0.35)` (`inkHex`), `OUT_PX` 3,2, `OUT_MAX` 0,05. Sin tocar arena.js:
+  `tintInk` copia el material de tinta de `VB.TOON.outline` reutilizando su `onBeforeCompile` y su `customProgramCacheKey`
+  (mismo programa) y solo cambia `uInk` (un material por color). El pabellón sigue con INK.
+- **Uniforme TAJO (pabellón)**: el diseño `'diag'` (por defecto, «Diagonal» en Ajustes; mismos valores en main/ui/career) es ahora
+  el **tajo**: corte claro en zigzag del hombro izquierdo a la cadera derecha con filo oscuro (`tajoBand`; acento si la camiseta es
+  clara), dorsal del pecho dentro, en el oscuro. Panel lateral del acento en el pantalón, calcetines del acento, rodilleras
+  «pastilla» del oscuro del equipo, zapatillas blancas con suela del acento. Siempre colores del equipo.
+- **Playa** (`r.beach`): camiseta de **tirantes** de licra unisex (sisas de piel, espalda nadadora, cuello redondo, tajo bajo el
+  dorsal grande 1/2 del pecho; `paintTank`), hombro de piel, malla corta del color de la camiseta con panel del acento,
+  **descalzos** (`footGeo`: pie de manopla ×1,3, dedo gordo, planta con arena, tobillera de tela del acento), sin rodilleras ni
+  calcetines. Complemento: visera del acento (2v2 id par / 6v6 dorsal par) o gorra hacia atrás (impar); con gorra solo el casquete
+  del pelo. **Sin gafas de sol**. Sello de playa: **crema de zinc neón** (dos rayas por mejilla + nariz del mismo color; `zincHex`).
+- **Escenario**: `VB.Arena.venue()` (respaldo: `?map=` y `settings.arena`) se mira cada frame (`syncVenue`); al cambiar se liberan
+  los atletas (`flushCache`, también lo usa setKit) y se visten de nuevo. Clave de caché con `:hall|:beach`. API nueva:
+  `VB.Players.venue()` y `VB.Players.setVenue(v, g)` (pruebas: fuerza 'hall'/'beach'; '' = el de arena).
+- **Coste**: triángulos por atleta (alta/media/baja) pabellón 10,6-11,1k / 4,8-5,0k / 3,7-3,9k (antes 10,7-11,4k / 4,8-4,9k /
+  3,7-3,9k), playa 10,2-10,7k / 4,5-4,7k / 3,5-3,6k. Mismas llamadas (1 + sombra + contorno) y mismo atlas 512².
+- **Medido** (`perf.js 844x390 12 high,medium,low 4`; los demás agentes usaban el PC a la vez): pabellón media 45/49 dibujos ·
+  265-272 k, baja 30/34 · 111-112 k; playa (`EXTRA=map=beach`) media 40/43 · 223 k, baja 30/33 · 108-109 k (99 fps, medida
+  válida); 6v6 media 59/61 · 306-316 k, baja 38/40 · 134 k. «objetivos cumplidos» en los tres (alta del pabellón/6v6 y media
+  del pabellón con el PC cargado: medida no válida por CPU). `simtest` TODO OK (huella 2v2 idéntica), `badgetest`, `careertest`,
+  `console.sh all`, `drive.js 1280 720 30`, `touchplay.js 844x390 25` TODO OK. `padplay.js` da 14 fallos («A en JUGAR empieza
+  el partido» y lo que depende de ello) también con el players.js de ANTES en una copia del proyecto: no viene de players.
+- Bloqueo (`debug=block`): manos del bloqueador a 3,02 m (cinta 2,43) y cabeza por encima de la cinta: no atraviesa la red.
+
+### Peticiones a otros dueños (TAJO)
+- **CONTRACT** (dueño de CONTRACT.md): anotar que los huesos `eyes/mouth/teeth/brow` del rig quedan vacíos (la cara es una
+  textura) y la API nueva `VB.Players.venue()` / `setVenue(v, g)`.
+- **arena** (opcional, sugerencia de la dirección de arte; no tocado para no pisar al agente de la escena de playa): público de la
+  playa a juego con los cabezones (cabeza de la instancia ×1,35, sombreros de paja/gorras, grupos de aficionados con los colores de
+  cada equipo; redondeado, nunca vóxel); árbitros con proporción TAJO si se quiere coherencia. `opts.color` en `VB.TOON.outline`
+  ya NO hace falta (players lo resuelve con `tintInk`).
+
+### Problemas conocidos (TAJO)
+- En primerísimos planos (cabeza a toda la pantalla) la cara se ve algo blanda: la celda de ojos tiene ~540 px/m en vertical.
+  A distancia de juego y en el plano de héroe se lee bien. Arreglo posible: atlas de 512×1024 solo en alta.
+- Triángulos en alta casi iguales que antes (las piezas nuevas —pastillas, chapa, panel del pantalón, mechones— se comen el
+  ahorro de cara y manos); en baja, iguales.
+
+### Cierre TAJO + playa (revisión final, 10-nov-2026)
+- **Fuga arreglada:** cada cambio de escenario o de equipación perdía 4 texturas de GPU en 2v2 (14 en 6v6). No eran los atlas sino la
+  **textura de huesos** del esqueleto (16×16 RGBA32F, una por atleta): `flushCache` ahora llama a `r.skin.skeleton.dispose()`. Medido con
+  `gl.createTexture/deleteTexture` envueltos: arena + players vuelven a 42 ↔ 47 en cada ida y vuelta (antes 42 → 51 → 50 → 59 → 58).
+- **Pieles oscuras:** `faceHalo(L)` (luminancia de la piel < 0,42) pinta en la hoja de caras un halo claro y difuso (`softHalo`) detrás de
+  cada ojo, un trazo claro bajo las cejas y un «hocico» claro detrás de la boca. Antes, tinta, pelo y sombra toon tenían el mismo tono y solo
+  se veía el blanco del ojo. Captura `tools/out/arte/final/caras-cerca.png` y `zoom-hall-over-cara-oscura.png`.
+- **Gorra hacia atrás:** ala más larga y del oscuro del equipo (dos tonos) y tira del cierre cruzando la frente; ya no parece un casco ni pelo rubio.
+- Pendiente: costuras del contorno en rodillas/codos desnudos en la playa; cabeza que roza el hombro del compañero en alguna celebración de
+  playa (`HEAD_K` 1,55); pose de celebración en la hoja final (`over`); retratos de `portrait.js` mal centrados en escenas animadas
+  (usar `serve`); cara algo blanda en primerísimo plano.

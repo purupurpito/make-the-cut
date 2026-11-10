@@ -34,6 +34,9 @@
     ANT_TOP: 3.23,   // punta de las antenas (80 cm sobre la red)
     HL: 9,           // media longitud de pista
     HW: 4.5,         // media anchura
+    // pista de VÓLEY PLAYA (createGame({venue:'beach'}) en 2v2 → g.beach): 16 × 8 m, misma red de 2,43. La pista de cada
+    // partida está en g.HL / g.HW (y g.cs = escala respecto a 18 × 9: 8/9 en la playa, 1 en el pabellón). VB.Sim.court(g)
+    BEACH: { HL: 8, HW: 4 },
     ATTACK: 3,       // línea de ataque (3 m)
     BR: 0.21,        // radio del balón (exagerado para legibilidad)
     SPEED: 5.6,      // velocidad de carrera
@@ -181,6 +184,9 @@
     // formato (sprint 1 del 6v6): '2v2' por defecto (idéntico a siempre); '6v6' solo con opts.format === '6v6' (en pruebas:
     // ?format=6v6). El 6v6 aún NO tiene reglas ni IA propias (sprint 2): seis por equipo con la IA de 2v2 generalizada.
     var six = opts.format === '6v6', size = six ? 6 : 2;
+    // vóley playa (solo 2v2): pista 16×8, sets a 21 (3.º a 15), cambio de campo cada 7 (5 en el 3.º), el bloqueo cuenta
+    // como toque, la dejada es de nudillos («pokey») y la colocación de dedos se pita más. Sin venue = pabellón byte a byte
+    var beach = opts.venue === 'beach' && !six;
     var teams = six ? [mkTeam6(0), mkTeam6(1)] : [[mkPlayer(0, 1, 0), mkPlayer(0, 2, 1)], [mkPlayer(1, 3, 0), mkPlayer(1, 9, 1)]];
     // dorsales propios (Carrera): opts.nums = [[n1, n2], [n3, n9]] (cada hueco o equipo puede ser null = el de siempre). Solo cambia p.num.
     if (opts.nums) for (var nt = 0; nt < 2; nt++) for (var ni = 0; ni < teams[nt].length; ni++) {
@@ -220,7 +226,12 @@
       recvRisk: 0,             // dificultad (0..1+) del último saque para el receptor (ver serveRisk)
       courtSwap3: false,       // ya se cambió de campo a mitad del set decisivo (a los 8 si va a 15)
       // puntos por set (Partido rápido: 11 | 15 | 21 | 25); el set decisivo va a min(15, points). Ver setTarget
-      points: SET_POINTS.indexOf(+opts.points) >= 0 ? +opts.points : 25,
+      points: beach ? 21 : SET_POINTS.indexOf(+opts.points) >= 0 ? +opts.points : 25,
+      // pista de esta partida (ver C.BEACH): media longitud, media anchura y escala respecto a la de 18×9 (1 en el pabellón:
+      // multiplicar por g.cs deja los números exactos y la huella 2v2 intacta)
+      venue: beach ? 'beach' : 'hall', beach: beach,
+      HL: beach ? C.BEACH.HL : C.HL, HW: beach ? C.BEACH.HW : C.HW, cs: beach ? C.BEACH.HL / C.HL : 1,
+      courtSwapAt: 0,          // playa: suma de puntos del último cambio de campo (cada 7; cada 5 en el 3.er set)
       antennaHit: null,        // {x,y,z} donde el balón tocó la antena en este punto (null si no)
       atkServe: null,          // {team, player}: toque por encima de la red sobre el saque rival en zona de ataque; es falta
                                // (13.3.4) solo si se COMPLETA como ataque: el balón cruza la red o lo toca el rival
@@ -739,13 +750,13 @@
     return out;
   }
 
-  function attackTarget(p, aim, dd) {
+  function attackTarget(p, aim, dd, k) { // k = g.cs (escala de la pista: 1 en el pabellón)
     var sd = side(p.team);
     var tx = -sd * dd, ty = -Math.sign(p.y || 0.1) * 1.6; // sin apuntar: diagonal
     // apuntando: la dirección es un "joystick" sobre el campo rival (centro a 5 m de la red): adelante = fondo,
     // atrás = corta, izquierda/derecha = hasta las líneas laterales (paralela o diagonal, ambas posibles)
     if (aim) { tx = -sd * 5 + aim[0] * 3.0; ty = aim[1] * 3.7; }
-    return [-sd * clamp(-sd * tx, 1.4, 8.3), clamp(ty, -3.9, 3.9)];
+    return [-sd * clamp(-sd * tx * k, 1.4 * k, 8.3 * k), clamp(ty * k, -3.9 * k, 3.9 * k)];
   }
 
   /** Margen de defensa (s) de un remate: tiempo de vuelo hasta el bote menos lo que tarda el defensor más
@@ -754,7 +765,7 @@
   function digMargin(g, dt, o, v, G) {
     var disc = v[2] * v[2] + 2 * G * Math.max(0, o.z - C.BR), ft = (v[2] + Math.sqrt(disc)) / G;
     var lx = o.x + v[0] * ft, ly = o.y + v[1] * ft;
-    if (Math.abs(lx) > C.HL + 0.3 || Math.abs(ly) > C.HW + 0.3 || lx * side(dt) <= 0) return 2;
+    if (Math.abs(lx) > g.HL + 0.3 || Math.abs(ly) > g.HW + 0.3 || lx * side(dt) <= 0) return 2;
     var AI = VB.AI, best = 9;
     for (var i = 0; i < g.teams[dt].length; i++) {
       var q = g.teams[dt][i];
@@ -822,6 +833,12 @@
     if (shot === 'dive') q = Math.min(q, 0.62) * 0.85;
     q = clamp(q, 0, 1);
     var grade = gradeOf(q), mul = human ? 1 : prof.err;
+    // playa: la colocación de dedos se pita más (dobles). Un 2.º toque de dedos (balón alto, no en salto ni de ataque, cuerpo o
+    // plancha) con mal timing es falta con prob. BEACH.dblSet (la IA, ×dblSetAI). Solo en la playa: el pabellón no gasta azar aquí
+    if (g.beach && count === 2 && grade === 'poor' && !jset && shot !== 'body' && shot !== 'dive' && shot !== 'tip' && b.z - p.z > 1.6 &&
+        !isAttackContact(p, b) && g.rng() < BEACH.dblSet * (human ? 1 : BEACH.dblSetAI)) {
+      fault(g, t, 'double', 'Dobles en la colocación de dedos', p); return;
+    }
     g.touchTeam = t; g.touches = count; g.lastPlayer = p; g.lastTeam = t; p.anim = 0.3; p.cool = 0.3;
     var o = { x: b.x, y: b.y, z: b.z };
     var v, kind, at, er, power = 0, dip = 0, sub = shot;
@@ -846,20 +863,21 @@
         if (g.rng() < 0.5) jx = 0.25 + g.rng() * 0.35;          // pegada a la red: toque de red o bloqueo fácil
         else { jx = 3.6 + g.rng() * 1.8; jap -= 0.35; }        // larga y baja: el atacante no llega a rematar
       }
-      v = launchApex(o, sd * Math.max(0.15, jx + rnd(g, er * 0.5)), clamp(jy + rnd(g, er * 0.9), -4.2, 4.2), JSET.tz, jap);
+      v = launchApex(o, sd * Math.max(0.15, jx + rnd(g, er * 0.5)), clamp(jy + rnd(g, er * 0.9), -4.2 * g.cs, 4.2 * g.cs), JSET.tz, jap);
       kind = 'set'; sub = 'jump';
       g.blockOff[1 - t] = rnd(g, (0.35 + 0.9 * (1 - g.prof[1 - t].block)) * (1 + JSET.blk * q)); // rápida: el bloqueo rival llega peor colocado
       g.hardIn = false; g.digOk = true;
       if (g.stats) g.stats.jsets = (g.stats.jsets || 0) + 1;
     } else if (isAttackContact(p, b)) {
       if (shot === 'tip') { // dejada: suave, corta, por encima del bloqueo
-        at = tgt || [-sd * (1.6 + (aim ? clamp(-sd * aim[0], -0.3, 1) : 0.3)), clamp(aim ? p.y + aim[1] * 2.6 : -p.y, -3.8, 3.8)];
+        at = tgt || [-sd * (1.6 + (aim ? clamp(-sd * aim[0], -0.3, 1) : 0.3)), clamp(aim ? p.y + aim[1] * 2.6 : -p.y, -3.8 * g.cs, 3.8 * g.cs)];
         er = (0.25 + 0.9 * (1 - q)) * mul;
-        v = launchSafe(o, at[0] + rnd(g, er), at[1] + rnd(g, er), 0, Math.max(b.z + 0.45, C.NET_H + 0.9));
+        // playa: la dejada con la yema de los dedos es falta, así que se juega de nudillos («pokey»): más tensa y baja (BEACH.pokeyUp)
+        v = launchSafe(o, at[0] + rnd(g, er), at[1] + rnd(g, er), 0, g.beach ? Math.max(b.z + BEACH.pokeyUp, C.NET_H + BEACH.pokeyNet) : Math.max(b.z + 0.45, C.NET_H + 0.9));
         kind = 'free'; power = 0.1;
       } else { // remate
         var free3 = human && !tgt && g.aim3.on && g.aim3.kind !== 'serve'; // A1: mira libre del humano
-        at = tgt || (free3 ? [g.aim3.x, g.aim3.y] : attackTarget(p, aim, 6));
+        at = tgt || (free3 ? [g.aim3.x, g.aim3.y] : attackTarget(p, aim, 6, g.cs));
         var spd = human ? 13.5 + 5.5 * q + (p.ak ? p.ak.spike : 0) : prof.spike * (0.82 + 0.18 * q);
         var boost = p.badges || sedaL ? BADGE.canon[bl(p, 'canon')] + BADGE.sedaV[sedaL] : 0; // Cañón, Manos de seda (m/s)
         power = clamp((spd + boost - 11) / 8, 0, 1);
@@ -892,7 +910,7 @@
         g.digTight = grade === 'perfect' && 1 - t === 0 && !g.demo && !g.autopilot;
       } else { g.digOk = true; g.digTight = false; }
     } else if (count === 3) {
-      at = tgt || attackTarget(p, aim, 6.5);
+      at = tgt || attackTarget(p, aim, 6.5, g.cs);
       er = (0.35 + 1.4 * (1 - q)) * mul;
       var ap = Math.max(4.4, b.z + 1);
       if (q < 0.4 && g.rng() < (0.42 - q) * 0.6) v = launchApex(o, at[0] + rnd(g, er), at[1] + rnd(g, er), 0, 2.9); // se queda en la red
@@ -926,7 +944,7 @@
         var sp = VB.AI6.chooseSet(g, p);
         v = launchApex(o, sd * Math.max(0.6, sp.d + rnd(g, er * 0.5)), clamp(sd * sp.yl + rnd(g, er * 0.9), -4.2, 4.2), 3, sp.apex);
       }
-      else v = launchApex(o, sd * (1.35 + rnd(g, er * 0.5)), clamp(mate.y, -3.6, 3.6) + rnd(g, er * 0.9), 3, 5.3);
+      else v = launchApex(o, sd * (1.35 + rnd(g, er * 0.5)), clamp(mate.y, -3.6 * g.cs, 3.6 * g.cs) + rnd(g, er * 0.9), 3, 5.3);
       kind = 'set'; sub = sub || 'overhead';
       // error de colocación del bloqueador IA rival (el bloqueo es geométrico: peor bloqueador = manos más lejos del balón)
       g.blockOff[1 - t] = rnd(g, 0.35 + 0.9 * (1 - g.prof[1 - t].block));
@@ -962,17 +980,18 @@
       g.stats.hits[kind]++; g.stats.grades[grade]++; if (human) g.stats.hgrades[grade]++;
       g.stats.shots[sub] = (g.stats.shots[sub] || 0) + 1;
     }
-    emit(g, { type: 'hit', kind: kind, player: p, team: t, touch: count, quality: q, grade: grade, timing: te,
+    var hev = emit(g, { type: 'hit', kind: kind, player: p, team: t, touch: count, quality: q, grade: grade, timing: te,
       power: power, shot: sub, dive: shot === 'dive', aim: aim ? [aim[0], aim[1]] : null, target: at ? [at[0], at[1]] : null,
       x: b.x, y: b.y, z: b.z, speed: b.speed, human: human, dig: isDig, recv: count === 1 && inKind === 'serve', jset: jset });
+    if (g.beach && kind === 'free' && sub === 'tip') hev.pokey = true; // playa: dejada de nudillos (UI: «Pokey»)
     endSwing(g);
   }
 
   /** Error no forzado de la IA: remate largo, abierto o a la red (reescribe v). */
   function aiError(g, o, v, spd, sd, G) {
     var r = g.rng(), w;
-    if (r < 0.4) w = launchDirect(o, -sd * (9.5 + g.rng() * 1.2), o.y * 0.3 + rnd(g, 2.5), 0, spd, G);           // largo
-    else if (r < 0.75) w = launchDirect(o, -sd * (3 + g.rng() * 5), (g.rng() < 0.5 ? -1 : 1) * (4.9 + g.rng() * 1.2), 0, spd, G); // abierto
+    if (r < 0.4) w = launchDirect(o, -sd * (9.5 + g.rng() * 1.2) * g.cs, o.y * 0.3 + rnd(g, 2.5), 0, spd, G);           // largo
+    else if (r < 0.75) w = launchDirect(o, -sd * (3 + g.rng() * 5) * g.cs, (g.rng() < 0.5 ? -1 : 1) * (4.9 + g.rng() * 1.2) * g.cs, 0, spd, G); // abierto
     else { w = v; w[2] -= 1.4 + g.rng(); }                                                                       // a la red
     v[0] = w[0]; v[1] = w[1]; v[2] = w[2];
   }
@@ -1048,8 +1067,9 @@
         b.x = sq * 0.25; b.vx = b.vx * kv; b.vy = b.vy * 0.6 + rnd(g, 1.3); b.vz = Math.max(b.vz * 0.3, 0) + 1.2 + g.rng() * 2.2;
       }
       b.dip = 0; b.wobA = 0; b.speed = Math.hypot(b.vx, b.vy, b.vz);
-      // El toque de bloqueo no cuenta como uno de los 3 toques del equipo
-      g.touchTeam = q.team; g.touches = 0; g.lastPlayer = null; g.lastTeam = q.team; q.anim = 0.3; g.prevKind = g.lastKind; g.lastKind = 'block'; g.digTight = false;
+      // El toque de bloqueo no cuenta como uno de los 3 toques del equipo; en la PLAYA sí (quedan 2, y el bloqueador puede
+      // dar el siguiente: lastPlayer null)
+      g.touchTeam = q.team; g.touches = g.beach ? 1 : 0; g.lastPlayer = null; g.lastTeam = q.team; q.anim = 0.3; g.prevKind = g.lastKind; g.lastKind = 'block'; g.digTight = false;
       g.lastShot = kindB; g.lastTouchT = g.time; g.hardIn = false; g.digOk = true; g.netSince = false;
       if (kindB === 'stuff') { // el atacante casi nunca la salva
         g.hardIn = true; g.digOk = g.rng() < 0.2 * (1 - qb);
@@ -1300,14 +1320,14 @@
     if ((px > 0) !== (b.x > 0)) {
       var ay = Math.abs(b.y);
       if (b.z < C.NET_LOW - C.BR) { fault(g, g.lastTeam, 'under', 'Balón por debajo de la red'); return; }
-      if (ay > C.HW - C.BR && ay <= C.HW + C.BR && b.z < C.ANT_TOP + C.BR) {
-        g.antennaHit = { x: 0, y: (b.y < 0 ? -1 : 1) * (C.HW + ANT_Y), z: clamp(b.z, C.NET_LOW, C.ANT_TOP) };
+      if (ay > g.HW - C.BR && ay <= g.HW + C.BR && b.z < C.ANT_TOP + C.BR) {
+        g.antennaHit = { x: 0, y: (b.y < 0 ? -1 : 1) * (g.HW + ANT_Y), z: clamp(b.z, C.NET_LOW, C.ANT_TOP) };
         fault(g, g.lastTeam, 'antenna', 'Balón toca la antena'); return;
       }
-      if (ay > C.HW) { fault(g, g.lastTeam, 'antenna', 'Balón por fuera de la antena'); return; }
+      if (ay > g.HW) { fault(g, g.lastTeam, 'antenna', 'Balón por fuera de la antena'); return; }
       // por encima de la antena: el espacio de paso sigue la prolongación imaginaria de las antenas hasta el techo
       // (regla 8.4.4). Un balón que cruza en parte por fuera de ella es falta aunque su centro vaya por dentro.
-      if (ay > C.HW - C.BR && b.z >= C.ANT_TOP + C.BR) { fault(g, g.lastTeam, 'antenna', 'Balón por fuera de la antena'); return; }
+      if (ay > g.HW - C.BR && b.z >= C.ANT_TOP + C.BR) { fault(g, g.lastTeam, 'antenna', 'Balón por fuera de la antena'); return; }
       if (b.z < C.NET_H + C.BR) { // red
         var tape = b.z > C.NET_H - 0.06;
         if (tape && b.z > C.NET_H + 0.02 && g.rng() < 0.55) { // en la cinta y pasa (balón "de red")
@@ -1338,9 +1358,9 @@
   function checkAntenna(g) {
     var b = g.ball;
     if (g.mode !== 'rally' || Math.abs(b.x) > C.BR + ANT_R || b.z < C.NET_LOW - C.BR || b.z > C.ANT_TOP + C.BR + ANT_R) return false;
-    var dy = Math.abs(b.y) - (C.HW + ANT_Y), dz = b.z > C.ANT_TOP ? b.z - C.ANT_TOP : 0; // por encima: contra la punta
+    var dy = Math.abs(b.y) - (g.HW + ANT_Y), dz = b.z > C.ANT_TOP ? b.z - C.ANT_TOP : 0; // por encima: contra la punta
     if (b.x * b.x + dy * dy + dz * dz > (C.BR + ANT_R) * (C.BR + ANT_R)) return false;
-    g.antennaHit = { x: b.x, y: (b.y < 0 ? -1 : 1) * (C.HW + ANT_Y), z: Math.min(b.z, C.ANT_TOP) };
+    g.antennaHit = { x: b.x, y: (b.y < 0 ? -1 : 1) * (g.HW + ANT_Y), z: Math.min(b.z, C.ANT_TOP) };
     fault(g, g.lastTeam, 'antenna', 'Balón toca la antena');
     return true;
   }
@@ -1352,7 +1372,7 @@
     if (k === 'serve') return 'Saque fuera';
     if (k === 'block') return 'Toca el bloqueo y sale fuera';
     if (sh === 'body') return 'Le da en el cuerpo y sale fuera';
-    if (sh === 'tip') return 'Dejada fuera';
+    if (sh === 'tip') return g.beach ? 'Pokey fuera' : 'Dejada fuera';
     if (k === 'spike') return 'Remate fuera';
     if (k === 'pass') return g.prevKind === 'serve' ? 'Recepción fuera' : 'Defensa fuera';
     if (k === 'set') return 'Colocación fuera';
@@ -1367,7 +1387,9 @@
   // La banda sigue en <= 10 cm; un árbitro solo, sin jueces de línea, con la huella a 1-2 cm de la línea es casi una moneda.
   // Es el error BASE (Partido rápido, sin modificador); los niveles de competición futuros lo escalarán.
   var REF_ERR = VB.REF_ERR = { d1: 0.02, p1: 0.45, d2: 0.05, p2: 0.30, d3: 0.10, p3: 0.15 };
-  function lineDist(x, y) { return Math.min(C.HL + C.IN_TOL - Math.abs(x), C.HW + C.IN_TOL - Math.abs(y)); }
+  /** Distancia (m) del bote (x, y) a la línea más cercana (+ dentro, − fuera, con C.IN_TOL). g = partida (su pista: 16×8 en la
+   *  playa); sin g, la pista de 18×9. */
+  function lineDist(x, y, g) { var hl = g ? g.HL : C.HL, hw = g ? g.HW : C.HW; return Math.min(hl + C.IN_TOL - Math.abs(x), hw + C.IN_TOL - Math.abs(y)); }
   function refErrP(dist, g) {
     var R = (g && g.refErr) || REF_ERR, a = Math.abs(dist);
     return a < R.d1 ? R.p1 : a < R.d2 ? R.p2 : a <= R.d3 ? R.p3 : 0;
@@ -1394,7 +1416,7 @@
   function land(g) {
     var b = g.ball;
     // el balón toca el suelo justo debajo de su centro: dentro si esa huella toca la línea (las líneas son parte del campo)
-    var dist = lineDist(b.x, b.y), truthIn = dist >= 0, st = b.x > 0 ? 0 : 1;
+    var dist = lineDist(b.x, b.y, g), truthIn = dist >= 0, st = b.x > 0 ? 0 : 1;
     var oT = landOutcome(g, truthIn, st), calledIn = truthIn, oC = oT, oW = landOutcome(g, !truthIn, st);
     // B1: solo si cantar al revés cambia el punto (un balón que no cruzó la red da el mismo punto dentro o fuera)
     var pe = refErrP(dist, g);
@@ -1422,6 +1444,11 @@
   var HOLD = VB.HOLD = { routine: 1.9, big: 2.4, bigAt: 0.55, set: 4.0, match: 4.2, eight: 1.4, skipAfter: 0.8, skipTo: 0.3 };
   /** Pausa clásica (demo, autopilot, tests sin g.present): la de siempre. */
   var HOLD_LEGACY = { routine: 1.9, set: 3.6, match: 2.2, eight: 1.4 };
+  /** Reglas de VÓLEY PLAYA (g.beach; solo lectura para los demás). Cambio de campo cada `swap` puntos jugados (`swap3` en el 3.er
+   *  set) con `swapHold` s más de pausa (0 en la demo del menú); colocación de dedos: prob. de dobles de un 2.º toque «poor»
+   *  (`dblSet`, la IA ×`dblSetAI`); pokey (dejada de nudillos): cima sobre el contacto `pokeyUp` y mínima `pokeyNet` sobre la red.
+   *  Sets a 21 y el 3.º a 15 (g.points = 21, setTarget), pista 16×8 (C.BEACH), el bloqueo cuenta como toque. */
+  var BEACH = VB.BEACH = { swap: 7, swap3: 5, swapHold: 1.0, dblSet: 0.3, dblSetAI: 0.5, pokeyUp: 0.25, pokeyNet: 0.6, points: 21, points3: 15 };
   /** Pesos de highlightOf (SIM-01, calibrados en SIM-05; ver notes/sim.md §P3). Solo lectura para los demás módulos. */
   var HL = VB.HL = { base: 0.15, rallyFrom: 4, rally: 0.025, rallyMax: 0.35, dig: 0.08, digMax: 0.3, playMax: 0.4,
     block: 0.4, ace: 0.25, perfectKill: 0.1, setPoint: 0.15, clutch: 0.28, clutchLast: 8, clutchGap: 2, matchPoint: 0.45,
@@ -1483,7 +1510,9 @@
     // ¿cierra el set / el partido? ¿cambio de campo a los 8 del set decisivo? (se decide aquí para que el evento lo lleve)
     var tgt = setTarget(g), a = g.score[0], bb = g.score[1], half = Math.ceil(tgt / 2);
     var setWon = g.score[w] >= tgt && g.score[w] - g.score[1 - w] >= 2, matchWon = setWon && g.sets[w] === 1;
-    var eight = !setWon && g.setNo === 3 && !g.courtSwap3 && g.score[w] === half && g.score[1 - w] < half;
+    var eight = !g.beach && !setWon && g.setNo === 3 && !g.courtSwap3 && g.score[w] === half && g.score[1 - w] < half;
+    // playa: cambio de campo cada BEACH.swap puntos jugados (cada BEACH.swap3 en el 3.er set), sin parar el juego
+    var bswap = g.beach && !setWon && (a + bb) % (g.setNo === 3 ? BEACH.swap3 : BEACH.swap) === 0;
     // contexto (SIM-01): racha en el set, punto de set/partido salvado, defensas de remate del peloteo
     if (g.streakTeam === w) g.streakN++; else { g.streakTeam = w; g.streakN = 1; }
     var saved = g.setPoint === 1 - w, digs = g.rally.digs;
@@ -1498,8 +1527,8 @@
     var ll = g.lastLand, landSide = (reason === 'in' || reason === 'out') && ll && ll.t === g.time ? (ll.x > 0 ? 0 : 1) : -1;
     // pausa del punto (SIM-03): con g.present (partido humano) más larga para los momentos grandes; si no, la de siempre
     var hold;
-    if (g.present) hold = matchWon ? HOLD.match : setWon ? HOLD.set : (hl >= HOLD.bigAt ? HOLD.big : HOLD.routine) + (eight ? HOLD.eight : 0);
-    else hold = matchWon ? HOLD_LEGACY.match : setWon ? HOLD_LEGACY.set : (g.demo ? RITUAL.demoHold : HOLD_LEGACY.routine) + (eight ? HOLD_LEGACY.eight : 0);
+    if (g.present) hold = matchWon ? HOLD.match : setWon ? HOLD.set : (hl >= HOLD.bigAt ? HOLD.big : HOLD.routine) + (eight ? HOLD.eight : 0) + (bswap ? BEACH.swapHold : 0);
+    else hold = matchWon ? HOLD_LEGACY.match : setWon ? HOLD_LEGACY.set : (g.demo ? RITUAL.demoHold : HOLD_LEGACY.routine) + (eight ? HOLD_LEGACY.eight : 0) + (bswap && !g.demo ? BEACH.swapHold : 0);
     g.timer = hold; g.hold = hold;
     var ev = emit(g, { type: 'point', team: w, reason: reason, text: text, how: how, score: [g.score[0], g.score[1]],
       sideout: sideout, rallyTime: g.rally.t, rallyHits: g.rally.hits, setWon: setWon, matchWon: matchWon, player: p || null,
@@ -1531,6 +1560,9 @@
       // Regla 18.2.2: en el set decisivo, cuando un equipo llega a 8 puntos se cambia de campo (sin demora)
       g.courtSwap3 = true;
       courtChange(g, 'eight');
+    } else if (bswap) {
+      g.courtSwapAt = a + bb;
+      courtChange(g, 'swap'); // playa (reglas de vóley playa 18.2): cada 7 / cada 5
     }
   }
   /** Saltar la pausa del punto (SIM-03). En 'point'/'over', pasados HOLD.skipAfter (0,8 s) de la pausa, la recorta a
@@ -1616,7 +1648,9 @@
    *  a la cámara); la UI muestra el aviso y arena/cámara pueden escenificarlo. */
   function courtChange(g, why) {
     if (g.stats) g.stats.courtChanges++;
-    emit(g, { type: 'courtChange', setNo: g.setNo, why: why, score: [g.score[0], g.score[1]], sets: [g.sets[0], g.sets[1]], pause: why === 'set' ? 1.0 : 1.4 });
+    // why: 'set' (fin de set) | 'eight' (8 del set decisivo, pabellón) | 'swap' (playa: cada 7 puntos, cada 5 en el 3.º; `every`)
+    var ev = emit(g, { type: 'courtChange', setNo: g.setNo, why: why, score: [g.score[0], g.score[1]], sets: [g.sets[0], g.sets[1]], pause: why === 'set' ? 1.0 : why === 'swap' ? BEACH.swapHold : 1.4 });
+    if (why === 'swap') ev.every = g.setNo === 3 ? BEACH.swap3 : BEACH.swap;
   }
 
   // ---------- Jugadores ----------
@@ -1653,7 +1687,7 @@
     var sd = side(p.team), inAir = p.z > 0;
     // línea central: no se cruza (en el suelo); en el aire, el cuerpo no atraviesa la red
     p.x = sd * clamp(p.x * sd, inAir ? 0.2 : 0.35, g.mode === 'serve' ? 12 : 11); p.y = clamp(p.y, -6, 6);
-    if (inAir && g.mode === 'rally' && Math.abs(p.x) < C.NET_TOUCH && Math.abs(p.y) < C.HW + 0.5) {
+    if (inAir && g.mode === 'rally' && Math.abs(p.x) < C.NET_TOUCH && Math.abs(p.y) < g.HW + 0.5) {
       var b = g.ball;
       if (Math.abs(b.x) < 4 && Math.abs(b.y - p.y) < 3) { // durante la acción de jugar el balón
         emit(g, { type: 'netTouch', player: p, x: p.x, y: p.y, z: p.z + 2.2 });
@@ -1782,8 +1816,8 @@
     var t = g.serving, sd = side(t), sv = serverOf(g, t), b = g.ball;
     if (!g.rot) {
       var mate = other(g, sv);
-      sv.x = sd * 10.3; sv.y = g.serverIdx[t] ? 1.5 : -1.5; mate.x = sd * 3.5; mate.y = -sv.y * 1.3;
-      for (var i = 0; i < 2; i++) { var q = g.teams[1 - t][i]; q.x = -sd * 6.5; q.y = i ? 2.2 : -2.2; }
+      sv.x = sd * (g.HL + 1.3); sv.y = g.serverIdx[t] ? 1.5 : -1.5; mate.x = sd * 3.5; mate.y = -sv.y * 1.3;
+      for (var i = 0; i < 2; i++) { var q = g.teams[1 - t][i]; q.x = -sd * 6.5 * g.cs; q.y = (i ? 2.2 : -2.2) * g.cs; }
     } else if (VB.AI6 && VB.AI6.placeServe) VB.AI6.placeServe(g, t, sv); // 6v6: formaciones legales (saque y recepción)
     else placeZones(g, t, sv); // 6v6 sin ai6.js: cada uno en su zona base
     for (var j = 0; j < g.players.length; j++) {
@@ -1870,7 +1904,7 @@
     else {
       tx = -sd * 6; ty = 0;
       if (aim) { tx += aim[0] * 2.4; ty += aim[1] * 3.4; }
-      tx = -sd * clamp(-sd * tx, 2, 8.4); ty = clamp(ty, -4, 4);
+      tx = -sd * clamp(-sd * tx * g.cs, 2 * g.cs, 8.4 * g.cs); ty = clamp(ty * g.cs, -4 * g.cs, 4 * g.cs);
     }
     g.aim3.on = false;
     if (g.serveJump) { // saque en salto: potente y con liftado
@@ -1900,7 +1934,7 @@
     }
     if (!human && g.rng() < prof.srvErr) { // error de saque de la IA: a la red o largo
       if (g.rng() < 0.55) { v = launchApex(b, -sd * 3, b.y + rnd(g, 2), 0, 2.6); }
-      else v = g.serveJump ? launchDirect(b, -sd * (9.6 + g.rng()), ty + rnd(g, 1.5), 0, b.speed || 15) : launchSafe(b, -sd * (9.7 + g.rng()), ty + rnd(g, 1.5), 0, 3.4);
+      else v = g.serveJump ? launchDirect(b, -sd * (9.6 + g.rng()) * g.cs, ty + rnd(g, 1.5), 0, b.speed || 15) : launchSafe(b, -sd * (9.7 + g.rng()) * g.cs, ty + rnd(g, 1.5), 0, 3.4);
       b.dip = 0; b.wobA = 0;
     }
     b.vx = v[0]; b.vy = v[1]; b.vz = v[2];
@@ -1961,7 +1995,7 @@
     var b = g.ball, G = gEff(b);
     var ft = (b.vz + Math.sqrt(b.vz * b.vz + 2 * G * Math.max(0, b.z - C.BR))) / G;
     var lx = b.x + b.vx * ft, ly = b.y + b.vy * ft, sr = side(rt);
-    if (Math.abs(lx) > C.HL + 0.15 || Math.abs(ly) > C.HW + 0.15 || lx * sr <= 0) return 0;
+    if (Math.abs(lx) > g.HL + 0.15 || Math.abs(ly) > g.HW + 0.15 || lx * sr <= 0) return 0;
     // ritmo: lo que cuenta para el receptor es el TIEMPO de vuelo (un flotante largo va más rápido solo
     // porque recorre más distancia: no por eso es más difícil); 1,0 s o menos = muy rápido
     var pace = smooth01((1.5 - ft) / 0.55);
@@ -1996,7 +2030,7 @@
     if (g.serveState === 'ready') {
       if (hs) {
         // El sacador humano se desplaza a lo ancho de la zona de saque
-        stepPlayer(g, sv, dt, 0, my * 0.8); sv.y = clamp(sv.y, -4.3, 4.3);
+        stepPlayer(g, sv, dt, 0, my * 0.8); sv.y = clamp(sv.y, -4.3 * g.cs, 4.3 * g.cs);
         if (g.serveAuth) { if (input.jump || input.jset) toss(g, sv, true); else if (input.hit) toss(g, sv, false); }
         if (g.serveState === 'ready' && g.serveAuth && g.opts.serveClock !== false) {
           g.serveClock -= dt;
@@ -2043,7 +2077,7 @@
     refreshZones(g);
   }
   function nextSet(g) {
-    g.pendingSet = false; g.setNo++; g.score = [0, 0]; g.serving = (g.setNo - 1) % 2; g.courtSwap3 = false;
+    g.pendingSet = false; g.setNo++; g.score = [0, 0]; g.serving = (g.setNo - 1) % 2; g.courtSwap3 = false; g.courtSwapAt = 0;
     g.streakTeam = -1; g.streakN = 0; // la racha es dentro del set
     g.challenges = [perSet(g), perSet(g)]; // los challenges no se acumulan entre sets
     g.serverIdx = g.serving === 0 ? [0, 1] : [1, 0];
@@ -2059,7 +2093,8 @@
     g.pendingSet = false; g.finished = false; g.lastPoint = null; g.courtSwap3 = false;
     g.challenges = [perSet(g), perSet(g)]; g.call = null; g.review = null; g.cpuChal = null; g._snap = null; g._pendCall = null;
     g.streakTeam = -1; g.streakN = 0;
-    emit(g, { type: 'newMatch', demo: g.demo, difficulty: g.difficulty });
+    g.courtSwapAt = 0;
+    emit(g, { type: 'newMatch', demo: g.demo, difficulty: g.difficulty, venue: g.venue });
     setupServe(g);
   }
 
@@ -2159,9 +2194,9 @@
     var a = g.aim3, on = g.mode === 'rally' && p.team === 0 && p.z > 0 && atkPhase(g, 0);
     if (!on) { a.on = false; return; }
     var sd = side(p.team);
-    if (!a.on || a.kind !== 'spike') { var d0 = attackTarget(p, null, 6); a.x = d0[0]; a.y = d0[1]; a.on = true; a.kind = 'spike'; }
-    a.x = -sd * clamp(-sd * (a.x + mx * AIM3_SPEED * dt), 1.4, 8.3);
-    a.y = clamp(a.y + my * AIM3_SPEED * dt, -3.9, 3.9);
+    if (!a.on || a.kind !== 'spike') { var d0 = attackTarget(p, null, 6, g.cs); a.x = d0[0]; a.y = d0[1]; a.on = true; a.kind = 'spike'; }
+    a.x = -sd * clamp(-sd * (a.x + mx * AIM3_SPEED * dt), 1.4 * g.cs, 8.3 * g.cs);
+    a.y = clamp(a.y + my * AIM3_SPEED * dt, -3.9 * g.cs, 3.9 * g.cs);
   }
 
   /* Saque dirigible (sprint Carrera): mientras saca el humano, g.aim3 = {on: true, kind: 'serve', x, y} en el campo rival.
@@ -2172,13 +2207,13 @@
   function serveAimReset(g, sv) {
     var a = g.aim3;
     if (!isHuman(g, sv)) { a.on = false; a.kind = ''; return; }
-    a.on = true; a.kind = 'serve'; a.x = -side(sv.team) * SERVE_AIM0; a.y = 0;
+    a.on = true; a.kind = 'serve'; a.x = -side(sv.team) * SERVE_AIM0 * g.cs; a.y = 0;
   }
   function updateServeAim(g, sv, dt, mx, my) {
     var a = g.aim3; if (!a.on || a.kind !== 'serve') return;
     var sd = side(sv.team);
-    a.x = -sd * clamp(-sd * (a.x + mx * SERVE_AIM_SPEED * dt), SERVE_AIM_MIN, C.HL);
-    a.y = clamp(a.y + my * SERVE_AIM_SPEED * dt, -C.HW, C.HW);
+    a.x = -sd * clamp(-sd * (a.x + mx * SERVE_AIM_SPEED * dt), SERVE_AIM_MIN, g.HL);
+    a.y = clamp(a.y + my * SERVE_AIM_SPEED * dt, -g.HW, g.HW);
   }
 
   /** Predicciones de cruce (g.pr1 a 1 m, g.pr3 a 3 m) al día con el balón al FINAL del paso: lo que lee la
@@ -2279,7 +2314,7 @@
         out.x = tx; out.y = ty; out.kind = kind; out.mode = mode; out.aimed = true;
         return out;
       } else {
-        var at = attackTarget(p, a, air ? 6 : 6.5); tx = at[0]; ty = at[1];
+        var at = attackTarget(p, a, air ? 6 : 6.5, g.cs); tx = at[0]; ty = at[1];
         kind = air ? 'spike' : 'free';
         out.spread = air ? 0.25 + 1.5 * 0.05 : 0.35 + 1.4 * 0.05; out.spreadPoor = air ? 0.25 + 1.5 * 0.55 : 0.35 + 1.4 * 0.55;
       }
@@ -2307,13 +2342,18 @@
     return timingQ(te);
   }
 
+  /** Pista de la partida g (o del escenario 'beach'|'hall' si se pasa un texto, o la de 18×9 sin nada): {HL, HW, cs, beach}.
+   *  Cámara, FX, arena y UI la leen para dibujar/encuadrar la pista de 16×8 de la playa. Devuelve un objeto cacheado (no modificar). */
+  var _courtH = { HL: C.HL, HW: C.HW, cs: 1, beach: false }, _courtB = { HL: C.BEACH.HL, HW: C.BEACH.HW, cs: C.BEACH.HL / C.HL, beach: true };
+  function court(g) { return (g && typeof g === 'object' ? g.beach : g === 'beach') ? _courtB : _courtH; }
+
   /** Objetivo útil para el HUD/aro: dónde jugará el balón el equipo humano. */
   function focusPoint(g) {
     return atkPhase(g, 0) ? g.pr3 : g.pr1;
   }
 
   VB.Sim = {
-    createGame: createGame, step: step, drainEvents: drainEvents, setTarget: setTarget, SET_POINTS: SET_POINTS,
+    createGame: createGame, step: step, drainEvents: drainEvents, setTarget: setTarget, SET_POINTS: SET_POINTS, court: court,
     predict: predict, predictLanding: predictLanding, focusPoint: focusPoint,
     canReach: canReach, other: other, isHuman: isHuman, side: side, clamp: clamp,
     // equipos de N jugadores (sprint 1 del 6v6): compañeros, zonas y rotación

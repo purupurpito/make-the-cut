@@ -18,7 +18,7 @@
     return [Math.cos(a) * r, Math.sin(a) * r];
   }
 
-  // Zonas candidatas del campo rival (profundidad desde la red, lateral)
+  // Zonas candidatas del campo rival (profundidad desde la red, lateral; en la playa ×g.cs: pista 16×8)
   var DEPTHS = [2.2, 4.2, 6.2, 7.9], LATS = [-3.6, -1.8, 0, 1.8, 3.6];
   var _t2 = [0, 0];
   /** Elige la zona libre del campo rival (lejos de los defensores), con ruido según dificultad. */
@@ -32,17 +32,18 @@
     // 6v6: con doble bloqueo también se lee el segundo bloqueador (el más cercano después del primero). En 2v2, nunca
     var blk2 = null;
     if (atk && blk && g.rot) for (var b3 = 0; b3 < opp.length; b3++) { var o3 = opp[b3]; if (o3 !== blk && o3.z > 0.15 && Math.abs(o3.x) < 1.2 && (!blk2 || Math.abs(o3.y - p.y) < Math.abs(blk2.y - p.y))) blk2 = o3; }
+    var cs = g.cs || 1;
     for (var i = 0; i < DEPTHS.length; i++) {
       if (DEPTHS[i] < minDepth) continue;
       for (var j = 0; j < LATS.length; j++) {
-        var x = -sd * DEPTHS[i], y = LATS[j], m = 1e9;
+        var x = -sd * DEPTHS[i] * cs, y = LATS[j] * cs, m = 1e9;
         for (var k = 0; k < opp.length; k++) {
           var q = opp[k], dd = Math.hypot(q.x - x, q.y - y);
           if (q.z > 0.1 && Math.abs(q.x) < 1.2) dd += 1.2; // el bloqueador en el aire no defiende
           if (dd < m) m = dd;
         }
         // la IA fácil apunta más al centro (menos riesgo, menos peligro)
-        var risk = (Math.abs(y) > 3 ? 0.6 : 0) + (DEPTHS[i] > 7.5 ? 0.5 : 0);
+        var risk = (Math.abs(LATS[j]) > 3 ? 0.6 : 0) + (DEPTHS[i] > 7.5 ? 0.5 : 0);
         var sc = m - risk * (pr.aimNoise > 2 ? 2 : 0.6) + S._rnd(g, pr.aimNoise);
         if (blk && Math.abs(x - p.x) > 0.5) { // dónde cruza la red la línea atacante -> zona
           var y0 = p.y + (y - p.y) * (0 - p.x) / (x - p.x), gapB = Math.abs(y0 - blk.y);
@@ -60,8 +61,8 @@
     var pr = (sv.prof || g.prof[sv.team]), sd = side(sv.team), opp = g.teams[1 - sv.team];
     if (g.rng() < (pr.seam != null ? pr.seam : 1)) return openSpot(g, sv, 4, _t2).slice();
     var q = opp[Math.floor(g.rng() * opp.length)], n = pr.srvNoise != null ? pr.srvNoise : 1;
-    var depth = clamp(Math.abs(q.x) + S._rnd(g, 1.4), 4.2, 8.2);
-    var y = clamp(q.y + S._rnd(g, n), -3.9, 3.9);
+    var cs = g.cs || 1, depth = clamp(Math.abs(q.x) + S._rnd(g, 1.4), 4.2 * cs, 8.2 * cs);
+    var y = clamp(q.y + S._rnd(g, n), -3.9 * cs, 3.9 * cs);
     return [-sd * depth, y];
   }
 
@@ -158,7 +159,7 @@
   /** Posición objetivo de un jugador según la fase del rally. */
   function pos(g, p) {
     if (g.size !== 2 && VB.AI6 && VB.AI6.pos) return VB.AI6.pos(g, p); // 6v6 con su IA propia (sprint 2)
-    var t = p.team, sd = side(t), mate = other(g, p), job = g.jobs[t], idx = p.idx, mine = g.touchTeam === t;
+    var t = p.team, sd = side(t), mate = other(g, p), job = g.jobs[t], idx = p.idx, mine = g.touchTeam === t, cs = g.cs || 1;
     if (job === p) {
       // a atacar: tras el 2.º toque propio o tras una colocación en salto en el 1.º (S.atkPhase)
       if (S.atkPhase(g, t) && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) return setTg(g.pr3.x + sd * 0.35, g.pr3.y, true, false);
@@ -172,16 +173,16 @@
         // Solo sale a colocar cuando el balón está a punto de llegar a su compañero.
         var hard = g.hardIn || g.lastKind === 'spike' || g.lastKind === 'block';
         if (hard || g.pr1.t > 0.75) {
-          if (Math.abs(p.x) < 2.6 && g.lastKind !== 'serve') return setTg(sd * 1.9, clamp((g.pr1.y + p.y) * 0.5, -3.5, 3.5));
-          var cy = clamp(mate.y + (mate.y > 0 ? -3.2 : 3.2), -3.6, 3.6);
-          if (g.lastKind === 'serve') return setTg(sd * 6.2, idx ? 2.2 : -2.2);
-          return setTg(sd * clamp(Math.abs(p.x), 4.2, 6.5), cy);
+          if (Math.abs(p.x) < 2.6 && g.lastKind !== 'serve') return setTg(sd * 1.9, clamp((g.pr1.y + p.y) * 0.5, -3.5 * cs, 3.5 * cs));
+          var cy = clamp(mate.y + (mate.y > 0 ? -3.2 : 3.2) * cs, -3.6 * cs, 3.6 * cs);
+          if (g.lastKind === 'serve') return setTg(sd * 6.2 * cs, (idx ? 2.2 : -2.2) * cs);
+          return setTg(sd * clamp(Math.abs(p.x), 4.2 * cs, 6.5 * cs), cy);
         }
         return setTg(sd * 2, clamp(p.y, -1.5, 1.5)); // seré el colocador
       }
       if (g.touches === 0) return setTg(sd * 2, clamp(p.y, -1.5, 1.5)); // tras tocar nuestro bloqueo: colocador
-      if (g.touches === 1 && g.lastKind !== 'set') return setTg(sd * 4.3, clamp(p.y, -3, 3)); // seré el atacante (no tras mi colocación en salto)
-      return setTg(sd * 5.5, idx ? 2 : -2);
+      if (g.touches === 1 && g.lastKind !== 'set') return setTg(sd * 4.3 * cs, clamp(p.y, -3 * cs, 3 * cs)); // seré el atacante (no tras mi colocación en salto)
+      return setTg(sd * 5.5 * cs, (idx ? 2 : -2) * cs);
     }
     var opp = 1 - t;
     // lectura de la colocación en salto: el humano rival salta junto a la red en un toque donde puede colocar en salto
@@ -192,8 +193,8 @@
     // llegaba nunca. Tras el toque sigue con este objetivo (reacción) y luego pasa al bloqueo normal de abajo.
     if (opp === 0 && !S.atkPhase(g, opp) && S.jsetReady(g)) {
       var ay0 = other(g, g.ctrl).y, bl0 = ay0 < 0 ? g.teams[t][0] : g.teams[t][1], atk0 = g.swingLive && g.swingShot !== 'jset';
-      if (p === bl0) return setTg(sd * 0.6, clamp(atk0 ? g.ctrl.y : ay0, -4.2, 4.2), false, atk0);
-      return setTg(sd * 5.4, clamp(-ay0 * 0.3, -2, 2));
+      if (p === bl0) return setTg(sd * 0.6, clamp(atk0 ? g.ctrl.y : ay0, -4.2 * cs, 4.2 * cs), false, atk0);
+      return setTg(sd * 5.4 * cs, clamp(-ay0 * 0.3, -2 * cs, 2 * cs));
     }
     if (S.atkPhase(g, opp) && g.pr3.x * side(opp) > 0) { // el rival va a atacar
       var bl = g.pr3.y < 0 ? g.teams[t][0] : g.teams[t][1];
@@ -203,13 +204,13 @@
         var hc = g.ctrl, hm = other(g, hc);
         bl = g.defRole === 'block' ? hc : g.defRole === 'dig' ? hm : (Math.abs(hc.x) > 4 ? hm : hc);
       }
-      if (p === bl) return setTg(sd * 0.6, clamp(g.pr3.y + g.blockOff[t], -4.2, 4.2), false, true);
+      if (p === bl) return setTg(sd * 0.6, clamp(g.pr3.y + g.blockOff[t], -4.2 * cs, 4.2 * cs), false, true);
       // defensor: a media pista, algo hacia la diagonal (el bloqueo tapa parte de la paralela), sin dejar
       // vendida la línea: desde ahí llega a la diagonal y, lanzándose, a la paralela
       var ay = g.pr3.y;
-      return setTg(sd * 5.4, clamp(-ay * 0.3, -2, 2));
+      return setTg(sd * 5.4 * cs, clamp(-ay * 0.3, -2 * cs, 2 * cs));
     }
-    return setTg(sd * 6.2, idx ? 2.2 : -2.2);
+    return setTg(sd * 6.2 * cs, (idx ? 2.2 : -2.2) * cs);
   }
 
   var _zp = { x: 0, y: 0 };
@@ -239,7 +240,7 @@
     if (d >= DODGE_R) return;
     if (d < 0.05) { dx = p.x - pr.x; dy = p.y - pr.y; d = Math.hypot(dx, dy); }
     if (d < 0.05) { dx = sd; dy = 0; d = 1; }         // justo debajo: atrás, hacia su fondo
-    tg.x = pr.x + dx / d * DODGE_R; tg.y = clamp(pr.y + dy / d * DODGE_R, -4.4, 4.4);
+    tg.x = pr.x + dx / d * DODGE_R; tg.y = clamp(pr.y + dy / d * DODGE_R, -4.4 * (g.cs || 1), 4.4 * (g.cs || 1));
   }
   var _w = { t: 0, d: 0, dz: 0, reach: false, kind: '', zc: 0, x: 0, y: 0, z: 0, active: false, canReach: false };
 
@@ -265,7 +266,7 @@
     L.t = g.lastTouchT; L.on = false;
     S.predictLanding(g, _land);
     if (_land.x * sd <= 0) return false;                     // se queda en la red / su propio campo
-    var d = S.lineDist(_land.x, _land.y), w = 0.22 + (1 - (pr.recv || 0.8)) * 0.9;
+    var d = S.lineDist(_land.x, _land.y, g), w = 0.22 + (1 - (pr.recv || 0.8)) * 0.9;
     var x = clamp((d + 0.1 + w) / (2 * w), 0, 1), play = x * x * (3 - 2 * x);
     L.on = play < 1 && g.rng() >= play;
     return L.on;
@@ -347,7 +348,7 @@
     if (p.z > 0.25 && Math.abs(b.x) < 3.8 && b.z > C.NET_H + 0.1) {
       var opp2 = g.teams[1 - t], blockUp = false;
       for (var k = 0; k < opp2.length; k++) if (opp2[k].z > 0.3 && Math.abs(opp2[k].x) < 1.2 && Math.abs(opp2[k].y - p.y) < 1.2) blockUp = true;
-      if (blockUp && g.rng() < pr.tip) { shot = 'tip'; tgt = [-sd * (1.3 + g.rng() * 1.4), clamp(-p.y * 0.6 + S._rnd(g, 1.5), -3.6, 3.6)]; }
+      if (blockUp && g.rng() < pr.tip) { shot = 'tip'; tgt = [-sd * (1.3 + g.rng() * 1.4), clamp(-p.y * 0.6 + S._rnd(g, 1.5), -3.6 * (g.cs || 1), 3.6 * (g.cs || 1))]; } // playa: pokey (sim)
       else tgt = openSpot(g, p, 2.2, [0, 0], true);
     } else if (count === 3) tgt = openSpot(g, p, 4, [0, 0]);
     S._hit(g, p, null, -w.t, shot, tgt);

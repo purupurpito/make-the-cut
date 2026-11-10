@@ -297,7 +297,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 #prompt.konly .pr-in{min-width:0!important;padding:0 6px!important;gap:0}
 #prompt.konly #promptText,#prompt.konly .pr-bar,#prompt.konly .pr-hg{display:none!important}
 /* Consejo para principiantes: franja alta bajo el contador de toques (antes iba abajo y tapaba pies y aro) */
-#coach{position:absolute;left:calc(50% + var(--fx,0px));top:calc(52px + var(--st));transform:translateX(-50%);max-width:min(640px,calc(100% - 560px));min-width:min(360px,calc(100% - 32px));box-sizing:border-box;
+#coach{position:absolute;left:calc(50% + var(--fx,0px));top:calc(14px + 38px * var(--hs,1) + var(--st));transform:translateX(-50%);max-width:min(640px,calc(100% - 560px));min-width:min(360px,calc(100% - 32px));box-sizing:border-box;
   padding:6px 14px;border-radius:10px;background:rgba(8,13,24,.84);border:1px solid var(--line);font:500 14px/1.35 var(--ui);color:var(--fg2);text-align:center;
   text-shadow:0 1px 4px rgba(0,0,0,.5);transition:opacity .25s,color .25s}
 #coach.off{opacity:0}
@@ -501,7 +501,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 
 /* Primeros toques guiados (primer partido): tarjeta centrada en la franja ALTA (donde va el consejo, que se oculta),
    con cámara lenta. En la franja baja tapaba al jugador controlado, que la cámara encuadra abajo al centro. */
-#guide{position:absolute;left:50%;top:calc(50px + var(--st));transform:translateX(-50%);z-index:4;pointer-events:none;text-align:center;font-family:var(--display);visibility:hidden}
+#guide{position:absolute;left:50%;top:calc(14px + 36px * var(--hs,1) + var(--st));transform:translateX(-50%);z-index:4;pointer-events:none;text-align:center;font-family:var(--display);visibility:hidden}
 #guide.show{visibility:visible;animation:guideIn .35s var(--spring) both}
 #guide.out{visibility:visible;animation:bnOut .3s ease-in both}
 #guide .gd-k{display:inline-block;padding:3px 12px;border-radius:6px 6px 0 0;background:var(--gold);color:#1a1100;font:900 13px var(--display);letter-spacing:.26em}
@@ -1635,6 +1635,37 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 #app.vs-up #menu .mlist>#btnTut .mi-s,#app.vs-up #menu .mlist>#btnControls .mi-s,#app.vs-up #menu .mlist>#btnSettings .mi-s{display:none}
 #app.vs-up #menu .mlist>#btnTut:hover,#app.vs-up #menu .mlist>#btnControls:hover,#app.vs-up #menu .mlist>#btnSettings:hover,
 #app.vs-up #menu .mlist>#btnTut.kf,#app.vs-up #menu .mlist>#btnControls.kf,#app.vs-up #menu .mlist>#btnSettings.kf{padding-left:8px}
+/* Escenario (04, Pabellón / Playa) y Puntos por set (05) comparten fila en la rejilla compacta (≤ 820 px de alto y .vs-up): un
+   tercio para el escenario (rótulo pequeño encima del valor) y dos tercios para los puntos. Así el menú no crece ni una fila.
+   Con más alto (columna libre, p. ej. 1920×1080) cada uno va en su fila. En la playa los puntos quedan fijos (21 / 15, .lock) */
+#menu .mlist>#optVenue{grid-column:1/span 1}
+#menu .mlist>#optPts{grid-column:2/-1}
+#optPts.lock .mi-v .arr{visibility:hidden}
+#optPts.lock .mv-val b{color:#ffe9a8}
+@media (max-height:820px){
+  #menu .mlist>#optVenue{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;align-content:center;row-gap:1px;padding:0 4px;text-align:center}
+  #menu .mlist>#optVenue:hover,#menu .mlist>#optVenue.kf,#menu .mlist>#optVenue:focus-visible{padding-left:4px}
+  /* (el 04 va dentro del rótulo pequeño y Puntos conserva su 05: la numeración del menú no salta de 03 a 06) */
+  #menu .mlist>#optVenue .mi-n{display:none}
+  #menu .mlist>#optVenue .mi-l::before{content:"04 · ";color:#b9b0e6}
+  #menu .mlist>#optVenue .mi-l{font-size:11px;letter-spacing:.16em;line-height:1;opacity:.82}
+  #menu .mlist>#optVenue .mi-v{margin:0;justify-content:center;align-self:center;font-size:16px;letter-spacing:.06em}
+  #menu .mlist>#optVenue .mi-v .arr{width:24px}
+  #menu .mlist>#optPts{grid-template-columns:auto minmax(0,1fr) auto;white-space:nowrap}
+  #optPts .pt-x{display:none}
+}
+@media (max-height:420px){#menu .mlist>#optVenue .mi-l{font-size:10px}#menu .mlist>#optVenue .mi-v{font-size:15px}#menu .mlist>#optVenue .mi-v .arr{width:20px}}
+#app.vs-up #menu .mlist>#optVenue{grid-column:1/span 1}
+#app.vs-up #menu .mlist>#optPts{grid-column:2/-1}
+#app.vs-up #menu .mlist>#optVenue{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;align-content:center;row-gap:1px;padding:0 4px;text-align:center}
+#app.vs-up #menu .mlist>#optVenue:hover,#app.vs-up #menu .mlist>#optVenue.kf{padding-left:4px}
+#app.vs-up #menu .mlist>#optVenue .mi-n{display:none}
+#app.vs-up #menu .mlist>#optVenue .mi-l::before{content:"04 · ";color:#b9b0e6}
+#app.vs-up #menu .mlist>#optVenue .mi-l{font-size:11px;letter-spacing:.16em;line-height:1;opacity:.82}
+#app.vs-up #menu .mlist>#optVenue .mi-v{margin:0;justify-content:center;align-self:center;font-size:16px;letter-spacing:.06em}
+#app.vs-up #menu .mlist>#optVenue .mi-v .arr{width:24px}
+#app.vs-up #menu .mlist>#optPts{grid-template-columns:auto minmax(0,1fr) auto;white-space:nowrap}
+#app.vs-up #optPts .pt-x{display:none}
 /* Carrera (DOM y estilos de career-ui.js): mismo zoom en su contenedor; alto y ancho divididos para que ocupe lo mismo */
 /* tarjeta de presentación del partido: también crece (si no, a 2560 se queda en ~500 px con letra de 9-11 px) */
 #app #intro .in-card{zoom:var(--vs)}
@@ -1722,12 +1753,13 @@ kbd.ms{height:auto;padding:2px 6px 1px}
         <button class="mi primary" id="btnPlay"><span class="mi-n">01</span><span>Jugar<br><span class="mi-s" id="playSub"><span class="chip">Partido rápido</span></span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
         <button class="mi" id="btnCareer"><span class="mi-n">02</span><span>Carrera</span><span class="mi-s" id="careerSub">Crea tu jugador · Liga y ofertas</span></button>
         <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-n">03</span><span>Dificultad</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Más fácil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span></span><span class="arr" data-d="1" aria-label="Más difícil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-n">04</span><span>Puntos por set</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="optCtrl" data-opt="ctrlMode"><span class="mi-n">05</span><span>Controlar</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Control anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ctrlVal">A los dos<span class="cv-x"> jugadores</span></b></span><span class="arr" data-d="1" aria-label="Control siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="btnSquad"><span class="mi-n">06</span><span>Jugadores</span><span class="mi-s" id="squadSub">Estadísticas y mejoras</span></button>
-        <button class="mi" id="btnTut"><span class="mi-n">07</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
-        <button class="mi" id="btnControls"><span class="mi-n">08</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
-        <button class="mi" id="btnSettings"><span class="mi-n">09</span><span>Ajustes</span><span class="mi-s"></span></button>
+        <button class="mi" id="optVenue" data-opt="arena" aria-label="Escenario: Pabellón"><span class="mi-n">04</span><span class="mi-l">Escenario</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Pabellón"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="venueVal">Pabellón</b></span><span class="arr" data-d="1" aria-label="Playa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-n">05</span><span class="mi-l">Puntos<span class="pt-x"> por set</span></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="optCtrl" data-opt="ctrlMode"><span class="mi-n">06</span><span>Controlar</span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Control anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ctrlVal">A los dos<span class="cv-x"> jugadores</span></b></span><span class="arr" data-d="1" aria-label="Control siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="btnSquad"><span class="mi-n">07</span><span>Jugadores</span><span class="mi-s" id="squadSub">Estadísticas y mejoras</span></button>
+        <button class="mi" id="btnTut"><span class="mi-n">08</span><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
+        <button class="mi" id="btnControls"><span class="mi-n">09</span><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
+        <button class="mi" id="btnSettings"><span class="mi-n">10</span><span>Ajustes</span><span class="mi-s"></span></button>
       </nav>
     </div>
     <div class="menu-foot">
@@ -1830,7 +1862,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
           <div class="opt-g">
             <p class="opt-h">Imagen</p>
             <button class="opt" data-opt="quality"><span>Calidad<small id="qualNote">Auto la ajusta sola</small></span><span class="seg" data-seg="quality"></span></button>
-            <button class="opt" data-opt="arena"><span>Escenario<small>Palau del Mar o Platja Llarga</small></span><span class="seg" data-seg="arena"></span></button>
+            <button class="opt" data-opt="arena"><span>Escenario<small>Palau del Mar o Platja Llarga (vóley playa)</small></span><span class="seg" data-seg="arena"></span></button>
             <button class="opt" data-opt="camSens"><span>Cámara<small>Rapidez con la que sigue a tu jugador</small></span><span class="slider" data-sl="camSens"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></button>
           </div>
           <div class="opt-g">

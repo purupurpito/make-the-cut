@@ -370,7 +370,7 @@
   function cacheEls() {
     ['hud', 'banner', 'callout', 'menu', 'pause', 'end', 'panel', 'rotate', 'touchbar', 'prompt', 'promptKey', 'promptText', 'promptBar', 'promptRing', 'coach',
       'pS0', 'pS1', 'pMid', 'endTitle', 'endKicker', 'endS0', 'endS1', 'endSets', 'endStats', 'endRecord',
-      'btnPlay', 'optDiff', 'optPts', 'ptsVal', 'optCtrl', 'ctrlVal', 'btnTut', 'btnControls', 'btnSettings', 'btnSquad', 'squadSub', 'sqBody', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
+      'btnPlay', 'optDiff', 'optVenue', 'venueVal', 'optPts', 'ptsVal', 'optCtrl', 'ctrlVal', 'btnTut', 'btnControls', 'btnSettings', 'btnSquad', 'squadSub', 'sqBody', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
       'btnAgain', 'btnMenu', 'btnPanelBack', 'btnTutPrev', 'btnTutNext', 'btnHudPause', 'btnHudMute', 'icoSound',
       'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord',
       'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack'].forEach(function (k) { el[k] = $(k); });
@@ -702,7 +702,7 @@
             // UI-09: sello junto al punto de contacto (PERFECTO / BIEN); el aviso de arriba a la izquierda ya no sale
             // (el lector de pantalla lo sigue oyendo por #srLive)
             stampHit(e, g);
-            var pm = e.grade === 'perfect' ? (e.kind === 'free' ? (e.shot === 'tip' ? 'Dejada perfecta' : '') : PERFECT[e.kind]) : '';
+            var pm = e.grade === 'perfect' ? (e.kind === 'free' ? (e.shot === 'tip' ? (e.pokey ? 'Pokey perfecto' : 'Dejada perfecta') : '') : PERFECT[e.kind]) : '';
             if (pm) srSay(pm.replace(/¡|!/g, ''));
           }
           break;
@@ -742,6 +742,8 @@
           break;
         case 'courtChange':
           // reglas 18.2.1 / 18.2.2: cuando la cámara pasa al plano 'court' (grúa); se va antes de que la grúa acabe (ccU = 1)
+          // playa ('swap', cada 7 / cada 5 en el 3.º): sin grúa de cámara, el aviso sale en cuanto se va el del punto (rt adelantado)
+          if (e.why === 'swap') { pendCourt = { t2: 'Cada ' + (e.every || 7) + ' puntos · ' + e.score[0] + '-' + e.score[1], dur: 1.3, rt: ctx.time - 1.6 }; srSay('Cambio de campo.'); break; }
           pendCourt = { t2: e.why === 'eight' ? 'Set decisivo · ' + Math.ceil(decT(g) / 2) + ' puntos' : 'Fin del ' + (ORD[e.setNo] || e.setNo + '.º') + ' set', dur: e.why === 'eight' ? 1.6 : 1.9, rt: ctx.time };
           // fin de set: «Set N» entra en la bajada de la grúa, en cuanto se va «Cambio de campo» (no al empezar el saque)
           courtNext = e.why === 'set' && e.sets ? { n: e.setNo + 1, sub: e.setNo + 1 === 3 ? 'Set decisivo · ' + decT(g) + ' puntos' : 'Sets ' + e.sets[0] + '-' + e.sets[1] } : null;
@@ -1185,7 +1187,7 @@
     var t1;
     if (k === 'ace') t1 = me ? (tier > 1 ? '¡Ace!' : 'Ace') : 'Ace de la CPU';
     else if (k === 'kill') t1 = me ? (tier > 1 ? '¡Remate!' : 'Remate') : 'Remate de la CPU';
-    else if (k === 'tip') t1 = me ? (tier > 1 ? '¡Dejada!' : 'Dejada') : 'Dejada de la CPU';
+    else if (k === 'tip') t1 = g && g.beach ? (me ? (tier > 1 ? '¡Pokey!' : 'Pokey') : 'Pokey de la CPU') : me ? (tier > 1 ? '¡Dejada!' : 'Dejada') : 'Dejada de la CPU';
     else if (k === 'blockPt') t1 = me ? (tier > 1 ? '¡Punto de bloqueo!' : 'Punto de bloqueo') : 'Bloqueo de la CPU';
     else if (k === 'srvErr') t1 = /^falta de saque/i.test(txt) ? (me ? 'Error de la CPU' : 'Punto de la CPU') : (me ? 'Falta de saque de la CPU' : 'Falta de saque');
     else if (k === 'error') t1 = me ? 'Error de la CPU' : 'Punto de la CPU';
@@ -2392,7 +2394,7 @@
       if (/Palau del Mar/i.test(v) && /Platja Llarga/i.test(v)) continue; // «Palau del Mar o Platja Llarga» (ayuda de Escenario) nombra las dos
       var nv = v.replace(re, function (m) { return m === m.toUpperCase() ? nm.toUpperCase() : nm; }); if (nv !== v) n.nodeValue = nv;
     }
-    // lema del menú: en la playa no es «pista cubierta» (las reglas siguen siendo las de pista: TRASPASO.md)
+    // lema del menú: en la playa no es «pista cubierta» (y se juega con reglas de vóley playa: sim createGame({venue:'beach'}))
     var tg = document.querySelector('#menu .tagline'), tn = tg && tg.firstChild, beach = VB.Arena && VB.Arena.venue && VB.Arena.venue() === 'beach';
     if (tn && tn.nodeType === 3) tn.nodeValue = tn.nodeValue.replace(beach ? 'Vóley en pista cubierta' : 'Vóley en la playa', beach ? 'Vóley en la playa' : 'Vóley en pista cubierta');
   }
@@ -2418,6 +2420,11 @@
   var SLIDERS = { camSens: { min: 0.5, max: 1.5, def: 1 }, sfxVol: { min: 0, max: 1, def: 1 }, musicVol: { min: 0, max: 1, def: 0.75 } };
   function slVal(k) { var c = SLIDERS[k], v = +ctx.settings[k]; return isFinite(v) ? Math.max(c.min, Math.min(c.max, v)) : c.def; }
   function changeOpt(k, d, absIdx, arrowDir) {
+    if (k === 'setPoints' && menuVenue() === 'beach') { // playa: 21 / 15 fijos (el aviso lo da el rebote del valor)
+      if (el.ptsVal) restartAnim(el.ptsVal.parentNode, (arrowDir || d) < 0 ? 'sl-r' : 'sl-l'); uiSound2('arrowEdge', arrowDir || d || 1);
+      return;
+    }
+    if (k === 'arena' && absIdx == null && OPT.arena.vals.indexOf(menuVenue()) >= 0) absIdx = (OPT.arena.vals.indexOf(menuVenue()) + d + 2) % 2; // desde el que se ve (?map=)
     if (SLIDERS[k]) {
       var c = SLIDERS[k], v = Math.round((slVal(k) + d * 0.1) * 10) / 10;
       if (v > c.max + 1e-6) v = d > 0 && absIdx === 'wrap' ? c.min : c.max; if (v < c.min - 1e-6) v = c.min;
@@ -2446,11 +2453,16 @@
   function stepDiff(d) { stepOpt('difficulty', d, el.diffVal); }
   /** Flechas de una fila del menú con valor (dificultad, puntos por set): sin dar la vuelta, rebote en los extremos. */
   function stepOpt(k, d, valEl) {
-    var o = OPT[k], i = optIndex(k), j = Math.max(0, Math.min(o.vals.length - 1, i + d));
+    var o = OPT[k], i = k === 'arena' ? Math.max(0, o.vals.indexOf(menuVenue())) : optIndex(k), j = Math.max(0, Math.min(o.vals.length - 1, i + d));
     if (j === i) { restartAnim(valEl.parentNode, d < 0 ? 'sl-r' : 'sl-l'); uiSound2('arrowEdge', d); return; }
     changeOpt(k, 0, j, d);
   }
   var lastPtsI = -1;
+  var lastVenueI = -1;
+  /** Puntos de la playa en la fila 05 del menú (fijos: sets a 21 y el 3.º a 15). */
+  var BEACH_PTS = '21 · 15';
+  /** Escenario que se verá al jugar: el montado en arena (manda ?map= al arrancar) o, sin arena, el ajuste. */
+  function menuVenue() { var v = VB.Arena && VB.Arena.venue ? VB.Arena.venue() : ctx.settings.arena; return v === 'beach' ? 'beach' : 'hall'; }
   var lastCtrlI = -1;
   var lastDiffI = -1;
   function renderOpts() {
@@ -2482,14 +2494,29 @@
     if (ars.length === 2) { ars[0].classList.toggle('end', di === 0); ars[1].classList.toggle('end', di === OPT.difficulty.vals.length - 1); }
     for (var n = 0; n < el.diffLvl.children.length; n++) el.diffLvl.children[n].classList.toggle('on', n <= di);
     // menú: puntos por set (misma fila que la dificultad, sin barras de nivel)
-    var pi = optIndex('setPoints');
-    if (el.ptsVal.textContent !== OPT.setPoints.labels[pi]) {
-      el.ptsVal.textContent = OPT.setPoints.labels[pi];
+    // menú: escenario (04, Pabellón / Playa; el mismo ajuste `arena` que Ajustes · Imagen · Escenario)
+    var vi = OPT.arena.vals.indexOf(menuVenue()), vb = vi === 1;
+    if (vi < 0) vi = 0;
+    if (el.venueVal && el.venueVal.textContent !== OPT.arena.labels[vi]) {
+      el.venueVal.textContent = OPT.arena.labels[vi];
+      if (lastVenueI >= 0) { var vv = el.venueVal.parentNode; vv.classList.remove('sl-l', 'sl-r'); void vv.offsetWidth; vv.classList.add(vi > lastVenueI ? 'sl-r' : 'sl-l'); }
+      el.optVenue.setAttribute('aria-label', 'Escenario: ' + OPT.arena.labels[vi] + ' (' + venueName(OPT.arena.vals[vi]) + (vb ? ', reglas de vóley playa' : '') + ')');
+      el.optVenue.title = vb ? 'Platja Llarga · vóley playa: pista de 16 × 8, sets a 21 (el 3.º a 15), cambio de campo cada 7 puntos' : 'Palau del Mar · pista cubierta de 18 × 9';
+    }
+    lastVenueI = vi;
+    var vas = el.optVenue ? el.optVenue.querySelectorAll('.arr') : [];
+    if (vas.length === 2) { vas[0].classList.toggle('end', vi === 0); vas[1].classList.toggle('end', vi === OPT.arena.vals.length - 1); }
+    var pi = optIndex('setPoints'), ptxt = vb ? BEACH_PTS : OPT.setPoints.labels[pi];
+    el.optPts.classList.toggle('lock', vb);
+    var ptl = vb ? 'Puntos por set: 21, y el tercer set a 15 (reglas de vóley playa; se elige en Pabellón)' : 'Puntos por set: ' + OPT.setPoints.labels[pi];
+    if (el.optPts.getAttribute('aria-label') !== ptl) { el.optPts.setAttribute('aria-label', ptl); el.optPts.title = vb ? 'En la playa los sets van a 21 y el 3.º a 15' : ''; }
+    if (el.ptsVal.textContent !== ptxt) {
+      el.ptsVal.textContent = ptxt;
       if (lastPtsI >= 0) { var pv = el.ptsVal.parentNode; pv.classList.remove('sl-l', 'sl-r'); void pv.offsetWidth; pv.classList.add(pi > lastPtsI ? 'sl-r' : 'sl-l'); }
     }
     lastPtsI = pi;
     var pas = el.optPts.querySelectorAll('.arr');
-    if (pas.length === 2) { pas[0].classList.toggle('end', pi === 0); pas[1].classList.toggle('end', pi === OPT.setPoints.vals.length - 1); }
+    if (pas.length === 2) { pas[0].classList.toggle('end', vb || pi === 0); pas[1].classList.toggle('end', vb || pi === OPT.setPoints.vals.length - 1); }
     // menú: control (los dos / uno), misma fila que los puntos
     var ci = optIndex('ctrlMode'), tn = teamNums();
     var cd = OPT.ctrlMode.desc[ci] + (ci > 0 ? ' (el n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] + ')' : '');
@@ -2502,7 +2529,7 @@
     var cas = el.optCtrl.querySelectorAll('.arr');
     if (cas.length === 2) { cas[0].classList.toggle('end', ci === 0); cas[1].classList.toggle('end', ci === OPT.ctrlMode.vals.length - 1); }
     // pastillas (CSS .mi.primary .mi-s .chip; el nivel en amarillo); el lector lee «Partido rápido, Normal, Sets a 25»
-    setSep(el.playSub, ['Partido rápido', { t: OPT.difficulty.labels[di], c: 'hi' }, 'Sets a ' + OPT.setPoints.vals[pi], ci > 0 ? 'Solo el n.º ' + tn[0] : ''], 'c');
+    setSep(el.playSub, [vb ? 'Vóley playa' : 'Partido rápido', { t: OPT.difficulty.labels[di], c: 'hi' }, vb ? 'Sets a 21' : 'Sets a ' + OPT.setPoints.vals[pi], ci > 0 ? 'Solo el n.º ' + tn[0] : ''], 'c');
     el.optCtrl.classList.toggle('one', ci > 0);
   }
 
@@ -2599,13 +2626,15 @@
         if (oneMode()) return 'Llevas siempre al mismo jugador: tu compañero (la IA) hace la <b>colocación</b>, un balón alto junto a la red, y tú te preparas para rematar. Si el 1.er toque lo da él, la colocación es tuya: ponte bajo el balón y pulsa ' + g.hit + ', o salta y pulsa ' + g.jset + ' en el aire (<b>colocación en salto</b>).';
         return 'El control pasa solo a tu compañero (la cámara se desliza hacia él). Ponte bajo el balón y pulsa ' + g.hit + ': es la <b>colocación</b>, un balón alto junto a la red. Si saltas, en el aire ' + g.hit + ' remata y ' + g.jset + ' hace una <b>colocación en salto</b>: más rápida, con menos margen de timing.';
       },
-      rule: 'Cada equipo tiene <b>3 toques</b>. Un jugador no puede tocar dos veces seguidas: eso son <b>dobles</b>.' },
+      rule: 'Cada equipo tiene <b>3 toques</b>. Un jugador no puede tocar dos veces seguidas: eso son <b>dobles</b>.',
+      ruleBeach: 'Cada equipo tiene <b>3 toques</b>. En la playa la <b>colocación de dedos</b> se pita más: con mal timing pueden pitarte <b>dobles</b>.' },
     { step: 'Paso 4 de 6', title: '3.er toque · Remate', fig: {
         players: [{ t: 0, x: 1.3, y: -2.4, you: 1, lbl: '3' }, { t: 0, x: 1.8, y: 1.2 }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }],
         segs: [{ a: [1.8, 1.2, 2.3], b: [1.05, -2.4, 3.15], apex: 5.3, dur: 1.15 }, { a: [1.05, -2.4, 3.15], b: [-6.2, 2.8, 0.2], dur: 0.38, who: 0, spike: 1 }],
         ring: [1.3, -2.4], jump: [[0, 0.62, 1.05]], swing: [[0, 1.05, 0.25]] },
       text: function (g) { return 'En el 3.er toque ponte bajo la colocación, pulsa ' + g.jump + ' para <b>saltar</b> y ' + g.hit + ' en lo alto: <b>remate</b>. En el aire, mueve la <b>diana</b> por el campo rival con ' + g.aim + '; con <b>timing perfecto</b>, el remate va exacto a ella.'; },
-      rule: 'En el aire, ' + '<b>Saltar</b> otra vez hace una <b>dejada</b>. Si golpeas el 3.er toque sin saltar, el balón pasa en globo (<b>balón libre</b>).' },
+      rule: 'En el aire, ' + '<b>Saltar</b> otra vez hace una <b>dejada</b>. Si golpeas el 3.er toque sin saltar, el balón pasa en globo (<b>balón libre</b>).',
+      ruleBeach: 'En el aire, <b>Saltar</b> otra vez hace una dejada <b>de nudillos</b> (<b>pokey</b>): en la playa, con la yema de los dedos sería falta. Sin saltar, el 3.er toque pasa en globo (<b>balón libre</b>).' },
     { step: 'Paso 5 de 6', title: 'El bloqueo', fig: {
         players: [{ t: 0, x: 0.6, y: 1.4, you: 1, lbl: 'TÚ' }, { t: 0, x: 6, y: -1.5 }, { t: 1, x: -1.3, y: 1.4 }, { t: 1, x: -2, y: -2.5 }],
         segs: [{ a: [-2, -2.5, 2.3], b: [-1.05, 1.4, 3.15], apex: 5.1, dur: 1.1 }, { a: [-1.05, 1.4, 3.15], b: [-0.05, 1.4, 2.95], dur: 0.16, who: 2, spike: 1 }, { a: [-0.05, 1.4, 2.95], b: [-4.6, 0.3, 0.2], apex: 3.4, dur: 0.85, who: 0 }],
@@ -2614,7 +2643,8 @@
         if (oneMode()) return 'Cuando la CPU coloca, decides con tu posición: si subes a la red frente al atacante, bloqueas tú y tu compañero defiende atrás; si te quedas al fondo, bloquea él. Pulsa ' + g.jump + ' cuando el atacante golpea. Si el balón te da en las manos: <b>bloqueo</b>.';
         return 'Cuando la CPU coloca, el juego te pasa al defensor y tu compañero bloquea. Si prefieres bloquear tú, pulsa ' + g.sw + ' (cambiar) mientras la CPU coloca: ve a la red frente al atacante y pulsa ' + g.jump + ' cuando golpea. Si el balón te da en las manos: <b>bloqueo</b>.';
       },
-      rule: 'El <b>bloqueo no cuenta como toque</b>: después tu equipo aún tiene sus 3 toques.' },
+      rule: 'El <b>bloqueo no cuenta como toque</b>: después tu equipo aún tiene sus 3 toques.',
+      ruleBeach: 'En la playa el <b>bloqueo cuenta como toque</b>: después a tu equipo le quedan 2, y el que bloqueó puede dar el siguiente.' },
     { step: 'Paso 6 de 6', title: 'Reglas y faltas', faults: true,
       text: function () { return ''; }, rule: '' }
   ];
@@ -2631,7 +2661,17 @@
     '<li><b>Sets</b>A 25 puntos con 2 de diferencia; el 3.º, a 15. Gana quien se lleva 2 sets.</li>' +
     '</ul><p class="tut-rule">Cada jugada da un punto (sistema de punto por jugada). Si la ganas recibiendo, recuperas el saque (<b>cambio de saque</b>) y sacáis por turnos: saca el jugador de tu equipo que no sacó la última vez <span class="fl-who">(y lo controlas tú)</span>.</p>';
   /** Paso 6: en modo Uno, el saque de tu compañero lo hace la IA. */
-  function faultsHtml() { return oneMode() ? FAULTS.replace('(y lo controlas tú)', '(si le toca a tu compañero, saca la IA)') : FAULTS; }
+  function faultsHtml() {
+    var f = oneMode() ? FAULTS.replace('(y lo controlas tú)', '(si le toca a tu compañero, saca la IA)') : FAULTS;
+    if (!tutBeach()) return f;
+    // vóley playa (sim g.beach): pista 16×8, el bloqueo es toque, pokey, cambio de campo cada 7, sets a 21 / 15
+    return f.replace('Un equipo toca el balón más de 3 veces (el bloqueo no cuenta).', 'Un equipo toca el balón más de 3 veces. En la playa el bloqueo cuenta como toque.')
+      .replace('El mismo jugador toca el balón dos veces seguidas.', 'El mismo jugador toca el balón dos veces seguidas, o una colocación de dedos mal hecha. Dejar el balón con la yema de los dedos también es falta: en la playa se hace de nudillos (pokey).')
+      .replace('Al acabar cada set y a los 8 puntos del set decisivo.', 'En la playa, cada 7 puntos jugados (cada 5 en el 3.er set) y al acabar cada set.')
+      .replace('A 25 puntos con 2 de diferencia; el 3.º, a 15. Gana quien se lleva 2 sets.', 'En la playa, a 21 puntos con 2 de diferencia; el 3.º, a 15. Gana quien se lleva 2 sets. La pista mide 16 × 8 m.');
+  }
+  /** El tutorial explica las reglas del escenario: las del partido en curso o, desde el menú, las del escenario elegido. */
+  function tutBeach() { var g = ctx.game; return g && !g.demo ? !!g.beach : menuVenue() === 'beach'; }
 
   var tut = { i: 0, raf: 0, t0: 0, fig: null, seen: {} };
   function tutGo(i) {
@@ -2639,7 +2679,7 @@
     tut.i = i; tut.seen[i] = 1;
     var S = TUT[i], g = G();
     el.tutStep.textContent = S.step; el.tutTitle.innerHTML = coachHTML(escT(S.title)); // «1r toque» en pastilla
-    el.tutText.innerHTML = S.faults ? faultsHtml() : '<p class="tut-text">' + S.text(g) + '</p>' + (S.rule ? '<div class="tut-rule">' + S.rule + '</div>' : '');
+    el.tutText.innerHTML = S.faults ? faultsHtml() : '<p class="tut-text">' + S.text(g) + '</p>' + (S.rule ? '<div class="tut-rule">' + (tutBeach() && S.ruleBeach ? S.ruleBeach : S.rule) + '</div>' : '');
     restartAnim(el.tutBody, 'tut-anim');
     el.tutFig.hidden = !!S.faults;
     el.tutBody.style.gridTemplateColumns = S.faults ? '1fr' : '';
@@ -2832,12 +2872,17 @@
         if (a) { stepOpt('setPoints', +a.getAttribute('data-d'), el.ptsVal); restartAnim(a, 'hit'); }
         else changeOpt('setPoints', 1);
       });
+      if (el.optVenue) el.optVenue.addEventListener('click', function (ev) {
+        var a = ev.target && ev.target.closest ? ev.target.closest('[data-d]') : null;
+        if (a) { stepOpt('arena', +a.getAttribute('data-d'), el.venueVal); restartAnim(a, 'hit'); }
+        else changeOpt('arena', 1);
+      });
       el.optCtrl.addEventListener('click', function (ev) {
         var a = ev.target && ev.target.closest ? ev.target.closest('[data-d]') : null;
         if (a) { stepOpt('ctrlMode', +a.getAttribute('data-d'), el.ctrlVal); restartAnim(a, 'hit'); }
         else changeOpt('ctrlMode', 1);
       });
-      var arrs = document.querySelectorAll('#optDiff .arr, #optPts .arr, #optCtrl .arr');
+      var arrs = document.querySelectorAll('#optDiff .arr, #optVenue .arr, #optPts .arr, #optCtrl .arr');
       for (var ai = 0; ai < arrs.length; ai++) arrs[ai].addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') uiSound2('arrowHover', +this.getAttribute('data-d') || 1); });
       on(el.btnTut, function () { openPanel('tut', 'menu'); });
       on(el.btnControls, function () { openPanel('ctl', 'menu'); });

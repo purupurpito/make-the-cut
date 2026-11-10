@@ -611,3 +611,82 @@ Segunda sede, SOLO escenario: la sim no cambia (18×9, reglas de pista cubierta;
 ### LED: repetición sin solaparse (10-nov-2026)
 `drawMsg` reparte las repeticiones del mensaje con `floor(W / unidad)` (antes `ceil`): el reparto exacto solo agranda el hueco. Con
 `ceil` la unidad encogía y el texto pisaba las flechas y la repetición siguiente («PUNTO DE SETPUNTO DE SET»).
+
+## Playa a mapa principal (arena, 10-nov-2026 tarde; en paralelo con personajes y reglas de playa)
+Objetivo: identidad propia (nada de la postal de «SetPoint»: líneas azules, veleros de regata, torre de socorrista, islote-montaña,
+vallas de ondas y soles) y arreglar lo pendiente de TRASPASO. Capturas: `tools/out/arte/playa/` (`antes/`, `d1280/`, `m844/` táctil,
+`hall/` = pabellón para comprobar que no cambia, `w/` pruebas; `w/rally-tarde.png` = luz de tarde).
+- **Pista de la partida**: lo que se dibuja sale de la sim (`g.HL`/`g.HW`, `g.beach`; sin partida, `VB.C`), no de constantes. `beachLayout(g)`
+  (cada frame, solo compara números) repinta las cintas, rehace `beachNet` si cambia el ancho, estrecha la malla de la red (escala x =
+  (2·HW + 1) / 10: 0,9 en 16×8; 1 en el pabellón) y recoloca oficiales (`placeOfficials`: árbitros/anotadores con la lateral, jueces de
+  línea con la esquina; guarda su sitio de pabellón en `P.home`). Con reglas de playa no hay línea de ataque; el 6v6 en la playa (18×9,
+  reglas de pista) sí la pinta. Al volver al pabellón: escala 1 y oficiales en su sitio (medido: 3 idas y vueltas sin fugas, 64/42).
+- **`beachNet`** (1 dibujo + tinta; `props` y `poles` del pabellón se ocultan en la playa): postes de aluminio clavados con protección
+  FINA de lona (turquesa, franja coral y blanca; antes la gruesa del pabellón), antenas, cinta, cables, vientos con sacos (siguen el
+  ancho), **silla del árbitro de madera** (tarima a la misma altura que la del pabellón, barandilla, peto de lona con el tajo, escalera
+  de mano y toldo a rayas) y **mesa de anotadores** (tablero sobre caballetes, faldón de lona con el tajo, sillas plegables, acta en
+  tablilla, marcador de láminas con los colores de los equipos, nevera y toldo de 4 postes).
+- **Identidad**: cintas CORAL (`#f2401f`, filo oscuro; piquetas de madera); lonas con el «tajo» blanco al final de cada marca y el
+  sello `cut` (dos tajos) en PLATJA LLARGA; banderas de vela con bolsa de 26 cm y mirando a la pista (de canto ya no son palos) y mástil
+  claro; pinos piñoneros (copa plana) en el lado de tierra y palmeras solo junto al mar; silla alta de socorrista blanca con sombrilla y
+  bandera verde (en vez de la torre con caseta); fuera veleros de regata e islotes.
+- **Horizonte**: `beachBackdrop` = telón pintado en un cilindro abierto a 150 m (1 dibujo, 192 triángulos; lienzo 4096×256, 2048×128 en
+  móvil): pueblo blanco con tejas y campanario, paseo con palmeras finas, pinar, sierra baja muy velada y un cabo con faro hacia el mar;
+  la parte del mar queda vacía. Sin niebla de three (colores ya velados); `material.color` lo tiñe con la luz.
+- **Vida**: `beachGulls` (gaviotas: 2 triángulos por ave, vuelo en círculos y aleteo a ratos en el shader; 14/9 en móvil, 1 dibujo),
+  `beachBoats` (5 llaüts con vela latina que navegan a lo largo de la costa: desplazamiento, balanceo y giro en el vertex del toon
+  `vb-beach-boats`; se encogen en los extremos del recorrido de 260 m; 1 dibujo), mar con **ola que rompe** (cada ~7 s una cresta avanza
+  hasta la orilla, aclara el agua y se deshace en espuma), chiringuito y gradas como estaban.
+- **Luz de tarde (opcional)**: `?luz=tarde` o ajuste `beachLight` ('dia' | 'tarde'; `VB.Arena.beachLight(modo)` en vivo, `onSettings(s,
+  'beachLight')`). Cielo violeta-melocotón, sol bajo sobre el mar, luz principal anaranjada, mar más profundo, telón y nubes teñidos.
+  Mismas luces (solo color/intensidad: no recompila). **Falta la opción en Ajustes** (ui_main).
+- **fx.js (solo en la playa)**: arena que salta (mismo pool de polvo con gravedad por partícula, granos de 0,24 m, color arena seca) en
+  la plancha (abanico hacia delante), al caer de un salto, al botar el balón y en su bote final (corona en la dirección del vuelo);
+  **huellas** en el lote de calcomanías (celdas 9-11 del atlas, 0 dibujos nuevos; 96/64/40 por calidad, 6,5 s, se apagan en los 2
+  últimos): pies descalzos alternos cada 0,6 m de cada atleta con los pies en el suelo (sin rastro en recolocaciones de > 2,5 m),
+  surco de la plancha (1,9 m) y cráter del balón. Se borran al empezar partido y al salir de la playa.
+- **Arreglo en fx.js**: `dAlive++` estaba dentro de un comentario y el polvo NO se veía nunca (ni en el pabellón). Se arregla la
+  cuenta, pero en el pabellón sigue oculto a propósito (regla del encargo: el pabellón no cambia). Encenderlo allí: pendiente de decidir.
+- **Rendimiento (calidad baja)**: playa en baja sin fotógrafos y, en todas las calidades, sin suplentes ni cámara de TV (en el vóley
+  playa no hay suplentes): `finalizeOfficials` ordena [oficiales y entrenadores][fotógrafos][suplentes][lowSkip] y `setQuality` recorta
+  con drawRange (`beachIdx`, `beachLowIdx`; el pabellón, igual que antes). Palmeras con 8 tramos por hoja y cocos de 6×4, sombrillas con
+  remate de 6×4, arena 42×24 (antes 42×68). Partido de playa en baja: ~103 k triángulos en peloteo (antes ~134 k).
+  `perf.js 844x390 12 high,medium,low 4` (partido real, PC cargado por los otros dos agentes: CPU 68-72 %, fps orientativos):
+  playa alta 42/44 dibujos · 376 k · 65 fps; media 39/42 · 222 k · 66 fps; baja 31/33 · 109 k · 63 fps (antes 28/30 · 140 k);
+  pabellón (sin cambios) alta 46/50 · 1 236 k; media 45/51 · 266 k; baja 30/34 · 112 k. «objetivos cumplidos» en los dos.
+- **`VB.TOON.outline(mesh, th, { color })`** (petición de personajes): tinta de color propio con uniforme propio y el MISMO programa
+  (un material por color; sin `color`, la tinta común de siempre).
+- Pendiente: marcador de playa (torre pequeña con cifras) y que la cámara del cambio de campo no mire a `landmarks.scoreHung` en la
+  playa (camera_input; no lo toco porque cambia sus cajas de encuadre); el público de la playa (cabezones, sombreros, grupos por
+  equipo) es del agente de personajes.
+
+## Petición de sim/ui_main (agente reglas de playa, 10-nov-2026): la PISTA de la playa mide 16 × 8
+La sim ya juega la playa con reglas de vóley playa (`createGame({venue:'beach'})`, main.js lo pasa con `VB.Arena.venue()`):
+**pista 16 × 8** (`g.HL = 8`, `g.HW = 4`; antes 9 / 4,5), red igual (2,43). El bote es «fuera» más allá de 8 m de fondo y 4 m de lateral,
+y las antenas están en `y = ±4` (la sim cuenta la antena en `g.HW`). Hoy `buildBeach` pinta las cintas a 18 × 9 con `C.HL/C.HW`: el
+jugador vería caer «dentro» de la cinta balones que se cantan fuera.
+- **Qué**: en la capa de pista de la playa (~l. 3459 `var ... HL = C.HL, HW = C.HW`) usar `VB.C.BEACH.HL / VB.C.BEACH.HW` (o
+  `VB.Sim.court('beach')` → `{HL: 8, HW: 4, cs: 8/9, beach: true}`, objeto cacheado). Lo mismo para todo lo que en la playa se apoye
+  en la línea: antenas (`C.HW + 0.006` → `HW` de la playa), varillas/postes de la red (en la playa los postes van a ~0,5-1 m de la línea),
+  jueces de línea en las esquinas (`C.HL + 1.4`, `C.HW + 1.4`), arena rastrillada/franja, marca del bote y FX de la retícula (fx.js
+  usa `C.HL/C.HW` en 4 sitios: con la partida a mano, `ctx.game.HL / ctx.game.HW`, o `VB.Sim.court(ctx.game)`).
+- **Sin línea de ataque ni central** en vóley playa (el cordel discontinuo de la línea de ataque sobra).
+- `courtChange` trae un `why` nuevo: **`'swap'`** (playa: cada 7 puntos jugados, cada 5 en el 3.er set; campo `every` = 7 | 5; pausa
+  `pause` = `VB.BEACH.swapHold`, 1,0 s). Hoy arena lo trata como fin de set («FIN DEL SET N» en videomarcadores/LED): para `'swap'` el
+  texto sería `'CADA ' + e.every + ' PUNTOS'` o el marcador, y sin la ovación larga (es frecuente: ~5 por set). La cámara no hace grúa en
+  `'swap'` (camera.js), ui.js saca «Cambio de campo · Cada 7 puntos · 4-3».
+- El pabellón no cambia nada (`g.HL = 9`, `g.HW = 4,5`, huella 2v2 idéntica).
+
+### Cierre TAJO + playa (revisión final, 10-nov-2026)
+- **Menos parecido a otros juegos de playa:** los llaüts son barcas de pesca de casco de madera pintado oscuro con vela latina tostada (ocre /
+  teja) y más pequeñas (escala ~0,78); la silla del socorrista sale del eje del fondo (`lifeChair(B, -26.5, 24, …)`, al borde del encuadre).
+- **Oficiales TAJO:** `makePerson` escala el hueso de la cabeza (`OFF_HEAD_K` 1,32, `o.headK` para cambiarlo) y les pone ojos de dibujo
+  (blanco + pupila). Afecta a árbitros, jueces, anotadores y gente del entorno, en pabellón y playa; mismos dibujos.
+- **`courtChange why:'swap'`** (playa): videomarcadores «CAMBIO DE CAMPO · CADA 7 PUNTOS» (o 5) y la duración corta de `'eight'`; ya no dice «FIN DEL SET».
+- Pendiente: marcador propio de la playa; público de playa cabezón con sombreros y grupos por equipo; la cámara del fin de set apunta a
+  `landmarks.scoreHung` (cielo en la playa, sin confirmar); polvo del pabellón (fx) sin decidir; comentario de cabecera de `beachScene`
+  aún nombra «torre de socorrista, veleros e islotes».
+- **fx.js con la pista de la partida:** `courtHL(g)`/`courtHW(g)` (g.HL/g.HW, respaldo `C`). La línea resaltada de la revisión del challenge
+  cae sobre la cinta coral de 16×8 (antes 1 m por fuera: un bote fuera a 8,45 m parecía dentro) y el marcador de caída se atenúa al salir de
+  la pista de la partida. Captura `tools/out/arte/final/review-playa.png`.
+- **fx.js:** el `fp` local del aro amarillo tapaba el pool de huellas (TypeError en cada frame al salir de la playa sin partido nuevo): ahora `fpt`.

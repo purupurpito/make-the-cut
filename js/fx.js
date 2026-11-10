@@ -260,7 +260,7 @@
         d.vx = (-uy * side + ux * pj) * v + ux * f; d.vy = (ux * side + uy * pj) * v + uy * f;
       } else { d.vx = Math.cos(a) * v; d.vy = Math.sin(a) * v; }
       d.vz = 0.06 + Math.random() * 0.16;
-      d.life = d.max = 0.22 + Math.random() * 0.18; d.s = 0.55 + Math.random() * 0.45;
+      d.life = d.max = 0.22 + Math.random() * 0.18; d.s = 0.55 + Math.random() * 0.45; d.g = 0;
     }
     duAlive = 1;
   }
@@ -311,7 +311,7 @@
    * las copia cada frame en instancias, en el orden de antes (rellenos → filos y ondas → marcador → retícula).
    * Atlas 1024×1024 = 4×4 celdas de 256 px (9 usadas: la 8 es la diana del saque dirigible; antes 1024×512 = 4×2) (potencia de 2: cada mip divide las celdas exactamente; con celdas de 272 px y
    * margen los mips no potencia de 2 emborronaban la retícula lejana). */
-  var decals = null, DEC_CELL = 256, DEC_ROWS = 4, decTex = [], decOrder = [], decSz = [], decM = null, decV = null, decP = null, decQ = null, decY = null;
+  var decE = null, decals = null, DEC_CELL = 256, DEC_ROWS = 4, decTex = [], decOrder = [], decSz = [], decM = null, decV = null, decP = null, decQ = null, decY = null;
   var DROP_TONE = 0.763; // la Line de antes pasaba por ACES (blanco 1 → 0,763); el lote no lleva tono: mismo blanco en pantalla
   function buildDecals(texs) {
     var cv = canvas(4 * DEC_CELL, DEC_ROWS * DEC_CELL), g = cv.getContext('2d');
@@ -321,8 +321,10 @@
       decTex.push(texs[i]);
     }
     g.fillStyle = '#ffffff'; g.fillRect(2 * DEC_CELL, DEC_CELL, DEC_CELL, DEC_CELL); // celda 6: blanco liso (línea de altura)
+    footAtlas(g); // celdas 9-11: huellas de la playa
     var at = tex(cv);
-    var N = MARK_N * 2 + RIP_N + 7, geo = new THREE.PlaneGeometry(1, 1);
+    var N = MARK_N * 2 + RIP_N + 7 + FOOT_N, geo = new THREE.PlaneGeometry(1, 1);
+    for (var fI = 0; fI < FOOT_N; fI++) fp.push(dblFields({ x: 0.5, y: 0.5, yaw: 0.5, k: 0, sx: 0.5, sy: 0.5, op: 0.5, t: 0.5 })); for (var fJ = 0; fJ < FOOT_N; fJ++) fp[fJ].t = 0;
     var inst = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({
       uniforms: { map: { value: at } }, transparent: true, depthWrite: false, toneMapped: false,
       vertexShader: 'attribute vec4 aCol; attribute vec2 aCell; varying vec4 vCol; varying vec2 vUv;\n' +
@@ -341,7 +343,80 @@
     decOrder.push(marker, aimFill, aimRet, revGlow, revLine, revFill);
     // lado del plano de cada malla (marcador 1,15 m, retícula 1,7 m; el resto 1 m; la huella de revisión lleva su escala): el lote usa un plano de 1 m
     for (var z = 0; z < decOrder.length; z++) decSz.push(decOrder[z].geometry.parameters.width || 1);
-    decM = new THREE.Matrix4(); decV = new THREE.Vector3(); decP = new THREE.Vector3(); decQ = new THREE.Quaternion(); decY = new THREE.Vector3(0, 1, 0);
+    decM = new THREE.Matrix4(); decV = new THREE.Vector3(); decP = new THREE.Vector3(); decQ = new THREE.Quaternion(); decY = new THREE.Vector3(0, 1, 0); decE = new THREE.Euler();
+  }
+  /* ---------- PLAYA: arena que salta y huellas que se desvanecen (solo con VB.Arena.venue() === 'beach') ----------
+   * Arena: el MISMO pool de polvo (Points), con gravedad por partícula (arcos cortos que caen) y color de arena seca.
+   * Huellas: pies descalzos al correr (cada ~0,6 m, alternando pie), surco de la plancha y cráter del balón; van en el lote
+   * de calcomanías (celdas 9-11 del atlas, debajo de todo lo demás): 0 dibujos nuevos. Se apagan en los últimos 2 s. */
+  var FOOT_N = 96, footCap = FOOT_N, fp = [], fpHead = 0, fpLast = [], fpAlive = 0, FOOT_LIFE = 6.5;
+  var FP_CELL = [9, 10, 11]; // 0 = pie, 1 = surco de la plancha, 2 = cráter del balón
+  function onBeach() { var A = VB.Arena; return !!(A && A.venue && A.venue() === 'beach'); }
+  function footAtlas(g) {
+    var C0 = DEC_CELL, x, y;
+    // celda 9: pie descalzo mirando a +u (talón a la izquierda), hundido (oscuro) con el reborde de arena empujada delante
+    x = (9 % 4) * C0; y = Math.floor(9 / 4) * C0;
+    g.save(); g.translate(x + C0 / 2, y + C0 / 2);
+    g.fillStyle = 'rgba(255,246,224,0.55)'; g.beginPath(); g.ellipse(14, 0, 98, 40, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(96,58,26,0.8)';
+    g.beginPath(); g.ellipse(-52, 0, 32, 26, 0, 0, Math.PI * 2); g.fill();                     // talón
+    g.beginPath(); g.ellipse(18, -3, 56, 33, -0.06, 0, Math.PI * 2); g.fill();                 // planta
+    g.beginPath(); g.ellipse(-16, 4, 40, 18, 0, 0, Math.PI * 2); g.fill();                     // arco
+    var toes = [[86, -20, 13], [84, 2, 11], [78, 20, 9.5], [70, 33, 8], [61, 43, 7]];
+    for (var t = 0; t < toes.length; t++) { g.beginPath(); g.arc(toes[t][0], toes[t][1], toes[t][2], 0, Math.PI * 2); g.fill(); }
+    g.restore();
+    // celda 10: surco alargado de la plancha (a lo largo de +u) con arena amontonada en el borde delantero
+    x = (10 % 4) * C0; y = Math.floor(10 / 4) * C0;
+    g.save(); g.translate(x + C0 / 2, y + C0 / 2);
+    var gr = g.createRadialGradient(0, 0, 10, 0, 0, 120); gr.addColorStop(0, 'rgba(118,78,40,0.55)'); gr.addColorStop(0.75, 'rgba(118,78,40,0.32)'); gr.addColorStop(1, 'rgba(118,78,40,0)');
+    g.scale(1, 0.36); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, 120, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,246,224,0.55)'; g.beginPath(); g.ellipse(112, 0, 14, 105, 0, 0, Math.PI * 2); g.fill();
+    g.restore();
+    // celda 11: cráter del balón (hoyo redondo con reborde claro)
+    x = (11 % 4) * C0; y = Math.floor(11 / 4) * C0;
+    var gc = g.createRadialGradient(x + C0 / 2, y + C0 / 2, 0, x + C0 / 2, y + C0 / 2, C0 / 2);
+    gc.addColorStop(0, 'rgba(110,72,36,0.6)'); gc.addColorStop(0.55, 'rgba(130,88,46,0.45)'); gc.addColorStop(0.72, 'rgba(255,246,224,0.6)'); gc.addColorStop(1, 'rgba(255,246,224,0)');
+    g.fillStyle = gc; g.fillRect(x, y, C0, C0);
+  }
+  /** Huella (coords de sim): kind 0 pie, 1 surco, 2 cráter; yaw en rad de sim; sx, sy = tamaño en m. */
+  function footAt(x, y, yaw, kind, sx, sy, op) {
+    var f = fp[fpHead]; fpHead = (fpHead + 1) % footCap;
+    f.x = x; f.y = y; f.yaw = yaw; f.k = kind; f.sx = sx; f.sy = sy; f.op = op; f.t = FOOT_LIFE; fpAlive = 1;
+  }
+  /** Arena que salta (coords de sim): n granos en abanico hacia (dirx, diry) (o en corona sin dirección); power ~0,4-1,2. */
+  function sandAt(x, y, n, power, dirx, diry, spread) {
+    n = Math.max(2, Math.round(n * qScale));
+    var dl = Math.sqrt(dirx * dirx + diry * diry), ux = dl > 1e-4 ? dirx / dl : 0, uy = dl > 1e-4 ? diry / dl : 0;
+    for (var i = 0; i < n; i++) {
+      var d = du[duHead]; duHead = (duHead + 1) % duCap;
+      var a = Math.random() * 6.283, r0 = Math.random() * (spread || 0.2), v = power * (0.8 + Math.random() * 1.8);
+      d.x = x + Math.cos(a) * r0; d.y = y + Math.sin(a) * r0; d.z = 0.04;
+      var hx = Math.cos(a), hy = Math.sin(a);
+      if (dl > 1e-4) { hx = hx * 0.55 + ux * 0.9; hy = hy * 0.55 + uy * 0.9; }
+      d.vx = hx * v * 0.8; d.vy = hy * v * 0.8; d.vz = power * (1.4 + Math.random() * 2.4);
+      d.life = d.max = 0.55 + Math.random() * 0.4; d.s = 0.7 + Math.random() * 0.3; d.g = 9.5;
+    }
+    duAlive = 1;
+  }
+  /** Por frame: una huella cada ~0,6 m que recorre cada atleta con los pies en el suelo (alternando pie). */
+  function updateFootprints(g, dt) {
+    var ps = g.players, n = ps ? ps.length : 0, P = VB.Players, rigs = P && P.rigs;
+    for (var i = 0; i < n; i++) {
+      var p = ps[i], x = p.x, y = p.y;
+      if (rigs) for (var j = 0; j < rigs.length; j++) if (rigs[j] && rigs[j].p === p && rigs[j].root) { x = rigs[j].root.position.x; y = -rigs[j].root.position.z; break; }
+      var L = fpLast[i]; if (!L) L = fpLast[i] = { x: x, y: y, side: 1 };
+      var dx = x - L.x, dy = y - L.y, d2 = dx * dx + dy * dy;
+      if (d2 > 6.25) { L.x = x; L.y = y; continue; }            // recolocación entre puntos: sin rastro
+      if ((p.z || 0) > 0.06) { L.x = x; L.y = y; continue; }     // en el aire
+      if (d2 < 0.36) continue;
+      var dd = Math.sqrt(d2), yaw = Math.atan2(dy, dx), side = L.side = -L.side, ox = -dy / dd * 0.1 * side, oy = dx / dd * 0.1 * side;
+      footAt(x + ox, y + oy, yaw + side * 0.08, 0, 0.34, 0.34, 0.9);
+      L.x = x; L.y = y;
+    }
+    if (!fpAlive || !(dt > 0)) return;
+    var alive = 0;
+    for (var k = 0; k < footCap; k++) { var f = fp[k]; if (f.t > 0) { f.t -= dt; alive++; } }
+    if (!alive) fpAlive = 0;
   }
   function writeDecals() {
     if (!decals) return;
@@ -358,6 +433,15 @@
         A[0] = A[1] = A[2] = DROP_TONE; A[3] = dropLine.material.opacity; B[0] = -1; B[1] = -1; // aCell < 0: uv fija en el centro de la celda blanca (sin mips)
         n++;
       }
+    }
+    // huellas de la playa (debajo de marcas, ondas y aros)
+    if (fpAlive) for (var fi = 0; fi < footCap; fi++) {
+      var F = fp[fi]; if (F.t <= 0) continue;
+      decP.set(F.x, 0.011 + fi * 0.00002, -F.y); decE.set(-Math.PI / 2, 0, F.yaw); decQ.setFromEuler(decE); decV.set(F.sx, F.sy, 1);
+      decals.setMatrixAt(n, decM.compose(decP, decQ, decV));
+      var cl0 = FP_CELL[F.k]; A[n * 4] = A[n * 4 + 1] = A[n * 4 + 2] = 1; A[n * 4 + 3] = F.op * Math.min(1, F.t / 2);
+      B[n * 2] = (cl0 % 4) * DEC_CELL; B[n * 2 + 1] = (DEC_ROWS - 1 - Math.floor(cl0 / 4)) * DEC_CELL;
+      n++;
     }
     for (var i = 0; i < decOrder.length; i++) {
       var o = decOrder[i]; if (!o.visible) continue;
@@ -715,18 +799,22 @@
   /** Línea más cercana al bote (x, y) en coords de sim: la de fondo (|x| = HL) o la lateral (|y| = HW). Coloca la línea
    *  resaltada encima de la línea pintada (5 cm, por DENTRO de las medidas, como arena.js) y la huella con el radio del balón
    *  hacia la línea (el borde de la huella es el del balón: lo que mide dist), algo alargada a lo largo de la línea. */
+  /** Medias medidas de la pista de la partida (playa 8×4; pabellón y 6v6 9×4,5): g.HL/g.HW de la sim, y VB.C sin partida. */
+  function courtHL(g) { g = g || (ctx && ctx.game); return g && g.HL > 0 ? g.HL : C.HL; }
+  function courtHW(g) { g = g || (ctx && ctx.game); return g && g.HW > 0 ? g.HW : C.HW; }
   function placeReview(x, y) {
-    var dEnd = C.HL - Math.abs(x), dSide = C.HW - Math.abs(y), L = 0.05, LEN = 2.6, end = Math.abs(dEnd) <= Math.abs(dSide);
+    var HL = courtHL(), HW = courtHW();
+    var dEnd = HL - Math.abs(x), dSide = HW - Math.abs(y), L = 0.05, LEN = 2.6, end = Math.abs(dEnd) <= Math.abs(dSide);
     var fs = 2 * C.BR * 128 / 114; // plano de la huella: el disco de revTex mide 114/128
     revFill.position.x = x; revFill.position.z = -y; revFill.rotation.z = 0;
     revLine.rotation.z = 0; revGlow.rotation.z = 0;
     if (end) {
-      var lx = (x >= 0 ? 1 : -1) * (C.HL - L / 2), ly = clampN(y, -C.HW + LEN / 2 - 0.4, C.HW - LEN / 2 + 0.4);
+      var lx = (x >= 0 ? 1 : -1) * (HL - L / 2), ly = clampN(y, -HW + LEN / 2 - 0.4, HW - LEN / 2 + 0.4);
       revLine.position.x = lx; revLine.position.z = -ly; revLine.scale.set(L + 0.012, LEN, 1);
       revGlow.position.x = lx; revGlow.position.z = -ly; revGlow.scale.set(0.3, LEN * 1.15, 1);
       rv.sx = fs; rv.sy = fs * 1.18; // radio del balón en x (hacia la línea de fondo), 18 % más a lo largo
     } else {
-      var sy = (y >= 0 ? 1 : -1) * (C.HW - L / 2), sx = clampN(x, -C.HL + LEN / 2 - 0.4, C.HL - LEN / 2 + 0.4);
+      var sy = (y >= 0 ? 1 : -1) * (HW - L / 2), sx = clampN(x, -HL + LEN / 2 - 0.4, HL - LEN / 2 + 0.4);
       revLine.position.x = sx; revLine.position.z = -sy; revLine.scale.set(LEN, L + 0.012, 1);
       revGlow.position.x = sx; revGlow.position.z = -sy; revGlow.scale.set(LEN * 1.15, 0.3, 1);
       rv.sx = fs * 1.18; rv.sy = fs;
@@ -1115,7 +1203,7 @@
       buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map, whiteTex, revFill.material.map, aimSvMap]);
       // polvo de parquet (plancha, aterrizajes): Points con alfa por vértice y mezcla normal
       var dPos = new Float32Array(DUST_N * 3), dCol = new Float32Array(DUST_N * 4);
-      for (var dI = 0; dI < DUST_N; dI++) { du.push(dblFields({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s: 1 })); dPos[dI * 3 + 1] = -50; }
+      for (var dI = 0; dI < DUST_N; dI++) { du.push(dblFields({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s: 1, g: 0.5 })); du[du.length - 1].g = 0; dPos[dI * 3 + 1] = -50; }
       var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dPos, 3)); dg.setAttribute('color', new THREE.BufferAttribute(dCol, 4));
       dust = new THREE.Points(dg, new THREE.PointsMaterial({ size: 0.42, map: radialTex([[0, 'rgba(255,255,255,0.75)'], [0.4, 'rgba(255,255,255,0.3)'], [1, 'rgba(255,255,255,0)']], 64),
         vertexColors: true, transparent: true, depthWrite: false }));
@@ -1133,6 +1221,8 @@
       tbLow = r < 1; // FX cartoon: en baja la mitad de estrellas y nubes, sin líneas de velocidad ni onomatopeya
       spCap = r >= 2 ? SPARK_N : r === 1 ? 150 : 90;
       duCap = r >= 2 ? DUST_N : r === 1 ? 72 : 40;
+      footCap = r >= 2 ? FOOT_N : r === 1 ? 64 : 40;
+      if (fp.length) { for (var fq = footCap; fq < FOOT_N; fq++) fp[fq].t = 0; fpHead %= footCap; }
       confCap = r >= 2 ? CONF_N : r === 1 ? 360 : 200;
       // lo que quede fuera del tramo nuevo se apaga y deja de dibujarse
       if (sparks) {
@@ -1150,6 +1240,7 @@
       trailA = 0; heat = 0; squash.t = 0; spin.rate = 0; hwC.p = null;
       for (var i = 0; i < SPARK_N; i++) sp[i].life = 0;
       for (var dI = 0; dI < DUST_N; dI++) du[dI].life = 0;
+      for (var fI = 0; fI < fp.length; fI++) fp[fI].t = 0; fpLast.length = 0; fpAlive = 0;
       for (var f = 0; f < FLASH_N; f++) { flashPool[f].t = 0; flashPool[f].s.visible = false; }
       for (var w = 0; w < WAVE_N; w++) { wavePool[w].t = 0; wavePool[w].s.visible = false; }
       for (var r = 0; r < RIP_N; r++) { ripPool[r].t = 0; ripPool[r].m.visible = false; }
@@ -1244,11 +1335,11 @@
       }
       // ---- aro amarillo (dónde jugará el balón tu equipo): el objetivo principal ----
       var showFocus = inPlay && !g.demo && !g.watch && g.jobs && g.jobs[0] && Sim.focusPoint;
-      var fp = showFocus ? Sim.focusPoint(g) : null;
-      focusVis = !!fp;
+      var fpt = showFocus ? Sim.focusPoint(g) : null; // (no «fp»: taparía el pool de huellas del módulo)
+      focusVis = !!fpt;
       focusRing.visible = focusVis;
       if (focusVis) {
-        focusRing.position.x = fp.x; focusRing.position.z = -fp.y;
+        focusRing.position.x = fpt.x; focusRing.position.z = -fpt.y;
         var press = 1.2;
         if (Sim.hitWindow) press = focusPress(g, g.jobs[0]);
         // aro móvil: diámetro LINEAL en press (2,6 m a 0,9 s -> diana a 0 s); antes de 0,9 s espera a 2,6 m apareciendo
@@ -1274,7 +1365,7 @@
         marker.scale.set(sc, sc, sc); marker.rotation.z = ctx.time * 0.8;
         var mine = land.x > 0;
         var tol = C.IN_TOL != null ? C.IN_TOL : 0.03; // mismo umbral que el árbitro de sim
-        var out = Math.abs(land.x) > C.HL + tol || Math.abs(land.y) > C.HW + tol;
+        var out = Math.abs(land.x) > courtHL(g) + tol || Math.abs(land.y) > courtHW(g) + tol; // pista de la partida (playa 16×8)
         var mo;
         if (g.demo) { markerMat.color.setRGB(0.9, 0.95, 1); mo = 0.55; }
         else if (mine && !focusVis) { markerMat.color.setRGB(YEL[0], YEL[1], YEL[2]); mo = 0.95; } // nadie tuyo va: el bote es lo que importa
@@ -1367,21 +1458,33 @@
       }
       // ---- polvo ----
       if (duAlive) {
-        var dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array, dAlive = 0;
+        var dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array, dAlive = 0, sandy = onBeach();
+        var dsz = sandy ? 0.24 : 0.42; if (dust.material.size !== dsz) dust.material.size = dsz; // granos de arena más pequeños que el velo de polvo
         for (var dI = 0; dI < duCap; dI++) {
           var D = du[dI];
           if (D.life > 0) {
             if (dt > 0) {
-              D.life -= dt; var ddr = 1 - 3.2 * dt; D.vx *= ddr; D.vy *= ddr; D.vz = D.vz * (1 - 2 * dt) - 0.25 * dt;
-              D.x += D.vx * dt; D.y += D.vy * dt; D.z = Math.max(0.04, D.z + D.vz * dt);
+              D.life -= dt;
+              if (D.g > 0) { // arena: arco balístico corto; al tocar el suelo se para y se apaga enseguida
+                var gdr = 1 - 0.9 * dt; D.vx *= gdr; D.vy *= gdr; D.vz -= D.g * dt;
+                D.x += D.vx * dt; D.y += D.vy * dt; D.z += D.vz * dt;
+                if (D.z < 0.03 && D.vz < 0) { D.z = 0.03; D.vx *= 0.2; D.vy *= 0.2; D.vz = 0; D.life = Math.min(D.life, 0.1); }
+              } else {
+                var ddr = 1 - 3.2 * dt; D.vx *= ddr; D.vy *= ddr; D.vz = D.vz * (1 - 2 * dt) - 0.25 * dt;
+                D.x += D.vx * dt; D.y += D.vy * dt; D.z = Math.max(0.04, D.z + D.vz * dt);
+              }
             }
-            var lk = Math.max(0, D.life / D.max), al = Math.min(1, (1 - lk) * 8) * lk * 0.42 * D.s;
+            var lk = Math.max(0, D.life / D.max), al = D.g > 0 ? Math.min(1, (1 - lk) * 12) * Math.min(1, lk * 4) * 0.85 * D.s : Math.min(1, (1 - lk) * 8) * lk * 0.42 * D.s;
             dp[dI * 3] = D.x; dp[dI * 3 + 1] = D.z; dp[dI * 3 + 2] = -D.y;
-            dc[dI * 4] = 0.88; dc[dI * 4 + 1] = 0.72; dc[dI * 4 + 2] = 0.52; dc[dI * 4 + 3] = al; // serrín de parquet, tono cálido dAlive++;
+            // serrín de parquet (tono cálido) o arena seca en la playa
+            if (sandy) { dc[dI * 4] = 0.98; dc[dI * 4 + 1] = 0.87; dc[dI * 4 + 2] = 0.66; } else { dc[dI * 4] = 0.88; dc[dI * 4 + 1] = 0.72; dc[dI * 4 + 2] = 0.52; }
+            dc[dI * 4 + 3] = al; dAlive++;
           } else if (dp[dI * 3 + 1] !== -50) { dp[dI * 3 + 1] = -50; dc[dI * 4 + 3] = 0; }
         }
         dust.geometry.attributes.position.needsUpdate = true; dust.geometry.attributes.color.needsUpdate = true;
-        dust.visible = dAlive > 0; if (!dAlive) duAlive = 0;
+        // OJO: hasta el 10-nov-2026 «dAlive++» estaba dentro de un comentario y el polvo NO se veía nunca. Se arregla la cuenta, pero
+        // en el pabellón sigue oculto (regla: el pabellón no cambia; encenderlo allí queda como decisión pendiente en TRASPASO.md)
+        dust.visible = dAlive > 0 && sandy; if (!dAlive) duAlive = 0;
       }
       // ---- destellos / ondas / marcas ----
       for (var f = 0; f < FLASH_N; f++) {
@@ -1412,6 +1515,7 @@
         var pin = age < 0.22 ? 1 + 0.7 * (1 - age / 0.22) * (1 - age / 0.22) : 1 + Math.sin(age * 5) * 0.03;
         var rs = Mk.s * 1.55 * pin; Mk.r.scale.set(rs, rs, rs);
       }
+      if (onBeach()) updateFootprints(g, dt); else if (fpAlive) { for (var fz = 0; fz < fp.length; fz++) fp[fz].t = 0; fpAlive = 0; fpLast.length = 0; }
       writeDecals(); writeBills();
       ballVel.set(b.vx, b.vz, -b.vy); updateToonFx(dt);
       updateConfetti(dt);
@@ -1522,6 +1626,10 @@
           dustAt(px + dx * 0.7, py + dy * 0.7, 22, 0.75, dx, dy, 0.6, 1.5, 0.1); // a lo largo del cuerpo (piernas→pecho)
           rippleAt(px + dx * 0.3, py + dy * 0.3, 1.3, 0.45, 0.95, 0.88, 0.75, 0.3);
           puffsAt(px + dx * 0.8, py + dy * 0.8, 4, dx, dy, 1.4, 0.42); // nubes de dibujo a lo largo del cuerpo
+          if (onBeach()) { // playa: arena que salta hacia delante y surco del cuerpo
+            sandAt(px + dx * 0.6, py + dy * 0.6, 26, 1.0, dx, dy, 0.5);
+            if (dx || dy) footAt(px + dx * 0.85, py + dy * 0.85, Math.atan2(dy, dx), 1, 1.9, 0.78, 0.85);
+          }
           break;
         }
         case 'net':
@@ -1536,13 +1644,18 @@
           if (!(tbSwap && sp2 > 8)) burstAt(e.x, e.y, 0.05, 10 + Math.min(14, sp2), 1.5 + sp2 * 0.15, 0.95, 0.9, 0.8, 1.2, 9);
           trailA = Math.min(trailA, 0.25);
           if (sp2 > 8) { if (!tbSwap) shockAt(e.x, e.y, 0.15, 1.6, 0.25, 1, 0.9, 0.8); puffsAt(e.x, e.y, 3, 0, 0, 0, 0.4); }
+          if (onBeach()) { // playa: corona de arena y cráter del balón
+            sandAt(e.x, e.y, 14 + Math.min(12, sp2), 0.45 + Math.min(0.5, sp2 * 0.03), g && g.ball ? g.ball.vx : 0, g && g.ball ? g.ball.vy : 0, 0.15);
+            footAt(e.x, e.y, 0, 2, 0.55 + Math.min(0.15, sp2 * 0.01), 0.55 + Math.min(0.15, sp2 * 0.01), 0.85);
+          }
           break;
         }
         case 'bounce':
-          if ((e.speed || 0) > 2.5) rippleAt(e.x, e.y, 0.9, 0.45, 1, 1, 1, 0.4);
+          if ((e.speed || 0) > 2.5) { rippleAt(e.x, e.y, 0.9, 0.45, 1, 1, 1, 0.4); if (onBeach()) sandAt(e.x, e.y, 6, 0.35, 0, 0, 0.1); }
           break;
         case 'landPlayer':
-          if (e.player) { rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.3); dustAt(e.player.x, e.player.y, 5, 0.6, 0, 0, 0); puffsAt(e.player.x, e.player.y, 2, 0, 0, 0, 0.3); }
+          if (e.player) { rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.3); dustAt(e.player.x, e.player.y, 5, 0.6, 0, 0, 0); puffsAt(e.player.x, e.player.y, 2, 0, 0, 0, 0.3);
+            if (onBeach()) { sandAt(e.player.x, e.player.y, 10, 0.55, 0, 0, 0.25); footAt(e.player.x, e.player.y, 0, 2, 0.75, 0.6, 0.5); } } // playa: arena al caer del salto
           break;
         case 'challenge': // B6: empieza la revisión; las marcas del bote (con la llamada del árbitro) se quitan: manda la huella
           for (var cm = 0; cm < MARK_N; cm++) { markPool[cm].t = 0; markPool[cm].m.visible = false; markPool[cm].r.visible = false; }

@@ -2312,7 +2312,8 @@
       case 'challenge': onChallenge(e); break;
       case 'challengeResult': onChallengeResult(e); break;
       case 'courtChange': // cambio de campo (18.2.1 / 18.2.2): silbato corto tras el del punto
-        if (!demo) whistle('whistle', 0.32, e.why === 'eight' ? 1.0 : 2.7, 1.03);
+        // (playa, why 'swap' cada 7/5 puntos: el juego sigue enseguida, el silbato corto va pegado al del punto)
+        if (!demo) whistle('whistle', 0.32, e.why === 'eight' || e.why === 'swap' ? 1.0 : 2.7, 1.03);
         break;
       case 'serveReady':
         serveWait = 0; serveTeam = e.team; clapBeat = 0; clapNext = 0; rallyDigs = 0;

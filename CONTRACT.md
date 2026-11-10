@@ -171,6 +171,16 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
     `mateBadge(g, p, id)`, `zoneOf(g, p)`, `zonePos(t, z, out?)`, `isFront(g, p)`, `ZONE`, `rotate(g, t)`, `serverOf(g, t)`,
     `refreshTeams(g)` (tras cambiar quién está en pista). Ganchos: si existe `VB.AI6`, `AI.computeJob` y `AI.pos` le delegan con `g.size !== 2`.
     Huella del 2v2: `tools/fingerprint6.js` + `tools/fp-2v2.json` (simtest la exige).
+- **Vóley playa (10-nov-2026)**: `opts.venue = 'beach'` (solo 2v2; main.js lo pasa con `VB.Arena.venue()`, también a la demo del menú y a
+  las escenas de depuración) → `g.beach = true`, `g.venue = 'beach'`. Sin `venue` (o `'hall'`), el pabellón byte a byte (huella idéntica).
+  Pista POR PARTIDA: `g.HL` / `g.HW` (9 / 4,5 en el pabellón; **8 / 4** en la playa, `VB.C.BEACH`) y `g.cs` (escala respecto a 18×9: 1 / 8⁄9).
+  `VB.Sim.court(g | 'beach' | 'hall')` → `{HL, HW, cs, beach}` (cacheado, no modificar): quien pinte o encuadre la pista debe usarlo, no
+  `C.HL/C.HW`. `lineDist(x, y, g)` (sin g, la de 18×9). Reglas de playa (`VB.BEACH`, solo lectura): sets a 21 y el 3.º a 15 (`g.points = 21`
+  aunque se pida otro), cambio de campo cada 7 puntos jugados (cada 5 en el 3.º; sin el de los 8), el toque de bloqueo cuenta como toque
+  (`g.touches = 1` tras él; el bloqueador puede dar el siguiente), la dejada se juega de nudillos («pokey»: más tensa; `hit.pokey = true`,
+  `shot` sigue `'tip'`; textos «Pokey fuera»), y una colocación de dedos «poor» puede ser **dobles** (`point reason 'double'`, texto
+  «Dobles en la colocación de dedos»). Sin rotación (el saque alterna en el equipo como en 2v2). `newMatch.venue`. Evento `courtChange`
+  con `why: 'swap'` (+ `every` 7|5, `pause` = `VB.BEACH.swapHold`). Cambiar el escenario en mitad de un partido espera al siguiente (main.js).
 - **Saque**: `serveReady` → silbato a los 0,7 s (antes no se puede lanzar) → GOLPEAR lanza flotante / SALTAR lanza en salto (`toss`)
   → GOLPEAR en el momento justo golpea (`hit kind:'serve'`). Si el balón cae sin golpearlo o pasan 8 s → falta de saque (`point reason:'serve'`).
 - Solo sim escribe en `game`. Los demás módulos lo leen y NUNCA lo modifican.
@@ -202,7 +212,7 @@ Todos llevan `type` y `t` (tiempo de juego). `player` es la referencia al objeto
 | `newSet` | `{setNo}` | empieza el set siguiente |
 | `switch` | `{from, to, auto, reset?, reason?}` | cambia el jugador controlado (auto = lo decide el juego; `reason:'defense'` = al colocar la CPU, ~1,5 s antes del remate) |
 | `dribble` | `{player, team, x, y, n (1..of), of (botes de este ritual), speed (m/s contra el suelo), last (bool)}` | cada bote del ritual del sacador CPU (SIM-04); en ese paso `ball.z === BR`. Audio: bote controlado |
-| `courtChange` | `{setNo, why:'set'|'eight', score, sets, pause}` | cambio de campo (18.2.1 / 18.2.2): al acabar un set que no cierra el partido y a los 8 del 3.er set. Solo presentación (el humano sigue en x > 0) |
+| `courtChange` | `{setNo, why:'set'|'eight'|'swap', score, sets, pause, every?}` | cambio de campo (18.2.1 / 18.2.2): al acabar un set que no cierra el partido y a los 8 del 3.er set; en la playa (`'swap'`), cada `every` puntos jugados (7; 5 en el 3.º). Solo presentación (el humano sigue en x > 0) |
 | `fx:highfive` / `fx:fistbump` / `fx:chestbump` / `fx:clap` | `{team, x, y, z (sim), strength 0..1}` | NO los emite sim: main.js vacía `VB.Players.drainFx()` justo después de `Players.update` y los añade al array del frame (contactos cosméticos de la celebración; FX, cámara, audio y UI los ven). Audio: `highfive` → choque, `fistbump` → puños, `chestbump` → pecho (PLY-15, victoria del partido, strength 1), `clap` → palmada de ánimo; `fx:catch` (players, cada recogida del bote en el ritual del sacador CPU, strength 0,6) → recogida blanda; `fx:call` (players, PLY-20: «¡mía!» del que va a por el balón, un evento por balón, `z` = cabeza, strength 0,6; audio lo ignora por ahora) |
 
 **Añadidos del sprint Carrera a los eventos**: `hit.dig` (bool, defensa controlada de un remate rival), `hit.recv` (bool, 1r toque tras un saque);
@@ -477,6 +487,29 @@ Arte y nombres originales; marcas de las vallas ficticias (NÓRDIKA, VOLTA, ALBA
   (`.cr-in`) y tarjeta de presentación (`#intro .in-card`) usan `zoom: var(--vs)`; HUD y hojas usan `--hs` = Tamaño del HUD × --vs. Por debajo no cambia nada.
 - **Escenario:** ajuste `arena` (arriba). `VB.Arena.venueName(id?)` da «Palau del Mar» / «Platja Llarga»; ui.js cambia el nombre en los textos visibles
   (los que nombran los dos se dejan). La playa se construye al elegirla y se libera al volver (sin fugas); el pabellón solo se oculta. Ver notes/arena.md «Playa».
+
+### TAJO y playa completa (10-nov-2026)
+Identidad propia de los atletas (dirección «TAJO», lo contrario de otros juegos de vóley playa low-poly: cabezones de ~5 cabezas, superficies lisas,
+contorno grueso DE COLOR, cara grande dibujada, uniforme de equipo con el «tajo») y la playa «Platja Llarga» como mapa principal.
+- **Escenario (venue).** Una sola fuente: `VB.Arena.venue()` → `'hall' | 'beach'` (ajuste `arena` o `?map=beach`). main.js crea el partido con
+  `venue: venueNow()` (salvo 6v6 y **Carrera, que juega siempre con reglas de pabellón** hasta que haya torneos de playa); players y fx miran
+  `VB.Arena.venue()` cada frame. Cambiar el escenario en la pausa se aplica al salir del partido.
+- **Pista de la partida (`g.court`).** Todo lo que pinte, mida o encuadre la pista usa `g.HL` / `g.HW` (o `VB.Sim.court(g)`), nunca `C.HL/C.HW`:
+  arena (cintas, red, postes, oficiales: `beachLayout(g)`), fx (línea de la revisión del challenge y atenuación del marcador de caída fuera:
+  `courtHL(g)`/`courtHW(g)`), cámara (`lostBall`, punto de saque, revisión). `C.HL/C.HW` solo como respaldo sin partida.
+- **Personajes por escenario.** `VB.Players.venue()` → escenario con el que están vestidos; `VB.Players.setVenue(v, g?)` lo fuerza (pruebas;
+  `''` vuelve a seguir a arena). Al cambiar, players libera los atletas (atlas, material, geometrías, contorno con `VB.TOON.drop` y **textura de
+  huesos del esqueleto**) y los reconstruye; la clave de caché incluye el escenario. Pabellón: manga, tajo en zigzag, rodilleras, calcetines de
+  acento y zapatillas; playa: camiseta de tirantes, malla corta del mismo color, descalzos y visera/gorra hacia atrás (sin gafas de sol).
+- **Cara dibujada.** Los huesos `eyes, mouth, teeth, brow[2]` siguen existiendo (27 huesos) pero **vacíos**: la cara va en dos láminas que
+  muestrean la hoja de caras del atlas de cada atleta (8 celdas de ojos × 8 de boca, uniformes `uEyeOff`/`uMouthOff`). `VB.Players._face(p, x)`
+  acepta además `'c<ojos>/<boca>'` (p. ej. `'c5/2'`). Pieles oscuras: halo claro en ojos, cejas y boca (legibilidad).
+- **Tinta de color.** `VB.TOON.outline(mesh, m, { color })` acepta un color de contorno (un material por color, el mismo programa). Los
+  atletas usan `mixHex(tc.dark, INK, 0.35)`; pabellón y mobiliario siguen con `INK`.
+- **Oficiales.** arena escala el hueso de la cabeza de árbitros, jueces y anotadores (`OFF_HEAD_K` 1,32) y les da ojos de dibujo, para que no
+  queden realistas al lado de los atletas.
+- **Cambio de campo de playa** (`courtChange why:'swap'`): videomarcadores «CAMBIO DE CAMPO · CADA 7 PUNTOS», silbato corto pegado al del punto.
+- Sim y `g.rng` no cambian: huella 2v2 idéntica (simtest).
 
 ### Colocación en salto (10-nov-2026)
 - **Controles, el mismo concepto en todo**: en el aire, GOLPEAR = remate (o el toque que toque) y **COLOCAR = colocación en salto**; SALTAR otra

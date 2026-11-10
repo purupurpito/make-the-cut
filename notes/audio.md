@@ -640,3 +640,12 @@ sin volverlo de juguete. Todo sintetizado (generador `genToon`, dos senos con en
   `CORE` se perdía 1: va justo tras `set`). simtest TODO OK; console.sh all sin errores JS.
 - Pendiente para integración: si fx/ui ponen la onomatopeya como evento, usar uno de `fx:onoma` / `fx:pam` / `onoma` (con `team`); si se
   añade un ajuste para quitarla, llamarlo `onoma` (audio ya lo lee). WAV de cada sonido nuevo en tools/out/audio/<nombre>.wav.
+
+## Petición de sim (reglas de playa, 10-nov-2026): `courtChange` con `why: 'swap'`
+Vóley playa (`g.beach`): cambio de campo cada 7 puntos (cada 5 en el 3.er set), `e.every` = 7 | 5, `e.pause` = 1,0 s. Hoy audio.js lo
+trata como fin de set (silbato de 2,7 s). Para `'swap'` iría el silbato corto del `'eight'` (1,0) o ninguno: es frecuente (~5 por set) y
+el juego sigue enseguida. Golpe nuevo: `hit` con `pokey: true` (dejada de nudillos de la playa; `shot` sigue siendo `'tip'`): podría
+sonar más seco que la yema de los dedos.
+
+### Playa (revisión final, 10-nov-2026)
+- `courtChange why:'swap'`: silbato corto a 1,0 s (como `'eight'`), no a 2,7 s. Pendiente: sonido propio del pokey.

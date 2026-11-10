@@ -1233,3 +1233,23 @@ Pruebas: simtest TODO OK; console.sh all sin errores JS; perf «objetivos cumpli
 - Herramientas: `tools/jsetdrill.js` (prepara un 2.º toque en el juego real y pulsa SALTAR y, en el aire, COLOCAR con el dispositivo de cada
   herramienta). drive.js: Espacio + K y clic derecho + clic central; touchplay.js: SALTAR + botón COLOCAR (comprueba que solo sale en el aire,
   ≥ 44 px y sin pisar joystick/GOLPEAR/SALTAR); padplay.js: B + X. Capturas en tools/out/colocar/.
+
+## Escenario en el menú principal y reglas de playa (10-nov-2026, agente reglas de playa)
+- Menú: fila nueva **04 Escenario ‹ Pabellón / Playa ›** (`#optVenue`, mismo ajuste `arena` que Ajustes · Imagen · Escenario, sincronizado
+  por `renderOpts`). En la rejilla compacta (≤ 820 px de alto y `.vs-up`) comparte fila con **05 Puntos** (1/3 + 2/3, rótulo pequeño encima
+  del valor): el menú no crece. Con Playa, Puntos muestra «21 · 15» fijo (`.lock`, flechas ocultas; `changeOpt('setPoints')` no hace nada) y
+  la pastilla de Jugar dice «Vóley playa · Sets a 21». Numeración 01-10. `menuVenue()` lee `VB.Arena.venue()` (manda `?map=`).
+- main.js: `venueNow()`, `demoGame()`; todo `createGame` lleva `venue` (partido, demo, escenas de depuración). Cambiar el escenario en el
+  menú rehace la demo con las reglas nuevas; en partido (Ajustes desde la pausa) se guarda pero se aplica al salir (`venuePend`).
+- Textos: aviso «Cambio de campo · Cada 7 puntos · 4-3» (sin grúa), «Pokey»/«Pokey perfecto», tutorial (pasos 3-5 con `ruleBeach` y
+  hoja de faltas) según el partido en curso o el escenario elegido. `tools/padplay.js`: bucles de foco a 12 (10 botones).
+- Capturas: `tools/out/arte/menu/menu-playa-<WxH>.png` (1280×720, 1366×625, 1024×600, 844×390, 740×360, 667×375, 2560×1440),
+  `menu-pabellon-1280x720.png`, `cambio-campo-playa.png`; antes: `tools/out/arte/menu/antes/`.
+
+### Cierre TAJO + playa (revisión final, 10-nov-2026)
+- **Carrera con reglas de pabellón:** `startMatch` no pasa `venue` en los partidos de Carrera (`fmt || cs ? undefined : venueNow()`): sets a 15 y
+  pista 18×9 aunque el escenario elegido sea la Playa (el hub y `quickSim` cuentan con eso). El escenario se ve igual (arena), la pista se pinta a 18×9.
+- **Menú:** en la fila compartida, Escenario lleva «04 ·» en su rótulo pequeño y Puntos conserva su «05» (antes la numeración saltaba de 03 a 06).
+- **Consejo y guía bajo el contador de toques:** `#coach` y `#guide` bajan con `--hs` (`top: 14px + 38px·--hs`); a 2560×1440 (y con Tamaño del
+  HUD grande) el consejo tapaba la tira de TOQUES.
+- Pendiente: regla de 5 s del saque de playa; dibujo del tutorial a 16×8; Luz de tarde en Ajustes (`beachLight`); torneos de playa en la Carrera.

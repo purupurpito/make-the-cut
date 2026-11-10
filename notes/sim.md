@@ -1067,3 +1067,19 @@ huella `tools/fp-2v2.json` (generada con el código de antes del sprint 1): «15
   faltas de posición pitadas al humano en Difícil/Experto e imán en Fácil/Normal, regla del líbero colocando de dedos delante de 3 m,
   saque que lea la formación (aces 2-3 % frente al 4 % del 2v2), recepción de la rotación 1 (el colocador en zona 1 acaba muy al fondo),
   cruces entre compañeros (la sim no los separa), el líbero «delantero» durante la pausa del punto (zona del central hasta `setupServe`).
+
+## Vóley playa (10-nov-2026, agente reglas de playa)
+- `createGame({venue:'beach'})` (solo 2v2) → `g.beach`, `g.venue`, `g.HL = 8`, `g.HW = 4`, `g.cs = 8/9`, `g.points = 21`. Todo lo que dependía de
+  `C.HL/C.HW` en sim.js pasa a `g.HL/g.HW` (líneas, antenas, toque de red, `digMargin`, `serveRisk`, diana del saque); los objetivos con
+  números de pista (saque, remate, `attackTarget(p, aim, dd, k)`, colocación, dejada, error no forzado, sacador en `g.HL + 1,3`, receptores)
+  van ×`g.cs`. En ai.js igual (`openSpot` DEPTHS/LATS, `serveTarget`, `pos`, `dodgeOwnBall`, dejada; el «riesgo» de `openSpot` se mide sobre
+  la rejilla sin escalar). Con `g.cs = 1` las multiplicaciones son exactas: **huella 2v2 idéntica** (150 partidas, 565 775 llamadas a g.rng).
+- Reglas (`VB.BEACH = {swap 7, swap3 5, swapHold 1.0, dblSet 0.3, dblSetAI 0.5, pokeyUp 0.25, pokeyNet 0.6}`): cambio de campo cada 7 / 5
+  (`courtChange 'swap'`, `g.courtSwapAt`; pausa +1,0 s en partido, 0 en la demo), sin el de los 8; bloqueo = toque (`touches = 1`, el
+  bloqueador puede seguir); dejada → pokey (más tensa, `hit.pokey`); dobles de dedos: 2.º toque de dedos (balón > 1,6 m sobre los pies, no
+  en salto, ni de ataque/cuerpo/plancha) «poor» → falta con prob. 0,3 (IA ×0,5). Gasta azar SOLO en la playa.
+- Medido (simtest §Vóley playa, 8 partidos demo/autopilot Normal): side-out 58 %, 5,4 toques/rally, mediana 5,3 s, fuera 20 %, botes de más
+  de 8,6 m 14 % (pabellón 12 %), dobles de dedos 3 en 679 puntos, ~11 cambios de campo por partido, partidos de ~16-17 min (pabellón ~18).
+  `scratchpad` bench: autopilot Difícil playa side-out 57,8 %, 6,9 toques/rally.
+- No hecho: regla de 5 s del saque de playa (sigue 8 s y los textos «8 segundos»); el bloqueo tras el que el bloqueador toca no se marca
+  como «2.º toque» en la UI; el 6v6 con `venue:'beach'` juega en pabellón (`g.beach = false`).

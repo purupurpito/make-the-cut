@@ -889,7 +889,7 @@
     if (shot === 'serveUs' || shot === 'menu' || g.demo || g.serving !== 0 || !g.serverIdx || SVC.idx >= 0 && g.mode === 'serve') return;
     var sv;
     if (g.mode === 'serve' && g.serveState === 'ready' && g.server && g.server.team === 0) sv = g.server;
-    else if (g.mode === 'point') { sv = PWS; PWS.x = 10.3; PWS.y = g.serverIdx[0] ? 1.5 : -1.5; PWS.z = 0; }
+    else if (g.mode === 'point') { sv = PWS; PWS.x = (g.HL || 9) + 1.3; PWS.y = g.serverIdx[0] ? 1.5 : -1.5; PWS.z = 0; }
     else return;
     var low = touchUI() || !!ctx.isTouch || !!ctx.isMobile || (ctx.height || 720) < 480, asp = aspect();
     if (SVC.pwN > 0 && (hyp(sv.x - SVC.pwX, sv.y - SVC.pwY) > 0.05 || SVC.pwLow !== low || Math.abs(SVC.pwAsp - asp) > 0.01)) SVC.pwN = 0;
@@ -1687,7 +1687,7 @@
   }
   /** Línea más cercana al bote y lado desde el que se mira (una vez al entrar). */
   function reviewPlan(g) {
-    var r = g.review, C0 = VB.C || {}, HL = C0.HL || 9, HW = C0.HW || 4.5;
+    var r = g.review, C0 = VB.C || {}, HL = g.HL || C0.HL || 9, HW = g.HW || C0.HW || 4.5; // (pista de la partida: 16×8 en la playa)
     var x = mn(mx(r.x, -HL - 3), HL + 3), y = mn(mx(r.y, -HW - 3), HW + 3);
     RV.x = x; RV.y = y;
     var sy = y >= 0 ? 1 : -1, sx = x >= 0 ? 1 : -1;
@@ -1780,7 +1780,7 @@
     var pl = CLP;
     if (!(pl.t > 0.05 && pl.t <= 0.42) || pl.x !== pl.x) { CLW.why = 4; return; }
     if (b.x * pl.x <= 0 || Math.abs(pl.x) < 0.4 || (Math.abs(b.x) < 1.0 && b.z > 2.0)) { CLW.why = 5; return; }   // (sin volver a cruzar ni bloqueo posible)
-    var C0 = VB.C || {}, HL = C0.HL || 9, HW = C0.HW || 4.5;
+    var C0 = VB.C || {}, HL = g.HL || C0.HL || 9, HW = g.HW || C0.HW || 4.5;
     var din = mn(HL - Math.abs(pl.x), HW - Math.abs(pl.y));
     if (Math.abs(din) < 0.12) { CLW.why = 6; return; }                                   // demasiado cerca de la línea para cantarlo
     var inside = din > 0, landTeam = pl.x > 0 ? 0 : 1, winner = inside ? 1 - landTeam : 1 - g.lastTeam;
@@ -2569,7 +2569,7 @@
     if (g.mode !== 'rally' || !b || b.held || !S0 || !S0.predictLanding) return false;
     try { S0.predictLanding(g, LBP); } catch (e) { return false; }
     if (!(LBP.t > 0 && LBP.t <= 1.2) || LBP.x !== LBP.x) return false;
-    var C0 = VB.C || {}, HL = C0.HL || 9, HW = C0.HW || 4.5;
+    var C0 = VB.C || {}, HL = g.HL > 0 ? g.HL : (C0.HL || 9), HW = g.HW > 0 ? g.HW : (C0.HW || 4.5); // pista de la partida (playa 16×8)
     lbV = Math.abs(LBP.x) > HL + 0.4 || Math.abs(LBP.y) > HW + 0.4;
     return lbV;
   }
@@ -3443,7 +3443,7 @@
           if (meD) rumbleSig('body', 1);
         } else if (e.type === 'net' && !e.tape) {
           this.shake(0.025, 0.18);
-        } else if (e.type === 'courtChange' && !g.demo) {
+        } else if (e.type === 'courtChange' && !g.demo && e.why !== 'swap') { // (playa, cada 7 puntos: sin grúa, el juego sigue enseguida)
           CC.on = true; CC.t = 0; CC.why = e.why || 'set'; CC.u = 0;
           // tiempo REAL que queda de pausa tras el plano de reacción (ver comentario de courtShot)
           if (CC.why === 'eight') { CC.start = 1.25; CC.len = 2.0; } else { CC.start = 1.45; CC.len = 2.4; }

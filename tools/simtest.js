@@ -51,9 +51,9 @@ const pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '-';
 const POINT_TEXTS = {
   in: ['El balón cae en tu campo', 'El balón cae en el campo rival', 'Saque a la red', 'Balón a la red'],
   // (out también admite 'Saque a la red'/'Balón a la red': da en la red y cae fuera en el propio campo)
-  out: ['Saque fuera', 'Remate fuera', 'Dejada fuera', 'Recepción fuera', 'Defensa fuera', 'Colocación fuera', 'Balón fuera', 'Toca el bloqueo y sale fuera', 'Le da en el cuerpo y sale fuera', 'Saque a la red', 'Balón a la red'],
+  out: ['Saque fuera', 'Remate fuera', 'Dejada fuera', 'Pokey fuera', 'Recepción fuera', 'Defensa fuera', 'Colocación fuera', 'Balón fuera', 'Toca el bloqueo y sale fuera', 'Le da en el cuerpo y sale fuera', 'Saque a la red', 'Balón a la red'],
   antenna: ['Balón toca la antena', 'Balón por fuera de la antena'], under: ['Balón por debajo de la red'],
-  double: ['Dobles: el mismo jugador toca dos veces'], four: ['4 toques'], net: ['Toque de red'], block: ['Bloqueo del saque'],
+  double: ['Dobles: el mismo jugador toca dos veces', 'Dobles en la colocación de dedos'], four: ['4 toques'], net: ['Toque de red'], block: ['Bloqueo del saque'],
   attackServe: ['Ataque sobre el saque'], serve: ['Falta de saque: 8 segundos', 'Falta de saque: el balón cae sin golpearlo']
 };
 const badText = new Set();
@@ -1967,6 +1967,70 @@ if (ONLY !== 'matrix') {
     if (bad.length) fail('6v6 CPU contra CPU: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
     console.log('\n6v6 CPU contra CPU (sprint 2, ' + NS6 + ' semillas x ' + MIN6 + ' min, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)' + (failures === f0 ? ' OK' : '') +
       '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  ') + '\n  tempos ' + JSON.stringify(tempos) + ' remates por puesto ' + JSON.stringify(atkRole));
+  }
+
+  // VÓLEY PLAYA (createGame({venue:'beach'}), 10-nov-2026): pista 16×8, sets a 21 / 15, cambio de campo cada 7 (5 en el 3.º),
+  // bloqueo que cuenta como toque, pokey, dobles de dedos; y que la IA juegue creíble en la pista pequeña
+  if (ONLY !== 'matrix') {
+    const f0 = failures, res = [], t0 = Date.now();
+    const gb = S.createGame({ seed: 7, venue: 'beach' }), gh = S.createGame({ seed: 7 }), g6 = S.createGame({ seed: 7, venue: 'beach', format: '6v6' });
+    res.push(['(a) flag y pista: playa 16×8 a 21, pabellón 18×9 intacto, 6v6 sin playa', gb.beach && gb.venue === 'beach' && gb.HL === 8 && gb.HW === 4 &&
+      Math.abs(gb.cs - 8 / 9) < 1e-12 && gb.points === 21 && !gh.beach && gh.HL === 9 && gh.HW === 4.5 && gh.cs === 1 && gh.points === 25 && !g6.beach && g6.HL === 9 &&
+      S.court(gb) === S.court('beach') && S.court('beach').HL === 8 && S.court(gh).HW === 4.5 && S.court().HL === 9 &&
+      S.createGame({ seed: 7, venue: 'beach', points: 11 }).points === 21, { HL: gb.HL, HW: gb.HW, points: gb.points }]);
+    // (b) líneas: botes que el pabellón da dentro y la playa fuera (más de 8 m de fondo / 4 m de lateral), sin error arbitral posible
+    const landAt = (venue, x, y) => {
+      const g = S.createGame({ seed: 11, venue, ritual: false }); S.drainEvents(g);
+      g.touchTeam = 0; g.touches = 3; g.lastTeam = 0; g.lastKind = 'spike'; g.lastShot = 'power'; g.lastPlayer = g.teams[0][0];
+      for (const p of g.players) { p.x = S.side(p.team) * 12; p.y = 5.9; } // lejos: nadie la toca
+      rallyAt(g, { x, y, z: 0.5, vz: -2 });
+      const ev = stepUntil(g, 'land', 300).find(e => e.type === 'land'); return ev ? ev.inside : null;
+    };
+    const lines = { fondo85: [landAt('hall', -8.5, 0), landAt('beach', -8.5, 0)], lado43: [landAt('hall', -4, 4.3), landAt('beach', -4, 4.3)],
+      dentro: [landAt('beach', -7.6, 3.6)], fondo2: [landAt('beach', 8.4, -1)] };
+    res.push(['(b) balón fuera más allá de 8 m de fondo y 4 m de lateral (en el pabellón, dentro)', lines.fondo85[0] === true && lines.fondo85[1] === false &&
+      lines.lado43[0] === true && lines.lado43[1] === false && lines.dentro[0] === true && lines.fondo2[0] === false, lines]);
+    // partidos CPU contra CPU (demo) y autopilot contra Normal en la playa
+    const NB = 8; let pts = 0, so = 0, hits = 0, done = 0, swaps = 0, swapBad = 0, setBad = 0, setsN = 0, nan = 0, ex = null, rallies = [];
+    let blkTouch = 0, blkTouchBad = 0, pokey = 0, tipsB = 0, dbl = 0, outB = 0, deep = 0, srvSpot = 0, srvN = 0;
+    try {
+      for (let s = 0; s < NB; s++) {
+        const g = S.createGame(s % 2 ? { seed: 900 + s, venue: 'beach', autopilot: true, difficulty: 'normal', stats: true } : { seed: 900 + s, venue: 'beach', demo: true, stats: true });
+        S.drainEvents(g); let tot = 0;
+        for (let i = 0; i < 120 * 60 * 60 && g.mode !== 'over'; i++) {
+          S.step(g, DT, null);
+          for (const e of S.drainEvents(g)) {
+            if (e.type === 'point') { pts++; tot = e.score[0] + e.score[1]; if (e.sideout) so++; hits += e.rallyHits; rallies.push(e.rallyTime);
+              if (e.reason === 'double' && e.text === 'Dobles en la colocación de dedos') dbl++; if (e.reason === 'out') outB++; }
+            if (e.type === 'courtChange' && e.why === 'swap') { swaps++; const sum = e.score[0] + e.score[1], ev2 = e.setNo === 3 ? 5 : 7;
+              if (sum % ev2 || e.every !== ev2 || Math.max(e.score[0], e.score[1]) >= S.setTarget(g) && Math.abs(e.score[0] - e.score[1]) >= 2) swapBad++; }
+            if (e.type === 'courtChange' && e.why === 'eight') swapBad++; // el cambio a los 8 es del pabellón
+            if (e.type === 'set') { setsN++; const a = e.score[0], b = e.score[1], tg = e.setNo === 3 ? 15 : 21, w = Math.max(a, b), l = Math.min(a, b);
+              if (w < tg || w - l < 2 || (w > tg && w - l !== 2)) setBad++; }
+            if (e.type === 'block' && (e.result === 'soft' || e.result === 'touch')) { blkTouch++; if (g.touches !== 1 || g.touchTeam !== e.team) blkTouchBad++; }
+            if (e.type === 'hit' && e.shot === 'tip') { tipsB++; if (e.pokey) pokey++; }
+            if (e.type === 'hit' && e.kind === 'serve' && e.target) { srvN++; if (Math.abs(e.target[0]) <= 8 && Math.abs(e.target[1]) <= 4) srvSpot++; }
+            if (e.type === 'land' && Math.abs(e.x) > 8.6) deep++;
+          }
+          if (i % 240 === 0) for (const p of g.players) if (!Number.isFinite(p.x + p.y + p.z)) nan++;
+        }
+        if (g.mode === 'over') done++;
+      }
+    } catch (e) { ex = e && e.stack || String(e); }
+    rallies.sort((a, b) => a - b);
+    const sidePct = pts ? 100 * so / pts : 0, med = rallies.length ? rallies[rallies.length >> 1] : 0;
+    res.push(['(c) partidos completos sin excepciones ni NaN', !ex && !nan && done === NB && pts > 400, { partidos: done + '/' + NB, puntos: pts, nan, ex }]);
+    res.push(['(d) sets a 21 y el 3.º a 15 (mejor de 3), por 2', setBad === 0 && setsN >= 2 * NB, { sets: setsN, mal: setBad }]);
+    res.push(['(e) cambio de campo cada 7 (cada 5 en el 3.º), nunca a los 8', swapBad === 0 && swaps >= 3 * NB, { cambios: swaps, mal: swapBad }]);
+    res.push(['(f) el toque de bloqueo cuenta como toque (quedan 2)', blkTouch > 10 && blkTouchBad === 0, { toquesBloqueo: blkTouch, mal: blkTouchBad }]);
+    res.push(['(g) dejadas de la playa = pokey (nudillos)', tipsB > 0 && pokey === tipsB, { dejadas: tipsB, pokey }]);
+    res.push(['(h) IA creíble: side-out 52-70 %, 4-9 toques por rally, mediana 4-9 s', sidePct >= 52 && sidePct <= 70 && hits / pts >= 4 && hits / pts <= 9 && med >= 4 && med <= 9,
+      { sideOut: sidePct.toFixed(1) + '%', toques: +(hits / pts).toFixed(2), mediana: +med.toFixed(2) }]);
+    res.push(['(i) la IA saca y juega a la pista pequeña: dianas de saque dentro de 16×8, pocos fuera, botes muy largos como en el pabellón (~12-14 %)', srvN > 200 && srvSpot / srvN > 0.97 &&
+      outB / pts < 0.3 && deep / pts < 0.18 && dbl / pts < 0.03, { saques: srvN, dianaDentro: pct(srvSpot, srvN), fuera: pct(outB, pts), botesLargos: pct(deep, pts), dobles: dbl }]);
+    const bad = res.filter(r => !r[1]);
+    if (bad.length) fail('vóley playa: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+    console.log('\nVóley playa (' + NB + ' partidos, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)' + (failures === f0 ? ' OK' : '') + '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));
   }
 
   // Huella 2v2 (sprint 1 del 6v6): 150 partidas de referencia deben dar EXACTAMENTE lo mismo que tools/fp-2v2.json

@@ -233,18 +233,29 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - Sin probar a mano: mando, teclado y móvil reales en la Carrera, una temporada entera jugada, la copa jugada y el control «Los dos».
 - **Mapa de playa** (pedido de Ferran, 9-nov-2026): **escenario HECHO el 10-nov-2026** (sede «Platja Llarga», Ajustes · Imagen ·
   Escenario, `?map=beach`; detalle en `notes/arena.md` §Playa). Pendiente:
-  - **Modo reglas de playa**: pista 16×8, cambio de campo cada 7 puntos (5 en el 3.er set), sin línea de ataque ni de centro,
-    sets a 21 (3.º a 15), bloqueo cuenta como toque, toque abierto con dedos (dejada) falta… Toca sim.js (dimensiones de `VB.C`,
-    reglas), la capa de pista de arena.js (cintas a 16×8) y la cámara (límites). Hoy la playa usa la pista 18×9 y las reglas de pista cubierta.
-  - **Jugadores descalzos / ropa de playa** en la playa (players.js, bandera de escenario `VB.Arena.venue() === 'beach'`): hoy llevan
-    zapatillas, calcetines y rodilleras. No es solo color: el pie es la geometría de la zapatilla.
-  - Partículas: más arena al caer/plancharse en la playa (fx.js `dustAt`) y huellas que se queden en la arena durante el punto.
+  - ~~Modo reglas de playa~~ **HECHO 10-nov-2026 en la sim y el menú** (`createGame({venue:'beach'})`, CONTRACT §4.2 «Vóley playa»,
+    `notes/sim.md` §Vóley playa): pista 16×8 (`g.HL/g.HW`, `VB.Sim.court`), sets a 21 / 15, cambio de campo cada 7 (5 en el 3.º, sin
+    grúa: aviso «Cambio de campo · Cada 7 puntos»), bloqueo = toque, dejada de nudillos («pokey», legal; la de yema no se modela como
+    gesto aparte), colocación de dedos más estricta (dobles), IA y cámara a la pista pequeña, tutorial y menú (fila «Escenario» junto a
+    los puntos, que en la playa se fijan a «21 · 15»). ~~Cintas a 16×8, antenas, sin línea de ataque, texto y silbato de `'swap'`, Carrera
+    que heredaba la playa~~ HECHO 10-nov (cierre TAJO + playa, ver Hecho; la Carrera juega siempre con reglas de pabellón). Pendientes:
+    regla de los 5 s del saque de playa (sigue la de 8 s), el 6v6 en la playa juega con reglas de pabellón, dibujo del tutorial a 16×8.
+  - Idea para la Carrera (NO hecha): **torneos de playa** (circuito de verano: cuadro de 8 parejas en Platja Llarga, sets a 21, premios
+    propios) además de la liga de pabellón; la Carrera hoy no elige escenario.
+  - ~~Jugadores descalzos / ropa de playa~~ HECHO 10-nov (dirección TAJO, ver Hecho). Pendiente de personajes: costuras del contorno
+    en rodillas/codos desnudos, cabeza que roza el hombro del compañero en alguna celebración, pose de celebración en la hoja final,
+    público de playa cabezón con sombreros y grupos de aficionados por equipo (arena).
+  - ~~Partículas de arena y huellas~~ HECHO 10-nov tarde (fx.js: arena que salta en plancha, caída, bote; huellas, surco y cráter que
+    se apagan; `notes/arena.md` §Playa a mapa principal). Decidir: el polvo del pabellón nunca se veía (`dAlive++` comentado); arreglado
+    pero sigue oculto en el pabellón para no cambiarlo. ¿Encenderlo?
+  - Luz de tarde de la playa hecha (`?luz=tarde`, `VB.Arena.beachLight`); falta la opción en Ajustes (ajuste `beachLight`: 'dia' | 'tarde', ui_main).
   - Marcador en la playa: no hay videomarcadores ni marcador colgado (las vallas LED con mensajes tampoco). Un marcador de playa
     (torre pequeña con cifras) y la cámara del cambio de campo, que mira a `landmarks.scoreHung` (en la playa mira al cielo).
   - Idea (NO hecha, no tocar la Carrera ahora): que en la Carrera cada club tenga su sede (pabellón o playa).
-  - Piezas del pabellón que desentonan en la arena (revisión visual 10-nov): silla del árbitro oscura con luz naranja, mesa de
-    anotadores negra y protecciones grandes de los postes. Las banderas vistas de canto parecen palos oscuros; hacia la grada lateral
-    la arena se funde con el cielo sin mar. La calidad baja de la playa va a 140k triángulos (tope 150k): cualquier objeto nuevo puede pasarse.
+  - ~~Piezas del pabellón que desentonan en la arena, banderas de canto, horizonte lateral vacío, baja a 140k~~ HECHO 10-nov tarde:
+    silla del árbitro de madera con toldo, mesa de anotadores con caballetes y toldo, postes de aluminio con protección fina, red/cintas/
+    oficiales a la medida de la pista de la partida (16×8), banderas con bolsa, telón de pueblo/pinar/cabo con faro, gaviotas, llaüts,
+    ola que rompe, cintas coral y pinos (identidad propia frente a SetPoint). Baja: 109k triángulos, 31/33 dibujos (perf.js, partido real).
 - **Pendiente del pulido 10-nov-2026** (controles PC, dorsales, separadores, pantallas grandes; menores, nada roto):
   - A 2560 Ajustes y Jugadores ocupan casi todo el alto (en Ajustes, hueco entre Destellos y Equipación); la Carrera se queda en la
     mitad de arriba con la cabecera pegada al borde y «Colocación25» pegado en la tabla de atributos.
@@ -354,6 +365,16 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **Personajes propios (dirección «TAJO») y playa completa** (10-nov-2026; pedido de Ferran tras ver «SetPoint Volleyball»): atletas
+  cabezones (~5 cabezas, rig y alcance iguales), superficies lisas, contorno grueso del color del equipo, cara grande dibujada en el atlas
+  (8×8 expresiones con 2 uniformes, halo claro en pieles oscuras), raya de guerra / zinc neón como sello, 7 peinados de mechones, manopla,
+  uniforme con el «tajo» en zigzag; en la playa camiseta de tirantes unisex, malla del mismo color, descalzos y visera o gorra hacia atrás
+  (sin gafas de sol). Playa «Platja Llarga» a mapa principal: reglas de vóley playa (16×8, 21/15, cambio cada 7, bloqueo = toque, pokey,
+  dobles), menú «04 Escenario», cintas coral, piezas propias (silla de madera, mesa con toldo, postes de aluminio), telón con pueblo y faro,
+  llaüts de vela tostada, socorrista fuera del eje, árbitros y jueces cabezones, arena y huellas, luz de tarde (`?luz=tarde`). Cierre:
+  fuga de la textura de huesos al cambiar de escenario/equipación arreglada, revisión del challenge y marcador de caída con la pista de la
+  partida, «CAMBIO DE CAMPO · CADA 7 PUNTOS» y silbato corto, consejo que ya no tapa TOQUES a 2560×1440. Huella 2v2 idéntica; perf
+  «objetivos cumplidos» en pabellón, playa y 6v6. Capturas `tools/out/arte/final/`; detalle en CONTRACT «TAJO y playa completa» y notes.
 - **6v6, sprints 1 y 2 + revisión** (10-nov-2026): sim a N jugadores (2v2 idéntico, huella en simtest), 6v6 CPU contra CPU con rotaciones,
   líbero, formaciones, reglas de zaguero e IA 5-1 (`js/ai6.js`), 12 atletas, cámara de televisión y partido espectador con `?format=6v6`
   (NO en el menú). Detalle, arreglos de la revisión y lo que falta para el sprint 3 en «Modo 6v6» (To-do).

@@ -97,7 +97,7 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     await shot('menu');
     // Ajustes con A y vuelta con B
     let fs_ = await focused();
-    for (let i = 0; i < 8 && fs_ !== 'btnSettings'; i++) { await stick(0, 0.95, 110); fs_ = await focused(); }
+    for (let i = 0; i < 12 && fs_ !== 'btnSettings'; i++) { await stick(0, 0.95, 110); fs_ = await focused(); }
     await press('A'); await sleep(350);
     check(await evalJs("VB.UI.isPanelOpen()&&!document.getElementById('pnSet').hidden"), 'A en AJUSTES abre el panel');
     await shot('ajustes');
@@ -105,7 +105,7 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     check(await evalJs("!VB.UI.isPanelOpen()&&!document.getElementById('menu').hidden"), 'B cierra el panel');
     // JUGAR
     let fp = await focused();
-    for (let i = 0; i < 8 && fp !== 'btnPlay'; i++) { await stick(0, -0.95, 110); fp = await focused(); }
+    for (let i = 0; i < 12 && fp !== 'btnPlay'; i++) { await stick(0, -0.95, 110); fp = await focused(); } // (10 botones desde la fila Escenario)
     await press('A'); await sleep(450);
     if (await evalJs("!document.getElementById('pnFirst').hidden")) {
       let ff = await focused();
@@ -113,7 +113,7 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
       check(ff === 'btnFirstPlay', 'primer partido: stick hasta "Jugar ya"');
       await press('A');
     }
-    check(await waitFor("VB.ctx.state==='playing'", 5000), 'A en JUGAR empieza el partido');
+    check(await waitFor("VB.ctx.state==='playing'", 5000), 'A en JUGAR empieza el partido (foco: ' + fp + ')');
     await evalJs(`(function(){var T=window.__pp={hits:0,serves:0,tosses:0,swManual:0,points:0,rally:0};var o=VB.Sim.step;VB.Sim.step=function(g,dt,i){var n=g.events.length;o(g,dt,i);
       for(var k=n;k<g.events.length;k++){var e=g.events[k];if(e.type==='hit'&&e.human){T.hits++;if(e.kind==='serve')T.serves++;}if(e.type==='toss'&&e.human)T.tosses++;
       if(e.type==='switch'&&!e.auto)T.swManual++;if(e.type==='point')T.points++;}T.rally=g.mode==='rally'&&g.rally?g.rally.hits:0;};})()`);

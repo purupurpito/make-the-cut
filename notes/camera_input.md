@@ -971,3 +971,7 @@ Spike (escena `spike` 1280×720 low): en el árbol actual el aviso de toques va 
 - Pendiente (sprint 3): plano detrás del humano (`gameplayShot` con más FOV, §1.6), oclusión mirando los 2 compañeros más cercanos al eje
   cámara-jugador (hoy `mateOf` = el más cercano al humano), planos de reacción / cierre de set / sacador rival en 6v6, `bench`, y quitar
   `switch` del 6v6 con humano (control Uno por rol).
+
+### Playa (revisión final, 10-nov-2026)
+- `lostBall` usa la pista de la partida (`g.HL`/`g.HW`, respaldo `VB.C`): en la playa un balón que va a caer entre 8,4 y 9,4 m ya cuenta como perdido.
+- Pendiente: la grúa del fin de set en la playa mira a `landmarks.scoreHung` (en la playa, el cielo); no confirmado.

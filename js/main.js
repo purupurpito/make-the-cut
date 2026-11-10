@@ -282,6 +282,18 @@
   // primer partido (sin récord guardado): la CPU saca más suave (notes/sim.md, createGame({rookie}))
   function isRookie() { try { var r = JSON.parse(localStorage.getItem('voley3d.record') || 'null'); return !(r && r.played > 0); } catch (e) { return false; } }
   function seed() { return Q.seed ? (+Q.seed | 0) : ((Date.now() ^ (Math.random() * 1e9)) & 0x7fffffff); }
+  /** Escenario del partido que se crea ('hall' | 'beach'): el que tiene arena montado (ajuste `arena` o ?map=). En la playa la sim
+   *  juega con reglas de vóley playa (createGame({venue:'beach'}): pista 16×8, sets a 21/15, cambio de campo cada 7). */
+  function venueNow() {
+    var v = VB.Arena && VB.Arena.venue ? VB.Arena.venue() : (Q.map || ctx.settings.arena);
+    return v === 'beach' ? 'beach' : 'hall';
+  }
+  /** Escenario pedido en Ajustes durante un partido: se monta al salir de él (menú o partido nuevo). */
+  var venuePend = false;
+  function applyVenuePend() { if (!venuePend) return; venuePend = false; for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', ctx.settings, 'arena'); }
+  function demoGame() {
+    applyVenuePend();
+    return Sim.createGame({ demo: true, seed: seed(), difficulty: 'normal', format: Q.format === '6v6' ? '6v6' : undefined, venue: Q.format === '6v6' ? undefined : venueNow() }); }
 
   // UI-01/UI-07: un partido humano pedido mientras el arranque aún ensaya estilos bajo el fondo del telón (herramientas que llaman
   // a startMatch a los ~2,5 s; con el menú, la cortinilla ya espera sola) espera a que acabe (como mucho hasta los 9 s): si no, el
@@ -314,12 +326,15 @@
     // (control Uno por rol) llega en el sprint 3. g.watch lo marca para ui.js (rótulos de los equipos).
     var fmt = !cs && Q.format === '6v6' ? '6v6' : undefined; if (fmt) own = false;
     var auto = !!opts.autopilot || !!fmt;
+    applyVenuePend();
     var g = Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: auto, rookie: cs ? false : isRookie(), present: !opts.autopilot,
       points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: fmt ? 'one' : (opts.ctrl || Q.ctrl || ctx.settings.ctrlMode), // (6v6 espectador: 'one', sin eventos switch)
       ctrlIdx: ctrlIdxOf(opts),
       attrs: opts.attrs || (own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null),
       badges: cs ? (opts.badges || null) : (own && !Q.nobadges ? squadBadges() : null),
-      ref: opts.ref || undefined, nums: opts.nums || undefined, format: fmt });
+      // Carrera: siempre reglas de pabellón (sets a 15, pista 18×9) aunque el escenario elegido sea la Playa, hasta que haya
+      // torneos de playa (TRASPASO.md); el hub y quickSim cuentan con esas reglas
+      ref: opts.ref || undefined, nums: opts.nums || undefined, format: fmt, venue: fmt || cs ? undefined : venueNow() });
     // partido de Carrera: marca para ui.js/badges.js (no reparten experiencia ni insignias al escuadrón de Partido rápido) y
     // para el hub (VB.Career.matchDone al llegar gameOver)
     if (cs) g.career = cs;
@@ -430,7 +445,7 @@
     if (fromCareer && !careerEnd && VB.Career && VB.Career.abortMatch) VB.Career.abortMatch(); // partido abandonado: la jornada sigue pendiente
     ctx.frozen = false;
     restoreEndButtons();
-    setGame(Sim.createGame({ demo: true, seed: seed(), difficulty: 'normal', format: Q.format === '6v6' ? '6v6' : undefined }));
+    setGame(demoGame());
     setState('menu');
     if (fromCareer && !menuOnly && VB.CareerUI && VB.CareerUI.open) { try { VB.CareerUI.open('hub', { fresh: !!careerEnd }); } catch (e) { reportError('CareerUI.open', e); } }
     else if (fromCareer && VB.CareerUI && VB.CareerUI.syncMenu) { try { VB.CareerUI.syncMenu(); } catch (e) { } }
@@ -446,7 +461,12 @@
     if (k === 'muted') call('Audio', 'setMuted', !!v);
     if (k.indexOf('kit') === 0 && ctx.game) call('Players', 'setKit', ctx.settings, ctx.game); // vista previa en vivo
     if (k === 'quality') { aq.downs = 0; aq.lastDown = -99; aq.noScale = false; aq.chk = null; applyQuality(pickQuality()); }
+    // escenario en mitad de un partido (Ajustes desde la pausa): la pista y las reglas del partido no pueden cambiar a medias
+    // (16×8 / 18×9), así que el cambio espera al siguiente partido o al menú (applyVenuePend)
+    if (k === 'arena' && ctx.game && !ctx.game.demo && ctx.state !== 'menu') { venuePend = true; call('UI', 'onSettings', ctx.settings, k); return; }
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', ctx.settings, k);
+    // escenario: la demo del menú pasa a jugar con las reglas (y la pista) del nuevo escenario. En partido no cambia nada hasta el siguiente
+    if (k === 'arena' && ctx.state === 'menu' && ctx.game && ctx.game.demo && ctx.game.venue !== venueNow()) setGame(demoGame());
   };
   ctx.actions.toggleMute = function () { ctx.actions.setSetting('muted', !ctx.settings.muted); };
   // Challenge (B7): pide revisión de la última llamada de línea para el humano (equipo 0). true si sim la acepta
@@ -780,7 +800,7 @@
   // &live=1 sigue corriendo después; &seed=N cambia la semilla.
   function debugScene(name) {
     var sd = Q.seed ? +Q.seed : 7, diff = ctx.settings.difficulty;
-    function mk(auto, noClock) { return Sim.createGame({ demo: false, autopilot: !!auto, seed: sd, difficulty: diff, serveClock: noClock ? false : undefined }); }
+    function mk(auto, noClock) { return Sim.createGame({ demo: false, autopilot: !!auto, seed: sd, difficulty: diff, serveClock: noClock ? false : undefined, venue: venueNow() }); }
     var preLand = null; // último 'land' ANTERIOR al momento buscado (escenas de punto: la marca del bote)
     function advanceUntil(g, pred, extra, maxSec, onAll) {
       var evs = [], keep = [], trig = -1, t = 0, max = (maxSec || 600) / STEP;
