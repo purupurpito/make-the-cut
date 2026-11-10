@@ -140,10 +140,11 @@
           if (recv && perfect) add(s, 'ancla');
           if (dig) add(s, 'red');
           if (e.touch === 1) { cur.setter = -1; cur.assist = -1; }
-          if (e.touch === 2 && e.kind !== 'spike') { cur.setter = s; cur.setGood = e.grade === 'perfect' || e.grade === 'good'; }
+          // colocador: el 2.º toque, o el 1.º si fue colocación en salto (e.jset; el ataque es entonces el 2.º)
+          if ((e.touch === 2 || (e.touch === 1 && e.jset)) && e.kind !== 'spike') { cur.setter = s; cur.setGood = e.grade === 'perfect' || e.grade === 'good'; }
           if (e.kind === 'spike') {
             if (perfect) add(s, 'mira');
-            cur.assist = e.touch === 3 && cur.setter >= 0 && cur.setter !== s ? cur.setter : -1;
+            cur.assist = (e.touch === 3 || (e.touch === 2 && cur.prevKind === 'set')) && cur.setter >= 0 && cur.setter !== s ? cur.setter : -1;
           }
         }
         if (e.team === 0) cur.hit0 = s >= 0 ? { s: s, kind: e.kind } : null;

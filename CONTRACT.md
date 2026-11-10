@@ -97,8 +97,9 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
 ### 4.2 Simulación `VB.Sim` (sim.js) + `VB.AI` (ai.js) + `VB.C` (constantes)
 - `createGame(opts)` → `game`. `opts = {demo, autopilot, seed, difficulty ('easy'|'normal'|'hard'|'expert' = Fácil/Normal/Difícil/Experto, alias castellanos; orden en `VB.DIFF_ORDER`, nombre visible `VB.DIFF[k].name`), serveClock (false = sin regla de 8 s), stats, rookie (primer partido: la CPU saca más suave; sin efecto en Difícil/Experto), present (pausas de presentación del punto, SIM-03: main.js lo pone en partidos humanos sin autopilot), ctrl ('both' por defecto: el control pasa a quien da el siguiente toque; 'one': el humano lleva siempre a `teams[0][0]` y la IA al compañero en todo, saque incluido, sin eventos `switch`; queda en `g.ctrlMode`; main.js lo toma de `ctx.settings.ctrlMode`), ctrlIdx (0 \| 1, solo con ctrl 'one': 0 = `teams[0][0]` n.º 1, 1 = `teams[0][1]` n.º 2; queda en `g.ctrlIdx`; con 1 el orden de saque del equipo 0 va en espejo; el juego pasa siempre 0, el 1 solo con `&ctrlidx=1` o `opts.ctrlIdx` en pruebas)}`.
   `demo`: CPU vs CPU (menú). `autopilot`: partido "humano" pero el equipo 0 lo juega la IA (escenas de depuración).
-- `step(game, dt, input)` — paso fijo `1/120`. `input` en coords de MUNDO: `{move:[wx,wy] (|v|≤1), hit, jump, switchPlayer}`;
-  `hit/jump/switchPlayer` son flancos (pulsado en este paso). En saque humano: `move` desplaza al sacador a lo ancho y apunta.
+- `step(game, dt, input)` — paso fijo `1/120`. `input` en coords de MUNDO: `{move:[wx,wy] (|v|≤1), hit, jump, jset, switchPlayer}`;
+  `hit/jump/jset/switchPlayer` son flancos (pulsado en este paso). En saque humano: `move` desplaza al sacador a lo ancho y apunta.
+  `jset` (COLOCAR, opcional): en el suelo y en el saque = `jump`; en el aire = **colocación en salto** (ver «Colocación en salto» abajo).
 - `drainEvents(game, outArray)` — mueve los eventos pendientes a `outArray`.
 - `predict(game, zt, out)`, `predictLanding(game, out)`, `focusPoint(game)` (pr1 o pr3 según toque), `canReach(game, p)`, `other(game, p)`, `side(team)`, `isHuman(game,p)`.
 - **Estado de `game`** (lectura para todos): `mode ('serve'|'rally'|'point'|'over')`, `demo`, `autopilot`, `time`,
@@ -172,7 +173,7 @@ Todos llevan `type` y `t` (tiempo de juego). `player` es la referencia al objeto
 | `newMatch` | `{demo, difficulty}` | partido creado |
 | `serveReady` | `{team, player, setPoint, matchPoint}` | sacador con el balón |
 | `whistle` | `{reason:'serve'|'point'}` | autorización del saque / fin de jugada (el 1.er árbitro de arena señala con el brazo) |
-| `hit` | `{kind:'serve'|'pass'|'set'|'spike'|'free', player, team, touch (0 saque,1..3), quality 0..1, x,y,z, speed, human, grade:'perfect'|'good'|'poor', timing (s, <0 pronto), power 0..1, shot, dive (bool), aim [x,y]|null, target [x,y]|null}` | toque válido. `shot`: saque `'float'|'jump'`; recepción `'forearm'|'dig'|'shank'|'dive'`; colocación `'overhead'`; ataque `'power'|'tip'`; 3er toque desde el suelo `'overhead'|'forearm'`. **La dejada es `kind:'free', shot:'tip'`**. `shot:'body'` = el balón da en el cuerpo sin gesto (`grade:'poor'`, `kind` según el toque) |
+| `hit` | `{kind:'serve'|'pass'|'set'|'spike'|'free', player, team, touch (0 saque,1..3), quality 0..1, x,y,z, speed, human, grade:'perfect'|'good'|'poor', timing (s, <0 pronto), power 0..1, shot, dive (bool), aim [x,y]|null, target [x,y]|null, jset (bool)}` | toque válido. `shot`: saque `'float'|'jump'`; recepción `'forearm'|'dig'|'shank'|'dive'`; colocación `'overhead'`, **colocación en salto `'jump'` (`kind 'set'`, `jset: true`, también con `touch 1`)**; ataque `'power'|'tip'`; 3er toque desde el suelo `'overhead'|'forearm'`. **La dejada es `kind:'free', shot:'tip'`**. `shot:'body'` = el balón da en el cuerpo sin gesto (`grade:'poor'`, `kind` según el toque) |
 | `swing` | `{player, shot:''|'tip'}` | el humano pulsa golpear (gesto aunque no llegue) |
 | `toss` | `{player, team, jump, human}` | el sacador lanza el balón (flotante / en salto) |
 | `miss` | `{player, reason:'early'|'late'|'far', t2}` | gesto humano sin contacto con el balón cerca (UI: ¡Pronto! / ¡Tarde! / No llegas) |
@@ -373,7 +374,7 @@ El cambio de campo (`courtChange`, plano `'court'`) usa un corte deliberado (rea
 - `tools/console.sh <escena|all> [W] [H] [params]` — mensajes de consola de la página; sale 1 si hay excepción, `console.error`, `[VB][ERROR]` o error de WebGL.
 - Chrome: `tools/chrome.js` (node) y `tools/chrome-env.sh` (bash) eligen ejecutable y GPU (ANGLE d3d11 en Windows, metal en Mac, gl en Linux;
   `GL=swiftshader` para máquinas sin GPU, `CHROME=/ruta`). `tools/cdp.js` = cliente DevTools común (viewport exacto, errores, capturas).
-- `node tools/drive.js [W] [H] [seg] [query]` — juega de verdad con teclado vía DevTools (menú → Intro → saque → peloteo → pausa).
+- `node tools/drive.js [W] [H] [seg] [query]` — juega de verdad con teclado vía DevTools (menú → Intro → saque → peloteo → colocación en salto con K y con clic central, `tools/jsetdrill.js` → pausa); touchplay.js y padplay.js hacen el mismo ejercicio con COLOCAR y con X.
 - `node tools/perf.js [WxH=844x390] [s=20] [niveles=auto,high,medium,low] [cpu=4] [dpr=2.75]` — móvil emulado (viewport, dpr, táctil, UA,
   freno de CPU) y partido real con autopilot: fps, p5, coste JS, GC, draw calls, triángulos, sombra, calidad adaptativa. `STRICT=1` (sale con 1 si no se cumplen los objetivos o si la medida no es válida), `ALLOC=1`, `PROFILE=1`, `DESKTOP=1`, `WARM=s`
   (10 por defecto; 45 con `ALLOC/RETAIN`: V8 optimiza por número de llamadas), `HOSTMAX=%` (80 por defecto: si la CPU del PC anfitrión pasa de ahí de media en un nivel,
@@ -428,7 +429,7 @@ Arte y nombres originales; marcas de las vallas ficticias (NÓRDIKA, VOLTA, ALBA
 
 ### Pulido 10-nov-2026 (controles PC, dorsales, Control, separadores, pantallas grandes, playa)
 - **Teclas (input.js; textos de ui.js salen de la tabla `GLYPH`):** moverse WASD/flechas; golpear y sacar **J** o **X** o **clic izquierdo**; saltar (en el
-  aire: dejada) **Espacio** o **clic derecho** (K sigue saltando como alias no anunciado); C cambiar jugador; V challenge; P/Esc pausa; M sonido; Intro aceptar;
+  aire: dejada) **Espacio** o **clic derecho**; colocar en salto **K** o **clic central** (acción `jset`; en el suelo salta, ver «Colocación en salto»); C cambiar jugador; V challenge; P/Esc pausa; M sonido; Intro aceptar;
   F pantalla completa. Espacio ya no golpea. El clic entra en el mismo mapa que las teclas (ids `Mouse0`/`Mouse2`: mantener = hitHeld/jumpHeld), solo con
   `pointerType 'mouse'`, solo en `playing`, nunca sobre `MOUSE_UI` (botones, paneles, overlay táctil) ni con los controles táctiles a la vista.
 - **Dorsales:** tu pareja lleva el **1** y el **2** (`createGame`: `mkPlayer(0, 1, 0)`, `mkPlayer(0, 2, 1)`; CPU 3 y 9). `prog.js` renumera escuadrones
@@ -441,3 +442,27 @@ Arte y nombres originales; marcas de las vallas ficticias (NÓRDIKA, VOLTA, ALBA
   (`.cr-in`) y tarjeta de presentación (`#intro .in-card`) usan `zoom: var(--vs)`; HUD y hojas usan `--hs` = Tamaño del HUD × --vs. Por debajo no cambia nada.
 - **Escenario:** ajuste `arena` (arriba). `VB.Arena.venueName(id?)` da «Palau del Mar» / «Platja Llarga»; ui.js cambia el nombre en los textos visibles
   (los que nombran los dos se dejan). La playa se construye al elegirla y se libera al volver (sin fugas); el pabellón solo se oculta. Ver notes/arena.md «Playa».
+
+### Colocación en salto (10-nov-2026)
+- **Controles, el mismo concepto en todo**: en el aire, GOLPEAR = remate (o el toque que toque) y **COLOCAR = colocación en salto**; SALTAR otra
+  vez sigue siendo la dejada. COLOCAR en el suelo (y en el saque) salta, así que pulsarlo dos veces = salta y coloca.
+  Teclado **K** (antes alias oculto de saltar) · ratón **clic central** (`Mouse1`, sin autodesplazamiento) · mando **X** (PS □; antes 2.º botón de
+  saltar, B sigue saltando) · táctil: botón contextual **COLOCAR** (verde, 64 px; 56/52 px en pantallas bajas) encima de SALTAR, solo en el aire con
+  el balón jugable (`VB.Sim.jsetReady(g)`), se va al caer; deslizar de SALTAR a COLOCAR vale. `VB.Input.poll()` añade `jset` (flanco; con él
+  `jump` también es true), `_debug().setOn`, `stats.press.set`, `stats.out.jset`, `stats.mouse.jset`; `glyphs().jset`. main.js pasa `simIn.jset`.
+- **Sim**: `hit(..., shot 'jset')` (gesto del humano) en el 2.º toque, o en el 1.º con el balón alto en la red (`isAttackContact`): `kind 'set'`,
+  `shot 'jump'`, `hit.jset`. Más tensa que la de suelo (cima = contacto + 0,75 m, mín. 4,1; 1.er toque + 1,15), ventana ÷1,2 y `p.ak.wSet`;
+  con mal timing (q < 0,45) a veces sale pegada a la red o larga. El remate que sigue a una buena tiene la defensa rival ×0,8 (`VB.JSET`).
+  Donde no cabe (3.er toque) COLOCAR es dejada en la red o el toque normal. Tras una colocación en salto en el 1.er toque se ataca en el 2.º:
+  `VB.Sim.atkPhase(g, t)` sustituye a «touchTeam === t && touches === 2» (ai.js, hitWindow.attack, assistMove, aim3, aimPoint, focusPoint,
+  updateDefense, players.js approachTime, fx.js retícula). `point.assist`/Manos de seda cuentan la colocación en salto. La IA no la usa: CPU contra
+  CPU idéntico. Funciones nuevas: `VB.Sim.atkPhase`, `canJset(g,p,count)`, `jsetReady(g)`, `jsetVoid(g,p)`, `VB.JSET`; `stats.jsets`.
+- **Arreglos tras la revisión (10-nov-2026)**: (1) el bloqueador CPU **lee** la colocación en salto: con `jsetReady` (humano en el aire en un
+  toque donde puede colocar) va ya a la red frente al compañero del humano, sin saltar; si el humano arma GOLPEAR o dejada, salta a por él
+  (ai.js `pos`; nunca en CPU contra CPU). (2) `JSET.dig` (×0,8) solo tras la del 2.º toque. (3) `jsetReady` mira el contacto previsto
+  (`hitWindow`): jugador aún > 0,25 m y, en el 1.er toque, balón > NET_H + 0,1, lo mismo que pide `canJset`; caché por `g.time`.
+  (4) `jsetVoid(g,p)`: con un remate rival en camino COLOCAR en el aire no hace nada (se bloquea) ni se ofrece. (5) COLOCAR pulsado
+  justo al despegar se guarda `JSET.buf` (0,2 s, `g.jsetQ`): la doble pulsación rápida = salta y coloca.
+- **UI**: aviso en el aire en rejilla 2×2 (`#prompt.two`): «[GOLPEAR] Rematar / [COLOCAR] Colocar» (táctil «… / [COLOCAR] en salto»,
+  sin la línea de consejo repetida; teclado: J naranja y K verde); `GLYPH.*.jset/jsetT` (K, X/□, Colocar);
+  `.key.tch.s` (verde); panel Controles, tutorial (paso 3) y consejos en los 3 dispositivos. Detalle en notes/sim.md, notes/camera_input.md y notes/ui_main.md.

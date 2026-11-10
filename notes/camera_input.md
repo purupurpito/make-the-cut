@@ -929,3 +929,22 @@ Spike (escena `spike` 1280×720 low): en el árbol actual el aviso de toques va 
   para la propagación (sin golpe doble). Sin menú contextual sobre el canvas. `_debug().stats.mouse = {hit, jump}`.
 - Textos: `GLYPH.keyboard` de ui.js (hit/serve «J», jump «Espacio»; `hitT 'J'`, `jumpT 'ESPACIO'`) y filas de teclado del panel
   Controles (ratón dibujado con `M('l'|'r')`). tools/drive.js juega con J, clic y Espacio.
+
+## Colocación en salto — entrada (10-nov-2026)
+- Acción nueva `jset` (COLOCAR). Teclado **K** (era alias oculto de saltar; `CODE.KeyK`/`KEY.k`), ratón **clic central** (`Mouse1`, bit 4 de
+  `e.buttons`; `mousedown`/`auxclick` con `button 1` llevan `preventDefault` en partido para que la rueda no abra el autodesplazamiento), mando
+  **X** (botón 2; PS □) en los tres mapas (`PB`, `PB_X`, `PB_D`: `jump` pasa a `[1]` y `jset: [2]`; `pad.prev[i][6]`).
+- `poll()` → `it.jset` (flanco). Con `jset`, `jump` también es true: en el suelo salta igual que antes (K y X saltaban), y menús, presentación y
+  pausa del punto lo tratan como SALTAR. La sim mira `jset` solo en el aire. `jumpHeld` incluye K/X/rueda.
+- Táctil: rol nuevo `'set'` (5.º de `ROLES`; los bucles usan `ROLES.length`), botón `.vt-set` «COLOCAR» verde con icono de arco, 64 px encima de
+  SALTAR (`right 157`, `bottom 110`; 56 px a ≤ 420 px de alto, 52 a ≤ 340: 844×390 y 667×375 usan los dos 56), a 12 px de SALTAR (márgenes de
+  toque de 12 y 16 px que se tocan, para deslizar de SALTAR a COLOCAR) y lejos de GOLPEAR y del joystick (≤ 62 % del ancho).
+  Oculto con `visibility` (la geometría medida sigue valiendo; `hitTest` lo salta si `!T.setOn`). `touchContext` lo enciende con
+  `VB.Sim.jsetReady(g)` (en el aire, balón jugable a < 3 m, toque donde cabe). Deslizar de SALTAR a COLOCAR pulsa COLOCAR. `_debug()` añade
+  `setOn` y `geo.set`; `stats.press.set`, `stats.out.jset`, `stats.mouse.jset`. `glyphs().jset = {keyboard 'K', mouse 'clic central', gamepad 'X', ps '□', touch 'COLOCAR'}`.
+- Medido: touchplay 844x390 → botón 60×60 px CSS en pantalla, huecos 24 px con GOLPEAR y 12 px (cajas) con SALTAR; padtest 28 ok, touchtest 30 ok.
+- Arreglos 10-nov-2026 (revisión): la sim guarda COLOCAR pulsado justo al despegar (`g.jsetQ`, 0,2 s), así que la doble pulsación rápida (K K,
+  X X, rueda dos veces, deslizar rápido de SALTAR a COLOCAR) coloca. `jsetReady` mira el contacto previsto (lo que se ofrece es lo que sale) y
+  es falso bloqueando un remate rival. En menús, X/□ ya no hace «volver» (ui.js `nav`: `it.jump && !it.jset`). Sin verificar en headless: si el
+  `preventDefault` de `pointerdown` suprime el `mousedown` (y con él `onAux`) y si la rueda abre el autodesplazamiento sobre controles de la
+  interfaz (ahí no hay `preventDefault`, a propósito: el panel Controles se desplaza). Mirar con un ratón real en Windows.

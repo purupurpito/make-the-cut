@@ -613,6 +613,12 @@ if (ONLY !== 'matrix') {
     if (i % 30 === 0) { const a = rng() * Math.PI * 2, m = rng() < 0.2 ? 0 : rng(); held[0] = Math.cos(a) * m; held[1] = Math.sin(a) * m; }
     return { move: held, hit: rng() < 0.04, jump: rng() < 0.01, switchPlayer: rng() < 0.005 };
   });
+  // el mismo fuzz con COLOCAR (jset; aparte para no mover los números del anterior): reglas e invariantes con colocaciones en salto
+  { const rj = S._makeRng(SEED ^ 0x5e7), hj = [0, 0];
+    run('Fuzz humano aleatorio con COLOCAR', { demo: false }, 4 * 60, (g, i) => {
+      if (i % 30 === 0) { const a = rj() * Math.PI * 2, m = rj() < 0.2 ? 0 : rj(); hj[0] = Math.cos(a) * m; hj[1] = Math.sin(a) * m; }
+      return { move: hj, hit: rj() < 0.03, jump: rj() < 0.01, jset: rj() < 0.02, switchPlayer: rj() < 0.005 };
+    }); }
   // SIM-03: partido humano con g.present (pausas de presentación) jugado por el bot 'bueno' hasta el final
   { const opts = { demo: false, difficulty: 'normal', serveClock: true, seed: SEED + 5, present: true };
     if (!S.createGame(opts).present) fail('createGame({present:true}) no activa g.present');
@@ -1776,6 +1782,108 @@ if (ONLY !== 'matrix') {
     const g2 = S.createGame({ seed: 1, ref: { p1: 0.2, p2: 0.08, p3: 0.02, d3: 0.1, chal: 2 } });
     if (g2.challenges[0] !== 2 || g2.chalPerSet !== 2) fail('Carrera: challenge 2 por set');
     if (failures === f0) console.log('Carrera: opts.ref y opts.nums OK');
+  }
+
+  // ---- Colocación en salto (input.jset = COLOCAR en el aire; solo el humano) ----
+  {
+    const f0 = failures, res = [];
+    // escenario: control 'one' (el compañero es IA). 2.º toque: el compañero recibe y el humano, junto a la red, salta y pulsa
+    // COLOCAR cuando hitWindow().press <= lead (lead > 0 = pronto, < 0 = tarde). 1.er toque (first): balón libre rival que cae
+    // alto sobre la red. Devuelve el toque del humano, el siguiente toque propio y el punto.
+    const jsc = (seed, lead, o) => {
+      o = o || {};
+      const g = S.createGame({ seed, ctrl: 'one', stats: true, badges: o.badges }), h = g.teams[0][0], m = g.teams[0][1], b = g.ball, G = C.G;
+      g.mode = 'rally'; b.held = null; S.drainEvents(g);
+      const yy = (seed % 5 - 2) * 0.8, ap = (z0, z1, apex, x1, y1) => { const vz = Math.sqrt(2 * G * (apex - z0)), T = vz / G + Math.sqrt(2 * (apex - z1) / G); b.vx = (x1 - b.x) / T; b.vy = (y1 - b.y) / T; b.vz = vz; };
+      if (!o.first) { m.x = 5.5; m.y = -1.5 + yy * 0.3; h.x = 2.1; h.y = yy; Object.assign(b, { x: m.x, y: m.y, z: 0.9, dip: 0, wobA: 0 }); ap(0.9, 1.9, 4.4, 1.9, h.y);
+        g.touchTeam = 0; g.touches = 1; g.lastPlayer = m; g.lastTeam = 0; g.lastKind = 'pass'; g.lastShot = 'forearm'; }
+      else { m.x = 5.8; m.y = -2 + yy * 0.3; h.x = 1.0; h.y = yy; Object.assign(b, { x: -3, y: yy, z: 2.5, dip: 0, wobA: 0 }); ap(2.5, 3.1, 4.6, 0.75, yy);
+        g.touchTeam = 1; g.touches = 3; g.lastPlayer = g.teams[1][0]; g.lastTeam = 1; g.lastKind = 'free'; g.lastShot = 'overhead'; }
+      g.lastTouchT = g.time; g.ctrl = h;
+      const r = { h: null, next: null, pt: null, g, ready: false, blocks: 0 }, w = {}; let jumped = false, pressed = false, ji = 0;
+      for (let i = 0; i < 120 * 12 && !r.pt; i++) {
+        const inp = { move: [0, 0], hit: false, jump: false, jset: false, switchPlayer: false };
+        if (!r.h && g.mode === 'rally') {
+          const zc = 1.07 + 2.2, disc = b.vz * b.vz - 2 * G * (zc - b.z);
+          if (!jumped && h.z === 0 && disc > 0 && (b.vz + Math.sqrt(disc)) / G < 0.5 && b.vz < 2.5) { inp[o.jumpBtn || 'jump'] = true; jumped = true; ji = i; }
+          // o.early: COLOCAR o.early pasos después de despegar (doble pulsación rápida), sin mirar el timing
+          if (jumped && o.early != null && !pressed && i >= ji + o.early) { inp.jset = true; pressed = true; }
+          if (jumped && o.early == null && h.z > 0.3 && !pressed) { if (S.jsetReady(g)) r.ready = true; S.hitWindow(g, h, w); if (w.press <= lead) { inp[o.btn || 'jset'] = true; pressed = true; } }
+        }
+        S.step(g, DT, inp);
+        for (const e of S.drainEvents(g)) {
+          if (e.type === 'hit' && e.player === h && !r.h) r.h = e;
+          else if (e.type === 'hit' && r.h && !r.next && e.team === 0) { r.next = e; // bloqueador CPU al rematar: el más cercano a la red
+            const o1 = g.teams[1], bk = Math.abs(o1[0].x) < Math.abs(o1[1].x) ? o1[0] : o1[1]; r.bx = Math.abs(bk.x); r.bz = bk.z; }
+          if (e.type === 'block' && r.next) r.blocks++;
+          if (e.type === 'point') r.pt = e;
+        }
+      }
+      return r;
+    };
+    const sweep = (lead, o, n) => { const s = { n: 0, js: 0, q: 0, spk: 0, won: 0, as: 0, ready: 0, bad: 0, x: [] };
+      for (let k = 1; k <= (n || 120); k++) { const r = jsc(k, lead, o); s.n++; if (r.ready) s.ready++; if (!r.h || !r.h.jset) continue;
+        s.js++; s.q += r.h.quality; if (r.h.kind !== 'set' || r.h.shot !== 'jump' || r.h.human !== true) s.bad++;
+        if (r.next && r.next.kind === 'spike') s.spk++; if (r.pt && r.pt.team === 0) s.won++; if (r.pt && r.pt.assist === r.h.player) s.as++; }
+      s.q = s.js ? s.q / s.js : 0; return s; };
+    // (a) ocurre (2.º y 1.er toque), con el evento coherente; el compañero IA la ataca
+    const a2 = sweep(0, {}), a1 = sweep(0, { first: true }), late = sweep(-0.15, {}), early = sweep(0.15, {});
+    const rate = s => s.js ? s.spk / s.js : 0;
+    res.push(['(a) colocación en salto (2.º toque) y remate del compañero IA', a2.js === a2.n && !a2.bad && a2.ready === a2.n && a2.q > 0.85 && rate(a2) >= 0.9 && a2.as > 0,
+      { colocaciones: a2.js + '/' + a2.n, calidad: a2.q.toFixed(2), remates: pct(a2.spk, a2.js), ganados: pct(a2.won, a2.n), asistencias: a2.as }]);
+    res.push(['(b) 1.er toque con el balón alto en la red: el compañero remata en el 2.º', a1.js === a1.n && !a1.bad && rate(a1) >= 0.85,
+      { colocaciones: a1.js + '/' + a1.n, calidad: a1.q.toFixed(2), remates: pct(a1.spk, a1.js), ganados: pct(a1.won, a1.n), asistencias: a1.as }]);
+    // (c) mal timing: menos calidad, menos remates y menos puntos (la colocación sale pegada a la red o larga)
+    res.push(['(c) mal timing empeora', late.q < a2.q - 0.4 && early.q < a2.q - 0.4 && rate(late) < rate(a2) - 0.05 && rate(early) < rate(a2) - 0.05 && late.won + early.won < 2 * a2.won - 0.1 * a2.n,
+      { calidadTarde: late.q.toFixed(2), calidadPronto: early.q.toFixed(2), rematesTarde: pct(late.spk, late.js), rematesPronto: pct(early.spk, early.js), ganadosTarde: pct(late.won, late.n), ganadosPronto: pct(early.won, early.n) }]);
+    // (d) reglas: COLOCAR en el suelo salta; en el 3.er toque en la red es dejada; 1.er toque lejos de la red, toque normal; ventana más justa
+    { const r3 = jsc(3, 0, { jumpBtn: 'jset' }), j3 = r3.g; // el salto se dio con COLOCAR: debe haber despegado igual
+      const g4 = S.createGame({ seed: 5, ctrl: 'one' }), h4 = g4.teams[0][0], m4 = g4.teams[0][1];
+      rallyAt(g4, { x: 0.8, y: 0, z: 3.1, vz: -1 }); h4.x = 0.9; h4.y = 0; h4.z = 0.9; g4.touchTeam = 0; g4.touches = 2; g4.lastPlayer = m4; g4.lastKind = 'set'; g4.lastShot = 'overhead'; g4.ctrl = h4;
+      S._hit(g4, h4, null, 0, 'jset'); const e4 = S.drainEvents(g4).find(e => e.type === 'hit');
+      const g5 = S.createGame({ seed: 6, ctrl: 'one' }), h5 = g5.teams[0][0];
+      rallyAt(g5, { x: 5, y: 0, z: 2.6, vz: -2 }); h5.x = 5; h5.y = 0; h5.z = 0.5; g5.touchTeam = 1; g5.touches = 3; g5.lastPlayer = g5.teams[1][0]; g5.lastKind = 'free'; g5.ctrl = h5;
+      S._hit(g5, h5, null, 0, 'jset'); const e5 = S.drainEvents(g5).find(e => e.type === 'hit');
+      const qOf = (shot) => { const g6 = S.createGame({ seed: 7, ctrl: 'one' }), h6 = g6.teams[0][0], m6 = g6.teams[0][1];
+        rallyAt(g6, { x: 1.6, y: 0, z: 3.2, vz: -1 }); h6.x = 1.6; h6.y = 0; h6.z = 0.9; g6.touchTeam = 0; g6.touches = 1; g6.lastPlayer = m6; g6.lastKind = 'pass'; g6.ctrl = h6;
+        S._hit(g6, h6, null, 0.06, shot); return S.drainEvents(g6).find(e => e.type === 'hit').quality; };
+      res.push(['(d) reglas y ventana', !!(r3.h && r3.h.jset) && j3.stats.jsets === 1 && e4 && e4.kind === 'free' && e4.shot === 'tip' && !e4.jset && e5 && e5.kind === 'pass' && !e5.jset && qOf('jset') < qOf('') - 0.05,
+        { saltoConColocar: !!(r3.h && r3.h.jset), tercerToque: e4 && e4.kind + '/' + e4.shot, primeroLejos: e5 && e5.kind, q006: qOf('jset').toFixed(2) + ' vs ' + qOf('').toFixed(2) }]); }
+    // (e) Manos de seda del colocador en salto: el remate del compañero sale más rápido; la asistencia cuenta (point.assist)
+    { let v0 = 0, v1 = 0, n = 0;
+      for (let k = 1; k <= 30; k++) { const r0 = jsc(k, 0, {}), r1 = jsc(k, 0, { badges: [[{ seda: 3 }, null], null] });
+        if (r0.next && r1.next && r0.next.kind === 'spike' && r1.next.kind === 'spike') { v0 += r0.next.speed; v1 += r1.next.speed; n++; } }
+      const fa = sweep(0, { first: true, badges: [[{ seda: 3 }, null], null] }, 40);
+      res.push(['(e) Manos de seda tras colocación en salto', n > 20 && v1 / n > v0 / n + 0.6 && fa.as > 0, { remates: n, v: (v0 / n).toFixed(2) + ' -> ' + (v1 / n).toFixed(2), asist1erToque: fa.as }]); }
+    // (f) la IA no la usa: CPU contra CPU sin colocaciones en salto, atkPhase = 2.º toque, y el campo jset:false no cambia nada
+    { let js = 0, mis = 0; const g = S.createGame({ seed: 991, demo: true }), ev = [];
+      for (let i = 0; i < 300 * 120; i++) { S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev); for (const e of ev) if (e.type === 'hit' && e.jset) js++;
+        for (let t = 0; t < 2; t++) if (S.atkPhase(g, t) !== (g.touchTeam === t && g.touches === 2)) mis++; }
+      const fpOf = (inp) => { const g2 = S.createGame({ seed: 4343, autopilot: true }), out = [];
+        for (let i = 0; i < 120 * 120; i++) { S.step(g2, DT, inp); ev.length = 0; S.drainEvents(g2, ev); for (const e of ev) if (e.type === 'hit' || e.type === 'point') out.push(e.type + (e.kind || e.reason) + (e.x != null ? e.x.toFixed(4) : '')); }
+        return out.join(','); };
+      const same = fpOf(null) === fpOf({ move: [0, 0], hit: false, jump: false, jset: true, switchPlayer: false });
+      res.push(['(f) CPU contra CPU sin colocación en salto', js === 0 && mis === 0 && same, { jsets: js, atkPhaseDistinto: mis, autopilotIgual: same }]); }
+    // (g) el bloqueador CPU lee la colocación en salto (ai.js, S.jsetReady): al rematar el compañero está en la red y en el
+    // aire, y hay bloqueos (antes: a 2,6–2,9 m de la red, 0 bloqueos de 300)
+    { let n = 0, near = 0, air = 0, blk = 0;
+      for (let k = 1; k <= 60; k++) { const r = jsc(k, 0, {}); if (!r.next || r.next.kind !== 'spike') continue; n++;
+        if (r.bx < 1.3) near++; if (r.bz > 0.1) air++; if (r.blocks) blk++; }
+      res.push(['(g) bloqueo rival tras colocación en salto', n > 40 && near >= 0.9 * n && air >= 0.7 * n && blk > 0, { remates: n, enRed: pct(near, n), enElAire: pct(air, n), conBloqueo: pct(blk, n) }]); }
+    // (h) COLOCAR pulsado justo al despegar (20–60 ms, antes de que la sim acepte el gesto en el aire) se guarda y sale
+    { let ok = 0; const tries = [2, 5, 7];
+      for (const e of tries) for (let k = 1; k <= 10; k++) { const r = jsc(k, 0, { early: e }); if (r.h && r.h.jset) ok++; }
+      res.push(['(h) doble pulsación rápida = salta y coloca', ok === tries.length * 10, { colocaciones: ok + '/' + tries.length * 10 }]); }
+    // (i) bloqueando un remate CPU, COLOCAR no hace nada (ni gesto ni colocación) y la UI no lo ofrece
+    { const g = S.createGame({ seed: 12, ctrl: 'one' }), h = g.teams[0][0];
+      rallyAt(g, { x: -0.9, y: 0, z: 3.2, vx: 12, vz: -2 }); g.touchTeam = 1; g.touches = 3; g.lastPlayer = g.teams[1][0]; g.lastTeam = 1; g.lastKind = 'spike'; g.lastShot = 'power';
+      h.x = 0.5; h.y = 0; h.z = 0.7; h.vz = 1.5; h.actionT = 0.3; h.lastAction = 'jump'; g.ctrl = h; S.drainEvents(g);
+      const ready = S.jsetReady(g); S.step(g, DT, { move: [0, 0], hit: false, jump: false, jset: true, switchPlayer: false });
+      const sw = S.drainEvents(g).filter(e => (e.type === 'swing' || e.type === 'hit') && e.player === h);
+      res.push(['(i) COLOCAR no coloca el remate rival', !ready && sw.length === 0 && !g.swingLive, { jsetReady: ready, gestos: sw.length }]); }
+    const bad = res.filter(r => !r[1]);
+    if (bad.length) fail('colocación en salto: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+    if (failures === f0) console.log('colocación en salto OK\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));
   }
 
   console.log(failures ? `\n${failures} FALLOS` : '\nTODO OK');

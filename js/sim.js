@@ -234,6 +234,7 @@
       pr1: { x: 0, y: 0, z: 0, t: 0 }, pr3: { x: 0, y: 0, z: 0, t: 0 }, // predicciones de cruce a 1 m y 3 m
       blockOff: [0, 0], timer: 0, blockCD: 0,
       hitBuf: 0,               // > 0 mientras dura el gesto de golpeo del humano (s)
+      jsetQ: 0,                // > 0: COLOCAR pulsado justo al despegar, pendiente de lanzarse en cuanto se pueda (s)
       swingLive: false, swingShot: '', swingLock: 0,
       swingAim: [0, 0], swingHasAim: false, // dirección dada durante el gesto (vale aunque se suelte antes del contacto)
       lastGrade: '',           // calidad del último toque humano
@@ -264,7 +265,7 @@
         hits: { pass: 0, set: 0, spike: 0, free: 0, serve: 0 }, blocks: 0, points: 0, why: {}, rallies: [],
         grades: { perfect: 0, good: 0, poor: 0 }, hgrades: { perfect: 0, good: 0, poor: 0 }, shots: {},
         won: [0, 0], misses: 0, dives: 0, diveMiss: 0, blockKinds: { stuff: 0, soft: 0, tool: 0, touch: 0 },
-        serves: [0, 0], aces: [0, 0], spikes: [0, 0], kills: [0, 0], stuffPts: [0, 0], faults: {}, body: 0, courtChanges: 0
+        serves: [0, 0], aces: [0, 0], spikes: [0, 0], kills: [0, 0], stuffPts: [0, 0], faults: {}, body: 0, jsets: 0, courtChanges: 0
       } : null
     };
     dblFields(g); dblFields(g.ball); dblFields(g.pr1); dblFields(g.pr3); dblFields(g.rally);
@@ -397,6 +398,50 @@
   /** ¿Toque por encima de la red en salto (remate o dejada)? Lo comparten hit() y aimPoint() para que el aro
    *  de apuntado prediga el mismo tipo de golpe que luego se ejecuta. */
   function isAttackContact(p, b) { return p.z > 0.25 && Math.abs(b.x) < 3.8 && b.z > C.NET_H + 0.1; }
+
+  /* Colocación en salto (solo el humano; input.jset = COLOCAR estando en el aire). Vale en el 2.º toque y en el 1.º si el
+   * balón llega alto a la red (isAttackContact): el compañero ataca entonces en el 2.º. Sale más tensa que la de suelo (cima
+   * baja: llega antes al atacante), con la ventana de timing ÷win y, con mal timing, se pega a la red o se va larga.
+   *  win: divisor de la ventana (1,2 = un 17 % más justa que una colocación de suelo)
+   *  tx, tz: destino (m de la red, altura) como la colocación de suelo (1,35 / 3), algo más separada de la red
+   *  rise/rise1: cima = contacto + rise (2.º toque) / rise1 (1.er toque, el compañero viene de más lejos), mínimo minApex
+   *  err0/err1: dispersión (como la de suelo, 0,1 + 1,15·(1−q)); badQ/badP: por debajo de badQ, prob. (badQ+0,05−q)·badP
+   *  de colocación mala (mitad pegada a la red, mitad larga); blk: el error de colocación del bloqueador rival (blockOff) crece
+ *  ×(1 + blk·q): la rápida y bien dada le pilla peor colocado; dig: el dado de defensa del remate que sigue a una colocación en
+ *  salto buena/perfecta del 2.º toque ×dig (tempo rápido; el bloqueador CPU la lee y llega, ai.js, y sin esto no compensaba
+ *  arriesgar); mate: |y| máximo del destino; buf: s que se guarda COLOCAR pulsado justo al despegar (g.jsetQ). */
+  var JSET = VB.JSET = { win: 1.2, tx: 1.5, tz: 3, rise: 0.75, rise1: 1.15, minApex: 4.1, err0: 0.12, err1: 1.3, badQ: 0.45, badP: 1.5, blk: 0.6, dig: 0.8, mate: 3.6, buf: 0.2 };
+  /** El remate rival no se «coloca» desde el bloqueo: con un remate del otro equipo en camino COLOCAR no hace nada en el
+   *  aire (bloquea como si no se hubiera pulsado) y la UI no lo ofrece. */
+  function jsetVoid(g, p) { return g.touchTeam !== p.team && g.lastKind === 'spike'; }
+  function canJset(g, p, count) { return p.z > 0.25 && !jsetVoid(g, p) && (count === 2 || (count === 1 && isAttackContact(p, g.ball))); }
+  /** Para la UI (botón táctil COLOCAR, aviso «Rematar | Colocar») y la lectura del bloqueador CPU (ai.js): el jugador humano
+   *  está en el aire, el balón le queda a < 3 m en un toque donde cabe la colocación en salto (2.º, o 1.º con el balón alto
+   *  junto a la red) y el contacto previsto (hitWindow, el mismo que el aro) cumple lo que luego pide canJset: el jugador
+   *  aún en el aire (> 0,25 m) y, en el 1.er toque, el balón por encima de NET_H + 0,1 (isAttackContact). Así lo que se
+   *  ofrece es lo que sale. Una llamada por paso (caché por g.time). */
+  var _jw = { t: 0, press: 0, d: 9, dz: 9, reach: false, kind: '', zc: 0, x: 0, y: 0, z: 0, active: false, canReach: false, attack: false, jumpT: NaN };
+  var _jrG = null, _jrT = -1, _jrV = false;
+  function jsetReady(g) {
+    if (g.mode !== 'rally' || g.demo || g.autopilot) return false;
+    if (_jrG === g && _jrT === g.time) return _jrV;
+    _jrG = g; _jrT = g.time; _jrV = jsetReady0(g);
+    return _jrV;
+  }
+  function jsetReady0(g) {
+    var p = g.ctrl, b = g.ball;
+    if (!p || p.team !== 0 || !(p.z > 0.05) || p.down > 0 || b.held) return false;
+    if (g.touchTeam === 0 && (g.lastPlayer === p || g.lastKind === 'serve')) return false;
+    if (jsetVoid(g, p)) return false;
+    var count = g.touchTeam === 0 ? g.touches + 1 : 1;
+    if (count > 2 || Math.hypot(b.x - p.x, b.y - p.y) >= 3) return false;
+    var w = hitWindow(g, p, _jw), t = Math.max(0, w.t);
+    if (!(p.z + p.vz * t - 0.5 * C.G * t * t > 0.25)) return false;           // el contacto ya sería en el suelo
+    if (count === 1 && !(Math.abs(w.x) < 3.8 && w.z > C.NET_H + 0.1 && w.x * side(p.team) > -0.5)) return false;
+    return true;
+  }
+  /** ¿Toca atacar al equipo t en su siguiente toque? Tras su 2.º toque o tras una colocación en salto en el 1.º. */
+  function atkPhase(g, t) { return g.touchTeam === t && (g.touches === 2 || (g.touches === 1 && g.lastKind === 'set')); }
 
   function other(g, p) { var t = g.teams[p.team]; return t[0] === p ? t[1] : t[0]; }
   function isHuman(g, p) { return !g.demo && !g.autopilot && p.team === 0 && p === g.ctrl; }
@@ -550,7 +595,7 @@
     out.active = g.hitBuf > 0 && g.swingLive; out.canReach = canReach(g, p);
     // ¿toca atacar? tiempo hasta el despegue ideal (para la UI: "¡salta!") o NaN
     out.attack = false; out.jumpT = NaN;
-    if (g.mode === 'rally' && !air && g.touchTeam === p.team && g.touches === 2 && g.jobs[p.team] === p &&
+    if (g.mode === 'rally' && !air && atkPhase(g, p.team) && g.jobs[p.team] === p &&
         Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) {
       var hz = C.ZC.spike + C.JUMP_V * C.JUMP_V / (2 * C.G), vz0 = b.vz, disc = vz0 * vz0 - 2 * G * (hz - b.z);
       if (disc >= 0) { out.attack = true; out.jumpT = (vz0 + Math.sqrt(disc)) / G - C.JUMP_V / C.G; }
@@ -597,6 +642,10 @@
     if (g.touchTeam === t && g.lastPlayer === p) { fault(g, t, 'double', 'Dobles: el mismo jugador toca dos veces', p); return; }
     var count = g.touchTeam === t ? g.touches + 1 : 1;
     if (count > 3) { fault(g, t, 'four', '4 toques', p); return; }
+    // COLOCAR en el aire donde no cabe colocación en salto (3.er toque, o 1.º sin el balón alto en la red): dejada si es
+    // un toque de ataque, si no el toque normal
+    if (shot === 'jset' && !canJset(g, p, count)) shot = isAttackContact(p, b) ? 'tip' : '';
+    var jset = shot === 'jset';
     // Regla 13.3.4: atacar el saque rival en zona de ataque con el balón entero por encima de la red. El golpe solo
     // es falta cuando se COMPLETA como ataque (el balón cruza entero el plano de la red o lo toca el rival): una
     // recepción alta dirigida al propio campo no lo es. Se anota aquí y se pita en stepBall/checkBlock.
@@ -608,11 +657,13 @@
     var d = Math.hypot(b.x - p.x, b.y - p.y), inSp = fastInFor(g);
     var hardIn = g.lastKind === 'spike' || (g.lastKind === 'serve' && inSp > 13);
     if (human && p.ak) { // atributos: ventana de timing del toque (recepción/defensa, colocación, ataque) ±12 %
-      var wk = isAttackContact(p, b) ? p.ak.wAtk : count === 2 ? p.ak.wSet : g.lastKind === 'serve' ? p.ak.wRecv : p.ak.wDig;
+      var wk = jset ? p.ak.wSet : isAttackContact(p, b) ? p.ak.wAtk : count === 2 ? p.ak.wSet : g.lastKind === 'serve' ? p.ak.wRecv : p.ak.wDig;
       te /= wk;
     }
     // Manos de seda: remate del compañero tras una colocación buena o perfecta del que la lleva
-    var sedaL = count === 3 && inKind === 'set' && prevPlayer && prevPlayer !== p && prevPlayer.team === t && prevPlayer.grade !== 'poor' ? bl(prevPlayer, 'seda') : 0;
+    // (también el ataque del 2.º toque tras una colocación en salto en el 1.º)
+    var setIn = inKind === 'set' && (count === 3 || (count === 2 && inShot === 'jump'));
+    var sedaL = setIn && prevPlayer && prevPlayer !== p && prevPlayer.team === t && prevPlayer.grade !== 'poor' ? bl(prevPlayer, 'seda') : 0;
     if (human && p.badges) { // insignias: ventanas de timing del humano (Sangre fría, Manos de seda, Ancla, Red de seguridad)
       var bw = sangreW(g, p), atkC = isAttackContact(p, b);
       if (atkC && sedaL && shot !== 'tip') bw *= BADGE.sedaW[sedaL];
@@ -622,6 +673,7 @@
       }
       if (bw !== 1) te /= bw;
     } else if (human && sedaL && shot !== 'tip' && isAttackContact(p, b)) te /= BADGE.sedaW[sedaL];
+    if (jset) te *= JSET.win; // colocación en salto: ventana más justa
     // calidad: timing x distancia x dificultad de lo que llega
     var q = timingQ(te);
     q *= 1 - 0.3 * clamp((d / C.REACH - 0.55) / 0.45, 0, 1);
@@ -645,6 +697,19 @@
       q = Math.min(q, 0.12); grade = 'poor';
       g.hardIn = false; g.digOk = true;
       if (g.stats) g.stats.body++;
+    } else if (jset) {
+      // colocación en salto: hacia la zona de ataque del compañero, tensa (cima baja); con mal timing, pegada o larga
+      er = (JSET.err0 + JSET.err1 * (1 - q)) * mul;
+      var jx = JSET.tx, jy = clamp(mate.y, -JSET.mate, JSET.mate), jap = Math.max(JSET.minApex, b.z + (count === 1 ? JSET.rise1 : JSET.rise));
+      if (q < JSET.badQ && g.rng() < (JSET.badQ + 0.05 - q) * JSET.badP) {
+        if (g.rng() < 0.5) jx = 0.25 + g.rng() * 0.35;          // pegada a la red: toque de red o bloqueo fácil
+        else { jx = 3.6 + g.rng() * 1.8; jap -= 0.35; }        // larga y baja: el atacante no llega a rematar
+      }
+      v = launchApex(o, sd * Math.max(0.15, jx + rnd(g, er * 0.5)), clamp(jy + rnd(g, er * 0.9), -4.2, 4.2), JSET.tz, jap);
+      kind = 'set'; sub = 'jump';
+      g.blockOff[1 - t] = rnd(g, (0.35 + 0.9 * (1 - g.prof[1 - t].block)) * (1 + JSET.blk * q)); // rápida: el bloqueo rival llega peor colocado
+      g.hardIn = false; g.digOk = true;
+      if (g.stats) g.stats.jsets = (g.stats.jsets || 0) + 1;
     } else if (isAttackContact(p, b)) {
       if (shot === 'tip') { // dejada: suave, corta, por encima del bloqueo
         at = tgt || [-sd * (1.6 + (aim ? clamp(-sd * aim[0], -0.3, 1) : 0.3)), clamp(aim ? p.y + aim[1] * 2.6 : -p.y, -3.8, 3.8)];
@@ -677,6 +742,10 @@
         g.digMargin = digMargin(g, 1 - t, o, v, C.G + dip);
         // A3: remate perfecto del humano -> la IA rival defiende peor (x0,8); remate perfecto contra el humano -> g.digTight
         var tightK = human && grade === 'perfect' ? 0.8 : 1;
+        // remate tras una colocación en salto buena o perfecta en el 2.º toque: el tempo rápido pilla a la defensa rival a
+        // medio colocar. No tras la del 1.er toque: ahí ya sale sola (balón regalado en la red) y con el ×dig colocar ganaba
+        // más que rematarlo uno mismo
+        if (setIn && count === 3 && inShot === 'jump' && prevPlayer && prevPlayer.grade !== 'poor') tightK *= JSET.dig;
         g.digOk = g.rng() < dp.dig * tightK * clamp(1.55 - 0.9 * power, 0.3, 1.25) * clamp(1.21 + 1.3 * g.digMargin, 0.35, 1.7);
         g.digTight = grade === 'perfect' && 1 - t === 0 && !g.demo && !g.autopilot;
       } else { g.digOk = true; g.digTight = false; }
@@ -721,8 +790,9 @@
     g.lastKind = kind; g.lastShot = sub; g.lastTouchT = g.time; g.netSince = false;
     if (kind === 'spike' || (kind === 'free' && sub === 'tip')) {
       g.atkTeam = t; g.atkHow = kind === 'spike' ? 'kill' : 'tip'; g.atkHits = g.rally.hits + 1; g.atkHuman = human; g.atkGrade = grade;
-      // colocador del ataque (point.assist): el 2.º toque del mismo equipo, si el ataque es el 3.º
-      g.atkSet = count === 3 && inKind === 'set' && prevPlayer && prevPlayer !== p && prevPlayer.team === t ? prevPlayer : null;
+      // colocador del ataque (point.assist): el 2.º toque del mismo equipo, si el ataque es el 3.º (o el 1.º si colocó en salto
+      // y el ataque es el 2.º)
+      g.atkSet = setIn && prevPlayer && prevPlayer !== p && prevPlayer.team === t ? prevPlayer : null;
       if (g.stats && kind === 'spike') g.stats.spikes[t]++;
     }
     b.speed = Math.hypot(v[0], v[1], v[2]);
@@ -745,7 +815,7 @@
     }
     emit(g, { type: 'hit', kind: kind, player: p, team: t, touch: count, quality: q, grade: grade, timing: te,
       power: power, shot: sub, dive: shot === 'dive', aim: aim ? [aim[0], aim[1]] : null, target: at ? [at[0], at[1]] : null,
-      x: b.x, y: b.y, z: b.z, speed: b.speed, human: human, dig: isDig, recv: count === 1 && inKind === 'serve' });
+      x: b.x, y: b.y, z: b.z, speed: b.speed, human: human, dig: isDig, recv: count === 1 && inKind === 'serve', jset: jset });
     endSwing(g);
   }
 
@@ -1530,7 +1600,7 @@
     _mv[0] = mx; _mv[1] = my;
     if (g.jobs[0] !== p || p.z > 0 || p.down > 0) return _mv;
     var sd = side(p.team), tx, ty;
-    if (g.touchTeam === 0 && g.touches === 2 && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) { tx = g.pr3.x + sd * 0.35; ty = g.pr3.y; }
+    if (atkPhase(g, 0) && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) { tx = g.pr3.x + sd * 0.35; ty = g.pr3.y; }
     else { tx = g.pr1.x + sd * 0.15; ty = g.pr1.y; }
     var dx = tx - p.x, dy = ty - p.y, dl = Math.hypot(dx, dy), il = Math.hypot(mx, my);
     if (dl > 1.8 || dl < 0.03) return _mv;
@@ -1755,7 +1825,7 @@
       if (hs) {
         // El sacador humano se desplaza a lo ancho de la zona de saque
         stepPlayer(g, sv, dt, 0, my * 0.8); sv.y = clamp(sv.y, -4.3, 4.3);
-        if (g.serveAuth) { if (input.jump) toss(g, sv, true); else if (input.hit) toss(g, sv, false); }
+        if (g.serveAuth) { if (input.jump || input.jset) toss(g, sv, true); else if (input.hit) toss(g, sv, false); }
         if (g.serveState === 'ready' && g.serveAuth && g.opts.serveClock !== false) {
           g.serveClock -= dt;
           if (g.serveClock <= 0) { g.serveClock = 0; fault(g, sv.team, 'serve', 'Falta de saque: 8 segundos', sv, 'delay8'); return; }
@@ -1778,7 +1848,7 @@
         if (g.tossT >= g.jumpAt) jump(g, sv, -sd * 0.55, 0);
       } else stepPlayer(g, sv, dt, 0, 0);
       if (hs) {
-        if (input.jump && !g.serveJump) jump(g, sv, 0, 0); // salto con toss bajo: flotante en salto
+        if ((input.jump || input.jset) && !g.serveJump) jump(g, sv, 0, 0); // salto con toss bajo: flotante en salto
         if (input.hit) startSwing(g, sv, '');
         processSwing(g, sv, aim);
         if (g.mode === 'serve' && g.hitBuf <= 0 && g.swingLive) { endSwing(g); g.swingLock = g.tm.lock; }
@@ -1823,11 +1893,12 @@
    *  - Saque: mover = desplazarse a lo ancho; GOLPEAR = lanzar flotante, SALTAR = lanzar
    *    para saque en salto; luego GOLPEAR en el momento justo (dirección = apuntar).
    *  - Peloteo: GOLPEAR = toque (el juego decide recepción/colocación/remate);
-   *    SALTAR en el suelo = salto (remate/bloqueo); SALTAR en el aire = dejada. */
+   *    SALTAR en el suelo = salto (remate/bloqueo); SALTAR en el aire = dejada.
+   *    jset (COLOCAR): en el suelo = SALTAR; en el aire = colocación en salto (2.º toque, o 1.º con el balón alto en la red). */
   function step(g, dt, input) {
     input = input || NOIN;
     var AI = VB.AI, b = g.ball;
-    g.time += dt; g.blockCD -= dt; g.hitBuf -= dt; g.swingLock -= dt;
+    g.time += dt; g.blockCD -= dt; g.hitBuf -= dt; g.swingLock -= dt; g.jsetQ -= dt;
     var human = !g.demo && !g.autopilot;
     var mv = input.move || NOIN.move, ml = dirLen(mv);
     var mx = mv[0], my = mv[1];
@@ -1882,10 +1953,13 @@
     }
     if (human) {
       hp = g.ctrl;
-      if (input.jump) {
+      if (input.jump || input.jset) { // COLOCAR (jset) en el suelo salta como SALTAR
         if (hp.z === 0 && hp.vz === 0) humanJump(g, hp);
-        else if (hp.z > 0.2 && hp.actionT > 0.12 && Math.hypot(b.x - hp.x, b.y - hp.y) < 3) startSwing(g, hp, 'tip'); // en el aire: dejada
+        else if (input.jset && jsetVoid(g, hp)) { /* bloqueando un remate rival: COLOCAR no hace nada */ }
+        else if (hp.z > 0.2 && hp.actionT > 0.12 && Math.hypot(b.x - hp.x, b.y - hp.y) < 3) startSwing(g, hp, input.jset ? 'jset' : 'tip'); // en el aire: colocación en salto / dejada
+        else if (input.jset && hp.z > 0) g.jsetQ = JSET.buf; // recién despegado: COLOCAR se guarda JSET.buf s (doble pulsación rápida = salta y coloca)
       }
+      if (g.jsetQ > 0 && hp.z > 0.2 && hp.actionT > 0.12 && Math.hypot(b.x - hp.x, b.y - hp.y) < 3 && !jsetVoid(g, hp)) { g.jsetQ = 0; startSwing(g, hp, 'jset'); }
       if (hp.z > 0) stepPlayer(g, hp, dt, 0, 0);
       else { var am = assistMove(g, hp, mx, my); stepPlayer(g, hp, dt, am[0], am[1]); }
       updateAim3(g, hp, dt, mx, my);
@@ -1902,7 +1976,7 @@
    *  (diagonal) y la dirección (mundo) lo mueve a AIM3_SPEED m/s dentro del campo rival. Fuera de ese caso, off. */
   var AIM3_SPEED = 11;
   function updateAim3(g, p, dt, mx, my) {
-    var a = g.aim3, on = g.mode === 'rally' && p.team === 0 && p.z > 0 && g.touchTeam === 0 && g.touches === 2;
+    var a = g.aim3, on = g.mode === 'rally' && p.team === 0 && p.z > 0 && atkPhase(g, 0);
     if (!on) { a.on = false; return; }
     var sd = side(p.team);
     if (!a.on || a.kind !== 'spike') { var d0 = attackTarget(p, null, 6); a.x = d0[0]; a.y = d0[1]; a.on = true; a.kind = 'spike'; }
@@ -1944,7 +2018,7 @@
    *  Devuelve true durante la fase en la que se puede elegir rol (colocación rival, balón aún en su campo). */
   function updateDefense(g) {
     if (g.mode !== 'rally' || g.touchTeam !== 1 || g.lastKind === 'serve') { g.defRole = ''; return false; }
-    var setPhase = g.touches === 2 && g.ball.x < 0 && g.pr3.x < -0.2 && g.pr3.x > -4.2;
+    var setPhase = atkPhase(g, 1) && g.ball.x < 0 && g.pr3.x < -0.2 && g.pr3.x > -4.2;
     if (setPhase && g.ctrlMode === 'one') {
       // modo 'one': sin cambio de control; bloquea el que esté más cerca de la red (el humano o su compañero IA).
       // El reparto se REVISA durante la colocación de la CPU: si el humano sube a la red (o salta cerca de ella), el
@@ -2008,7 +2082,8 @@
       if (g.serveJump) { out.spread = 0.3 + 1.5 * 0.05; out.spreadPoor = 0.3 + 1.5 * 0.55; }
     } else if (g.mode === 'rally') {
       p = g.ctrl;
-      if (!p || p.team !== 0 || g.touchTeam !== 0 || g.touches !== 2 || b.x < -0.2 || b.x > 4.5) return null;
+      if (!p || p.team !== 0 || !atkPhase(g, 0) || b.x < -0.2 || b.x > 4.5) return null;
+      if (g.swingLive && g.swingShot === 'jset' && p.z > 0) return null; // colocando en salto: no hay retícula de ataque
       mode = 2; sd = side(p.team);
       var air = isAttackContact(p, b);
       if (air && g.swingShot === 'tip') {
@@ -2054,7 +2129,7 @@
 
   /** Objetivo útil para el HUD/aro: dónde jugará el balón el equipo humano. */
   function focusPoint(g) {
-    return (g.touchTeam === 0 && g.touches === 2) ? g.pr3 : g.pr1;
+    return atkPhase(g, 0) ? g.pr3 : g.pr1;
   }
 
   VB.Sim = {
@@ -2064,6 +2139,7 @@
     // añadidos (opcionales)
     hitWindow: hitWindow, aimPoint: aimPoint, predictKind: predictKind, canDive: canDive, timingQ: timingQ, gradeOf: gradeOf,
     normDiff: normDiff, DIFF: DIFF, TIMING: TIMING,
+    atkPhase: atkPhase, canJset: canJset, jsetReady: jsetReady, jsetVoid: jsetVoid, JSET: JSET, // colocación en salto
     // internos expuestos para la IA y los tests
     _aimFloat: aimFloat, _floatPath: floatPath,
     _hit: hit, _jump: jump, _dive: dive, _diveMiss: diveMiss, _humanJump: humanJump, _holdPos: holdPos, _holdBase: holdBase, _ritualBall: ritualBall, _ritualStyle: ritualStyle, _stepPlayer: stepPlayer, _emit: emit, _rnd: rnd, _gauss: gauss,

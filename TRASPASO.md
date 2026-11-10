@@ -282,11 +282,22 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **Colocación en salto** (10-nov-2026, pedido de Ferran: «colocar saltando, incluyendo móvil y mando siempre»): en el aire GOLPEAR remata y
+  **COLOCAR** coloca en salto hacia la zona de ataque del compañero (2.º toque, o 1.º con el balón alto en la red: el compañero ataca en el 2.º).
+  Teclado **K**, ratón **clic central**, mando **X** (□), táctil botón **COLOCAR** que solo sale en el aire; en el suelo COLOCAR salta. Más rápida
+  y con menos margen; con mal timing sale pegada a la red o larga. El compañero IA la remata; Manos de seda y asistencias la cuentan. Aviso
+  «Rematar / Colocar», Controles, tutorial y consejos en los 3 dispositivos. La IA no la usa (CPU contra CPU idéntico). Ver notes/sim.md.
+  - **Arreglos tras la revisión** (10-nov-2026): el bloqueador CPU lee la colocación en salto y llega a la red (antes 0 bloqueos y 76 % de
+    puntos en «controlar a los dos»; ahora 54 % frente al 51,5 % de la de suelo, y con mal timing 42-43 %); el bonus de defensa solo vale tras
+    la del 2.º toque (en el 1.º, rematar el balón regalado vuelve a ser igual o mejor); el botón y el aviso COLOCAR solo salen si la
+    colocación va a salir de verdad; COLOCAR ya no «coloca» el remate rival desde el bloqueo; la doble pulsación rápida funciona (búfer de
+    0,2 s); aviso 2×2 más limpio (glifos sin estirar, K verde, sin palabras repetidas en táctil); X/□ ya no hace «volver» en menús.
+    CPU contra CPU idéntico. Pendiente: GOLPEAR en el bloqueo devuelve el remate CPU (anterior), la IA no coloca en salto, móvil y mando reales.
 - **Pulido 10-nov-2026** (pedido de Ferran, en paralelo a la Carrera 2v2):
   - **Mapa de playa — escenario**: sede «Platja Llarga» (Ajustes · Imagen · Escenario, `?map=beach`): cielo con sol y nubes, mar con olas,
     arena con huellas, cinta azul, gradas con toldo y público animado, palmeras, socorrista, barcos. Se construye al elegirla y se libera al
     volver (sin fugas). Las reglas de playa siguen pendientes (To-do).
-  - **Controles PC**: Espacio salta, J o X golpean, clic izquierdo golpea y clic derecho salta sobre la pista (K, alias oculto de saltar).
+  - **Controles PC**: Espacio salta, J o X golpean, clic izquierdo golpea y clic derecho salta sobre la pista (K era alias oculto de saltar; desde la colocación en salto es COLOCAR).
     Todos los textos salen de una tabla (`GLYPH`); el panel Controles dibuja el ratón con el botón en ámbar.
   - **Dorsales 1 y 2** para tu pareja (CPU 3 y 9); escuadrones guardados 7/11 renumerados sin perder progreso; Carrera con dorsal 1 por defecto.
   - **Control simplificado**: «Controlar ‹ a los dos jugadores ›» / «Controlar ‹ un jugador ›» (siempre el n.º 1); la Carrera usa las mismas palabras.

@@ -1214,3 +1214,22 @@ Pruebas: simtest TODO OK; console.sh all sin errores JS; perf «objetivos cumpli
 - Ordinales en castellano: «1.er set», «1.er toque» (antes «1r», abreviatura catalana).
 - Sin cambiar (deliberado): el consejo de arriba se vuelve translúcido (`.thru`) cuando el balón o los jugadores pasan por detrás;
   el clic sobre el marcador cuenta como clic en pantalla (golpea), tal como pidió Ferran («clicar en la pantalla»).
+
+## Colocación en salto — UI y herramientas (10-nov-2026)
+- `GLYPH.keyboard/gamepad/touch` y `GLYPH_PS` añaden `jset` (K / X / Colocar, PS □) y `jsetT`. `.key.tch.s` (verde) en index.html. `M('c')` dibuja
+  la rueda del ratón; `T(t, 's')` el botón COLOCAR.
+- Aviso `#prompt` en el aire con `VB.Sim.jsetReady(g)` (y «Avisos» encendido): rejilla 2×2 `.two` con la tecla de GOLPEAR + «Rematar» (o «Golpear»
+  si el balón no está alto en la red) y la de COLOCAR + «Colocar»; encendido (`go`) dentro de la ventana de golpeo.
+- Consejos: 2.º toque «… o salta y coloca en el aire con K, más rápido» (táctil «Bajo el balón y Golpear · o salta y Colocar»); en el aire
+  «En el aire: J remata · K coloca en salto a tu compañero» (táctil corto). Panel Controles: fila «Colocar en salto» en teclado (K o rueda),
+  mando (X, «B» queda solo para saltar) y táctil. Tutorial paso 3 (colocación) lo explica en los dos modos de control.
+- main.js: `simIn.jset`/`edge.jset` (se consumen como los demás flancos).
+- Arreglos 10-nov-2026 (revisión de dispositivos): en `.two` los glifos ya no se estiran (`min-width:4.7em` solo para `.key.tch`; glifos
+  centrados en su columna); encendido, la tecla de COLOCAR del teclado sale verde (J naranja, K verde). Táctil: «[GOLPEAR] Rematar /
+  [COLOCAR] en salto» (no «COLOCAR Colocar») y sin la línea de consejo «GOLPEAR remata · COLOCAR coloca» mientras se ve el aviso (con
+  «Avisos» apagado sigue saliendo). Panel Controles (teclado y mando): «Colocar en salto (en el aire, 1.er o 2.º toque; en el 3.º, dejada; en
+  el suelo salta)»; en táctil el botón no sale en el 3.er toque. `nav` de mando: X/□ (COLOCAR, que también manda `jump`) ya no hace «volver».
+  badges.js: la cuenta de reserva del colocador (sin `assist`) incluye la colocación en salto del 1.er toque.
+- Herramientas: `tools/jsetdrill.js` (prepara un 2.º toque en el juego real y pulsa SALTAR y, en el aire, COLOCAR con el dispositivo de cada
+  herramienta). drive.js: Espacio + K y clic derecho + clic central; touchplay.js: SALTAR + botón COLOCAR (comprueba que solo sale en el aire,
+  ≥ 44 px y sin pisar joystick/GOLPEAR/SALTAR); padplay.js: B + X. Capturas en tools/out/colocar/.

@@ -6,6 +6,8 @@
  *   - menú con toques: JUGAR → (primer partido) "Jugar ya"; Ajustes y vuelta; nivel con un toque
  *   - el overlay táctil aparece en partido; saque por toque (lanzar + golpear con SACAR en el momento justo)
  *   - el joystick mueve al jugador HACIA el balón; al menos MIN toques humanos de balón con GOLPEAR; SALTAR salta; ⇄ cambia
+ *   - colocación en salto (tools/jsetdrill.js): el botón COLOCAR sale solo en el aire (>= 44 px, sin pisar joystick, GOLPEAR
+ *     ni SALTAR), SALTAR + COLOCAR en el aire coloca; captura en tools/out/colocar/
  *   - pausa con el botón táctil y vuelta con "Seguir" tocado; ajustes desde la pausa; salir al menú
  *   - "Gira el móvil" en vertical (390x844): la sim se para; al volver a horizontal sigue
  * Capturas por paso en tools/out/touchplay/<WxH>/. Sale con 1 si falla algo.
@@ -195,6 +197,29 @@ async function runSize(size) {
     check(jumpsTried === 0 || tp.jumps >= 1, 'SALTAR salta');
     check(tp.swManual >= 1 || (swTried === 0 && swMiss === 0), '⇄ cambia de jugador (' + tp.swManual + ', toques sin cambio ' + swMiss + ')');
     await shot('juego');
+
+    // ================= COLOCACIÓN EN SALTO: SALTAR y, en el aire, el botón contextual COLOCAR =================
+    {
+      const drill = require('./jsetdrill.js');
+      const offBefore = !(await rectOf('#touch .vt-set') || {}).vis;
+      let geo = null;
+      const dj = await drill(evalJs, { jump: () => tap('.vt-jump', BTN, 50), serve: serveTouch,
+        set: async () => { if (!(await tap('#touch .vt-set', BTN, 50))) await sleep(30); },
+        beforeSet: async (st) => {
+          if (geo || !st.setOn) return;
+          geo = { set: await rectOf('#touch .vt-set'), hit: await rectOf('.vt-hit'), jump: await rectOf('.vt-jump'), joyMax: W * 0.62 + R };
+          const d = path.join(__dirname, 'out', 'colocar'); fs.mkdirSync(d, { recursive: true }); await page.shot(path.join(d, 'touchplay-' + size + '.png'));
+        } }, { tries: 5, stopAfter: 2 });
+      await sleep(1200);
+      const offAfter = !(await rectOf('#touch .vt-set') || {}).vis;
+      console.log('  colocación en salto (táctil):', JSON.stringify(dj), geo && geo.set ? 'COLOCAR ' + Math.round(geo.set.l) + ',' + Math.round(geo.set.t) + ' ' + Math.round(geo.set.w) + 'x' + Math.round(geo.set.h) : '');
+      const gap = (a, b) => Math.max(a.l - b.r, b.l - a.r, a.t - b.b, b.t - a.b);
+      check(offBefore && offAfter, 'COLOCAR no se ve en el suelo (antes y después del salto)');
+      check(dj.setOn >= 1 && !!geo, 'COLOCAR aparece en el aire con el balón jugable');
+      check(!!geo && geo.set.w >= 44 && geo.set.h >= 44 && gap(geo.set, geo.hit) >= 8 && gap(geo.set, geo.jump) >= 8 && geo.set.l > geo.joyMax - R,
+        'COLOCAR >= 44 px, sin pisar GOLPEAR, SALTAR ni el joystick' + (geo ? ' (' + Math.round(geo.set.w) + ' px, huecos ' + Math.round(gap(geo.set, geo.hit)) + '/' + Math.round(gap(geo.set, geo.jump)) + ')' : ''));
+      check(dj.jsets >= 1, 'SALTAR y COLOCAR en el aire: colocación en salto (' + dj.jsets + '/' + dj.tries + ')');
+    }
 
     // ================= PAUSA =================
     await waitFor("VB.ctx.state==='playing'", 3000);

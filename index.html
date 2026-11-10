@@ -80,6 +80,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 .key.pa{background:#2fae5b}.key.pb{background:#d8433c}.key.px{background:#3b7be0}.key.py{background:#d9a514}
 .key.tch{border-radius:999px;background:linear-gradient(180deg,#dc4d1d,#c23a12);border-color:rgba(255,255,255,.35);color:#fff;text-shadow:0 1px 1px rgba(110,24,0,.5)}
 .key.tch.j{background:linear-gradient(180deg,#2f6ef0,#2459d8);text-shadow:0 1px 1px rgba(0,24,110,.5)}
+.key.tch.s{background:linear-gradient(180deg,#0f8a65,#0b6e50);text-shadow:0 1px 1px rgba(0,60,40,.5)}
 
 /* ---------- Telón de carga ---------- */
 /* UI-07: el telón usa EXACTAMENTE el logotipo del menú (.logo), con la fuente embebida «VB Marca» (script al principio): se ve
@@ -283,7 +284,10 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 #prompt.two .pr-in,.is-touch #prompt.anch.two .pr-in{display:grid;grid-template-columns:auto auto;align-items:center;justify-items:start;column-gap:.5em;row-gap:4px;height:auto;padding:5px 14px 5px 5px;border-radius:16px}
 .is-touch #prompt.anch.two .pr-in{padding:4px 12px 4px 4px;font-size:14px;border-radius:14px}
 #prompt.two #promptText{display:contents}
-#prompt.two .key{min-width:4.7em;font-style:normal}
+#prompt.two .key{font-style:normal}
+#prompt.two .key.tch{min-width:4.7em}
+#prompt.two .pr-kw,#prompt.two #promptText>.key{justify-self:center}
+#prompt.two.go #promptText .key:not(.pad):not(.tch){background:linear-gradient(180deg,#0f8a65,#0b6e50);border-color:#9ee6c8;border-bottom-color:#0b5e44;color:#fff}
 #promptText .nu{text-transform:none;font-variant-numeric:tabular-nums;letter-spacing:.02em;margin-left:.15em}
 #prompt.urg #promptText{color:#ffb4a8}
 /* el aviso tapa a otro atleta o al balón (ui.js placePrompt ya elige el lado libre): fondo translúcido, texto con sombra */

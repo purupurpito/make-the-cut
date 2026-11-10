@@ -5,7 +5,8 @@
  * Comprueba: conexión (gamepadconnected) · menú con stick (elegir) y A/B (aceptar/volver), stick ←/→ cambia el nivel ·
  *   JUGAR → "Jugar ya" con el stick + A · saque (A lanza, A golpea) · stick hacia el balón · toques con A ·
  *   RB cambia de jugador · Start pausa y reanuda · Select silencia y vuelve a activar el sonido · glifos de mando en el HUD ·
- *   vibración pedida en los toques propios (vibrationActuator.playEffect) · desconexión sin errores.
+ *   vibración pedida en los toques propios (vibrationActuator.playEffect) · colocación en salto (B salta, X coloca en el
+ *   aire; tools/jsetdrill.js) · desconexión sin errores.
  * Capturas en tools/out/padplay/. Sale con 1 si falla algo.
  * Uso: node tools/padplay.js [W=1280] [H=720] [segundos de juego=30] [toques mínimos=3]
  * PADID="<id del mando>" cambia el id del mando falso (UI-22: con un id de la familia PlayStation, p. ej.
@@ -176,6 +177,14 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     const gk = Object.keys(glyphs);
     check(gk.length > 0 && gk.every(k => k === GL_HIT || k === GL_JUMP || k === ''), 'los avisos del HUD usan los glifos del mando ' + (PS ? 'PlayStation ✕ ○' : 'A B') + ' (' + (gk.join(',') || pk) + ')');
     await shot('juego');
+    // ---- colocación en salto: B salta y, en el aire, X (PS: □) coloca
+    { const drill = require('./jsetdrill.js');
+      let shotDone = false;
+      const dj = await drill(evalJs, { jump: () => press('B', 50), set: () => press('X', 50), serve,
+        beforeSet: async (s) => { if (!shotDone && s.two) { shotDone = true; const d = path.join(__dirname, 'out', 'colocar'); fs.mkdirSync(d, { recursive: true }); await page.shot(path.join(d, 'padplay-' + W + 'x' + H + '-aviso.png')); } } }, { tries: 4, stopAfter: 2 });
+      console.log('colocación en salto (mando):', JSON.stringify(dj));
+      check(dj.jsets >= 1, 'B y X en el aire: colocación en salto (' + dj.jsets + '/' + dj.tries + ')');
+      check(dj.prompt >= 1, 'en el aire el aviso ofrece Rematar / Colocar con los glifos del mando'); }
     // ---- Start pausa / reanuda
     await waitFor("VB.ctx.state==='playing'", 3000);
     await press('START');

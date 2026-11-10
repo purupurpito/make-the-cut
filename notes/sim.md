@@ -972,3 +972,62 @@ puntos y de velocidades de cada toque). Lo que sí cambia sin insignias es el SA
 
 ### Integración (9-nov-2026, ui_main)
 - `opts.ref = {p1, p2, p3, d1?, d2?, d3?, chal}` → `g.refErr` (sustituye a `VB.REF_ERR` en `land`/`refErrP(dist, g)` y en la decisión de challenge de la CPU) y `g.chalPerSet` (challenges por set; 0 = sin challenge). `opts.nums = [[n7, n11], [n3, n9]]` → `p.num`. Sin ellos, idéntico (simtest «Carrera: opts.ref y opts.nums»).
+
+## Colocación en salto (10-nov-2026) — sim
+Pedido: «añadir (incluyendo móvil y mando siempre) la posibilidad de colocar saltando. Actualmente si saltas solo puedes rematar.»
+- **Entrada**: `input.jset` (flanco, COLOCAR). En el suelo y en el saque = `jump` (lanzamiento en salto incluido). En el aire, con las mismas
+  condiciones que la dejada (`z > 0,2`, `actionT > 0,12`, balón a < 3 m), abre el gesto con `swingShot 'jset'` (la última pulsación del gesto
+  decide, como siempre). SALTAR en el aire sigue siendo la dejada.
+- **`hit(..., 'jset')`**: vale si `canJset(g, p, count)` = en el aire y 2.º toque, o 1.er toque con `isAttackContact` (balón alto en la red: el
+  compañero ataca en el 2.º). Si no: dejada si es contacto de ataque (3.er toque en la red), si no el toque normal. Mismo instante ideal que el
+  remate (hitWindow no cambia: el aro y el aviso valen igual), ventana `te × JSET.win` (1,2) y atributo `p.ak.wSet`. Trayectoria
+  `launchApex` a (1,5 m de la red, `mate.y` ±3,6, z 3) con cima max(4,1, contacto + 0,75) (1.er toque + 1,15): vuela ~0,8-0,95 s frente a ~1,5 s
+  de la de suelo. Dispersión `(0,12 + 1,3·(1−q))·mul`. Con q < 0,45, prob. `(0,5 − q)·1,5` de colocación mala: mitad pegada a la red (0,25-0,6 m),
+  mitad larga y baja (3,6-5,4 m, cima −0,35). `blockOff` rival ×(1 + 0,6·q). Evento `hit {kind 'set', shot 'jump', jset: true}`; `p.lastAction 'set'`;
+  `stats.jsets`.
+- **Ataque tras ella**: `atkPhase(g, t)` = `touchTeam === t && (touches === 2 || (touches === 1 && lastKind === 'set'))` (un 'set' con 1 toque solo
+  sale de una colocación en salto). Lo usan ai.js `pos` (atacante y bloqueo rival), `hitWindow().attack`, `assistMove`, `updateAim3`, `aimPoint`
+  (null mientras el gesto es 'jset'), `focusPoint`, `updateDefense`; players.js `approachTime` y la retícula de fx.js (con guarda). En ai.js el que
+  acaba de colocar en salto en el 1.er toque ya no corre a «seré el atacante» (cubre). Manos de seda (`setIn`) y `g.atkSet`/`point.assist`
+  cuentan el ataque del 2.º toque tras la colocación en salto del 1.º. Remate tras una colocación en salto buena/perfecta: dado de defensa rival
+  `× JSET.dig` (0,8).
+- **IA**: no la usa (ni compañero ni CPU). Haría falta que la IA colocadora saltara (más azar y otra carrera) y el ataque rápido de la IA ya sale de
+  forma natural; CPU contra CPU queda idéntico (huellas de 6 partidos y simtest completo iguales, salvo los ms). Pendiente si se quiere.
+- **Medido** (escenario de simtest, 120-200 semillas, control 'one', Normal; ganados = punto del equipo humano):
+  colocación de suelo perfecta 53,5 %; en salto perfecta 52,5-58,5 % (sin `dig` era 46-51 %: sin bloqueo rival —el bloqueador no llega a la red en
+  0,8 s— hay dos defensores atrás y no compensaba); en salto con 0,15 s de error 37-40 % y remata el compañero un 78-82 % (100 % con buen timing);
+  1.er toque: perfecta 60-62,5 %, mala 46-49 %; rematarla tú directamente desde el 1.er toque, 49,5 % (perfecto) / 30,5 % (malo).
+- **simtest**: bloque «colocación en salto» (a) ocurre y el compañero remata ≥ 90 %, (b) 1.er toque, (c) mal timing empeora (calidad, remates,
+  puntos), (d) reglas (COLOCAR en el suelo salta, 3.er toque = dejada, 1.er toque lejos = recepción, ventana más justa), (e) Manos de seda y
+  asistencia, (f) CPU contra CPU sin colocaciones en salto, `atkPhase` = 2.º toque y `jset:true` sin efecto en autopilot. Fuzz aparte con COLOCAR.
+
+### Arreglos tras la revisión de jugabilidad (10-nov-2026)
+- **GRAVE, sin bloqueo rival**: tras la colocación en salto el bloqueador CPU seguía al fondo (|x| 2,6-2,9 m al rematar, 0 bloqueos de 300) y en
+  «controlar a los dos» (el modo por defecto) colocar en salto ganaba el 76 % frente al 50 % (Normal). Arreglo en ai.js `pos`: **lectura de la
+  colocación en salto**. Con `S.jsetReady(g)` (humano en el aire en un toque donde puede colocar; nunca en demo/autopilot) y aún sin
+  `atkPhase`, el bloqueador (el del lado de `y` del compañero del humano) va a `sd·0,6` frente a ese compañero sin saltar, y el otro a defender
+  (`sd·5,4`). Si el humano arma un ataque (gesto vivo que no es 'jset': GOLPEAR o dejada), salta a bloquearle a él (`block` true, `y` del
+  humano): sin eso se quedaba plantado en la red y el ataque en 2.º toque pasaba del 35 al 51 %. Tras el toque sigue con ese objetivo
+  (reacción) y luego pasa al bloqueo normal.
+- `JSET.dig` (×0,8) solo tras la colocación en salto del **2.º** toque (`count === 3`): tras la del 1.º (balón regalado en la red) colocar
+  ganaba más que rematarlo uno mismo. `JSET.blk` se queda (con el bloqueador ya en la red apenas cambia nada: 54 / 55 % con blk 0,6 / 0).
+- `jsetReady` predictivo: mira el contacto previsto (`hitWindow`, objeto privado `_jw`): jugador aún > 0,25 m y, en el 1.er toque, balón por
+  encima de `NET_H + 0,1` y |x| < 3,8 (lo que pide `canJset`/`isAttackContact`). Fuzz: con el aviso en pantalla, 1.er toque 27 colocaciones / 7
+  otros toques (antes 53 / 89); 2.º toque 280 / 23 de suelo (antes 273 / 69). Caché por `g.time` (lo llaman la UI, input y ai.js cada paso).
+- `jsetVoid(g, p)` = remate rival en camino (`touchTeam !== p.team && lastKind === 'spike'`): COLOCAR en el aire no abre gesto (se bloquea como
+  si no se hubiera pulsado), `canJset` y `jsetReady` falsos. Antes salían 89 de 280 «colocaciones» del remate CPU desde el bloqueo (36,7 %
+  frente al 23,3 % solo bloqueando); ahora 24,7 %: las que quedan son tras tocar el bloqueo, legales.
+- **Búfer de COLOCAR** (`g.jsetQ`, `JSET.buf` 0,2 s): pulsado en el aire antes de que se acepte el gesto (`z ≤ 0,2` o `actionT ≤ 0,12`) se
+  guarda y se lanza en cuanto se puede. Antes se perdía y el balón daba en el cuerpo (doble pulsación < 0,1 s, deslizar rápido en táctil).
+- **CPU contra CPU idéntico**: huellas de 6 partidos (demo ×3, autopilot, «one» sin entrada, atributos e insignias) iguales; simtest igual salvo
+  las secciones con humano simulado (y los ms).
+- **Medido** (harness de la revisión, 200-300 semillas; ganados = punto del equipo humano; suelo / salto, timing perfecto):
+  «controlar a los dos»: Normal 51,5 / 54,0 %, Difícil 43,5 / 47,5 % (antes 76,5 y 65,5); con ±0,15 s, 42-43,5 % (Normal) y 31,5-36 %
+  (Difícil). Bloqueador en la red y en el aire al rematar: 100 % (antes 0 %); bloqueos en el 45-47 % de los remates (suelo 52-55 %).
+  «Un jugador»: Normal 55,0 / 58,0 %, Difícil 42,5 / 46,5 %; con ±0,15 s, 37-42 % y 24,5-28 %. Ruido gaussiano σ 0,04/0,08/0,12: salto − suelo
+  entre −3,2 y +4,3 (antes hasta +21,5). 1.er toque («un jugador», 300): colocar 52,3 % / rematarlo tú 53,3 % (Normal), 38,7 / 47,0 %
+  (Difícil); antes 60,7 / 52,7. Ataque en 2.º toque (rematar tú la recepción): 33 / 28,5 % (antes 35 / 26).
+- simtest añade (g) bloqueo rival tras la colocación en salto (en la red 100 %, en el aire 100 %, con bloqueo 13,8 %), (h) doble pulsación
+  rápida 30/30 y (i) COLOCAR no coloca el remate rival.
+- Pendiente: GOLPEAR en el bloqueo de un remate CPU lo devuelve como remate (45 % frente al 23 % solo bloqueando; anterior a la colocación en
+  salto). Que la IA use la colocación en salto. El 1.er toque en «controlar a los dos» sin medir (el harness pierde el control).

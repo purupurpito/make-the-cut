@@ -2,7 +2,8 @@
 /* VOLEY 3D — tools/drive.js  (owner: ui_main)
  * Conduce el juego REAL en Chrome headless vía DevTools Protocol (sin dependencias:
  * usa el WebSocket nativo de node >= 22) y simula a un jugador con teclado:
- * menú -> Intro -> saque (silbato, J lanza, J golpea) -> moverse/golpear (J o clic izquierdo; Espacio salta) -> pausa -> seguir.
+ * menú -> Intro -> saque (silbato, J lanza, J golpea) -> moverse/golpear (J o clic izquierdo; Espacio salta) ->
+ * colocación en salto (tools/jsetdrill.js: Espacio y, en el aire, K; luego clic derecho y clic central) -> pausa -> seguir.
  * Captura errores de consola/excepciones y hace capturas en tools/out/drive-*.png.
  * Uso: node tools/drive.js [W=1280] [H=720] [segundos reales=40] [query extra, p. ej. "quality=low"]
  * Con GPU no hace falta nada más; con GL=swiftshader (sin GPU) conviene pasar "quality=low&maxdt=0.25".
@@ -24,13 +25,19 @@ setTimeout(() => { console.error('TIEMPO AGOTADO'); process.exit(2); }, (SECS + 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let send, errors = [], logs = [];
 async function evalJs(expr) { const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true }); return r.result && r.result.value; }
-const KEYS = { ' ': ['Space', 32], Enter: ['Enter', 13], ArrowUp: ['ArrowUp', 38], ArrowDown: ['ArrowDown', 40], ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39], p: ['KeyP', 80], j: ['KeyJ', 74], c: ['KeyC', 67] };
+const KEYS = { ' ': ['Space', 32], Enter: ['Enter', 13], ArrowUp: ['ArrowUp', 38], ArrowDown: ['ArrowDown', 40], ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39], p: ['KeyP', 80], j: ['KeyJ', 74], c: ['KeyC', 67], k: ['KeyK', 75] };
 async function key(type, k) { const [code, kc] = KEYS[k]; await send('Input.dispatchKeyEvent', { type, key: k, code, windowsVirtualKeyCode: kc, text: type === 'keyDown' && k.length === 1 ? k : undefined }); }
 async function press(k, ms) { await key('keyDown', k); await sleep(ms || 60); await key('keyUp', k); }
 // clic izquierdo (golpear) en el centro de la pista, como un ratón de verdad (pointerType 'mouse')
 async function click(ms) {
   const o = { x: Math.round(W / 2), y: Math.round(H * 0.55), button: 'left', clickCount: 1 };
   await send('Input.dispatchMouseEvent', Object.assign({ type: 'mousePressed', buttons: 1 }, o)); await sleep(ms || 40);
+  await send('Input.dispatchMouseEvent', Object.assign({ type: 'mouseReleased', buttons: 0 }, o));
+}
+// botón del ratón (pointerType 'mouse'): 'middle' = COLOCAR (rueda), 'right' = saltar
+async function mclick(button, ms) {
+  const o = { x: Math.round(W / 2), y: Math.round(H * 0.55), button, clickCount: 1 }, bits = button === 'middle' ? 4 : button === 'right' ? 2 : 1;
+  await send('Input.dispatchMouseEvent', Object.assign({ type: 'mousePressed', buttons: bits }, o)); await sleep(ms || 40);
   await send('Input.dispatchMouseEvent', Object.assign({ type: 'mouseReleased', buttons: 0 }, o));
 }
 async function shot(name) { const r = await send('Page.captureScreenshot', { format: 'png' }); const f = path.join(OUT, 'drive-' + name + '.png'); fs.writeFileSync(f, Buffer.from(r.data, 'base64')); console.log('captura', f); }
@@ -98,6 +105,17 @@ const state = () => evalJs('JSON.stringify({s:VB.ctx.state,m:VB.ctx.game&&VB.ctx
     const mclk = await evalJs('VB.Input._debug().stats.mouse.hit');
     check(mclk > 0, 'el clic izquierdo en la pista cuenta como golpear (' + mclk + ' clics)');
     await shot('3-juego');
+    // colocación en salto: teclado (Espacio + K en el aire) y ratón (clic derecho + clic central en el aire)
+    const drill = require('./jsetdrill.js');
+    const shotSet = async () => { const r = await send('Page.captureScreenshot', { format: 'png' }); const d = path.join(OUT, 'colocar'); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'drive-' + W + 'x' + H + '-aviso.png'), Buffer.from(r.data, 'base64')); };
+    let shotDone = false;
+    const dk = await drill(evalJs, { jump: () => press(' ', 30), set: () => press('k', 30), serve, beforeSet: async (s) => { if (!shotDone && s.two) { shotDone = true; await shotSet(); } } }, { tries: 4, stopAfter: 2 });
+    console.log('colocación en salto (teclado):', JSON.stringify(dk));
+    check(dk.jsets >= 1, 'Espacio y K en el aire: colocación en salto (' + dk.jsets + '/' + dk.tries + ', remates del compañero ' + dk.spikes + ')');
+    check(dk.prompt >= 1, 'en el aire el aviso ofrece las dos opciones (Rematar / Colocar)');
+    const dm = await drill(evalJs, { jump: () => mclick('right', 30), set: () => mclick('middle', 30), serve }, { tries: 4, stopAfter: 1 });
+    console.log('colocación en salto (ratón):', JSON.stringify(dm));
+    check(dm.jsets >= 1 && (await evalJs('VB.Input._debug().stats.mouse.jset')) > 0, 'clic derecho y clic central en el aire: colocación en salto (' + dm.jsets + '/' + dm.tries + ')');
     await press('p'); await waitFor("VB.ctx.state==='paused'", 8000);
     st = await state(); check(st.s === 'paused', 'P pausa');
     await shot('4-pausa');

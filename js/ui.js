@@ -398,9 +398,9 @@
   }
   function safe(fn) { try { return fn(); } catch (e) { return false; } }
   var GLYPH = {
-    keyboard: { serve: '<span class="key">J</span>', hit: '<span class="key">J</span>', jump: '<span class="key">Espacio</span>', move: '<span class="key">←</span><span class="key">→</span>', aim: 'las flechas', hitT: 'J', jumpT: 'ESPACIO', sw: '<span class="key">C</span>' },
-    gamepad: { serve: '<span class="key pad pa">A</span>', hit: '<span class="key pad pa">A</span>', jump: '<span class="key pad pb">B</span>', move: '<span class="key">Stick</span>', aim: 'el stick', hitT: 'A', jumpT: 'B', sw: '<span class="key pad py">Y</span>' },
-    touch: { serve: '<span class="key tch">Sacar</span>', hit: '<span class="key tch">Golpear</span>', jump: '<span class="key tch j">Saltar</span>', move: '<span class="key">Joystick</span>', aim: 'el joystick', hitT: 'GOLPEAR', jumpT: 'SALTAR', sw: '<span class="key">⇄</span>' }
+    keyboard: { serve: '<span class="key">J</span>', hit: '<span class="key">J</span>', jump: '<span class="key">Espacio</span>', move: '<span class="key">←</span><span class="key">→</span>', aim: 'las flechas', hitT: 'J', jumpT: 'ESPACIO', sw: '<span class="key">C</span>', jset: '<span class="key">K</span>', jsetT: 'K' },
+    gamepad: { serve: '<span class="key pad pa">A</span>', hit: '<span class="key pad pa">A</span>', jump: '<span class="key pad pb">B</span>', move: '<span class="key">Stick</span>', aim: 'el stick', hitT: 'A', jumpT: 'B', sw: '<span class="key pad py">Y</span>', jset: '<span class="key pad px">X</span>', jsetT: 'X' },
+    touch: { serve: '<span class="key tch">Sacar</span>', hit: '<span class="key tch">Golpear</span>', jump: '<span class="key tch j">Saltar</span>', move: '<span class="key">Joystick</span>', aim: 'el joystick', hitT: 'GOLPEAR', jumpT: 'SALTAR', sw: '<span class="key">⇄</span>', jset: '<span class="key tch s">Colocar</span>', jsetT: 'COLOCAR' }
   };
   // UI-22: mandos de la familia PlayStation (vendor 054c o nombres típicos) → glifos de forma ✕ ○ □ △ en texto neutro (sin logotipos
   // ni colores de marca); el resto, A/B/X/Y. El id se lee de VB.Input.padInfo() como mucho una vez por segundo (padInfo crea un objeto).
@@ -418,7 +418,7 @@
     return padFamV;
   }
   function padSet() { return PADK[padFam() === 'ps' ? 'ps' : 'std']; }
-  /** Glifo HTML de un botón del mando ('a' golpear, 'b'/'x' saltar, 'y' cambiar). */
+  /** Glifo HTML de un botón del mando ('a' golpear, 'b' saltar, 'x' colocar —en el suelo también salta—, 'y' cambiar). */
   var PADN = { '✕': 'equis', '○': 'círculo', '□': 'cuadrado', '△': 'triángulo' };
   function padKey(r) { var k = padSet()[r]; return '<span class="key pad ' + k[0] + '"' + (PADN[k[1]] ? ' aria-label="' + PADN[k[1]] + '"' : '') + '>' + k[1] + '</span>'; }
   /** A5: el humano está en el aire en su 3.er toque (mira libre g.aim3 de sim; de reserva, saltando en su lado). */
@@ -461,7 +461,7 @@
   function G() {
     var d = device();
     if (d === 'gamepad' && padFam() === 'ps') {
-      if (!GLYPH_PS) GLYPH_PS = { serve: padKey('a'), hit: padKey('a'), jump: padKey('b'), move: GLYPH.gamepad.move, aim: GLYPH.gamepad.aim, hitT: '✕', jumpT: '○', sw: padKey('y') };
+      if (!GLYPH_PS) GLYPH_PS = { serve: padKey('a'), hit: padKey('a'), jump: padKey('b'), move: GLYPH.gamepad.move, aim: GLYPH.gamepad.aim, hitT: '✕', jumpT: '○', sw: padKey('y'), jset: padKey('x'), jsetT: '□' };
       return GLYPH_PS;
     }
     return GLYPH[d] || GLYPH.keyboard;
@@ -1660,7 +1660,12 @@
         var reach = w ? (w.reach && wpr < HINT_ON && wpr > HINT_OFF && nt > 0) : (VB.Sim && VB.Sim.canReach ? cr(g, p) : false);
         // en el aire junto a la red con el remate rival aún en su lado: es un bloqueo (automático), no un golpe
         if (reach && g.touchTeam !== 0 && p.z > 0.2 && Math.abs(p.x) < 1.8 && g.ball.x <= 0.3) reach = false;
-        if (reach) { pk = 'hit'; ptext = '¡Golpea ahora!'; pcls = 'hit go'; }
+        // en el aire con colocación en salto posible (sim jsetReady): las dos opciones en el aviso, en rejilla 2×2 (.two):
+        // tecla de GOLPEAR + «Rematar» / tecla de COLOCAR + «Colocar»; con la ventana abierta, encendido (go)
+        var jr = p.z > 0.05 && !!(VB.Sim && VB.Sim.jsetReady && VB.Sim.jsetReady(g));
+        // (táctil: los glifos ya son los nombres de los botones; «COLOCAR Colocar» repetía la palabra → «en salto»)
+        if (jr && help) { pk = 'hit'; ptext = '<span>' + (Math.abs(g.ball.x) < 3.8 && g.ball.z > 2.53 ? 'Rematar' : 'Golpear') + '</span>' + gl.jset + '<span>' + (touchDev ? 'en salto' : 'Colocar') + '</span>'; pcls = reach ? 'hit go two' : 'hit two'; }
+        else if (reach) { pk = 'hit'; ptext = '¡Golpea ahora!'; pcls = 'hit go'; }
         else if (p.z <= 0.01 && g.pr3) {
           var pr = g.pr3;
           if (w && w.attack && w.jumpT > -0.06 && w.jumpT < 0.32) { pk = 'jump'; ptext = '¡Salta!'; pcls = 'jump go'; }
@@ -1670,17 +1675,19 @@
         if (tips && touchDev) { // táctil: una línea corta (el texto completo no cabe entre marcador y pausa)
           // (el contador de toques ya dice recepción/colocación/ataque)
           if (nt === 1) coach = 'Al círculo y ' + gl.hit;
-          else if (nt === 2) coach = 'Bajo el balón y ' + gl.hit;
+          else if (nt === 2) coach = 'Bajo el balón y ' + gl.hit + ' · o salta y ' + gl.jset;
           else if (nt === 3) coach = aim3(g, p) ? 'Apunta con ' + gl.aim : gl.jump + ' y ' + gl.hit + ' arriba';
           else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump : '<b>Defiende</b> el círculo' + (one ? '' : ' · ' + gl.sw + ' bloqueas tú');
         } else if (tips) {
           if (nt === 1) coach = '1.er toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al círculo y pulsa ' + gl.hit;
-          else if (nt === 2) coach = '2.º toque · <b>Colocación</b>: ponte bajo el balón y pulsa ' + gl.hit;
+          else if (nt === 2) coach = '2.º toque · <b>Colocación</b>: ponte bajo el balón y pulsa ' + gl.hit + ' · o salta y coloca en el aire con ' + gl.jset + ', más rápido';
           else if (nt === 3) coach = aim3(g, p) ? '3.er toque · <b>Apunta con ' + gl.aim + '</b> y golpea con ' + gl.hit + ' en lo alto'
             : '3.er toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
           else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? 'La CPU va a atacar: frente al atacante, ' + gl.jump + ' para <b>bloquear</b>'
             : 'La CPU va a atacar: <b>defiende</b> el círculo · tu compañero bloquea' + (one ? '' : ' · ' + gl.sw + ' para bloquear tú');
         }
+        // (táctil con ayudas: el aviso de dos opciones ya lo dice; la línea de arriba repetía lo mismo a la vez)
+        if (tips && jr) coach = touchDev ? (help ? '' : gl.hit + ' remata · ' + gl.jset + ' coloca') : 'En el aire: ' + gl.hit + ' <b>remata</b> · ' + gl.jset + ' <b>coloca en salto</b> a tu compañero';
         // modo uno: el siguiente toque es del compañero IA (no del humano): solo prepararse
         if (tips && one && nt > 0 && g.jobs && g.jobs[0] && g.jobs[0] !== p) coach = nt === 2 ? 'Coloca tu compañero · prepárate para atacar' : 'Juega tu compañero · colócate';
         if (bodyTipT > 0 && tips && !touchDev) coach = 'Pulsa ' + gl.hit + ' antes de que llegue el balón';
@@ -2292,15 +2299,15 @@
   var ctlView = 'keyboard';
   function K(t) { return '<kbd>' + t + '</kbd>'; }
   function S(t) { return '<span class="key">' + t + '</span>'; }
-  /** Botón del ratón como tecla: un ratón dibujado con el botón izquierdo ('l') o derecho ('r') relleno. */
+  /** Botón del ratón como tecla: un ratón dibujado con el botón izquierdo ('l'), derecho ('r') o la rueda ('c') relleno. */
   function M(side) {
-    var b = side === 'r' ? 'M8 2.6V8.4H13.4V8.2A5.4 5.4 0 0 0 8 2.6Z' : 'M8 2.6V8.4H2.6V8.2A5.4 5.4 0 0 1 8 2.6Z';
-    return '<kbd class="ms" aria-label="clic ' + (side === 'r' ? 'derecho' : 'izquierdo') + '"><svg viewBox="0 0 16 22" width="15" height="20" aria-hidden="true" style="display:block">' +
+    var b = side === 'r' ? 'M8 2.6V8.4H13.4V8.2A5.4 5.4 0 0 0 8 2.6Z' : side === 'c' ? 'M6.6 3.6H9.4V7.6H6.6Z' : 'M8 2.6V8.4H2.6V8.2A5.4 5.4 0 0 1 8 2.6Z';
+    return '<kbd class="ms" aria-label="clic ' + (side === 'r' ? 'derecho' : side === 'c' ? 'central (rueda)' : 'izquierdo') + '"><svg viewBox="0 0 16 22" width="15" height="20" aria-hidden="true" style="display:block">' +
       '<rect x="1.4" y="1.4" width="13.2" height="19.2" rx="6.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 1.6V8.4M1.6 8.4H14.4" stroke="currentColor" stroke-width="1.4"/>' +
       // botón pulsado en ámbar (con currentColor no se distinguía el izquierdo del derecho)
-      '<path d="' + b + '" fill="#ffb238" stroke="#ffb238" stroke-width=".6"/></svg></kbd><small aria-hidden="true">' + (side === 'r' ? 'der.' : 'izq.') + '</small>';
+      '<path d="' + b + '" fill="#ffb238" stroke="#ffb238" stroke-width=".6"/></svg></kbd><small aria-hidden="true">' + (side === 'r' ? 'der.' : side === 'c' ? 'rueda' : 'izq.') + '</small>';
   }
-  function T(t, j) { return '<span class="key tch' + (j ? ' j' : '') + '">' + t + '</span>'; }
+  function T(t, j) { return '<span class="key tch' + (j === 's' ? ' s' : j ? ' j' : '') + '">' + t + '</span>'; }
   function ctlRows(dv) {
     var R = ctlRowsAll(dv);
     // modo «Control: Uno»: no hay cambio de jugador (ni tecla, ni botón ⇄)
@@ -2310,13 +2317,13 @@
   function ctlRowsAll(dv) {
     if (dv === 'gamepad') {
       var P = padSet();
-      return [[S('Stick') + S('Cruceta'), 'Moverse'], [padKey('a'), 'Golpear y sacar <small>(stick: diana del saque)</small>'], [padKey('b') + padKey('x'), 'Saltar <small>(en el aire: dejada)</small>'],
+      return [[S('Stick') + S('Cruceta'), 'Moverse'], [padKey('a'), 'Golpear y sacar <small>(stick: diana del saque)</small>'], [padKey('b'), 'Saltar <small>(en el aire: dejada)</small>'], [padKey('x'), 'Colocar en salto <small>(en el aire, 1.er o 2.º toque; en el 3.º, dejada; en el suelo salta)</small>'],
         [padKey('y') + S(P.lb) + S(P.rb), 'Cambiar jugador'], [S(P.start), 'Pausa'], [S(P.select), 'Sonido'], [S(padFam() === 'ps' ? 'L2' : 'LT'), 'Challenge <small>(7 s tras el punto)</small>'], [padKey('a') + padKey('b'), 'Menús: aceptar y volver']];
     }
     if (dv === 'touch') return [[S('Joystick') + '<small>mitad izquierda</small>', 'Moverse'], [T('Golpear'), 'Golpear y sacar <small>(joystick: diana del saque)</small>'],
-      [T('Saltar', 1), 'Saltar <small>(en el aire: dejada)</small>'], [S('⇄'), 'Cambiar jugador'], [S('CHALLENGE'), 'Challenge <small>(7 s tras el punto)</small>'], [S('II'), 'Pausa']];
+      [T('Saltar', 1), 'Saltar <small>(en el aire: dejada)</small>'], [T('Colocar', 's'), 'Colocar en salto <small>(sale en el aire, junto a Saltar)</small>'], [S('⇄'), 'Cambiar jugador'], [S('CHALLENGE'), 'Challenge <small>(7 s tras el punto)</small>'], [S('II'), 'Pausa']];
     return [[K('W') + K('A') + K('S') + K('D') + '<small>o</small>' + K('↑') + K('←') + K('↓') + K('→'), 'Moverse'], [K('J') + K('X') + '<small>o</small>' + M('l'), 'Golpear y sacar <small>(flechas: diana)</small>'],
-      [K('Espacio') + '<small>o</small>' + M('r'), 'Saltar <small>(en el aire: dejada)</small>'], [K('C'), 'Cambiar jugador'], [K('V'), 'Challenge <small>(7 s tras el punto)</small>'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
+      [K('Espacio') + '<small>o</small>' + M('r'), 'Saltar <small>(en el aire: dejada)</small>'], [K('K') + '<small>o</small>' + M('c'), 'Colocar en salto <small>(en el aire, 1.er o 2.º toque; en el 3.º, dejada; en el suelo salta)</small>'], [K('C'), 'Cambiar jugador'], [K('V'), 'Challenge <small>(7 s tras el punto)</small>'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
   }
   function renderCtl() {
     var cur = device(), tabs = el.pnCtl ? el.pnCtl.querySelectorAll('.ctl-tab') : [];
@@ -2583,8 +2590,8 @@
       // modo «Control: Uno»: no hay cambio de jugador; el compañero (IA) coloca tus recepciones
       figOne: { players: [{ t: 0, x: 4.2, y: -2.4, you: 1, lbl: '1' }, { t: 0, x: 1.8, y: 1.2, lbl: '2' }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }] },
       text: function (g) {
-        if (oneMode()) return 'Llevas siempre al mismo jugador: tu compañero (la IA) hace la <b>colocación</b>, un balón alto junto a la red, y tú te preparas para rematar. Si el 1.er toque lo da él, la colocación es tuya: ponte bajo el balón y pulsa ' + g.hit + '.';
-        return 'El control pasa solo a tu compañero (la cámara se desliza hacia él). Ponte bajo el balón y pulsa ' + g.hit + ': es la <b>colocación</b>, un balón alto junto a la red.';
+        if (oneMode()) return 'Llevas siempre al mismo jugador: tu compañero (la IA) hace la <b>colocación</b>, un balón alto junto a la red, y tú te preparas para rematar. Si el 1.er toque lo da él, la colocación es tuya: ponte bajo el balón y pulsa ' + g.hit + ', o salta y pulsa ' + g.jset + ' en el aire (<b>colocación en salto</b>).';
+        return 'El control pasa solo a tu compañero (la cámara se desliza hacia él). Ponte bajo el balón y pulsa ' + g.hit + ': es la <b>colocación</b>, un balón alto junto a la red. Si saltas, en el aire ' + g.hit + ' remata y ' + g.jset + ' hace una <b>colocación en salto</b>: más rápida, con menos margen de timing.';
       },
       rule: 'Cada equipo tiene <b>3 toques</b>. Un jugador no puede tocar dos veces seguidas: eso son <b>dobles</b>.' },
     { step: 'Paso 4 de 6', title: '3.er toque · Remate', fig: {
@@ -2975,7 +2982,7 @@
       if (dy) navMove(-dy);
       if (dx) adjustFocused(dx);
       if (it.hit) { var a = document.activeElement; if (a && a.tagName === 'BUTTON' && !a.closest('[hidden]')) a.click(); else focusLayer(); }
-      if (it.jump) { if (!this.back() && ctx.state === 'paused') ctx.actions.resume(); }
+      if (it.jump && !it.jset) { if (!this.back() && ctx.state === 'paused') ctx.actions.resume(); } // volver: B/○, no X/□ (COLOCAR)
       if (ctx.state === 'menu' && last.navDev !== 'gamepad') { last.navDev = 'gamepad'; last.navh = null; renderMenu(); }
     },
     /** dt = tiempo de juego (0 en pausa/congelado: los banners se quedan). */

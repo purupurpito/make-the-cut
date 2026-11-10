@@ -682,7 +682,8 @@
       var hp = g.ctrl, a3 = g.aim3;
       if (a3 && a3.on) mode = 2; // A1: mira libre de sim (atacante humano en el aire en el 3.er toque), desde el despegue
       else {
-        if (!hp || hp.team !== 0 || hp.z < 0.05 || g.touchTeam !== 0 || g.touches !== 2) return 0;
+        if (!hp || hp.team !== 0 || hp.z < 0.05 || !(VB.Sim.atkPhase ? VB.Sim.atkPhase(g, 0) : g.touchTeam === 0 && g.touches === 2)) return 0;
+        if (g.swingLive && g.swingShot === 'jset') return 0; // colocando en salto: sin retícula de ataque
         if (b.x < -0.2 || b.x > 4.5 || b.z < 1.6) return 0;
         mode = 2;
       }

@@ -35,7 +35,7 @@
   'use strict';
   var VB = window.VB = window.VB || {};
   var ctx = null;
-  var it = { mx: 0, my: 0, hit: false, jump: false, switchPlayer: false, pause: false, mute: false, challenge: false, any: false,
+  var it = { mx: 0, my: 0, hit: false, jump: false, jset: false, switchPlayer: false, pause: false, mute: false, challenge: false, any: false,
              confirm: false, device: 'keyboard', hitHeld: false, jumpHeld: false, padEvent: '' };
 
   // ---------------- Teclado ----------------
@@ -43,12 +43,13 @@
   var CODE = {
     ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
     ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
-    Space: 'jump', KeyJ: 'hit', KeyX: 'hit', KeyK: 'jump', KeyC: 'switch', KeyV: 'challenge',
+    // K = COLOCAR (jset): en el aire, colocación en salto; en el suelo salta como Espacio (poll lo manda también como jump)
+    Space: 'jump', KeyJ: 'hit', KeyX: 'hit', KeyK: 'jset', KeyC: 'switch', KeyV: 'challenge',
     KeyP: 'pause', Escape: 'pause', KeyM: 'mute', Enter: 'confirm', NumpadEnter: 'confirm'
   };
   var KEY = {
     arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down',
-    ' ': 'jump', spacebar: 'jump', j: 'hit', x: 'hit', k: 'jump', c: 'switch', v: 'challenge', p: 'pause', escape: 'pause', esc: 'pause', m: 'mute', enter: 'confirm'
+    ' ': 'jump', spacebar: 'jump', j: 'hit', x: 'hit', k: 'jset', c: 'switch', v: 'challenge', p: 'pause', escape: 'pause', esc: 'pause', m: 'mute', enter: 'confirm'
   };
   var down = {};          // acción -> número de teclas físicas que la mantienen
   var held = {};          // código -> acción (para soltar bien aunque cambie el layout)
@@ -68,7 +69,7 @@
     if (!held[id]) { held[id] = a; down[a] = (down[a] || 0) + 1; stamp[a] = ++seq; if (!e.repeat) edge[a] = true; }
     it.device = 'keyboard';
     // que la página no se desplace con Espacio/flechas mientras se juega
-    if (ctx && (ctx.state === 'playing') && (a === 'hit' || a === 'left' || a === 'right' || a === 'up' || a === 'down' || a === 'jump')) e.preventDefault();
+    if (ctx && (ctx.state === 'playing') && (a === 'hit' || a === 'left' || a === 'right' || a === 'up' || a === 'down' || a === 'jump' || a === 'jset')) e.preventDefault();
   }
   function onKeyUp(e) {
     var id = e.code || e.key, a = held[id];
@@ -111,7 +112,10 @@
     var b = e.buttons | 0, canPress = e.type === 'pointerdown' || (e.type === 'pointermove' && e.button >= 0);
     mouseBtn('Mouse0', 'hit', (b & 1) !== 0, e, canPress);
     mouseBtn('Mouse2', 'jump', (b & 2) !== 0, e, canPress);
+    mouseBtn('Mouse1', 'jset', (b & 4) !== 0, e, canPress);   // botón central (rueda) = COLOCAR
   }
+  // la rueda pulsada no abre el desplazamiento automático (Windows) ni pega en Linux mientras se juega
+  function onAux(e) { if (e.button === 1 && e.pointerType !== 'touch' && mouseOk(e) && e.cancelable) e.preventDefault(); }
   function onCtxMenu(e) {
     // el clic derecho salta: sin menú contextual sobre la pista (sí en los menús y paneles)
     var tg = e.target;
@@ -212,12 +216,14 @@
   // botones (mapeo estándar W3C): 0 A, 1 B, 2 X, 3 Y, 4 LB, 5 RB, 8 Select, 9 Start, 12-15 cruceta
   // challenge (B4): gatillo izquierdo LT/L2 = botón 6 del mapeo estándar (analógico: cuenta por encima de 0,5). En XInput no
   // estándar los gatillos son ejes (sin mapeo fiable): ahí no hay challenge por mando (teclado V o botón táctil).
-  var PB = { hit: [0], jump: [1, 2], sw: [4, 5, 3], pause: [9], mute: [8], chal: [6] };
-  var PB_X = { hit: [0], jump: [1, 2], sw: [3, 4, 5], pause: [7], mute: [6], chal: [] };    // no estándar, <= 11 botones (XInput)
-  var PB_D = { hit: [0], jump: [1, 2], sw: [3, 4, 5], pause: [9], mute: [8], chal: [6] };    // no estándar, DirectInput genérico (L2)
-  var padNow = { hit: false, jump: false, sw: false, pause: false, mute: false, chal: false };
+  // X (PS: cuadrado), antes 2.º botón de saltar, es COLOCAR (jset): en el aire coloca en salto, en el suelo sigue saltando
+  var PB = { hit: [0], jump: [1], jset: [2], sw: [4, 5, 3], pause: [9], mute: [8], chal: [6] };
+  var PB_X = { hit: [0], jump: [1], jset: [2], sw: [3, 4, 5], pause: [7], mute: [6], chal: [] };    // no estándar, <= 11 botones (XInput)
+  var PB_D = { hit: [0], jump: [1], jset: [2], sw: [3, 4, 5], pause: [9], mute: [8], chal: [6] };    // no estándar, DirectInput genérico (L2)
+  var padNow = { hit: false, jump: false, jset: false, sw: false, pause: false, mute: false, chal: false };
   // glifos de texto por acción (los usa la UI en avisos y en el panel de controles)
-  var GLYPHS = { challenge: { keyboard: 'V', gamepad: 'LT', ps: 'L2', touch: 'CHALLENGE' } };
+  var GLYPHS = { challenge: { keyboard: 'V', gamepad: 'LT', ps: 'L2', touch: 'CHALLENGE' },
+                 jset: { keyboard: 'K', mouse: 'clic central', gamepad: 'X', ps: '□', touch: 'COLOCAR' } };
   function anyBtn(p, list) { for (var i = 0; i < list.length; i++) if (padBtn(p, list[i])) return true; return false; }
   // cruceta de un mando no estándar por el eje hat (axes[9]): -1 arriba … +1 arriba-izq. en pasos de 2/7; reposo ~1,29
   var HATX = [0, 1, 1, 1, 0, -1, -1, -1], HATY = [1, 1, 0, -1, -1, -1, 0, 1], hat = { x: 0, y: 0 };
@@ -232,19 +238,20 @@
   }
 
   // ---------------- Táctil ----------------
-  var T = { lastTouch: 0, idle: false, see: [false, false, false], rects: null, rectAt: -1, joy: null, ox: 0, oy: 0, jx: 0, jy: 0, R: 58, hit: false, jump: false, pause: false, sw: false, chal: false,
+  var T = { lastTouch: 0, idle: false, see: [false, false, false], rects: null, rectAt: -1, joy: null, ox: 0, oy: 0, jx: 0, jy: 0, R: 58, hit: false, jump: false, set: false, setOn: false, pause: false, sw: false, chal: false,
             hitDown: false, jumpDown: false, used: false, shown: false, lastLabel: '', lastReady: null, lastServe: null,
             touchN: 0, touchEvT: 0, lastW: 0, lastH: 0, lastRing: -2, lastCue: false, dead: false };
   var el = {};
   // estadística/diagnóstico (VB.Input._debug(): pruebas táctiles y de mando con eventos reales vía DevTools)
-  var stats = { press: { hit: 0, jump: 0, sw: 0, pause: 0 }, out: { hit: 0, jump: 0, sw: 0, pause: 0, confirm: 0, chal: 0 }, mouse: { hit: 0, jump: 0 }, slide: 0, lost: 0, adopt: 0,
+  var stats = { press: { hit: 0, jump: 0, sw: 0, pause: 0, set: 0 }, out: { hit: 0, jump: 0, sw: 0, pause: 0, confirm: 0, chal: 0, jset: 0 }, mouse: { hit: 0, jump: 0, jset: 0 }, slide: 0, lost: 0, adopt: 0,
                 promote: 0, resets: 0, padLost: 0, padPause: 0 };
-  // punteros táctiles activos: pointerId -> { role:'joy'|'hit'|'jump'|'sw'|'pause'|'none', x, y, touch }
-  var ptrs = {}, nPtr = 0, cnt = { hit: 0, jump: 0, sw: 0, pause: 0 };
+  // punteros táctiles activos: pointerId -> { role:'joy'|'hit'|'jump'|'sw'|'pause'|'set'|'none', x, y, touch }
+  var ptrs = {}, nPtr = 0, cnt = { hit: 0, jump: 0, sw: 0, pause: 0, set: 0 };
   // geometría de los botones relativa al overlay (círculos) y zonas seguras (notch) en px
-  var GEO = { hit: { cx: 0, cy: 0, r: 0 }, jump: { cx: 0, cy: 0, r: 0 }, sw: { cx: 0, cy: 0, r: 0 }, pause: { cx: 0, cy: 0, r: 0 }, ok: false, at: -99, w: 0, h: 0, rl: 0, rt: 0, rw: 0, rh: 0 };
+  var GEO = { hit: { cx: 0, cy: 0, r: 0 }, jump: { cx: 0, cy: 0, r: 0 }, sw: { cx: 0, cy: 0, r: 0 }, pause: { cx: 0, cy: 0, r: 0 }, set: { cx: 0, cy: 0, r: 0 }, ok: false, at: -99, w: 0, h: 0, rl: 0, rt: 0, rw: 0, rh: 0 };
   var SA = { t: 0, r: 0, b: 0, l: 0 };
-  var ROLES = ['hit', 'jump', 'sw', 'pause'];
+  // 'set' = COLOCAR: contextual, solo se ve (y solo se puede pulsar) en el aire con el balón jugable (sim jsetReady)
+  var ROLES = ['hit', 'jump', 'sw', 'pause', 'set'];
   var CSS = '' +
     '#touch{position:absolute;inset:0;pointer-events:none;z-index:5;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:opacity .15s ease-out}' +
     // BALÓN MUERTO (entre el punto y el saque siguiente): todo el overlay baja al 25 % y deja ver el plano de reacción;
@@ -304,19 +311,31 @@
     '.vt-sw{width:50px;height:50px;right:calc(14px + env(safe-area-inset-right));bottom:calc(152px + env(safe-area-inset-bottom));' +
       'background:rgba(8,13,22,.78);border-color:rgba(255,255,255,.62);font-size:10px;letter-spacing:.1em}' +
     '.vt-sw svg{width:46%}' +
+    // COLOCAR (colocación en salto): encima de SALTAR, lejos del joystick y de GOLPEAR; aparece al despegar con el balón
+    // jugable y se va al caer (visibility: la geometría medida sigue valiendo). Hueco con SALTAR: 12 px medidos en pantallas
+    // bajas (844×390, 667×375: 56 px CSS por max-height:420); los márgenes de toque (12 y 16 px) se tocan a propósito para
+    // poder deslizar el dedo de SALTAR a COLOCAR
+    '.vt-set{width:64px;height:64px;right:calc(157px + env(safe-area-inset-right));bottom:calc(110px + env(safe-area-inset-bottom));' +
+      'background:radial-gradient(circle at 40% 30%,#3fd6a4,#13946d 55%,#0c7556);font-size:11px;visibility:hidden;opacity:0;transform:scale(.7);' +
+      'transition:opacity .1s,transform .1s,visibility 0s .1s}' +
+    '.vt-set.on{visibility:visible;opacity:1;transform:scale(1);transition:opacity .1s,transform .1s}' +
+    '.vt-set.on.dn{transform:scale(.88)}' +
     '.vt-pause{width:46px;height:46px;right:calc(14px + env(safe-area-inset-right));top:calc(14px + env(safe-area-inset-top));' +
       'background:rgba(8,13,22,.66);border-color:rgba(255,255,255,.3)}' +
     '.vt-pause svg{width:40%}' +
     '@media (max-height:420px){.vt-hit{width:90px;height:90px;bottom:calc(16px + env(safe-area-inset-bottom))}' +
       '.vt-jump{width:68px;height:68px;right:calc(134px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom))}' +
       '.vt-sw{width:44px;height:44px;right:calc(14px + env(safe-area-inset-right));bottom:calc(128px + env(safe-area-inset-bottom))}' +
+      '.vt-set{width:56px;height:56px;right:calc(140px + env(safe-area-inset-right));bottom:calc(92px + env(safe-area-inset-bottom))}' +
       '.vt-pause{width:40px;height:40px}}' +
     '@media (max-height:340px){.vt-hit{width:78px;height:78px}.vt-jump{width:60px;height:60px;right:calc(120px + env(safe-area-inset-right))}' +
-      '.vt-sw{right:calc(12px + env(safe-area-inset-right));bottom:calc(118px + env(safe-area-inset-bottom))}}';
+      '.vt-sw{right:calc(12px + env(safe-area-inset-right));bottom:calc(118px + env(safe-area-inset-bottom))}' +
+      '.vt-set{width:52px;height:52px;right:calc(124px + env(safe-area-inset-right));bottom:calc(84px + env(safe-area-inset-bottom))}}';
 
   var ICON_HIT = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5c-2.6 3-2.6 14 0 17M4.2 9.2c4.2 1.6 11.4 1.6 15.6 0M5.5 17c3.5-2.4 9.5-2.4 13 0"/></svg>';
   var ICON_JUMP = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>';
   var ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="#fff"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>';
+  var ICON_SET = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18c1.5-8 11-11 16-6"/><path d="M15.5 8.5l4.5 3.5-4 3"/></svg>';
   var ICON_SW = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>';
 
   function buildTouch() {
@@ -330,12 +349,13 @@
       '<div class="vt-btn vt-sw" role="button" aria-label="Cambiar de jugador">' + ICON_SW + '</div>' +
       '<div class="vt-btn vt-jump" role="button" aria-label="Saltar">' + ICON_JUMP + '<span>SALTAR</span></div>' +
       '<div class="vt-btn vt-hit" role="button" aria-label="Golpear">' + ICON_HIT + '<span>GOLPEAR</span><i class="vt-ring"></i></div>' +
+      '<div class="vt-btn vt-set" role="button" aria-label="Colocar en salto" aria-hidden="true">' + ICON_SET + '<span>COLOCAR</span></div>' +
       '<div class="vt-btn vt-pause" role="button" aria-label="Pausa">' + ICON_PAUSE + '</div><div class="vt-safe"></div>';
     el.root = rootEl; el.zone = rootEl.querySelector('.vt-zone'); el.joy = rootEl.querySelector('.vt-joy');
     el.base = rootEl.querySelector('.vt-base'); el.knob = rootEl.querySelector('.vt-knob');
     el.hit = rootEl.querySelector('.vt-hit'); el.hitLabel = el.hit.querySelector('span'); el.ring = el.hit.querySelector('.vt-ring');
     el.jump = rootEl.querySelector('.vt-jump'); el.pause = rootEl.querySelector('.vt-pause'); el.sw = rootEl.querySelector('.vt-sw');
-    el.safe = rootEl.querySelector('.vt-safe');
+    el.safe = rootEl.querySelector('.vt-safe'); el.set = rootEl.querySelector('.vt-set');
 
     // GESTOR ÚNICO DE PUNTEROS sobre todo el overlay (no un listener por botón): cada dedo tiene un papel.
     // - Dedo que nace sobre un botón (círculo + margen de 16 px en GOLPEAR/SALTAR para dedos gordos) -> ese botón.
@@ -375,9 +395,9 @@
   function hitTest(x, y) {
     if (!GEO.ok || GEO.w !== (ctx.width | 0) || GEO.h !== (ctx.height | 0)) measure();
     var best = null, bd = 1e9;
-    for (var i = 0; i < 4; i++) {
-      var k = ROLES[i], g = GEO[k]; if (g.r <= 0) continue;
-      var d = Math.hypot(x - g.cx, y - g.cy) - g.r, slop = (k === 'hit' || k === 'jump') ? 16 : 8;
+    for (var i = 0; i < ROLES.length; i++) {
+      var k = ROLES[i], g = GEO[k]; if (g.r <= 0 || (k === 'set' && !T.setOn)) continue;
+      var d = Math.hypot(x - g.cx, y - g.cy) - g.r, slop = (k === 'hit' || k === 'jump') ? 16 : k === 'set' ? 12 : 8;
       if (d < slop && d < bd) { bd = d; best = k; }
     }
     return best;
@@ -457,9 +477,9 @@
     if (e.cancelable) e.preventDefault();
     var q = localXY(e); p.x = q.x; p.y = q.y; T.lastTouch = nowS();
     if (p.role === 'joy') { joyMove(q.x, q.y); return; }
-    if (p.role === 'hit' || p.role === 'jump' || p.role === 'none') {
+    if (p.role === 'hit' || p.role === 'jump' || p.role === 'set' || p.role === 'none') {
       var r2 = hitTest(q.x, q.y);
-      if ((r2 === 'hit' || r2 === 'jump') && r2 !== p.role) {
+      if ((r2 === 'hit' || r2 === 'jump' || r2 === 'set') && r2 !== p.role) {   // (deslizar de SALTAR a COLOCAR: salta y coloca)
         if (p.role !== 'none') release(p.role);
         p.role = r2; press(r2); stats.slide++;
       }
@@ -494,7 +514,7 @@
     readSafe();   // (el notch cambia con el giro y algunos navegadores lo actualizan sin resize)
     var rr = el.root.getBoundingClientRect();
     T.rects = T.rects || [{}, {}, {}];
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < ROLES.length; i++) {
       var k = ROLES[i], b = el[k].getBoundingClientRect(), g = GEO[k];
       g.cx = (b.left + b.right) / 2 - rr.left; g.cy = (b.top + b.bottom) / 2 - rr.top; g.r = Math.min(b.width, b.height) / 2;
       if (i < 3) { var o = T.rects[i]; o.l = b.left - rr.left - 6; o.r = b.right - rr.left + 6; o.t = b.top - rr.top - 6; o.b = b.bottom - rr.top + 6; }
@@ -565,7 +585,7 @@
   function resetTouch() {
     for (var k in ptrs) delete ptrs[k];
     nPtr = 0; T.joy = null; T.jx = T.jy = 0; T.hitDown = T.jumpDown = false; stats.resets++;
-    for (var i = 0; i < 4; i++) { cnt[ROLES[i]] = 0; if (el[ROLES[i]]) el[ROLES[i]].classList.remove('dn'); }
+    for (var i = 0; i < ROLES.length; i++) { cnt[ROLES[i]] = 0; if (el[ROLES[i]]) el[ROLES[i]].classList.remove('dn'); }
     placeJoy();
   }
   /** Dedos "perdidos": el sistema se comió el pointerup (gesto del SO, notificación, iOS al cambiar de app…).
@@ -637,6 +657,10 @@
     var swOff = g.mode === 'serve';
     var key = (jumpOff ? 1 : 0) + (swOff ? 2 : 0);
     if (key !== T.lastServe) { T.lastServe = key; el.jump.classList.toggle('off', jumpOff); el.sw.classList.toggle('off', swOff); }
+    // COLOCAR: solo en el aire con el balón jugable para una colocación en salto (sim jsetReady); al caer, fuera
+    var setOn = false;
+    if (S && S.jsetReady) { try { setOn = !!S.jsetReady(g); } catch (_) { setOn = false; } }
+    if (setOn !== T.setOn) { T.setOn = setOn; el.set.classList.toggle('on', setOn); el.set.setAttribute('aria-hidden', setOn ? 'false' : 'true'); }
   }
 
   // ---------------- Vibración ----------------
@@ -712,7 +736,9 @@
       window.addEventListener('pointerdown', onMouse, { passive: false });
       window.addEventListener('pointermove', onMouse, { passive: false });
       window.addEventListener('pointerup', onMouse);
-      window.addEventListener('pointercancel', function (e) { if (e.pointerType === 'mouse') { mouseBtn('Mouse0', 'hit', false, e, false); mouseBtn('Mouse2', 'jump', false, e, false); } });
+      window.addEventListener('pointercancel', function (e) { if (e.pointerType === 'mouse') { mouseBtn('Mouse0', 'hit', false, e, false); mouseBtn('Mouse2', 'jump', false, e, false); mouseBtn('Mouse1', 'jset', false, e, false); } });
+      window.addEventListener('mousedown', onAux, { passive: false });
+      window.addEventListener('auxclick', onAux, { passive: false });
       window.addEventListener('contextmenu', onCtxMenu);
       window.addEventListener('blur', function () { clearKeys(); resetTouch(); });
       document.addEventListener('visibilitychange', function () { if (document.hidden) { clearKeys(); resetTouch(); } });
@@ -738,7 +764,7 @@
       buildTouch();
     },
     /** Limpia pulsaciones al cambiar de estado (p. ej. el Intro/Espacio que pulsa "Jugar" no saca ni salta). */
-    onState: function () { for (var ek in edge) edge[ek] = false; T.hit = T.jump = T.pause = T.sw = false; T.chal = false; },
+    onState: function () { for (var ek in edge) edge[ek] = false; T.hit = T.jump = T.set = T.pause = T.sw = false; T.chal = false; },
     /** OPCIONAL (B4/B7): glifo de texto de una acción para el dispositivo dado ('keyboard'|'gamepad'|'touch'; por defecto el
      *  activo). fam = 'ps' para mandos PlayStation. Hoy solo 'challenge': «V» / «LT» (PS: «L2») / «CHALLENGE». '' si no hay. */
     glyph: function (action, dev, fam) {
@@ -777,7 +803,7 @@
                device: it.device, mx: it.mx, my: it.my, safe: { t: SA.t, r: SA.r, b: SA.b, l: SA.l },
                pad: { idx: pad.idx, known: pad.known, id: pad.id, mapping: pad.mapping,
                       rest: pad.idx >= 0 && pad.rest[pad.idx] ? { x: pad.rest[pad.idx].x, y: pad.rest[pad.idx].y } : null },
-               geo: JSON.parse(JSON.stringify({ hit: GEO.hit, jump: GEO.jump, sw: GEO.sw, pause: GEO.pause })), stats: JSON.parse(JSON.stringify(stats)),
+               geo: JSON.parse(JSON.stringify({ hit: GEO.hit, jump: GEO.jump, sw: GEO.sw, pause: GEO.pause, set: GEO.set })), stats: JSON.parse(JSON.stringify(stats)), setOn: T.setOn,
                sigs: sigLog.slice(), dead: T.dead };
     },
     /** Devuelve las intenciones del frame (objeto reutilizado). */
@@ -785,9 +811,9 @@
       // --- teclado
       var mx = axis('left', 'right'), my = axis('down', 'up');
       if (mx && my) { mx *= 0.7071; my *= 0.7071; }
-      var hit = !!edge.hit, jump = !!edge.jump, sw = !!edge['switch'], pause = !!edge.pause, mute = !!edge.mute, confirm = !!edge.confirm;
+      var hit = !!edge.hit, jump = !!edge.jump, jset = !!edge.jset, sw = !!edge['switch'], pause = !!edge.pause, mute = !!edge.mute, confirm = !!edge.confirm;
       var chal = !!edge.challenge || T.chal; T.chal = false;
-      var hitHeld = isDown('hit'), jumpHeld = isDown('jump');
+      var hitHeld = isDown('hit'), jumpHeld = isDown('jump') || isDown('jset');
       for (var ek in edge) edge[ek] = false; // sin asignar un objeto nuevo por frame
       // --- táctil (y de pantalla hacia abajo => my negativo)
       if (nPtr > 0) sweepLost();
@@ -799,9 +825,9 @@
           mx = T.jx / jl * m; my = -T.jy / jl * m;
         }
       }
-      hit = hit || T.hit; jump = jump || T.jump; pause = pause || T.pause; sw = sw || T.sw;
+      hit = hit || T.hit; jump = jump || T.jump; jset = jset || T.set; pause = pause || T.pause; sw = sw || T.sw;
       hitHeld = hitHeld || T.hitDown; jumpHeld = jumpHeld || T.jumpDown;
-      T.hit = T.jump = T.pause = T.sw = false;
+      T.hit = T.jump = T.set = T.pause = T.sw = false;
       // --- mando
       var p = pollPad();
       if (p) {
@@ -829,20 +855,24 @@
         if (std || nb >= 16) { dx = (padBtn(p, 15) ? 1 : 0) - (padBtn(p, 14) ? 1 : 0); dy = (padBtn(p, 12) ? 1 : 0) - (padBtn(p, 13) ? 1 : 0); }
         if (!std && !dx && !dy && readHat(p, pad.idx)) { dx = hat.x; dy = hat.y; }
         if (dx || dy) { var dl = Math.hypot(dx, dy); mx = dx / dl; my = dy / dl; used = true; }
-        padNow.hit = anyBtn(p, map.hit); padNow.jump = anyBtn(p, map.jump); padNow.sw = anyBtn(p, map.sw);
+        padNow.hit = anyBtn(p, map.hit); padNow.jump = anyBtn(p, map.jump); padNow.jset = anyBtn(p, map.jset); padNow.sw = anyBtn(p, map.sw);
         padNow.pause = anyBtn(p, map.pause); padNow.mute = anyBtn(p, map.mute); padNow.chal = anyBtn(p, map.chal);
-        var pv = pad.prev[pad.idx] || (pad.prev[pad.idx] = [false, false, false, false, false, false]);   // (una vez por mando)
+        var pv = pad.prev[pad.idx] || (pad.prev[pad.idx] = [false, false, false, false, false, false, false]);   // (una vez por mando)
         if (padNow.hit && !pv[0]) hit = true; if (padNow.jump && !pv[1]) jump = true; if (padNow.sw && !pv[2]) sw = true;
         if (padNow.pause && !pv[3]) pause = true; if (padNow.mute && !pv[4]) mute = true; if (padNow.chal && !pv[5]) chal = true;
+        if (padNow.jset && !pv[6]) jset = true;
         if ((padNow.hit && !pv[0]) || (padNow.pause && !pv[3])) confirm = true;
-        if (padNow.hit || padNow.jump || padNow.sw || padNow.pause || padNow.mute || padNow.chal) used = true;
-        hitHeld = hitHeld || padNow.hit; jumpHeld = jumpHeld || padNow.jump;
-        pv[0] = padNow.hit; pv[1] = padNow.jump; pv[2] = padNow.sw; pv[3] = padNow.pause; pv[4] = padNow.mute; pv[5] = padNow.chal;
+        if (padNow.hit || padNow.jump || padNow.jset || padNow.sw || padNow.pause || padNow.mute || padNow.chal) used = true;
+        hitHeld = hitHeld || padNow.hit; jumpHeld = jumpHeld || padNow.jump || padNow.jset;
+        pv[0] = padNow.hit; pv[1] = padNow.jump; pv[2] = padNow.sw; pv[3] = padNow.pause; pv[4] = padNow.mute; pv[5] = padNow.chal; pv[6] = padNow.jset;
         if (used) it.device = 'gamepad';
       }
       // mando activo desconectado en pleno partido: pausa (una vez; si ya está en pausa, nada)
       if (pad.pendPause) { pad.pendPause = false; if (ctx.state === 'playing' && !pause) { pause = true; stats.padPause++; } }
       var l = Math.hypot(mx, my); if (l > 1) { mx /= l; my /= l; }
+      // COLOCAR también es SALTAR (en el suelo salta; menús, saltar la presentación…): la sim distingue con it.jset en el aire
+      if (jset) { jump = true; stats.out.jset++; }
+      it.jset = jset;
       it.mx = mx; it.my = my; it.hit = hit; it.jump = jump; it.switchPlayer = sw; it.pause = pause; it.mute = mute;
       it.confirm = confirm; it.hitHeld = hitHeld; it.jumpHeld = jumpHeld; it.challenge = chal;
       it.padEvent = pad.event; pad.event = '';

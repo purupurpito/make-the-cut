@@ -1932,7 +1932,7 @@
     var p = r.p, tJ = NaN, warp = false;
     if (!air && p.down <= 0) {
       if (tossing && r.tossJump && g.jumpAt > 0 && g.serveState === 'toss') tJ = tm - g.tossT + g.jumpAt;
-      else if (g.mode === 'rally' && g.jobs && g.jobs[p.team] === p && g.touchTeam === p.team && g.touches === 2 && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) {
+      else if (g.mode === 'rally' && g.jobs && g.jobs[p.team] === p && (VB.Sim.atkPhase ? VB.Sim.atkPhase(g, p.team) : g.touchTeam === p.team && g.touches === 2) && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) { // también tras una colocación en salto en el 1.er toque
         var human = !g.demo && !g.autopilot && p.team === 0 && p === g.ctrl;
         if (human) { if (hw && hw.attack && hw.jumpT === hw.jumpT) tJ = tm + hw.jumpT; }
         else if (p.aiTeT === g.lastTouchT) { tJ = tm + g.pr3.t - 0.47 - (p.aiJt || 0); warp = true; }

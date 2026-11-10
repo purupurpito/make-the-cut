@@ -510,9 +510,9 @@
   })();
 
   // ---------- Entrada -> mundo ----------
-  var simIn = { move: [0, 0], hit: false, jump: false, switchPlayer: false };
+  var simIn = { move: [0, 0], hit: false, jump: false, jset: false, switchPlayer: false }; // jset: COLOCAR (en el aire, colocación en salto)
   ctx.simMove = simIn.move; // entrada de MUNDO del frame (FX la lee para la retícula de apuntado en vivo)
-  var edge = { hit: false, jump: false, switchPlayer: false };
+  var edge = { hit: false, jump: false, jset: false, switchPlayer: false };
   function buildInput(it) {
     // it: intenciones crudas de VB.Input.poll (pantalla: mx derecha+, my hacia la red+)
     var bs = VB.CameraRig && VB.CameraRig.getBasis ? VB.CameraRig.getBasis() : null;
@@ -526,7 +526,7 @@
       simIn.move[0] = rX * mx + fX * my; simIn.move[1] = rY * mx + fY * my;
     } else if (bs) { simIn.move[0] = bs.rx * mx + bs.fx * my; simIn.move[1] = bs.ry * mx + bs.fy * my; }
     else { simIn.move[0] = -my; simIn.move[1] = mx; } // por defecto: cámara detrás mirando a -x
-    if (it) { edge.hit = edge.hit || !!it.hit; edge.jump = edge.jump || !!it.jump; edge.switchPlayer = edge.switchPlayer || !!it.switchPlayer; }
+    if (it) { edge.hit = edge.hit || !!it.hit; edge.jump = edge.jump || !!it.jump; edge.jset = edge.jset || !!it.jset; edge.switchPlayer = edge.switchPlayer || !!it.switchPlayer; }
   }
 
   // ---------- Bucle ----------
@@ -557,7 +557,7 @@
       if (ctx.state !== 'playing') { if (ctx.state !== 'paused') introEnd(true); }
       else if (ctx.introSkipReq || (it && (it.hit || it.jump || it.switchPlayer || it.pause || it.confirm))) {
         introEnd(true);
-        if (it) { it.hit = it.jump = it.switchPlayer = it.pause = it.confirm = false; }   // el botón que salta no golpea ni pausa
+        if (it) { it.hit = it.jump = it.jset = it.switchPlayer = it.pause = it.confirm = false; }   // el botón que salta no golpea ni pausa
       }
     }
     if (it) {
@@ -575,7 +575,7 @@
         var st0 = ctx.state;
         if (VB.CareerUI && VB.CareerUI.isOpen && VB.CareerUI.isOpen()) call('CareerUI', 'nav', it, realDt);
         else call('UI', 'nav', it, realDt);
-        if (ctx.state !== st0) { it.hit = it.jump = it.switchPlayer = false; } // el botón que acepta un menú no golpea
+        if (ctx.state !== st0) { it.hit = it.jump = it.jset = it.switchPlayer = false; } // el botón que acepta un menú no golpea
       }
     }
     if (startWait && !call('UI', 'bootBusy')) { var sw = startWait; startWait = null; ctx.actions.startMatch(sw); }
@@ -596,7 +596,7 @@
       for (var ih = 0; ih < pendingEvents.length; ih++) frameEvents.push(pendingEvents[ih]);
       pendingEvents.length = 0;
     }
-    if (running && intro.left > 0) { gdt = realDt; edge.hit = edge.jump = edge.switchPlayer = false; acc = 0; }
+    if (running && intro.left > 0) { gdt = realDt; edge.hit = edge.jump = edge.jset = edge.switchPlayer = false; acc = 0; }
     else if (running) {
       buildInput(ctx.state === 'playing' ? it : null);
       gdt = realDt * ctx.timeScale;
@@ -606,12 +606,12 @@
       // (UI-11: cualquier botón —golpear, saltar, cambiar o aceptar— también en la pausa del punto que gana el partido)
       if (ctx.state === 'playing' && g && (g.mode === 'point' || g.mode === 'over') && (edge.hit || edge.jump || edge.switchPlayer || (it && it.confirm)) && Sim.skipHold) {
         var skipped = false; try { skipped = Sim.skipHold(g); } catch (e) { reportError('Sim.skipHold', e); }
-        if (skipped) { edge.hit = edge.jump = edge.switchPlayer = false; call('UI', 'onHoldSkip', g); }
+        if (skipped) { edge.hit = edge.jump = edge.jset = edge.switchPlayer = false; call('UI', 'onHoldSkip', g); }
       }
       var n = 0;
       while (acc >= STEP && n < MAX_STEPS) {
-        simIn.hit = edge.hit; simIn.jump = edge.jump; simIn.switchPlayer = edge.switchPlayer;
-        edge.hit = edge.jump = edge.switchPlayer = false; // los flancos solo en el primer subpaso
+        simIn.hit = edge.hit; simIn.jump = edge.jump; simIn.jset = edge.jset; simIn.switchPlayer = edge.switchPlayer;
+        edge.hit = edge.jump = edge.jset = edge.switchPlayer = false; // los flancos solo en el primer subpaso
         try { Sim.step(g, STEP, simIn); } catch (e) { reportError('Sim.step', e); }
         acc -= STEP; n++;
       }
@@ -619,7 +619,7 @@
       Sim.drainEvents(g, frameEvents);
       if (ctx.state === 'playing' && g.finished && frameEvents.some(isGameOver)) setState('over');
       if (g.career && !g.demo && frameEvents.length) careerEvents(g, frameEvents);
-    } else { edge.hit = edge.jump = edge.switchPlayer = false; acc = 0; }
+    } else { edge.hit = edge.jump = edge.jset = edge.switchPlayer = false; acc = 0; }
     ctx.gameDt = gdt;
 
     var ev = frameEvents.length ? frameEvents : EMPTY;

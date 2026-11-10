@@ -123,7 +123,8 @@
   function pos(g, p) {
     var t = p.team, sd = side(t), mate = other(g, p), job = g.jobs[t], idx = p.idx, mine = g.touchTeam === t;
     if (job === p) {
-      if (mine && g.touches === 2 && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) return setTg(g.pr3.x + sd * 0.35, g.pr3.y, true, false);
+      // a atacar: tras el 2.º toque propio o tras una colocación en salto en el 1.º (S.atkPhase)
+      if (S.atkPhase(g, t) && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) return setTg(g.pr3.x + sd * 0.35, g.pr3.y, true, false);
       return setTg(g.pr1.x + sd * 0.2, g.pr1.y);
     }
     if (job === mate) {
@@ -141,11 +142,22 @@
         return setTg(sd * 2, clamp(p.y, -1.5, 1.5)); // seré el colocador
       }
       if (g.touches === 0) return setTg(sd * 2, clamp(p.y, -1.5, 1.5)); // tras tocar nuestro bloqueo: colocador
-      if (g.touches === 1) return setTg(sd * 4.3, clamp(p.y, -3, 3));            // seré el atacante
+      if (g.touches === 1 && g.lastKind !== 'set') return setTg(sd * 4.3, clamp(p.y, -3, 3)); // seré el atacante (no tras mi colocación en salto)
       return setTg(sd * 5.5, idx ? 2 : -2);
     }
     var opp = 1 - t;
-    if (g.touchTeam === opp && g.touches === 2 && g.pr3.x * side(opp) > 0) { // el rival va a atacar
+    // lectura de la colocación en salto: el humano rival salta junto a la red en un toque donde puede colocar en salto
+    // (S.jsetReady; nunca en CPU contra CPU). El bloqueador no espera a la colocación: se va ya a la red frente a su atacante
+    // (sin saltar mientras no se vea el gesto) y el otro a defender. Si el humano arma un ataque (GOLPEAR o dejada en el aire)
+    // salta a bloquearle a él: si no, quedaba plantado en la red sin bloquear ni defender y el ataque en 2.º toque ganaba
+    // más (35 → 51 % en Normal). Sin esta lectura, tras una colocación en salto (0,8 s hasta el remate) el bloqueo no
+    // llegaba nunca. Tras el toque sigue con este objetivo (reacción) y luego pasa al bloqueo normal de abajo.
+    if (opp === 0 && !S.atkPhase(g, opp) && S.jsetReady(g)) {
+      var ay0 = other(g, g.ctrl).y, bl0 = ay0 < 0 ? g.teams[t][0] : g.teams[t][1], atk0 = g.swingLive && g.swingShot !== 'jset';
+      if (p === bl0) return setTg(sd * 0.6, clamp(atk0 ? g.ctrl.y : ay0, -4.2, 4.2), false, atk0);
+      return setTg(sd * 5.4, clamp(-ay0 * 0.3, -2, 2));
+    }
+    if (S.atkPhase(g, opp) && g.pr3.x * side(opp) > 0) { // el rival va a atacar
       var bl = g.pr3.y < 0 ? g.teams[t][0] : g.teams[t][1];
       // con humano: el rol lo fija la sim al colocar la CPU (g.defRole: 'dig' = el humano defiende y bloquea su
       // compañero IA; 'block' = bloquea el humano). Antes de eso, el compañero IA bloquea si el humano está atrás.
