@@ -338,29 +338,38 @@
   var casters = []; // mallas del pabellón que proyectan sombra (en calidad baja solo la proyectan jugadores y balón)
   var net = null, netRip = { a: 0, y: 0, z: 0, t: 9, dir: 1 };
   var NET_W = 10, NET_HH = 1, NSX = 50, NSY = 6;
-  /** beach: malla de cuerda amarillenta (red de playa, decisión de Ferran, 10-nov-2026); si no, la negra del pabellón. */
+  /** beach: red de playa estilo AVP (decisión de Ferran, 10-nov-2026): la cuerda sigue negra y las BANDAS (arriba, abajo y
+   *  laterales) van amarillas. En las dos sedes, «MTC» (Make the Cut) en teal en el centro de la malla. */
   function netTexture(beach) {
     var Wd = ctx.isMobile ? 1024 : 2048, Ht = Wd / 8, cv = canvas(Wd, Ht), g = cv.getContext('2d');
     var ppm = Wd / NET_W, cell = 0.1 * ppm, top = 0.07 * ppm, bot = 0.05 * ppm;
     g.clearRect(0, 0, Wd, Ht);
-    g.strokeStyle = beach ? 'rgba(232,196,72,0.98)' : 'rgba(14,16,20,0.96)'; g.lineWidth = Math.max(1.5, ppm * (beach ? 0.013 : 0.011));
+    g.strokeStyle = 'rgba(14,16,20,0.96)'; g.lineWidth = Math.max(1.5, ppm * 0.011);
     for (var x = cell / 2; x <= Wd; x += cell) { g.beginPath(); g.moveTo(x, top); g.lineTo(x, Ht - bot); g.stroke(); }
     for (var y = top + cell; y < Ht - bot; y += cell) { g.beginPath(); g.moveTo(0, y); g.lineTo(Wd, y); g.stroke(); }
     // nudos
-    g.fillStyle = beach ? 'rgba(176,138,34,1)' : 'rgba(10,10,12,1)';
+    g.fillStyle = 'rgba(10,10,12,1)';
     for (var nx = cell / 2; nx <= Wd; nx += cell) for (var ny = top + cell; ny < Ht - bot; ny += cell) g.fillRect(nx - 1.5, ny - 1.5, 3, 3);
-    // bandas superior e inferior (lona blanca con costuras)
-    g.fillStyle = '#f3f0e8'; g.fillRect(0, 0, Wd, top); g.fillRect(0, Ht - bot, Wd, bot);
+    // «MTC» tejido en el centro de la malla, en teal (letras gruesas; la trama negra se ve por encima)
+    var mh = Ht - top - bot;
+    g.save(); g.fillStyle = 'rgba(28,196,180,0.92)'; g.font = '900 ' + Math.round(mh * 0.62) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('MTC', Wd * 0.5, top + mh * 0.52); g.restore();
+    g.strokeStyle = 'rgba(14,16,20,0.96)'; g.lineWidth = Math.max(1.5, ppm * 0.011);
+    for (var x2 = cell / 2; x2 <= Wd; x2 += cell) { g.beginPath(); g.moveTo(x2, top); g.lineTo(x2, Ht - bot); g.stroke(); }
+    for (var y2 = top + cell; y2 < Ht - bot; y2 += cell) { g.beginPath(); g.moveTo(0, y2); g.lineTo(Wd, y2); g.stroke(); }
+    // bandas superior e inferior (lona blanca con costuras; amarilla en la playa)
+    var bandCol = beach ? '#f7c531' : '#f3f0e8';
+    g.fillStyle = bandCol; g.fillRect(0, 0, Wd, top); g.fillRect(0, Ht - bot, Wd, bot);
     g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, top - 2, Wd, 2); g.fillRect(0, Ht - bot, Wd, 2);
     g.fillStyle = 'rgba(0,0,0,0.10)'; for (var sx = 0; sx < Wd; sx += 12) { g.fillRect(sx, 3, 5, 1); g.fillRect(sx, Ht - bot + bot * 0.5, 5, 1); }
     // marca del fabricante (ficticia) en la banda superior
-    g.fillStyle = 'rgba(20,40,70,0.55)'; g.font = '800 ' + Math.round(top * 0.78) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = beach ? 'rgba(60,40,10,0.6)' : 'rgba(20,40,70,0.55)'; g.font = '800 ' + Math.round(top * 0.78) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText('SALT·9  PRO NET', Wd * 0.5, top * 0.55);
     // bandas laterales sobre las líneas laterales (5 cm x 1 m)
-    function bandAt(yy) { var u0 = (yy + NET_W / 2) * ppm; g.fillStyle = '#f7f4ee'; g.fillRect(u0, 0, 0.05 * ppm, Ht); }
+    function bandAt(yy) { var u0 = (yy + NET_W / 2) * ppm; g.fillStyle = beach ? bandCol : '#f7f4ee'; g.fillRect(u0, 0, 0.05 * ppm, Ht); }
     bandAt(C.HW - 0.05); bandAt(-C.HW);
     // cuerdas de los extremos
-    g.fillStyle = '#e8e4da'; g.fillRect(0, 0, 3, Ht); g.fillRect(Wd - 3, 0, 3, Ht);
+    g.fillStyle = beach ? bandCol : '#e8e4da'; g.fillRect(0, 0, 3, Ht); g.fillRect(Wd - 3, 0, 3, Ht);
     // CARTOON (arreglos finales): contorno de tinta pintado en la propia textura (la red es un plano: el casco invertido no
     // sirve). Filo de las dos bandas y de los extremos, ~2,5 cm (~1,5-2 px a 1280×720 desde la cámara de juego): 0 dibujos más
     var iw = Math.max(2, Math.round(0.025 * ppm));
@@ -4027,7 +4036,7 @@
     var top = C.NET_H, white = col('#f4f1ea'), cable = col('#9aa3ad'), rod = col('#d8d4cc'), post = col(BCOL.alu), padA = col('#0f8fb3'), padW = col(BCOL.canA);
     var coral = col(BCOL.coral), red = col('#e0262f'), antW = col('#f7f5f0'), ropeC = col(BCOL.rope), bagC = col(BCOL.bag);
     objM(0, 0, 0, 1);
-    B.sbox(0.035, 2 * hw + 1, 0.07, 0, 0, top - 0.035, white);                                   // cinta superior
+    B.sbox(0.035, 2 * hw + 1, 0.07, 0, 0, top - 0.035, col('#f7c531'));                           // cinta superior (amarilla, estilo AVP)
     for (var s = -1; s <= 1; s += 2) {
       var py = s * (hw + 1);
       B.sbox(0.012, 0.55, 0.012, 0, s * (hw + 0.75), top - 0.03, cable); B.sbox(0.012, 0.55, 0.012, 0, s * (hw + 0.75), top - 0.97, cable);
