@@ -69,7 +69,8 @@
     var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, camSens: 1, sfxVol: 1, musicVol: 0.75,
       camStable: false, rumble: true, hudScale: 1, softFlash: false, arena: Q.debug ? 'hall' : 'beach', arenaV: 2 };
     // arena: sede ('hall' Palau del Mar | 'beach' Platja Llarga; ?map=beach en pruebas). Desde el 10-nov-2026 la Playa es el
-    // escenario por defecto del 2v2 (decisión de Ferran); el 6v6 y la Carrera juegan en pabellón. Las escenas de depuración
+    // escenario por defecto del 2v2 (decisión de Ferran); el 6v6 se juega siempre en el pabellón y la Carrera
+    // siempre en la playa (forceVenue), mande lo que mande el ajuste. Las escenas de depuración
     // siguen en el pabellón para que las capturas y las pruebas sean comparables.
     var saved = false;
     var o = null;
@@ -296,8 +297,20 @@
   /** Escenario pedido en Ajustes durante un partido: se monta al salir de él (menú o partido nuevo). */
   var venuePend = false;
   function applyVenuePend() { if (!venuePend) return; venuePend = false; for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', ctx.settings, 'arena'); }
+  /** Carrera (vóley playa): el partido se juega en la playa aunque el ajuste «Escenario» sea el pabellón. Se monta como si el
+   *  ajuste fuera `v` (los módulos lo reciben por onSettings(s, 'arena'), sin tocar ctx.settings) y al volver al menú
+   *  (toMenu → unforceVenue) se vuelve al escenario del ajuste. */
+  var venueForced = '';   // escenario que había antes de forzar el de la Carrera ('' = no forzado)
+  function applyVenue(v) { var s = Object.assign({}, ctx.settings, { arena: v }); for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', s, 'arena'); }
+  function forceVenue(v) { var cur = venueNow(); if (cur === v) return; venueForced = cur; applyVenue(v); }
+  function unforceVenue() {
+    if (!venueForced) return;
+    var back = venueForced; venueForced = '';
+    if (venuePend) applyVenuePend(); else applyVenue(back);   // (si cambió el ajuste en la pausa, manda el ajuste)
+  }
   function demoGame() {
     applyVenuePend();
+    if (Q.format === '6v6') forceVenue('hall');   // el 6v6 es de pabellón (la sim usa su pista 18×9): no se pinta sobre la playa
     return Sim.createGame({ demo: true, seed: seed(), difficulty: 'normal', format: Q.format === '6v6' ? '6v6' : undefined, venue: Q.format === '6v6' ? undefined : venueNow() }); }
 
   // UI-01/UI-07: un partido humano pedido mientras el arranque aún ensaya estilos bajo el fondo del telón (herramientas que llaman
@@ -332,14 +345,18 @@
     var fmt = !cs && Q.format === '6v6' ? '6v6' : undefined; if (fmt) own = false;
     var auto = !!opts.autopilot || !!fmt;
     applyVenuePend();
+    // Carrera: VÓLEY PLAYA (sprint playa, 10-nov-2026): el partido se juega en Platja Llarga con sus reglas (sets a 21 y el 3.º a
+    // 15, pista 16×8, cambio de campo cada 7) aunque el ajuste «Escenario» sea el pabellón; el hub y quickSim cuentan con ellas
+    // (el 6v6 al revés: siempre en el pabellón, aunque el ajuste sea la playa; la sim juega en su pista 18×9)
+    var cv = cs ? (opts.venue === 'hall' ? 'hall' : 'beach') : fmt ? 'hall' : null;
+    if (cv) forceVenue(cv);
     var g = Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: auto, rookie: cs ? false : isRookie(), present: !opts.autopilot,
       points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: fmt ? 'one' : (opts.ctrl || Q.ctrl || ctx.settings.ctrlMode), // (6v6 espectador: 'one', sin eventos switch)
       ctrlIdx: ctrlIdxOf(opts),
       attrs: opts.attrs || (own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null),
       badges: cs ? (opts.badges || null) : (own && !Q.nobadges ? squadBadges() : null),
-      // Carrera: siempre reglas de pabellón (sets a 15, pista 18×9) aunque el escenario elegido sea la Playa, hasta que haya
-      // torneos de playa (TRASPASO.md); el hub y quickSim cuentan con esas reglas
-      ref: opts.ref || undefined, nums: opts.nums || undefined, format: fmt, venue: fmt || cs ? undefined : venueNow() });
+      // (Carrera: cv = 'beach'; antes jugaba siempre con reglas de pabellón)
+      ref: opts.ref || undefined, nums: opts.nums || undefined, format: fmt, venue: fmt ? undefined : cv || venueNow() });
     // partido de Carrera: marca para ui.js/badges.js (no reparten experiencia ni insignias al escuadrón de Partido rápido) y
     // para el hub (VB.Career.matchDone al llegar gameOver)
     if (cs) g.career = cs;
@@ -381,6 +398,7 @@
     if (!m) { if (VB.CareerUI && VB.CareerUI.open) VB.CareerUI.open(); return false; }
     if (K.abortMatch) K.abortMatch();
     ctx.actions.startMatch({ career: m.career, attrs: m.attrs, badges: m.badges, points: m.points, difficulty: m.difficulty, ctrl: 'one', ctrlIdx: 0, ref: m.ref, // en la Carrera solo llevas a tu jugador (menús v2: ni las carreras guardadas con «los dos»)
+      venue: m.venue || 'beach', // vóley playa: Platja Llarga y sus reglas (VB.Career.matchSetup().venue)
       kit: m.kit ? Object.assign({}, m.kit, { rival: m.rivalKit || null }) : null, // + equipación del club rival (Players.setKit st.rival)
       nums: m.career ? [[m.career.num | 0 || null, m.career.mateNum | 0 || null], null] : undefined }); // tus dorsales (sim: opts.nums)
     return true;
@@ -403,7 +421,8 @@
     if (alt) alt.hidden = true;
     var win = g.sets && g.sets[0] > g.sets[1];
     if (t && !win && cs.rivalName) t.textContent = 'Gana el ' + cs.rivalName;
-    if (k && cs.label) k.textContent = cs.label;
+    // (antetítulo: «Circuito Regional ◆ Jornada 1 de 14», con el rombo de la guía; la etiqueta viene con « · » de datos)
+    if (k && cs.label) { if (VB.UI && VB.UI.sep) k.innerHTML = VB.UI.sep(cs.label, 'd'); else k.textContent = cs.label.split(' · ').join(', '); }
     if (rec && s) {
       var d = document.createElement('div'); d.className = 'end-xp';
       var html = '<span>Nota: <b>' + fmt1(s.nota || 0) + '</b></span><span>' + (cs.player ? escHtml(cs.player) + ': ' : '') + '<b>+' + (s.xp | 0) + ' XP</b>' + (s.lvlUp ? ' <span class="lv">¡NIVEL ' + s.lvl + '! +' + s.ptsGained + ' PT</span>' : '') + '</span>';
@@ -450,6 +469,7 @@
     if (fromCareer && !careerEnd && VB.Career && VB.Career.abortMatch) VB.Career.abortMatch(); // partido abandonado: la jornada sigue pendiente
     ctx.frozen = false;
     restoreEndButtons();
+    unforceVenue();   // Carrera en la playa: de vuelta al escenario del ajuste
     setGame(demoGame());
     setState('menu');
     if (fromCareer && !menuOnly && VB.CareerUI && VB.CareerUI.open) { try { VB.CareerUI.open('hub', { fresh: !!careerEnd }); } catch (e) { reportError('CareerUI.open', e); } }
@@ -901,6 +921,7 @@
       // lanzado (&n=N el N-ésimo saque, por defecto el 3.º: ya ha habido rotación); rally6: la colocación del equipo 0 tras la
       // recepción (como 'rally'); point6: el punto (con su plano). &live=1 sigue jugando.
       case 'serve6': case 'rally6': case 'point6':
+        forceVenue('hall');   // (6v6: siempre pabellón, también con &map=beach)
         g = Sim.createGame({ demo: false, autopilot: true, seed: sd, difficulty: diff, format: '6v6', present: true });
         g.watch = true;
         if (name === 'serve6') {
@@ -1009,8 +1030,10 @@
     if (wrapped.length) {
       var set = typeof Set === 'function' ? new Set() : null;
       for (var w = 0; w < wrapped.length; w += 2) { wrapped[w].getUniforms = wrapped[w + 1]; pend.push(wrapped[w]); if (set) set.add(wrapped[w]); }
-      // los materiales que se quedaron con la lista de uniformes vacía la rehacen en su próximo render
-      var fix = function (m) { if (!m) return; var pr = r.properties.get(m); if (pr && pr.currentProgram && set && set.has(pr.currentProgram)) { pr.currentProgram = undefined; pr.uniformsList = null; } };
+      // los materiales que se quedaron con la lista de uniformes vacía la rehacen en su próximo render. __version = -1 obliga a
+      // setProgram (r149) a pasar por getProgram: sin eso, si la versión del material no cambió, usaba el currentProgram
+      // indefinido y el render reventaba en cada frame («reading 'getUniforms'») tras cambiar la calidad
+      var fix = function (m) { if (!m) return; var pr = r.properties.get(m); if (pr && pr.currentProgram && set && set.has(pr.currentProgram)) { pr.currentProgram = undefined; pr.uniformsList = null; pr.__version = -1; } };
       var fixObj = function (o) { var m = o.material; if (!m) return; if (Array.isArray(m)) { for (var k = 0; k < m.length; k++) fix(m[k]); } else fix(m); };
       sc.traverse(fixObj); for (var j = 0; j < list.length; j++) fixObj(list[j]);
     }

@@ -78,7 +78,7 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
 | `debug, params, frozen` | escena de depuración, parámetros de URL, simulación congelada |
 | `portraitBlock` | móvil en vertical en partido: la sim se detiene y UI muestra "Gira el móvil" |
 | `renderFn` | si no es null, main.js llama `renderFn(ctx)` en vez de `renderer.render(scene,camera)` (post-proceso de arena) |
-| `settings` | `{muted, difficulty, quality:'auto'|'high'|'medium'|'low', showHelp (avisos «¡Golpea!»/«¡Salta!»), setPoints (11 | 15 | 21 | 25, por defecto 25: Partido rápido; main.js lo pasa a Sim.createGame como `points`, set decisivo a min(15, points), ver `Sim.setTarget`), ctrlMode ('both' \| 'one', por defecto 'both': fila «Controlar» de la preparación del Partido rápido (en la Carrera siempre 'one'), «A los dos jugadores» / «Un jugador»; main.js lo pasa a Sim.createGame como `ctrl`), ctrlPlayer (en desuso: loadSettings lo fuerza a 0; la fila se lee «Controlar ‹ a los dos jugadores ›» / «Controlar ‹ un jugador ›» —en filas estrechas «a los dos»— y en modo Uno llevas siempre al n.º 1), coachTips (true: consejos del partido; ui.js lo pone a false al ganar el 1r partido), camStable (false: con true el temblor de cámara es 0), rumble (true), hudScale (1 \| 1.15 \| 1.3), softFlash (false: destellos de luz y flashes suaves; arena/fx leen `ctx.settings.softFlash === true` cada frame), arena ('hall' \| 'beach', por defecto 'hall': fila «Escenario» de la preparación del Partido rápido (menús v2; ya no está en Ajustes), Palau del Mar / Platja Llarga; `?map=beach` lo fuerza en pruebas; arena.js lo aplica con `onSettings(s, 'arena')`)}` persistido en localStorage (validado en `loadSettings`) |
+| `settings` | `{muted, difficulty, quality:'auto'|'high'|'medium'|'low', showHelp (avisos «¡Golpea!»/«¡Salta!»), setPoints (11 | 15 | 21 | 25, por defecto 25: Partido rápido; main.js lo pasa a Sim.createGame como `points`, set decisivo a min(15, points), ver `Sim.setTarget`), ctrlMode ('both' \| 'one', por defecto 'both': fila «Controlar» de la preparación del Partido rápido (en la Carrera siempre 'one'), «A los dos jugadores» / «Un jugador»; main.js lo pasa a Sim.createGame como `ctrl`), ctrlPlayer (en desuso: loadSettings lo fuerza a 0; la fila se lee «Controlar ‹ a los dos jugadores ›» / «Controlar ‹ un jugador ›» —en filas estrechas «a los dos»— y en modo Uno llevas siempre al n.º 1), coachTips (true: consejos del partido; ui.js lo pone a false al ganar el 1r partido), camStable (false: con true el temblor de cámara es 0), rumble (true), hudScale (1 \| 1.15 \| 1.3), softFlash (false: destellos de luz y flashes suaves; arena/fx leen `ctx.settings.softFlash === true` cada frame), arena ('hall' \| 'beach', por defecto 'beach' desde el 10-nov —'hall' en `?debug`—: fila «Escenario» de la preparación del Partido rápido (menús v2; ya no está en Ajustes), Palau del Mar / Platja Llarga; `?map=beach` lo fuerza en pruebas; arena.js lo aplica con `onSettings(s, 'arena')`)}` persistido en localStorage (validado en `loadSettings`) |
 | `introLeft`, `introSkipReq` | tarjeta de presentación del partido (UI-14): s reales que quedan (> 0 mientras se ve; la sim está PARADA y los eventos iniciales salvo `newMatch` se retienen hasta que acaba) / petición de saltarla |
 | `uiDock` | `{side:'left', frac}` con la hoja final acoplada (pantallas ≥ 1000 px; `frac` = borde derecho / ancho) o `null`; lo publica ui.js cada 8 frames y lo lee camera.js (CAM-10) |
 | `actions` | `startMatch(opts), toMenu(), pause(), resume(), togglePause(), restart(), setSetting(k,v), toggleMute()`. Un `startMatch` HUMANO pedido mientras el arranque aún ensaya estilos (`VB.UI.bootBusy()`) espera a que acabe (`startWait`, tope 9 s); los de autopilot empiezan al momento |
@@ -501,7 +501,8 @@ Arte y nombres originales; marcas de las vallas ficticias (NÓRDIKA, VOLTA, ALBA
 Identidad propia de los atletas (dirección «TAJO», lo contrario de otros juegos de vóley playa low-poly: cabezones de ~5 cabezas, superficies lisas,
 contorno grueso DE COLOR, cara grande dibujada, uniforme de equipo con el «tajo») y la playa «Platja Llarga» como mapa principal.
 - **Escenario (venue).** Una sola fuente: `VB.Arena.venue()` → `'hall' | 'beach'` (ajuste `arena` o `?map=beach`). main.js crea el partido con
-  `venue: venueNow()` (salvo 6v6 y **Carrera, que juega siempre con reglas de pabellón** hasta que haya torneos de playa); players y fx miran
+  `venue: venueNow()`; el 6v6 juega siempre en el pabellón y la **Carrera siempre en la playa** (los dos con `forceVenue`, ver «Muñeco,
+  Carrera de playa y compañeros» abajo); players y fx miran
   `VB.Arena.venue()` cada frame. Cambiar el escenario en la pausa se aplica al salir del partido.
 - **Pista de la partida (`g.court`).** Todo lo que pinte, mida o encuadre la pista usa `g.HL` / `g.HW` (o `VB.Sim.court(g)`), nunca `C.HL/C.HW`:
   arena (cintas, red, postes, oficiales: `beachLayout(g)`), fx (línea de la revisión del challenge y atenuación del marcador de caída fuera:
@@ -543,3 +544,27 @@ contorno grueso DE COLOR, cara grande dibujada, uniforme de equipo con el «tajo
 - **UI**: aviso en el aire en rejilla 2×2 (`#prompt.two`): «[GOLPEAR] Rematar / [COLOCAR] Colocar» (táctil «… / [COLOCAR] en salto»,
   sin la línea de consejo repetida; teclado: J naranja y K verde); `GLYPH.*.jset/jsetT` (K, X/□, Colocar);
   `.key.tch.s` (verde); panel Controles, tutorial (paso 3) y consejos en los 3 dispositivos. Detalle en notes/sim.md, notes/camera_input.md y notes/ui_main.md.
+
+### Muñeco, Carrera de playa y compañeros (10/11-nov-2026)
+- **players.js con el muñeco.** El muñeco chibi de `js/doll.js` (`VB.Doll`, cargado justo después de players.js; players lo lee en init) es el ÚNICO modelo de personaje:
+  `VB.Players.body()` → `'doll'` (los presets `?body=` ya no existen; `setBody` devuelve false). players.js monta el esqueleto de siempre
+  (27 huesos) con `VB.Doll.dims()` / `VB.Doll.boneLayout()` y pide la geometría (`VB.Doll.geometry(r, lod)`, 3 niveles) y el material
+  (`VB.Doll.material(tc, L, num, beach, px)`: atlas con equipación, dorsal y hoja de caras; caras con `VB.Doll.faceCells`). Las poses siguen
+  en el espacio del atleta antiguo y `applyPose` las reproyecta (`ARM_K`, `ARM_UPK`, `LEG_K`); estirón cartoon del brazo en la IK hasta
+  `ARM_STRETCH` 1,405 (`VB.Players.dims()`: `reach` 1,935 de reposo, `reachMax` 2,192 como antes). Aspecto por jugador (`lookOf`: tus n.º 1
+  y 2 fijos, el resto determinista por dorsal/equipo/club rival), equipaciones de `setKit`, playa con tirantes, malla y descalzo. La sim no
+  cambia: huella 2v2 idéntica. Los oficiales y el público (arena.js) siguen con su estilo propio. Detalle en notes/players.md «Muñeco».
+- **Escenario forzado** (main.js): `forceVenue(v)` monta el escenario `v` como si fuera el ajuste (`onSettings(copia con arena v, 'arena')` a
+  todos los módulos, sin tocar `ctx.settings`) y `unforceVenue()` (en `toMenu`) vuelve al del ajuste (si se cambió en la pausa, manda el ajuste).
+  La **Carrera** (`startMatch` con `opts.career`) fuerza `'beach'`; el **6v6** (`?format=6v6`: partido, demo del menú y escenas serve6/rally6/
+  point6) fuerza `'hall'`, porque la sim juega en su pista 18×9.
+- **Carrera de vóley playa** (`voley3d.career` v3; v1/v2 migran sin perder nada): `matchSetup()` → `venue: 'beach'`, `points: 21` (3.º a 15),
+  clubes de playa con `club.beach` (sede), circuitos Regional / Nacional / Superliga de Playa / Continental / Mundial y el Open. `quickSim` también
+  a 21/15. Detalle en notes/carrera.md «Sprint playa».
+- **Compañeros**: media = media del club + desvío propio (`VB.Career.MATE_OFF` −9..+5, media −2), rol complementario, `mateProfile(m)`, forma
+  `m.form` −3..+3; las ofertas traen su compañero (`o.mateP`); la plantilla (`c.squad`, `genSquad`) da 2 alternativas dentro de `MATE_OFF`, a ≥ 3
+  del titular y distintas entre sí; `changeMate(i)`. El club renueva al compañero si queda a `MATE_RENEW` (7) o más bajo el club.
+- **Precompilado asíncrono** (main.js `prewarmPrograms`): al devolver `getUniforms` a los programas recién compilados, los materiales afectados se
+  marcan con `currentProgram = undefined`, `uniformsList = null` **y `__version = -1`** (sin esto, three r149 reutilizaba el programa
+  indefinido tras cambiar la calidad y el partido se pintaba vacío con «reading 'getUniforms'» en cada frame).
+- `tools/perf.js` sin `EXTRA` mide el escenario por defecto (la PLAYA); el pabellón se mide con `EXTRA=map=hall`.

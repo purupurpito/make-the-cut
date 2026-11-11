@@ -1,6 +1,7 @@
 /* MAKE THE CUT — js/career-ui.js (owner: ui_main)
- * Pantallas del modo Carrera (VB.CareerUI): crear carrera, hub (Partido · Clasificación · Calendario · Jugador · Club · Palmarés),
- * fin de temporada y ofertas. Crea su propio DOM (#career) y su propio <style> desde aquí para no chocar con index.html, con las
+ * Pantallas del modo Carrera de VÓLEY PLAYA (VB.CareerUI): crear carrera, hub (Partido · Mensajes · Jugador · Club · Liga ·
+ * Palmarés), fin de temporada y ofertas. Sprint playa (10-nov-2026): textos de playa (circuitos, arena, sets a 21), sin selector
+ * de puntos, ficha del compañero con media respecto al club, puntos fuertes y flojos y forma (mateLine). Crea su propio DOM (#career) y su propio <style> desde aquí para no chocar con index.html, con las
  * variables del estilo cartoon del menú (--tk, --tp, --tp2, --cel-a, --t0, --gold, --display, --ui, --ring1, --ring2).
  * Datos y reglas: js/career.js (VB.Career). Los partidos los arranca main.js (ctx.actions.startCareerMatch).
  *
@@ -15,7 +16,7 @@
   var root = null, body = null, head = null, tabsEl = null, subEl = null, styleEl = null;
   var view = 'hub', tab = 'match', open = false, lastFocus = null, tblLvl = -1, armT = 0, armTo = 0, confirmStep = 0, freshLast = false;
   // (sin «Controlar»: en la Carrera solo se controla a tu jugador)
-  var form = { name: '', num: 1, role: 'atk', points: 15 }, badgeMsg = '', note = '', yrs = {};
+  var form = { name: '', num: 1, role: 'atk' }, badgeMsg = '', note = '', yrs = {};   // (sin puntos por set: vóley playa, siempre a 21)
   // Pestañas (móvil primero): 6 apartados y, dentro, sub-pestañas. Las dos barras son el componente común de ui.js
   // (VB.UI.tabs, como Jugadores y Ajustes; drawBar): Q/E y LB/RB cambian de apartado, RePág/AvPág y LT/RT de sub-pestaña, ←/→
   // con el foco en una pestaña, tocar y deslizar el dedo sobre el contenido. Sin ui.js (pruebas): botones sueltos (tabsBar).
@@ -54,6 +55,37 @@
     return '<i class="cr-kit' + (big ? ' big' : '') + '" style="background:' + bg + '" aria-hidden="true"></i>';
   }
   function notaCls(n) { return n >= 8 ? 'n-top' : n >= 7 ? 'n-good' : n >= 6 ? 'n-ok' : n >= 5 ? 'n-meh' : 'n-bad'; }
+  /** «del Circuito Regional» / «de la Superliga de Playa». */
+  function deL(L) { return (L.art === 'el' ? 'del ' : 'de la ') + L.name; }
+  function lab(k) { var LB = VB.Prog && VB.Prog.LABEL; return (LB && LB[k] || k).toLowerCase(); }
+  /** «+4 sobre el club» / «−3 bajo el club» / «al nivel del club» (desvío de la media del compañero respecto a la del club). */
+  function vsClub(d) { return d >= 2 ? '+' + d + ' sobre el club' : d <= -2 ? '−' + (-d) + ' bajo el club' : 'al nivel del club'; }
+  /** Desvío con signo: «+4», «−3», «±0». */
+  function sgn(d) { return d > 0 ? '+' + d : d < 0 ? '−' + (-d) : '±0'; }
+  /** Objetivo en corto para la tabla de Comparar (la frase entera va en la ficha de la oferta). */
+  function objShort(t) {
+    t = String(t || '');
+    if (!t) return '—';
+    if (/^Ganar/.test(t)) return 'Campeón';
+    if (/^Subir/.test(t)) return 'Ascenso';
+    var m = /entre los (\d+) primeros/.exec(t);
+    if (m) return 'Top ' + m[1];
+    if (/descenso/.test(t)) return 'Salvarse';
+    return t.replace(/\s*\(.*\)$/, '');
+  }
+  /** Ficha corta de un compañero m del club de media clubOvr: línea de pastillas (rol, media y desvío, estilo[, forma]) y una frase
+   *  con sus puntos fuertes y flojos (VB.Career.mateProfile). withForm: enseña la forma (solo compañeros de tu plantilla). */
+  function mateLine(m, clubOvr, withForm) {
+    var pr = C().mateProfile(m), d = pr.ovr - clubOvr, tag = d >= 3 ? 'g' : d <= -3 ? 'r' : '';
+    // (el desvío va en su propia pastilla, verde o roja si se nota: antes era una pastilla dentro de la de la media y se salía
+    // de la columna de la oferta)
+    var chips = [esc(m.role), 'Media ' + pr.ovr, { h: esc(vsClub(d)), c: tag ? 'dv ' + tag : 'dv' }, esc(m.style || '')];
+    if (withForm) chips.push('Forma: ' + esc(C().formText(m.form | 0)));
+    var h = '<p class="muted" style="margin:2px 0 0">' + sp(chips, 'c') + '</p>';
+    var s = pr.strong.length ? 'Fuerte en ' + pr.strong.map(lab).join(', ').replace(/, ([^,]*)$/, ' y $1') : '', w = pr.weak.length ? 'flojo en ' + pr.weak.map(lab).join(', ').replace(/, ([^,]*)$/, ' y $1') : '';
+    if (s || w) h += '<p class="muted" style="margin:2px 0 0">' + esc(s ? s + (w ? '; ' + w : '') : w.charAt(0).toUpperCase() + w.slice(1)) + '.</p>';
+    return h;
+  }
 
   // =================================================================== estilos
   var CSS = [
@@ -131,6 +163,7 @@
     '#career .n-top{background:#2fbf71}#career .n-good{background:#6cc24a}#career .n-ok{background:#d9a520}#career .n-meh{background:#e07b2b}#career .n-bad{background:#d8364a}',
     '#career .tag{display:inline-block;padding:3px 9px;border-radius:999px;font:800 12px var(--display);letter-spacing:.12em;text-transform:uppercase;background:var(--tp2);box-shadow:0 0 0 1.5px var(--tk);margin:2px 4px 2px 0}',
     '#career .tag.g{background:#2f8f5a}#career .tag.r{background:#a8283a}#career .tag.y{background:#b8860b}',
+    '#career .chip.dv.g{background:#2f8f5a;color:#fff}#career .chip.dv.r{background:#a8283a;color:#fff}',
     '#career table{width:100%;border-collapse:collapse;font:600 14px var(--ui)}',
     '#career th{font:800 11px var(--display);letter-spacing:.18em;text-transform:uppercase;color:#b9b0e6;text-align:right;padding:4px 6px}',
     '#career td{padding:7px 6px;text-align:right;border-top:1px solid rgba(255,255,255,.08);font-variant-numeric:tabular-nums}',
@@ -419,8 +452,12 @@
         teamBlock(c, n.me, false, sp([lg ? pm + '.º' : '', 'Pareja ' + n.ovrMe, n.atHome ? 'En casa' : 'Fuera'], 'c')) +
         '<div class="vs-mid">VS</div>' +
         teamBlock(c, n.rival, true, sp([lg ? pr + '.º' : '', 'Pareja ' + n.ovrRival, 'IA ' + esc(diffName(n.diff))], 'c')) + '</div>' +
-        '<p class="muted" style="margin-top:8px">Al mejor de 3 sets a ' + c.points + ' puntos. Juegas con ' + esc(c.player.name) + ' (dorsal ' + c.player.num + ')' +
-        '; tu compañero es ' + esc(c.mate.name) + ' (media ' + C().mateOvr(c) + ', la lleva la IA).</p>' +
+        '<p class="muted" style="margin-top:8px">Vóley playa en la arena de Platja Llarga: al mejor de 3 sets a ' + C().PTS + ', el tercero a ' + C().PTS3 + '. Tú llevas a ' + esc(c.player.name) + ' (dorsal ' + c.player.num + ') y a tu pareja la lleva la IA.</p>' +
+        // (la pareja, en pastillas: antes era una lista metida en un paréntesis)
+        '<p class="muted" style="margin-top:4px">' + (function () {
+          var mo = C().mateOvr(c), dd = mo - C().clubOvr(n.me), tg = dd >= 3 ? 'g' : dd <= -3 ? 'r' : '';
+          return sp(['Pareja: ' + esc(c.mate.name), esc(c.mate.role), 'Media ' + mo, { h: esc(vsClub(dd)), c: tg ? 'dv ' + tg : 'dv' }, 'Forma: ' + esc(C().formText(c.mate.form | 0)).toLowerCase()], 'c');
+        })() + '</p>' +
         '<p class="muted">' + sp(['Entreno: ' + esc(C().TRAIN[c.train].name), 'Fatiga ' + (c.fatigue | 0) + (C().fatigueMalus(c) ? ' (−' + C().fatigueMalus(c) + ' en tus atributos)' : ''),
           'Química ' + (c.mate.chem | 0) + (C().chemBonus(c) ? ' (+' + C().chemBonus(c) + ')' : '')], 'v') + '</p>' +
         '<div class="acts"><button class="pri" data-act="play">Jugar partido</button><button data-act="sim">Simular <small style="font:600 12px var(--ui);text-transform:none;letter-spacing:0">(mitad de XP)</small></button></div></div>';
@@ -436,8 +473,8 @@
   function renderSeasonEnd(c) {
     var r = c.review || {}, k = C().myClub(c), L = C().league(r.lvl != null ? r.lvl : k.lvl);
     var h = '<div class="card new"><h3>Fin de la temporada ' + r.season + '</h3>' +
-      '<p style="font:900 24px var(--display);text-transform:uppercase;letter-spacing:.04em;margin:0">' + r.pos + '.º en la ' + esc(L.name) + '</p><p>' +
-      (r.champion ? '<span class="tag y">Campeón de liga</span>' : '') + (r.cup ? '<span class="tag y">Campeón de la ' + esc(L.cup) + '</span>' : '') +
+      '<p style="font:900 24px var(--display);text-transform:uppercase;letter-spacing:.04em;margin:0">' + r.pos + '.º ' + esc(deL(L)) + '</p><p>' +
+      (r.champion ? '<span class="tag y">Campeón ' + esc(deL(L)) + '</span>' : '') + (r.cup ? '<span class="tag y">Campeón del ' + esc(L.cup) + '</span>' : '') +
       (r.move > 0 ? '<span class="tag g">Ascenso</span>' : r.move < 0 ? '<span class="tag r">Descenso</span>' : '') +
       '<span class="tag ' + (r.objOk ? 'g' : 'r') + '">Objetivo ' + (r.objOk ? 'cumplido' : 'no cumplido') + '</span></p>' +
       '<p class="muted">' + sp(['Objetivo: ' + esc(r.objective), 'Nota media ' + dec(r.nota), 'Entrenador: ' + esc(C().coachText(c.coach))], 'v') + '</p></div>';
@@ -465,16 +502,17 @@
     var k = C().club(c, o.club), f = C().clubInfo(c, k, o.lvl != null ? o.lvl : k.lvl, o.q), mp = o.mateP, y = yrs[o.club] || o.years || 1;
     var h = '<div class="' + (full ? 'card offer-full' : 'offer-x') + '"' + (full ? '' : ' style="padding:8px 0;border-top:1px solid rgba(255,255,255,.1)"') + '><div class="row">' + kitSw(k.kit, full) +
       '<div class="grow" style="min-width:0"><p class="bigname"' + (full ? '' : ' style="font-size:18px"') + '>' + esc(k.name) + '</p><p class="muted" style="margin:2px 0 0">' +
-      sp([stars(f.stars), esc(f.league), esc(k.city)], 'v') + '</p></div></div>';
-    var rl = Math.max(0, C().ROLE_LV.indexOf(o.role)), early = !o.trial && C().earlyExit && C().earlyExit(c);
-    h += '<div class="fact">' + fact('Media del club', o.ovr != null ? o.ovr : f.ovr) + fact('Estilo', esc(f.style) + styleTrain(f.style)) +
-      fact('Compañero', mp ? esc(mp.name) + ' <span class="muted">(' + esc(mp.role) + ', media ' + o.mate + ', ' + esc(mp.style).toLowerCase() + ')</span>' : 'Media ~' + o.mate) +
+      sp([stars(f.stars), esc(f.league), esc(f.beach || k.city)], 'v') + '</p></div></div>';
+    var rl = Math.max(0, C().ROLE_LV.indexOf(o.role)), early = !o.trial && C().earlyExit && C().earlyExit(c), cov = o.ovr != null ? o.ovr : f.ovr;
+    h += '<div class="fact">' + fact('Media del club', cov) + fact('Estilo', esc(f.style) + styleTrain(f.style)) +
+      // el compañero que te dan al firmar, con su nivel respecto al club (un buen compañero es un argumento para fichar)
+      fact('Compañero', mp ? esc(mp.name) + mateLine(mp, cov, false) : 'Media ~' + o.mate) +
       (o.objective ? fact('Objetivo', esc(o.objective)) : '') +
       fact('Rol prometido', esc(o.role) + (o.firm ? ' <span class="muted">(firme)</span>' : '') + ' <span class="muted">(entrenador: ' + ((C().ROLE_COACH || [45, 55, 65])[rl] - (early ? C().EARLY_COACH : 0) - (o.negNo ? C().NEG_COACH : 0)) + ' de confianza)</span>') +
       (o.salary ? fact('Sueldo (ficticio)', money(o.salary)) : '') + '</div>';
     if (early) h += '<p class="muted"><b>Tienes contrato en vigor:</b> si fichas, el club de ahora pone pegas y el entrenador nuevo empieza con ' + C().EARLY_COACH + ' menos de confianza (no pasa si te declaras transferible en Club › Contrato).</p>';
     if (o.negNo) h += '<p class="muted">Negociación rechazada: si firmas, el entrenador empieza con ' + C().NEG_COACH + ' menos de confianza.</p>';
-    if (o.trial) h += '<p class="muted">Es una <b>prueba</b>: te fichan si la superas (probabilidad ~' + Math.round(o.chance * 100) + ' %). Si no, pierdes esta oferta y sigues con las demás. Contrato de 1 temporada. Ojo: la Liga Nacional es una categoría por encima y la IA rival ya juega en Normal.</p>';
+    if (o.trial) h += '<p class="muted">Es una <b>prueba</b>: te fichan si la superas (probabilidad ~' + Math.round(o.chance * 100) + ' %). Si no, pierdes esta oferta y sigues con las demás. Contrato de 1 temporada. Ojo: ' + esc(C().lname(C().league(1))) + ' es una categoría por encima y la IA rival ya juega en Normal.</p>';
     else h += '<p class="muted" style="margin-top:6px">Duración del contrato:</p>' + yearsSeg(o.club, y);
     var canNeg = !o.trial && !o.firm && o.role !== 'Titular indiscutible';
     h += '<div class="acts"><button class="pri" data-act="offer" data-i="' + i + '">' + (o.trial ? 'Hacer la prueba' : 'Firmar') + '</button>' +
@@ -496,7 +534,7 @@
     var k = C().myClub(c), lvl = tblLvl >= 0 ? tblLvl : k.lvl, L = C().league(lvl), t = C().table(c, lvl), top = lvl === C().LEAGUES.length - 1, low = lvl === 0;
     var h = '<div class="card"><div class="lg-sw" role="group" aria-label="Liga">' + C().LEAGUES.map(function (x) {
       return '<button data-act="lvl" data-l="' + x.lvl + '" aria-pressed="' + (x.lvl === lvl) + '">' + esc(x.short) + '</button>';
-    }).join('') + '</div><h3>' + sp([esc(L.name), c.phase === 'league' ? 'Jornada ' + Math.min(c.week, C().WEEKS) + ' de ' + C().WEEKS : 'Liga acabada'], 'd') + '</h3>' +
+    }).join('') + '</div><h3>' + sp([esc(L.name), c.phase === 'league' ? 'Jornada ' + Math.min(c.week, C().WEEKS) + ' de ' + C().WEEKS : 'Temporada regular acabada'], 'd') + '</h3>' +
       '<table><thead><tr><th class="l">#</th><th class="l">Club</th><th>PJ</th><th>G</th><th>P</th><th class="hide-s">Sets</th><th class="hide-s">Puntos</th><th>Pts</th></tr></thead><tbody>';
     t.forEach(function (r) {
       var cl = C().club(c, r.id), cls = [];
@@ -505,7 +543,7 @@
       if (!low && r.pos >= 7) cls.push('down');
       h += '<tr class="' + cls.join(' ') + '"><td class="l">' + r.pos + '</td><td class="club">' + kitSw(cl.kit).replace('cr-kit', 'cr-kit kit-mini') + esc(cl.name) + '</td><td>' + r.pj + '</td><td>' + r.g + '</td><td>' + r.p + '</td><td class="hide-s">' + r.sf + '-' + r.sc + '</td><td class="hide-s">' + r.pf + '-' + r.pc + '</td><td class="pts">' + r.pts + '</td></tr>';
     });
-    h += '</tbody></table><p class="muted" style="margin-top:8px">' + (top ? '' : '<span class="tag g">1-2 ascienden</span>') + '<span class="tag y">1-4 juegan la copa</span>' + (low ? '' : '<span class="tag r">7-8 descienden</span>') +
+    h += '</tbody></table><p class="muted" style="margin-top:8px">' + (top ? '' : '<span class="tag g">1-2 ascienden</span>') + '<span class="tag y">1-4 juegan el open</span>' + (low ? '' : '<span class="tag r">7-8 descienden</span>') +
       ' Puntos: 3 por ganar 2-0, 2 por ganar 2-1 y 1 por perder 1-2.</p></div>';
     return h;
   }
@@ -600,7 +638,8 @@
     var ref = C().REF[L.ref];
     var h = '<div class="card"><div class="row">' + kitSw(k.kit, true) + '<div class="grow" style="min-width:0"><p class="bigname">' + esc(k.name) + '</p>' +
       '<p class="muted" style="margin:2px 0 0">' + sp([stars(f.stars), esc(L.name), esc(k.city)], 'v') + '</p></div></div>' +
-      '<div class="fact">' + fact('Media del club', C().clubOvr(k)) + fact('Posición', c.phase === 'league' && c.week === 0 ? '—' : C().posOf(c, k.id) + '.º') + fact('Estilo', esc(f.style) + styleTrain(f.style)) +
+      '<div class="fact">' + fact('Media del club', C().clubOvr(k)) + fact('Posición', c.phase === 'league' && c.week === 0 ? '—' : C().posOf(c, k.id) + '.º') + fact('Sede', esc(f.beach || k.city)) + fact('Estilo', esc(f.style) + styleTrain(f.style)) +
+      fact('Compañero', esc(c.mate.name) + ' <span class="muted">(' + esc(c.mate.role).toLowerCase() + ', media ' + C().mateOvr(c) + ', ' + esc(vsClub(C().mateOvr(c) - C().clubOvr(k))) + ')</span>') +
       fact('Objetivo', esc(c.objective.text)) + fact('Arbitraje', esc(ref.name)) + '</div>' +
       '<h3 style="margin-top:10px">' + sp(['Entrenador', esc(C().coachText(coach))], 'd') + '</h3>' + meter(coach, 'Confianza del entrenador', cc) +
       '<p class="muted">' + sp(['Nota media de la temporada: ' + dec(C().avgNota(c)), 'Forma (3 últimos): ' + dec(C().form(c))], 'v') + '</p></div>';
@@ -608,15 +647,17 @@
   }
   /** Club › Compañero: el actual (química) y la plantilla para pedir cambio. */
   function renderMate(c) {
-    var m = c.mate, ch = m.chem | 0, cb = C().chemBonus(c);
-    var h = '<div class="card"><h3>Tu compañero</h3><p class="bigname" style="font-size:20px">' + sp([esc(m.name), 'n.º ' + m.num], 's') + '</p>' +
-      '<p class="muted">' + sp([esc(m.role), esc(m.style || ''), 'Media ' + C().mateOvr(c)], 'c') + '</p>' +
+    var m = c.mate, ch = m.chem | 0, cb = C().chemBonus(c), k = C().myClub(c), co = C().clubOvr(k), mo = C().mateOvr(c), mf = m.form | 0;
+    var h = '<div class="card"><h3>Tu pareja</h3><p class="bigname" style="font-size:20px">' + sp([esc(m.name), 'n.º ' + m.num], 's') + '</p>' + mateLine(m, co, true) +
+      '<p class="muted">' + (mo - co <= -3 ? 'Con una pareja floja tendrás más trabajo y más protagonismo: la IA se la jugará menos y tú llevarás el peso.' : mo - co >= 3 ? 'Con una pareja buena tienes más ayuda: recibe, defiende y remata por encima del nivel del club.' : 'Una pareja al nivel del club: ni carga ni muleta.') +
+      (mf ? ' Su forma (' + esc(C().formText(mf)).toLowerCase() + ') ' + (mf > 0 ? 'suma +' : 'resta −') + Math.abs(mf) + ' a todos sus atributos en el próximo partido; cambia tras cada partido.' : ' Su forma cambia tras cada partido y suma o resta hasta ' + C().FORM_MAX + ' a sus atributos.') + '</p>' +
       '<h3 style="margin-top:10px">' + sp(['Química', ch + ' de 100'], 'd') + '</h3>' + meter(ch, 'Química con el compañero', '#4be0a0') +
       '<p class="muted">Sube cada partido juntos (+5 jugado, +3 simulado). ' + (cb ? 'Ahora suma +' + cb + ' a los dos en reacción, colocación y recepción.' : 'A partir de 30 suma +1 a los dos en reacción, colocación y recepción (hasta +3).') + '</p></div>';
-    h += '<div class="card"><h3>Plantilla</h3><p class="muted">Puedes pedir jugar con otro compañero del club' + (c.coach < C().MATE_COACH ? ', pero el entrenador aún no te deja (necesitas su confianza: «Tiene dudas» o mejor).' : '. La química se guarda con cada uno.') + '</p>' +
+    h += '<div class="card"><h3>Plantilla</h3><p class="muted">Puedes pedir jugar con otro compañero del club' + (c.coach < C().MATE_COACH ? ', pero el entrenador aún no te deja (necesitas su confianza: «Tiene dudas» o mejor).' : '. La química se guarda con cada uno; las medias y los puntos fuertes son de verdad en el partido.') + '</p>' +
       (c.squad || []).map(function (s, i) {
-        return '<div class="mate"><div style="min-width:0"><b style="font:800 17px var(--display);text-transform:uppercase">' + esc(s.name) + '</b><p class="muted" style="margin:2px 0 0">' +
-          sp([esc(s.role), esc(s.style || ''), 'Media ' + C().ovrOf(s.st), 'Química ' + (s.chem | 0)], 'c') + '</p></div><button data-act="mate" data-i="' + i + '"' + (c.coach < C().MATE_COACH ? ' disabled' : '') + '>Elegir</button></div>';
+        var so = C().ovrOf(s.st), d = so - mo;
+        return '<div class="mate"><div style="min-width:0"><b style="font:800 17px var(--display);text-transform:uppercase">' + esc(s.name) + '</b>' + mateLine(s, co, true) +
+          '<p class="muted" style="margin:2px 0 0">' + sp([(d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d) + ' respecto a ' + esc(m.name.split(' ')[0]), 'Química ' + (s.chem | 0)], 'c') + '</p></div><button data-act="mate" data-i="' + i + '"' + (c.coach < C().MATE_COACH ? ' disabled' : '') + '>Elegir</button></div>';
       }).join('') + '<p class="note" role="status" aria-live="polite">' + esc(note) + '</p></div>';
     note = '';
     return h;
@@ -645,12 +686,12 @@
     var T = c.career, s = sub.honors, h = '';
     if (s === 'titles') {
       h = '<div class="card"><h3>Palmarés</h3>';
-      h += c.trophies.length ? c.trophies.map(function (t) { return '<p><span class="tag ' + (t.kind === 'ascenso' ? 'g' : 'y') + '">' + (t.kind === 'liga' ? 'Liga' : t.kind === 'copa' ? 'Copa' : 'Ascenso') + '</span> ' + sp([esc(t.name), 'T' + t.season, esc(t.club)], 'v') + '</p>'; }).join('') : '<p class="muted">Aún sin títulos.</p>';
+      h += c.trophies.length ? c.trophies.map(function (t) { return '<p><span class="tag ' + (t.kind === 'ascenso' ? 'g' : 'y') + '">' + (t.kind === 'liga' ? 'Campeón' : t.kind === 'copa' ? 'Copa' : 'Ascenso') + '</span> ' + sp([esc(t.name), 'T' + t.season, esc(t.club)], 'v') + '</p>'; }).join('') : '<p class="muted">Aún sin títulos.</p>';
       h += '<h3 style="margin-top:10px">Totales de la carrera</h3><p>' + sp([plural(T.played, 'partido', 'partidos') + ' (' + plural(T.won, 'ganado', 'ganados') + ', ' + plural(T.sim, 'simulado', 'simulados') + ')', plural(T.pts, 'punto', 'puntos'), T.kills + ' remates punto', plural(T.aces, 'ace', 'aces'), T.blocks + ' bloqueos', plural(T.assists, 'asistencia', 'asistencias')], 'v') + '</p></div>';
       return h;
     }
     if (s === 'seasons') {
-      return '<div class="card"><h3>Temporadas</h3>' + (c.history.length ? '<table><thead><tr><th class="l">T</th><th class="l">Club</th><th>Pos.</th><th class="hide-s">Copa</th><th>Nota</th><th>Media</th></tr></thead><tbody>' + c.history.map(function (r) {
+      return '<div class="card"><h3>Temporadas</h3>' + (c.history.length ? '<table><thead><tr><th class="l">T</th><th class="l">Club</th><th>Pos.</th><th class="hide-s">Open</th><th>Nota</th><th>Media</th></tr></thead><tbody>' + c.history.map(function (r) {
         return '<tr><td class="l">' + r.season + '</td><td class="club">' + esc(r.clubName) + ' <span class="muted">(' + esc(C().league(r.lvl).short) + ')</span></td><td>' + r.pos + '.º' + (r.move > 0 ? ' ↑' : r.move < 0 ? ' ↓' : '') + '</td><td class="hide-s">' + esc(r.cup) + '</td><td>' + dec(r.nota) + '</td><td>' + r.ovr + '</td></tr>';
       }).join('') + '</tbody></table>' : '<p class="muted">Tu primera temporada está en marcha.</p>') + '</div>';
     }
@@ -680,8 +721,8 @@
       h += '<div class="card"><h3>Comparar ofertas</h3><table><thead><tr><th class="l">Club</th><th class="hide-s">Liga</th><th>Media</th><th>Compañero</th><th class="hide-s">Rol</th><th class="hide-s">Objetivo</th><th>Sueldo</th><th class="hide-s">Años</th><th></th></tr></thead><tbody>' +
         offs.map(function (o, i) {
           var k = C().club(c, o.club), f = C().clubInfo(c, k);
-          return '<tr><td class="club">' + kitSw(k.kit).replace('cr-kit', 'cr-kit kit-mini') + esc(k.name) + '<br><span class="muted">' + stars(f.stars) + '</span></td><td class="hide-s">' + esc(C().league(o.lvl).short) + (o.trial ? ' (prueba)' : '') + '</td><td>' + o.ovr + '</td><td>' + o.mate +
-            '</td><td class="hide-s">' + esc(o.role) + '</td><td class="hide-s l" style="white-space:normal">' + esc(o.objective || '—') + '</td><td>' + Math.round(o.salary) + ' €/mes</td><td class="hide-s">' + (o.trial ? 1 : (yrs[o.club] || o.years || 1)) +
+          return '<tr><td class="club">' + kitSw(k.kit).replace('cr-kit', 'cr-kit kit-mini') + esc(k.name) + '<br><span class="muted">' + stars(f.stars) + '</span></td><td class="hide-s">' + esc(C().league(o.lvl).short) + (o.trial ? ' (prueba)' : '') + '</td><td>' + o.ovr + '</td><td>' + o.mate + (o.ovr != null && o.mate != null ? ' <span class="muted">(' + sgn(o.mate - o.ovr) + ')</span>' : '') +
+            '</td><td class="hide-s">' + esc(o.role) + '</td><td class="hide-s l">' + esc(objShort(o.objective)) + '</td><td>' + Math.round(o.salary) + ' €/mes</td><td class="hide-s">' + (o.trial ? 1 : (yrs[o.club] || o.years || 1)) +
             '</td><td><button data-sub="' + i + '" aria-label="Ver ' + esc(k.name) + '">Ver</button></td></tr>';
         }).join('') + '</tbody></table><p class="muted">Sueldo ficticio, en euros al mes. Los años del contrato los eliges al firmar.</p></div>';
     } else if (offs.length) h += offerCard(c, offs[+sub.pick], +sub.pick, true);
@@ -692,7 +733,7 @@
     if (lm) { h += '<div class="card">' + msgHTML(lm) + '</div>'; if (!lm.r && C().readMsg) C().readMsg(lm.id); }
     var armed = rejArm && performance.now() - rejArm < 3000;
     h += '<div class="card"><h3>¿Ninguna te convence?</h3><p class="muted">' + (c.pick.more ? 'Ya has pedido más tiempo.' : 'Si pides más tiempo, el club con menos interés retira su oferta y llama otro.') +
-      ' Si rechazas todas, se pierden para siempre' + (offs.some(function (o) { return o.trial; }) ? ' (también la prueba de la Liga Nacional)' : '') + ' y llegan otras de clubes más modestos de la Liga Regional, aunque con algo más de interés por ti.</p><div class="pick-acts">' + (c.pick.more ? '' : '<button data-act="more">Pedir más tiempo</button>') +
+      ' Si rechazas todas, se pierden para siempre' + (offs.some(function (o) { return o.trial; }) ? ' (también la prueba ' + esc(deL(C().league(1))) + ')' : '') + ' y llegan otras de clubes más modestos ' + esc(deL(C().league(0))) + ', aunque con algo más de interés por ti.</p><div class="pick-acts">' + (c.pick.more ? '' : '<button data-act="more">Pedir más tiempo</button>') +
       '<button class="warn" data-act="reject">' + (armed ? (device() === 'touch' ? 'Toca otra vez para rechazarlas' : 'Pulsa otra vez para rechazarlas') : 'Rechazar todas') + '</button></div></div>';
     body.innerHTML = h;
   }
@@ -700,18 +741,16 @@
   // ---------------------------------------------------------------- crear
   function renderCreate(c) {
     var R = C().ROLES, st = C().genSt(C().START_OVR, form.role, null), P = VB.Prog;
-    head.innerHTML = '<button data-act="' + (c ? 'hub' : 'close') + '" aria-label="Volver">‹ Volver</button><div class="cr-title"><small>' + sp(['Carrera', '2 contra 2'], 'd') + '</small><b>Crea tu jugador</b></div>';
+    head.innerHTML = '<button data-act="' + (c ? 'hub' : 'close') + '" aria-label="Volver">‹ Volver</button><div class="cr-title"><small>' + sp(['Carrera', 'Vóley playa 2 contra 2'], 'd') + '</small><b>Crea tu jugador</b></div>';
     tabsEl.hidden = true; tabsEl.innerHTML = ''; subEl.hidden = true; subEl.innerHTML = '';
     var h = '<div class="cf">' + (!c && C().lost && C().lost() ? '<div class="card confirm"><p><b>Tu carrera guardada estaba dañada</b> y no se ha podido recuperar. Hay una copia aparte en este navegador (voley3d.career.bak).</p></div>' : '') +
-      '<div class="card"><p>Empiezas con una media de ' + C().START_OVR + ' y sin equipo: al crear tu jugador te llegan ofertas de clubes de la <b>Liga Regional</b> y eliges tú. Juega (o simula) cada jornada, entrena, sube de nivel, desbloquea insignias y gánate ofertas de clubes mejores hasta el <b>Circuito Mundial</b>. Controlas solo a tu jugador; a tu compañero lo lleva la IA.</p></div>' +
+      '<div class="card"><p>Vóley playa en la arena de Platja Llarga. Empiezas con una media de ' + C().START_OVR + ' y sin pareja: al crear tu jugador te llegan ofertas de clubes de playa del <b>' + esc(C().league(0).name) + '</b> y eliges tú. Juega (o simula) cada jornada, entrena, sube de nivel, desbloquea insignias y gánate ofertas de clubes mejores hasta el <b>' + esc(C().league(4).name) + '</b>. Controlas solo a tu jugador; a tu pareja la lleva la IA, y cada club te ofrece una distinta: mírala bien antes de firmar.</p></div>' +
       '<div class="cf-col"><div><label for="crName">Nombre</label><input id="crName" maxlength="18" autocomplete="off" spellcheck="false" placeholder="Tu nombre" value="' + esc(form.name) + '"></div>' +
       '<div><label>Dorsal</label><div class="stp"><button data-act="num" data-d="-1" aria-label="Dorsal anterior">−</button><b aria-live="polite">' + form.num + '</b><button data-act="num" data-d="1" aria-label="Dorsal siguiente">+</button></div></div>' +
       '<div><label>Rol</label><div class="roles" role="group" aria-label="Rol">' + ['atk', 'uni', 'cr'].map(function (k) {
         return '<button data-act="role" data-r="' + k + '" aria-pressed="' + (form.role === k) + '">' + esc(R[k].name) + '<small>' + esc(R[k].hint) + '</small></button>';
       }).join('') + '</div><div class="prev" style="margin-top:8px">' + C().KEYS.map(function (k) { return '<span>' + esc(P && P.LABEL ? P.LABEL[k] : k) + ' <b>' + st[k] + '</b></span>'; }).join('') + '</div></div></div>' +
-      '<div class="cf-col"><div><label>Puntos por set</label><div class="seg" role="group" aria-label="Puntos por set">' + C().POINTS.map(function (p) {
-        return '<button data-act="pts" data-p="' + p + '" aria-pressed="' + (form.points === p) + '">' + p + '</button>';
-      }).join('') + '</div><p class="muted">Desempate a ' + Math.min(15, form.points) + '. A 15 la temporada no se hace eterna (14 jornadas + copa).</p></div>' +
+      '<div class="cf-col"><div><label>Reglas de playa</label><p class="muted" style="margin:0">' + sp(['Sets a ' + C().PTS, 'el 3.º a ' + C().PTS3], 'v') + '. Pista de 16 × 8, cambio de campo cada 7 puntos (5 en el tercero), el bloqueo cuenta como toque y la dejada va de nudillos. ' + C().WEEKS + ' jornadas a doble vuelta y el open de los 4 primeros.</p></div>' +
       (c ? '<div class="card confirm"><p>Ya tienes una carrera guardada. Para empezar otra, abandónala antes en Palmarés › Opciones.</p></div>' :
         '<div class="acts"><button class="pri" data-act="create">Crear y ver ofertas</button></div>') +
       '</div></div>';
@@ -731,11 +770,10 @@
       case 'hub': snd('back'); view = 'hub'; render(); focusFirst(); return;
       case 'num': form.num = ((form.num - 1 + (+b.getAttribute('data-d')) + 99) % 99) + 1; snd('select'); keepFocus(b, render); return;
       case 'role': form.role = b.getAttribute('data-r'); snd('select'); keepFocus(b, render); return;
-      case 'pts': form.points = +b.getAttribute('data-p'); snd('select'); keepFocus(b, render); return;
       case 'create': {
         var inp = root.querySelector('#crName'); if (inp) form.name = inp.value;
         if (!String(form.name).trim()) { if (inp) { inp.focus(); inp.placeholder = 'Escribe un nombre'; } snd('back'); return; }
-        C().create({ name: form.name, num: form.num, role: form.role, points: form.points });
+        C().create({ name: form.name, num: form.num, role: form.role });   // (playa: siempre a 21)
         yrs = {}; sub.pick = 0; note = '';
         snd('start'); view = 'hub'; tab = 'match'; render(); focusFirst(); syncMenu(); return;
       }
@@ -1006,7 +1044,7 @@
     // una pastilla con el dato suelto (temporada y jornada, ofertas) y detrás el texto: «T1 J3  Rocaverde — Castelnube»; sin
     // carrera, una frase corta como la de Partido rápido
     var chip = '';
-    if (!c) t = C().lost && C().lost() ? 'Guardado dañado: crea otro jugador' : 'Crea tu jugador: liga, ofertas y fichajes';
+    if (!c) t = C().lost && C().lost() ? 'Guardado dañado: crea otro jugador' : 'Vóley playa: crea tu jugador, elige club y ficha';
     else if (c.phase === 'pick') { chip = plural((c.offers || []).length, 'oferta', 'ofertas'); t = 'Elige club'; }
     else if (c.phase === 'off') { chip = 'T' + c.season; t = 'Fin de temporada, ofertas'; }
     else { var n = C().next(c); chip = 'T' + c.season + (n ? (n.kind === 'league' ? ' J' + (n.week + 1) : (n.round === 0 ? ' Semifinal' : ' Final')) : ''); t = n ? C().myClub(c).short + ' — ' + n.rival.short : C().myClub(c).name; }

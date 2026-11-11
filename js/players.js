@@ -27,104 +27,50 @@
   var THREE, ctx, C;
   var PI = Math.PI;
 
-  // ---------- Proporciones (m) ----------
-  // PLY-21: piernas ~4,5 % más largas y tronco más corto en lo mismo (hombros, cabeza y alcance en su sitio: las poses de
-  // brazos, que van en el espacio del cuerpo, siguen valiendo)
-  var HIP_H = 1.042, HIP_W = 0.1, THIGH = 0.481, SHIN = 0.481, ANKLE = 0.08;
-  var SPINE_Y = 0.079, CHEST_Y = 0.179, SH_X = 0.2, SH_Y = 0.235, SH_Z = -0.01;
-  // TAJO (dirección de arte propia, 10-nov-2026): cabezón (~5 cabezas), manopla grande y cuello corto. Las longitudes del rig
-  // (HIP_H, THIGH, SHIN, UPPER, FORE) NO cambian: alcance, salto, bloqueo e IK siguen igual. PALM crece con la mano (0,075 × 1,32/1,14).
-  var UPPER = 0.3, FORE = 0.27, PALM = 0.087, NECK_Y = 0.345;
-  // escala del hueso (la geometría se construye en la pose de reposo ya escalada)
-  var HEAD_K = 1.55, HAND_K = 1.32;
-
-  // ---------- PRESET DE CUERPO (silueta; 10-nov-2026) ----------
-  // Unos pocos MANDOS sobre la silueta TAJO y tres presets muy distintos entre sí (y de SetPoint), elegibles con
-  // ?body=tanque|chibi|heroe (lectura: VB.Players.body(); por defecto 'tajo' = lo de siempre, byte a byte).
-  // RESTRICCIÓN DURA: el alcance visual no cambia. Los hombros quedan a la MISMA altura (cadera + tronco constante: si `legs`
-  // acorta las piernas, SPINE_Y/CHEST_Y crecen lo mismo y la camiseta del abdomen se estira ABS_SY) y UPPER/FORE no cambian;
-  // PALM sigue a la mano (como en TAJO): la palma se apoya en el balón, no lo atraviesa. Las poses van en el espacio del cuerpo
-  // con los hombros como referencia (shoulderC/shoulderAt) y los pies a ANKLE: la IK, el salto, la plancha y las celebraciones
-  // valen sin tocar nada. Los grosores solo tocan la geometría (mismos huesos, mismas primitivas: mismos triángulos y dibujos).
-  // Mandos (1 = TAJO):
-  //   legs   reparto piernas/tronco (THIGH, SHIN y HIP_H ×legs; el tronco absorbe la diferencia)
-  //   head / hand / foot   escala ABSOLUTA del hueso (como HEAD_K / HAND_K / FOOT_K; TAJO 1,55 / 1,32 / 1,4)
-  //   neck   largo del cuello (NECK_Y)   neckW grosor del cuello   sh bola del hombro   shX separación de los hombros (SH_X)
-  //   up / fore / thigh / shin   [grosor en el arranque, grosor en la punta, abultamiento (0 = tubo), posición del abultamiento 0-1 (opc.)]
-  //   chest  [ancho, fondo, V = ancho arriba respecto al bajo del pecho]   waist [ancho, fondo]   hips [ancho, fondo]   hipW separación de las caderas
-  var BODY_PRESETS = {
-    tajo: {},
-    // rechoncho y macizo (Fall Guys / Mario Strikers): tubos gruesos casi sin afinarse, barril, cuello hundido, piernas cortas
-    tanque: { legs: 0.88, head: 1.5, hand: 2.1, foot: 2.1, neck: 0.85, neckW: 1.6, sh: 1.35, shX: 1.3, hipW: 1.4,
-      up: [1.9, 1.85, 0], fore: [1.85, 1.75, 0], thigh: [1.8, 1.7, 0], shin: [1.8, 1.75, 0],
-      chest: [1.2, 1.55, 0.95], waist: [1.3, 1.7], hips: [1.5, 1.6] },
-    // muñeco cabezón y BAJITO (~1,65 m de pie): cabeza ×2,3 sin cuello, piernas al 63 %, tronco al 92 % y brazos largos de muñeco
-    // (`arm` ×1,6: lo que hace falta para que cadera + tronco + brazo sume el MISMO alcance que tajo), manos y pies grandes
-    chibi: { legs: 0.63, torso: 0.92, arm: 1.6, head: 2.3, hand: 2.0, foot: 2.3, neck: 0.72, neckW: 1.3, sh: 1.25, shX: 1.25, hipW: 1.1,
-      up: [1.45, 1.4, 1], fore: [1.45, 1.35, 1], thigh: [1.6, 1.5, 1], shin: [1.6, 1.5, 1],
-      chest: [1.05, 1.1, 1], waist: [1.1, 1.15], hips: [1.15, 1.15] },
-    // mini (para comparar): el chibi de la primera versión (piernas 0,78, cabeza ×2,1) escalado ENTERO al 85 % (`scale`: el rig,
-    // el alcance incluido); para que la mano siga llegando al balón, estiramiento cartoon del brazo en la IK hasta +28 % (`stretch`)
-    mini: { scale: 0.85, stretch: 1.28, legs: 0.78, head: 2.1, hand: 2.2, foot: 2.3, neck: 1.0, neckW: 1.25, sh: 1.2, shX: 1.05, hipW: 1.1,
-      up: [1.5, 1.45, 1], fore: [1.5, 1.4, 1], thigh: [1.5, 1.45, 1], shin: [1.5, 1.45, 1],
-      chest: [1.05, 1.1, 1], waist: [1.1, 1.15], hips: [1.15, 1.15] },
-    // cómic exagerado: hombros/pecho en V muy marcada, cintura estrecha, antebrazos y gemelos Popeye, cabeza pequeña, cuello corto
-    heroe: { legs: 1.0, head: 1.35, hand: 1.5, foot: 1.75, neck: 0.88, neckW: 1.3, sh: 1.5, shX: 1.6, hipW: 1.0,
-      up: [1.5, 1.25, 2], fore: [1.3, 1.0, 5, 0.3], thigh: [1.25, 1.1, 1.5], shin: [1.3, 0.95, 3.5, 0.3],
-      chest: [1.0, 1.05, 1.55], waist: [0.82, 0.85], hips: [0.95, 0.95] }
-  };
-  var BODY0 = { HIP_H: HIP_H, THIGH: THIGH, SHIN: SHIN, HIP_W: HIP_W, SPINE_Y: SPINE_Y, CHEST_Y: CHEST_Y, SH_X: SH_X, SH_Y: SH_Y, NECK_Y: NECK_Y, HEAD_K: HEAD_K, HAND_K: HAND_K, PALM: PALM, FOOT_K: 1.4, UPPER: UPPER, FORE: FORE };
-  var BODY = 'tajo', BK = null, ABS_SY = 1, HEAD_HK = 1;   // mandos activos; estirado vertical de la camiseta del abdomen; cabeza respecto a TAJO
-  // ARM_K: largo del brazo respecto a tajo (los objetivos de mano de las poses, que van en metros absolutos desde el hombro, se escalan
-  // con él: así las poses conservan sus ángulos con brazos largos); BODY_SCALE: escala de TODO el rig; ARM_STRETCH: estiramiento
-  // cartoon máximo del brazo en la IK cuando el objetivo queda fuera de alcance (1 = sin estirar, como siempre)
-  var ARM_K = 1, BODY_SCALE = 1, ARM_STRETCH = 1, SH_DY = 0;
-  function bodyKnobs(name) {
-    var p = BODY_PRESETS[name] || {};
-    function v(k, d) { return p[k] != null ? p[k] : d; }
-    function lk(k) { var a = p[k] || []; return [a[0] != null ? a[0] : 1, a[1] != null ? a[1] : 1, a[2] != null ? a[2] : 1, a[3] != null ? a[3] : 0]; }
-    function k2(k) { var a = p[k] || []; return [a[0] != null ? a[0] : 1, a[1] != null ? a[1] : 1, a[2] != null ? a[2] : 1]; }
-    return { legs: v('legs', 1), torso: v('torso', 1), arm: v('arm', 1), scale: v('scale', 1), stretch: v('stretch', 1),
-      head: v('head', BODY0.HEAD_K), hand: v('hand', BODY0.HAND_K), foot: v('foot', BODY0.FOOT_K), neck: v('neck', 1), neckW: v('neckW', 1),
-      sh: v('sh', 1), shX: v('shX', 1), hipW: v('hipW', 1), up: lk('up'), fore: lk('fore'), thigh: lk('thigh'), shin: lk('shin'), chest: k2('chest'), waist: k2('waist'), hips: k2('hips') };
-  }
-  /** Aplica un preset a las proporciones del rig (antes de construir atletas; setBody libera los construidos). */
-  function applyBody(name) {
-    name = BODY_PRESETS[name] ? name : 'tajo';
-    var k = BK = bodyKnobs(name); BODY = name;
-    THIGH = BODY0.THIGH * k.legs; SHIN = BODY0.SHIN * k.legs; HIP_H = k.legs === 1 ? BODY0.HIP_H : THIGH + SHIN + ANKLE;
-    // tronco (pelvis → hombros): el de tajo × `torso`; si `arm` es 1, además absorbe lo que se acortan las piernas (alcance igual).
-    // Con `arm` ≠ 1 el alcance lo cierra el brazo: UPPER + FORE = alcance de tajo − cadera − tronco − palma (y `arm` solo es un mínimo)
-    var T0 = BODY0.SPINE_Y + BODY0.CHEST_Y + BODY0.SH_Y, dL = (BODY0.THIGH + BODY0.SHIN) * (1 - k.legs);
-    var dT = k.torso === 1 && k.arm === 1 ? dL : T0 * k.torso - T0 + (k.arm === 1 ? dL : 0);
-    // el reparto 0,443 / 0,557 es el de las dos mitades de la camiseta del abdomen (0,135 abajo / 0,17 arriba): así un único
-    // estirado vertical ABS_SY la deja encajada en el pantalón y en el pecho como antes
-    SPINE_Y = BODY0.SPINE_Y + dT * 0.443; CHEST_Y = BODY0.CHEST_Y + dT * 0.557; ABS_SY = 1 + dT / 0.305;
-    HIP_W = BODY0.HIP_W * k.hipW; SH_X = BODY0.SH_X * k.shX; NECK_Y = BODY0.NECK_Y * k.neck;
-    BODY_SCALE = k.scale; ARM_STRETCH = Math.max(1, k.stretch);
-    HEAD_K = k.head; HAND_K = k.hand; FOOT_K = k.foot; PALM = k.hand === BODY0.HAND_K ? BODY0.PALM : BODY0.PALM * k.hand / BODY0.HAND_K;
-    if (k.arm === 1) { UPPER = BODY0.UPPER; FORE = BODY0.FORE; ARM_K = 1; }
-    else {
-      var reach0 = BODY0.HIP_H + T0 + BODY0.UPPER + BODY0.FORE + BODY0.PALM, need = reach0 - HIP_H - (SPINE_Y + CHEST_Y + BODY0.SH_Y) - PALM;
-      var ka = Math.max(k.arm, need / (BODY0.UPPER + BODY0.FORE));
-      UPPER = BODY0.UPPER * ka; FORE = BODY0.FORE * ka; ARM_K = (UPPER + FORE + PALM) / (BODY0.UPPER + BODY0.FORE + BODY0.PALM);
+  // ---------- Proporciones (m): el MUÑECO de js/doll.js ----------
+  // MUÑECO (10-nov-2026, fase 2): el único modelo del juego es el muñeco chibi de doll.js (VB.Doll). Las longitudes del rig salen
+  // de VB.Doll.dims() en init (applyDoll); los valores de abajo son los de reposo del muñeco (se sobrescriben; están para leer
+  // el fichero solo). El tamaño de cabeza, manos y pies va en la GEOMETRÍA del muñeco: los huesos van a escala 1 (HEAD_K/HAND_K = 1).
+  var HIP_H = 0.58, HIP_W = 0.09, THIGH = 0.23, SHIN = 0.23, ANKLE = 0.12;
+  var SPINE_Y = 0.2, CHEST_Y = 0.2, SH_X = 0.175, SH_Y = 0.205, SH_Z = 0;
+  var UPPER = 0.33, FORE = 0.305, PALM = 0.115, NECK_Y = 0.205;
+  var HEAD_K = 1, HAND_K = 1;
+  // ESPACIO DE POSE = el atleta TAJO para el que se afinó toda la animación: las poses de computeTarget siguen escritas en metros
+  // absolutos de ese cuerpo (hombros a 1,535, brazo 0,657, piernas 0,962: shoulderC usa estas constantes P_*) y applyPose las
+  // REPROYECTA al rig del muñeco: cada objetivo de mano se refiere al hombro de la pose (shoulderPose, con las rotaciones del frame)
+  // y se escala desde el hombro real ×ARM_K (brazo de reposo del muñeco / brazo TAJO), subiendo a ×ARM_UPK (brazo estirado del todo
+  // = alcance del atleta) cuando el gesto lleva el brazo recto hacia ARRIBA (bloqueo, brazos en V, contacto del remate): el estirón
+  // cartoon de la decisión de Ferran. Lo anclado al balón va en absoluto y la IK estira el brazo lo que haga falta (ARM_STRETCH).
+  // La flexión de rodillas de las poses (DROP, metros TAJO) se escala ×LEG_K donde se consume (piernas cortas).
+  var P_HIP_H = 1.042, P_SPINE_Y = 0.079, P_CHEST_Y = 0.179, P_SH_X = 0.2, P_SH_Y = 0.235, P_SH_Z = -0.01, P_UPPER = 0.3, P_FORE = 0.27, P_PALM = 0.087, P_LEG = 0.962;
+  var ARM_K = 1, ARM_UPK = 1, LEG_K = 1, ARM_STRETCH = 1, HEAD_HK = 1, BODY_TOP = 1.64, CV_K = 1, SH_DY = 0, HAND_OVER = 0.045;
+  var BODY = 'doll', BODY_SCALE = 1, BK = null;   // (BK: mandos del preset de cuerpo; ya no hay presets: el muñeco es el único modelo)
+  /** Toma las longitudes del muñeco (VB.Doll.dims()) y recalcula los derivados. Antes de construir atletas (init). */
+  function applyDoll() {
+    var d = null; try { d = VB.Doll && VB.Doll.dims ? VB.Doll.dims() : null; } catch (e) { d = null; }
+    if (d) {
+      HIP_H = d.HIP_H; HIP_W = d.HIP_W; THIGH = d.THIGH; SHIN = d.SHIN; ANKLE = d.ANKLE; SPINE_Y = d.SPINE_Y; CHEST_Y = d.CHEST_Y;
+      SH_X = d.SH_X; SH_Y = d.SH_Y; SH_Z = d.SH_Z || 0; NECK_Y = d.NECK_Y; UPPER = d.UPPER; FORE = d.FORE; PALM = d.PALM;
+      HEAD_C = d.HEAD_C; HEAD_RX = d.HEAD_RX; HEAD_RY = d.HEAD_RY; HEAD_RZ = d.HEAD_RZ || d.HEAD_RX; FOOT_K = d.FOOT_K || 1;
+      ARM_STRETCH = Math.max(1, d.STRETCH || 1); BODY_TOP = d.top || (HIP_H + SPINE_Y + CHEST_Y + SH_Y + HEAD_C + HEAD_RY);
+      try { var bl = VB.Doll.boneLayout ? VB.Doll.boneLayout() : null; if (bl && bl.hair) { HAIR_P[0] = bl.hair[0]; HAIR_P[1] = bl.hair[1]; HAIR_P[2] = bl.hair[2]; } } catch (e2) { }
     }
-    // con `arm` ≠ 1 los hombros ya no quedan a la altura de tajo: los objetivos de mano (metros absolutos, pensados para hombros a
-    // 1,535) se refieren primero al hombro de tajo (SH_DY = lo que han bajado los hombros) y luego se escalan desde el hombro real
-    SH_DY = HIP_H + SPINE_Y + CHEST_Y + BODY0.SH_Y - (BODY0.HIP_H + T0);
-    // derivados (declarados más abajo con los valores TAJO; aquí se recalculan)
-    JY0 = HIP_H + SPINE_Y - 0.135 * ABS_SY; JY1 = HIP_H + SPINE_Y + CHEST_Y + 0.306;
-    ARM_R = UPPER + FORE + PALM; ARM_L2 = FORE + PALM; ARM_W = UPPER + FORE;
-    HEAD_HK = HEAD_K / BODY0.HEAD_K; HEAD_CY = NECK_Y + HEAD_C * HEAD_K; HEAD_R = 0.33 * (0.44 + 0.56 * HEAD_HK);   // tajo: 0,33 exacto
-    // celebraciones: los cuerpos anchos o cabezones paran más lejos (choques de manos / pecho y separación visual del doble bloqueo)
-    CV_K = Math.max(1, 0.1 + 0.9 * HEAD_HK, 0.4 + 0.6 * Math.max(k.chest[0] * k.chest[2], k.shX)); SEP_MIN = 0.5 * CV_K;
+    HEAD_K = 1; HAND_K = 1; BODY_SCALE = 1;
+    ARM_R = P_UPPER + P_FORE + P_PALM; ARM_L2 = FORE + PALM; ARM_W = UPPER + FORE;
+    ARM_WE = ARM_W * (1 + 0.6 * (ARM_STRETCH - 1)); AWK = ARM_W / (P_UPPER + P_FORE);
+    ARM_K = (UPPER + FORE + PALM) / ARM_R;                               // brazo de reposo del muñeco respecto al de la pose (1,14)
+    // brazo recto hacia arriba en las POSES (bloqueo, brazos en V, armado): algo más de la mitad del estirón (×1,35; el estirón
+    // completo ×1,53 = alcance del atleta queda para el anclaje al balón: con ×1,53 en las poses los brazos se leían como fideos)
+    ARM_UPK = ARM_K + 0.55 * (((UPPER + FORE) * ARM_STRETCH + PALM) / ARM_R - ARM_K);
+    LEG_K = (THIGH + SHIN) / P_LEG;                                      // piernas cortas: la flexión de las poses se escala (0,48)
+    HAND_OVER = 0.045 + Math.max(0, 0.108 * HAND_K - 0.063);             // la manopla asoma más allá del centro de la palma que la mano TAJO
+    HEAD_HK = (2 * HEAD_RY) / 0.372;                                     // cabeza respecto a la TAJO (0,372 m de alto): headClear, galón, paradas
+    HEAD_CY = NECK_Y + HEAD_C; HEAD_R = 0.33 * (0.44 + 0.56 * HEAD_HK);
+    // celebraciones: los cabezones paran más lejos (choques de manos / pecho y separación visual del doble bloqueo)
+    CV_K = Math.max(1, 0.1 + 0.9 * HEAD_HK); SEP_MIN = 0.5 * CV_K;
+    SH_DY = HIP_H + SPINE_Y + CHEST_Y + SH_Y - (P_HIP_H + P_SPINE_Y + P_CHEST_Y + P_SH_Y);
+    JY0 = HIP_H + SPINE_Y - 0.135; JY1 = HIP_H + SPINE_Y + CHEST_Y + 0.306;
   }
-  var CV_K = 1;
-  BK = bodyKnobs('tajo');
-  /** Perfil de extremidad con los mandos del preset (k = up/fore/thigh/shin). */
-  function limbK(len, r0, r1, bAt, bulge, n, k) { return limbPts(len, r0 * k[0], r1 * k[1], k[3] > 0 ? k[3] : bAt, bulge * k[2], n); }
-  /** Grosor relativo de una extremidad a la fracción t (0 arranque, 1 punta): para las piezas de ropa que la rodean. */
-  function rk(k, t) { return k[0] + (k[1] - k[0]) * t; }
 
   // ---------- Aspecto ----------
   // Equipos (colores alineados con la UI: --hot/--amber y --blue/--sky)
@@ -193,6 +139,7 @@
     var sig = [shirt, acc, sh, pat, rk ? [rk.base, rk.accent, rk.shorts, rk.pattern].join('/') : ''].join(':');
     if (sig === TEAMS._sig) return false;
     TEAMS[0] = t0; TEAMS[1] = best; TEAMS._sig = sig; kitSig++;
+    RIVAL_SIG = rk ? hash32(((rk.base >>> 8) ^ (rk.accent >>> 4) ^ rk.shorts) >>> 0) & 0xffff : 0;   // MUÑECO: aspecto de los rivales por club
     flushCache();   // fuera los atletas construidos con la equipación anterior (texturas y mallas)
     return true;
   }
@@ -252,29 +199,31 @@
   }
   /** Equipación de un jugador: la del equipo o, si es el líbero (6v6), la suya. */
   function kitOf(p) { return p.role === 'L' ? liberoKit(p.team) : TEAMS[p.team]; }
-  // Por id de jugador: piel, pelo, peinado, escala de altura
-  var LOOKS = [
-    // TAJO: peinados de mechones grandes y lisos (tupe, puff2, coleta, cresta, flequillo, rapado, trenzas: headGeo)
-    { skin: 0xdba27a, hair: 0x3a2416, style: 'tupe', h: 1.0 },   // CARTOON: pelos algo más claros (se separan de la tinta del contorno)
-    { skin: 0x8a5638, hair: 0x2b1d17, style: 'puff2', h: 1.03 },
-    { skin: 0xc68a5f, hair: 0x4b2a18, style: 'coleta', h: 0.985 },
-    { skin: 0xf0c6a4, hair: 0x2e2420, style: 'cresta', h: 1.04 }
+  // ---------- Aspecto de cada muñeco (MUÑECO): piel, pelo, peinado, complemento, escala de altura ----------
+  // Peinados de doll.js (headGeo): tupe, coleta, afro, flequillo, rapado, mono, trenzas. Complementos: '' | 'cinta' (pabellón);
+  // en la playa visera / gorra / gafas / cinta. Tus dos jugadores (2v2, equipo 0, n.º 1 y 2) tienen un look FIJO y distinto; los
+  // demás se reparten de forma DETERMINISTA con un hash del dorsal, el equipo y la equipación del club rival (RIVAL_SIG, setKit):
+  // en la Carrera los rivales de un club son siempre los mismos y en el 6v6 hay variedad en los 12.
+  var SKINS = [0xdba27a, 0x8a5638, 0xc68a5f, 0xf0c6a4, 0xb07650, 0xe6b48e, 0x6e4430, 0xf3d0b0, 0xa36a48, 0xd9a07c];
+  var HAIRS = [0x3a2416, 0x241a14, 0x7a3a16, 0x1e1612, 0x6a4424, 0x9a6a3a, 0xb88a4e, 0x2b1d17, 0x4b2a18, 0xe0c070];
+  var STYLES = ['tupe', 'coleta', 'afro', 'flequillo', 'rapado', 'mono', 'trenzas'];
+  var ACC_HALL = ['', '', '', 'cinta'], ACC_BEACH = ['visera', 'gorra', 'gafas', 'cinta', 'visera', 'gorra'];
+  var MY_LOOKS = [
+    { skin: 0xdba27a, hair: 0x3a2416, style: 'tupe', acc: '', accB: 'gorra', h: 1.0 },      // n.º 1: tupé, gorra en la playa
+    { skin: 0x8a5638, hair: 0x3a2a1e, style: 'afro', acc: 'cinta', accB: 'visera', h: 1.02 } // n.º 2: afro con cinta, visera en la playa (pelo algo más claro: el casi negro era una bola sin volumen)
   ];
-  // 6v6: más variedad (12 en pista). Estos solo se usan con p.role.
-  var LOOKS6 = LOOKS.concat([
-    { skin: 0xb07650, hair: 0x6a4424, style: 'flequillo', h: 1.0 },
-    { skin: 0xe6b48e, hair: 0x9a6a3a, style: 'trenzas', h: 1.0 },
-    { skin: 0x6e4430, hair: 0x1e1612, style: 'rapado', h: 1.0 },
-    { skin: 0xf3d0b0, hair: 0xb88a4e, style: 'tupe', h: 1.0 },
-    { skin: 0xa36a48, hair: 0x2b1d17, style: 'coleta', h: 1.0 },
-    { skin: 0xd9a07c, hair: 0x241a14, style: 'puff2', h: 1.0 }
-  ]);
+  var RIVAL_SIG = 0;   // hash de la equipación del club rival (Carrera): los rivales de cada club se reconocen de un partido a otro
+  function hash32(n) { n = (n ^ 61) ^ (n >>> 16); n = (n + (n << 3)) | 0; n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15); return n >>> 0; }
   // escala de altura por puesto (solo visual): centrales y opuestos altos, colocador y líbero algo más bajos
   var ROLE_H = { MB: 1.05, OPP: 1.03, OH: 1.015, S: 0.985, L: 0.955 };
   function lookOf(p) {
-    if (!p.role) return LOOKS[p.id % LOOKS.length];
-    var b = LOOKS6[(p.num * 7 + p.team * 5) % LOOKS6.length], h = ROLE_H[p.role] || 1;
-    return { skin: b.skin, hair: b.hair, style: b.style, h: h * (1 + ((p.num * 13) % 5 - 2) * 0.006) };
+    var beach = VEN === 'beach', L;
+    if (!p.role && p.team === 0 && p.idx < 2) { L = MY_LOOKS[p.idx]; return { skin: L.skin, hair: L.hair, style: L.style, acc: beach ? L.accB : L.acc, h: L.h }; }
+    var h = hash32(((p.num | 0) * 131 + p.team * 17 + (p.role ? 1009 : 0) + (p.team === 1 && !p.role ? RIVAL_SIG : 0)) >>> 0);
+    var skin = SKINS[h % SKINS.length], hair = HAIRS[(h >>> 4) % HAIRS.length], style = STYLES[(h >>> 8) % STYLES.length];
+    var acc = beach ? ACC_BEACH[(h >>> 12) % ACC_BEACH.length] : ACC_HALL[(h >>> 12) % ACC_HALL.length];
+    var hh = p.role ? (ROLE_H[p.role] || 1) * (1 + ((p.num * 13) % 5 - 2) * 0.006) : 1 + ((h >>> 16) % 5 - 2) * 0.012;
+    return { skin: skin, hair: hair, style: style, acc: acc, h: hh };
   }
 
   var rigs = [], byId = [], cache = {}, lastBlocker = null;
@@ -341,345 +290,14 @@
     return g;
   };
 
-  function V2(x, y) { return new THREE.Vector2(x, y); }
   // ---------- Nivel de detalle (LOD) por calidad ----------
   // Los segmentos de cada primitiva se escalan con LODK (alta 1, media 0,62, baja 0,42) con un mínimo por pieza.
   // La malla del atleta se reconstruye (misma piel, mismos huesos) al cambiar de calidad: ver setLod().
   var LOD_K = [0.42, 0.62, 1], LODK = 1, LODR = 2;
   function sg(n, mn) { return Math.max(mn || 3, Math.round(n * LODK)); }
-  /** Perfil de extremidad (de abajo arriba) para LatheGeometry: cuelga en -Y de 0 a -len. */
-  function limbPts(len, r0, r1, bAt, bulge, n) {
-    var pts = [], i, a, nc = LODR === 2 ? 3 : 2;
-    n = sg(n, 3);
-    for (i = 0; i <= nc; i++) { a = i / nc * PI / 2; pts.push(V2(Math.sin(a) * r1, -len - Math.cos(a) * r1 * 0.75)); }
-    for (i = 1; i < n; i++) {
-      var t = 1 - i / n, d = (t - bAt) / 0.3;
-      pts.push(V2(r0 + (r1 - r0) * t + bulge * Math.exp(-d * d), -len * t));
-    }
-    for (i = 0; i <= nc; i++) { a = i / nc * PI / 2; pts.push(V2(Math.cos(a) * r0, Math.sin(a) * r0 * 0.75)); }
-    return pts;
-  }
-  function lathe(pts, seg, mn) { return new THREE.LatheGeometry(pts, sg(seg, mn || 8), 0, PI * 2); }
-  function sph(r, w, h, ps, pl, ts, tl) { return new THREE.SphereGeometry(r, sg(w || 12, 6), sg(h || 8, 3), ps || 0, pl == null ? PI * 2 : pl, ts || 0, tl == null ? PI : tl); }
-  function cyl(rt, rb, h, seg, open) { return new THREE.CylinderGeometry(rt, rb, h, sg(seg || 12, 8), 1, !!open); }
-  function torus(r, t, rs, ts) { return new THREE.TorusGeometry(r, t, sg(rs, 3), sg(ts, 8)); }
-  function box(w, h, d) { return new THREE.BoxGeometry(w, h, d); }
-
-  // Perfiles del tronco (y local de cada hueso) [r, y] de abajo arriba
-  var CHEST_PROF = [[0, -0.17], [0.142, -0.16], [0.15, -0.08], [0.162, 0.0], [0.172, 0.08], [0.176, 0.15], [0.166, 0.205], [0.142, 0.25], [0.1, 0.282], [0.058, 0.3], [0, 0.306]];
-  var CHEST_S = [1.38, 1, 0.84];   // TAJO: torso en V (pecho ancho, cintura estrecha)
-  // el bajo de la camiseta se abre un poco y la cintura del pantalón queda DENTRO (sin anillo ni parpadeo)
-  // PLY-21: cintura más estrecha y bajo de la camiseta algo abierto
-  var ABS_PROF = [[0, -0.135], [0.18, -0.13], [0.177, -0.105], [0.16, -0.035], [0.144, 0.035], [0.132, 0.1], [0.118, 0.16], [0, 0.17]];
-  var ABS_S = [1.1, 1, 0.8];       // TAJO: algo más estrecho (el bajo sigue por fuera del pantalón: 0,198 frente a 0,19)
-  var SHORTS_PROF = [[0, -0.15], [0.12, -0.146], [0.152, -0.12], [0.158, -0.05], [0.147, 0.02], [0.128, 0.08], [0.1, 0.12], [0, 0.13]];
-  var SHORTS_S = [1.2, 1, 0.8];
-  function profPts(pr) { var a = []; for (var i = 0; i < pr.length; i++) a.push(V2(pr[i][0], pr[i][1])); return a; }
 
   // ---------- Texturas de canvas ----------
   function canvas(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
-  function texOf(cv) {
-    var t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
-    t.wrapS = THREE.RepeatWrapping; return t;
-  }
-  function hexCss(h) { return '#' + ('000000' + h.toString(16)).slice(-6); }
-  /** Atlas del jugador (512×512): mitad de arriba = camiseta con dorsales, mitad de abajo = blanco
-   *  (las demás piezas llevan color por vértice y muestrean ahí). */
-  // TAJO: L (aspecto) y beach (versión de playa) para la hoja de caras y la camiseta de tirantes
-  function paintAtlas(cv, tc, num, L, beach) {
-    var g = cv.getContext('2d');
-    g.fillStyle = '#ffffff'; g.fillRect(0, 0, 512, 512);
-    paintJersey(g, tc, L, beach);
-    // bajo prolongado con el color de la camiseta (no un cinturón oscuro): el filtrado de mipmaps
-    // no mezcla el blanco del atlas con el bajo; el ribete real es fino (paintJersey)
-    g.fillStyle = hexCss(tc.base); g.fillRect(0, 256, 512, 18);
-    paintNumbers(g, num, tc, beach);
-    if (L) paintFace(g, L, tc, beach);
-  }
-  /** TAJO: el corte diagonal de «Make the Cut»: banda clara con los dos bordes en zigzag y filo oscuro, de (x0, y0) a (x1, y1)
-   *  (píxeles del atlas de la camiseta), de ancho w. */
-  function tajoBand(g, x0, y0, x1, y1, w, fill, edge) {
-    var dx = x1 - x0, dy = y1 - y0, l = Math.sqrt(dx * dx + dy * dy), ux = dx / l, uy = dy / l, nx = -uy, ny = ux;
-    function band(hw, zz) {
-      var n = Math.max(2, Math.round(l / 14)), i, t, o, pts = [];
-      for (i = 0; i <= n; i++) { t = i / n; o = hw + (i % 2 ? zz : -zz); pts.push([x0 + dx * t + nx * o, y0 + dy * t + ny * o]); }
-      for (i = n; i >= 0; i--) { t = i / n; o = -hw + (i % 2 ? -zz : zz); pts.push([x0 + dx * t + nx * o, y0 + dy * t + ny * o]); }
-      g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); g.fill();
-    }
-    g.fillStyle = hexCss(edge); band(w / 2 + 5, 5);
-    g.fillStyle = hexCss(fill); band(w / 2, 5);
-  }
-  function tajoFill(tc) { return lumHex(tc.base) > 0.62 ? tc.accent : 0xf8f8f4; }
-  /** Camiseta: u alrededor (0 = delante, .25 izquierda, .5 espalda, .75 derecha); filas 0-255 de arriba (cuello) abajo (bajo). */
-  function paintJersey(g, tc, L, beach) {
-    var W = 512, H = 256;
-    // CARTOON: color plano (sin degradado ni trama sublimada: el sombreado toon ya da el volumen)
-    g.fillStyle = hexCss(tc.base); g.fillRect(0, 0, W, H);
-    function wrap(fn) { fn(0); fn(W); fn(-W); }
-    if (beach) { paintTank(g, tc, L, wrap); return; }
-    // paneles laterales (bajo el brazo) en color de acento (o blancos) con filo oscuro
-    [0.25, 0.75].forEach(function (u) {
-      var cx = u * W, wb = tc.panel ? 1.25 : 1;
-      g.fillStyle = hexCss(tc.dark); g.beginPath(); g.moveTo(cx - 40 * wb, H); g.lineTo(cx + 40 * wb, H); g.lineTo(cx + 22 * wb, 0); g.lineTo(cx - 22 * wb, 0); g.fill();
-      g.fillStyle = hexCss(tc.panel || tc.accent); g.beginPath(); g.moveTo(cx - 33 * wb, H); g.lineTo(cx + 33 * wb, H); g.lineTo(cx + 15 * wb, 0); g.lineTo(cx - 15 * wb, 0); g.fill();
-    });
-    // canesú blanco sobre los hombros (delante y detrás), con filo oscuro; queda por encima de los dorsales
-    if (tc.yoke) {
-      wrap(function (o) {
-        g.fillStyle = hexCss(tc.dark);
-        g.beginPath(); g.moveTo(o - W * 0.5, 0); g.lineTo(o + W * 0.5, 0); g.lineTo(o + W * 0.5, 30); g.quadraticCurveTo(o + W * 0.25, 46, o, 30);
-        g.quadraticCurveTo(o - W * 0.25, 46, o - W * 0.5, 30); g.fill();
-        g.fillStyle = hexCss(tc.yoke);
-        g.beginPath(); g.moveTo(o - W * 0.5, 0); g.lineTo(o + W * 0.5, 0); g.lineTo(o + W * 0.5, 25); g.quadraticCurveTo(o + W * 0.25, 40, o, 25);
-        g.quadraticCurveTo(o - W * 0.25, 40, o - W * 0.5, 25); g.fill();
-      });
-    }
-    // diseño de la camiseta (equipación personalizable, setKit): 'diag' franja diagonal en el pecho (la de siempre),
-    // 'liso' sin franja, 'franjas' dos bandas horizontales, 'rayas' rayas verticales finas
-    // TAJO: 'diag' (el diseño por defecto, «Diagonal» en Ajustes) es ahora el TAJO: corte claro en zigzag del hombro izquierdo a
-    // la cadera derecha que pasa por el dorsal del pecho (que va dentro, en oscuro: paintNumbers)
-    var pat = tc.pattern || 'diag';
-    if (pat === 'diag') {
-      wrap(function (o) { tajoBand(g, o + 48, -8, o - 126, 264, 66, tajoFill(tc), tc.dark); });
-    } else if (pat === 'franjas') {
-      g.fillStyle = hexCss(tc.accent); g.globalAlpha = 0.92; g.fillRect(0, 150, W, 22); g.fillRect(0, 180, W, 10); g.globalAlpha = 1;
-    } else if (pat === 'rayas') {
-      g.fillStyle = hexCss(tc.accent); g.globalAlpha = 0.55;
-      for (var rx = 8; rx < W; rx += 32) g.fillRect(rx, 30, 9, H - 42);
-      g.globalAlpha = 1;
-    }
-    // canesú en la espalda (parte alta) en oscuro
-    if (!tc.yoke) { g.fillStyle = hexCss(tc.dark); g.globalAlpha = 0.35; g.fillRect(150, 0, 212, 22); g.globalAlpha = 1; }
-    // cuello en pico (delante) y ribete del cuello
-    wrap(function (o) {
-      g.strokeStyle = hexCss(tc.trim); g.lineWidth = 7; g.lineJoin = 'round';
-      g.beginPath(); g.moveTo(o - 44, 0); g.lineTo(o, 34); g.lineTo(o + 44, 0); g.stroke();
-      g.fillStyle = hexCss(tc.dark); g.beginPath(); g.moveTo(o - 40, 0); g.lineTo(o, 28); g.lineTo(o + 40, 0); g.fill();
-    });
-    g.fillStyle = hexCss(tc.trim); g.fillRect(0, 0, W, 4);
-    // bajo de la camiseta: ribete fino en un tono oscuro de la propia camiseta
-    g.fillStyle = hexCss(tc.base); g.fillRect(0, H - 12, W, 12);
-    g.fillStyle = hexCss(tc.dark); g.globalAlpha = 0.45; g.fillRect(0, H - 6, W, 3); g.globalAlpha = 1;
-  }
-  var NUM_FONT = '"Barlow Condensed","Arial Narrow","Arial Black",Impact,sans-serif';
-  /** Fila del atlas (0 = cuello) para una altura de reposo del tronco. */
-  function jerseyRow(Y) { return (1 - clamp((Y - JY0) / (JY1 - JY0), 0, 1)) * 256; }
-  /** Dorsales: grande en la espalda (u = .5) y pequeño en el pecho (u = 0), blancos con filo oscuro.
-   *  En el atlas 1 px horizontal ≈ 1/364 m en la espalda y 1 px vertical ≈ 1/400 m: se compensa en x. */
-  function paintNumbers(g, num, tc, beach) {
-    var s = String(num), chest0 = HIP_H + SPINE_Y + CHEST_Y;
-    // TAJO: el dorsal del pecho va dentro del corte claro, en el oscuro del equipo (sin filo); playa: dorsal grande en el pecho
-    var inTajo = !beach && (tc.pattern || 'diag') === 'diag';
-    function one(cx, yTop, yBot, sx, dark) {
-      var r0 = jerseyRow(yTop), r1 = jerseyRow(yBot), h = r1 - r0;
-      g.save(); g.translate(cx, (r0 + r1) / 2); g.scale(sx, 1);
-      g.font = 'italic 900 ' + Math.round(h * 1.12) + 'px ' + NUM_FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.lineJoin = 'round';
-      if (dark) { g.fillStyle = hexCss(tc.dark); g.fillText(s, 0, h * 0.06); g.restore(); return; }
-      g.lineWidth = h * 0.13; g.strokeStyle = hexCss(tc.dark);
-      g.strokeText(s, 0, h * 0.06); g.fillStyle = tc.numFill || '#ffffff'; g.fillText(s, 0, h * 0.06);
-      g.restore();
-    }
-    one(256, chest0 + 0.19, chest0 - 0.03, 0.95);           // espalda (~20 cm)
-    if (beach) { one(0, chest0 + 0.19, chest0 + 0.03, 1.2); one(512, chest0 + 0.19, chest0 + 0.03, 1.2); return; }
-    one(0, chest0 + 0.175, chest0 + 0.08, 1.3, inTajo); one(512, chest0 + 0.175, chest0 + 0.08, 1.3, inTajo); // pecho (cruza la costura; más ancho: la curva lo estrecha)
-  }
-  /** TAJO (playa): camiseta de TIRANTES de licra del equipo, unisex: sisas de piel (espalda nadadora: más abiertas hacia
-   *  atrás), cuello redondo, tajo en zigzag bajo el dorsal grande del pecho. Nada de tops ni ropa suelta por jugador. */
-  function paintTank(g, tc, L, wrap) {
-    var W = 512, H = 256, sk = hexCss(L ? L.skin : 0xd9a07c);
-    // paneles laterales finos de acento
-    [0.25, 0.75].forEach(function (u) {
-      var cx = u * W;
-      g.fillStyle = hexCss(tc.accent); g.beginPath(); g.moveTo(cx - 20, H); g.lineTo(cx + 20, H); g.lineTo(cx + 12, 60); g.lineTo(cx - 12, 60); g.fill();
-    });
-    wrap(function (o) { tajoBand(g, o + 150, 112, o - 150, 214, 40, tajoFill(tc), tc.dark); });
-    // sisas (piel) con ribete de acento: más abiertas hacia la espalda (u = .5)
-    [[128 + 16, 1], [384 - 16, -1]].forEach(function (a) {
-      g.fillStyle = hexCss(tc.accent); g.beginPath(); g.ellipse(a[0], -4, 62, 74, 0, 0, PI * 2); g.fill();
-      g.fillStyle = sk; g.beginPath(); g.ellipse(a[0], -4, 56, 68, 0, 0, PI * 2); g.fill();
-    });
-    // espalda nadadora: tirante estrecho entre las dos sisas
-    g.fillStyle = sk; g.beginPath(); g.ellipse(256, -10, 40, 26, 0, 0, PI * 2); g.fill();
-    // cuello redondo delante con ribete
-    wrap(function (o) {
-      g.fillStyle = hexCss(tc.accent); g.beginPath(); g.ellipse(o, -2, 46, 26, 0, 0, PI * 2); g.fill();
-      g.fillStyle = sk; g.beginPath(); g.ellipse(o, -4, 41, 21, 0, 0, PI * 2); g.fill();
-    });
-    g.fillStyle = hexCss(tc.base); g.fillRect(0, H - 12, W, 12);
-    g.fillStyle = hexCss(tc.dark); g.globalAlpha = 0.45; g.fillRect(0, H - 6, W, 3); g.globalAlpha = 1;
-  }
-
-  // =====================================================================
-  //  TAJO: HOJA DE CARAS (cara dibujada en el atlas del jugador, filas FACE_Y0-FACE_Y1)
-  // =====================================================================
-  // La cara es una lámina pegada al cráneo (faceGeo) con UV en la celda 0; el shader suma el desplazamiento de la celda de la
-  // expresión (uniformes uEyeOff / uMouthOff): cambiar de cara = 2 uniformes, sin texturas, mallas ni programas nuevos.
-  //  - Ojos y cejas: 8 celdas de 128×46 (4 por fila, 2 filas): 0 abiertos · 1 parpadeo · 2 entornados (esfuerzo) · 3 felices ^ ^ ·
-  //    4 tristes · 5 grito (enormes, cejas de guerra) · 6 guiño · 7 concentrado/enfadado (cejas en V).
-  //    Sello: la «raya de guerra» (dos trazos bajo cada ojo, acento del equipo con filo oscuro); en la playa, crema de zinc neón.
-  //  - Boca: 8 celdas de 64×52 (una fila): 0 neutra · 1 sonrisa · 2 grito en O con dientes · 3 dientes apretados · 4 triste ·
-  //    5 «o» pequeña · 6 sonrisa con lengua · 7 mueca.
-  // Coordenadas de la lámina: dirección (dx, dy) sobre la esfera unidad de headShape; se pinta en metros del hueso de la cabeza
-  // relativos a HEAD_C (X = dx·HEAD_RX, Y = dy·HEAD_RY).
-  var FACE_Y0 = 276, FACE_Y1 = 424, FE_W = 128, FE_H = 46, FE_Y = 278, FM_W = 64, FM_H = 52, FM_Y = 370, F_PAD = 3;
-  var FE_DX = 0.66, FE_DY0 = -0.24, FE_DY1 = 0.38, FM_DX = 0.45, FM_DY0 = -0.64, FM_DY1 = -0.28;
-  function faceInk(tc) { return mixHex(tc.dark, INK, 0.55); }
-  /** Pieles oscuras (luminancia < 0,42): halo claro alrededor de ojos, cejas y boca. Sin él, la tinta, el pelo y la sombra toon
-   *  tenían casi el mismo tono y desde la cámara de juego solo se veía el blanco del ojo (revisión visual TAJO). null = no hace falta. */
-  function faceHalo(L) {
-    var lu = lumHex(L.skin); if (lu >= 0.42) return null;
-    return hexCss(mixHex(L.skin, 0xffe6d2, clamp(0.38 + (0.42 - lu) * 1.6, 0.38, 0.6)));
-  }
-  function paintFace(g, L, tc, beach) {
-    g.save();
-    g.fillStyle = hexCss(L.skin); g.fillRect(0, FACE_Y0, 512, FACE_Y1 - FACE_Y0);
-    var i;
-    for (i = 0; i < 8; i++) faceCell(g, (i & 3) * FE_W, FE_Y + (i >> 2) * FE_H, FE_W, FE_H, FE_DX, FE_DY0, FE_DY1, function () { paintEyes(g, i, L, tc, beach); });
-    for (i = 0; i < 8; i++) faceCell(g, i * FM_W, FM_Y, FM_W, FM_H, FM_DX, FM_DY0, FM_DY1, function () { paintMouth(g, i, L, tc); });
-    g.restore();
-  }
-  /** Celda: recorte y transformación de metros del hueso de la cabeza (X, Y relativos a HEAD_C) a píxeles. */
-  function faceCell(g, x0, y0, w, h, dxM, dy0, dy1, fn) {
-    var X0 = -dxM * HEAD_RX, X1 = dxM * HEAD_RX, Y0 = dy0 * HEAD_RY, Y1 = dy1 * HEAD_RY;
-    var a = (w - 2 * F_PAD) / (X1 - X0), d = -(h - 2 * F_PAD) / (Y1 - Y0);
-    g.save(); g.beginPath(); g.rect(x0 + 1, y0 + 1, w - 2, h - 2); g.clip();
-    g.setTransform(a, 0, 0, d, x0 + F_PAD - a * X0, y0 + F_PAD - d * Y1);
-    g.lineCap = 'round'; g.lineJoin = 'round';
-    fn();
-    g.restore();
-  }
-  function ell(g, x, y, rx, ry, rot) { g.beginPath(); g.ellipse(x, y, rx, ry, rot || 0, 0, PI * 2); }
-  /** Mancha elíptica de color css que se desvanece hacia el borde (macizo hasta el 55 % del radio). */
-  function softHalo(g, x, y, rx, ry, css) {
-    g.save(); g.translate(x, y); g.scale(1, ry / rx);
-    var gr = g.createRadialGradient(0, 0, 0, 0, 0, rx);
-    var h = parseInt(css.slice(1), 16), clear = 'rgba(' + (h >> 16 & 255) + ',' + (h >> 8 & 255) + ',' + (h & 255) + ',0)'; // (mismo color: sin halo gris)
-    gr.addColorStop(0, css); gr.addColorStop(0.55, css); gr.addColorStop(1, clear);
-    g.fillStyle = gr; g.globalAlpha = 0.92; g.beginPath(); g.arc(0, 0, rx, 0, PI * 2); g.fill();
-    g.restore();
-  }
-  var EYE_CX = 0.034, EYE_CY = 0.012, EYE_RX = 0.0155, EYE_RY = 0.0195;
-  function paintEyes(g, cell, L, tc, beach) {
-    var ink = hexCss(faceInk(tc)), brow = hexCss(L.browC || mixHex(L.hair, 0x000000, 0.15)), halo = faceHalo(L), s, k;
-    // piel oscura: halo claro y difuso detrás de cada ojo (también cerrado), antes del sello para no taparlo
-    if (halo) for (s = -1; s <= 1; s += 2) softHalo(g, s * EYE_CX, EYE_CY + 0.002, EYE_RX * 1.55, EYE_RY * 1.35, halo);
-    // sello del equipo bajo los ojos (todas las celdas: se lee igual con cualquier expresión)
-    for (s = -1; s <= 1; s += 2) {
-      if (beach) {
-        // crema de zinc de color neón del equipo: dos rayas gruesas en cada mejilla
-        var zc = hexCss(zincHex(tc));
-        g.strokeStyle = zc; g.lineWidth = 0.0058;
-        for (k = 0; k < 2; k++) { g.beginPath(); g.moveTo(s * 0.022, -0.0135 - k * 0.0085); g.lineTo(s * 0.05, -0.0105 - k * 0.0085); g.stroke(); }
-      } else {
-        // raya de guerra: dos trazos diagonales cortos (acento con filo oscuro)
-        for (k = 0; k < 2; k++) {
-          var xa = s * (0.027 + k * 0.011), ya = -0.0115, xb = s * (0.021 + k * 0.011), yb = -0.0235;
-          g.strokeStyle = hexCss(tc.dark); g.lineWidth = 0.0062; g.beginPath(); g.moveTo(xa, ya); g.lineTo(xb, yb); g.stroke();
-          g.strokeStyle = hexCss(tc.accent); g.lineWidth = 0.0038; g.beginPath(); g.moveTo(xa, ya); g.lineTo(xb, yb); g.stroke();
-        }
-      }
-    }
-    // ojos
-    for (s = -1; s <= 1; s += 2) {
-      var cx = s * EYE_CX, cy = EYE_CY, kind = cell;
-      if (cell === 6 && s < 0) kind = 3;          // guiño: el derecho (x < 0) cerrado en arco
-      else if (cell === 6) kind = 0;
-      g.lineWidth = 0.0034; g.strokeStyle = ink;
-      if (kind === 1) {                            // parpadeo: línea curva
-        g.beginPath(); g.moveTo(cx - EYE_RX, cy - 0.002); g.quadraticCurveTo(cx, cy - 0.009, cx + EYE_RX, cy - 0.002); g.stroke();
-      } else if (kind === 3) {                     // feliz: arco ^
-        g.lineWidth = 0.0042;
-        g.beginPath(); g.moveTo(cx - EYE_RX, cy - 0.006); g.quadraticCurveTo(cx, cy + 0.02, cx + EYE_RX, cy - 0.006); g.stroke();
-      } else {
-        var rx = EYE_RX, ry = EYE_RY, pr = 0.0095, py = -0.002, px = -s * 0.0018, lid = 0, lidTilt = 0;
-        if (kind === 5) { rx *= 1.12; ry *= 1.12; pr = 0.0068; py = 0; px = 0; }
-        if (kind === 2) { lid = 0.5; lidTilt = 0.18; }            // entornados (esfuerzo)
-        if (kind === 4) { lid = 0.34; lidTilt = -0.42; py = -0.006; } // tristes: párpado caído hacia fuera, mirada baja
-        if (kind === 7) { lid = 0.3; lidTilt = 0.5; }             // concentrado: párpado en diagonal
-        g.save();
-        ell(g, cx, cy, rx, ry); g.fillStyle = '#ffffff'; g.fill();
-        g.clip();
-        ell(g, cx + px, cy + py, pr * 0.82, pr); g.fillStyle = ink; g.fill();
-        g.fillStyle = '#ffffff';
-        ell(g, cx + px - s * 0.0032 + 0.001, cy + py + 0.0045, pr * 0.32, pr * 0.34); g.fill();
-        ell(g, cx + px + s * 0.0028, cy + py - 0.0042, pr * 0.15, pr * 0.16); g.fill();
-        if (lid > 0) {                             // párpado: piel por encima de una línea inclinada
-          var ly = cy + ry - 2 * ry * lid, t = lidTilt * s;
-          g.fillStyle = hexCss(L.skin); g.beginPath();
-          g.moveTo(cx - rx * 1.3, ly - t * rx); g.lineTo(cx + rx * 1.3, ly + t * rx); g.lineTo(cx + rx * 1.3, cy + ry * 1.4); g.lineTo(cx - rx * 1.3, cy + ry * 1.4); g.closePath(); g.fill();
-          g.strokeStyle = ink; g.lineWidth = 0.0036; g.beginPath(); g.moveTo(cx - rx * 1.3, ly - t * rx); g.lineTo(cx + rx * 1.3, ly + t * rx); g.stroke();
-        }
-        g.restore();
-        g.strokeStyle = ink; g.lineWidth = 0.0032; ell(g, cx, cy, rx, ry); g.stroke();
-      }
-      // cejas gruesas (por expresión): bx = interior → exterior
-      var bi = 0.031, bo = 0.026, bm = 0.033;   // alto interior, exterior y del centro (Y)
-      if (cell === 2 || cell === 5 || cell === 7) { bi = 0.022; bo = 0.03; bm = 0.028; }      // en V (esfuerzo, grito, concentración)
-      if (cell === 4) { bi = 0.035; bo = 0.025; bm = 0.032; }                                  // tristes
-      if (cell === 3) { bi = 0.034; bo = 0.031; bm = 0.038; }                                  // felices: arriba
-      if (cell === 6) { if (s > 0) { bi = 0.035; bo = 0.034; bm = 0.04; } else { bi = 0.028; bo = 0.027; bm = 0.03; } }
-      if (halo) { g.strokeStyle = halo; g.lineWidth = 0.0098; g.beginPath(); g.moveTo(s * 0.019, bi); g.quadraticCurveTo(s * 0.034, bm + 0.002, s * 0.05, bo); g.stroke(); }
-      g.strokeStyle = brow; g.lineWidth = 0.0058;
-      g.beginPath(); g.moveTo(s * 0.019, bi); g.quadraticCurveTo(s * 0.034, bm + 0.002, s * 0.05, bo); g.stroke();
-    }
-  }
-  /** Color de la crema de zinc (playa): el acento del equipo llevado a neón (muy saturado y claro). */
-  function zincHex(tc) {
-    var c = new THREE.Color(tc.accent), hsl = { h: 0, s: 0, l: 0 }; c.getHSL(hsl);
-    if (hsl.s < 0.25) return 0x3ff0ff;   // acento blanco o gris: cian neón
-    c.setHSL(hsl.h, 1, clamp(hsl.l, 0.55, 0.62)); return c.getHex();
-  }
-  var MOUTH_CY = -0.052, MOUTH_K = 1.35;
-  function paintMouth(g, cell, L, tc) {
-    var ink = hexCss(faceInk(tc)), cy = MOUTH_CY, inner = '#5a1620', tongue = '#ef6f78', teeth = '#fffaf0';
-    g.translate(0, cy); g.scale(MOUTH_K, MOUTH_K); g.translate(0, -cy);   // boca grande de dibujo animado
-    var halo = faceHalo(L);
-    if (halo) softHalo(g, 0, cy - 0.003, 0.026, 0.0135, halo);   // piel oscura: hocico claro y difuso detrás de la boca
-    g.strokeStyle = ink; g.lineWidth = 0.0026;
-    switch (cell) {
-      case 1:   // sonrisa
-        g.beginPath(); g.moveTo(-0.019, cy + 0.004); g.quadraticCurveTo(0, cy - 0.013, 0.019, cy + 0.004); g.stroke(); break;
-      case 2:   // grito: O grande con dientes de arriba y lengua
-        g.save(); ell(g, 0, cy - 0.003, 0.0145, 0.0135); g.fillStyle = inner; g.fill(); g.clip();
-        g.fillStyle = tongue; ell(g, 0, cy - 0.016, 0.011, 0.007); g.fill();
-        g.fillStyle = teeth; g.fillRect(-0.02, cy + 0.0065, 0.04, 0.0045); g.restore();
-        ell(g, 0, cy - 0.003, 0.0145, 0.0135); g.stroke(); break;
-      case 3:   // dientes apretados
-        g.fillStyle = teeth; g.beginPath(); g.ellipse(0, cy, 0.017, 0.0065, 0, 0, PI * 2); g.fill();
-        g.lineWidth = 0.0018; g.beginPath(); g.moveTo(-0.016, cy); g.lineTo(0.016, cy);
-        for (var k = -2; k <= 2; k++) { g.moveTo(k * 0.006, cy - 0.006); g.lineTo(k * 0.006, cy + 0.006); }
-        g.stroke(); g.lineWidth = 0.003; g.beginPath(); g.ellipse(0, cy, 0.017, 0.0065, 0, 0, PI * 2); g.stroke(); break;
-      case 4:   // triste
-        g.beginPath(); g.moveTo(-0.014, cy - 0.006); g.quadraticCurveTo(0, cy + 0.006, 0.014, cy - 0.006); g.stroke(); break;
-      case 5:   // «o» pequeña
-        ell(g, 0, cy - 0.001, 0.0055, 0.006); g.fillStyle = inner; g.fill(); g.stroke(); break;
-      case 6:   // sonrisa abierta con lengua (D)
-        g.save(); g.beginPath(); g.moveTo(-0.017, cy + 0.005); g.quadraticCurveTo(0, cy - 0.024, 0.017, cy + 0.005); g.closePath();
-        g.fillStyle = inner; g.fill(); g.clip();
-        g.fillStyle = tongue; ell(g, 0.002, cy - 0.011, 0.009, 0.006); g.fill();
-        g.fillStyle = teeth; g.fillRect(-0.02, cy + 0.001, 0.04, 0.004); g.restore();
-        g.beginPath(); g.moveTo(-0.017, cy + 0.005); g.quadraticCurveTo(0, cy - 0.024, 0.017, cy + 0.005); g.closePath(); g.stroke(); break;
-      case 7:   // mueca (ondulada)
-        g.beginPath(); g.moveTo(-0.016, cy - 0.001);
-        g.bezierCurveTo(-0.008, cy + 0.005, -0.004, cy - 0.006, 0, cy); g.bezierCurveTo(0.004, cy + 0.006, 0.008, cy - 0.005, 0.016, cy + 0.002); g.stroke(); break;
-      default:  // neutra: línea corta algo curva
-        g.beginPath(); g.moveTo(-0.01, cy + 0.001); g.quadraticCurveTo(0, cy - 0.003, 0.01, cy + 0.001); g.stroke();
-    }
-  }
-  function atlasMaterial(num, tc, L, beach) {
-    var cv = canvas(512, 512); paintAtlas(cv, tc, num, L, beach);
-    var t = texOf(cv);
-    // CARTOON: material toon (bandas de luz duras con el gradientMap de VB.TOON, sin especular) en vez del estándar
-    var m = new THREE.MeshToonMaterial({ map: t, vertexColors: true, gradientMap: toon().gradientMap });
-    addToon(m);
-    // con la fuente de la UI cargada, se redibuja (sin peticiones nuevas: la carga la propia UI)
-    try {
-      if (document.fonts && document.fonts.load) document.fonts.load('italic 900 100px "Barlow Condensed"').then(function () { paintAtlas(cv, tc, num, L, beach); t.needsUpdate = true; }).catch(function () { });
-    } catch (e) { }
-    return m;
-  }
-
   // =====================================================================
   //  ESTILO CARTOON (sprint cartoon, 9-nov-2026)
   // =====================================================================
@@ -690,7 +308,7 @@
   // grosor del contorno: ~OUT_PX px a 720 de alto (proporcional al alto de la imagen: igual a 1280×720 y a 844×390),
   // limitado en metros (los del fondo no se vuelven manchas; en primer plano no pasa de un trazo fino)
   // TAJO: trazo más grueso (3,2 px) y de COLOR (la tinta del atleta = oscuro del equipo mezclado con INK: inkHex)
-  var OUT_PX = 3.2, OUT_MAX = 0.05, OUT_MIN = 0.0025;
+  var OUT_PX = 3.6, OUT_MAX = 0.06, OUT_MIN = 0.003;   // MUÑECO: trazo algo más grueso (figura redonda y limpia)
   function inkHex(tc) { return mixHex(tc.dark, INK, 0.35); }
   function toonGradient() {
     // 3 pasos (sombra, medio tono, luz): RGBA de 3 texeles, filtro NEAREST (bandas duras), sin mipmaps
@@ -706,54 +324,6 @@
     if (!TOON_OWN) TOON_OWN = { gradientMap: toonGradient(), ink: INK, outline: function (mesh, th) { return outlineMesh(mesh, th); }, own: 'players' };
     if (!VB.TOON) VB.TOON = TOON_OWN;
     return TOON_OWN;
-  }
-  /** Sombreado toon de los atletas (onBeforeCompile; mismo programa para los 4: customProgramCacheKey):
-   *  - luz directa en bandas (gradientMap) y luz ambiente teñida de azul violáceo (sombras de color, no negras);
-   *    la piel tiñe su sombra hacia un tono cálido (se lee también la piel oscura);
-   *  - contraluz en banda dura (brillo de borde de dibujo animado) y ojos con algo de luz propia.
-   *  La piel se reconoce por su v del atlas (SKIN_UV_V, zona blanca) y la lámina de la cara por su franja (FACE_*), que cuenta como piel. */
-  var SHADE = [0.1, 0.075, 0.2], SHADE_SKIN = [0.17, 0.08, 0.1];
-  // Solo la luz principal (la más fuerte) va en bandas; relleno y contraluz (débiles) suman un Lambert suave a medias: con
-  // todas en bandas la cara se llenaba de manchas (cada luz añade su escalón). Mezcla suave por intensidad (sin saltos en la penumbra).
-  var TOON_CHUNK = null;
-  function toonLightsChunk() {
-    if (TOON_CHUNK) return TOON_CHUNK;
-    var src = THREE.ShaderChunk.lights_toon_pars_fragment, a = 'vec3 irradiance = getGradientIrradiance( geometry.normal, directLight.direction ) * directLight.color;';
-    if (src.indexOf(a) < 0) return (TOON_CHUNK = src);
-    return (TOON_CHUNK = src.replace(a, 'float vbL = dot( directLight.color, vec3( 0.2126, 0.7152, 0.0722 ) );\n' +
-      '\tvec3 vbB = getGradientIrradiance( geometry.normal, directLight.direction );\n' +
-      '\tvec3 vbS = vec3( 0.6 * saturate( dot( geometry.normal, directLight.direction ) ) );\n' +
-      '\tvec3 irradiance = mix( vbS, vbB, smoothstep( 1.2, 2.4, vbL ) ) * directLight.color;'));
-  }
-  function addToon(mat) {
-    var rim = new THREE.Color(0xfff1e0).multiplyScalar(0.13);
-    // TAJO: desplazamiento de UV de la celda de ojos / boca (hoja de caras); por material (= por atleta), sin programa nuevo
-    var eyeOff = mat.userData.eyeOff = new THREE.Vector2(), mouthOff = mat.userData.mouthOff = new THREE.Vector2();
-    // franjas de v de las láminas de la cara (celda 0), con margen
-    var fe0 = (1 - (FE_Y + FE_H) / 512 - 0.006).toFixed(4), fe1 = (1 - FE_Y / 512 + 0.006).toFixed(4);
-    var fm0 = (1 - (FM_Y + FM_H) / 512 - 0.006).toFixed(4), fm1 = (1 - FM_Y / 512 + 0.006).toFixed(4);
-    mat.onBeforeCompile = function (sh) {
-      sh.uniforms.uRim = { value: rim };
-      sh.uniforms.uShade = { value: new THREE.Vector3(SHADE[0], SHADE[1], SHADE[2]) };
-      sh.uniforms.uShadeSkin = { value: new THREE.Vector3(SHADE_SKIN[0], SHADE_SKIN[1], SHADE_SKIN[2]) };
-      sh.uniforms.uEyeOff = { value: eyeOff }; sh.uniforms.uMouthOff = { value: mouthOff };
-      sh.fragmentShader = 'uniform vec3 uRim;\nuniform vec3 uShade;\nuniform vec3 uShadeSkin;\nuniform vec2 uEyeOff;\nuniform vec2 uMouthOff;\nfloat vbSkin = 0.0;\nfloat vbFace = 0.0;\n' + sh.fragmentShader
-        .replace('#include <lights_toon_pars_fragment>', toonLightsChunk())
-        .replace('#include <map_fragment>', '#ifdef USE_UV\n  vec2 vbUv = vUv;\n' +
-          '  float vbFE = step( ' + fe0 + ', vUv.y ) * step( vUv.y, ' + fe1 + ' );\n' +
-          '  float vbFM = step( ' + fm0 + ', vUv.y ) * step( vUv.y, ' + fm1 + ' );\n' +
-          '  vbFace = max( vbFE, vbFM );\n  vbUv += uEyeOff * vbFE + uMouthOff * vbFM;\n#endif\n' +
-          THREE.ShaderChunk.map_fragment.replace(/vUv/g, 'vbUv'))
-        .replace('#include <color_fragment>', '#include <color_fragment>\n#ifdef USE_UV\n  vbSkin = max( vbFace, 1.0 - step( 0.03, abs( vUv.y - ' + SKIN_UV_V.toFixed(2) + ' ) ) );\n#endif')
-        .replace('#include <output_fragment>',
-          'outgoingLight += diffuseColor.rgb * mix( uShade, uShadeSkin, vbSkin );\n' +
-          'float vbRim = 1.0 - clamp( dot( normal, normalize( vViewPosition ) ), 0.0, 1.0 );\n' +
-          'outgoingLight += uRim * smoothstep( 0.74, 0.79, vbRim ) * mix( vec3( 1.0 ), vec3( 1.3, 1.08, 0.86 ), vbSkin );\n' +
-          // TAJO: blanco de los ojos (y dientes) de la cara dibujada con algo de luz propia: no se tiñe de violeta en la sombra
-          'outgoingLight += diffuseColor.rgb * 0.45 * vbFace * smoothstep( 0.72, 0.92, min( diffuseColor.r, min( diffuseColor.g, diffuseColor.b ) ) );\n' +
-          '#include <output_fragment>');
-    };
-    mat.customProgramCacheKey = function () { return 'vbToonSkin'; };
   }
 
   /** Contorno de tinta por casco invertido: la misma geometría dibujada por detrás y empujada por la normal en el
@@ -832,287 +402,13 @@
     return (TINT_MATS[key] = m);
   }
 
-  // ---------- Piezas ----------
-  // CABEZA (PLY-17): UNA superficie continua (cráneo + mandíbula + mentón + arco de las cejas) deformando una esfera con
-  // normales analíticas (sin costuras ni el "hocico" de dos esferas). Espacio del hueso de la cabeza: +Z delante, +X izquierda.
-  // TAJO: cara redonda de mofletes (más ancha, mandíbula menos estrecha, mentón suave) y sin cuencas ni arco de las cejas:
-  // los ojos van dibujados en la lámina de la cara (faceGeo), que necesita una superficie lisa
-  var HEAD_C = 0.098, HEAD_RX = 0.108, HEAD_RY = 0.12, HEAD_RZ = 0.106;
-  function headShape(x, y, z, o) {
-    var lo = y < 0 ? -y : 0, fr = z > 0 ? z : 0;
-    var X = x * HEAD_RX * (1 - 0.22 * lo * lo) * (1 + 0.05 * Math.exp(-((y + 0.2) * (y + 0.2)) / 0.04) * fr);    // mandíbula ancha, mofletes
-    var Y = y * HEAD_RY;
-    var Z = z * HEAD_RZ * (z < 0 ? (1.07 - 0.2 * lo * lo) : 1);                                            // occipucio; nuca recogida
-    Z += 0.016 * lo * fr * fr;                                                                              // mentón suave
-    Z -= 0.006 * fr * fr * fr * (y > 0.35 ? (y - 0.35) / 0.65 : 0);                                         // frente algo plana
-    o.x = X; o.y = HEAD_C + Y; o.z = Z + 0.004; return o;
-  }
-  /** Esfera deformada por headShape con normales calculadas sobre la forma (continuas también en la costura de la UV). */
-  var HS_A = null;
-  function headSphere(w, h, inf, ps, pl, ts, tl) {
-    if (!HS_A) HS_A = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-    var geo = new THREE.SphereGeometry(1, w, h, ps || 0, pl == null ? PI * 2 : pl, ts || 0, tl == null ? PI : tl), P = geo.attributes.position, N = geo.attributes.normal, d = HS_A[0], t1 = HS_A[1], t2 = HS_A[2], p0 = HS_A[3], p1 = HS_A[4], p2 = HS_A[5], q = HS_A[6], e = 0.002;
-    for (var i = 0; i < P.count; i++) {
-      d.fromBufferAttribute(P, i).normalize();
-      t1.set(0, 1, 0); if (Math.abs(d.y) > 0.95) t1.set(1, 0, 0);
-      t1.cross(d).normalize(); t2.crossVectors(d, t1).normalize();
-      headShape(d.x, d.y, d.z, p0);
-      q.copy(d).addScaledVector(t1, e).normalize(); headShape(q.x, q.y, q.z, p1);
-      q.copy(d).addScaledVector(t2, e).normalize(); headShape(q.x, q.y, q.z, p2);
-      p1.sub(p0); p2.sub(p0); q.crossVectors(p1, p2).normalize();
-      if (q.dot(d) < 0) q.multiplyScalar(-1);
-      if (inf) { p0.y -= HEAD_C; p0.multiplyScalar(inf); p0.y += HEAD_C; }
-      P.setXYZ(i, p0.x, p0.y, p0.z); N.setXYZ(i, q.x, q.y, q.z);
-    }
-    return geo;
-  }
-  /** Z de la superficie delantera de la cabeza en (x, y) del hueso (búsqueda sobre la dirección: una vez por malla). */
-  function headFrontZ(x, y) {
-    var dx = x / HEAD_RX, dy = (y - HEAD_C) / HEAD_RY, o = { x: 0, y: 0, z: 0 };
-    for (var it = 0; it < 30; it++) {
-      var dz = Math.sqrt(Math.max(0.02, 1 - dx * dx - dy * dy));
-      headShape(dx, dy, dz, o);
-      dx += (x - o.x) / HEAD_RX * 0.8; dy += (y - o.y) / HEAD_RY * 0.8;
-    }
-    return o.z;
-  }
-  /** TAJO: mechón liso en lágrima (lathe, punta en +Y, largo len, radio r): nada de facetas. */
-  function tuft(len, r, seg) {
-    return lathe([V2(0, 0), V2(r * 0.8, len * 0.08), V2(r, len * 0.3), V2(r * 0.72, len * 0.62), V2(r * 0.3, len * 0.9), V2(0, len)], seg || 10, 6);
-  }
-  // acc (playa): 'visor' visera de acento | 'gorra' gorra hacia atrás | '' nada. Sin gafas de sol nunca.
-  function headGeo(g, L, tc, acc, beach) {
-    var sk = L.skin, hr = L.hair, s, i;
-    g.add(headSphere(sg(24, 14), sg(16, 10)), sk);                                  // cráneo + cara (una pieza; la cara va en la lámina)
-    // nariz: un botón redondo (en la playa, con la raya de zinc neón)
-    g.owk = 0.25;
-    g.add(sph(0.0125, 10, 7), beach ? zincHex(tc) : sk, 0, 0.088, headFrontZ(0, 0.088) - 0.0035, 0, 0, 0, 1.05, 0.95, 0.75);
-    g.owk = 0.5; for (s = -1; s <= 1; s += 2) g.add(sph(0.0324, 8, 6), sk, s * 0.106, 0.092, -0.004, 0, 0, 0, 0.45, 1, 0.75); // orejas (+20 %)
-    g.owk = 1;
-    var cap = function (col, rot, sc) { g.add(new THREE.SphereGeometry(0.119, sg(22, 14), sg(12, 6), 0, PI * 2, 0, PI * 0.5), col, 0, 0.105, -0.006, rot, 0, 0, 0.96 * (sc || 1), 1.06 * (sc || 1), 1.04 * (sc || 1)); };
-    var gorra = acc === 'gorra';
-    // peinados de mechones grandes y lisos (con gorra solo el casquete: los mechones la atravesarían)
-    switch (gorra ? '' : L.style) {
-      case 'puff2':      // dos moños afro redondos a los lados, en lo alto
-        cap(hr, -0.28);
-        for (s = -1; s <= 1; s += 2) g.add(sph(0.07, 14, 10), hr, s * 0.085, 0.2, -0.012, 0, 0, 0, 1, 0.96, 1);
-        break;
-      case 'coleta':     // coleta alta (la cola va en el hueso del pelo, faceGeo) con la ÚNICA cinta del equipo
-        cap(hr, -0.3);
-        g.owk = 0; g.add(torus(0.109, 0.013, 6, 28), tc.band, 0, 0.142, -0.004, PI / 2 - 0.22, 0, 0, 0.96, 1.04, 1);
-        break;
-      case 'cresta':     // casquete rapado + 5 aletas en fila de delante atrás
-        cap(hr, -0.18, 0.99);
-        var fa = [0.55, 0.2, -0.15, -0.5, -0.85], fl = [0.06, 0.075, 0.08, 0.07, 0.055];
-        for (i = 0; i < 5; i++) g.add(tuft(fl[i], 0.03, 8), hr, 0, 0.098 + 0.118 * Math.cos(fa[i]), -0.006 + 0.118 * Math.sin(fa[i]), fa[i] + 0.25, 0, 0, 0.42, 1, 1);
-        break;
-      case 'flequillo':  // flequillo grande que tapa media frente (ladeado)
-        cap(hr, -0.3);
-        g.add(sph(0.07, 14, 9), hr, 0.022, 0.172, 0.07, 0.35, 0, -0.25, 1.35, 0.55, 0.8);
-        break;
-      case 'rapado':     // casquete muy corto con raya lateral (surco de piel)
-        cap(hr, -0.18, 0.99);
-        g.owk = 0; g.add(sph(1, 10, 4), sk, 0.045, 0.205, 0.02, 0, 0, 0.5, 0.004, 0.003, 0.05);
-        break;
-      case 'trenzas':    // dos trenzas cortas por detrás de las orejas
-        cap(hr, -0.3);
-        var bp = []; for (i = 0; i <= 8; i++) bp.push(V2(i === 0 || i === 8 ? 0 : (i % 2 ? 0.022 : 0.015) * (1 - i * 0.05), -i * 0.02));
-        for (s = -1; s <= 1; s += 2) g.add(lathe(bp, 8, 6), hr, s * 0.08, 0.1, -0.075, 0.35, 0, s * 0.18);
-        break;
-      case 'tupe':       // tupé: casquete + un mechón ancho que sale hacia delante y arriba (y otro detrás, más bajo)
-        cap(hr, -0.32);
-        g.add(tuft(0.12, 0.046), hr, 0.008, 0.19, 0.0, 0.85, 0, -0.12, 1.75, 1, 0.62);
-        g.add(tuft(0.09, 0.04), hr, -0.01, 0.2, -0.045, 0.3, 0, 0.1, 1.6, 1, 0.6);
-        break;
-      default:
-        cap(hr, gorra ? -0.18 : -0.32, gorra ? 0.99 : 1);
-    }
-    g.owk = 1;
-    if (acc === 'visor') {
-      // visera: media corona (banda abierta) + ala, color de acento con filo oscuro
-      g.add(new THREE.CylinderGeometry(0.107, 0.113, 0.03, sg(20, 10), 1, true, -PI * 0.62, PI * 1.24), tc.accent, 0, 0.158, -0.008, -0.32, 0, 0, 1, 1, 1.02);
-      g.add(sph(1, 14, 4, 0, PI * 2, 0, PI * 0.5), tc.accent, 0, 0.158, 0.112, -0.38, 0, 0, 0.082, 0.011, 0.058);
-      g.owk = 0; g.add(sph(1, 14, 3, 0, PI * 2, PI * 0.5, PI * 0.5), tc.dark, 0, 0.157, 0.112, -0.38, 0, 0, 0.08, 0.006, 0.056); g.owk = 1;
-    } else if (gorra) {
-      // gorra hacia atrás: copa (casquete) + ala por detrás + botón; la frente queda libre (se ven las cejas)
-      g.add(new THREE.SphereGeometry(0.125, sg(18, 12), sg(9, 5), 0, PI * 2, 0, PI * 0.5), tc.accent, 0, 0.116, -0.012, -0.36, 0, 0, 0.98, 1.0, 1.04);
-      // ala más larga y OSCURA (dos tonos: de detrás y a media distancia se leía como un casco o pelo rubio) y la tira del
-      // cierre cruzando la frente, como una gorra hacia atrás de verdad
-      g.add(sph(1, 14, 4, 0, PI * 2, 0, PI * 0.5), tc.dark, 0, 0.11, -0.152, 0.26, 0, 0, 0.088, 0.013, 0.088);
-      g.owk = 0;
-      g.add(new THREE.CylinderGeometry(0.1265, 0.1275, 0.017, 8, 1, true, -PI * 0.2, PI * 0.4), tc.dark, 0, 0.13, -0.012, -0.36, 0, 0, 0.98, 1, 1.04);
-      g.add(sph(0.014, 6, 4), tc.dark, 0, 0.238, -0.05); g.owk = 1;
-    }
-  }
-  // Huesos de la cara (espacio del hueso de la cabeza): ojos, boca, dientes, cejas (TAJO: vacíos, la cara va dibujada) y pelo (muelle)
-  var EYE_Y = 0.112, EYE_X = 0.036, MOUTH_Y = 0.05, BROW_Y = 0.142, BROW_X = 0.038, HAIR_P = [0, 0.19, -0.1];
-  /** TAJO: lámina de la cara pegada al cráneo (rejilla nx × ny sobre headShape en dirección dx ∈ [-dxM, dxM], dy ∈ [dy0, dy1]),
-   *  F_OFF por fuera con la normal de la cabeza; UV en la celda 0 de su hoja (x0, y0, w, h en píxeles del atlas). */
-  var F_OFF = 0.0016;
-  function faceSheet(nx, ny, dxM, dy0, dy1, x0, y0, w, h) {
-    var geo = new THREE.BufferGeometry(), pos = [], nrm = [], uv = [], idx = [], i, j;
-    var d = new THREE.Vector3(), t1 = new THREE.Vector3(), t2 = new THREE.Vector3(), q = new THREE.Vector3(), p0 = {}, p1 = {}, p2 = {}, e = 0.002;
-    var P0 = new THREE.Vector3(), P1 = new THREE.Vector3(), P2 = new THREE.Vector3();
-    for (j = 0; j <= ny; j++) for (i = 0; i <= nx; i++) {
-      var dx = -dxM + 2 * dxM * i / nx, dy = dy0 + (dy1 - dy0) * j / ny;
-      d.set(dx, dy, Math.sqrt(Math.max(0.02, 1 - dx * dx - dy * dy))).normalize();
-      t1.set(0, 1, 0).cross(d).normalize(); t2.crossVectors(d, t1).normalize();
-      headShape(d.x, d.y, d.z, p0); P0.set(p0.x, p0.y, p0.z);
-      q.copy(d).addScaledVector(t1, e).normalize(); headShape(q.x, q.y, q.z, p1); P1.set(p1.x, p1.y, p1.z).sub(P0);
-      q.copy(d).addScaledVector(t2, e).normalize(); headShape(q.x, q.y, q.z, p2); P2.set(p2.x, p2.y, p2.z).sub(P0);
-      q.crossVectors(P1, P2).normalize(); if (q.dot(d) < 0) q.multiplyScalar(-1);
-      P0.addScaledVector(q, F_OFF);
-      pos.push(P0.x, P0.y, P0.z); nrm.push(q.x, q.y, q.z);
-      // u con X (el lado izquierdo del atleta, +X, a la derecha de la celda) y v con Y (flipY del lienzo)
-      uv.push((x0 + F_PAD + (w - 2 * F_PAD) * i / nx) / 512, 1 - (y0 + F_PAD + (h - 2 * F_PAD) * (1 - j / ny)) / 512);
-    }
-    for (j = 0; j < ny; j++) for (i = 0; i < nx; i++) {
-      var a = j * (nx + 1) + i, b = a + 1, c = a + nx + 1, dd = c + 1;
-      idx.push(a, b, dd, a, dd, c);
-    }
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    geo.setIndex(idx);
-    return geo;
-  }
-  /** TAJO: la cara (ojos, cejas, sello y boca) es una lámina con la hoja de caras del atlas (paintFace); sustituye a los rasgos
-   *  3D (esclerótica, iris, brillo, párpado, boca, labio, dientes y cejas, ~900 triángulos). Los huesos eyes/mouth/teeth/brow
-   *  quedan vacíos (CONTRACT: siguen existiendo). La expresión la eligen los uniformes del material (updateFace). */
-  function faceGeo(r, on, L) {
-    var g = on(r.head); g.owk = 0; g.ownUv = true;   // sin contorno; UV propia
-    var nxE = Math.max(6, Math.round(10 * LODK + 0.5)), nyE = Math.max(4, Math.round(6 * LODK + 0.5));
-    g.add(faceSheet(nxE, nyE, FE_DX, FE_DY0, FE_DY1, 0, FE_Y, FE_W, FE_H), 0xffffff);
-    g.add(faceSheet(Math.max(4, nxE - 2), 3, FM_DX, FM_DY0, FM_DY1, 0, FM_Y, FM_W, FM_H), 0xffffff);
-    g.ownUv = false; g.owk = 1;
-    if (L.style === 'coleta' && r.acc !== 'gorra') {
-      // coleta alta (PLY-19): goma + mechón largo que se estrecha, en el hueso del pelo (muelle amortiguado)
-      var gH = on(r.hair), hr = L.hair;
-      gH.owk = 1; gH.add(sph(0.036, 12, 8), hr, 0, 0.0, 0.0, 0, 0, 0, 1, 0.9, 1.1);                                       // nudo
-      gH.owk = 0; gH.add(torus(0.023, 0.008, 5, 10), r.tc.band, 0, -0.014, -0.022, -1.02, 0, 0);                            // goma
-      gH.owk = 1; gH.add(lathe([V2(0, 0.0), V2(0.028, -0.014), V2(0.034, -0.055), V2(0.03, -0.11), V2(0.02, -0.16), V2(0.008, -0.2), V2(0, -0.21)], 10, 6), hr, 0, -0.016, -0.03, 0.55, 0, 0, 1, 1, 0.8); // mechón
-    }
-    g.owk = 1;
-  }
-  // TAJO: cuello corto y ancho (la cabeza grande no parece una jirafa)
-  // PRESET: el cilindro va colgado de NECK_Y (cuello corto = cilindro corto) y su grosor con neckW
-  function neckGeo(g, L, tc, beach) {
-    var nw = BK.neckW, ny = NECK_Y - BODY0.NECK_Y;
-    g.add(cyl(0.058 * nw, 0.064 * nw, 0.12 * Math.max(0.6, BK.neck), 14), L.skin, 0, 0.3 + ny, 0.0);
-    g.owk = 0; g.add(torus(0.064 * nw, 0.012, 6, 20), beach ? tc.accent : tc.trim, 0, 0.29 + ny, 0.005, PI / 2 + 0.25, 0, 0, 1.15, 1, 1); // ribete del cuello
-    g.owk = 1;
-  }
-  function upperGeo(g, L, tc, s, beach) {
-    var k = BK.up, ksh = BK.sh;   // PRESET: grosor del brazo (arranque / codo) y bola del hombro; la manga sigue al brazo
-    g.add(lathe(limbK(UPPER, 0.065, 0.05, 0.38, 0.01, 7, k), 14), L.skin);
-    if (beach) {   // playa: camiseta de tirantes, hombro de piel
-      g.add(new THREE.SphereGeometry(0.072 * ksh, sg(14, 10), sg(10, 7)), L.skin, 0, -0.008, 0, 0, 0, 0, 1, 0.92, 1);
-      return;
-    }
-    // manga por fuera del brazo (perfil <= 0,069 m con el bíceps; antes 0,066 abajo: la piel asomaba entre manga y ribete)
-    var km = rk(k, 0.43), kc = rk(k, 0.2);
-    g.add(cyl(0.079 * k[0], 0.0712 * km, 0.14, 14, true), tc.base, 0, -0.06, 0);                // manga corta que se estrecha (PLY-21)
-    g.add(new THREE.SphereGeometry(0.087 * ksh, sg(14, 10), sg(10, 7)), tc.base, 0, -0.008, 0, 0, 0, 0, 1, 0.88, 1);          // hombro redondo (TAJO ×1,15)
-    g.owk = 0; g.add(cyl(0.0722 * km, 0.0718 * km, 0.016, 14, true), tc.accent, 0, -0.123, 0);           // ribete de manga
-    if (s > 0) {   // TAJO: chapa redonda del equipo en la manga izquierda (en vez de muñequeras)
-      g.add(cyl(0.025, 0.025, 0.006, 14), tc.dark, s * 0.0775 * kc, -0.062, 0, 0, 0, PI / 2 + 0.07);
-      g.add(cyl(0.019, 0.019, 0.004, 14), tc.accent, s * 0.0805 * kc, -0.062, 0, 0, 0, PI / 2 + 0.07);
-    }
-    g.owk = 1;
-  }
-  function foreGeo(g, L, tc, s) {
-    // TAJO: antebrazo que se afina (grueso en el codo, fino en la muñeca); sin muñequeras. PRESET: grosor y abultamiento (Popeye)
-    var k = BK.fore;
-    g.add(lathe(limbK(FORE, 0.052, 0.032, 0.2, 0.011, 8, k), 12), L.skin, 0, 0, 0, 0, 0, 0, 1, 1, 0.92);
-    g.add(sph(0.052 * k[0], 10, 6), L.skin, 0, 0.004, -0.004, 0, 0, 0, 1.02, 1, 0.98);      // codo: esfera de unión (sin escalón al doblar)
-  }
-  /** TAJO: manopla de verdad: palma, UNA hoja de dedos fusionados y pulgar (sin dedos sueltos: -600 triángulos por atleta).
-   *  Plano de la mano = Y-Z del hueso (grosor en X); pulgar hacia +Z. Se lee a distancia (bloqueo, colocación). */
-  function capsule(r, len, cs, rs) { return new THREE.CapsuleGeometry(r, len, Math.max(1, Math.round((cs || 3) * LODK)), sg(rs || 8, 4)); }
-  function handGeo(g, L) {
-    g.owk = 0.6;
-    g.add(capsule(1, 0.9, 3, 10), L.skin, 0, -0.052, 0.002, 0, 0, 0, 0.0185, 0.029, 0.047);   // palma
-    g.add(capsule(1, 1.0, 3, 10), L.skin, 0, -0.106, 0.0, 0, 0, 0, 0.0125, 0.021, 0.043);     // dedos (una hoja de punta redonda)
-    g.add(capsule(1, 2.0, 2, 8), L.skin, 0.007, -0.058, 0.058, -0.55, 0, 0, 0.0145, 0.0145, 0.016); // pulgar (algo abierto)
-    g.owk = 1;
-  }
-  function thighGeo(g, L, tc, beach) {
-    var k = BK.thigh, kp = rk(k, 0.4);   // PRESET: grosor del muslo; la pernera lo rodea con la misma holgura
-    g.add(lathe(limbK(THIGH, 0.09, 0.062, 0.25, 0.012, 8, k), 14), L.skin);
-    // piezas superpuestas con los MISMOS lados que la extremidad (14 → mismo LOD y misma fase de vértices) y holgura
-    // >= 4 mm: con lados distintos los vértices de la piel asomaban entre las caras planas (dientes de sierra en media)
-    if (beach) {   // playa: malla corta ceñida del color de la camiseta
-      g.add(cyl(0.103 * k[0], 0.1015 * rk(k, 0.25), 0.13, 14, true), tc.base, 0, -0.035, 0);
-      g.owk = 0; g.add(cyl(0.1035 * rk(k, 0.25), 0.1035 * rk(k, 0.25), 0.014, 14, true), tc.accent, 0, -0.095, 0);
-      g.owk = 1; return;
-    }
-    g.add(cyl(0.103 * k[0], 0.1015 * kp, 0.22, 14, true), tc.shorts, 0, -0.08, 0);              // pernera (muslo <= 0,097)
-    g.owk = 0; g.add(cyl(0.1035 * kp, 0.1035 * kp, 0.016, 14, true), tc.accent, 0, -0.184, 0);          // ribete
-    g.owk = 1;
-  }
-  function kneeW(y) { return sstep(-0.04, 0.035, y) * 0.5; }
-  function shinGeo(g, L, tc, thighBone, beach) {
-    // TAJO: espinilla que se afina (gruesa en la rodilla, fina en el tobillo). PRESET: grosor y gemelo (abultamiento)
-    var k = BK.shin;
-    g.add(lathe(limbK(SHIN, 0.066, 0.033, 0.28, 0.013, 8, k), 14), L.skin);
-    if (beach) return;   // playa: descalzos, sin rodilleras ni calcetines
-    // mismos lados que la pierna (14) y holgura sobre su perfil: sin dientes de sierra
-    // rodillera elástica: la mitad de arriba sigue al muslo (piel a dos huesos), así al doblar la rodilla la cubre
-    // en vez de dejar asomar el muslo por delante (borde dentado). TAJO: «pastilla» redonda del oscuro del equipo
-    if (thighBone >= 0) { g.bone2 = thighBone; g.w2 = kneeW; }
-    var kr = Math.max(k[0], BK.thigh[1] * 0.75);
-    g.add(cyl(0.084 * kr, 0.083 * kr, 0.12, 14), tc.dark, 0, -0.025, 0.004);                   // rodillera
-    g.add(sph(0.05, 12, 8), tc.dark, 0, -0.022, 0.062 * kr, 0, 0, 0, 1.1 * kr, 1.05, 0.55);     // pastilla delantera
-    g.bone2 = -1; g.w2 = null;
-    g.owk = 0;   // calcetín y franja pegados a la pierna: sin contorno propio (el de la pierna ya los perfila)
-    g.add(cyl(0.051 * rk(k, 0.75), 0.038 * k[1], 0.16, 14, true), tc.accent, 0, -SHIN + 0.08, 0);         // calcetín (del acento, no blanco)
-    g.add(cyl(0.0505 * rk(k, 0.75), 0.05 * rk(k, 0.75), 0.02, 14, true), tc.base, 0, -SHIN + 0.13, 0);          // franja del calcetín
-    g.owk = 1;
-  }
-  // TAJO: zapatillas exageradas (×1,4 de largo y ancho, suela 1,5× más alta y del acento, punta redonda); la planta sigue en el
-  // mismo plano (-0,082): la locomoción y footLock no cambian. PRESET: FOOT_K lo pone applyBody (mando `foot`)
-  var FOOT_K = 1.4;
-  function shoeGeo(g, tc) {
-    var K = FOOT_K, Y = -0.042, ka = Math.max(1, BK.shin[1] * 0.92);   // ka: cuello de la zapatilla alrededor de un tobillo grueso
-    g.add(sph(1, 16, 8, 0, PI * 2, 0, PI * 0.5), 0xf4f4f4, 0, Y, 0.04 * K, 0, 0, 0, 0.055 * K, 0.07, 0.13 * K);  // empeine
-    g.add(cyl(0.046 * ka, 0.05 * ka, 0.06, 12), 0xf4f4f4, 0, -0.02, -0.01);                   // tobillera
-    g.add(sph(1, 16, 5, 0, PI * 2, PI * 0.5, PI * 0.5), tc.sole, 0, Y, 0.04 * K, 0, 0, 0, 0.058 * K, 0.04, 0.134 * K); // suela
-    g.owk = 0.5; g.add(sph(1, 14, 6, 0, PI * 2, 0, PI * 0.5), tc.accent, 0, Y + 0.006, -0.025 * K, 0, 0, 0, 0.0565 * K, 0.034, 0.06 * K);  // talón
-    g.owk = 0; g.add(box(0.03 * K, 0.006, 0.06 * K), 0x30333a, 0, 0.014, 0.09 * K, -0.5, 0, 0);               // cordones
-    g.owk = 1;
-  }
-  /** TAJO (playa): pie descalzo de manopla (×1,3) con el bulto del dedo gordo, planta con arena y tobillera de tela del
-   *  acento. La planta queda en el mismo plano que la suela de la zapatilla. s: 1 izquierdo, -1 derecho (el dedo gordo, dentro). */
-  var SAND_HEX = 0xe8cf9a;
-  function footGeo(g, L, tc, s) {
-    var K = 1.3 * FOOT_K / BODY0.FOOT_K, sk = L.skin, Y = -0.058, ka = Math.max(1, BK.shin[1] * 0.92);   // PRESET: pie con el mando `foot`, tobillo con la espinilla
-    g.add(sph(0.042 * ka, 12, 8), sk, 0, -0.035, -0.008, 0, 0, 0, 1, 1.1, 1.1);                                   // tobillo y talón
-    g.add(sph(1, 14, 7, 0, PI * 2, 0, PI * 0.5), sk, 0, Y, 0.035 * K, 0, 0, 0, 0.046 * K, 0.05, 0.1 * K);       // empeine
-    g.add(sph(1, 14, 4, 0, PI * 2, PI * 0.5, PI * 0.5), mixHex(sk, SAND_HEX, 0.35), 0, Y, 0.035 * K, 0, 0, 0, 0.047 * K, 0.024, 0.101 * K); // planta con arena
-    g.owk = 0.5; g.add(sph(0.021, 8, 6), sk, -s * 0.026, Y + 0.004, 0.035 * K + 0.088 * K, 0, 0, 0, 1, 0.85, 1.1); // dedo gordo
-    g.owk = 0; g.add(torus(0.037 * ka, 0.0075, 5, 14), tc.accent, 0, -0.006, -0.004, PI / 2, 0, 0);                    // tobillera de tela
-    g.owk = 1;
-  }
-  /** Pantalón (pelvis). TAJO: panel lateral del acento a los dos lados (el tajo que baja de la camiseta). Playa: del color de la camiseta.
-   *  PRESET: ancho y fondo con `hips`. */
-  function shortsGeo(g, tc, beach) {
-    var kx = SHORTS_S[0] * BK.hips[0], kz = SHORTS_S[2] * BK.hips[1];
-    g.add(lathe(profPts(SHORTS_PROF), 22, 16), beach ? tc.base : tc.shorts, 0, 0, 0, 0, 0, 0, kx, SHORTS_S[1], kz);
-    var pp = profPts(SHORTS_PROF).slice(1, -1);
-    g.owk = 0;
-    for (var s = -1; s <= 1; s += 2) g.add(new THREE.LatheGeometry(pp, sg(4, 3), s * PI / 2 - 0.2, 0.4), tc.accent, 0, 0, 0, 0, 0, 0, kx * 1.012, SHORTS_S[1] * 1.002, kz * 1.03);
-    g.owk = 1;
-  }
-  /** Camiseta (abdomen en el hueso spine, pecho en chest): toma la textura del atlas.
-   *  PRESET: abdomen con `waist` (y estirado ABS_SY si el tronco se alarga); pecho con `chest` = [ancho, fondo, V]: la V escala el
-   *  perfil del pecho de ×waist en el bajo (encaja con el abdomen) a ×V arriba (hombros), lineal entre -0,16 y 0,15. */
-  function absGeo(g) { g.jersey = true; g.add(lathe(profPts(ABS_PROF), 24, 16), null, 0, 0, 0, 0, 0, 0, ABS_S[0] * BK.waist[0], ABS_S[1] * ABS_SY, ABS_S[2] * BK.waist[1]); g.jersey = false; }
-  function chestProf() {
-    var a = [], kw = Math.min(1, (BK.waist[0] + BK.waist[1]) * 0.5), kv = BK.chest[2];
-    for (var i = 0; i < CHEST_PROF.length; i++) { var y = CHEST_PROF[i][1]; a.push(V2(CHEST_PROF[i][0] * lerp(kw, kv, clamp((y + 0.16) / 0.31, 0, 1)), y)); }
-    return a;
-  }
-  function chestGeo(g) { g.jersey = true; g.add(lathe(chestProf(), 28, 18), null, 0, 0, 0, 0, 0, 0, CHEST_S[0] * BK.chest[0], CHEST_S[1], CHEST_S[2] * BK.chest[1]); g.jersey = false; }
+  // =====================================================================
+  //  Constantes de la cabeza y del pie (limpieza 11-nov-2026: aquí estaban las piezas del ATLETA TAJO, sin uso desde que la
+  //  geometría la construye js/doll.js). Son solo valores de arranque: applyDoll los sobrescribe con VB.Doll.dims() y
+  //  VB.Doll.boneLayout() (HAIR_P: pivote del muelle del pelo, espacio del hueso de la cabeza).
+  // =====================================================================
+  var HEAD_C = 0.098, HEAD_RX = 0.108, HEAD_RY = 0.12, HEAD_RZ = 0.106, FOOT_K = 1.4;
+  var HAIR_P = [0, 0.19, -0.1];
 
   // =====================================================================
   //  POSE (estructura plana para mezclar capas)
@@ -1152,14 +448,12 @@
     var pelvis = bone(body, 0, HIP_H, 0);
     var spine = bone(pelvis, 0, SPINE_Y, 0);
     var chest = bone(spine, 0, CHEST_Y, 0);
-    var head = bone(chest, 0, NECK_Y, 0.012); head.rotation.order = 'YXZ';
-    head.scale.setScalar(HEAD_K);   // CARTOON: cabeza más grande (cara, ojos y pelo van en huesos hijos: escalan con ella)
-    // cara (PLY-17/18) y pelo (PLY-19): huesos hijos de la cabeza; la escala de los de la cara da las expresiones
-    var fz = headFrontZ;
-    var eyes = bone(head, 0, EYE_Y, fz(EYE_X, EYE_Y) - 0.004), mouth = bone(head, 0, MOUTH_Y, fz(0, MOUTH_Y) - 0.004);
-    var teeth = bone(head, 0, MOUTH_Y, fz(0, MOUTH_Y) - 0.004);
-    var browL = bone(head, BROW_X, BROW_Y, fz(BROW_X, BROW_Y)), browR = bone(head, -BROW_X, BROW_Y, fz(BROW_X, BROW_Y));
-    var hair = bone(head, HAIR_P[0], HAIR_P[1], HAIR_P[2]);
+    var head = bone(chest, 0, NECK_Y, 0); head.rotation.order = 'YXZ';   // MUÑECO: sin cuello, la cabeza nace en el domo de los hombros
+    // huesos de la cara (vacíos: la cara es una textura de doll.js) y del pelo (muelle de la coleta), donde los pone el muñeco
+    var bl = VB.Doll && VB.Doll.boneLayout ? VB.Doll.boneLayout() : { eyes: [0, 0.2, 0.22], mouth: [0, 0.08, 0.22], teeth: [0, 0.08, 0.22], browL: [0.09, 0.3, 0.2], browR: [-0.09, 0.3, 0.2], hair: HAIR_P };
+    function fb(parent, a) { return bone(parent, a[0], a[1], a[2]); }
+    var eyes = fb(head, bl.eyes), mouth = fb(head, bl.mouth), teeth = fb(head, bl.teeth), browL = fb(head, bl.browL), browR = fb(head, bl.browR);
+    var hair = fb(head, bl.hair);
     var r = {
       p: p, id: id, team: team, num: p.num, root: root, body: body, pelvis: pelvis, spine: spine, chest: chest, head: head,
       eyes: eyes, mouth: mouth, teeth: teeth, brow: [browL, browR], hair: hair,
@@ -1180,13 +474,13 @@
       hitMode: '', hwx: 0, hwy: 0, hwz: 0, hdx: 0, hdy: 0, hdz: 0,
       locoOwn: 0, ownPrev: 0, mPrev: 0, hipYaw: 0, fk: [footState(), footState()],
       offX: 0, offY: 0, ox0: 0, oy0: 0, lpx: 0, lpy: 0, faceKeep: 0, hasFace: false, yawRate: 0, yawV: 0, standW: 0, fex: 0, bkOn: false, celV: '', celId: '', lastCel: '', lastPrev: '', lkW: 0, lkX: 0, lkY: 0, lkZ: 0, apOn: false, apWarp: false, apS: 0, apS0: 0, apW: 0, apT0: -99, apJ: -99, apX0: 0, apY0: 0, ssT: -99, ssLast: -99, ssK: 1, ssAir: false, guard: false, tossT: -99, tossJump: false, hitShot: '', hitGrade: '',
-      faceE: 0, faceM: 0, beach: false, acc: '',   // TAJO: celdas de la cara y escenario
-      armS0: 1, armS1: 1   // PRESET: estiramiento del brazo izquierdo / derecho (1 = largo normal)
+      faceE: 0, faceM: 0, beach: false, acc: '',   // celdas de la cara (hoja de caras del muñeco) y escenario
+      armS0: 1, armS1: 1,   // estiramiento cartoon del brazo izquierdo / derecho (1 = largo de reposo)
+      hbA: 0, fault: false, missT: -99   // MUÑECO: rebote de la cabeza (retraso del aplastamiento), falta propia en el punto, fallo de golpe
     };
     for (var k = 0; k < 2; k++) {
       var s = k === 0 ? 1 : -1;
       var sh = bone(chest, s * SH_X, SH_Y, SH_Z), up = bone(sh), el = bone(up, 0, -UPPER, 0), hd = bone(el, 0, -FORE, 0);
-      hd.scale.setScalar(HAND_K);     // CARTOON: manos algo mayores (la muñeca no se mueve: la IK sigue llevando la palma al balón)
       r.sh.push(sh); r.up.push(up); r.el.push(el); r.hand.push(hd);
       var hp = bone(pelvis, s * HIP_W, 0, 0), th = bone(hp), kn = bone(th, 0, -THIGH, 0), ft = bone(kn, 0, -SHIN, 0);
       r.hip.push(hp); r.th.push(th); r.kn.push(kn); r.ft.push(ft);
@@ -1194,11 +488,12 @@
     // ---- UNA malla con piel rígida por hueso: 1 llamada de dibujo + 1 de sombra por atleta
     root.updateMatrixWorld(true);
     r.bones = bones; r.rest = []; r.geos = [null, null, null]; r.look = L; r.tc = tc;
-    // TAJO: escenario de playa (el rig se construye para un escenario: la clave de caché lo incluye, rigFor) y complemento de
-    // cabeza alterno: 2v2 por id (A visera, B gorra hacia atrás), 6v6 por dorsal
-    r.beach = VEN === 'beach'; r.acc = r.beach ? (((p.role ? p.num : p.id) % 2) ? 'gorra' : 'visor') : '';
+    // escenario de playa (el rig se construye para un escenario: la clave de caché lo incluye, rigFor) y complemento de cabeza (lookOf)
+    r.beach = VEN === 'beach'; r.acc = L.acc || '';
     for (k = 0; k < bones.length; k++) r.rest.push(bones[k].matrixWorld.clone()); // pose de reposo (para reconstruir el LOD)
-    var skin = new THREE.SkinnedMesh(rigGeometry(r, LODR), atlasMaterial(p.num, tc, L, r.beach));
+    // atlas del muñeco: 1024² solo en alta y con pocos muñecos (2v2); con 12-14 en pista o en media/baja, 512² (1 MB por atlas)
+    var px = (QRANK >= 2 && !p.role) ? 2 : 1;
+    var skin = new THREE.SkinnedMesh(rigGeometry(r, LODR), VB.Doll.material(tc, L, p.num, r.beach, px));
     skin.castShadow = true; skin.receiveShadow = true; skin.name = 'athleteSkin' + id;
     root.add(skin); root.updateMatrixWorld(true);
     skin.bind(new THREE.Skeleton(bones), skin.matrixWorld);
@@ -1216,23 +511,9 @@
    *  guardada (r.rest), así que vale para la misma piel aunque los huesos estén ya posados. Se guarda en r.geos. */
   function rigGeometry(r, lod) {
     if (r.geos[lod]) return r.geos[lod];
-    var keepK = LODK, keepR = LODR; LODK = LOD_K[lod]; LODR = lod;
-    var G = new Geo(), L = r.look, tc = r.tc, k, s;
-    function on(b) { var i = r.bones.indexOf(b); G.pre = r.rest[i]; G.bone = i; return G; }
-    try {
-      var bch = !!r.beach;   // TAJO: versión de playa (tirantes, malla, descalzos, visera/gorra)
-      shortsGeo(on(r.pelvis), tc, bch);
-      absGeo(on(r.spine));
-      chestGeo(on(r.chest)); neckGeo(G, L, tc, bch);
-      G.skinHex = L.skin; headGeo(on(r.head), L, tc, r.acc, bch); faceGeo(r, on, L);
-      for (k = 0; k < 2; k++) {
-        s = k === 0 ? 1 : -1;
-        upperGeo(on(r.up[k]), L, tc, s, bch); foreGeo(on(r.el[k]), L, tc, s); handGeo(on(r.hand[k]), L);
-        thighGeo(on(r.th[k]), L, tc, bch); shinGeo(on(r.kn[k]), L, tc, r.bones.indexOf(r.th[k]), bch);
-        if (bch) footGeo(on(r.ft[k]), L, tc, s); else shoeGeo(on(r.ft[k]), tc);
-      }
-    } finally { LODK = keepK; LODR = keepR; }
-    return (r.geos[lod] = G.build());
+    // MUÑECO: la geometría (tronco con la ropa pintada, cabeza con la hoja de caras, tubos y bolas, manoplas, zapatones o pies
+    // descalzos, pelo y complementos) la construye doll.js sobre este esqueleto y la pose de reposo (r.rest); la guarda en r.geos
+    return VB.Doll.geometry(r, lod);
   }
   /** Detalle por tamaño en pantalla: un atleta en primer plano (punto, ace, celebración, cámara muy cerca) usa
    *  la malla completa aunque la calidad sea media/baja; el resto, la de la calidad. Con histéresis (no parpadea).
@@ -1261,7 +542,7 @@
         if (six) LODA[k] = dx * dx + dy * dy + dz * dz;
       }
       if (LODR < 2) {
-        var frac = ahead > 0.05 ? 1.85 * r.scale / (ahead * tanH) : 0;
+        var frac = ahead > 0.05 ? (BODY_TOP + 0.2) * r.scale / (ahead * tanH) : 0;   // alto del muñeco (con los brazos algo arriba)
         if (frac > LOD_DOWN) { // solo si está en el encuadre (no uno pegado a la cámara pero fuera de plano)
           LODW[2].set(rp.x, rp.y + 1.0 * r.scale, rp.z).project(cam);
           if (Math.abs(LODW[2].x) > 1.15 || Math.abs(LODW[2].y) > 1.3) frac = 0;
@@ -1375,7 +656,7 @@
     var f = lerp(1.2 + 0.35 * sp, 1.0 + 0.13 * sp, runK); // ciclos/s (2 pasos por ciclo)
     // excursión del pie de apoyo limitada por el alcance real de la pierna con la cadera de la carrera
     var drop = lerp(0.12, 0.17, runK);
-    var hh = HIP_H - drop - ANKLE, LR = (THIGH + SHIN) * 0.92, half = Math.sqrt(Math.max(0.01, LR * LR - hh * hh));
+    var hh = HIP_H - drop * LEG_K - ANKLE, LR = (THIGH + SHIN) * 0.92, half = Math.sqrt(Math.max(0.01, LR * LR - hh * hh));
     var maxExc = lerp(2 * half * 0.97, 0.3, lat);
     if (sp * S / f > maxExc * r.scale) f = sp * S / (maxExc * r.scale);
     var stride = sp * S / f / r.scale;                    // excursión del pie de apoyo (espacio cuerpo)
@@ -1500,12 +781,12 @@
         // alcance de la pierna (cadera de ese lado con el giro de la pelvis)
         var hw = k ? -HIP_W : HIP_W, cpy = Math.cos(s[PY]), spy = Math.sin(s[PY]);
         var fy = F.st ? ANKLE : tg.y;
-        var hx = tV.x - (s[PX] + hw * cpy), hy = HIP_H - s[DROP] - fy, hz = tV.z - (s[PZ] - hw * spy);
+        var hx = tV.x - (s[PX] + hw * cpy), hy = HIP_H - s[DROP] * LEG_K - fy, hz = tV.z - (s[PZ] - hw * spy);
         var LL = 0.98 * (THIGH + SHIN), h2 = hx * hx + hz * hz;
         if (h2 + hy * hy > LL * LL) {
-          // la cadera baja un poco (rodilla de apoyo) antes que soltar el pie; si no basta, despega antes
+          // la cadera baja un poco (rodilla de apoyo) antes que soltar el pie; si no basta, despega antes (metros del rig → DROP de pose)
           var need = h2 < LL * LL ? HIP_H - fy - Math.sqrt(LL * LL - h2) : 9;
-          if (need - s[DROP] < 0.09) s[DROP] = need;
+          if (need - s[DROP] * LEG_K < 0.09 * LEG_K) s[DROP] = need / LEG_K;
           else { F.lock = false; F.skip = true; F.ox = 0; F.oz = 0; fv.y = Math.max(fv.y, ANKLE + 0.045); footSave(r, F, fv, s); continue; }
         }
         // el pie de apoyo queda fijo en el mundo con TODO el peso que no reclaman gestos con pasos propios (aunque la
@@ -1564,7 +845,7 @@
       // pivote: mientras el otro pie da el paso, este gira sobre la punta hacia donde mira el cuerpo
       if (stepping >= 0 && stepping !== k) F.syaw += wrapA(r.yaw + tfy - F.syaw) * kf(7, dt);
       var ye = Math.abs(wrapA(F.syaw - r.yaw - tfy));
-      var hw = k ? -HIP_W : HIP_W, hx = tV.x - (s[PX] + hw * Math.cos(s[PY])), hy = HIP_H - s[DROP] - ANKLE, hz = tV.z - (s[PZ] - hw * Math.sin(s[PY]));
+      var hw = k ? -HIP_W : HIP_W, hx = tV.x - (s[PX] + hw * Math.cos(s[PY])), hy = HIP_H - s[DROP] * LEG_K - ANKLE, hz = tV.z - (s[PZ] - hw * Math.sin(s[PY]));
       var over = hx * hx + hz * hz + hy * hy > 0.94 * (THIGH + SHIN) * (THIGH + SHIN);
       var err = Math.max(d / ST_D, ye / ST_YAW, over ? 2 : 0);
       if (err > bestE) { bestE = err; best = k; }
@@ -1633,7 +914,7 @@
   function contactHand(o, Ct, hop) {
     SC[PP] = 0.1; SC[CP] = 0.2; SC[DROP] = -0.06; SC[PZ] = 0; SC[SHR] = 0;
     shoulderC(SC);
-    var sx = -SH_X * Math.cos(CT_CY), sz = SHZ + SH_X * Math.sin(CT_CY), sy = SHY, dx = -0.06, dy = 0.9, dz = 0.38;
+    var sx = -P_SH_X * Math.cos(CT_CY), sz = SHZ + P_SH_X * Math.sin(CT_CY), sy = SHY, dx = -0.06, dy = 0.9, dz = 0.38;
     if (Ct) { dx = Ct.x - sx; dy = Ct.y - hop - sy; dz = Ct.z - sz; }
     var l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
     dx = clamp(dx / l, -0.32, -0.04); dz = clamp(dz / l, 0.24, 0.6); dy = Math.sqrt(Math.max(0.25, 1 - dx * dx - dz * dz));
@@ -1735,15 +1016,17 @@
 
   /** Centro de los hombros (espacio cuerpo) para una pose (sin giro): misma cadena que applyPose.
    *  Deja el resultado en SHY/SHZ. Sirve para poner las manos a un brazo exacto (brazos rectos). */
+  // MUÑECO: en el ESPACIO DE POSE (cuerpo TAJO: P_*), como las poses que lo usan; applyPose reproyecta al rig del muñeco
   var SHY = 0, SHZ = 0;
   function shoulderC(s) {
-    var a1 = s[PP] * 0.6, y = HIP_H - s[DROP], z = s[PZ];
-    y += SPINE_Y * Math.cos(a1); z += SPINE_Y * Math.sin(a1);
-    var a2 = a1 + s[PP] * 0.4 + s[CP] * 0.45; y += CHEST_Y * Math.cos(a2); z += CHEST_Y * Math.sin(a2);
-    var a3 = a2 + s[CP] * 0.55, h = SH_Y + SHR_UP * s[SHR]; y += h * Math.cos(a3); z += h * Math.sin(a3);
+    var a1 = s[PP] * 0.6, y = P_HIP_H - s[DROP], z = s[PZ];
+    y += P_SPINE_Y * Math.cos(a1); z += P_SPINE_Y * Math.sin(a1);
+    var a2 = a1 + s[PP] * 0.4 + s[CP] * 0.45; y += P_CHEST_Y * Math.cos(a2); z += P_CHEST_Y * Math.sin(a2);
+    var a3 = a2 + s[CP] * 0.55, h = P_SH_Y + SHR_UP * s[SHR]; y += h * Math.cos(a3); z += h * Math.sin(a3);
     SHY = y; SHZ = z;
   }
-  var SHR_UP = 0.06, ARM_R = UPPER + FORE + PALM, ARM_L2 = FORE + PALM;
+  // ARM_R = brazo del ESPACIO DE POSE (TAJO: 0,657); ARM_L2 = antebrazo + palma del RIG (muñeco), para la IK
+  var SHR_UP = 0.06, ARM_R = P_UPPER + P_FORE + P_PALM, ARM_L2 = FORE + PALM;
 
   /** Recepción de antebrazos (plataforma) hacia el punto de contacto Pc (espacio cuerpo). follow: 0..1 acompañamiento.
    *  Brazos RECTOS con las muñecas juntas y los hombros encogidos hacia delante; la altura se busca con las
@@ -2720,7 +2003,7 @@
   function pointAt(r, P, k, x, y, z, w) {
     var s = P.s; shoulderC(s);
     toBody(r, x, y, z, tV2);
-    var sx = (k ? -1 : 1) * SH_X, dx = tV2.x - sx, dy = tV2.y - SHY, dz = tV2.z - SHZ, l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+    var sx = (k ? -1 : 1) * P_SH_X, dx = tV2.x - sx, dy = tV2.y - SHY, dz = tV2.z - SHZ, l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
     dy = Math.max(dy / l, -0.1); dz = Math.max(dz / l, 0.35); dx = dx / l; l = Math.sqrt(dx * dx + dy * dy + dz * dz);
     var L = ARM_R * 0.94 / l;
     P.v[HL + k].lerp(tV2.set(sx + dx * L, SHY + dy * L, SHZ + dz * L), w);
@@ -3175,18 +2458,29 @@
   /** CARTOON: estirar y encoger suave (squash & stretch) en el despegue y el aterrizaje, escalando el hueso body
    *  (su origen está entre los pies: no se despegan del suelo). Volumen casi constante (xz = 1/sqrt(y)). Solo visual:
    *  la sim, el balón y los contactos no cambian (el despegue acaba antes de cualquier contacto en el aire). */
-  var SQ_UP = 0.06, SQ_LAND = 0.08;
-  function squash(g, r) {
+  // MUÑECO: más amplitud (despegue +10 %, aterrizaje −14 % con rebote); la plancha aplasta un poco al caer de pecho. La cabeza
+  // va con retraso (hbA: muelle de primer orden) → rebote de la cabeza sin cuello en aimHead (headBob del muñeco).
+  var SQ_UP = 0.1, SQ_LAND = 0.14;
+  function squash(g, r, dt) {
     var tm = g.time, a = 0, tj = tm - r.jumpT, tl = tm - r.landT, b = r.body.scale;
     if (tj >= 0 && tj < 0.16) a += SQ_UP * Math.sin(tj / 0.16 * PI);
-    if (tl >= 0 && tl < 0.38) a -= tl < 0.05 ? SQ_LAND * tl / 0.05 : tl < 0.24 ? SQ_LAND * (1 - sstep(0.05, 0.24, tl)) : -0.018 * Math.sin((tl - 0.24) / 0.14 * PI);
+    if (tl >= 0 && tl < 0.38) a -= tl < 0.05 ? SQ_LAND * tl / 0.05 : tl < 0.24 ? SQ_LAND * (1 - sstep(0.05, 0.24, tl)) : -0.03 * Math.sin((tl - 0.24) / 0.14 * PI);
+    var dv = tm - r.diveT; if (dv >= r.diveTc + 0.1 && dv < r.diveTc + 0.3) a -= 0.06 * Math.sin((dv - r.diveTc - 0.1) / 0.2 * PI);
+    r.hbA += (a - r.hbA) * (dt > 0 ? kf(16, dt) : 1);
     if (a === 0) { if (b.y !== 1) b.set(1, 1, 1); return; }
     var sy = 1 + a, sx = 1 / Math.sqrt(sy);
     b.set(sx, sy, sx);
   }
+  /** Estirón cartoon del brazo k (doll.js stretchArm): brazo + antebrazo ×s desde el hombro (escala y del hueso del brazo) y
+   *  adelgazados ×1/√s (volumen); la MANO recupera su tamaño (escala inversa en el hueso de la mano). sq: compresión del golpe. */
+  function stretchArm(r, k, s, sq) {
+    var q = Math.sqrt(s), w = 1 / q * (1 + 0.1 * sq);
+    r.up[k].scale.set(w, s, w);
+    r.hand[k].scale.set(q, 1 / s, q);
+  }
   function torso(r, s) {
     r.body.position.set(s[OX], s[HOP], s[OZ]);
-    r.pelvis.position.set(s[PX], HIP_H - s[DROP], s[PZ]);
+    r.pelvis.position.set(s[PX], HIP_H - s[DROP] * LEG_K, s[PZ]);   // MUÑECO: la flexión de las poses (metros TAJO) a las piernas cortas
     eA.set(s[PP] * 0.6, s[PY], s[PR], 'YXZ'); r.pelvis.quaternion.setFromEuler(eA);
     eA.set(s[PP] * 0.4 + s[CP] * 0.45, s[CY] * 0.4, s[CR] * 0.5, 'YXZ'); r.spine.quaternion.setFromEuler(eA);
     eA.set(s[CP] * 0.55, s[CY] * 0.6 - s[PY] * 0.6, s[CR] * 0.5, 'YXZ'); r.chest.quaternion.setFromEuler(eA);
@@ -3195,6 +2489,15 @@
     mA.multiplyMatrices(r.pelvis.matrix, r.spine.matrix); mA.multiply(r.chest.matrix);   // cuerpo <- pecho
   }
   function shoulderAt(s, k, out) { return out.set((k ? -1 : 1) * (SH_X - 0.022 * s[SHR]), SH_Y + SHR_UP * s[SHR], SH_Z).applyMatrix4(mA); }
+  /** MUÑECO: hombro k del ESPACIO DE POSE (cuerpo TAJO, P_*) con las rotaciones de este frame (pelvis/spine/chest ya posados por
+   *  torso), en el marco del hueso body como shoulderAt: el punto desde el que se reproyectan los objetivos de mano de las poses. */
+  function shoulderPose(r, s, k, out) {
+    out.set((k ? -1 : 1) * (P_SH_X - 0.022 * s[SHR]), P_SH_Y + SHR_UP * s[SHR], P_SH_Z).applyQuaternion(r.chest.quaternion);
+    out.y += P_CHEST_Y; out.applyQuaternion(r.spine.quaternion);
+    out.y += P_SPINE_Y; out.applyQuaternion(r.pelvis.quaternion);
+    out.x += s[PX]; out.y += P_HIP_H - s[DROP]; out.z += s[PZ];
+    return out;
+  }
 
   // =====================================================================
   //  ANCLAJE DE CONTACTO (las manos llegan al balón en cada toque)
@@ -3208,6 +2511,9 @@
   // Si el brazo no llega, la pelvis se corrige (inclinación <= aLean m, flexión de rodillas para balones bajos) solo en este
   // frame (no altera el muelle de la pose). Sin asignaciones.
   var ANC_PRE = 0.14, ARM_W = UPPER + FORE, BR = 0.21; // BR = radio del balón de la sim (VB.C.BR, exagerado): init
+  // MUÑECO: ARM_WE = brazo (hombro → muñeca) con el 60 % del estirón ya contado: la corrección de cuerpo solo cubre lo que el
+  // estirón no llega; AWK = brazo del muñeco respecto al TAJO (0,57) para las distancias de plataforma y plancha
+  var ARM_WE = ARM_W, AWK = 1;
   var SVS = new Float32Array(NS), AB = null, AD = null, AW0 = null, AW1 = null, AS0 = null, AS1 = null, AU = null, AN = null, AX = null, AP = null, ASK = null;
   function ancVecs() { AB = new THREE.Vector3(); AD = new THREE.Vector3(); AW0 = new THREE.Vector3(); AW1 = new THREE.Vector3(); AS0 = new THREE.Vector3(); AS1 = new THREE.Vector3(); AU = new THREE.Vector3(); AN = new THREE.Vector3(); AX = new THREE.Vector3(); AP = new THREE.Vector3(); ASK = new THREE.Vector3(); }
   /** Punto de la sim -> marco del hueso body (espacio cuerpo menos los desplazamientos del body). */
@@ -3221,8 +2527,8 @@
     var e = 0, d;
     if (mode === 1 || mode === 2) {          // palm / tip: mano derecha
       AW1.copy(AB).addScaledVector(AD, -(BR + (mode === 2 ? 0.016 : 0.01)));   // palma en la superficie del balón
-      AU.subVectors(AW1, AS1).normalize(); AW1.addScaledVector(AU, -0.045);
-      AX.subVectors(AW1, AS1); d = AX.length(); e = d - ARM_W * 0.985; AX.multiplyScalar(1 / (d || 1));
+      AU.subVectors(AW1, AS1).normalize(); AW1.addScaledVector(AU, -HAND_OVER);   // (la manopla asoma más allá del centro de la palma)
+      AX.subVectors(AW1, AS1); d = AX.length(); e = d - ARM_WE * 0.985; AX.multiplyScalar(1 / (d || 1));
     } else if (mode === 3) {                 // plat: plataforma de antebrazos
       AX.addVectors(AS0, AS1).multiplyScalar(0.5);                 // centro de hombros
       AU.subVectors(AB, AX).normalize();
@@ -3235,26 +2541,26 @@
       AW1.copy(AB).addScaledVector(AN, -(BR + 0.038)).addScaledVector(AU, 0.12);
       AW0.crossVectors(AU, AN); if (AW0.x < 0) AW0.multiplyScalar(-1); AW0.normalize();
       AX.subVectors(AW1, AX); d = AX.length(); AX.multiplyScalar(1 / (d || 1));
-      e = d > 0.53 ? d - 0.53 : d < 0.42 ? d - 0.42 : 0;
+      e = d > 0.53 * AWK ? d - 0.53 * AWK : d < 0.42 * AWK ? d - 0.42 * AWK : 0;
       var cx = AW1.x, cy = AW1.y, cz = AW1.z;
       AW1.set(cx - AW0.x * 0.04, cy - AW0.y * 0.04, cz - AW0.z * 0.04);
       AW0.set(cx + AW0.x * 0.04, cy + AW0.y * 0.04, cz + AW0.z * 0.04);
     } else if (mode === 4) {                 // set: ventana de los dedos
       // las muñecas quedan del lado de los hombros (debajo-detrás del balón), separadas 0,16 m
       AU.addVectors(AS0, AS1).multiplyScalar(0.5).sub(AB); AU.y = Math.min(AU.y, -0.25); AU.normalize();
-      var wd = BR * 0.62 + 0.04, wl = BR * 0.5 + 0.03;   // muñecas debajo-detrás, dedos abrazando la parte de atrás del balón
+      var wd = BR * 0.62 + HAND_OVER, wl = BR * 0.5 + 0.03;   // muñecas debajo-detrás, manoplas abrazando la parte de atrás del balón
       AW0.set(AB.x + AU.x * wd + wl, AB.y + AU.y * wd, AB.z + AU.z * wd);
       AW1.set(AB.x + AU.x * wd - wl, AB.y + AU.y * wd, AB.z + AU.z * wd);
       var e0 = AW0.distanceTo(AS0), e1 = AW1.distanceTo(AS1);
       if (e1 > e0) { AX.subVectors(AW1, AS1); e = e1; } else { AX.subVectors(AW0, AS0); e = e0; }
-      AX.normalize(); e -= ARM_W * 0.97;
+      AX.normalize(); e -= ARM_WE * 0.97;
     } else if (mode === 5) {                 // dive: manos planas bajo el balón
       var hx = AB.x, hz = AB.z, hl = Math.sqrt(hx * hx + hz * hz) || 1; hx /= hl; hz /= hl;
       var db = BR * 0.55 + 0.05, dl2 = BR * 0.35 + 0.03, du = BR * 0.75;
       AW0.set(AB.x - hx * db + hz * dl2, AB.y - du, AB.z - hz * db - hx * dl2);
       AW1.set(AB.x - hx * db - hz * dl2, AB.y - du, AB.z - hz * db + hx * dl2);
       AX.addVectors(AS0, AS1).multiplyScalar(0.5); AU.addVectors(AW0, AW1).multiplyScalar(0.5);
-      AX.subVectors(AU, AX); d = AX.length(); AX.multiplyScalar(1 / (d || 1)); e = d - 0.53;
+      AX.subVectors(AU, AX); d = AX.length(); AX.multiplyScalar(1 / (d || 1)); e = d - 0.53 * AWK;
     } else if (mode === 6) {                 // hold: palma izquierda bajo el balón del saque
       AU.set(AB.x - AS0.x, 0, AB.z - AS0.z).normalize();
       AW0.set(AB.x - AU.x * 0.04, AB.y - BR - 0.016, AB.z - AU.z * 0.04);
@@ -3264,12 +2570,12 @@
       AW0.copy(AB).addScaledVector(AD, BR + 0.03);
       AU.subVectors(AW0, AS0); AU.addScaledVector(AD, -AU.dot(AD)); var aul = AU.length();
       if (aul > 1e-4) AW0.addScaledVector(AU, -0.04 / aul);
-      AX.subVectors(AW0, AS0); d = AX.length(); e = d - ARM_W * 0.97; AX.multiplyScalar(1 / (d || 1));
+      AX.subVectors(AW0, AS0); d = AX.length(); e = d - ARM_WE * 0.97; AX.multiplyScalar(1 / (d || 1));
     } else if (mode === 7) {                 // pt: muñecas a puntos dados (AB derecha, AD izquierda)
       AW1.copy(AB); AW0.copy(AD);
       var f0 = r.aw0 > 0 ? AW0.distanceTo(AS0) : 0, f1 = r.aw1 > 0 ? AW1.distanceTo(AS1) : 0;
       if (f1 >= f0) { AX.subVectors(AW1, AS1); e = f1; } else { AX.subVectors(AW0, AS0); e = f0; }
-      AX.normalize(); e -= ARM_W * 0.97;
+      AX.normalize(); e -= ARM_WE * 0.97;
     }
     return e;
   }
@@ -3288,17 +2594,19 @@
       var e = ancSolve(r, s, mode), wm = Math.max(aw0, aw1);
       if (e !== 0 && r.aLean > 0 && (e > 0 || mode === 3)) {
         // corrección de cuerpo: la pelvis acerca (o aleja) los hombros; horizontal <= aLean, rodillas para lo bajo
+        // (MUÑECO: el exceso `e` ya descuenta buena parte del estirón del brazo —ARM_WE—; las rodillas van en metros del rig,
+        // piernas cortas: hasta 0,2 m, y DROP se guarda en metros de pose, ÷LEG_K)
         var dx = AX.x * e, dy = AX.y * e, dz = AX.z * e, hl = Math.sqrt(dx * dx + dz * dz), lim = r.aLean;
         if (hl > lim) { dx *= lim / hl; dz *= lim / hl; }
-        dy = clamp(dy, -0.32, 0.12 + r.aUp);
+        dy = clamp(dy, -0.2, 0.12 + r.aUp);
         s[PX] += dx * wm; s[PZ] += dz * wm;
-        var nd = s[DROP] - dy * wm, lo = Math.min(s[DROP], -0.04);
+        var D0 = s[DROP] * LEG_K, nd = D0 - dy * wm, lo = Math.min(D0, -0.04 * LEG_K);
         if (nd < lo) {
           // más arriba de lo que da la cadera: de puntillas (talones arriba, punteras en el suelo) y luego un saltito
           var up = Math.min(lo - nd, r.aUp); nd = lo; s[HOP] += up;
           if (r.p.z < 0.01) { var tp = Math.asin(Math.min(up, 0.12) / 0.17); s[FPL] += tp; s[FPR] += tp; }
         }
-        s[DROP] = Math.min(nd, 0.78);
+        s[DROP] = Math.min(nd, 0.78 * LEG_K) / LEG_K;
         torso(r, s); e = ancSolve(r, s, mode);
       }
       r.aE = e;
@@ -3318,32 +2626,41 @@
       sh.position.set(sg * (SH_X - 0.022 * s[SHR]), SH_Y + SHR_UP * s[SHR], SH_Z);
       tV2.copy(v[AL + k]).applyQuaternion(qB);
       tV.copy(v[HL + k]);
-      // PRESET con brazos largos (ARM_K): el objetivo de la pose se escala desde el hombro (mismos ángulos de codo con el brazo largo);
-      // lo que está anclado al balón (abajo) va en absoluto y no se toca
-      if (ARM_K !== 1) { if (!ASK) ancVecs(); shoulderAt(s, k, ASK); tV.sub(ASK); tV.y += SH_DY; tV.multiplyScalar(ARM_K).add(ASK); }
+      // MUÑECO: reproyección del ESPACIO DE POSE (cuerpo TAJO) al rig: el objetivo de la mano se refiere al hombro de la pose con
+      // las rotaciones de este frame (shoulderPose) y se escala desde el hombro real ×ARM_K (brazo de reposo); con el brazo recto
+      // hacia ARRIBA (bloqueo, brazos en V, contacto del remate) sube a ×ARM_UPK: estirón hasta el alcance del atleta. Lo anclado
+      // al balón (abajo) va en absoluto y no se toca.
+      if (!ASK) ancVecs();
+      shoulderPose(r, s, k, ASK); tV.sub(ASK);
+      var dl = tV.length(), upF = dl > 1e-4 ? tV.y / dl : 0;
+      var kk = ARM_K + (ARM_UPK - ARM_K) * sstep(0.8, 1.0, dl / ARM_R) * sstep(0.2, 0.6, upF);
+      if (dl > ARM_R) kk *= ARM_R / dl;   // objetivos fuera del brazo de la pose (la IK TAJO los recortaba): no se amplifican
+      shoulderAt(s, k, ASK); tV.multiplyScalar(kk).add(ASK);
       if (k === 1 && r.guard) headClear(tV);
       if (mode) {
         var wk = k ? aw1 : aw0;
         if (wk > 0) {
-          // la IK lleva a la mano el punto a FORE + PALM del codo: se resuelve primero a la MUÑECA anclada y el objetivo
-          // final es esa muñeca prolongada PALM en la dirección real del antebrazo (exacto también con el codo doblado)
+          // la IK lleva a la mano el punto a FORE + PALM del codo: se resuelve primero a la MUÑECA anclada (con el estirón que
+          // haga falta) y el objetivo final es esa muñeca prolongada PALM en la dirección real del antebrazo (exacto también con
+          // el codo doblado)
           var AWk = k ? AW1 : AW0;
           AP.copy(AWk).applyMatrix4(mInv); AP.x -= sh.position.x; AP.y -= sh.position.y; AP.z -= sh.position.z;
-          solveIK(r.up[k], r.el[k], AP, tV2, UPPER, FORE);
+          var sW = clamp(AP.length() / ARM_W, 1, ARM_STRETCH);
+          solveIK(r.up[k], r.el[k], AP, tV2, UPPER * sW, FORE * sW);
           AP.set(0, -PALM, 0).applyQuaternion(r.el[k].quaternion).applyQuaternion(r.up[k].quaternion).applyQuaternion(qA).add(AWk);
           tV.lerp(AP, wk);
           // el latigazo sigue rodeando la cabeza mientras el anclaje entra (en el contacto manda el balón)
-          if (k === 1 && wk < 0.98 && (mode === 1 || mode === 2)) { tV2.copy(tV); headClear(tV2); tV.lerp(tV2, 1 - wk * wk * wk); }
+          if (k === 1 && wk < 0.98 && (mode === 1 || mode === 2)) { tV3.copy(tV); headClear(tV3); tV.lerp(tV3, 1 - wk * wk * wk); }
         }
       }
       tV.applyMatrix4(mInv); tV.x -= sh.position.x; tV.y -= sh.position.y; tV.z -= sh.position.z;
-      // PRESET `stretch` (squash & stretch cartoon): si el objetivo queda fuera de alcance, el brazo se alarga hasta ARM_STRETCH
-      // en vez de quedarse corto; la escala va en el hueso del brazo (el antebrazo y la mano la heredan) y, como solo ocurre con el
-      // brazo recto, no hay cizalla en el codo. En cuanto el objetivo vuelve al alcance, sA = 1 (largo normal)
+      // ESTIRÓN cartoon (squash & stretch; doll.js reachTo): si el objetivo queda fuera del alcance de reposo, brazo + antebrazo se
+      // alargan hasta ×ARM_STRETCH (la palma no: la mano recupera su tamaño en stretchArm) en vez de quedarse cortos; la escala va en
+      // el hueso del brazo y, como solo ocurre con el brazo recto, no hay cizalla en el codo. Dentro del alcance, sA = 1 (reposo)
       var sA = 1;
-      if (ARM_STRETCH > 1) { var dA = tV.length(), fA = UPPER + ARM_L2; if (dA > fA) sA = Math.min(ARM_STRETCH, dA / fA); }
+      if (ARM_STRETCH > 1) { var dA = tV.length(); if (dA > ARM_W + PALM) sA = Math.min(ARM_STRETCH, (dA - PALM) / ARM_W); }
       if (k) r.armS1 = sA; else r.armS0 = sA;
-      solveIK(r.up[k], r.el[k], tV, tV2, UPPER * sA, ARM_L2 * sA);
+      solveIK(r.up[k], r.el[k], tV, tV2, UPPER * sA, FORE * sA + PALM);
       eA.set(s[WRL + k], s[TWL + k], 0, 'YXZ'); r.hand[k].quaternion.setFromEuler(eA);
     }
     // piernas
@@ -3385,7 +2702,7 @@
     toBodyV(r, b, tV);
     tV.x -= r.body.position.x; tV.y -= r.body.position.y; tV.z -= r.body.position.z;
     tV.applyMatrix4(mInv); // en espacio del pecho
-    var dx = tV.x, dy = tV.y - NECK_Y - 0.1, dz = tV.z, h = Math.sqrt(dx * dx + dz * dz);
+    var dx = tV.x, dy = tV.y - HEAD_CY, dz = tV.z, h = Math.sqrt(dx * dx + dz * dz);
     var yaw = clamp(Math.atan2(dx, dz), -1.25, 1.25), pitch = clamp(-Math.atan2(dy, Math.max(0.05, h)), -HEAD_UP, 0.55);   // TAJO: con la cabeza grande no se echa tan atrás (la cara se sigue viendo)
     if (dz < -0.1) yaw *= 0.6;
     var w = s[LOOK];
@@ -3393,7 +2710,7 @@
     if (r.lkW > 0) {
       // punto de mirada de la celebración (compañero, grada, bote, antena)
       toBody(r, r.lkX, r.lkY, r.lkZ, tV2); tV2.sub(r.body.position); tV2.applyMatrix4(mInv);
-      var lx = tV2.x, ly = tV2.y - NECK_Y - 0.1, lz = tV2.z, lh = Math.sqrt(lx * lx + lz * lz);
+      var lx = tV2.x, ly = tV2.y - HEAD_CY, lz = tV2.z, lh = Math.sqrt(lx * lx + lz * lz);
       var lyaw = clamp(Math.atan2(lx, lz), -1.25, 1.25), lpit = clamp(-Math.atan2(ly, Math.max(0.05, lh)), -HEAD_UP, 0.75);
       ty = lerp(ty, lyaw + s[HY], r.lkW); tp = lerp(tp, lpit, r.lkW);
     }
@@ -3403,14 +2720,18 @@
       // tumbado boca abajo: la cara gira alrededor de la columna hacia el lado del balón (ángulo en el espacio del
       // cuerpo) y se levanta menos cuanto más gira: mira el balón sin hundir la cara en el suelo
       toBodyV(r, b, tV2); tV2.sub(r.body.position);
-      tV3.set(0, NECK_Y + 0.1, 0.012).applyMatrix4(mA); tV2.sub(tV3);       // desde la CABEZA (va muy por delante de la raíz)
+      tV3.set(0, HEAD_CY, 0).applyMatrix4(mA); tV2.sub(tV3);       // desde la CABEZA (va muy por delante de la raíz)
       var ab = clamp(Math.atan2(tV2.x, tV2.z), -1.9, 1.9), lp = lerp(-0.9, -0.12, Math.min(1, Math.abs(ab) / 1.7));
       ty = lerp(ty, ab, r.lieW); tp = lerp(tp, lp, r.lieW);
     }
     if (tp < -HEAD_UP - 0.12 && r.lieW < 0.5) tp = -HEAD_UP - 0.12;   // TAJO: tope con las poses (s[HP]) incluidas
     var k = snap ? 1 : kf(r.lieW > 0.5 ? 18 : 10, dt);
     r.headYaw += (ty - r.headYaw) * k; r.headPitch += (tp - r.headPitch) * k;
-    r.head.rotation.set(r.headPitch, r.headYaw, 0);
+    // MUÑECO: rebote de la cabeza sin cuello (headBob): la cabeza va con retraso respecto al aplastamiento/estirón del cuerpo
+    // (squash deja en hbA la versión retrasada): al aterrizar sigue bajando un instante y se inclina; al despegar se queda atrás
+    var hb = r.body.scale.y - 1 - r.hbA;
+    r.head.position.y = NECK_Y + clamp(hb * 0.4, -0.05, 0.05);
+    r.head.rotation.set(r.headPitch + clamp(hb * 0.9, -0.12, 0.12), r.headYaw, 0);
   }
 
   // =====================================================================
@@ -3466,24 +2787,27 @@
       r.blinkT -= dt;
       if (r.blinkT < 0) { var u = -r.blinkT / 0.13; if (u >= 1) r.blinkT = 2.2 + 3.3 * Math.random(); else bl = Math.sin(PI * u); }
     }
-    // TAJO: la cara dibujada elige celda de ojos (0-7) y de boca (0-7) de la hoja de caras (paintFace) con los mismos pesos
-    var eye = 0, mouth = 0, tm = g.time;
-    if (S > 0.45) { eye = 5; mouth = 2; }                                   // grito (remate, bloqueo, punto)
-    else if (E > 0.4) { eye = 2; mouth = 3; }                               // esfuerzo: entornados y dientes apretados
-    else if (J > 0.4) {                                                     // alegría: ^ ^ y sonrisa (con lengua) o guiño
+    // MUÑECO: la cara dibujada elige celda de ojos y de boca de la hoja de caras de doll.js con los mismos pesos (8 expresiones:
+    // ojos 0 neutra · 1 parpadeo · 2 concentrado · 3 esfuerzo · 4 alegría · 5 pena · 6 sorpresa · 7 grito; bocas 0 neutra ·
+    // 1 sonrisa con dientes · 2 O de grito · 3 dientes apretados · 4 pena · 5 «o» · 6 lengua · 7 línea tensa)
+    var eye = 0, mouth = 0, tm = g.time, pa = tm - r.pointT, hb = tm - r.hitT, ms = tm - r.missT, sur = false;
+    // sorpresa: el que acaba de cometer la falta (los primeros 0,8 s del punto), el balón que le da en el cuerpo, un golpe al aire
+    if (r.fault && (g.mode === 'point' || g.mode === 'over') && pa >= 0.05 && pa < 0.85) sur = true;
+    if (r.hitShot === 'body' && hb >= 0 && hb < 0.6) sur = true;
+    if (ms >= 0 && ms < 0.5) sur = true;
+    if (S > 0.45) { eye = 7; mouth = 2; }                                   // grito (remate, bloqueo, punto)
+    else if (sur) { eye = 6; mouth = 5; }                                   // sorpresa en los errores
+    else if (E > 0.4) { eye = 3; mouth = 3; }                               // esfuerzo: apretados > < y dientes apretados
+    else if (J > 0.4) {                                                     // alegría: ^ ^ y sonrisa con dientes o lengua fuera
       var ph = Math.floor((tm + r.id * 0.37) / 0.9);
-      eye = (ph % 5 === 3) ? 6 : 3; mouth = (r.id + ph) % 3 === 0 ? 6 : 1;
+      eye = 4; mouth = (r.id + ph) % 3 === 0 ? 6 : 1;
     }
-    else if (D > 0.4) { eye = 4; mouth = r.matchEnd ? 7 : 4; }              // tristeza (fin del partido: mueca)
-    else if (faceFocus(g, r)) { eye = 7; mouth = 5; }                       // concentración: le llega el balón
-    if (bl > 0.5 && eye !== 5 && eye !== 2 && eye !== 3 && eye !== 6) eye = 1;   // parpadeo
+    else if (D > 0.4) { eye = 5; mouth = r.matchEnd ? 7 : 4; }              // pena (fin del partido perdido: línea tensa)
+    else if (faceFocus(g, r)) { eye = 2; mouth = 7; }                       // concentración: le llega el balón
+    if (bl > 0.5 && (eye === 0 || eye === 2 || eye === 5 || eye === 6)) eye = 1;   // parpadeo (no con los ojos ya cerrados)
     var fc = r.fxForce && r.fxForce.charAt(0) === 'c' && /^c(\d)\/(\d)$/.exec(r.fxForce);   // pruebas: _face(p, 'c<ojos>/<boca>')
     if (fc && (r.fxForceT < 0 || (ctx && ctx.time < r.fxForceT))) { eye = +fc[1] & 7; mouth = +fc[2] & 7; }
-    var mat = r.skin && r.skin.material, ud = mat && mat.userData;
-    if (ud && ud.eyeOff) {
-      ud.eyeOff.set((eye & 3) * FE_W / 512, -(eye >> 2) * FE_H / 512);
-      ud.mouthOff.set(mouth * FM_W / 512, 0);
-    }
+    if (eye !== r.faceE || mouth !== r.faceM) VB.Doll.faceCells(r.skin && r.skin.material, eye, mouth);
     r.faceE = eye; r.faceM = mouth;
   }
   /** TAJO: cara de concentración (ojos 7 / boca 5): peloteo, el balón viene del rival y es él quien lo va a jugar. */
@@ -3499,7 +2823,7 @@
   // La punta de la coleta se separa de su sitio de reposo (que viaja con la cabeza) por la aceleración de ese sitio: muelle
   // amortiguado sobre el DESFASE (o'' = -K·o - C·o' - HAIR_B·a), con acoplamiento HAIR_B < 1: la sim arranca y frena en seco
   // (5 m/s en un paso), y con la física completa la coleta iría siempre al tope. El hueso gira hacia la punta, ±HAIR_MAX.
-  var HAIR_L = 0.14, HAIR_K = 520, HAIR_C = 25, HAIR_B = 0.55, HAIR_MAX = 25 * PI / 180;
+  var HAIR_L = 0.3, HAIR_K = 520, HAIR_C = 25, HAIR_B = 0.55, HAIR_MAX = 25 * PI / 180;   // MUÑECO: la cola de la coleta mide ~0,37 m
   var HQ = null, HV0, HV1, HV2, HV3, HREST;
   function hairSpring(r, dt, snap) {
     if (!HQ) { HQ = new THREE.Quaternion(); HV0 = new THREE.Vector3(); HV1 = new THREE.Vector3(); HV2 = new THREE.Vector3(); HV3 = new THREE.Vector3(); HREST = new THREE.Vector3(0, -0.85, -0.52).normalize(); }
@@ -3817,6 +3141,7 @@
         break;
       case 'block': if (r) { r.blockT = tm; lastBlocker = r; } break;
       case 'swing': if (r) r.swingT = tm; break;
+      case 'miss': if (r) r.missT = tm; break;   // MUÑECO: gesto sin balón → cara de sorpresa un instante
       case 'serveReady':
         for (var i = 0; i < rigs.length; i++) { rigs[i].diveT = -99; rigs[i].pdW = 0; rigs[i].pdLive = false; rigs[i].pointT = -99; rigs[i].hasFace = false; rigs[i].cosDust = false; rigs[i].diveUp = 1; rigs[i].offX = rigs[i].offY = 0; rigs[i].ozGiven = 0; rigs[i].upBoost = 0; }
         lastBlocker = null;
@@ -3845,6 +3170,7 @@
         for (var k = 0; k < rigs.length; k++) {
           var rr = rigs[k], pp = rr.p;
           rr.pointT = tm; rr.pointWin = pp.team === won; rr.matchEnd = !!e.matchWon;
+          rr.fault = !!(e.player && e.player === pp && !rr.pointWin);   // MUÑECO: el que cometió la falta pone cara de sorpresa primero
           rr.celeb = (sum + pp.idx * 2 + (e.setWon ? 1 : 0)) % 3;
           var scR = e.how === 'ace' && g.server && g.server.team === won ? byId[g.server.id] : e.how === 'block' && lastBlocker && lastBlocker.team === won ? lastBlocker : (g.lastTeam === won && g.lastPlayer) ? byId[g.lastPlayer.id] : null;
           rr.celV = e.matchWon ? '' : pickCeleb(g, rr, e, scR); rr.lastCel = rr.celV; rr.celId = rr.celV;
@@ -3871,7 +3197,7 @@
     heroShotAware: true,
     init: function (c) {
       ctx = c; THREE = c.THREE; C = VB.C; if (C && C.BR) BR = C.BR;
-      applyBody(c.params && c.params.body);   // PRESET de cuerpo (?body=tanque|chibi|heroe; por defecto tajo), antes de construir atletas
+      applyDoll();   // MUÑECO: longitudes del rig de VB.Doll.dims(), antes de construir atletas
       ensureTemps();
       groupRoot = new THREE.Group(); groupRoot.name = 'players'; ctx.scene.add(groupRoot);
       // marcador del jugador controlado: aro luminoso + flecha flotante
@@ -3902,19 +3228,19 @@
     /** 6v6: color de la camiseta del líbero del equipo t (0xRRGGBB; para la UI o pruebas). */
     liberoColor: function (t) { return liberoKit(t ? 1 : 0).base; },
     kitColors: function () { return { t0: { base: TEAMS[0].base, accent: TEAMS[0].accent, shorts: TEAMS[0].shorts }, t1: { base: TEAMS[1].base, accent: TEAMS[1].accent, shorts: TEAMS[1].shorts } }; },
-    /** PRESET de cuerpo activo ('tajo' | 'tanque' | 'chibi' | 'heroe'); se elige con ?body=. */
+    /** Modelo de personaje activo: siempre 'doll' (el muñeco de js/doll.js; los presets ?body= del atleta antiguo ya no existen). */
     body: function () { return BODY; },
-    /** Nombres de los presets de cuerpo y los mandos del activo (solo lectura; pruebas y UI). */
-    bodyPresets: function () { return Object.keys(BODY_PRESETS); },
+    bodyPresets: function () { return [BODY]; },
     bodyKnobs: function () { return BK; },
-    /** Pruebas: cambia el preset de cuerpo en caliente (libera los atletas; con g los reconstruye ya). Devuelve true si cambió. */
-    setBody: function (name, g) { if (!BODY_PRESETS[name] || name === BODY) return false; applyBody(name); flushCache(); if (g) this.onGameStart(g); return true; },
-    /** Dimensiones del rig activo (m; solo lectura): las lee js/doll.js (maqueta del muñeco) para construir el MISMO esqueleto
-     *  con el mismo alcance (hombro + brazo + antebrazo + palma). Orden de los 27 huesos en `bones`. */
+    setBody: function () { return false; },
+    /** Dimensiones del rig activo (m; solo lectura): las del muñeco (VB.Doll.dims()) tal y como las monta players: longitudes,
+     *  hombro y alcance (en REPOSO: `reach`; estirado al máximo: `reachMax` = el del atleta TAJO, 2,192 m, `ARM_STRETCH`),
+     *  factores de la reproyección de las poses (ARM_K, ARM_UPK, LEG_K) y el orden de los 27 huesos en `bones`. */
     dims: function () {
       return { HIP_H: HIP_H, HIP_W: HIP_W, THIGH: THIGH, SHIN: SHIN, ANKLE: ANKLE, SPINE_Y: SPINE_Y, CHEST_Y: CHEST_Y, SH_X: SH_X, SH_Y: SH_Y, SH_Z: SH_Z,
-        NECK_Y: NECK_Y, UPPER: UPPER, FORE: FORE, PALM: PALM, HEAD_K: HEAD_K, HAND_K: HAND_K, FOOT_K: FOOT_K,
+        NECK_Y: NECK_Y, UPPER: UPPER, FORE: FORE, PALM: PALM, HEAD_K: HEAD_K, HAND_K: HAND_K, FOOT_K: FOOT_K, HEAD_C: HEAD_C, HEAD_RY: HEAD_RY, top: BODY_TOP,
         shoulder: HIP_H + SPINE_Y + CHEST_Y + SH_Y, reach: HIP_H + SPINE_Y + CHEST_Y + SH_Y + UPPER + FORE + PALM,
+        reachMax: HIP_H + SPINE_Y + CHEST_Y + SH_Y + (UPPER + FORE) * ARM_STRETCH + PALM, ARM_STRETCH: ARM_STRETCH, ARM_K: ARM_K, ARM_UPK: ARM_UPK, LEG_K: LEG_K, model: BODY,
         bones: ['body', 'pelvis', 'spine', 'chest', 'head', 'eyes', 'mouth', 'teeth', 'browL', 'browR', 'hair', 'shL', 'upL', 'elL', 'handL', 'hipL', 'thL', 'knL', 'ftL', 'shR', 'upR', 'elR', 'handR', 'hipR', 'thR', 'knR', 'ftR'] };
     },
     /** TAJO: escenario con el que se visten los atletas ('hall' | 'beach'). */
@@ -4023,11 +3349,10 @@
         var rp = r.root.position; rp.x = p.x + r.offX; rp.y = p.z; rp.z = -(p.y + r.offY); // = VB.toThree (sin HeapNumbers)
         footLock(r, p.z > 0.012, snap, dt);
         applyPose(r);
-        squash(g, r);
-        // compresión del brazo que golpea (0,06 s tras el remate)
+        squash(g, r, dt);
+        // estirón cartoon de los brazos (applyPose deja el factor en armS0/armS1) y compresión del brazo que golpea (0,06 s tras el remate)
         var ha = g.time - r.hitT, sq = (r.hitAir && ha >= 0 && ha < 0.06 && r.hitShot !== 'tip') ? Math.sin(ha / 0.06 * PI) : 0;
-        r.up[1].scale.set(1 + 0.1 * sq, r.armS1, 1 + 0.1 * sq);   // y: estiramiento cartoon del brazo (PRESET stretch; 1 si no)
-        if (r.up[0].scale.y !== r.armS0) r.up[0].scale.y = r.armS0;
+        stretchArm(r, 1, r.armS1, sq); stretchArm(r, 0, r.armS0, 0);
         aimHead(r, g, dt, snap);
         updateFace(g, r, dt, snap);
         hairSpring(r, dt, snap);

@@ -212,6 +212,17 @@ Desde el 9-nov-2026 el proyecto va por **sprints**, para controlar el gasto de t
 Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apuntado, NO empezado.
 
 ### To-do
+- **Pendiente del muñeco y la Carrera de playa** (11-nov-2026, tras las revisiones; nada roto). Todo está en la rama
+  `wip-doll-carrera-playa`, sin publicar: falta que Ferran lo vea y decida si se fusiona y despliega.
+  - Oficiales y público sin muñeco, cabezas que se cruzan en el ace de la playa: ver «Mapa de playa» abajo.
+  - Compañero en lo alto de la horquilla (+4/+5): rinde como un jugador medio de su circuito (Nacional: 16,3 puntos/partido contra 16,0
+    del bot medio). Si se quiere «nunca mejor que un medio», bajar el techo de `MATE_OFF` a ~+3 o tocar `DIFF.mate` (sim). En el
+    Circuito Regional con el bot medio se gana el 99-100 % sea cual sea el compañero (solo se nota con un novato o desde el Nacional).
+  - Palmarés migrado de v2: conserva el nombre antiguo de la competición («Liga Regional») con el club ya renombrado. ¿Histórico o renombrar?
+  - Equipación del rival en la playa: si se parece a la tuya, la CPU sale de azul (con 8 camisetas por liga pasa a menudo); idea: segunda
+    equipación del club en `setKit`.
+  - Sin comprobar: partido de Carrera completo a 844×390 y 667×375, cambio de campo cada 5 en un 3.er set jugado, mando y táctil reales.
+  - `tools/touchplay.js` y `tools/padplay.js` fallan a veces («al menos 3 toques humanos con GOLPEAR»): intermitente desde antes; repetir.
 - **Pendiente de la integración de menús v2** (10-nov-2026):
   - Recepción y Colocación aún se notan poco en el resultado (bot medio ±1-2 puntos; Defensa y Control ya ±3-6): que la calidad del
     pase cuente en el remate del compañero IA (ai.js). Reacción del humano solo afecta a levantarse.
@@ -250,20 +261,22 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     grúa: aviso «Cambio de campo · Cada 7 puntos»), bloqueo = toque, dejada de nudillos («pokey», legal; la de yema no se modela como
     gesto aparte), colocación de dedos más estricta (dobles), IA y cámara a la pista pequeña, tutorial y menú (fila «Escenario» junto a
     los puntos, que en la playa se fijan a «21 · 15»). ~~Cintas a 16×8, antenas, sin línea de ataque, texto y silbato de `'swap'`, Carrera
-    que heredaba la playa~~ HECHO 10-nov (cierre TAJO + playa, ver Hecho; la Carrera juega siempre con reglas de pabellón). Pendientes:
-    regla de los 5 s del saque de playa (sigue la de 8 s), el 6v6 en la playa juega con reglas de pabellón, dibujo del tutorial a 16×8.
-  - Idea para la Carrera (NO hecha): **torneos de playa** (circuito de verano: cuadro de 8 parejas en Platja Llarga, sets a 21, premios
-    propios) además de la liga de pabellón; la Carrera hoy no elige escenario.
-  - ~~Jugadores descalzos / ropa de playa~~ HECHO 10-nov (dirección TAJO, ver Hecho). Pendiente de personajes: costuras del contorno
-    en rodillas/codos desnudos, cabeza que roza el hombro del compañero en alguna celebración, pose de celebración en la hoja final,
-    público de playa cabezón con sombreros y grupos de aficionados por equipo (arena).
+    que heredaba la playa~~ HECHO 10-nov (cierre TAJO + playa, ver Hecho; desde el 11-nov la Carrera es de vóley playa y el 6v6 se
+    juega siempre en el pabellón). Pendientes: regla de los 5 s del saque de playa (sigue la de 8 s), dibujo del tutorial a 16×8.
+  - Idea para la Carrera (NO hecha): **torneos de playa** con cuadro (8 parejas, premios propios) además de la liga; la Carrera ya es
+    toda de playa (circuitos a 21/15, ver Hecho).
+  - ~~Jugadores descalzos / ropa de playa~~ HECHO (muñeco, ver Hecho). Pendiente de personajes (revisión visual del 11-nov):
+    **oficiales** (árbitros, jueces de línea, anotadores, fotógrafos, suplentes, entrenadores; arena.js) con la proporción del atleta
+    antiguo: desentonan al lado del muñeco, sobre todo el juez de línea en primer plano en el saque de playa (pasarlos al muñeco o a
+    una versión «oficial» del muñeco). En la celebración del ace de la playa las cabezas de la pareja se meten una en otra (ala de la
+    gorra del n.º 1 en el pelo del n.º 2, mano a través del hombro). En la plancha la cara queda contra el suelo. Pose de celebración en
+    la hoja final, público de playa cabezón con sombreros y grupos de aficionados por equipo (arena; hoy grada low-poly).
   - ~~Partículas de arena y huellas~~ HECHO 10-nov tarde (fx.js: arena que salta en plancha, caída, bote; huellas, surco y cráter que
     se apagan; `notes/arena.md` §Playa a mapa principal). Decidir: el polvo del pabellón nunca se veía (`dAlive++` comentado); arreglado
     pero sigue oculto en el pabellón para no cambiarlo. ¿Encenderlo?
   - Luz de tarde de la playa hecha (`?luz=tarde`, `VB.Arena.beachLight`); falta la opción en Ajustes (ajuste `beachLight`: 'dia' | 'tarde', ui_main).
   - Marcador en la playa: no hay videomarcadores ni marcador colgado (las vallas LED con mensajes tampoco). Un marcador de playa
     (torre pequeña con cifras) y la cámara del cambio de campo, que mira a `landmarks.scoreHung` (en la playa mira al cielo).
-  - Idea (NO hecha, no tocar la Carrera ahora): que en la Carrera cada club tenga su sede (pabellón o playa).
   - ~~Piezas del pabellón que desentonan en la arena, banderas de canto, horizonte lateral vacío, baja a 140k~~ HECHO 10-nov tarde:
     silla del árbitro de madera con toldo, mesa de anotadores con caballetes y toldo, postes de aluminio con protección fina, red/cintas/
     oficiales a la medida de la pista de la partida (16×8), banderas con bolsa, telón de pueblo/pinar/cabo con faro, gaviotas, llaüts,
@@ -377,6 +390,23 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **Muñeco integrado** (10/11-nov-2026, rama `wip-doll-carrera-playa`; pedido de Ferran: «Los nuevos Doll están bien. Mételos»): el muñeco
+  chibi de `js/doll.js` es el único modelo de personaje (pabellón, playa, 6v6, Carrera). players.js monta su esqueleto con
+  `VB.Doll.dims()`, estirón cartoon del brazo al golpear, caras del muñeco, squash con rebote de la cabeza, aspecto por jugador (tus n.º 1 y 2
+  fijos), equipaciones y playa con tirantes, malla y descalzo. Sim intacta (huella 2v2 idéntica). Tras la revisión del 11-nov: gorra del n.º 1
+  sin aro negro sobre los ojos, visera del afro en su sitio, afro con rizos, tupé sin «orejas de gato» y borrado el código muerto del atleta
+  TAJO en players.js (4.065 → 3.397 líneas). Detalle en notes/players.md «Muñeco (doll.js)».
+- **Carrera de vóley playa** (10/11-nov-2026, misma rama; «Te pueden fichar clubes, pero de vóley playa»): partidos en Platja Llarga a
+  21/15 aunque el ajuste sea el pabellón (`forceVenue`), clubes de playa con sede, circuitos y Open, guardado v3 con migración sin pérdidas.
+  Detalle en notes/carrera.md «Sprint playa».
+- **Compañeros de distinto nivel** (misma rama; «nerfear un poco al compañero» y «mejores y peores compañeros»): desvío propio −9..+5
+  respecto al club (media −2), rol, forma, puntos fuertes y flojos; ofertas con su compañero; plantilla con 2 alternativas a ≥ 3 del
+  titular (arreglado el 11-nov: a veces salía una con la misma media). Ficha, hub y Comparar enseñan el desvío.
+- **Arreglos de la revisión de regresión** (11-nov-2026): (1) GRAVE, venía de antes: tras cambiar la calidad (a mano o la automática en el
+  móvil) el siguiente partido se pintaba sin jugadores, balón ni red (`getUniforms` en cada frame): el precompilado asíncrono (main.js)
+  no invalidaba la versión del material; ahora sí (`__version = -1`). Comprobado: medium y low tras cambiar la calidad, 44 y 28 dibujos sin
+  errores. (2) El 6v6 se pintaba con el decorado de playa (ajuste por defecto): ahora fuerza el pabellón. (3) `perf.js` sin `EXTRA` mide la
+  playa; el pabellón con `EXTRA=map=hall` (documentado).
 - **Des-IA-ficar los textos** (10-nov-2026, pedido de Ferran: «los separadores con "·" cantan»): ya no hay un pegamento universal « · ».
   Etiquetas y datos cortos con el separador que toca (barra fina en el HUD y las fichas, barra inclinada en pares, raya larga en
   enfrentamientos, paréntesis para lo secundario, pastillas solo para metadatos sueltos); consejos, avisos, ayudas y descripciones

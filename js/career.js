@@ -1,12 +1,17 @@
 /* MAKE THE CUT — js/career.js (owner: ui_main)
- * Modo Carrera 2v2: datos y lógica, sin DOM ni Three (se carga también en node: tools/careertest.js).
+ * Modo Carrera 2v2 de VÓLEY PLAYA: datos y lógica, sin DOM ni Three (se carga también en node: tools/careertest.js).
  *
  * Tu jugador es un atleta de VB.Prog (st, lvl, xp, pts, bp/bd/beq de VB.Badges) con su propio guardado ('voley3d.career').
- * Empiezas en un club modesto de la liga más baja; el club te pone compañero. 5 ligas de 8 clubes (inventados), temporada =
- * liga a doble vuelta (14 jornadas) + copa de los 4 primeros (semifinales 1-4 y 2-3, final). Cada jornada juegas tu partido de
- * verdad (main.js lo arranca con matchSetup) o lo simulas; el resto se simula (quickSim). Nota del partido 1-10, objetivo del
- * club, confianza del entrenador, ofertas (mitad y final de temporada), ascensos y descensos. Diseño y calibrado en
- * notes/carrera.md.
+ * Empiezas en un club modesto del circuito más bajo; el club te pone pareja. 5 circuitos de 8 clubes de vóley playa (inventados),
+ * temporada = liga a doble vuelta (14 jornadas) + open de los 4 primeros (semifinales 1-4 y 2-3, final). Cada jornada juegas tu
+ * partido de verdad en la arena (main.js lo arranca con matchSetup: reglas de playa, sets a 21 y el 3.º a 15, pista 16×8) o lo
+ * simulas; el resto se simula (quickSim). Nota del partido 1-10, objetivo del club, confianza del entrenador, ofertas (mitad y
+ * final de temporada), ascensos y descensos. Diseño y calibrado en notes/carrera.md.
+ *
+ * Sprint playa (10-nov-2026, v3): la Carrera pasa del pabellón a la playa (venue 'beach' en matchSetup; quickSim a 21/15); los
+ * clubes son de vóley playa (nombres, sede en una playa inventada; migrate() renombra los de los guardados v1/v2 sin tocar
+ * resultados); el compañero tiene una media propia con horquilla ancha respecto al club (MATE_OFF: −9..+5, media −2, antes
+ * siempre club + 3: nerf medido en notes/carrera.md), rol que se nota, puntos fuertes y flojos (mateProfile) y forma (m.form).
  *
  * API principal (VB.Career):
  *   exists(), get(), create(o), abandon(), save()
@@ -19,7 +24,7 @@
  *   acceptOffer(i, años), stay(años) → fin de temporada (o fichaje en la ventana de mitad de temporada)
  *
  * Gestión propia (v2, 10-nov-2026; notes/carrera.md §Gestión):
- *   - Inicio: tras crear el jugador NO hay club (phase 'pick'): llegan 3-4 ofertas de la Liga Regional (y quizá una prueba en la
+ *   - Inicio: tras crear el jugador NO hay club (phase 'pick'): llegan 3-4 ofertas del Circuito Regional (y quizá una prueba en el
  *     Nacional). acceptOffer(i, años) elige; rejectAll() trae ofertas peores; moreTime() (una vez) cambia una oferta por otra.
  *   - setTraining(k) enfoque semanal (bal/phys/def/atk/rest → mejoras gratis en ese grupo de atributos o descanso de la fatiga).
  *   - requestTransfer(on) declararte transferible; negotiate(i) pedir más rol en una oferta; stay(años) renueva si toca.
@@ -31,9 +36,11 @@
   'use strict';
   var root = typeof window !== 'undefined' ? window : globalThis;
   var VB = root.VB = root.VB || {};
-  var KEY = 'voley3d.career', VER = 2;   // v1 → v2: gestión (inicio sin club, contrato, entrenamiento, plantilla, bandeja); migrate()
+  var KEY = 'voley3d.career', VER = 3;   // v1 → v2: gestión (inicio sin club, contrato, entrenamiento, plantilla, bandeja); v2 → v3: playa; migrate()
   var KEYS = ['jump', 'speed', 'react', 'recv', 'dig', 'set', 'spike', 'ctl', 'block', 'serve'];
   var WEEKS = 14, MID_WEEK = 7, CLUBS_PER = 8;
+  // vóley playa: todos los partidos de la Carrera (jugados y simulados) se juegan en la arena con sus reglas (sim: createGame({venue}))
+  var VENUE = 'beach', PTS = VB.BEACH && VB.BEACH.points || 21, PTS3 = VB.BEACH && VB.BEACH.points3 || 15;
 
   // ------------------------------------------------------------------ ligas
   // ovr = media de atributos de los rivales [peor club, mejor club]; diff = perfil de la IA rival más habitual en la liga (el de
@@ -46,23 +53,40 @@
     high: { p1: 0.20, p2: 0.08, p3: 0.02, d3: 0.10, chal: 0, judges: true, name: 'Jueces de línea, sin challenge' },
     top: { p1: 0.20, p2: 0.08, p3: 0.02, d3: 0.10, chal: 2, judges: true, name: 'Jueces de línea y challenge' }
   };
+  // Circuitos de vóley playa (sprint playa: antes «Liga Regional»… «Circuito Mundial»; los guardados viejos conservan en el
+  // historial y el palmarés los nombres de entonces). La copa de los 4 primeros es el «Open» del circuito.
   var LEAGUES = [
-    { lvl: 0, name: 'Liga Regional', short: 'Regional', cup: 'Copa Regional', diff: 'easy', ovr: [28, 40], xp: 1, ref: 'low' },
-    { lvl: 1, name: 'Liga Nacional', short: 'Nacional', cup: 'Copa Nacional', diff: 'normal', ovr: [38, 50], xp: 1.5, ref: 'mid' },
-    { lvl: 2, name: 'Superliga', short: 'Superliga', cup: 'Copa de la Superliga', diff: 'normal', ovr: [48, 61], xp: 2.1, ref: 'mid' },
-    { lvl: 3, name: 'Liga Continental', short: 'Continental', cup: 'Copa Continental', diff: 'hard', ovr: [58, 71], xp: 2.8, ref: 'high' },
-    { lvl: 4, name: 'Circuito Mundial', short: 'Mundial', cup: 'Final a Cuatro Mundial', diff: 'hard', ovr: [68, 84], xp: 3.6, ref: 'top' }
+    { lvl: 0, name: 'Circuito Regional', art: 'el', short: 'Regional', cup: 'Open Regional', diff: 'easy', ovr: [28, 40], xp: 1, ref: 'low' },
+    { lvl: 1, name: 'Circuito Nacional', art: 'el', short: 'Nacional', cup: 'Open Nacional', diff: 'normal', ovr: [38, 50], xp: 1.5, ref: 'mid' },
+    { lvl: 2, name: 'Superliga de Playa', art: 'la', short: 'Superliga', cup: 'Open de la Superliga', diff: 'normal', ovr: [48, 61], xp: 2.1, ref: 'mid' },
+    { lvl: 3, name: 'Circuito Continental', art: 'el', short: 'Continental', cup: 'Open Continental', diff: 'hard', ovr: [58, 71], xp: 2.8, ref: 'high' },
+    { lvl: 4, name: 'Circuito Mundial', art: 'el', short: 'Mundial', cup: 'Final a Cuatro Mundial', diff: 'hard', ovr: [68, 84], xp: 3.6, ref: 'top' }
   ];
-  var POINTS = [11, 15, 21, 25];
+  /** «el Circuito Regional» / «la Superliga de Playa» (art = artículo); toL: «al Circuito…» / «a la Superliga…». */
+  function lname(L) { return L.art + ' ' + L.name; }
+  function toL(L) { return (L.art === 'el' ? 'al ' : 'a la ') + L.name; }
+  var POINTS = [PTS];   // (v1/v2 elegían 11/15/21/25; en la playa siempre a 21 y el 3.º a 15)
 
   // ------------------------------------------------------------------ roles (desviaciones sobre la media; suman 0)
+  // (vóley playa: la pareja es bloqueador + defensor; las claves atk/cr/uni se conservan en los guardados)
   var ROLES = {
-    atk: { name: 'Atacante', hint: 'Remate, salto y bloqueo', off: { jump: 6, speed: 0, react: 0, recv: -7, dig: -4, set: -10, spike: 7, ctl: 3, block: 4, serve: 1 } },
+    atk: { name: 'Bloqueador', hint: 'Remate, salto y bloqueo en la red', off: { jump: 6, speed: 0, react: 0, recv: -7, dig: -4, set: -10, spike: 7, ctl: 3, block: 4, serve: 1 } },
     uni: { name: 'Universal', hint: 'Un poco de todo', off: { jump: 1, speed: 2, react: 2, recv: 1, dig: 1, set: 0, spike: -1, ctl: -2, block: -3, serve: -1 } },
-    cr: { name: 'Colocador-receptor', hint: 'Recepción, colocación y defensa', off: { jump: -5, speed: 1, react: 2, recv: 7, dig: 4, set: 9, spike: -8, ctl: 1, block: -7, serve: -4 } }
+    cr: { name: 'Defensor', hint: 'Recepción, colocación y defensa en la arena', off: { jump: -5, speed: 1, react: 2, recv: 7, dig: 4, set: 9, spike: -8, ctl: 1, block: -7, serve: -4 } }
   };
   var MATE_ROLE = { atk: 'cr', cr: 'atk', uni: 'uni' };
   var START_OVR = 35;
+  // Compañero: media = media del club + un desvío propio con horquilla ancha (MATE_OFF: −9..+5, media −2; reparto casi plano entre −6
+  // y +1 con colas hasta los extremos: desviación 3,2, un 26 % de compañeros a ≤ −5 y un 9 % a ≥ +3). Antes era
+  // siempre club + 3 y en el Circuito Nacional el compañero IA hacía más puntos que un jugador medio (16,6 contra 15,5 por
+  // partido con el bot «medio» de simtest; con media −2: ~14,5 contra 15,4; medido en notes/carrera.md §Compañero). El club lo
+  // renueva en verano si se queda a MATE_RENEW o más por debajo de la media del club.
+  var MATE_OFF = [-9, 5], MATE_RENEW = 7;
+  function mateOff(r) { return clampI(MATE_OFF[0] + (0.25 * r() + 0.75 * r()) * (MATE_OFF[1] - MATE_OFF[0]), MATE_OFF[0], MATE_OFF[1]); }
+  // forma del compañero (−3..+3): paseo aleatorio tras cada partido tuyo, con vuelta hacia 0; suma a todos sus atributos en el
+  // partido (matchSetup) y FORM_SIM × forma a la fuerza de la pareja en la simulación rápida
+  var FORM_MAX = 3, FORM_SIM = 0.4;
+  var FORM_TXT = ['Hundido', 'Flojo', 'Algo bajo', 'Normal', 'Bien', 'En racha', 'Imparable'];   // índice forma + 3
 
   // ------------------------------------------------------------------ gestión (v2)
   // Enfoque de entrenamiento semanal: cada partido (jugado o simulado) suma progreso al grupo; cada TRAIN_NEED de progreso sube
@@ -88,7 +112,7 @@
   // química con el compañero (0-100): sube jugando juntos; da +0..3 en reacción, colocación y recepción a los dos (matchSetup)
   var CHEM_KEYS = ['react', 'set', 'recv'];
   var STYLES = ['Ofensivo', 'Defensivo', 'Equilibrado', 'Saque y bloqueo', 'Juego rápido'];
-  var MATE_STYLES = { atk: ['Rematador potente', 'Saltador', 'Bloqueador'], cr: ['Colocador fino', 'Defensor incansable', 'Receptor seguro'], uni: ['Todoterreno', 'Jugador listo', 'Sacador'] };
+  var MATE_STYLES = { atk: ['Rematador potente', 'Saltador', 'Muro en la red'], cr: ['Colocador fino', 'Pulpo en la arena', 'Receptor seguro'], uni: ['Todoterreno', 'Jugador listo', 'Sacador'] };
   var ROLE_LV = ['Rotación', 'Titular', 'Titular indiscutible'];
   var ROLE_COACH = [45, 55, 65];   // confianza inicial del entrenador según el rol firmado
   var SALARY = [600, 1500, 4000, 9000, 20000];   // € al mes (ficticio) por liga, × nivel del club × rol
@@ -103,8 +127,11 @@
     'Brennvik', 'Solmara', 'Kastelheim', 'Ardenza', 'Velmora', 'Quintavalle', 'Marisport', 'Duneholm',
     'Altavera', 'Rivenza', 'Lunaport', 'Sankora', 'Teravento', 'Ombralia', 'Nevaro', 'Calyra'
   ];
-  var PREFIX = ['CV', 'Club Vóley', 'Unión', 'Atlético', 'Deportivo', 'Vóley', 'Sporting', 'Olímpico', 'Real Club', 'AD'];
-  var SUFFIX = ['', '', '', ' Playa', ' Norte', ' Sur', ' 1924', ' Atlántico', ' Costa', ' Mar'];
+  // clubes de vóley playa: «CV Platja Rocaverde», «Arena Puertoluz Sud», «Dunes Brisamar»… y su sede, una playa inventada
+  // («Cala Rocaverde», «Platja de Puertoluz»). abbr() quita los prefijos (y los de los nombres de antes, por el historial)
+  var PREFIX = ['CV Platja', 'Arena', 'Platja', 'Club Platja', 'Vóley Playa', 'Beach Vòlei', 'Sorra', 'Dunes', 'Litoral', 'Costa'];
+  var SUFFIX = ['', '', '', ' Sud', ' Nord', ' Marina', ' Beach', ' Sand', ' 1998', ' Dunes'];
+  var BEACHES = ['Cala {c}', 'Platja de {c}', 'Playa de {c}', 'Arenal de {c}', 'Platja Gran de {c}', 'Dunas de {c}', 'Cala Fonda de {c}', 'Playa Larga de {c}', 'Platja dels Pins de {c}', 'Caló de {c}'];
   var FIRST = ['Álex', 'Nico', 'Dani', 'Iker', 'Marc', 'Pablo', 'Leo', 'Hugo', 'Unai', 'Bruno', 'Raúl', 'Joel', 'Sergi', 'Ander', 'Rubén', 'Teo',
     'Lucas', 'Gael', 'Mateo', 'Íñigo', 'Pau', 'Óscar', 'Jon', 'Adri', 'Lars', 'Mikko', 'Tomás', 'Elio', 'Bastian', 'Kai'];
   var LAST = ['Arnedo', 'Vallés', 'Cortina', 'Molinar', 'Serrat', 'Ibarra', 'Quiles', 'Lasierra', 'Ferrán', 'Robledo', 'Almagro', 'Urquiza',
@@ -174,22 +201,29 @@
     return cur;
   }
   function sane(o) {
-    if (!o || typeof o !== 'object' || (o.v !== VER && o.v !== 1) || !o.player || typeof o.player !== 'object' || !Array.isArray(o.clubs) || !o.clubs.length) return null;
+    if (!o || typeof o !== 'object' || [1, 2, VER].indexOf(o.v) < 0 || !o.player || typeof o.player !== 'object' || !Array.isArray(o.clubs) || !o.clubs.length) return null;
     var p = P();
     if (p && p.saneAthlete) {
       var d = p.newAthlete({ num: o.player.num, role: o.player.role, name: o.player.name });
       o.player = (function (src, dst) { p.saneAthlete(src, dst); dst.roleKey = ROLES[src.roleKey] ? src.roleKey : 'uni'; dst.age = clampI(src.age, 15, 60); return dst; })(o.player, d);
     }
-    if (POINTS.indexOf(o.points) < 0) o.points = 15;
+    o.player.roleKey = ROLES[o.player.roleKey] ? o.player.roleKey : 'uni'; o.player.role = ROLES[o.player.roleKey].name;   // (v3: «Bloqueador» / «Defensor»)
+    o.points = PTS;   // vóley playa: sets a 21 (los guardados v1/v2 elegían 11-25)
     o.ctrl = 'one';   // en la Carrera solo se controla a tu jugador (los guardados con 'both' se migran)
     try { o = saneDeep(o); return o ? migrate(o) : null; } catch (e) { return null; }
   }
   /** v1 → v2 y huecos de la gestión: contrato, plantilla, química, entrenamiento, fatiga, bandeja. No toca el progreso (un jugador
    *  que ya estaba en un club sigue en él: no se le obliga a elegir de nuevo). Idempotente (se aplica también a guardados v2). */
   function migrate(o) {
-    var num = function (v) { return typeof v === 'number' && isFinite(v); }, old = o.v !== VER;
+    var num = function (v) { return typeof v === 'number' && isFinite(v); }, v0 = o.v | 0, old = v0 < 2, oldBeach = v0 < 3;
     o.v = VER;
     if (!Array.isArray(o.inbox)) o.inbox = [];
+    // v2 → v3 (sprint playa): los clubes pasan a ser de vóley playa (nombre, abreviatura y sede nuevos; ids, nivel, nivel q,
+    // equipación, calendario y resultados intactos: lo jugado se queda), los roles se llaman Bloqueador / Defensor y a partir de
+    // ahora se juega en la arena a 21. El historial y el palmarés cambian el nombre del club (mismo club) y el mensaje lo cuenta
+    if (oldBeach) { beachify(o); msg(o, 'club', 'La Carrera se muda a la playa', 'Desde ahora todos los partidos se juegan en la arena de Platja Llarga con reglas de vóley playa: pista de 16 × 8, sets a ' + PTS + ' y el tercero a ' + PTS3 + ', cambio de campo cada 7 puntos. Los clubes son de vóley playa (los tuyos, con otro nombre pero la misma plantilla y los mismos resultados) y las parejas son bloqueador y defensor. Los partidos ya jugados se quedan como estaban.'); }
+    var fixRole = function (m) { if (m && m.st) { m.roleKey = ROLES[m.roleKey] ? m.roleKey : 'uni'; m.role = ROLES[m.roleKey].name; if (!num(m.form)) m.form = 0; } };
+    fixRole(o.mate); (Array.isArray(o.squad) ? o.squad : []).forEach(fixRole); (Array.isArray(o.offers) ? o.offers : []).forEach(function (x) { if (x) fixRole(x.mateP); });
     o.inbox = o.inbox.filter(function (m) { return m && typeof m.t === 'string'; }).slice(-INBOX_MAX);
     o.msgN = num(o.msgN) ? o.msgN | 0 : o.inbox.reduce(function (s, m) { return Math.max(s, (m.id | 0) + 1); }, 0);
     if (TRAIN_KEYS.indexOf(o.train) < 0) o.train = 'bal';
@@ -219,7 +253,7 @@
     var okClub = function (k) { return k && num(k.id) && num(k.lvl) && k.lvl >= 0 && k.lvl < LEAGUES.length && num(k.q) && typeof k.name === 'string' && k.kit && typeof k.kit === 'object'; };
     if (!o.clubs.every(okClub)) return null;
     for (var L = 0; L < LEAGUES.length; L++) if (clubsOf(o, L).length !== CLUBS_PER) return null;
-    o.clubs.forEach(function (k) { k.q = clamp(k.q, 0.02, 0.98); if (typeof k.short !== 'string') k.short = abbr(k.name); if (typeof k.city !== 'string') k.city = ''; });
+    o.clubs.forEach(function (k) { k.q = clamp(k.q, 0.02, 0.98); if (typeof k.short !== 'string') k.short = abbr(k.name); if (typeof k.city !== 'string') k.city = ''; if (typeof k.beach !== 'string') k.beach = beachOf(k.city || k.name, rng(hash(o.seed, 'sede', k.id))); });
     o.seed = num(o.seed) ? o.seed >>> 0 : hash('reparado', o.created || 0);
     o.season = clampI(o.season, 1, 999);
     if (o.phase === 'pick') {   // aún eligiendo el primer club (v2): ofertas de inicio válidas o nuevas
@@ -290,28 +324,44 @@
   function myClub(c) { return club(c, c.myClub); }
   function clubsOf(c, lvl) { return c.clubs.filter(function (k) { return k.lvl === lvl; }); }
   function abbr(name) {
-    var w = name.replace(/^(CV|AD|Club Vóley|Real Club|Unión|Atlético|Deportivo|Vóley|Sporting|Olímpico)\s+/, '').split(/\s+/)[0];
+    var w = name.replace(/^(CV Platja|Club Platja|Vóley Playa|Beach Vòlei|Arena|Platja|Sorra|Dunes|Litoral|Costa|CV|AD|Club Vóley|Real Club|Unión|Atlético|Deportivo|Vóley|Sporting|Olímpico)\s+/, '').split(/\s+/)[0];
     return w.normalize ? w.normalize('NFD').replace(/[̀-ͯ]/g, '').slice(0, 3).toUpperCase() : w.slice(0, 3).toUpperCase();
   }
+  /** Nombre de club de vóley playa con la ciudad (único dentro de `used`). */
+  function clubName(r, city, used) { var name; do { name = pick(r, PREFIX) + ' ' + city + pick(r, SUFFIX); } while (used[name]); used[name] = 1; return name; }
+  /** Sede: la playa (inventada) del club, «Cala Rocaverde», «Platja de Puertoluz»… */
+  function beachOf(city, r) { return pick(r, BEACHES).replace('{c}', city); }
+  function uniqueShorts(clubs) { var seen = {}; clubs.forEach(function (k) { var a = k.short, n = 1; while (seen[a]) { a = k.short.slice(0, 2) + (n++); } seen[a] = 1; k.short = a; }); }
   function genClubs(r) {
     var out = [], used = {};
     for (var L = 0; L < LEAGUES.length; L++) {
       var qs = []; for (var i = 0; i < CLUBS_PER; i++) qs.push((i + 0.5) / CLUBS_PER);
       shuffle(r, qs);
       for (var j = 0; j < CLUBS_PER; j++) {
-        var idx = L * CLUBS_PER + j, city = CITIES[idx], name;
-        do { name = pick(r, PREFIX) + ' ' + city + pick(r, SUFFIX); } while (used[name]);
-        used[name] = 1;
+        var idx = L * CLUBS_PER + j, city = CITIES[idx], name = clubName(r, city, used);
         var shirt = pick(r, SHIRTS), acc = pick(r, ACCENTS), sh = pick(r, SHORTS);
         if (acc === shirt) acc = ACCENTS[(ACCENTS.indexOf(acc) + 1) % ACCENTS.length];
-        out.push({ id: idx, name: name, city: city, short: abbr(name), lvl: L, q: round1(clamp(qs[j] + (r() - 0.5) * 0.08, 0.02, 0.98) * 10) / 10,
+        out.push({ id: idx, name: name, city: city, beach: beachOf(city, r), short: abbr(name), lvl: L, q: round1(clamp(qs[j] + (r() - 0.5) * 0.08, 0.02, 0.98) * 10) / 10,
           kit: { shirt: shirt, accent: acc, shorts: sh, pattern: pick(r, PATTERNS) } });
       }
     }
-    // abreviaturas únicas
-    var seen = {};
-    out.forEach(function (k) { var a = k.short, n = 1; while (seen[a]) { a = k.short.slice(0, 2) + (n++); } seen[a] = 1; k.short = a; });
+    uniqueShorts(out);   // abreviaturas únicas
     return out;
+  }
+  /** Guardado v1/v2 (clubes de pabellón) → clubes de vóley playa: nombre, abreviatura y sede nuevos con una semilla propia; ids,
+   *  nivel, q, equipación, calendario, resultados, contrato y mensajes intactos. El historial y el palmarés pasan al nombre nuevo
+   *  del MISMO club (por id en el historial; por nombre en los trofeos). */
+  function beachify(o) {
+    var r = rng(hash(o.seed, 'playa')), used = {}, ren = {};
+    o.clubs.slice().sort(function (a, b) { return a.id - b.id; }).forEach(function (k) {
+      var city = typeof k.city === 'string' && k.city ? k.city : CITIES[k.id % CITIES.length], nm = clubName(r, city, used);
+      ren[k.name] = nm; k.name = nm; k.city = city; k.beach = beachOf(city, r); k.short = abbr(nm);
+    });
+    uniqueShorts(o.clubs);
+    (Array.isArray(o.history) ? o.history : []).forEach(function (h) { var k = h && club(o, h.club); if (k) h.clubName = k.name; });
+    (Array.isArray(o.trophies) ? o.trophies : []).forEach(function (t) { if (t && ren[t.club]) t.club = ren[t.club]; });
+    if (o.review && ren[o.review.clubName]) o.review.clubName = ren[o.review.clubName];
+    if (o.last && ren[o.last.rivalName]) o.last.rivalName = ren[o.last.rivalName];
   }
   /** Liga a doble vuelta (método del círculo): 14 jornadas de 4 partidos [local, visitante]. */
   function roundRobin(ids, r) {
@@ -335,12 +385,13 @@
   }
 
   // ------------------------------------------------------------------ simulación rápida
-  /** Partido al mejor de 3 punto a punto: prob. de ganar cada punto 0,5 + 0,009 × (oa − ob) (0,2-0,8). */
+  /** Partido al mejor de 3 punto a punto: prob. de ganar cada punto 0,5 + 0,009 × (oa − ob) (0,2-0,8). Playa: sets a 21 y el
+   *  3.º a 15 (points por defecto PTS; el tercero siempre a mín(PTS3, points)). */
   function quickSim(oa, ob, r, points) {
-    points = points || 15;
+    points = points || PTS;
     var pA = clamp(0.5 + 0.009 * (oa - ob), 0.2, 0.8), sets = [0, 0], sc = [];
     while (sets[0] < 2 && sets[1] < 2) {
-      var tgt = sets[0] + sets[1] === 2 ? Math.min(15, points) : points, a = 0, b = 0;
+      var tgt = sets[0] + sets[1] === 2 ? Math.min(PTS3, points) : points, a = 0, b = 0;
       while (!((a >= tgt || b >= tgt) && Math.abs(a - b) >= 2)) { if (r() < pA) a++; else b++; }
       sc.push([a, b]); sets[a > b ? 0 : 1]++;
     }
@@ -351,22 +402,57 @@
   // ------------------------------------------------------------------ jugador y compañero
   function playerOvr(c) { return ovrOf(c.player.st); }
   function mateOvr(c) { return ovrOf(c.mate.st); }
-  /** Compañero del club k (media del club + 3, rol complementario). ovr/role: los fija quien llama (ofertas, plantilla). */
+  /** Compañero del club k: media = la del club + un desvío propio (mateOff: −9..+5; antes siempre +3), rol complementario. ovr/role:
+   *  los fija quien llama (plantilla). Lleva forma 0 y, en m.off, su desvío respecto al club (la ficha lo enseña). */
   function newMate(c, k, r, ovr, roleKey) {
-    var role = roleKey && ROLES[roleKey] ? roleKey : MATE_ROLE[c.player.roleKey] || 'uni', o = clamp(ovr != null ? ovr : clubOvr(k) + 3, 25, 88);
+    var role = roleKey && ROLES[roleKey] ? roleKey : MATE_ROLE[c.player.roleKey] || 'uni', base = clubOvr(k), o = clamp(ovr != null ? ovr : base + mateOff(r), 22, 92);
     var num; do { num = 1 + Math.floor(r() * 24); } while (num === c.player.num);
     if (c.player.num !== 2) num = 2; // el compañero lleva el 2 (como en Partido rápido); si es el tuyo, el sorteado (misma tirada)
-    var m = { name: pick(r, FIRST) + ' ' + pick(r, LAST), num: num, roleKey: role, role: ROLES[role].name, st: genSt(o, role, r), chem: 0 };
+    var m = { name: pick(r, FIRST) + ' ' + pick(r, LAST), num: num, roleKey: role, role: ROLES[role].name, st: genSt(o, role, r), chem: 0, form: 0 };
     m.style = mateStyle(m, r);
     return m;
   }
   function mateStyle(m, r) { var l = MATE_STYLES[m.roleKey] || MATE_STYLES.uni; return pick(r, l); }
-  /** Plantilla: otros 2 compañeros posibles en el club (además del titular): uno un poco peor del mismo rol y un universal (o un
-   *  atacante si tu rol es universal). Con ellos se puede pedir cambio de compañero (changeMate). */
+  /** Puntos fuertes y flojos de un compañero (o de cualquier st): atributos a ≥ MP_D de su media, de mayor a menor desvío (hasta
+   *  3 de cada). {ovr, strong: ['set', …], weak: ['spike', …]}. Sin DOM: la UI pone las etiquetas (VB.Prog.LABEL). */
+  var MP_D = 4;
+  function mateProfile(m) {
+    var st = m && m.st ? m.st : m, o = ovrOf(st), d = KEYS.map(function (k) { return { k: k, d: st[k] - o }; });
+    var strong = d.filter(function (x) { return x.d >= MP_D; }).sort(function (a, b) { return b.d - a.d; }).slice(0, 3).map(function (x) { return x.k; });
+    var weak = d.filter(function (x) { return x.d <= -MP_D; }).sort(function (a, b) { return a.d - b.d; }).slice(0, 3).map(function (x) { return x.k; });
+    return { ovr: o, strong: strong, weak: weak };
+  }
+  /** Texto de la forma del compañero (−3..+3): «Flojo», «Normal», «En racha»… */
+  function formText(f) { return FORM_TXT[clampI((f | 0) + FORM_MAX, 0, FORM_TXT.length - 1)]; }
+  /** Forma del compañero tras un partido tuyo: paseo aleatorio ±1 con vuelta hacia 0 (determinista por temporada y partido). */
+  function mateFormStep(c) {
+    var m = c.mate; if (!m) return 0;
+    var r = rng(hash(c.seed, 'form', c.season, c.notes.length, m.name)), f = m.form | 0, u = r();
+    f += u < 0.3 ? -1 : u < 0.6 ? 1 : 0;
+    if (f && r() < 0.3) f += f > 0 ? -1 : 1;   // la racha se gasta
+    return (m.form = clampI(f, -FORM_MAX, FORM_MAX));
+  }
+  /** Plantilla: otros 2 compañeros posibles en el club (además del titular), con medias que se notan: uno del mismo rol y un
+   *  universal (o un bloqueador si tu rol es universal); cada uno con su desvío propio (dentro de MATE_OFF), a ≥ 3 del titular y distintos entre sí para que cambiar
+   *  signifique algo (changeMate). */
   function genSquad(c, k, mate, r) {
-    var base = clubOvr(k), mr = mate && mate.roleKey || MATE_ROLE[c.player.roleKey] || 'uni';
+    var base = clubOvr(k), mr = mate && mate.roleKey || MATE_ROLE[c.player.roleKey] || 'uni', t = mate ? ovrOf(mate.st) - base : 0;
     var alt = mr === 'uni' ? (c.player.roleKey === 'uni' ? 'atk' : 'uni') : 'uni';
-    var out = [newMate(c, k, r, base, mr), newMate(c, k, r, base - 1, alt)];
+    // cada alternativa: dentro de MATE_OFF, a ≥ 3 del titular y distinta de la otra (antes, al deshacer el empate, la 2.ª podía
+    // caer encima del titular, y el clamp dejaba salir la plantilla a −10..+6). fit busca el valor válido más cercano, primero
+    // alejándose del titular.
+    var lo = MATE_OFF[0], hi = MATE_OFF[1], offs = [];
+    function okOff(o, other) { return o >= lo && o <= hi && Math.abs(o - t) >= 3 && o !== other; }
+    function fit(o, other, up) {
+      for (var d = 0; d <= hi - lo + 8; d++) { var a = o + (up ? d : -d), b = o - (up ? d : -d); if (okOff(a, other)) return a; if (okOff(b, other)) return b; }
+      return clampI(o, lo, hi);
+    }
+    [mr, alt].forEach(function (x, i) {
+      var o = mateOff(r), up = o >= t;
+      if (Math.abs(o - t) < 3) o = t + (up ? 3 : -3) + (r() < 0.5 ? 0 : (up ? 1 : -1));
+      offs.push(fit(o, i ? offs[0] : NaN, up));
+    });
+    var out = [newMate(c, k, r, base + offs[0], mr), newMate(c, k, r, base + offs[1], alt)];
     out.forEach(function (m, i) { var n = m.num; while (n === c.player.num || n === 2 || (mate && n === mate.num) || (i && n === out[0].num)) n = 3 + Math.floor(r() * 20); m.num = n; });
     return out;
   }
@@ -381,7 +467,7 @@
   function clubInfo(c, k, lvl, q) {
     lvl = lvl != null ? lvl : k.lvl; q = q != null ? q : k.q;
     var L = league(lvl);
-    return { id: k.id, name: k.name, short: k.short, city: k.city, kit: k.kit, lvl: lvl, league: L.name, stars: starsOf(lvl, q), style: styleOf(k),
+    return { id: k.id, name: k.name, short: k.short, city: k.city, beach: k.beach || '', kit: k.kit, lvl: lvl, league: L.name, art: L.art, stars: starsOf(lvl, q), style: styleOf(k),
       ovr: Math.round(L.ovr[0] + (L.ovr[1] - L.ovr[0]) * q) };
   }
 
@@ -427,8 +513,8 @@
   /** Fuerza de tu pareja para la simulación rápida: media de los dos + insignias + forma. */
   function teamOvr(c) {
     var f = form(c);
-    // + química (0..3 → 0..1,5) − fatiga (la misma resta que en el partido, a la mitad porque solo es tu jugador)
-    return 0.5 * playerOvr(c) + 0.5 * mateOvr(c) + 0.35 * badgePower(c.player) + (f == null ? 0 : (f - 6.5) * 0.8) + 0.5 * chemBonus(c) - 0.5 * fatigueMalus(c);
+    // + química (0..3 → 0..1,5) − fatiga (la misma resta que en el partido, a la mitad porque solo es tu jugador) + forma del compañero
+    return 0.5 * playerOvr(c) + 0.5 * mateOvr(c) + 0.35 * badgePower(c.player) + (f == null ? 0 : (f - 6.5) * 0.8) + 0.5 * chemBonus(c) - 0.5 * fatigueMalus(c) + FORM_SIM * ((c.mate && c.mate.form) | 0);
   }
   function form(c) { var n = c.notes || []; if (!n.length) return null; var s = 0, k = Math.min(3, n.length); for (var i = n.length - k; i < n.length; i++) s += n[i].nota; return s / k; }
   function avgNota(c) { var n = c.notes || []; if (!n.length) return null; var s = 0; n.forEach(function (x) { s += x.nota; }); return round1(s / n.length); }
@@ -442,7 +528,7 @@
   function objectiveFor(c, k) {
     var e = expectedPos(c, k), top = k.lvl === LEAGUES.length - 1, low = k.lvl === 0;
     if (e <= 2) return top ? { pos: 1, text: 'Ganar el ' + league(k.lvl).name } : { pos: 2, text: 'Subir de categoría (quedar entre los 2 primeros)' };
-    if (e <= 4) return { pos: 4, text: 'Quedar entre los 4 primeros (y jugar la copa)' };
+    if (e <= 4) return { pos: 4, text: 'Quedar entre los 4 primeros (y jugar el open)' };
     if (e <= 6) return { pos: 6, text: 'Terminar en mitad de tabla (entre los 6 primeros)' };
     return low ? { pos: 7, text: 'No acabar último' } : { pos: 6, text: 'Evitar el descenso' };
   }
@@ -465,7 +551,7 @@
     var player = p && p.newAthlete ? p.newAthlete({ num: num, role: ROLES[roleKey].name, name: name, st: st })
       : { num: num, role: ROLES[roleKey].name, name: name, lvl: 1, xp: 0, pts: 0, st: st, matches: 0, bp: {}, bd: {}, beq: [] };
     player.roleKey = roleKey; player.age = 18;
-    var c = { v: VER, seed: seed, created: o.now || Date.now(), points: POINTS.indexOf(+o.points) >= 0 ? +o.points : 15, ctrl: 'one',
+    var c = { v: VER, seed: seed, created: o.now || Date.now(), points: PTS, ctrl: 'one',   // (playa: siempre a 21, el 3.º a 15)
       season: 1, week: 0, phase: 'pick', player: player, clubs: genClubs(r), myClub: -1, mate: null, sched: null, res: null,
       cup: null, notes: [], coach: 50, objective: null, offers: [], window: 'start', review: null, last: null,
       stats: newSeasonStats(), career: newSeasonStats(), history: [], trophies: [],
@@ -473,8 +559,8 @@
     genSchedule(c);
     // sin club: llegan las ofertas de inicio y eliges tú (acceptOffer). o.autoClub: el de antes (pruebas)
     c.offers = genStartOffers(c, 0);
-    msg(c, 'agent', 'Tienes ' + c.offers.length + ' ofertas', 'Soy tu agente. Varios clubes quieren ' + (c.offers.some(function (x) { return x.trial; }) ? 'ficharte o probarte' : 'ficharte') +
-      ' para la temporada 1. Compara las fichas (liga, prestigio, compañero, objetivo, rol y sueldo) y elige. Si rechazas todas, llegarán otras de clubes más modestos (y se pierde la prueba, si la hay).');
+    msg(c, 'agent', 'Tienes ' + c.offers.length + ' ofertas', 'Soy tu agente. Varios clubes de vóley playa quieren ' + (c.offers.some(function (x) { return x.trial; }) ? 'ficharte o probarte' : 'ficharte') +
+      ' para la temporada 1. Compara las fichas (circuito, prestigio, compañero, objetivo, rol y sueldo) y fíjate en la pareja que te ofrecen: un buen compañero es medio partido. Si rechazas todas, llegarán otras de clubes más modestos (y se pierde la prueba, si la hay).');
     cur = c; M = null; lost = false;
     if (o.autoClub) { var i = 0, best = -1; c.offers.forEach(function (x, j) { if (!x.trial && (best < 0 || x.ovr < best)) { best = x.ovr; i = j; } }); joinClub(c, c.offers[i], c.offers[i].years); }
     save(c);
@@ -483,8 +569,8 @@
 
   // ------------------------------------------------------------------ inicio: ofertas y pruebas de clubes
   var ROLE_NEED = [0, 3, 8];   // interés mínimo para cada rol (Rotación / Titular / Titular indiscutible)
-  /** Ofertas de inicio (sin club): 3-4 clubes de la Liga Regional (de los modestos; con cada rechazo, de los peores) y en la
-   *  primera ronda quizá una prueba en el peor club de la Liga Nacional (te fichan si la superas). */
+  /** Ofertas de inicio (sin club): 3-4 clubes del Circuito Regional (de los modestos; con cada rechazo, de los peores) y en la
+   *  primera ronda quizá una prueba en el peor club del Circuito Nacional (te fichan si la superas). */
   function genStartOffers(c, round) {
     var r = rng(hash(c.seed, 'start', round)), reg = clubsOf(c, 0).sort(function (a, b) { return a.q - b.q; });
     var pool = round === 0 ? reg.slice(0, 6) : reg.slice(0, 3);
@@ -508,7 +594,7 @@
     if (trial) { o.trial = true; o.chance = trialChance(c); }
     return o;
   }
-  /** Probabilidad de superar la prueba de la Liga Nacional: con la media inicial ~30 %. */
+  /** Probabilidad de superar la prueba del Circuito Nacional: con la media inicial ~30 %. */
   function trialChance(c) { return round1(clamp(0.3 + (playerOvr(c) - START_OVR) * 0.04, 0.1, 0.75) * 10) / 10; }
   /** Firma por el club de la oferta o (inicio, mitad o fin de temporada): compañero anunciado, plantilla, contrato, objetivo. */
   function joinClub(c, o, years) {
@@ -516,7 +602,7 @@
     var rl = Math.max(0, ROLE_LV.indexOf(o.role));
     c.myClub = k.id;
     c.mate = o.mateP && o.mateP.st ? copy(o.mateP) : newMate(c, k, r, o.mate != null ? o.mate : null);
-    c.mate.chem = 0; if (typeof c.mate.style !== 'string') c.mate.style = mateStyle(c.mate, r);
+    c.mate.chem = 0; c.mate.form = 0; if (typeof c.mate.style !== 'string') c.mate.style = mateStyle(c.mate, r);
     c.squad = genSquad(c, k, c.mate, r);
     years = clampI(years != null ? years : o.years || 1, 1, 3);
     // since: al fichar a final de temporada el contrato empieza en la siguiente (joinClub va antes de c.season++)
@@ -529,8 +615,9 @@
   }
   function welcome(c) {
     var k = myClub(c), ct = c.contract;
-    msg(c, 'coach', 'Bienvenido a ' + k.name, 'Aquí empiezas como ' + ct.role.toLowerCase() + ' (' + plural(ct.years, 'temporada', 'temporadas') + '). Tu compañero será ' + c.mate.name +
-      ' (' + c.mate.role.toLowerCase() + ', ' + c.mate.style.toLowerCase() + '). Objetivo del club: ' + c.objective.text.toLowerCase() + '. Cuanto más juguéis juntos, mejor os entenderéis.');
+    var d = mateOvr(c) - clubOvr(k);
+    msg(c, 'coach', 'Bienvenido a ' + k.name, 'Aquí empiezas como ' + ct.role.toLowerCase() + ' (' + plural(ct.years, 'temporada', 'temporadas') + '). Tu pareja en la arena será ' + c.mate.name +
+      ' (' + c.mate.role.toLowerCase() + ', ' + c.mate.style.toLowerCase() + ', media ' + mateOvr(c) + (d >= 3 ? ', por encima del nivel del club' : d <= -3 ? ', por debajo del nivel del club: tendrás que tirar tú del equipo' : '') + '). Objetivo del club: ' + c.objective.text.toLowerCase() + '. Cuanto más juguéis juntos, mejor os entenderéis.');
   }
   function plural(n, a, b) { return n + ' ' + (n === 1 ? a : b); }
   /** Inicio: rechazar todas → nuevas ofertas, peores (de los clubes más flojos de la Regional y sin prueba). */
@@ -538,7 +625,7 @@
     var c = load(); if (!c || c.phase !== 'pick') return false;
     c.pick.round = Math.min(9, c.pick.round + 1); c.pick.more = false;
     c.offers = genStartOffers(c, c.pick.round);
-    msg(c, 'agent', 'Nuevas ofertas', 'Has rechazado todas las ofertas. Han llegado ' + c.offers.length + ' más, de clubes más modestos. Si rechazas otra vez seguirán siendo de los más flojos de la Liga Regional.');
+    msg(c, 'agent', 'Nuevas ofertas', 'Has rechazado todas las ofertas. Han llegado ' + c.offers.length + ' más, de clubes más modestos. Si rechazas otra vez seguirán siendo de los más flojos d' + lname(league(0)) + '.');
     save(c); return true;
   }
   /** Inicio: pedir más tiempo (una vez): el club con menos interés retira su oferta y llega otra de un club que aún no había llamado. */
@@ -600,18 +687,19 @@
     var bd = B() && B().forPlayer ? B().forPlayer(c.player) : null;
     if (bd && !Object.keys(bd).length) bd = null;
     var k = n.me.kit;
-    // fatiga (resta a tus atributos) y química (suma a los dos en reacción, colocación y recepción): solo en este partido
-    var stMe = copy(c.player.st), stMate = copy(c.mate.st), fm = fatigueMalus(c), ch = chemBonus(c);
-    KEYS.forEach(function (key) { stMe[key] = clampI(stMe[key] - fm + (CHEM_KEYS.indexOf(key) >= 0 ? ch : 0), 1, 99); if (CHEM_KEYS.indexOf(key) >= 0) stMate[key] = clampI(stMate[key] + ch, 1, 99); });
+    // fatiga (resta a tus atributos), química (suma a los dos en reacción, colocación y recepción) y forma del compañero (suma o
+    // resta en todo lo suyo): solo en este partido
+    var stMe = copy(c.player.st), stMate = copy(c.mate.st), fm = fatigueMalus(c), ch = chemBonus(c), mf = clampI(c.mate.form | 0, -FORM_MAX, FORM_MAX);
+    KEYS.forEach(function (key) { stMe[key] = clampI(stMe[key] - fm + (CHEM_KEYS.indexOf(key) >= 0 ? ch : 0), 1, 99); stMate[key] = clampI(stMate[key] + mf + (CHEM_KEYS.indexOf(key) >= 0 ? ch : 0), 1, 99); });
     return {
       attrs: [[stMe, stMate], [rivA, rivB]],
       badges: bd ? [[bd, null], null] : null,
-      points: c.points, difficulty: n.diff, ctrl: 'one', ctrlIdx: 0,   // en la Carrera solo tu jugador
-      chem: ch, fatigue: fm,
+      points: PTS, venue: VENUE, difficulty: n.diff, ctrl: 'one', ctrlIdx: 0,   // vóley playa (sets a 21, el 3.º a 15); en la Carrera solo tu jugador
+      chem: ch, fatigue: fm, mateForm: mf,
       ref: copy(REF[league(n.me.lvl).ref]),
       kit: { kitShirt: k.shirt, kitAccent: k.accent, kitShorts: k.shorts, kitPattern: k.pattern },
       rivalKit: { kitShirt: n.rival.kit.shirt, kitAccent: n.rival.kit.accent, kitShorts: n.rival.kit.shorts, kitPattern: n.rival.kit.pattern },
-      career: { season: c.season, phase: c.phase, week: n.week, round: n.round, label: n.label, me: n.me.short, rival: n.rival.short,
+      career: { season: c.season, phase: c.phase, week: n.week, round: n.round, label: n.label, me: n.me.short, rival: n.rival.short, venue: VENUE,
         meName: n.me.name, rivalName: n.rival.name, player: c.player.name, num: c.player.num, mate: c.mate.name, mateNum: c.mate.num }
     };
   }
@@ -706,7 +794,7 @@
         for (var i = 0; i < wk.length; i++) {
           if (!arr[i]) {
             var a = club(c, wk[i][0]), b = club(c, wk[i][1]), r = rng(hash(c.seed, 'm', c.season, L, c.week, i));
-            var q = quickSim(clubOvr(a) + (r() - 0.5) * 4, clubOvr(b) + (r() - 0.5) * 4, r, c.points);
+            var q = quickSim(clubOvr(a) + (r() - 0.5) * 4, clubOvr(b) + (r() - 0.5) * 4, r, PTS);
             arr[i] = { a: a.id, b: b.id, s: q.sets, sc: q.setScores };
           }
           if (L === me.lvl) out.push(arr[i]);
@@ -721,7 +809,7 @@
       for (var j = 0; j < ms.length; j++) {
         if (!ar[j]) {
           var ca = club(c, ms[j][0]), cb = club(c, ms[j][1]), r2 = rng(hash(c.seed, 'cup', c.season, rd, j));
-          var q2 = quickSim(clubOvr(ca) + (r2() - 0.5) * 4, clubOvr(cb) + (r2() - 0.5) * 4, r2, c.points);
+          var q2 = quickSim(clubOvr(ca) + (r2() - 0.5) * 4, clubOvr(cb) + (r2() - 0.5) * 4, r2, PTS);
           ar[j] = { a: ca.id, b: cb.id, s: q2.sets, sc: q2.setScores };
         }
         out.push(ar[j]);
@@ -753,8 +841,9 @@
     var ct0 = coachText(c.coach);
     c.coach = clamp(Math.round(c.coach + (nota - 6.2) * 2.5 + (win ? 1 : -1)), 0, 100);
     if (coachText(c.coach) !== ct0) msg(c, 'coach', 'El entrenador: «' + coachText(c.coach) + '»', COACH_LINE[coachText(c.coach)] || '');
-    // gestión: química con el compañero (jugando juntos; simulado cuenta menos) y la semana de entrenamiento
+    // gestión: química con el compañero (jugando juntos; simulado cuenta menos), su forma y la semana de entrenamiento
     if (c.mate) c.mate.chem = clamp((c.mate.chem | 0) + (sim ? 3 : 5), 0, 100);
+    var mf0 = c.mate ? c.mate.form | 0 : 0, mf = mateFormStep(c);
     var tr = trainWeek(c);
     // temporada
     var S = c.stats, T = c.career;
@@ -764,12 +853,12 @@
     });
     c.notes.push({ nota: nota, win: win ? 1 : 0, sim: sim ? 1 : 0, kind: f.kind, wk: f.kind === 'league' ? f.week : f.round, rival: rival.id, s: res.sets.slice() });
     var badges = extra && extra.badges || [];
-    var label = f.kind === 'league' ? 'Jornada ' + (f.week + 1) : (f.round === 0 ? 'Semifinal de copa' : 'Final de copa');
+    var label = f.kind === 'league' ? 'Jornada ' + (f.week + 1) : (f.round === 0 ? 'Semifinal del open' : 'Final del open');
     var phase0 = c.phase, season0 = c.season;
     recordMine(c, f, res.sets, res.setScores);
     var round = finishRound(c);
     var sum = { season: season0, phase: phase0, label: label, rival: rival.id, rivalName: rival.name, win: win, sets: res.sets.slice(), setScores: res.setScores.map(function (x) { return x.slice(); }),
-      sim: !!sim, nota: nota, me: me, xp: xp, lvlUp: lv.lvlUp, lvl: lv.lvl, ptsGained: lv.pts, badges: badges, coach: c.coach, train: tr, chem: c.mate ? c.mate.chem : 0,
+      sim: !!sim, nota: nota, me: me, xp: xp, lvlUp: lv.lvlUp, lvl: lv.lvl, ptsGained: lv.pts, badges: badges, coach: c.coach, train: tr, chem: c.mate ? c.mate.chem : 0, mateForm: mf, mateForm0: mf0,
       round: round.map(function (m) { return { a: m.a, b: m.b, s: m.s }; }), offers: c.window === 'mid' ? c.offers.length : 0, review: phase0 !== c.phase && c.phase === 'off' };
     c.last = sum;
     save(c);
@@ -801,7 +890,7 @@
     c = c || load(); if (!c) return null;
     var f = myFixture(c); if (!f) return null;
     var n = next(c), r = rng(hash(c.seed, 'mine', c.season, c.phase, f.week, f.round, c.notes.length));
-    var q = quickSim(teamOvr(c) + (r() - 0.5) * 4, n.ovrRival + (r() - 0.5) * 4, r, c.points), win = q.sets[0] > q.sets[1];
+    var q = quickSim(teamOvr(c) + (r() - 0.5) * 4, n.ovrRival + (r() - 0.5) * 4, r, PTS), win = q.sets[0] > q.sets[1];
     var d = teamOvr(c) - n.ovrRival, sh = 0.5 + 0.5 * clamp((playerOvr(c) - mateOvr(c)) / 30 + 0.5, 0.2, 0.8);
     var tot = q.setScores.reduce(function (s, x) { return s + x[0]; }, 0), mp = Math.round(tot * 0.42 * sh);
     var kills = Math.round(mp * 0.72), aces = Math.round(mp * 0.12), blocks = Math.max(0, mp - kills - aces);
@@ -890,14 +979,15 @@
       var o = L.ovr[0] + (L.ovr[1] - L.ovr[0]) * q, thr = o - 5 + (kl > myL ? 2 : 0);
       var it = sc - thr + (r() - 0.5) * 8 - (mid ? 3 : 0);
       if (it > 0) { var rl = it > ROLE_NEED[2] ? 2 : it > ROLE_NEED[1] ? 1 : 0;
-        cand.push({ club: k.id, lvl: kl, ovr: Math.round(o), q: q, interest: round1(it), mate: clampI(Math.round(o) + 3, 1, 99),
+        cand.push({ club: k.id, lvl: kl, ovr: Math.round(o), q: q, interest: round1(it), mate: Math.round(o),
           role: ROLE_LV[rl], years: 1 + Math.floor(r() * 3), salary: salaryOf(kl, q, rl) }); }
     });
     // las 3 mejores, con preferencia por los clubes de la liga de arriba; se muestran de mejor a peor club
     cand.sort(function (a, b) { return (b.interest + 4 * (b.lvl - myL)) - (a.interest + 4 * (a.lvl - myL)); });
     cand = cand.slice(0, 3);
-    // ficha completa: el compañero que tendrías (el mismo que te dan al firmar) y el objetivo aproximado
-    cand.forEach(function (x) { var mt = newMate(c, club(c, x.club), rng(hash(c.seed, 'offmate', c.season, mid ? 'mid' : 'end', x.club)), x.mate); x.mateP = mt; x.mate = ovrOf(mt.st); });
+    // ficha completa: el compañero que tendrías (el mismo que te dan al firmar; media = la del club de la temporada que viene +
+    // su desvío propio, mateOff) y el objetivo aproximado. Un club con buen compañero es un argumento para fichar
+    cand.forEach(function (x) { var rm = rng(hash(c.seed, 'offmate', c.season, mid ? 'mid' : 'end', x.club)), mt = newMate(c, club(c, x.club), rm, clamp(x.ovr + mateOff(rm), 22, 92)); x.mateP = mt; x.mate = ovrOf(mt.st); });
     cand.sort(function (a, b) { return b.lvl - a.lvl || b.ovr - a.ovr; });
     return cand;
   }
@@ -929,7 +1019,7 @@
     moves.forEach(function (mv) { if (mv.id === me.id) myMove = mv.to > lvl ? 1 : -1; });
     if (champ === me.id) c.trophies.push({ season: c.season, kind: 'liga', name: L.name, club: me.name });
     if (cupWin) c.trophies.push({ season: c.season, kind: 'copa', name: L.cup, club: me.name });
-    if (myMove > 0) c.trophies.push({ season: c.season, kind: 'ascenso', name: 'Ascenso a ' + league(lvl + 1).name, club: me.name });
+    if (myMove > 0) c.trophies.push({ season: c.season, kind: 'ascenso', name: 'Ascenso ' + toL(league(lvl + 1)), club: me.name });
     var an = avgNota(c);
     c.history.push({ season: c.season, club: me.id, clubName: me.name, lvl: lvl, pos: pos, pts: t[pos - 1].pts, objective: c.objective.text, objOk: objOk,
       cup: cupWin ? 'Campeón' : cupFinal ? 'Final' : cupSemi ? 'Semifinal' : '—', nota: an, played: c.stats.played, won: c.stats.won, ppts: c.stats.pts, move: myMove,
@@ -961,9 +1051,10 @@
     var r = rng(hash(c.seed, 'season', c.season + 1)), moved = offer && offer.club !== c.myClub, renew = c.review && c.review.renew;
     if (moved) joinClub(c, offer, years);
     else {
-      // el club renueva tu compañero si ha cambiado de liga o si se ha quedado muy por debajo del nivel del club
-      var k = myClub(c), want = clubOvr(k) + 3;
-      if (mateOvr(c) < want - 4) { c.mate = newMate(c, k, r); msg(c, 'club', 'Nuevo compañero', 'El club ha fichado a ' + c.mate.name + ' (' + c.mate.role.toLowerCase() + ', media ' + mateOvr(c) + ') para jugar contigo. Tendréis que haceros el uno al otro.'); }
+      // el club renueva tu compañero si se ha quedado muy por debajo de su nivel (MATE_RENEW; el nuevo tiene su propio desvío)
+      var k = myClub(c);
+      if (mateOvr(c) <= clubOvr(k) - MATE_RENEW) { c.mate = newMate(c, k, r); msg(c, 'club', 'Nuevo compañero', 'El club ha fichado a ' + c.mate.name + ' (' + c.mate.role.toLowerCase() + ', media ' + mateOvr(c) + ') para jugar contigo. Tendréis que haceros el uno al otro.'); }
+      else if (c.mate) c.mate.form = 0;   // verano: la forma se reinicia
       c.squad = genSquad(c, k, c.mate, rng(hash(c.seed, 'squad', c.season + 1, k.id)));   // la plantilla cambia cada verano
       var ct = c.contract || { club: k.id, years: 1, left: 1, role: ROLE_LV[1], salary: salaryOf(k.lvl, k.q, 1), since: c.season };
       ct.left = Math.max(0, (ct.left | 0) - 1);
@@ -996,11 +1087,11 @@
         var pass = rng(hash(c.seed, 'trial', o.club, c.pick.round))() < o.chance;
         if (!pass) {
           c.offers.splice(i, 1); c.pick.fail = o.club;
-          msg(c, 'agent', 'Prueba no superada', club(c, o.club).name + ' te ha visto en la prueba y prefiere esperar. Aún tienes ' + plural(c.offers.length, 'oferta', 'ofertas') + ' de la Liga Regional.');
+          msg(c, 'agent', 'Prueba no superada', club(c, o.club).name + ' te ha visto en la prueba y prefiere esperar. Aún tienes ' + plural(c.offers.length, 'oferta', 'ofertas') + ' d' + lname(league(0)) + '.');
           if (!c.offers.length) c.offers = genStartOffers(c, ++c.pick.round);
           save(c); return false;
         }
-        msg(c, 'agent', '¡Prueba superada!', club(c, o.club).name + ' te ficha tras la prueba. Empiezas en la ' + league(o.lvl).name + ', una categoría por encima.');
+        msg(c, 'agent', '¡Prueba superada!', club(c, o.club).name + ' te ficha tras la prueba. Empiezas en ' + lname(league(o.lvl)) + ', una categoría por encima.');
       }
       joinClub(c, o, years); save(c); return true;
     }
@@ -1089,6 +1180,9 @@
 
   VB.Career = {
     VER: VER, STORE: KEY, KEYS: KEYS, LEAGUES: LEAGUES, ROLES: ROLES, REF: REF, POINTS: POINTS, WEEKS: WEEKS, MID_WEEK: MID_WEEK, START_OVR: START_OVR, PTS_LVL: PTS_LVL,
+    // vóley playa (v3) y compañero con nivel propio
+    VENUE: VENUE, PTS: PTS, PTS3: PTS3, MATE_OFF: MATE_OFF, MATE_RENEW: MATE_RENEW, FORM_MAX: FORM_MAX, FORM_SIM: FORM_SIM,
+    lname: lname, toL: toL, mateProfile: mateProfile, formText: formText, _newMate: newMate, _mateOff: mateOff, _beachify: beachify,
     exists: exists, get: get, load: load, lost: function () { return lost; }, save: save, create: create, abandon: abandon,
     league: league, club: club, myClub: myClub, clubsOf: clubsOf, clubOvr: clubOvr, table: table, posOf: posOf,
     next: next, matchSetup: matchSetup, ingest: ingest, matchDone: matchDone, simulateNext: simulateNext, abortMatch: abortMatch, owns: owns,

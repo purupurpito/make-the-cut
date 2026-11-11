@@ -1,8 +1,75 @@
-# notes/carrera.md — Modo Carrera 2v2 (owner: ui_main)
+# notes/carrera.md — Modo Carrera 2v2 de vóley playa (owner: ui_main)
 
 Ficheros: `js/career.js` (VB.Career, datos y reglas, sin DOM; se carga en node), `js/career-ui.js` (VB.CareerUI, pantallas; crea su
 DOM `#career` y su `<style id="careerCss">`), `js/main.js` (arranque de los partidos de Carrera), `index.html` (fila «02 Carrera»
 del menú y los dos `<script>`), `tools/careertest.js` (prueba en node). Guardado: `localStorage['voley3d.career']` (una sola carrera).
+
+## Sprint playa (10-nov-2026, v3): la Carrera es de VÓLEY PLAYA
+
+Pedido de Ferran: «Te pueden fichar clubes, pero de vóley playa», «nerfear un poco al compañero» y «que puedas tener mejores y
+peores compañeros». Guardado `v: 3` (`migrate()` pasa v1 y v2 sin perder nada: ver §Migración).
+
+- **Partidos en la playa.** `matchSetup()` devuelve `venue: 'beach'` y `points: 21` (`VB.Career.VENUE/PTS/PTS3`, de `VB.BEACH`);
+  main.js (`startMatch` con `opts.career`) fuerza el escenario Platja Llarga aunque el ajuste «Escenario» sea el pabellón
+  (`forceVenue('beach')`: `onSettings(copia de settings con arena 'beach', 'arena')` a todos los módulos, sin tocar `ctx.settings`)
+  y lo deshace al volver al menú (`toMenu` → `unforceVenue`; si se cambió el ajuste en la pausa, manda el ajuste). La sim juega con
+  reglas de playa (pista 16×8, sets a 21 y el 3.º a 15, cambio de campo cada 7/5, bloqueo = toque, pokey, dobles); `quickSim` (resto
+  de la jornada y «Simular») también a 21/15. El selector «Puntos por set» de Crear jugador desaparece (`c.points` = 21 siempre).
+  La equipación del rival sigue por `Players.setKit({..., rival})` (players.js, de otro dueño): en la playa es camiseta de tirantes
+  con los colores del club; si se parece a la tuya, la CPU azul de siempre.
+- **Clubes de vóley playa.** Nombres «CV Platja Rocaverde», «Arena Puertoluz Sud», «Dunes Brisamar»… (`PREFIX`/`SUFFIX`) con sede en
+  una playa inventada (`club.beach`: «Cala Rocaverde», «Platja Gran de Fuenteviva»…; `clubInfo().beach`; la ficha de la oferta y
+  Club › Ficha › «Sede» la enseñan). Circuitos: Circuito Regional / Nacional, Superliga de Playa, Circuito Continental, Circuito
+  Mundial (`LEAGUES[].art` = artículo: `lname(L)` «el Circuito…» / «la Superliga…», `toL(L)` «al / a la»; career-ui `deL(L)` «del /
+  de la»). La copa de los 4 primeros es el **Open** (Open Regional… Final a Cuatro Mundial). Roles: **Bloqueador** (atk) y
+  **Defensor** (cr), Universal; las claves atk/cr/uni se conservan. Estilos del compañero sin repetir el nombre del rol («Muro en la
+  red», «Pulpo en la arena»). Textos del hub, las ofertas, los mensajes y Crear jugador hablan de arena, pareja, circuitos y open.
+- **Compañero con nivel propio** (§Compañero): media = media del club + desvío propio (`mateOff`: −9..+5, media −2, reparto casi
+  plano entre −6 y +1 con colas hasta los extremos —0,25·u₁ + 0,75·u₂—, desviación teórica 3,2; medido en careertest: 60 carreras de
+  −7 a +3 (media −2,1, desviación 2,8) y 105 ofertas de inicio de −9 a +4, 29 con compañero a ≤ −5 y 7 a ≥ +3;
+  antes siempre +3), rol complementario que se nota (`genSt` con el perfil del rol), `mateProfile(m)` → puntos fuertes y flojos
+  (atributos a ≥ 4 de su media), `m.form` (−3..+3: paseo aleatorio tras cada partido tuyo, `mateFormStep`; suma a todos sus
+  atributos en `matchSetup` y `FORM_SIM` 0,4 por punto a `teamOvr`; en verano vuelve a 0; `formText`). Las ofertas traen el compañero
+  con su desvío (`genOffers` → `newMate(..., ovr + mateOff)`) y la ficha lo enseña (media, «+4 sobre el club» / «−3 bajo el club»,
+  fuertes/flojos, estilo): un club con buen compañero es un argumento para fichar. La plantilla (`genSquad`) da dos alternativas a
+  ≥ 3 de desvío del titular (cambiar de compañero cambia de verdad los atributos del partido y la fuerza simulada; Club › Compañero
+  enseña «+3 respecto a Íñigo»). El club renueva al compañero en verano si queda a `MATE_RENEW` (7) o más por debajo del club.
+
+### Migración v1/v2 → v3 (`migrate`, idempotente; `tools/careertest.js` «Migración de un guardado v2»)
+`beachify(o)`: renombra los 40 clubes con una semilla propia (`hash(seed, 'playa')`; nombre, abreviatura única y sede nuevos; id,
+nivel, q, equipación, calendario, resultados, contrato, mensajes y jugador intactos), pasa el historial (por id) y el palmarés (por
+nombre) al nombre nuevo del mismo club, roles a Bloqueador / Defensor, `form: 0`, `points` 21 y un mensaje «La Carrera se muda a la
+playa». Los partidos ya jugados a 15 se quedan; desde ese momento se juega en la arena.
+
+### Compañero: medida del nerf (bot «medio» y «novato» de simtest, control «uno», 84 partidos por caso; `tools/out/carrera-playa/mate_balance.js`)
+Puntos por partido (remates + aces + bloqueos) de tu jugador (bot) y del compañero IA, y % de los puntos de la pareja:
+
+| caso | compañero − club | tú | compañero | % pareja (tú / comp.) | puntos pareja |
+|---|---|---|---|---|---|
+| Regional, pabellón a 15, medio (ANTES) | +3,0 | 17,5 | 9,0 | 58 / 30 | 70,2 % |
+| Regional, pabellón a 15, medio | −5,0 | 18,3 | 8,1 | 60 / 27 | 66,4 % |
+| Regional, PLAYA a 21, medio, antes | +3,0 | 19,4 | 16,7 | 46 / 40 | 67,4 % |
+| Regional, PLAYA a 21, medio, AHORA | −3,6 | 21,3 | 15,3 | 50 / 36 | 66,5 % |
+| Regional, PLAYA a 21, novato, antes | +3,0 | 11,7 | 21,1 | 28 / 50 | 50,4 % |
+| Regional, PLAYA a 21, novato, AHORA | −3,6 | 12,0 | 20,0 | 28 / 48 | 49,7 % |
+| Nacional (tú 42), PLAYA, medio, antes | +3,0 | 15,5 | 16,6 | 38 / 40 | 47,2 % |
+| Nacional (tú 42), PLAYA, medio, −5 | −5,0 | 14,7 | 13,1 | 41 / 36 | 44,9 % |
+| Nacional (tú 42), PLAYA, medio, AHORA | +1,0 (3 compañeros) | 14,5 | 14,5 | 38,5 / 38,6 | 45,4 % |
+| Superliga (tú 50), PLAYA, medio, AHORA | +1,0 | 10,8 | 10,8 | 38 / 38 | 39,6 % |
+| Regional, PLAYA, medio, reparto plano (final) | −2,9 | 20,4 | 15,2 | 49 / 36 | 67,3 % |
+| Regional, PLAYA, novato, reparto plano (final) | −2,9 | 12,3 | 20,1 | 29 / 47 | 48,3 % |
+| Nacional (tú 42), PLAYA, medio, reparto plano (final) | +2,0 | 15,4 | 15,0 | 39 / 38 | 46,0 % |
+
+(Las tres últimas filas, `after_v3b.log`: tras cambiar el reparto del desvío de triangular a casi plano —misma media −2, más
+horquilla— los números no se mueven: el compañero IA sigue por debajo o a la par de un jugador medio de su circuito.)
+
+Lectura: en el pabellón el compañero nunca hacía más puntos que un jugador medio; en la PLAYA (el bloqueo cuenta como toque: el
+compañero IA bloquea 2-4 puntos por partido) sube su parte y en el Nacional con club + 3 rendía POR ENCIMA de un jugador medio
+(16,6 contra 15,5). Diez puntos de media del compañero ≈ 3,5 puntos suyos por partido y ≈ 2 % de los puntos de la pareja: el
+atributo pesa poco frente al perfil `DIFF.mate` de la sim (recv 0,85, dig 0,56, atkErr 0,05: entre Normal y Difícil), así que el
+nerf por atributos es moderado a propósito (media −2 en vez de +3 = −5 de media: compañero −1,5 puntos por partido, pareja −1..−2 %).
+Un novato sigue haciendo menos puntos que su compañero (28 / 48 %): es él quien va corto, no el compañero. Si hiciera falta más,
+el sitio es `DIFF.mate` o `statProf` (sim), no la Carrera. La CPU rival no cambia.
 
 Mezcla pedida por Ferran: el bucle del modo carrera tipo FIFA (club, temporada, jornadas, nota del partido, objetivos, entrenador,
 ofertas, ascensos) + insignias que se desbloquean haciendo cosas (VB.Badges, ver js/badges.js). Todo inventado: clubes, ciudades,
@@ -10,14 +77,14 @@ ligas, copas y nombres de jugadores.
 
 ## Bucle
 
-1. **Crear jugador**: nombre (18 car.), dorsal 1-99, rol y puntos por set (11/15/21/25; 15 por defecto). Control: siempre solo
+1. **Crear jugador**: nombre (18 car.), dorsal 1-99 y rol (v3: sin puntos por set, vóley playa a 21 y el 3.º a 15). Control: siempre solo
    tu jugador (v2; antes había «Los dos»). Media inicial 35 con el perfil del rol:
-   - Atacante: salto +6, potencia +7, control +3, bloqueo +4, saque +1 · recepción −7, defensa −4, colocación −10.
+   - Bloqueador (`atk`; antes «Atacante»): salto +6, potencia +7, control +3, bloqueo +4, saque +1 · recepción −7, defensa −4, colocación −10.
    - Universal: casi plano (velocidad y reacción +2, bloqueo −3).
-   - Colocador-receptor: colocación +9, recepción +7, defensa +4, reacción +2 · salto −5, potencia −8, bloqueo −7, saque −4.
+   - Defensor (`cr`; antes «Colocador-receptor»): colocación +9, recepción +7, defensa +4, reacción +2 · salto −5, potencia −8, bloqueo −7, saque −4.
    El atleta es el de VB.Prog (`newAthlete`): `st, lvl, xp, pts, matches, bp, bd, beq` + `name, num, role, roleKey, age` (18 años).
 2. **Club**: lo eliges tú entre las ofertas de inicio (v2, ver §Gestión; antes te tocaba uno de los 2-3 peores de la Regional). El club pone compañero con el rol complementario
-   (atacante ↔ colocador-receptor; universal ↔ universal) y media = media del club + 3.
+   (bloqueador ↔ defensor; universal ↔ universal) y media = media del club + su desvío propio (v3, `mateOff` −9..+5; antes siempre +3).
 3. **Temporada**: liga a doble vuelta (método del círculo, 14 jornadas de 4 partidos) en las 5 ligas a la vez + copa de los 4
    primeros de tu liga (semifinales 1-4 y 2-3, final; si no te clasificas se juega sola). Puntos: 2-0 = 3, 2-1 = 2, 1-2 = 1, 0-2 = 0.
    Desempate: puntos, victorias, cociente de sets, cociente de puntos.
@@ -73,12 +140,15 @@ career-ui.js fuerza `#app #career .cr-in{height:100%}` (medido: 1420 de 1420 px)
 
 ## Ligas
 
-| nivel | liga | media de los clubes | IA rival (por club) | XP × | arbitraje (`createGame({ref})`) | copa |
+(v3, playa: «Liga Regional» → Circuito Regional, «Liga Nacional» → Circuito Nacional, «Superliga» → Superliga de Playa, «Liga
+Continental» → Circuito Continental; las copas son «Open …». Los guardados viejos conservan los nombres de entonces en el palmarés.)
+
+| nivel | circuito | media de los clubes | IA rival (por club) | XP × | arbitraje (`createGame({ref})`) | open |
 |---|---|---|---|---|---|---|
-| 0 | Liga Regional | 28-40 | Fácil (todos) | 1 | alto, sin challenge | Copa Regional |
-| 1 | Liga Nacional | 38-50 | Normal | 1,5 | medio, sin challenge | Copa Nacional |
-| 2 | Superliga | 48-61 | Normal (< 52) / Difícil | 2,1 | medio, sin challenge | Copa de la Superliga |
-| 3 | Liga Continental | 58-71 | Difícil | 2,8 | jueces de línea, sin challenge | Copa Continental |
+| 0 | Circuito Regional | 28-40 | Fácil (todos) | 1 | alto, sin challenge | Open Regional |
+| 1 | Circuito Nacional | 38-50 | Normal | 1,5 | medio, sin challenge | Open Nacional |
+| 2 | Superliga de Playa | 48-61 | Normal (< 52) / Difícil | 2,1 | medio, sin challenge | Open de la Superliga |
+| 3 | Circuito Continental | 58-71 | Difícil | 2,8 | jueces de línea, sin challenge | Open Continental |
 | 4 | Circuito Mundial | 68-84 | Difícil / Experto (≥ 80) | 3,6 | jueces de línea + challenge | Final a Cuatro Mundial |
 
 La media de un club = `ovr[0] + (ovr[1] − ovr[0]) × q` (q 0..1, su rango dentro de la liga). Cada temporada q da un paseo
@@ -193,6 +263,39 @@ Resuelto en la integración del 9-nov-2026 (ver notes/ui_main.md, «Integración
 
 - Sin probar a mano: mando real y táctil real en las pantallas de Carrera (probado: ratón/clic, teclado simulado y el flujo
   jugar → gameOver → hub en Chrome headless).
+
+### Revisión y arreglos (11-nov-2026)
+- **Plantilla** (`genSquad`): las dos alternativas quedan siempre dentro de `MATE_OFF` (−9..+5), a ≥ 3 del titular y distintas entre sí
+  (`fit`: valor válido más cercano, primero alejándose del titular). Antes, al deshacer el empate entre las dos, la 2.ª se movía 3 puntos
+  HACIA el titular (p. ej. titular −6 y las dos a −9 → la 2.ª en −6, «±0 respecto a Unai»: 56 de 600 a menos de 3) y el clamp dejaba la
+  plantilla en −10..+6. Medido en 300 carreras (scratchpad `rv/sq.js`): plantilla −9..+5, |alternativa − titular| mín. 3, media 4,6.
+- **Ficha de la oferta** (`mateLine`): el desvío («−7 bajo el club») va en su propia pastilla (verde/roja si se nota, `.chip.dv.g/.r`)
+  y no dentro de la de «Media 30» (pastilla dentro de pastilla que se salía de la columna a 1280 y a 844).
+- **Hub**: «Tú llevas a Ferran (dorsal 1) y a tu pareja la lleva la IA.» y la pareja en pastillas (Pareja: nombre · rol · Media · desvío ·
+  Forma), en vez de una lista metida en un paréntesis («Juegas con Ferran…» se leía como si Ferran fuera el compañero).
+- **Comparar ofertas**: columna Objetivo en corto (Campeón / Ascenso / Top 4 / Top 6 / Salvarse / No acabar último; la frase entera
+  sigue en la ficha) y Compañero con el desvío («30 (−7)»).
+- **Antetítulo de la hoja final** (main.js): la etiqueta `cs.label` («Circuito Regional · Jornada 1 de 14») se pinta con el rombo de
+  `VB.UI.sep(…, 'd')`, como el resto de antetítulos; antes salía el «·» crudo.
+- CONTRACT.md ya dice que la Carrera juega en la playa (`forceVenue`) y el 6v6 en el pabellón.
+- **Pendiente** (de la revisión, sin tocar): con el compañero en lo alto de la horquilla (+4/+5) rinde como un jugador medio de su
+  circuito (no por debajo); si se quiere «nunca mejor que un medio», bajar el techo de `MATE_OFF` a ~+3 o tocar `DIFF.mate` (sim).
+  El palmarés migrado conserva el nombre antiguo de la competición («Liga Regional») con el club renombrado (se puede defender como
+  histórico). En el Circuito Regional con el bot medio se gana el 99-100 % sea cual sea el compañero (dato de equilibrio). El lienzo en
+  blanco que vio una vez el revisor (`getUniforms` en un partido de Carrera) casa con el fallo del precompilado tras cambiar la calidad,
+  arreglado en main.js (ver TRASPASO); no se ha vuelto a ver.
+- **Equipación del rival en la playa** (players.js `setKit`): si el kit del club rival se parece al tuyo (p. ej. dos clubes de rojo),
+  players viste a la CPU de azul; con 8 camisetas por liga pasa a menudo. Idea: que `setKit` acepte un color alternativo del club
+  (segunda equipación) en vez de caer en la azul de siempre.
+- **Nerf del compañero**: el lever por atributos es corto (ver medida). Si Ferran lo sigue viendo fuerte, `DIFF.mate` (sim) o un
+  `statProf` con más pendiente por debajo de 50 en recv/dig/err para la IA (sim); la Carrera no toca sim.js ni ai.js.
+- Marcador de playa, cámara del cambio de campo y regla de los 5 s del saque (TRASPASO, de otros dueños) afectan ahora a todos
+  los partidos de Carrera.
+- `tools/out/carrera-playa/`: `mate_balance.js` (medida del compañero), `shots.js` (capturas y comprobación del escenario forzado),
+  logs `baseline_*.log`, `beach_offsets.log`, `after_final.log`, `after_v3b.log` (reparto plano) y `run2-*/run3-*.log` (pase final de
+  pruebas del 10-nov, 22 h: simtest con huella idéntica, badgetest, careertest, console.sh ×3, perf ×3 «objetivos cumplidos» con la
+  máquina a ~50 % de CPU —con el otro agente probando a la vez, a 75-80 %, perf del pabellón y del 6v6 bajaban de 55 fps—, drive,
+  touchplay (falló una vez de forma intermitente: 2 toques de 3; repetido OK) y padplay).
 
 ## Integración (10-nov-2026): decisiones con efecto y pestañas comunes
 - **Fatiga**: Equilibrado ya no cansa (`fat: 0`); los enfoques dan 60 por semana (antes 50) con +12 de fatiga; en verano

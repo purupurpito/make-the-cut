@@ -860,3 +860,77 @@ Las alturas de cámara de las vistas están pensadas para v1 y `viewY` las escal
   (`screenLod`) y `fixShadowDepth` ya valen (misma `SkinnedMesh`).
 - Pruebas: `bash tools/console.sh all` (con `doll`) sin errores; `node tools/simtest.js` TODO OK (la sim no se toca); el juego normal no cambia
   (doll.js no hace nada fuera de `?debug=doll`).
+
+## Muñeco (doll.js): fase 2, ÚNICO modelo del juego (10-nov-2026, agente muñeco) — «Los nuevos Doll están bien. Mételos»
+Ficheros: `js/players.js` (esqueleto, animación, aspecto, equipaciones), `js/doll.js` (geometría, atlas/material, hoja de caras). fx.js y
+arena.js no se han tocado. La sim no se toca: huella `tools/fp-2v2.json` idéntica (simtest completo TODO OK). Capturas (miradas y sin
+cabezas que atraviesen, brazos rotos ni pelo suelto): `tools/out/arte/doll-juego/{hall,beach}-{1280,844t}/{serve,rally,spike,block,
+point,dive,over,jumpserve,menu}.png`, `six-{1280,844t}/{serve6,rally6,point6}.png` (844t = 844×390 `TOUCH=1`), primeros planos en `w/`
+(`c*-<escena>-at<id>.png`, `c-serve-one.png`, `c-point-pair.png`; hechos con `tools/out/arte/presets/close.js` en modo `at:<id>`).
+- **Rig**: el muñeco chibi de doll.js es el único modelo (`VB.Players.body()` → `'doll'`; `setBody` devuelve false, `bodyPresets()` →
+  `['doll']`; los presets `?body=` ya no existen). `applyDoll()` (init) copia `VB.Doll.dims()` a las longitudes del rig (cadera 0,58, tronco
+  0,2 + 0,2 + 0,205, hombro a 1,185, brazo 0,330 + 0,305 + palma 0,115, cabeza centro 0,205 y radios 0,245 × 0,25 × 0,235, zapatón ×1,15;
+  de pie 1,64 m) y los huesos vacíos de la cara/pelo salen de `VB.Doll.boneLayout()`. `HEAD_K = HAND_K = 1` (el tamaño va en la geometría).
+  `buildRig` monta el mismo esqueleto de 27 huesos y pide `VB.Doll.geometry(r, lod)` (3 niveles cacheados en `r.geos`, misma piel y
+  huesos que antes: `screenLod`, `fixShadowDepth` y el LOD 6v6 por distancia valen sin cambios) y `VB.Doll.material(tc, L, p.num, beach, px)`.
+- **Espacio de pose → rig** (`shoulderPose`, `ARM_K`, `ARM_UPK`, `LEG_K`, `SH_DY`): las poses de `computeTarget` siguen escritas en metros
+  del atleta TAJO (constantes `P_*`: hombros a 1,535, brazo 0,657, piernas 0,962). `applyPose` refiere cada objetivo de mano al hombro de la
+  POSE con las rotaciones del frame y lo reescala desde el hombro real: ×`ARM_K` = 1,14 (brazo de reposo del muñeco / TAJO) y, con el brazo
+  recto hacia arriba (bloqueo, brazos en V, armado), hasta ×`ARM_UPK` = 1,357 (algo más de la mitad del estirón; con el estirón completo las
+  poses se leían como fideos). La flexión de rodillas (`DROP`) se escala ×`LEG_K` = 0,478 (piernas cortas) donde se consume (`torso`, corrección
+  de cuerpo del anclaje). Lo anclado al balón va en absoluto.
+- **Estirón cartoon** (decisión de Ferran, «brazo corto que se alarga para golpear»): en `applyPose`, si el objetivo de la mano queda fuera del
+  brazo de reposo, `solveIK` recibe brazo + antebrazo ×`sA` (≤ `ARM_STRETCH` = `r.D.STRETCH` = **1,405** = alcance del atleta 2,192 m) y
+  `stretchArm` escala el hueso del brazo (×s en y, ×1/√s de grosor; la mano recupera su tamaño). El peso lo pone el anclaje (`aw0/aw1`
+  0 → 1 en los últimos `ANC_PRE` s: el estirón entra solo en el contacto y se va en el acompañamiento). `r.armS0/armS1` (lectura) = factor
+  actual. La corrección de cuerpo del anclaje descuenta el 60 % del estirón (`ARM_WE`): la pelvis solo se inclina por lo que el brazo no cubre.
+  `VB.Players.dims()` publica `reach` (REPOSO, 1,935) y `reachMax` (2,192, el de siempre), `ARM_STRETCH`, `ARM_K`, `ARM_UPK`, `LEG_K`, `model`.
+- **Squash & stretch**: `squash` con más amplitud (despegue +10 %, aterrizaje −14 % con rebote +3 %, plancha −6 % al caer de pecho) y
+  **rebote de la cabeza sin cuello** (`r.hbA`, muelle de primer orden sobre el aplastamiento; `aimHead` sube/baja la cabeza ±5 cm y la
+  inclina ±0,12 rad con la diferencia: al aterrizar sigue bajando un instante, al despegar se queda atrás).
+- **Cara**: `updateFace` traduce los pesos de siempre (S grito, E esfuerzo, J alegría, D pena + `faceFocus` + parpadeo) a celdas de la hoja de
+  caras del muñeco con `VB.Doll.faceCells(material, ojos, boca)` (2 uniformes): grito [7,2] en remate/bloqueo/punto · **sorpresa** [6,5] en
+  los errores (el que comete la falta durante los primeros 0,8 s del punto —`r.fault`, de `point.player`—, balón al cuerpo, golpe al aire
+  `miss` → `r.missT`) · esfuerzo [3,3] · alegría [4,1] alternando lengua [4,6] · pena [5,4] (partido perdido: línea tensa [5,7]) ·
+  concentración [2,7] cuando le llega el balón · parpadeo = celda 1. Pruebas: `VB.Players._face(p, 'c<ojos>/<boca>')` como antes.
+- **Cabeza grande** (0,50 m): `HEAD_HK` = 1,344 respecto a la TAJO → `headClear` (cilindro `HEAD_R` 0,33·(0,44 + 0,56·HK) y banda ×HK),
+  galón del controlado, `CV_K` = 1,31 (paradas de los choques de manos/pecho, sitio del compañero del plano de héroe, `SEP_MIN` 0,65).
+- **Aspecto por jugador** (`lookOf`): tus dos jugadores (2v2, equipo 0, n.º 1 y 2) con look FIJO y distinto (`MY_LOOKS`: n.º 1 tupé, piel
+  clara, gorra en la playa; n.º 2 afro con cinta, piel oscura, visera en la playa, 2 % más alto). Los demás, deterministas con `hash32` de
+  dorsal + equipo + rol + `RIVAL_SIG` (hash de la equipación del club rival que deja `setKit`: en la Carrera los rivales de cada club se
+  reconocen de un partido a otro y cambian de club a club): 10 pieles, 10 pelos, 7 peinados (tupe, coleta, afro, flequillo, rapado, moño,
+  trenzas), complemento (pabellón: 1 de 4 con cinta; playa: visera / gorra / gafas / cinta), altura ±2,4 % (6v6: `ROLE_H` por puesto como antes).
+- **Equipaciones**: el atlas del muñeco se pinta con la equipación de players (`setKit` de Ajustes y de los clubes de la Carrera, con
+  `pattern` diag/liso/franjas/rayas y `numFill`; `liberoKit` en 6v6 va liso con su color) y el dorsal `p.num` (espalda grande + pecho). Playa
+  (`r.beach`): camiseta de tirantes con tajo bajo el dorsal del pecho, malla corta, brazos/hombros/rodillas de piel, **descalzo con pies de
+  muñeco** (`footGeo`: empeine, planta con arena, dedo gordo, tobillera), crema de zinc neón en las mejillas, visera/gorra/gafas/cinta.
+  Atlas 1024² solo en alta y 2v2 (`px = 2`); con rol (6v6) o en media/baja 512² (1 MB por muñeco).
+- **Tinta de color**: `OUT_PX` 3,6 (antes 3,2), `OUT_MAX` 0,06, peso `ow` por vértice de doll.js (cara 0, ribetes/gafas 0, orejas 0,6,
+  manos 0,75); baja sin contorno como siempre.
+- **Código muerto**: BORRADO el 11-nov (ver «Revisión y arreglos» abajo). Quedan `HEAD_C/HEAD_RX/HEAD_RY/HEAD_RZ/FOOT_K` y `HAIR_P` como
+  valores de arranque que sobrescribe `applyDoll`. Los mandos del preset (`BK`, `applyBody`) no existen.
+- **Medido**: triángulos por muñeco (alta/media/baja, según peinado) **8.638-9.782 / 3.867-4.515 / 2.538-3.042** (atleta TAJO 10,6-11,1k /
+  4,8-5,0k / 3,7-3,9k). Escena `rally` 1280×720 alta: 55 dibujos, 1,27 M triángulos (grada incluida). Dibujos por muñeco: piel + tinta + sombra.
+  `VB.Doll.reach()`: alcance 2,192 = atleta 2,192 (`reachMax`), reposo 1,935, estirón 1,405, 3,28 cabezas.
+- **Pruebas**: `node tools/simtest.js` completo TODO OK (huella idéntica); `badgetest` (53) y `careertest` TODO OK; `console.sh all` 1280×720 sin
+  errores (23 escenas, `doll` incluida); las 42 capturas de arriba sin errores JS. perf, drive, touchplay y padplay: ver la sección siguiente.
+
+### Revisión y arreglos (11-nov-2026, tras las revisiones visual, de regresión y de la Carrera)
+- **Limpieza**: borrados de players.js los dos bloques `▼▼▼ MUERTO … ▲▲▲` (atlas/hoja de caras/material TAJO, `addToon`, piezas
+  `headShape … chestGeo`) y lo que solo usaban ellos (`limbPts`, `lathe`, `sph`, `cyl`, `torus`, `box`, perfiles `CHEST/ABS/SHORTS_*`,
+  `profPts`, `texOf`, `hexCss`, `V2`): 4.065 → 3.397 líneas. Siguen vivos (estaban dentro del primer bloque y se conservan): `INK`, `QRANK`,
+  `OUT_PX/OUT_MAX/OUT_MIN`, `inkHex`, `toonGradient`, `toon`. Comprobado con grep (nada fuera los usa; doll.js tiene sus propias copias) y
+  con todas las pruebas. `setPose` (13 líneas) ya estaba sin usar antes del muñeco y no estaba marcado: se deja.
+- **Gorra del n.º 1 (playa)**: el casquete de pelo llegaba al ecuador y había una banda oscura bajo la gorra: se veía un aro negro que, con
+  la cabeza inclinada, tapaba los ojos («cara vendada»), y desde detrás una franja en la nuca. Ahora el pelo queda dentro de la gorra salvo
+  en la nuca (`cap(hr, PI*0.44, -0.2, 0.99)`), sin banda, y la visera algo menos levantada (−0,3 rad; antes −0,45 se leía como un cuerno de lado).
+- **Visera con afro (n.º 2 en la playa y rivales con afro + visera)**: el ala nace en el borde del afro, a la altura de la frente y casi plana
+  (−0,15 rad), sin la banda (quedaba dentro de la bola). Antes nacía dentro del pelo y asomaba por arriba o de lado como una pieza suelta.
+- **Afro**: rizos (2 × 9 bultos medio hundidos por detrás, los lados y arriba, fuera de la cuña de la cara + uno arriba): la silueta y el
+  contorno de tinta ya no son una bola lisa tipo casco. Pelo del n.º 2 algo más claro (`0x3a2a1e`, antes `0x241a14`, casi negro).
+- **Tupé (pabellón)**: el 2.º mechón va echado hacia delante y pegado al 1.º (visto por detrás eran dos picos, «orejas de gato»).
+- Capturas de antes/después de las cabezas: `tools/out/arte/doll-fix/h*.png`; finales en `tools/out/arte/doll-final/`.
+- **Pendiente (no arreglado)**: los oficiales (árbitros, jueces de línea, anotadores, fotógrafos; arena.js) siguen con la proporción del
+  atleta antiguo y desentonan al lado del muñeco, sobre todo el juez de línea en primer plano en el saque de playa; el público low-poly
+  (menor). En la celebración del ace de la playa las cabezas de la pareja se meten una en otra (ala de la gorra en el pelo del n.º 2). En la
+  plancha la cara queda contra el suelo (aceptable).
