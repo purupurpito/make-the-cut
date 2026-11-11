@@ -711,6 +711,13 @@
           break;
         case 'switch':
           clearPrompt(); break;
+        case 'libero': // 6v6 (sim applyLibero, lote A D2): con human, el relevo del control: el líbero entra por tu central o tu central vuelve
+          if (e.team === 0 && e.human) {
+            var lIn = !!(e.inP && e.inP.role === 'L');
+            callout(lIn ? 'Entra el líbero por ti: ahora lo llevas tú' : 'Vuelves a pista', 0, 'tip', 2.2);
+            srSay(lIn ? 'Entra el líbero por ti, ahora lo llevas tú' : 'Vuelves a pista');
+          }
+          break;
         case 'ask':   // 6v6: «¡Pídela!» (CAMBIAR / ⇄ / RB)
           if (e.player === g.ctrl) { stampAsk(e, g); if (e.ok) srSay('Pides el balón'); } break;
         case 'miss':
@@ -1139,7 +1146,9 @@
     if (!p || !ctx.camera || !VB.toThree || !ctx.THREE || !el.stamp) return;
     if (!_sv) _sv = new ctx.THREE.Vector3();
     ctx.camera.updateMatrixWorld();
-    var hint = e.ok ? '' : g.mode === 'serve' ? 'tras el saque' : !p.front ? 'en el fondo no rematas' : 'ya han colocado';
+    // (D5: el zaguero que no es líbero sí puede pedir el pipe; si la sim aún no lo admite, el motivo es el fondo. El colocador nunca pide:
+    //  el 2º toque es suyo, D3)
+    var hint = e.ok ? '' : g.mode === 'serve' ? 'tras el saque' : p.role === 'L' ? 'el líbero no remata' : p.role === 'S' ? 'tú colocas' : (g.touchTeam === 0 && g.touches >= 2) || (VB.Sim.atkPhase && VB.Sim.atkPhase(g, 0)) ? 'ya han colocado' : !p.front ? 'en el fondo no rematas' : 'ya han colocado';
     stp.pl = p; stp.ox = 0; stp.oy = 0; stp.wx = p.x; stp.wy = p.y; stp.wz = (p.z || 0) + 2.5; stp.t = e.ok ? 0.62 : 0.8; stp.born = performance.now(); stp.cost = 0; stp.dir = 0;
     el.stampT.textContent = e.ok ? '¡Aquí!' : 'Ahora no';
     el.stampS.textContent = hint; el.stampS.hidden = !hint;
@@ -1172,7 +1181,8 @@
   //   highlight ≥ 0,55): cinta en el tercio inferior (franja alta en pantallas bajas), tras el corte al plano de reacción y
   //   mientras dure ese plano (~1,4 s). Nivel 3 (set/partido): tratamiento central, tras el momento del héroe.
   // Los textos del árbitro de sim («Dobles…», «Falta de saque: 8 segundos», «Ataque sobre el saque»…) salen tal cual.
-  var REF_REASONS = { net: 1, antenna: 1, double: 1, four: 1, under: 1, attackServe: 1, block: 1, serve: 1 };
+  // (6v6: «Ataque / Bloqueo de zaguero», «Ataque / Bloqueo del líbero» y «Falta de posición» —lote A D4— también salen tal cual)
+  var REF_REASONS = { net: 1, antenna: 1, double: 1, four: 1, under: 1, attackServe: 1, block: 1, serve: 1, backAttack: 1, backBlock: 1, position: 1 };
   var pres = null;            // presentación pendiente {t1,t2,t3,cls,dur,kind,gate,rt}
   var lastBig = null;         // última cinta de nivel 2 {team, k} (para no repetir la misma dos puntos seguidos)
   // Ritmo de las cintas grandes: como mucho UNA cada 3 puntos, salvo un punto enorme (highlight ≥ 0,8) o jugado con punto de
@@ -1219,7 +1229,8 @@
     else if (k === 'kill') t1 = me ? (tier > 1 ? '¡Remate!' : 'Remate') : 'Remate de la CPU';
     else if (k === 'tip') t1 = g && g.beach ? (me ? (tier > 1 ? '¡Pokey!' : 'Pokey') : 'Pokey de la CPU') : me ? (tier > 1 ? '¡Dejada!' : 'Dejada') : 'Dejada de la CPU';
     else if (k === 'blockPt') t1 = me ? (tier > 1 ? '¡Punto de bloqueo!' : 'Punto de bloqueo') : 'Bloqueo de la CPU';
-    else if (k === 'srvErr') t1 = /^falta de saque/i.test(txt) ? (me ? 'Error de la CPU' : 'Punto de la CPU') : (me ? 'Falta de saque de la CPU' : 'Falta de saque');
+    // (6v6: la falta de posición del equipo que saca llega como srvErr; su texto va en el subtítulo, el título es el punto)
+    else if (k === 'srvErr') t1 = /^falta de (saque|posición)/i.test(txt) ? (me ? 'Error de la CPU' : 'Punto de la CPU') : (me ? 'Falta de saque de la CPU' : 'Falta de saque');
     else if (k === 'error') t1 = me ? 'Error de la CPU' : 'Punto de la CPU';
     else t1 = me ? (tier > 1 ? '¡Punto!' : 'Punto') : 'Punto de la CPU';
     // ace con roce de recepción: dice por qué (sim lo acredita al saque); el ace limpio no necesita subtítulo. Si el árbitro
@@ -1524,21 +1535,42 @@
   }
 
   /** 6v6: un compañero por su puesto (los dorsales no se leen con la cámara de televisión): «el colocador», «el otro receptor»… */
-  var MATE6 = { S: 'el colocador', OPP: 'el opuesto', MB: 'el central', L: 'el líbero', OH: 'el otro receptor' };
-  function mate6(q) { return (q && MATE6[q.role]) || 'tu compañero'; }
-  /** 6v6, consejo cuando el siguiente toque es de un compañero IA (nt: 1 recepción/defensa, 2 colocación, 3 ataque). */
+  //  («el otro receptor» / «el otro central» cuando es el puesto del humano, g.ctrlBase; lote A: ya no se lleva solo al receptor)
+  var MATE6 = { S: 'el colocador', OPP: 'el opuesto', MB: 'el central', L: 'el líbero', OH: 'el receptor' };
+  function mate6(q) {
+    if (!q || !MATE6[q.role]) return 'tu compañero';
+    var g = ctx && ctx.game, b = g && (g.ctrlBase || g.ctrl);
+    return b && q !== b && q.role === b.role ? MATE6[q.role].replace('el ', 'el otro ') : MATE6[q.role];
+  }
+  /** Nombre del puesto de un jugador en minúscula («colocador», «líbero»). */
+  function mateRole(q) { return (q && ROLE_NAME[q.role] || 'receptor').toLowerCase(); }
+  /** Carriles del colocador humano (D3: la dirección al golpear elige a quién): ← punta, ↑ rápida, → opuesto, ↓ pipe. */
+  var LANES6 = sepHTML(['← punta', '↑ rápida', '→ opuesto', '↓ pipe'], 'v');
+  /** 6v6, consejo cuando el siguiente toque es de un compañero IA (nt: 1 recepción/defensa, 2 colocación, 3 ataque), por el puesto
+   *  del humano y la fase de su sitio (ai6 spot().phase, D7; la marca del suelo —fx— le dice adónde ir, el texto solo qué hacer). */
   function coach6(g, p, nt, gl, touchDev) {
-    var q = g.jobs[0];
-    if (nt === 2) return (q.role === 'S' ? 'Coloca tu colocador' : 'Coloca ' + mate6(q)) + (p.front ? ': prepárate para atacar' + (touchDev ? '' : ' o pide el balón con ' + gl.sw) : ': <b>cubre</b> el ataque');
+    var q = g.jobs[0], ph = phase6(g, p), r = p.role, ask = touchDev ? '' : ' o pídela con ' + gl.sw;
+    // «Juega el líbero: …» (1r toque de un compañero) / «Coloca tu colocador: …» (2º toque: va a colocar)
+    var lead = (nt === 2 ? (q.role === 'S' ? 'Coloca tu colocador' : 'Coloca ' + mate6(q)) : 'Juega ' + mate6(q)) + ': ';
+    if (r === 'L') return nt === 3 ? 'Ataca ' + mate6(q) + ': <b>cubre</b> desde atrás' : 'Llevas al líbero: <b>recibe</b> y defiende';   // D2: el líbero entró por tu central
     if (nt === 3) return 'Ataca ' + mate6(q) + ': <b>cubre</b> el ataque';
-    return 'Juega ' + mate6(q) + ': ve al aro celeste';   // (fx posMark: tu sitio sin balón; el personaje ya no va solo)
+    if (r === 'S') {   // el 2º toque es tuyo (nt 2 con un compañero: colocación de emergencia tras un pase horrible)
+      if (nt === 2) return 'Coloca ' + mate6(q) + ' de emergencia: <b>cubre</b> el ataque';
+      return touchDev ? 'Coloca tú: al punto de colocación' : 'Coloca tú: ve al punto de colocación · ' + LANES6;   // (las flechas o el stick, al golpear)
+    }
+    // zaguero: pipe solo si puede pedirlo (ai6 canPipe: receptor u opuesto; el central que acaba de sacar, sin líbero aún, defiende)
+    if (!p.front) return VB.AI6 && VB.AI6.canPipe && VB.AI6.canPipe(p) ? lead + '<b>pipe</b>' + (touchDev ? ' desde atrás' : ', pídela desde atrás con ' + gl.sw) : lead + '<b>defiende</b> en la marca';   // D5
+    if (r === 'MB') return ph === 'block' ? '<b>Bloquea</b>: salta en la marca' : nt === 2 ? lead + '<b>primer tiempo</b>' + (touchDev ? ', salta ya' : ', pide y salta ya con ' + gl.sw) : lead + 'a la marca, a punto para el <b>primer tiempo</b>';
+    if (nt === 2) return lead + (r === 'OPP' ? '<b>ataca</b> por la derecha' : 'prepárate para atacar') + ask;
+    return lead + 'a la marca' + (ph === 'attack' ? ', batida por la ' + (r === 'OPP' ? 'derecha' : 'izquierda') : '');   // (fx posMark: tu sitio sin balón; el personaje ya no va solo)
   }
   /** Nombres de los equipos en la presentación, la pausa y la hoja final: TÚ / CPU, o los clubes en un partido de Carrera
    *  (g.career de main.js: me/rival = abreviaturas, meName/rivalName = nombres). Solo reescribe al cambiar. */
   function teamNames(cr) {
     // (6v6 con humano, sprint 3: la tarjeta de presentación dice a quién llevas y «Equipo rival» en vez de la pareja)
     var g6 = ctx && ctx.game && !ctx.game.demo && ctx.game.size === 6 && !cr ? ctx.game : null;
-    var a = (cr && cr.me) || 'TÚ', b = (cr && cr.rival) || 'CPU', key = a + '|' + b + '|' + (cr ? cr.rivalName : '') + '|' + (g6 && g6.ctrl ? g6.ctrl.num : '');
+    var p6 = g6 && (g6.ctrlBase || g6.ctrl), r6 = g6 ? (ROLE_NAME[g6.ctrlRole] || 'Receptor').toLowerCase() : '';   // (tu atleta de verdad, aunque ahora lleves al líbero)
+    var a = (cr && cr.me) || 'TÚ', b = (cr && cr.rival) || 'CPU', key = a + '|' + b + '|' + (cr ? cr.rivalName : '') + '|' + (p6 ? p6.num + r6 : '');
     if (last.tnames === key) return; last.tnames = key;
     var q = function (sel) { return document.querySelector(sel); };
     var txt = function (node, first, v) { // primer/último nodo de texto del elemento (el resto son <b>/<i> con cifras)
@@ -1548,7 +1580,7 @@
     var e;
     if ((e = q('.in-t.t0 b'))) e.textContent = a;
     if ((e = q('.in-t.t1 b'))) e.textContent = b;
-    if ((e = q('.in-t.t0 small'))) e.textContent = cr && cr.meName ? cr.meName : g6 && g6.ctrl ? 'N.º ' + g6.ctrl.num + ', receptor' : '+ compañero';
+    if ((e = q('.in-t.t0 small'))) e.textContent = cr && cr.meName ? cr.meName : p6 ? 'N.º ' + p6.num + ', ' + r6 : '+ compañero';
     if ((e = q('.in-t.t1 small'))) e.textContent = cr && cr.rivalName ? cr.rivalName : g6 ? 'Equipo rival' : 'Pareja rival';
     txt(q('.p-team.t0'), true, a + ' '); txt(q('.p-team.t1'), false, ' ' + b);
     txt(q('.es-t.t0'), true, a + ' '); txt(q('.es-t.t1'), false, ' ' + b);
@@ -1712,7 +1744,7 @@
         // para la diana (se quita al bajar, antes de golpear)
         coach = tips && svAim(g) && b.vz > 0 && !(down && wp < HINT_ON) ? (touchDev ? 'Apunta la diana con ' + gl.aim : '<b>Apunta la diana</b> con ' + gl.aim + ': con buen timing el saque va exacto') : '';
       } else if (g.mode === 'serve') {
-        coach = !tips ? '' : g.size === 6 && g.serveNo <= 3 ? (touchDev ? 'Llevas al <b>n.º ' + p.num + '</b>, el receptor' : 'Llevas al <b>n.º ' + p.num + '</b>, el receptor: la IA mueve al resto') // 6v6: a quién llevas (primeros saques)
+        coach = !tips ? '' : g.size === 6 && (g.serveNo <= 3 || p.role === 'L') ? (touchDev ? 'Llevas al <b>n.º ' + p.num + '</b>, el ' + mateRole(p) : 'Llevas al <b>n.º ' + p.num + '</b>, el ' + mateRole(p) + ': la IA mueve al resto') // 6v6: a quién llevas (primeros saques; y siempre al entrar el líbero por ti)
           : sv && sv.team === 0 ? (g.size === 6 ? 'Saca ' + mate6(sv) : 'Saca tu compañero') // modo uno: saca la IA de tu equipo (6v6: por su puesto)
           : (touchDev ? 'Saca la CPU · A recibir' : 'Saca la CPU · Prepárate para la <b>recepción</b>');
       } else if (g.mode === 'rally') {
@@ -1737,18 +1769,19 @@
         if (tips && touchDev) { // táctil: una línea corta (el texto completo no cabe entre marcador y pausa)
           // (el contador de toques ya dice recepción/colocación/ataque)
           if (nt === 1) coach = 'Al círculo y ' + gl.hit;
-          else if (nt === 2) coach = 'Bajo el balón y ' + gl.hit + ', o salta y ' + gl.jset;
+          else if (nt === 2) coach = g.size === 6 && p.role === 'S' ? 'Bajo el balón y ' + gl.hit + '; ' + gl.aim + ' elige a quién' : 'Bajo el balón y ' + gl.hit + ', o salta y ' + gl.jset;   // (6v6 D3: el colocador humano elige el carril)
           else if (nt === 3) coach = aim3(g, p) ? 'Apunta con ' + gl.aim : gl.jump + ' y ' + gl.hit + ' arriba';
-          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump
-            : g.size === 6 ? (p.front ? '<b>Retírate</b> a defender' : '<b>Defiende</b> tu zona')
+          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? (g.size === 6 ? '<b>Bloquea</b>: salta en la marca' : '<b>Bloqueo</b>: a la red y ' + gl.jump)
+            : g.size === 6 ? (p.role === 'L' ? '<b>Defiende</b>: llevas al líbero' : p.front ? '<b>Retírate</b> a la marca' : '<b>Defiende</b> en la marca')
             : '<b>Defiende</b> el círculo' + (one ? '' : ' (' + gl.sw + ' bloqueas tú)');
         } else if (tips) {
           if (nt === 1) coach = '1r toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al círculo y pulsa ' + gl.hit;
-          else if (nt === 2) coach = '2º toque · <b>Colocación</b>: ponte debajo del balón y pulsa ' + gl.hit + '. Si saltas y pulsas ' + gl.jset + ', colocas en el aire';
+          else if (nt === 2) coach = g.size === 6 && p.role === 'S' ? '2º toque · <b>Coloca</b> con ' + gl.hit + ' (o ' + gl.jset + ' en el aire); la dirección elige: ' + LANES6   // (6v6 D3: el carril lo manda el stick o las flechas)
+            : '2º toque · <b>Colocación</b>: ponte debajo del balón y pulsa ' + gl.hit + '. Si saltas y pulsas ' + gl.jset + ', colocas en el aire';
           else if (nt === 3) coach = aim3(g, p) ? '3r toque · <b>Apunta con ' + gl.aim + '</b> y golpea con ' + gl.hit + ' en lo alto'
             : '3r toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
-          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? 'La CPU va a atacar: frente al atacante, ' + gl.jump + ' para <b>bloquear</b>'
-            : g.size === 6 ? (p.front ? 'La CPU va a atacar: <b>retírate</b> a defender, bloquean tus compañeros' : 'La CPU va a atacar: <b>defiende</b> tu zona del fondo')
+          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? (g.size === 6 ? 'La CPU va a atacar: <b>bloquea</b>, salta en la marca con ' + gl.jump : 'La CPU va a atacar: frente al atacante, ' + gl.jump + ' para <b>bloquear</b>')
+            : g.size === 6 ? (p.role === 'L' ? 'La CPU va a atacar: llevas al líbero, <b>defiende</b> en la marca' : p.front ? 'La CPU va a atacar: <b>retírate</b> a la marca, bloquean tus compañeros' : 'La CPU va a atacar: <b>defiende</b> en la marca del fondo')
             : 'La CPU va a atacar: <b>defiende</b> el círculo, tu compañero bloquea' + (one ? '' : ' (' + gl.sw + ' para bloquear tú)');
         }
         // (táctil con ayudas: el aviso de dos opciones ya lo dice; la línea de arriba repetía lo mismo a la vez)
@@ -2571,7 +2604,8 @@
   function goMatch(diff, fmt) {
     if (fmt === undefined && ctx.state !== 'menu') fmt = curFmt();
     var o = fmt ? { format: fmt } : undefined;
-    if (!wipeRun(2, function () { if (diff) ctx.actions.setSetting('difficulty', diff); ctx.actions.startMatch(o); }) && !wp.cb) ctx.actions.startMatch(o);
+    // (6v6, lote A D9: justo después de startMatch, el puesto elegido en Controlar; la sim mueve g.ctrl a ese jugador)
+    if (!wipeRun(2, function () { if (diff) ctx.actions.setSetting('difficulty', diff); ctx.actions.startMatch(o); applyRole6(); }) && !wp.cb) { ctx.actions.startMatch(o); applyRole6(); }
   }
   /** Formato del partido en curso (para repetirlo), o undefined (sin partido humano de Partido rápido). */
   function curFmt() { var g = ctx.game; return g && !g.demo && !g.watch && !g.career ? (g.size === 6 ? '6v6' : '2v2') : undefined; }
@@ -2638,7 +2672,12 @@
     // modo «Control: Uno»: no hay cambio de jugador (ni tecla, ni botón ⇄)
     // 6v6 (sprint 3): el mismo botón pide el balón al colocador («¡Pídela!»)
     // (y moverse: el personaje ya no va solo a su sitio; sin balón, su sitio es el aro celeste del suelo, fx posMark)
-    if (fmt6()) R = R.map(function (r) { return r[1] === 'Cambiar jugador' ? [r[0], 'Pedir el balón <small>(antes de la colocación)</small>'] : r[1] === 'Moverse' ? [r[0], 'Moverse <small>(sin balón, al aro celeste)</small>'] : r; });
+    // (lote A: la marca del suelo cambia con la fase —recibir, bloquear, colocar, atacar, defender—; el colocador coloca con GOLPEAR
+    //  en el suelo o COLOCAR en el aire, y la dirección que mantiene elige a quién: ← punta, ↑ rápida, → opuesto, ↓ pipe)
+    if (fmt6()) {
+      R = R.map(function (r) { return r[1] === 'Cambiar jugador' ? [r[0], 'Pedir el balón <small>(antes de la colocación)</small>'] : r[1] === 'Moverse' ? [r[0], 'Moverse <small>(sin balón, a la marca del suelo)</small>'] : r; });
+      R.splice(2, 0, [R[1][0], 'Colocar <small>(colocador: la dirección elige a quién)</small>']);
+    }
     else if (oneMode()) R = R.filter(function (r) { return r[1] !== 'Cambiar jugador'; });
     return R;
   }
@@ -2665,7 +2704,7 @@
     for (var j = 0; j < R.length; j++) h += '<div><dt>' + R[j][0] + '</dt><dd>' + R[j][1] + '</dd></div>';
     el.ctlGrid.innerHTML = h;
     var note = el.pnCtl.querySelector('.ctl-note');
-    if (note) note.innerHTML = fmt6() ? '<b>Arriba</b> es siempre hacia la red. En el 6 contra 6 llevas al <b>receptor</b> (n.º ' + sixNum() + ') y la IA al resto. Si sueltas la dirección, vuelve solo a su sitio. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.'
+    if (note) note.innerHTML = fmt6() ? '<b>Arriba</b> es siempre hacia la red. En el 6 contra 6 llevas al <b>' + roleName().toLowerCase() + '</b> (n.º ' + sixNum() + ') y la IA al resto. Sin balón, la marca del suelo es tu sitio. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.'
       : oneMode() ? '<b>Arriba</b> es siempre hacia la red. Llevas siempre al <b>n.º ' + oneNum() + '</b> y la IA a tu compañero. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.'
       : '<b>Arriba</b> es siempre hacia la red. El control pasa solo a quien da el siguiente toque. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.';
     if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
@@ -2704,7 +2743,7 @@
     // estrechas «jugadores» (.cv-x) se oculta por CSS y queda «Controlar ‹ a los dos ›»
     ctrlMode: { vals: ['both', 'one'], labels: ['A los dos<span class="cv-x"> jugadores</span>', 'Un jugador'], desc: ['Controlar a los dos jugadores', 'Controlar un jugador'] },
     coachTips: { vals: [true, false], labels: ['Sí', 'No'] },
-    // formato del Partido rápido (sprint 3 del 6v6; main.js ctx.settings.format): 2 contra 2 o 6 contra 6 (llevas al receptor, en el pabellón)
+    // formato del Partido rápido (sprint 3 del 6v6; main.js ctx.settings.format): 2 contra 2 o 6 contra 6 (en el pabellón; el puesto, en Controlar: role6)
     format: { vals: ['2v2', '6v6'], labels: ['2 contra 2', '6 contra 6'] },
     // cámara del 6v6 (camera_input, camera.js; main.js ctx.settings.cam6): detrás de tu jugador (por defecto) o la de televisión. En Ajustes ·
     // Imagen y, en la preparación del 6 contra 6, en el sitio de Escenario (que ahí es fijo)
@@ -2763,18 +2802,45 @@
     if (g && !g.demo && (ctx.state === 'playing' || ctx.state === 'paused' || ctx.state === 'over')) return g.size === 6;
     return ctx.settings.format === '6v6';
   }
-  /** Puesto del humano en 6v6 (sim g.ctrlRole; v1 siempre el receptor). */
+  /** Puesto del humano en 6v6 (sim g.ctrlRole). Lote A (D1/D9): se elige en la fila Controlar de la preparación. */
   var ROLE_NAME = { OH: 'Receptor', S: 'Colocador', OPP: 'Opuesto', MB: 'Central', L: 'Líbero' };
-  /** Dorsal del humano en 6v6: el de su jugador en partido; en el menú, el del receptor (n.º 2, sim ROLES6 + ctrlRole 'OH'). */
-  function sixNum() { var g = ctx && ctx.game; return g && !g.demo && g.size === 6 && g.ctrl && ctx.state !== 'menu' ? g.ctrl.num : 2; }
-  function roleName() { var g = ctx && ctx.game; return ROLE_NAME[(g && !g.demo && g.ctrlRole) || 'OH'] || 'Receptor'; }
+  /** Dorsal del primer jugador de cada puesto en el equipo 0 (sim ROLES6: S 1, OH 2, MB 3, OPP 4). */
+  var ROLE_NUM = { S: 1, OH: 2, MB: 3, OPP: 4 };
+  /** Ayuda corta de la fila Controlar: qué hace ese puesto. */
+  var ROLE_HELP = { OH: 'Recibe, ataca por la izquierda y bloquea', S: 'El 2º toque es tuyo: la dirección elige a quién', OPP: 'Ataca por la derecha y bloquea al receptor rival', MB: 'Bloquea, primer tiempo; el líbero entra por ti atrás' };
+  /** Puestos jugables (sim CTRL_ROLES6, en el orden de la fila: Receptor, Colocador, Opuesto, Central). Con una sim sin
+   *  setCtrlRole solo el receptor: la fila nunca ofrece un puesto que el partido no pueda aplicar. */
+  function roles6() { var S = VB.Sim; return S && S.CTRL_ROLES6 && S.CTRL_ROLES6.length && S.setCtrlRole ? S.CTRL_ROLES6 : ['OH']; }
+  // puesto elegido (localStorage 'voley3d.role6'; main.js no lo conoce: loadSettings descarta las claves que no son suyas)
+  var role6 = 'OH', role6Pend = false;
+  function role6Load() { try { var v = localStorage.getItem('voley3d.role6'); if (v && roles6().indexOf(v) >= 0) role6 = v; } catch (e) { } }
+  function role6Set(r) { role6 = r; try { localStorage.setItem('voley3d.role6', r); } catch (e) { } }
+  /** Al empezar un partido 6v6 de Partido rápido (no demo, espectador ni Carrera): la sim pone el control en el puesto elegido. */
+  function applyRole6() {
+    var g = ctx && ctx.game, S = VB.Sim;
+    if (!g || g.demo) { role6Pend = true; return; }  // el partido aún no ha empezado (telón de arranque): en onGameStart
+    role6Pend = false;
+    if (g.size === 6 && !g.watch && !g.career && S && S.setCtrlRole && roles6().indexOf(role6) >= 0) S.setCtrlRole(g, role6);
+  }
+  /** Dorsal del humano en 6v6: el de su atleta en partido (g.ctrlBase, el de verdad aunque ahora lleve al líbero); en el menú, el del puesto elegido. */
+  function sixNum() { var g = ctx && ctx.game; return g && !g.demo && g.size === 6 && g.ctrl && ctx.state !== 'menu' ? (g.ctrlBase || g.ctrl).num : ROLE_NUM[role6] || 2; }
+  function roleName() { var g = ctx && ctx.game; return ROLE_NAME[(g && !g.demo && g.size === 6 && ctx.state !== 'menu' && g.ctrlRole) || role6] || 'Receptor'; }
+  /** Fase del sitio del humano en el 6v6 (ai6 spot().phase, D7; '' si la sim aún no la da). */
+  function phase6(g, p) { var A = VB.AI6; if (!A || !A.spot || !p) return ''; try { var s = A.spot(g, p); return (s && s.phase) || ''; } catch (e) { return ''; } }
   function optIndex(k) {
     var o = OPT[k], v = ctx.settings[k]; for (var i = 0; i < o.vals.length; i++) if (o.vals[i] === v) return i; return k === 'difficulty' ? 1 : 0; }
   var SLIDERS = { camSens: { min: 0.5, max: 1.5, def: 1 }, sfxVol: { min: 0, max: 1, def: 1 }, musicVol: { min: 0, max: 1, def: 0.75 } };
   function slVal(k) { var c = SLIDERS[k], v = +ctx.settings[k]; return isFinite(v) ? Math.max(c.min, Math.min(c.max, v)) : c.def; }
   function changeOpt(k, d, absIdx, arrowDir) {
-    if ((k === 'arena' || k === 'ctrlMode') && fmt6()) { // 6v6: siempre pabellón y siempre el receptor (el rebote avisa)
-      var lv = k === 'arena' ? el.venueVal : el.ctrlVal; if (lv) restartAnim(lv.parentNode, (arrowDir || d) < 0 ? 'sl-r' : 'sl-l'); uiSound2('arrowEdge', arrowDir || d || 1);
+    if (k === 'ctrlMode' && fmt6()) { // 6v6: la fila Controlar recorre los puestos jugables (role6, no el ajuste ctrlMode)
+      var R6 = roles6(), ri = Math.max(0, R6.indexOf(role6)), rj = absIdx != null ? absIdx : (ri + d + R6.length) % R6.length;
+      if (R6.length < 2 || rj === ri) { if (el.ctrlVal) restartAnim(el.ctrlVal.parentNode, (arrowDir || d) < 0 ? 'sl-r' : 'sl-l'); uiSound2('arrowEdge', arrowDir || d || 1); return; }
+      role6Set(R6[rj]); renderOpts();
+      try { if (VB.Audio && VB.Audio.ui) { if (arrowDir) VB.Audio.ui('arrow', arrowDir, rj, R6.length); else VB.Audio.ui('select', rj, R6.length); } else click(); } catch (e) { }
+      return;
+    }
+    if (k === 'arena' && fmt6()) { // 6v6: siempre pabellón (el rebote avisa)
+      if (el.venueVal) restartAnim(el.venueVal.parentNode, (arrowDir || d) < 0 ? 'sl-r' : 'sl-l'); uiSound2('arrowEdge', arrowDir || d || 1);
       return;
     }
     if (k === 'setPoints' && menuVenue() === 'beach' && !fmt6()) { // playa: 21 / 15 fijos (el aviso lo da el rebote del valor)
@@ -2810,7 +2876,8 @@
   function stepDiff(d) { stepOpt('difficulty', d, el.diffVal); }
   /** Flechas de una fila del menú con valor (dificultad, puntos por set): sin dar la vuelta, rebote en los extremos. */
   function stepOpt(k, d, valEl) {
-    var o = OPT[k], i = k === 'arena' ? Math.max(0, o.vals.indexOf(menuVenue())) : optIndex(k), j = Math.max(0, Math.min(o.vals.length - 1, i + d));
+    var six = k === 'ctrlMode' && fmt6(), R6 = six ? roles6() : null;   // 6v6: Controlar recorre los puestos (role6)
+    var o = OPT[k], i = six ? Math.max(0, R6.indexOf(role6)) : k === 'arena' ? Math.max(0, o.vals.indexOf(menuVenue())) : optIndex(k), j = Math.max(0, Math.min((six ? R6.length : o.vals.length) - 1, i + d));
     if (j === i) { restartAnim(valEl.parentNode, d < 0 ? 'sl-r' : 'sl-l'); uiSound2('arrowEdge', d); return; }
     changeOpt(k, 0, j, d);
   }
@@ -2854,7 +2921,7 @@
     for (var n = 0; n < el.diffLvl.children.length; n++) el.diffLvl.children[n].classList.toggle('on', n <= di);
     // menú: puntos por set (misma fila que la dificultad, sin barras de nivel)
     // menú: escenario (04, Pabellón / Playa; el mismo ajuste `arena` que Ajustes · Imagen · Escenario)
-    // menú: formato (2 contra 2 / 6 contra 6). En 6v6, Escenario (siempre el pabellón) y Controlar (el receptor) quedan fijos
+    // menú: formato (2 contra 2 / 6 contra 6). En 6v6, Escenario queda fijo (siempre el pabellón) y Controlar recorre los puestos
     var fi = optIndex('format'), six = fi === 1;
     if (el.fmtVal && el.fmtVal.textContent !== OPT.format.labels[fi]) {
       el.fmtVal.textContent = OPT.format.labels[fi];
@@ -2903,28 +2970,35 @@
     var pas = el.optPts.querySelectorAll('.arr');
     if (pas.length === 2) { pas[0].classList.toggle('end', vb || pi === 0); pas[1].classList.toggle('end', vb || pi === OPT.setPoints.vals.length - 1); }
     // menú: control (los dos / uno), misma fila que los puntos
-    var ci = optIndex('ctrlMode'), tn = teamNums();
-    var cd = six ? 'Controlar al receptor (la IA lleva al resto del equipo)' : OPT.ctrlMode.desc[ci] + (ci > 0 ? ' (el n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] + ')' : '');
+    // (6v6, lote A: la misma fila recorre los puestos jugables —Receptor, Colocador, Opuesto, Central— y guarda role6)
+    var ci = optIndex('ctrlMode'), tn = teamNums(), R6 = six ? roles6() : null, ri = six ? Math.max(0, R6.indexOf(role6)) : ci, rn = six ? R6.length : OPT.ctrlMode.vals.length;
+    var cd = six ? 'Controlar al ' + roleName().toLowerCase() + ' (n.º ' + sixNum() + '; la IA lleva al resto del equipo)' : OPT.ctrlMode.desc[ci] + (ci > 0 ? ' (el n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] + ')' : '');
     var cl = six ? roleName() : OPT.ctrlMode.labels[ci];
-    el.optCtrl.classList.toggle('lock', six);
+    el.optCtrl.classList.toggle('lock', six && rn < 2);
     if (el.optCtrl.title !== cd) { el.optCtrl.title = cd; el.optCtrl.setAttribute('aria-label', 'Control: ' + cd); }
     if (el.ctrlVal.innerHTML !== cl) {
       el.ctrlVal.innerHTML = cl;
-      if (lastCtrlI >= 0) { var cv = el.ctrlVal.parentNode; cv.classList.remove('sl-l', 'sl-r'); void cv.offsetWidth; cv.classList.add(ci > lastCtrlI ? 'sl-r' : 'sl-l'); }
+      if (lastCtrlI >= 0) { var cv = el.ctrlVal.parentNode; cv.classList.remove('sl-l', 'sl-r'); void cv.offsetWidth; cv.classList.add(ri > lastCtrlI ? 'sl-r' : 'sl-l'); }
     }
-    lastCtrlI = ci;
+    lastCtrlI = ri;
     var cas = el.optCtrl.querySelectorAll('.arr');
-    if (cas.length === 2) { cas[0].classList.toggle('end', six || ci === 0); cas[1].classList.toggle('end', six || ci === OPT.ctrlMode.vals.length - 1); }
+    if (cas.length === 2) {
+      cas[0].classList.toggle('end', ri === 0); cas[1].classList.toggle('end', ri === rn - 1);
+      // lector de pantalla: en 6v6 las flechas dicen el puesto vecino («Colocador»), en 2v2 lo de siempre
+      var al0 = six ? (ri > 0 ? ROLE_NAME[R6[ri - 1]] : 'Puesto anterior') : 'Control anterior', al1 = six ? (ri < rn - 1 ? ROLE_NAME[R6[ri + 1]] : 'Puesto siguiente') : 'Control siguiente';
+      if (cas[0].getAttribute('aria-label') !== al0) cas[0].setAttribute('aria-label', al0);
+      if (cas[1].getAttribute('aria-label') !== al1) cas[1].setAttribute('aria-label', al1);
+    }
     // pastillas (CSS .mi.primary .mi-s .chip; el nivel en amarillo); el lector lee «Partido rápido, Normal, Sets a 25»
     setSep(el.playSub, six ? ['6 contra 6', { t: OPT.difficulty.labels[di], c: 'hi' }, 'Sets a ' + OPT.setPoints.vals[pi], roleName()]
       : [vb ? 'Playa' : 'Pabellón', { t: OPT.difficulty.labels[di], c: 'hi' }, vb ? 'Sets a 21' : 'Sets a ' + OPT.setPoints.vals[pi], ci > 0 ? 'Solo el n.º ' + tn[0] : 'A los dos'], 'c');
     el.optCtrl.classList.toggle('one', ci > 0 && !six);
     // Partido rápido: una línea de ayuda bajo cada fila (con Playa, Puntos explica las reglas de playa)
-    setText(el.fmtHelp, 'fh', six ? 'Equipos completos: llevas al receptor' : 'Tú y tu compañero contra la CPU');
+    setText(el.fmtHelp, 'fh', six ? 'Equipos completos: llevas al ' + roleName().toLowerCase() : 'Tú y tu compañero contra la CPU');
     setText(el.venueHelp, 'vh', six ? 'El 6 contra 6 se juega en el pabellón' : vb ? 'Platja Llarga, vóley playa en pista de 16 × 8' : 'Palau del Mar, pista cubierta de 18 × 9');
     setText(el.diffHelp, 'dh', DIFF_HELP[di] || 'Nivel de la CPU');
     setText(el.ptsHelp, 'ph', vb ? 'Reglas de playa: sets a 21 y el 3r a 15' : 'Al mejor de 3 sets; el 3r, a ' + Math.min(15, OPT.setPoints.vals[pi]));
-    setText(el.ctrlHelp, 'ch', six ? 'Llevas al receptor (n.º ' + sixNum() + '); la IA mueve al resto' : ci > 0 ? 'Llevas al n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] : 'El control pasa a quien va a tocar');
+    setText(el.ctrlHelp, 'ch', six ? (ROLE_HELP[role6] || 'Llevas al ' + roleName().toLowerCase() + ' (n.º ' + sixNum() + '); la IA mueve al resto') : ci > 0 ? 'Llevas al n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] : 'El control pasa a quien va a tocar');
   }
   /** Una línea por nivel de dificultad (fila Dificultad de Partido rápido). */
   var DIFF_HELP = ['Para empezar: la CPU saca suave y falla más', 'Un rival equilibrado', 'Ataca fuerte y defiende casi todo', 'Casi no falla: solo para expertos'];
@@ -3286,7 +3360,7 @@
       }
     },
     init: function (c) {
-      ctx = c; loadRecord();
+      ctx = c; loadRecord(); role6Load();   // (6v6: puesto elegido en Controlar, voley3d.role6)
       cacheEls(); if (ctx.isTouch) el.app.classList.add('is-touch');
       if (ctx.debug) el.menu.classList.remove('intro'); // en depuración no hay relevo desde el telón
 
@@ -3462,6 +3536,7 @@
       if (s === 'menu') { panel = null; tutStop(); if (prev && prev !== 'menu') menuReset(); } // (al volver de un partido; no en los setState('menu') del arranque)
     },
     onGameStart: function (g) {
+      if (role6Pend && g && !g.demo) applyRole6();   // 6v6: goMatch llegó antes de que empezara el partido (telón de arranque)
       last = {}; banT = 0; hideBanner(); promptCur = ''; promptHold = 0; // las estadísticas se reinician con 'newMatch'
       pres = null; pendCourt = null; courtNext = null; newSetShown = 0; lastSub = ''; lastBig = null; bigGap = 9; atSP = false; lastBn2 = ''; bugT = 0; el.pbug.className = ''; held = null;
       coachSeen = {}; guideDone = {}; guideT = 0; el.guide.className = '';

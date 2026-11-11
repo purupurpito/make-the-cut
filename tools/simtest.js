@@ -54,13 +54,14 @@ const POINT_TEXTS = {
   out: ['Saque fuera', 'Remate fuera', 'Dejada fuera', 'Pokey fuera', 'Recepción fuera', 'Defensa fuera', 'Colocación fuera', 'Balón fuera', 'Toca el bloqueo y sale fuera', 'Le da en el cuerpo y sale fuera', 'Saque a la red', 'Balón a la red'],
   antenna: ['Balón toca la antena', 'Balón por fuera de la antena'], under: ['Balón por debajo de la red'],
   double: ['Dobles: el mismo jugador toca dos veces', 'Dobles en la colocación de dedos'], four: ['4 toques'], net: ['Toque de red'], block: ['Bloqueo del saque'],
-  attackServe: ['Ataque sobre el saque'], serve: ['Falta de saque: 8 segundos', 'Falta de saque: 5 segundos', 'Falta de saque: el balón cae sin golpearlo']
+  attackServe: ['Ataque sobre el saque'], serve: ['Falta de saque: 8 segundos', 'Falta de saque: 5 segundos', 'Falta de saque: el balón cae sin golpearlo'],
+  position: ['Falta de posición'] // (solo 6v6, lote A: el humano solapado en el golpe de saque; la IA nunca)
 };
 const badText = new Set();
 // Señales oficiales del árbitro (SIM-02, point.signal): lista cerrada
 const SIGNALS = ['in', 'out', 'touched', 'four', 'double', 'net', 'under', 'antenna', 'attackFault', 'delay8', 'serveFault'];
 const SIG_OF = { in: ['in'], out: ['out', 'touched'], four: ['four'], double: ['double'], net: ['net'], under: ['under'], antenna: ['antenna'],
-  attackServe: ['attackFault'], block: ['attackFault'], serve: ['delay8', 'serveFault'] };
+  attackServe: ['attackFault'], block: ['attackFault'], serve: ['delay8', 'serveFault'], position: ['attackFault', 'serveFault'] }; // (position reutiliza una señal ya pintada)
 const isInt0 = v => Number.isInteger(v) && v >= 0;
 /** Comprueba los campos de presentación de un evento point (SIM-01/02/03/05). ctx = {streak, setPoint, matchPoint (del
  *  serveReady), eight}. Además de cada campo por separado, RECOMPONE el highlight con S.highlightOf a partir de lo que el test
@@ -364,9 +365,13 @@ function gapAim(g, p, out) {
 }
 /** opt.six (6v6 con humano, 11-nov-2026): el personaje ya no se mueve solo, así que sin balón suyo el bot va él mismo a su sitio
  *  de la formación (VB.AI6.spot: recepción, batida, cobertura, bloqueo de zona, defensa perímetro) con su reacción, su error de
- *  lectura y la inercia del stick, y solo sube a bloquear si su sitio es de bloqueo. Sin opt, el bot de siempre (matriz 2v2). */
+ *  lectura y la inercia del stick, y solo sube a bloquear si su sitio es de bloqueo. Sin opt, el bot de siempre (matriz 2v2).
+ *  opt.role (lote A): puesto del humano. Con 'S' (colocador) el 2º toque de su equipo es suyo: sigue yendo a su sitio (VB.AI6.spot,
+ *  el punto de colocación) y de ahí al balón cuando lo lee (pase alto: poco error), y al golpear de 2º empuja el stick en una de las
+ *  4 direcciones (al azar: VB.AI6.laneOf elige el carril). Los demás puestos, igual que sin role. */
 function makeBot(bp, seed, opt) {
-  const six = !!(opt && opt.six);
+  const six = !!(opt && opt.six), role = six && opt.role || '';
+  const LANES = [[1, 0], [-1, 0], [0, 1], [0, -1]]; let laneV = null; // stick del colocador bot en su 2º toque (mundo; laneOf lo pasa a local)
   const rng = S._makeRng(seed), gauss = () => (rng() + rng() + rng() + rng() - 2) * 1.732;
   const mv = [0, 0], want = [0, 0], aimv = [0, 0], out = { move: mv, hit: false, jump: false, switchPlayer: false };
   let stamp = -9, lead = 0, jlead = 0, eu = 0, ev = 0, presses = 0, useAim = false, useGap = false, serveWait = 0;
@@ -416,12 +421,17 @@ function makeBot(bp, seed, opt) {
       if (bp.misSwitch && rng() < bp.misSwitch) out.switchPlayer = true;
     }
     const since = g.time - g.lastTouchT, job = g.jobs[0] === p;
-    const sp6 = six && !job ? VB.AI6.spot(g, p) : null, sp6x = sp6 ? sp6.x : 0, sp6y = sp6 ? sp6.y : 0, sp6b = !!(sp6 && sp6.block);
+    const set2 = role === 'S' && job && g.touchTeam === 0 && g.touches === 1; // colocador bot: el 2º toque es suyo
+    const sp6 = six && (!job || set2) ? VB.AI6.spot(g, p) : null, sp6x = sp6 ? sp6.x : 0, sp6y = sp6 ? sp6.y : 0, sp6b = !!(sp6 && sp6.block);
     const blocks = six ? sp6b : bp.block || naive || g.defRole === 'block'; // con CAMBIAR en la colocación rival el juego le pide bloquear
     if (g.swingLive && p.z > 0 && (useGap || useAim)) out.move = aimv; // en el aire mantiene la dirección mientras dura el gesto
     let tx = p.x, ty = p.y;
     const attack = job && g.touchTeam === 0 && g.touches === 2 && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5;
-    if (job) {
+    if (set2) { // colocador: en su punto de colocación hasta leer el pase; luego al balón (si el pase viene a él, se queda quieto)
+      const pr = g.pr1;
+      if (since < react || Math.hypot(pr.x - sp6x, pr.y - sp6y) < 0.7) { tx = sp6x; ty = sp6y; } else { tx = pr.x + 0.15; ty = pr.y; }
+      tx += eu * bp.posErr * 0.15; ty += ev * bp.posErr * 0.15;
+    } else if (job) {
       const pr = attack ? g.pr3 : g.pr1;
       if (attack) { tx = pr.x + 0.35 * sd; ty = pr.y; } else { tx = pr.x + 0.15; ty = pr.y; }
       // error de lectura: crece con el vuelo que queda y la distancia; en profundidad (eje de la cámara) es mayor
@@ -446,10 +456,13 @@ function makeBot(bp, seed, opt) {
       const near = Math.hypot(b.x - p.x, b.y - p.y) < 2.6;
       if (near && !(attack && jumpOk && p.z === 0 && w.jumpT > -0.2) && presses < 2 && !g.swingLive && w.t <= lead) {
         out.hit = true; presses++;
-        if (useGap && p.z > 0.25) { gapAim(g, p, aimv); out.move = aimv; } // remate: busca el hueco
+        if (set2) { laneV = LANES[Math.floor(rng() * 4) % 4]; out.move = laneV; } // colocador: elige carril con el stick (laneOf)
+        else if (useGap && p.z > 0.25) { gapAim(g, p, aimv); out.move = aimv; } // remate: busca el hueco
         else if (useAim) out.move = aimv;
       }
     }
+    if (set2 && laneV && g.swingLive) out.move = laneV; // mantiene el stick hasta que el gesto llega al balón (sim.hit lee la dirección ahí)
+    else if (!set2) laneV = null;
     // bloqueo: salta cuando VE despegar al rematador rival (con su reacción y su error de timing)
     if (blocks && !job && p.z === 0 && Math.abs(p.x) < 1.2 && g.touchTeam === 1 && g.touches === 2) {
       const att = g.teams[1].some(q => q.z > 0.35 && q.vz < 1.5 && Math.abs(q.x) < 4);
@@ -2037,10 +2050,11 @@ if (ONLY !== 'matrix') {
 
   // 6v6 CPU contra CPU (sprint 2, notes/diseno-6v6-carrera.md §4 «objetivos medibles»): VB.AI6 con rotaciones, líbero,
   // formaciones y reglas de zaguero. Side-out 58-66 %, mediana del rally 5-8 s, 0 faltas de posición y de zaguero de la IA,
-  // líbero nunca delante ni sacando, >= 70 % de 2.os toques del colocador; sin excepciones ni NaN.
+  // líbero nunca delante ni sacando, >= 70 % de 2.os toques del colocador; sin excepciones ni NaN. Lote A (D5): hay remates «pipe»
+  // (tempo 'pipe' del colocador: zaguero que despega detrás de 3 m) y siguen las 0 faltas de zaguero.
   if (ONLY !== 'matrix') {
     const f0 = failures, NS6 = 16, MIN6 = 15; // ~1200 puntos: con menos, el side-out baila ±3 %
-    let pts = 0, so = 0, sec = 0, secS = 0, ovl = 0, back = 0, libBad = 0, libSrv = 0, libEv = 0, rotEv = 0, sideEv = 0, nan = 0, ex = null;
+    let pts = 0, so = 0, sec = 0, secS = 0, ovl = 0, back = 0, libBad = 0, libSrv = 0, libEv = 0, rotEv = 0, sideEv = 0, nan = 0, ex = null, atkBack = 0;
     const rallies = [], tempos = {}, atkRole = {}, t0 = Date.now();
     try {
       for (let s = 0; s < NS6; s++) {
@@ -2050,7 +2064,7 @@ if (ONLY !== 'matrix') {
           for (const e of ev) {
             if (e.type === 'point') { pts++; if (e.sideout) so++; rallies.push(e.rallyTime); if (e.reason === 'backAttack' || e.reason === 'backBlock') back++; }
             else if (e.type === 'hit' && e.touch === 2) { sec++; if (e.player.role === 'S') secS++; if (e.kind === 'set' && g.setPlan[e.team]) tempos[g.setPlan[e.team].tempo] = (tempos[g.setPlan[e.team].tempo] || 0) + 1; }
-            else if (e.type === 'hit' && e.kind === 'spike') atkRole[e.player.role] = (atkRole[e.player.role] || 0) + 1;
+            else if (e.type === 'hit' && e.kind === 'spike') { atkRole[e.player.role] = (atkRole[e.player.role] || 0) + 1; if (!e.player.front) atkBack++; }
             else if (e.type === 'serveReady' && (e.player.role === 'L' || e.player.bench)) libSrv++;
             else if (e.type === 'libero') libEv++;
             else if (e.type === 'rotation') rotEv++;
@@ -2075,7 +2089,10 @@ if (ONLY !== 'matrix') {
       ['(e) 0 faltas de zaguero (ataque/bloqueo) de la IA', back === 0, { faltas: back }],
       ['(f) líbero nunca delante ni sacando', libBad === 0 && libSrv === 0 && libEv > 0, { delante: libBad, sacando: libSrv, cambiosLibero: libEv }],
       ['(g) >= 70 % de 2.os toques del colocador', setPct >= 70, { colocador: setPct.toFixed(1) + '%' }],
-      ['(h) evento rotation en cada cambio de saque', rotEv === sideEv && rotEv > 0, { rotation: rotEv, sideout: sideEv }]
+      ['(h) evento rotation en cada cambio de saque', rotEv === sideEv && rotEv > 0, { rotation: rotEv, sideout: sideEv }],
+      // (i) pipe (lote A, D5): el colocador en sistema reparte también al zaguero (peso bajo, FORM.setW.pipe): con ~1300 puntos salen
+      // decenas; se exige > 0 (y (e) sigue en 0: el zaguero despega detrás de 3 m)
+      ['(i) hay remates pipe (> 0)', (tempos.pipe || 0) > 0, { pipe: tempos.pipe || 0, rematesDeZaguero: atkBack }]
     ];
     const bad = res.filter(r => !r[1]);
     if (bad.length) fail('6v6 CPU contra CPU: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
@@ -2089,7 +2106,9 @@ if (ONLY !== 'matrix') {
   // eventos switch, el colocador le coloca, toques del humano por rally >= 0,5 (novato en Fácil) y >= 0,6 (medio en Normal; objetivo
   // del diseño 0,7 como OH), jugable en Fácil (novato >= 45 % de puntos); con el humano quieto: no se mueve ni salta ni golpea solo,
   // los compañeros no le quitan los balones de su zona y el colocador no se la da; «¡Pídela!» (CAMBIAR) guarda g.ask6 y sube su peso
-  // en VB.AI6.chooseSet.
+  // en VB.AI6.chooseSet. Lote A (posiciones jugables, rotaciones reales): (h) los 4 puestos (CTRL_ROLES6) con bot, (i) central humano
+  // que sale por el líbero y lo lleva, (j) colocador humano (2º toque suyo; laneOf/chooseSet con carril), (k) 6 formaciones de recepción
+  // legales, (m) falta de posición del humano en Difícil (en Fácil no se mueve). El pipe (l) se mide en «6v6 CPU contra CPU» (i).
   if (ONLY !== 'matrix') {
     const f0 = failures, res = [], t0 = Date.now(), NS = 3, MINH = 6;
     for (const [bn, df, minT] of [['novato', 'easy', 0.5], ['medio', 'normal', 0.6]]) {
@@ -2182,6 +2201,189 @@ if (ONLY !== 'matrix') {
         VB6.chooseSet(h, st); if (h.setPlan[0].to === h.ctrl) cnt[k]++;
       }
       res.push(['(d) «¡Pídela!»: CAMBIAR guarda g.ask6 solo en su ventana (askOk) y el colocador elige más al humano', asked && cnt[1] - cnt[0] >= 30, { ask6: asked, ahoraNo: noOk, sinPedir: cnt[0], pidiendo: cnt[1] }]);
+    }
+    { // (h) puestos jugables (lote A, D1): CTRL_ROLES6 = OH, S, OPP, MB (el líbero no se elige); g.ctrl = el 1r de ese puesto (dorsales
+      // 2/1/4/3) y g.ctrlBase su atleta de verdad; setCtrlRole cambia de puesto en caliente (al central sustituido le toca el líbero).
+      // 3 min de bot medio por puesto (makeBot {six, role}): sin excepciones ni NaN, 0 switch, se juegan puntos (~5/min: >= 8) y el humano
+      // toca algún balón
+      const NUM6 = { OH: 2, S: 1, OPP: 4, MB: 3 }, ROLES = S.CTRL_ROLES6 || [], perRole = {};
+      let okRoles = ROLES.length === 4 && ['OH', 'S', 'OPP', 'MB'].every(r => ROLES.indexOf(r) >= 0), ex = null;
+      try {
+        for (const r of ROLES) {
+          const g = S.createGame({ format: '6v6', seed: 960, difficulty: 'normal', ctrl: 'one', ctrlRole: r, stats: true }), base = g.ctrl;
+          const ok0 = g.ctrlRole === r && base.role === r && base.num === NUM6[r] && g.ctrlBase === base;
+          const r2 = ROLES[(ROLES.indexOf(r) + 1) % ROLES.length], c2 = S.setCtrlRole(g, r2);
+          const okSw = !!c2 && c2 === g.ctrl && g.ctrlRole === r2 && g.ctrlBase && g.ctrlBase.role === r2 && g.ctrlBase.num === NUM6[r2] && (g.ctrl === g.ctrlBase || g.ctrl === g.libero[0]);
+          S.setCtrlRole(g, r);
+          const okBack = g.ctrlBase === base && g.ctrlRole === r;
+          const bot = makeBot(BOTS.medio, 81, { six: true, role: r }), ev = [];
+          let pts = 0, ht = 0, sw = 0, nan = 0;
+          for (let i = 0; i < 3 * 60 * 120; i++) {
+            S.step(g, DT, bot(g)); ev.length = 0; S.drainEvents(g, ev);
+            for (const e of ev) { if (e.type === 'point') pts++; else if (e.type === 'hit' && e.human) ht++; else if (e.type === 'switch') sw++; }
+            if (i % 120 === 0) for (const p of g.players) if (!Number.isFinite(p.x + p.y + p.z)) nan++;
+          }
+          perRole[r] = { dorsal: base.num, cambia: okSw && okBack, puntos: pts, toques: ht, switch: sw, nan };
+          okRoles = okRoles && ok0 && okSw && okBack && pts >= 8 && ht > 0 && sw === 0 && nan === 0;
+        }
+      } catch (e) { ex = e && e.stack || String(e); }
+      res.push(['(h) 4 puestos jugables (OH, S, OPP, MB; dorsales 2/1/4/3; setCtrlRole cambia): 3 min de bot por puesto sin excepciones, NaN ni switch', okRoles && !ex, { puestos: ROLES, porPuesto: perRole, ex }]);
+    }
+    { // (i) central humano (D2): cuando el líbero entra por su central, el humano lleva al líbero (g.ctrl === g.libero[0]) y el evento
+      // libero del equipo 0 lleva human: true; al volver su central, g.ctrl === g.ctrlBase. Mientras lleva al líbero no saca ni bloquea
+      // (reglas del líbero). 10 min: con 6 rotaciones por vuelta, al central le toca salir y volver varias veces
+      let asLib = 0, backMB = 0, libHum = 0, libSrv = 0, libBlk = 0, wasLib = false, pts = 0, ex = null;
+      try {
+        const g = S.createGame({ format: '6v6', seed: 970, difficulty: 'normal', ctrl: 'one', ctrlRole: 'MB', stats: true }), bot = makeBot(BOTS.medio, 83, { six: true, role: 'MB' }), ev = [];
+        for (let i = 0; i < 10 * 60 * 120; i++) {
+          S.step(g, DT, bot(g)); ev.length = 0; S.drainEvents(g, ev);
+          if (g.ctrl === g.libero[0]) { asLib++; wasLib = true; } else if (wasLib && g.ctrl === g.ctrlBase) backMB++;
+          for (const e of ev) {
+            if (e.type === 'point') pts++;
+            else if (e.type === 'libero' && e.team === 0 && e.human) libHum++;
+            else if (e.type === 'serveReady' && e.player === g.ctrl && g.ctrl.role === 'L') libSrv++;
+            else if (e.type === 'block' && e.human && g.ctrl.role === 'L') libBlk++;
+          }
+        }
+      } catch (e) { ex = e && e.stack || String(e); }
+      res.push(['(i) central humano: el líbero entra por él (lleva al líbero, evento libero human) y vuelve; de líbero no saca ni bloquea',
+        !ex && asLib > 0 && backMB > 0 && libHum > 0 && libSrv === 0 && libBlk === 0, { pasosDeLibero: asLib, pasosDeVuelta: backMB, eventosLiberoHumano: libHum, saquesDeLibero: libSrv, bloqueosDeLibero: libBlk, puntos: pts, ex }]);
+    }
+    { // (j) colocador humano (D3): el 2º toque es suyo (humanOwns ampliado: a < 3 m de él o en la zona de ataque). Con el bot medio que va
+      // al punto de colocación, >= 60 % de los 2.os toques de su equipo son suyos (el resto: pases horribles que juega el colocador de
+      // emergencia, y balones que el bot no llega a tocar). laneOf (puro, local del equipo: yl = side·my, d = side·mx) y
+      // chooseSet(g, p, lane) eligen el carril del stick cuando hay atacante válido: 200 semillas × 4 carriles, sin azar en el carril
+      // (se admite 2 % por si el bloqueo rival anula al atacante del carril). Y la colocación en SALTO con carril por la sim entera
+      // (sim.hit, rama jset → laneOf → chooseSet, revisión del lote A): saca el rival, en el 1r toque del equipo humano el balón se reconduce
+      // a un pase limpio al punto de colocación (en sistema), el colocador humano se planta debajo, salta con el balón a 0,46 s de los 3 m
+      // y pulsa COLOCAR en el aire con el stick en el carril (módulo 1): colocación en salto humana de 2º toque con el tempo del carril
+      // (pipe: destino detrás de los 3 m, d >= 3,3). Con el stick a 0,3 (zona muerta de D3: aim va normalizado y g.swingLen le devuelve el
+      // módulo) el carril NO se fuerza: hacia atrás, el pipe sale como mucho la mitad de las veces (su peso es 0,45 de ~3,1)
+      let sec0 = 0, secH = 0, pts = 0, nan = 0, ex = null;
+      try {
+        for (let s = 0; s < 2; s++) {
+          const g = S.createGame({ format: '6v6', seed: 980 + s, difficulty: 'normal', ctrl: 'one', ctrlRole: 'S', stats: true }), bot = makeBot(BOTS.medio, 85 + s, { six: true, role: 'S' }), ev = [];
+          for (let i = 0; i < 6 * 60 * 120; i++) {
+            S.step(g, DT, bot(g)); ev.length = 0; S.drainEvents(g, ev);
+            for (const e of ev) { if (e.type === 'point') pts++; else if (e.type === 'hit' && e.team === 0 && e.touch === 2) { sec0++; if (e.human) secH++; } }
+            if (i % 120 === 0) for (const p of g.players) if (!Number.isFinite(p.x + p.y + p.z)) nan++;
+          }
+        }
+      } catch (e) { ex = e && e.stack || String(e); }
+      const VB6 = VB.AI6, sd0 = S.side(0), got = {}, NL = 200, jget = {}, jn = {}, jdead = { n: 0, pipe: 0 }, NJ = 10;
+      let laneOk = 0, laneN = 0, exL = null;
+      try {
+        // laneOf: stick (mundo) → carril local; |stick| < 0,4 → null; a igualdad manda el lateral. El equipo 1 con el stick en espejo da lo mismo
+        const LANE_IN = [[0, -1, 'left'], [0, 1, 'right'], [-1, 0, 'mid'], [1, 0, 'back'], [0.2, 0.2, null], [-0.5, -0.5, 'left'], [0.5, 0.3, 'back'], [-0.3, 0.6, 'right']];
+        const g = S.createGame({ format: '6v6', seed: 1, ctrl: 'one', ctrlRole: 'S' }), st = g.ctrl, q1 = g.teams[1][0];
+        for (const [mx, my, want] of LANE_IN) { laneN += 2; if (VB6.laneOf(g, st, sd0 * mx, sd0 * my) === want) laneOk++; if (VB6.laneOf(g, q1, -sd0 * mx, -sd0 * my) === want) laneOk++; }
+        const TEMPO = { left: 'high', right: 'shoot', mid: 'quick', back: 'pipe' }, ROLE_L = { left: 'OH', right: 'OPP', mid: 'MB', back: 'OH' };
+        for (const lane of ['left', 'right', 'mid', 'back']) {
+          got[lane] = 0;
+          for (let n = 0; n < NL; n++) {
+            const h = S.createGame({ format: '6v6', seed: 700 + n, ctrl: 'one', ctrlRole: 'S' }), hs = h.ctrl;
+            if (lane === 'back') { S.rotate(h, 0); S.rotate(h, 0); S.applyLibero(h); } // 2 rotaciones: OH1 en zona 6 (zaguero): candidato al pipe
+            h._pq6 = [{ q: 0.9, t: h.time }, { q: 0, t: -9 }]; hs.x = sd0 * 0.9; hs.y = sd0 * 0.9; // en sistema: recepción buena y colocador en su punto
+            VB6.chooseSet(h, hs, lane); const P = h.setPlan[0];
+            if (P && P.tempo === TEMPO[lane] && P.to && P.to.role === ROLE_L[lane] && (lane === 'back' ? !P.to.front : P.to.front)) got[lane]++;
+          }
+        }
+        // colocación en salto con carril por la sim entera (ver arriba). Devuelve {e, P} (evento hit del 2º toque y g.setPlan[0]) o null si
+        // el punto acaba antes (saque fallado, ace…). En la rotación inicial el colocador tiene los 4 carriles: OH1 en 2, MB1 en 3, OPP en 4
+        // y OH2 en 5 (zaguero: pipe)
+        const LANE_V = { left: [0, -1], right: [0, 1], mid: [-1, 0], back: [1, 0] };
+        const jsetLane = (seed, lane, len) => {
+          const h = S.createGame({ format: '6v6', seed, difficulty: 'normal', ctrl: 'one', ctrlRole: 'S', serveClock: false }), hs = h.ctrl;
+          h.serving = 1; S._setupServe(h); S.drainEvents(h);
+          const inp = { move: [LANE_V[lane][0] * sd0 * len, LANE_V[lane][1] * sd0 * len], hit: false, jump: false, jset: false, switchPlayer: false };
+          let passed = false;
+          for (let i = 0; i < 120 * 12; i++) {
+            inp.jump = inp.jset = false;
+            if (passed) {
+              if (hs.z === 0 && hs.vz === 0) { hs.x = h.pr3.x; hs.y = h.pr3.y; if (h.pr3.t > 0 && h.pr3.t <= 0.46) inp.jump = true; }
+              else if (hs.z > 0.2 && hs.actionT > 0.12) inp.jset = true;
+            }
+            S.step(h, DT, passed ? inp : null);
+            for (const e of S.drainEvents(h)) {
+              if (e.type === 'point' || e.type === 'serveReady') return null;
+              if (!passed && e.type === 'hit' && e.team === 0 && e.touch === 1) {
+                passed = true; const b = h.ball, T = 1.1, zt = 3.1;
+                b.vx = (sd0 * 0.9 - b.x) / T; b.vy = (sd0 * 0.9 - b.y) / T; b.vz = (zt - b.z + 0.5 * C.G * T * T) / T; b.dip = 0; b.spin = 0; b.wobA = 0;
+                h._pq6[0].q = 0.9; h._pq6[0].t = h.time;
+              } else if (passed && e.type === 'hit' && e.team === 0 && e.touch === 2) return { e, P: h.setPlan[0] };
+            }
+          }
+          return null;
+        };
+        for (const lane of ['left', 'right', 'mid', 'back']) {
+          jget[lane] = 0; jn[lane] = 0;
+          for (let n = 0; n < NJ; n++) {
+            const r = jsetLane(700 + n, lane, 1); if (!r) continue; jn[lane]++;
+            const P = r.P;
+            if (r.e.human && r.e.jset && r.e.shot === 'jump' && P && P.tempo === TEMPO[lane] && P.to && P.to.role === ROLE_L[lane] && (lane === 'back' ? !P.to.front && P.d >= 3.3 : P.to.front)) jget[lane]++;
+          }
+        }
+        for (let n = 0; n < NJ; n++) { const r = jsetLane(700 + n, 'back', 0.3); if (!r) continue; jdead.n++; if (r.e.human && r.e.jset && r.P && r.P.tempo === 'pipe') jdead.pipe++; }
+      } catch (e) { exL = e && e.stack || String(e); }
+      const jOk = ['left', 'right', 'mid', 'back'].every(l => jn[l] >= 5 && jget[l] === jn[l]) && jdead.n >= 5 && jdead.pipe <= 0.5 * jdead.n;
+      res.push(['(j) colocador humano: >= 60 % de los 2.os toques de su equipo son suyos; laneOf y chooseSet(g, p, lane) eligen el carril pedido; colocación en salto con carril (jset) por la sim, zona muerta 0,4',
+        !ex && !exL && !nan && sec0 > 20 && secH / sec0 >= 0.6 && laneOk === laneN && ['left', 'right', 'mid', 'back'].every(l => got[l] >= 0.98 * NL) && jOk,
+        { segundosToques: sec0, suyos: pct(secH, sec0), puntos: pts, laneOf: laneOk + '/' + laneN, carril: got, jsetCarril: ['left', 'right', 'mid', 'back'].map(l => l + ' ' + jget[l] + '/' + jn[l]).join(', '), stick03atras: 'pipe ' + jdead.pipe + '/' + jdead.n, ex: ex || exL }]);
+    }
+    { // (k) 6 formaciones de recepción del 5-1 (D6): en cada rotación × 2 equipos, con el rival sacando (placeServe tras applyLibero, como
+      // setupServe), 0 solapamientos en los dos equipos (overlapCount), los 3 receptores (L + los 2 OH) en línea a d >= 5 y el colocador
+      // escondido, nunca ENTRE los receptores: o al menos 1 m más cerca de la red que el receptor más adelantado (delantero en la red,
+      // zaguero penetrando detrás de su delantero), o fuera del abanico lateral de los 3 (con el colocador en zona 1 el receptor delantero
+      // está en zona 2 y la legalidad le obliga a quedarse detrás: FORM.RECV le esconde en la esquina del fondo, 1 m más al lado)
+      let legal = 0, recvOk = 0, setOk = 0, n = 0, ex = null; const detail = [];
+      try {
+        for (let t = 0; t < 2; t++) for (let r = 0; r < 6; r++) {
+          const g = S.createGame({ format: '6v6', seed: 1000 + r, ctrl: 'one' }), o = 1 - t;
+          for (let k = 0; k < r; k++) S.rotate(g, t);
+          g.serving = o; S.applyLibero(g);
+          const sv = S.serverOf(g, o); g.mode = 'serve'; g.server = sv;
+          VB.AI6.placeServe(g, o, sv); n++;
+          const ov = S.overlapCount(g, t) + S.overlapCount(g, o); if (ov === 0) legal++;
+          const sd = S.side(t), rec = g.teams[t].filter(p => p.role === 'L' || p.role === 'OH'), st = VB.AI6.setterOf(g, t);
+          const dMin = rec.length ? Math.min(...rec.map(p => p.x * sd)) : 0, dSet = st ? st.x * sd : 99;
+          const yMax = rec.length ? Math.max(...rec.map(p => Math.abs(p.y * sd))) : 0, ySet = st ? Math.abs(st.y * sd) : 0;
+          if (rec.length === 3 && dMin >= 5) recvOk++;
+          if (dSet <= dMin - 1 || ySet >= yMax + 0.5) setOk++;
+          detail.push('e' + t + 'r' + r + ' ' + ov + '/' + dMin.toFixed(1) + '/' + dSet.toFixed(1) + (dSet > dMin - 1 ? '(lado ' + ySet.toFixed(1) + '>' + yMax.toFixed(1) + ')' : ''));
+        }
+      } catch (e) { ex = e && e.stack || String(e); }
+      res.push(['(k) 6 formaciones de recepción legales × 2 equipos: 0 solapamientos, 3 receptores (L + 2 OH) a d >= 5 y el colocador nunca entre ellos',
+        !ex && n === 12 && legal === 12 && recvOk === 12 && setOk === 12, { legales: legal + '/12', receptores: recvOk + '/12', colocador: setOk + '/12', 'solapes/dReceptores/dColocador': detail.join(', '), ex }]);
+    }
+    { // (m) falta de posición del humano (D4): en Difícil el humano que no saca puede moverse durante el saque rival; el receptor zaguero
+      // empujado hacia la red (equipo 0 juega en x > 0: delante = x menor) hasta pasar a su delantero → al golpe de saque, punto para el
+      // rival con reason 'position' («Falta de posición», señal ya existente). En Fácil el mismo stick no le mueve (placeServe le deja
+      // en su sitio legal) y no se pita. La IA sigue con 0 solapamientos en los dos partidos. Se le da al sacador rival 3 s de ritual
+      // para que el humano llegue (hasta 5 m si su delantero está en la red)
+      const FB6 = { 1: 2, 6: 3, 5: 4 }, PUSH = { move: [-1, 0], hit: false, jump: false, switchPlayer: false }, out = {};
+      for (const df of ['hard', 'easy']) {
+        const o = { encontrado: false, movido: 0, solapados: -1, motivo: '', equipo: -1, texto: '', iaSolapada: -1 };
+        try {
+          const g = S.createGame({ format: '6v6', seed: 990, difficulty: df, ctrl: 'one', stats: true });
+          let found = false; // hasta un saque rival con el humano zaguero (su equipo ya ha rotado), antes del silbato
+          for (let i = 0; i < 12 * 60 * 120 && !found; i++) { S.step(g, DT, null); S.drainEvents(g); found = g.mode === 'serve' && g.serving === 1 && g.serveState === 'ready' && !g.ctrl.front && !g.serveAuth; }
+          o.encontrado = found;
+          if (found) {
+            const h = g.ctrl, fr = S.onCourt(g, 0, FB6[h.zone]), x0 = h.x, y0 = h.y;
+            g.timer = Math.max(g.timer, 3);
+            for (let i = 0; i < 300 && g.mode === 'serve' && h.x > fr.x - 0.3; i++) { S.step(g, DT, PUSH); S.drainEvents(g); }
+            o.movido = +Math.hypot(h.x - x0, h.y - y0).toFixed(2); o.solapados = S.overlapCount(g, 0);
+            const pt = stepUntil(g, 'point', 4000).find(e => e.type === 'point');
+            if (pt) { o.motivo = pt.reason; o.equipo = pt.team; o.texto = pt.text; o.senal = pt.signal; }
+          }
+          o.iaSolapada = g.stats.overlap[1];
+        } catch (e) { o.ex = e && e.stack || String(e); }
+        out[df] = o;
+      }
+      const H = out.hard, E = out.easy;
+      res.push(['(m) falta de posición: en Difícil el receptor zaguero movido delante de su delantero → punto rival por position; en Fácil no se mueve ni se pita; IA 0 solapamientos',
+        H.encontrado && H.movido > 0.3 && H.solapados > 0 && H.motivo === 'position' && H.equipo === 1 && H.texto === 'Falta de posición' && H.iaSolapada === 0 && !H.ex &&
+        E.encontrado && E.movido < 0.05 && E.solapados === 0 && E.motivo !== 'position' && E.iaSolapada === 0 && !E.ex, out]);
     }
     const bad = res.filter(r => !r[1]);
     if (bad.length) fail('6v6 con humano: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));

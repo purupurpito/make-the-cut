@@ -229,6 +229,7 @@
   var rigs = [], byId = [], cache = {}, lastBlocker = null;
   var groupRoot, marker, markerCone, markerMat, coneMat;
   var markerDim = 1;   // atenuación del halo con el balón muerto
+  var lastCtrl = null; // 6v6: el control pasa al líbero y vuelve (sim setupServe, sin evento switch): el halo entra con fundido en el nuevo
 
   // ---------- Utilidades ----------
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -458,7 +459,7 @@
       p: p, id: id, team: team, num: p.num, root: root, body: body, pelvis: pelvis, spine: spine, chest: chest, head: head,
       eyes: eyes, mouth: mouth, teeth: teeth, brow: [browL, browR], hair: hair,
       fxS: 0, fxE: 0, fxJ: 0, fxD: 0, fxBlink: 0, blinkT: 1 + Math.random() * 3, fxForce: '', fxForceT: 0,
-      ritOn: false, ritPh: '', ritU: 0, catchN: -1, callT: -99, callKey: -99, tgtW: 0,
+      ritOn: false, ritPh: '', ritU: 0, catchN: -1, callT: -99, callKey: -99, tgtW: 0, covW: 0,
       hsX: 0, hsY: 0, hsZ: 0, hvX: 0, hvY: 0, hvZ: 0, hrX: 0, hrY: 0, hrZ: 0, htX: 0, htY: 0, htZ: 0, hsOn: false, hairAng: 0, swP: 0,
       sh: [], up: [], el: [], hand: [], hip: [], th: [], kn: [], ft: [],
       cur: new Pose(), tgt: new Pose(), inited: false,
@@ -1357,6 +1358,7 @@
     r.hdx = vx; r.hdy = vy; r.hdz = vz;
   }
 
+  var COV_D = 0.8;   // 6v6: a esta distancia (m) de su sitio de cobertura el jugador ya se agacha (D10)
   function computeTarget(g, r, dt, snap) {
     var p = r.p, P = r.tgt, b = g.ball, tm = g.time, mode = g.mode, sd = side(p.team);
     var air = p.z > 0.012, sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
@@ -1384,6 +1386,25 @@
     }
     if (mode === 'serve' && kind === 2 && b.held && b.held.team === 0) {
       // contra el saque humano no hay temporizador: pasan a preparados poco a poco
+    }
+    // ---- 1b. 6v6: cobertura del atacante propio (lote A, D10). Su equipo ha colocado (VB.AI6.spot(g, p).phase === 'cover'),
+    // está en el suelo y a ≤ COV_D m de su sitio: se agacha como en la espera de recepción (postura 2, más baja y mirando al
+    // balón) con fundido; no el atacante elegido (g.setPlan) ni quien acaba de tocar (el colocador). Solo con g.rot (el 2v2 no
+    // llama a spot) y sin phase (ai6 sin la fase) no hace nada. Sin asignaciones: spot devuelve su objeto compartido.
+    var covT = 0;
+    if (g.rot && !air && !job && mode === 'rally' && !(p.down > 0) && VB.AI6 && VB.AI6.spot && g.lastPlayer !== p) {
+      var pl6 = g.setPlan && g.setPlan[p.team];
+      if (!(pl6 && pl6.to === p && pl6.t === g.lastTouchT)) {
+        var sp6 = VB.AI6.spot(g, p);
+        if (sp6.phase === 'cover' && Math.hypot(sp6.x - p.x, sp6.y - p.y) <= COV_D) covT = 1;
+      }
+    }
+    if (snap) r.covW = covT; else if (covT !== r.covW) { r.covW += (covT - r.covW) * kf(covT > r.covW ? 7 : 5, dt); if (Math.abs(covT - r.covW) < 0.01) r.covW = covT; }
+    if (r.covW > 0) {
+      copyP(T2, P); baseStance(r, T2, 2, r.clock + r.id * 1.3);
+      T2.s[DROP] += 0.07; T2.s[HP] = 0;                                   // más flexión; la cabeza sigue al balón (no a las rodillas)
+      setV(T2.v[HL], 0.24, 0.62, 0.42); setV(T2.v[HR], -0.24, 0.62, 0.4); // manos delante y bajas, listas para el balón que vuelve del bloqueo
+      blendP(P, T2, r.covW);
     }
 
     // ---- 2. locomoción
@@ -3022,7 +3043,7 @@
     r.p = p; return r;
   }
   function resetRig(r) {
-    r.callT = -99; r.callKey = -99; r.tgtW = 0; r.fxForce = '';
+    r.callT = -99; r.callKey = -99; r.tgtW = 0; r.covW = 0; r.fxForce = '';
     r.inited = false; r.hitT = r.jumpT = r.landT = r.blockT = r.swingT = r.pointT = r.diveT = r.tossT = -99;
     r.hitKind = ''; r.hitShot = ''; r.hitGrade = ''; r.jumpKind = ''; r.hasFace = false; r.yawRate = 0; r.yawV = 0; r.vf = r.vl = 0;
     r.diveUp = 1; r.diveDz = 0; r.ozGiven = 0; r.upBoost = 0; r.offX = r.offY = r.ox0 = r.oy0 = 0; r.lpx = r.p.x; r.lpy = r.p.y;
@@ -3426,6 +3447,9 @@
       marker.visible = markerCone.visible = !!show;
       if (show) {
         var c = g.ctrl, reach = VB.Sim.canReach(g, c), rc0 = byId[c.id];
+        // 6v6 (lote A, D2): el control pasa al líbero cuando entra por el central del humano y vuelve con él (sim setupServe,
+        // sin evento switch): halo y galón siguen a g.ctrl cada frame (nada se guarda por id); al cambiar, el halo entra con fundido
+        if (c !== lastCtrl) { if (lastCtrl && g.size === 6) markerDim = Math.min(markerDim, 0.25); lastCtrl = c; }
         // halo bajo los pies VISUALES (en la celebración del punto el rig se separa de la sim)
         var hx = c.x + (rc0 ? rc0.offX : 0), hy = c.y + (rc0 ? rc0.offY : 0);
         marker.position.x = hx; marker.position.z = -hy;

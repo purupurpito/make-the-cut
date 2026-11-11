@@ -178,10 +178,34 @@
    *          ctrl:'both'|'one' (controlar a los dos jugadores o solo a uno; g.ctrlMode, por defecto 'both'),
    *          ctrlIdx:0|1 (modo 'one': a quién lleva el humano, 0 = teams[0][0] dorsal 1, 1 = teams[0][1] dorsal 2; g.ctrlIdx;
    *          el juego ya solo usa 0, el 1 queda para pruebas y &ctrlidx=),
-   *          ctrlRole:'OH' (6v6, sprint 3: puesto del jugador del humano; v1 solo el receptor, OH1 = dorsal 2; g.ctrlRole),
+   *          ctrlRole:'OH'|'S'|'OPP'|'MB' (6v6: puesto del jugador del humano, CTRL_ROLES6; el primero de ese puesto: OH1 n.º 2,
+   *          S n.º 1, OPP n.º 4, MB1 n.º 3; g.ctrlRole, g.ctrlBase; ver setCtrlRole),
    *          stats:bool } */
-  /** 6v6: puestos que puede llevar el humano (v1: solo el receptor; el central y el líbero salen de pista, el colocador es v2). */
-  var CTRL_ROLES6 = ['OH'];
+  /** 6v6: puestos que puede llevar el humano, en el orden de la fila «Controlar» (Receptor, Colocador, Opuesto, Central). El líbero
+   *  no se elige: cuando entra por el central del humano, el humano lo lleva a él hasta que su central vuelve (applyLibero, g.ctrlBase). */
+  var CTRL_ROLES6 = ['OH', 'S', 'OPP', 'MB'];
+  /** 6v6: el humano pasa a llevar el puesto role (CTRL_ROLES6). Deja g.ctrlRole, g.ctrlBase (su atleta: el primero de ese puesto en la
+   *  alineación) y g.ctrl (el mismo, o el líbero si ahora está sustituyendo a su central). Devuelve g.ctrl, o null si no es 6v6 o el
+   *  puesto no vale. ui.js lo llama al empezar el partido (fila Controlar); también sirve en caliente (pruebas, consola). */
+  function setCtrlRole(g, role) {
+    if (!g.rot || CTRL_ROLES6.indexOf(role) < 0) return null;
+    var lu = g.lineup[0], base = null;
+    for (var i = 0; i < lu.length; i++) if (lu[i].role === role) { base = lu[i]; break; }
+    if (!base) return null;
+    var wasH = g.mode === 'serve' && g.server ? isHuman(g, g.server) : false;
+    g.ctrlRole = role; g.ctrlBase = base;
+    g.ctrl = g.liberoFor[0] === base ? g.libero[0] : base;
+    endSwing(g); g.defRole = '';
+    // con el balón aún en la mano (serveState 'ready') y el sacador cambiando de manos, el saque se prepara otra vez como en setupServe: si
+    // pasa a ser del humano, diana (serveAimReset) y sin ritual; si pasa a la IA, su ritual y la hora del lanzamiento. Sin esto el colocador
+    // humano sacaba el 1r saque del partido (ui.js aplica el puesto justo después de empezar) con el ritual de la CPU congelado y sin diana
+    if (g.mode === 'serve' && g.serveState === 'ready' && g.server && isHuman(g, g.server) !== wasH) {
+      var sv = g.server, ti = ritualSetup(g, sv, !isHuman(g, sv));
+      g.timer = ti > 0 ? ti : (g.demo ? 0.9 : 1.3); g.cpuTossIn = ti;
+      serveAimReset(g, sv); holdPos(g, sv, g.ball);
+    }
+    return g.ctrl;
+  }
   /** Puntos por set que se pueden elegir (Partido rápido). */
   var SET_POINTS = [11, 15, 21, 25];
   /** Puntos para ganar el set en curso: g.points, y el set decisivo (3r) a min(15, g.points). */
@@ -226,6 +250,10 @@
       // 6v6: puesto del jugador del humano (CTRL_ROLES6; '' en 2v2). (La «posición asistida», g.assist6, se quitó el 11-nov-2026:
       // el humano solo se mueve con el stick, como en el 2v2.)
       ctrlRole: six ? (CTRL_ROLES6.indexOf(opts.ctrlRole) >= 0 ? opts.ctrlRole : 'OH') : '',
+      ctrlBase: null,          // 6v6: el atleta del humano de verdad (g.ctrl es el líbero mientras sustituye a su central; applyLibero)
+      // 6v6: falta de posición pitada al humano (Difícil/Experto): puede moverse durante el saque y, si al golpe de saque está en un par
+      // solapado de su equipo, punto para el rival ('position'). En Fácil/Normal se le coloca (placeServe) y no se mueve hasta el saque
+      posRule6: six && !opts.demo && (diff === 'hard' || diff === 'expert'),
       hAct: -9,                // 6v6: g.time de la última entrada del humano (stick o botón); el colocador no coloca al que está quieto
       ask6: -9,                // 6v6: g.time del último «¡Pídela!» del humano (CAMBIAR durante la jugada propia)
       // modo 'one': jugador del humano (0 = dorsal 1, 1 = dorsal 2); en 'both' siempre 0 (el control empieza en teams[0][0])
@@ -249,6 +277,9 @@
       atkServe: null,          // {team, player}: toque por encima de la red sobre el saque rival en zona de ataque; es falta
                                // (13.3.4) solo si se COMPLETA como ataque: el balón cruza la red o lo toca el rival
       aimIn: [0, 0], aimOn: false, // dirección de apuntado de la entrada del último paso (mundo, normalizada)
+      // 6v6: módulo del stick (0..1) en este paso y el del último apuntado del gesto en curso (processSwing): el carril del colocador
+      // humano (VB.AI6.laneOf, D3) exige |stick| >= 0,4, y aim va normalizado desde 0,2. En 2v2 se quedan en 0
+      aimLen: 0, swingLen: 0,
       rng: makeRng(seed),
       seed: seed | 0,          // semilla del partido (la presentación determinista la usa sin gastar g.rng: ritual SIM-04)
       serveNo: 0,              // saques puestos en este partido (cuenta serveReady)
@@ -317,7 +348,7 @@
     refreshTeams(g);
     applyAttrs(g, opts.attrs);
     applyBadges(g, opts.badges);
-    if (six) for (var ci = 0; ci < teams[0].length; ci++) if (teams[0][ci].role === g.ctrlRole) { g.ctrl = teams[0][ci]; break; } // 6v6: el 1r de ese puesto (OH1)
+    if (six) { for (var ci = 0; ci < teams[0].length; ci++) if (teams[0][ci].role === g.ctrlRole) { g.ctrl = teams[0][ci]; break; } g.ctrlBase = g.ctrl; } // 6v6: el 1r de ese puesto (OH1, S, OPP, MB1)
     g.server = g.ctrl;
     newGame(g);
     return g;
@@ -609,7 +640,10 @@
   /** Líbero (reglas FIVB 19.3): entra por el central que está en zaguero (zonas 5, 6, 1), salvo cuando ese central va a sacar
    *  (el líbero no saca: saca el central y el líbero vuelve a entrar al perder el saque). Se llama al preparar cada saque
    *  (setupServe, ya rotado). Cambia la referencia en teams[t] (mismo índice: el líbero ocupa el hueco del central) y deja
-   *  bench = true al que sale. Evento {type:'libero', team, inP, outP} por cada entrada o salida. No cuenta como cambio. */
+   *  bench = true al que sale. Evento {type:'libero', team, inP, outP} por cada entrada o salida. No cuenta como cambio.
+   *  Humano central (control 'one', g.ctrlBase): cuando el líbero entra por él, el humano pasa a llevar al líbero (g.ctrl) y sigue
+   *  jugando (recibe y defiende; no saca, no bloquea ni ataca por arriba: reglas del líbero); cuando su central vuelve, lo recupera.
+   *  Sin eventos switch: el evento libero lleva human: true cuando le afecta. */
   function applyLibero(g) {
     if (!g.rot) return;
     var ch = false;
@@ -619,9 +653,17 @@
       for (var k = 0; k < 3; k++) { var z = [0, 4, 5][k], q = g.rot[t][z]; if (q.role === 'MB') want = (z === 0 && g.serving === t) ? null : q; }
       var cur = g.liberoFor[t];
       if (want === cur) continue;
-      var tm = g.teams[t];
-      if (cur) { tm[tm.indexOf(lib)] = cur; cur.bench = false; lib.bench = true; g.liberoFor[t] = null; cur.x = lib.x; cur.y = lib.y; emit(g, { type: 'libero', team: t, inP: cur, outP: lib }); }
-      if (want) { tm[tm.indexOf(want)] = lib; lib.bench = false; want.bench = true; g.liberoFor[t] = want; lib.x = want.x; lib.y = want.y; emit(g, { type: 'libero', team: t, inP: lib, outP: want }); }
+      var tm = g.teams[t], hb = t === 0 && g.ctrlMode === 'one' ? g.ctrlBase : null;
+      if (cur) {
+        tm[tm.indexOf(lib)] = cur; cur.bench = false; lib.bench = true; g.liberoFor[t] = null; cur.x = lib.x; cur.y = lib.y;
+        if (cur === hb) { g.ctrl = cur; endSwing(g); }
+        emit(g, { type: 'libero', team: t, inP: cur, outP: lib, human: cur === hb });
+      }
+      if (want) {
+        tm[tm.indexOf(want)] = lib; lib.bench = false; want.bench = true; g.liberoFor[t] = want; lib.x = want.x; lib.y = want.y;
+        if (want === hb) { g.ctrl = lib; endSwing(g); }
+        emit(g, { type: 'libero', team: t, inP: lib, outP: want, human: want === hb });
+      }
       ch = true;
     }
     if (ch) refreshTeams(g);
@@ -635,6 +677,16 @@
     var sd = side(t), sv = g.mode === 'serve' || g.lastKind === 'serve' ? g.server : null, n = 0, i, a, b;
     for (i = 0; i < 3; i++) { a = onCourt(g, t, OVL_FB[i][0]); b = onCourt(g, t, OVL_FB[i][1]); if (a !== sv && b !== sv && a.x * sd >= b.x * sd) n++; }
     for (i = 0; i < 4; i++) { a = onCourt(g, t, OVL_LR[i][0]); b = onCourt(g, t, OVL_LR[i][1]); if (a !== sv && b !== sv && a.y * sd >= b.y * sd) n++; }
+    return n;
+  }
+  /** Pares solapados (como overlapCount) en los que está el jugador p del equipo t: 0 = p está bien colocado (la falta, si la hay,
+   *  es de otros). Para pitar la falta de posición solo cuando la comete el humano. */
+  function overlapOf(g, t, p) {
+    if (!g.rot || !p) return 0;
+    var sd = side(t), sv = g.mode === 'serve' || g.lastKind === 'serve' ? g.server : null, n = 0, i, a, b;
+    if (p === sv) return 0;
+    for (i = 0; i < 3; i++) { a = onCourt(g, t, OVL_FB[i][0]); b = onCourt(g, t, OVL_FB[i][1]); if ((a === p || b === p) && a !== sv && b !== sv && a.x * sd >= b.x * sd) n++; }
+    for (i = 0; i < 4; i++) { a = onCourt(g, t, OVL_LR[i][0]); b = onCourt(g, t, OVL_LR[i][1]); if ((a === p || b === p) && a !== sv && b !== sv && a.y * sd >= b.y * sd) n++; }
     return n;
   }
   /** Afinado del 6v6 (solo con g.rot; el 2v2 no lo lee). stuff: multiplicador de la prob. de bloqueo directo por contacto;
@@ -992,7 +1044,9 @@
       var jx = JSET.tx, jy = clamp(mate.y, -JSET.mate, JSET.mate), jap = Math.max(JSET.minApex, b.z + (count === 1 ? JSET.rise1 : JSET.rise));
       // 6v6 (humano colocando en salto de 2º toque): al carril del atacante que elige VB.AI6.chooseSet (deja g.setPlan: ese atacante
       // va a por el 3r toque y el bloqueo rival lo lee), no al compañero más cercano
-      if (g.rot && VB.AI6 && count === 2) { var js6 = VB.AI6.chooseSet(g, p); jy = clamp(sd * js6.yl, -JSET.mate, JSET.mate); }
+      // (colocador humano: la dirección del stick elige el carril, VB.AI6.laneOf: izquierda punta, derecha opuesto, red central, atrás pipe)
+      // (pipe: la colocación en salto va detrás de la línea de 3 m, al destino del plan; si no, el zaguero no podría despegar detrás)
+      if (g.rot && VB.AI6 && count === 2) { var js6 = VB.AI6.chooseSet(g, p, human ? VB.AI6.laneOf(g, p, aim ? aim[0] * g.swingLen : 0, aim ? aim[1] * g.swingLen : 0) : null); jy = clamp(sd * js6.yl, -JSET.mate, JSET.mate); if (g.setPlan[t] && g.setPlan[t].tempo === 'pipe') jx = js6.d; }
       if (q < JSET.badQ && g.rng() < (JSET.badQ + 0.05 - q) * JSET.badP) {
         if (g.rng() < 0.5) jx = 0.25 + g.rng() * 0.35;          // pegada a la red: toque de red o bloqueo fácil
         else { jx = 3.6 + g.rng() * 1.8; jap -= 0.35; }        // larga y baja: el atacante no llega a rematar
@@ -1078,8 +1132,10 @@
     } else {
       er = (0.1 + 1.15 * (1 - q)) * mul;
       if (q < 0.35 && g.rng() < 0.12 * ek) v = launchApex(o, -sd * (1 + g.rng() * 2), b.y + rnd(g, 1.5), 0, 4.6); // pasa la red sin querer (×ek: Colocación)
-      else if (g.rot && VB.AI6) { // 6v6: el colocador elige atacante y tempo (VB.AI6.chooseSet: bola alta, tensa o rápida)
-        var sp = VB.AI6.chooseSet(g, p);
+      else if (g.rot && VB.AI6) { // 6v6: el colocador elige atacante y tempo (VB.AI6.chooseSet: bola alta, tensa, rápida o pipe); el
+        // colocador humano, el carril con la dirección del stick (laneOf; aim va normalizado: se le devuelve su módulo, g.swingLen, para
+        // que la zona muerta sea la de D3, 0,4, y no la de aimOn, 0,2; sin dirección, elige la IA)
+        var sp = VB.AI6.chooseSet(g, p, human ? VB.AI6.laneOf(g, p, aim ? aim[0] * g.swingLen : 0, aim ? aim[1] * g.swingLen : 0) : null);
         v = launchApex(o, sd * Math.max(0.6, sp.d + rnd(g, er * 0.5)), clamp(sd * sp.yl + rnd(g, er * 0.9), -4.2, 4.2), 3, sp.apex);
       }
       else v = launchApex(o, sd * (1.35 + rnd(g, er * 0.5)), clamp(mate.y, -3.6 * g.cs, 3.6 * g.cs) + rnd(g, er * 0.9), 3, 5.3);
@@ -1590,7 +1646,8 @@
    * el flujo del partido (salvo la duración de la pausa con g.present = true). Ver notes/sim.md §P1. */
   /** Señal oficial del árbitro por motivo (reason 'out' y 'serve' se resuelven aparte, ver point()). */
   var SIGNAL = { in: 'in', out: 'out', four: 'four', double: 'double', net: 'net', under: 'under', antenna: 'antenna',
-    attackServe: 'attackFault', block: 'attackFault', serve: 'serveFault', backAttack: 'attackFault', backBlock: 'attackFault' };
+    attackServe: 'attackFault', block: 'attackFault', serve: 'serveFault', backAttack: 'attackFault', backBlock: 'attackFault',
+    position: 'attackFault' }; // falta de posición (6v6, humano): la seña del brazo alzado del lado del infractor, que arena.js ya pinta
   /** Pausa del punto con g.present (partido humano): normal, punto grande (highlight >= HOLD.bigAt), set, partido;
    *  `eight` se suma por el cambio de campo a los 8 del set decisivo. */
   var HOLD = VB.HOLD = { routine: 1.9, big: 2.4, bigAt: 0.55, set: 4.0, match: 4.2, eight: 1.4, skipAfter: 0.8, skipTo: 0.3 };
@@ -1914,7 +1971,7 @@
   function processSwing(g, p, aim) {
     if (!g.swingLive) return;
     // apuntado: el de ahora; si ya no se pulsa dirección, el último que se dio durante el gesto
-    if (aim) { g.swingAim[0] = aim[0]; g.swingAim[1] = aim[1]; g.swingHasAim = true; }
+    if (aim) { g.swingAim[0] = aim[0]; g.swingAim[1] = aim[1]; g.swingHasAim = true; if (g.rot) g.swingLen = g.aimLen; } // (6v6: su módulo, para el carril)
     else if (g.swingHasAim) aim = g.swingAim;
     var w, b = g.ball, te;
     if (canReach(g, p)) {
@@ -2053,10 +2110,13 @@
 
   function doServe(g, sv, aim, te, tgt) {
     var sd = side(sv.team), b = g.ball, prof = profOf(g, sv), human = isHuman(g, sv);
-    if (g.rot) { // 6v6: falta de posición en el golpe de saque. La IA nunca la comete (formaciones de VB.AI6); v1: solo se cuenta
+    var posFault = false;
+    if (g.rot) { // 6v6: falta de posición en el golpe de saque. La IA nunca la comete (formaciones de VB.AI6): solo se cuenta; al humano
+      // (Difícil/Experto, g.posRule6: ha podido moverse durante el saque) se le pita si él está en un par solapado (overlapOf), abajo
       var ov0 = overlapCount(g, 0), ov1 = overlapCount(g, 1);
       g.overlap = [ov0, ov1];
       if (g.stats && g.stats.overlap) { g.stats.overlap[0] += ov0 ? 1 : 0; g.stats.overlap[1] += ov1 ? 1 : 0; }
+      posFault = ov0 > 0 && g.posRule6 && g.ctrlMode === 'one' && !g.demo && !g.autopilot && g.ctrl && g.ctrl.team === 0 && overlapOf(g, 0, g.ctrl) > 0;
     }
     b.held = null;
     te = te || 0;
@@ -2128,6 +2188,8 @@
       power: power, shot: sv.shot, dive: false, aim: aim ? [aim[0], aim[1]] : null, target: [tx, ty],
       x: b.x, y: b.y, z: b.z, speed: b.speed, human: human, dig: false, recv: false });
     endSwing(g);
+    // 6v6: el humano solapado en el momento del golpe de saque (reglas 7.4-7.5): el saque sale, pero el árbitro pita en el acto
+    if (posFault) fault(g, 0, 'position', 'Falta de posición', g.ctrl, SIGNAL.position);
   }
 
   /* Saque dirigible flotante: el baile (b.wobA/wobF/wobP ya decididos) desvía el balón de forma determinista. aimFloat lanza de
@@ -2237,7 +2299,11 @@
         fault(g, sv.team, 'serve', 'Falta de saque: el balón cae sin golpearlo', sv, 'serveFault'); return;
       }
     }
-    for (i = 0; i < g.players.length; i++) { p = g.players[i]; if (p !== sv) stepPlayer(g, p, dt, 0, 0); }
+    // 6v6 en Difícil/Experto (g.posRule6): el humano que no saca se coloca él durante el saque (puede solaparse: doServe se lo pita);
+    // la marca de recepción (fx.js, VB.AI6.spot) le enseña su sitio legal. En Fácil/Normal, y en 2v2, nadie más se mueve
+    var hm = g.posRule6 && human && !hs && g.ctrl.team === 0 && g.mode === 'serve' ? g.ctrl : null;
+    if (hm && (mx || my)) g.hAct = g.time;
+    for (i = 0; i < g.players.length; i++) { p = g.players[i]; if (p !== sv) stepPlayer(g, p, dt, p === hm ? mx : 0, p === hm ? my : 0); }
     stepBall(g, dt);
   }
 
@@ -2292,6 +2358,7 @@
     var aim = null;
     if (ml > 0.2) { _aim[0] = mx / ml; _aim[1] = my / ml; aim = _aim; }
     g.aimOn = !!aim; if (aim) { g.aimIn[0] = aim[0]; g.aimIn[1] = aim[1]; } // para aimPoint (UI/FX)
+    if (g.rot) g.aimLen = ml; // 6v6: el módulo del stick, que aim ya no lleva (carril del colocador humano, laneOf: |stick| < 0,4 = sin carril)
     var i, p;
 
     if (g.review) { // B2: revisión en curso: todo en espera (el reloj del punto no corre)
@@ -2532,11 +2599,14 @@
   function court(g) { return (g && typeof g === 'object' ? g.beach : g === 'beach') ? _courtB : _courtH; }
 
   /** Objetivo útil para el HUD/aro: dónde jugará el balón el equipo humano. */
-  /** 6v6: ¿vale ahora «¡Pídela!»? En el peloteo, con el humano delantero (atacante posible, VB.AI6.canAttack) y antes de que
-   *  su equipo coloque (el balón llega del rival o aún vamos por el 1r toque). Fuera de ahí la pulsación no hace nada. */
+  /** 6v6: ¿vale ahora «¡Pídela!»? En el peloteo, con el humano atacante posible (delantero no líbero, VB.AI6.canAttack, o zaguero
+   *  de pipe, canPipe) y antes de que su equipo coloque (el balón llega del rival o aún vamos por el 1r toque). Fuera de ahí la
+   *  pulsación no hace nada. */
   function askOk(g) {
-    var p = g.ctrl;
-    return !!(g.rot && p && g.mode === 'rally' && p.front && p.role !== 'L' && !p.bench && !(g.touchTeam === 0 && g.touches >= 2) && !atkPhase(g, 0));
+    var p = g.ctrl, A6 = VB.AI6;
+    if (!(g.rot && p && g.mode === 'rally' && p.role !== 'L' && !p.bench && p.role !== 'S')) return false;
+    if (!(p.front || (A6 && A6.canPipe && A6.canPipe(p)))) return false;
+    return !(g.touchTeam === 0 && g.touches >= 2) && !atkPhase(g, 0);
   }
   function focusPoint(g) {
     return atkPhase(g, 0) ? g.pr3 : g.pr1;
@@ -2550,7 +2620,9 @@
     mates: mates, nearestMate: nearestMate, mateBadge: mateBadge, zoneOf: zoneOf, zonePos: zonePos, isFront: isFront, ZONE: ZONE,
     rotate: rotate, serverOf: serverOf, refreshTeams: refreshTeams,
     // 6v6 (sprint 2): líbero, falta de posición, jugador en pista por zona, puestos de la alineación 5-1
-    applyLibero: applyLibero, overlapCount: overlapCount, onCourt: onCourt, ROLES6: ROLES6,
+    applyLibero: applyLibero, overlapCount: overlapCount, overlapOf: overlapOf, onCourt: onCourt, ROLES6: ROLES6,
+    // 6v6 con humano: puestos jugables (fila Controlar) y cambio de puesto
+    CTRL_ROLES6: CTRL_ROLES6, setCtrlRole: setCtrlRole,
     // añadidos (opcionales)
     hitWindow: hitWindow, aimPoint: aimPoint, predictKind: predictKind, canDive: canDive, timingQ: timingQ, gradeOf: gradeOf,
     normDiff: normDiff, DIFF: DIFF, TIMING: TIMING,

@@ -21,6 +21,49 @@
   var THREE, ctx, C, Sim, root;
   var ballPivot, ball, ballMat, dropLine, marker, markerMat, focusRing, focusMat, focusU, focusD = 0, ballOutline;
   var posMark = null, posA = 0, posX = 0, posY = 0; // 6v6: marca de posición del humano (su sitio de la formación, VB.AI6.spot)
+  // Pistas de fase del 6v6 (lote A, D7/D8): la marca cambia de forma y color con VB.AI6.spot(g, g.ctrl).phase. posMark es el aro
+  // principal (siempre), posMark2 la forma extra de la fase (celdas 12 zona / 13 punto / 15 barra del atlas) y posArrow el chevrón
+  // hacia la red de la batida (celda 14). posPh = fase que se está pintando, posP = a quién (g.ctrl puede pasar al líbero sin evento),
+  // posWt = s que la sim lleva pidiendo otra fase (no se cambia por un parpadeo de la sim), posSwap = fundido de salida en curso,
+  // posK2 = opacidad de la forma extra respecto al aro, posForce = fase forzada (solo depuración, _hint6). Sin phase (sim de hoy): el aro
+  // celeste de siempre y las mismas reglas. Colores LINEALES (setRGB) como el resto de calcomanías. rim: el aro lleva filo oscuro
+  // (la textura del filo de la marca del bote) en las fases clave, que se leen sobre la tarima naranja; el resto, el aro suave de hoy.
+  var posMark2 = null, posArrow = null, posPh = '', posP = null, posWt = 0, posSwap = false, posK2 = 1, posForce = null, posTexs = null;
+  var PH = {
+    '':     { c: [0.3, 0.85, 1],     ring: 1.25, shape: '',     ss: 1,    a: 0.75, sa: 0 },    // sin fase: el aro de hoy
+    recv:   { c: [0.3, 0.85, 1],     ring: 0.85, shape: 'zone', ss: 2.6,  a: 0.7,  sa: 0.55 }, // tu celda de recepción (ancha, suave)
+    serve:  { c: [0.3, 0.85, 1],     ring: 1.25, shape: '',     ss: 1,    a: 0.75, sa: 0 },    // saque propio: puesto base (aro de hoy)
+    set:    { c: [0.75, 1, 0.95],    ring: 0.95, shape: 'dot',  ss: 0.42, a: 1,    sa: 1, rim: true },    // punto de colocación: aro pequeño brillante + punto
+    attack: { c: [1, 0.42, 0.06],    ring: 1.3,  shape: '',     ss: 1,    a: 0.95, sa: 0, rim: true },    // inicio de la batida (+ chevrón a la red); a 844×390 el aro fino se perdía con 1,1
+    cover:  { c: [0.78, 0.76, 1],    ring: 1.0,  shape: '',     ss: 1,    a: 0.45, sa: 0 },    // cobertura del atacante: aro bajo, tenue
+    block:  { c: [1, 0.18, 0.72],    ring: 0.7,  shape: 'bar',  ss: 1.5,  a: 0.9,  sa: 0.85, rim: true }, // dónde saltar: barra pegada a la red
+    net:    { c: [0.3, 0.85, 1],     ring: 1.25, shape: '',     ss: 1,    a: 0.75, sa: 0 },    // delantero que no bloquea (aro de hoy)
+    dig:    { c: [0.2, 0.45, 1],     ring: 1.2,  shape: '',     ss: 1,    a: 0.75, sa: 0 }     // defensa perímetro: aro azul
+  };
+  /** Opacidad (0-1) de la pista según el nivel (D8). pd = m hasta el sitio; sv = saque rival en curso (g.mode 'serve').
+   *  Fácil: siempre (atenuada encima); Normal: a > 0,8 m, y siempre en block/set/attack; Difícil: solo block/set, más tenues (y la
+   *  celda recv durante el saque rival, D4: puede moverse y que le piten, y su puesto base, serve, durante el saque propio: también ahí
+   *  se mueve y se le pita); Experto: solo esas dos durante el saque. */
+  function hintK(diff, ph, pd, sv) {
+    if (ph === '') return clampN((pd - 1.0) / 0.6, 0, 1); // sin fase: el umbral de hoy
+    var near = 0.45 + 0.55 * clampN((pd - 0.6) / 0.5, 0, 1), key = ph === 'block' || ph === 'set', legal = (ph === 'recv' || ph === 'serve') && sv;
+    if (diff === 'easy') return near;
+    if (diff === 'hard') return key || legal ? 0.65 * near : 0;
+    if (diff === 'expert') return legal ? 0.65 * near : 0;
+    return key || ph === 'attack' ? near : clampN((pd - 0.8) / 0.5, 0, 1);
+  }
+  /** Cambia la pista a la fase ph (del atleta pc): color del aro y del chevrón, textura y giro de la forma extra (celda y barra a lo
+   *  ancho del campo: a lo largo de la red). Solo al cambiar de fase, con la marca apagada (fundido): nada por frame. */
+  function hintApply(ph, pc) {
+    var P6 = PH[ph]; posPh = ph; posP = pc;
+    posMark.material.color.setRGB(P6.c[0], P6.c[1], P6.c[2]); posMark.material.map = P6.rim ? posTexs.rim : posTexs.ring;
+    posArrow.material.color.setRGB(P6.c[0], P6.c[1], P6.c[2]);
+    if (P6.shape !== '') {
+      posMark2.material.map = posTexs[P6.shape]; posMark2.material.color.setRGB(P6.c[0], P6.c[1], P6.c[2]);
+      posMark2.rotation.z = P6.shape === 'dot' ? 0 : Math.PI / 2;
+    }
+    posK2 = P6.a > 0 ? P6.sa / P6.a : 0;
+  }
   // Aro de aproximación (ARN-05): diámetros (m) de la diana y del aro móvil al nacer, y segundos de cierre hasta PULSAR.
   // Los planos miden 1 m: el aro de outlinedRingTex(104) mide 0,8125 m de diámetro y la diana de targetTex 0,875 m.
   var FR_D0 = 0.8, FR_D1 = 2.6, FR_T = 0.9, FR_RING = 0.8125, FR_TGT = 0.875, FR_ON = 0.24, FR_OFF = -0.15;
@@ -162,6 +205,31 @@
       for (var k = 0; k < 4; k++) { var a = k * Math.PI / 2 + Math.PI / 4; g.beginPath(); g.moveTo(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); g.lineTo(128 + Math.cos(a) * (r - 30), 128 + Math.sin(a) * (r - 30)); g.stroke(); }
     }
     draw(10, 'rgba(10,6,0,0.75)'); draw(0, '#ffffff');
+    return tex(cv);
+  }
+  /** Formas de las pistas de fase del 6v6 (celdas 12-15 del atlas), blancas con filo oscuro (se tiñen con material.color):
+   *  'zone' celda de recepción (rectángulo redondeado ancho a lo largo de +u, relleno suave), 'dot' punto de colocación (disco),
+   *  'arrow' chevrón hacia +u (la carrera de batida, se gira hacia la red), 'bar' barra de bloqueo (pastilla a lo largo de +u, relleno
+   *  translúcido). Formas grandes dentro de la celda y escala pequeña en la malla: así los mips lejanos no las emborronan. */
+  function hintTex(kind) {
+    var cv = canvas(256, 256), g = cv.getContext('2d');
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+    if (kind === 'zone') {
+      rr(16, 50, 224, 156, 36); g.fillStyle = 'rgba(255,255,255,0.3)'; g.fill();
+      g.strokeStyle = 'rgba(12,8,0,0.6)'; g.lineWidth = 20; g.stroke();
+      g.strokeStyle = '#ffffff'; g.lineWidth = 9; g.stroke();
+    } else if (kind === 'dot') {
+      g.fillStyle = 'rgba(12,8,0,0.7)'; g.beginPath(); g.arc(128, 128, 104, 0, 6.283); g.fill();
+      g.fillStyle = '#ffffff'; g.beginPath(); g.arc(128, 128, 84, 0, 6.283); g.fill();
+    } else if (kind === 'arrow') {
+      function chev(lw, style) { g.strokeStyle = style; g.lineWidth = lw; g.beginPath(); g.moveTo(66, 44); g.lineTo(170, 128); g.lineTo(66, 212); g.stroke(); }
+      chev(52, 'rgba(12,8,0,0.7)'); chev(34, '#ffffff');
+    } else { // bar
+      rr(18, 88, 220, 80, 40); g.fillStyle = 'rgba(255,255,255,0.62)'; g.fill();
+      g.strokeStyle = 'rgba(12,8,0,0.7)'; g.lineWidth = 22; g.stroke();
+      g.strokeStyle = '#ffffff'; g.lineWidth = 10; g.stroke();
+    }
     return tex(cv);
   }
   /** Huella del balón para la revisión del challenge (B6): disco lleno de borde NÍTIDO con filo oscuro (el borde es lo que se
@@ -323,13 +391,14 @@
     var cv = canvas(4 * DEC_CELL, DEC_ROWS * DEC_CELL), g = cv.getContext('2d');
     for (var i = 0; i < texs.length; i++) {
       var cx = (i % 4) * DEC_CELL, cy = Math.floor(i / 4) * DEC_CELL;
-      g.drawImage(texs[i].image, cx, cy, 256, 256);
+      if (texs[i]) g.drawImage(texs[i].image, cx, cy, 256, 256); // (null = celda que pinta footAtlas: 9-11)
       decTex.push(texs[i]);
     }
     g.fillStyle = '#ffffff'; g.fillRect(2 * DEC_CELL, DEC_CELL, DEC_CELL, DEC_CELL); // celda 6: blanco liso (línea de altura)
     footAtlas(g); // celdas 9-11: huellas de la playa
     var at = tex(cv);
-    var N = MARK_N * 2 + RIP_N + 8 + FOOT_N, geo = new THREE.PlaneGeometry(1, 1);
+    // instancias: marcas (relleno + filo), ondas, las 8 mallas sueltas, línea de altura, las 3 de la pista de posición del 6v6 y huellas
+    var N = MARK_N * 2 + RIP_N + 8 + 1 + 3 + FOOT_N, geo = new THREE.PlaneGeometry(1, 1);
     for (var fI = 0; fI < FOOT_N; fI++) fp.push(dblFields({ x: 0.5, y: 0.5, yaw: 0.5, k: 0, sx: 0.5, sy: 0.5, op: 0.5, t: 0.5 })); for (var fJ = 0; fJ < FOOT_N; fJ++) fp[fJ].t = 0;
     var inst = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({
       uniforms: { map: { value: at } }, transparent: true, depthWrite: false, toneMapped: false,
@@ -343,7 +412,9 @@
     inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     inst.count = 0; inst.visible = false; inst.frustumCulled = false; inst.renderOrder = 3; inst.name = 'floorDecals';
     root.add(inst); decals = inst;
-    if (posMark) decOrder.push(posMark); // (debajo de todo lo demás)
+    if (posMark2) decOrder.push(posMark2); // pista de posición del 6v6 (debajo de todo lo demás): forma de la fase, aro, chevrón
+    if (posMark) decOrder.push(posMark);
+    if (posArrow) decOrder.push(posArrow);
     for (var m = 0; m < MARK_N; m++) decOrder.push(markPool[m].m);
     for (var r = 0; r < MARK_N; r++) decOrder.push(markPool[r].r);
     for (var p = 0; p < RIP_N; p++) decOrder.push(ripPool[p].m);
@@ -1215,7 +1286,15 @@
       posMark = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: ripTex, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }));
       posMark.rotation.x = -Math.PI / 2; posMark.position.y = 0.0145; posMark.visible = false; posMark.renderOrder = 2; posMark.name = 'posMark'; // (decals)
       posMark.material.color.setRGB(0.3, 0.85, 1);
-      buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map, whiteTex, revFill.material.map, aimSvMap]);
+      // Lote A (D7/D8): la pista cambia con la fase (spot().phase). Forma extra de la fase (celda de recepción, punto de colocación o
+      // barra de bloqueo: una malla, cambia de textura al cambiar de fase) y chevrón de la batida. Celdas libres 12-15 del atlas.
+      posTexs = { zone: hintTex('zone'), dot: hintTex('dot'), arrow: hintTex('arrow'), bar: hintTex('bar'), ring: ripTex, rim: rimInTex };
+      posMark2 = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: posTexs.zone, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }));
+      posMark2.rotation.x = -Math.PI / 2; posMark2.position.y = 0.0143; posMark2.visible = false; posMark2.renderOrder = 2; posMark2.name = 'posMark2'; // (decals)
+      posArrow = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: posTexs.arrow, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }));
+      posArrow.rotation.x = -Math.PI / 2; posArrow.position.y = 0.0147; posArrow.visible = false; posArrow.renderOrder = 2; posArrow.name = 'posArrow'; // (decals)
+      buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map, whiteTex, revFill.material.map, aimSvMap,
+        null, null, null, posTexs.zone, posTexs.dot, posTexs.arrow, posTexs.bar]);
       // polvo de parquet (plancha, aterrizajes): Points con alfa por vértice y mezcla normal
       var dPos = new Float32Array(DUST_N * 3), dCol = new Float32Array(DUST_N * 4);
       for (var dI = 0; dI < DUST_N; dI++) { du.push(dblFields({ x: 0, y: 0, z: -50, vx: 0, vy: 0, vz: 0, life: 0, max: 1, s: 1, g: 0.5 })); du[du.length - 1].g = 0; dPos[dI * 3 + 1] = -50; }
@@ -1282,7 +1361,10 @@
     /** ARN-03: copias de compilación de todos los pools de efectos (ver VB.Arena.prewarmList, que ya las incluye). */
     prewarmList: function () { return root ? prewarmProxies(root, []) : []; },
     /** Solo depuración: escala de legibilidad del balón (ARN-06) y brillo de borde actual. */
-    _dbg: function () { return { ballBs: ballBs, rim: ballRim ? ballRim.value : 0, ringD: focusRing && focusRing.visible ? focusD : 0, ringOp: focusU ? focusU.uOp.value.toArray() : null, toon: toon, toonN: toon ? toon.count : 0, decals: decals, decOrder: decOrder, bills: bills, billOrder: billOrder, dropLine: dropLine }; },
+    _dbg: function () { return { ballBs: ballBs, rim: ballRim ? ballRim.value : 0, ringD: focusRing && focusRing.visible ? focusD : 0, ringOp: focusU ? focusU.uOp.value.toArray() : null, toon: toon, toonN: toon ? toon.count : 0, decals: decals, decOrder: decOrder, bills: bills, billOrder: billOrder, dropLine: dropLine, posPh: posPh, posA: posA }; },
+    /** Solo depuración (tools): fuerza la fase de la pista de posición del 6v6 ('recv'|'set'|'attack'|'cover'|'block'|'dig'|'net'|'serve'|'';
+     *  null = la que diga la sim). Para ver cada marca y medir el lote con las tres mallas encendidas. */
+    _hint6: function (ph) { posForce = ph == null ? null : (PH[ph] ? ph : ''); },
     /** Solo depuración (tools/eval.js): objetivo de apuntado que pintaría la retícula. */
     _aimTarget: function (g, out) { out = out || { x: 0, y: 0 }; var m = aimTarget(g, out); return m ? { mode: m, x: out.x, y: out.y } : null; },
     update: function (g, dt, events) {
@@ -1375,17 +1457,49 @@
         focusMat.opacity = focusU.uOp.value.x; // (solo lectura para herramientas: opacidad del aro móvil)
       }
       // ---- 6v6: marca de posición (dónde te toca estar sin balón tuyo; aparece si estás a más de ~1,2 m) ----
+      // Lote A (D7/D8): con spot().phase la marca es una pista de fase (forma y color por fase, densidad por nivel, hintK); sin phase, el
+      // aro de hoy. También durante el saque RIVAL (g.mode 'serve', fase 'recv': su celda legal; en Difícil/Experto puede moverse y
+      // que le piten). Cambio de fase, de atleta (g.ctrl pasa al líbero sin evento) o salto del sitio: fundido de salida, cambio, entrada.
       if (posMark) {
-        var pc = g.ctrl, A6 = VB.AI6, pdt = ctx.realDt || 0, pTo = 0;
-        if (six && inPlay && !g.demo && !g.watch && pc && A6 && A6.spot && !(g.jobs && g.jobs[0] === pc)) {
-          var psp = A6.spot(g, pc), ptx = psp.x, pty = psp.y, pd = Math.sqrt((ptx - pc.x) * (ptx - pc.x) + (pty - pc.y) * (pty - pc.y));
-          if (posA < 0.01) { posX = ptx; posY = pty; }
-          var pk = 1 - Math.exp(-12 * pdt); posX += (ptx - posX) * pk; posY += (pty - posY) * pk;
-          pTo = clampN((pd - 1.0) / 0.6, 0, 1) * 0.75;
+        var pc = g.ctrl, A6 = VB.AI6, pdt = ctx.realDt || 0, pTo = 0, pLive = false, ph = '', ptx = 0, pty = 0;
+        var pSv = g.mode === 'serve' && g.server !== pc;
+        if (six && (inPlay || pSv) && !g.demo && !g.watch && pc && A6 && A6.spot && !(g.jobs && g.jobs[0] === pc)) {
+          var psp = A6.spot(g, pc); ph = psp.phase || ''; ptx = psp.x; pty = psp.y;
+          // saque rival: setupServe deja lastKind '' y spot() aún no «recibe» (da la defensa): su sitio legal es p.fx/fy (placeServe)
+          if (pSv && g.server && g.server.team !== pc.team && pc.fx !== undefined) { ph = 'recv'; ptx = pc.fx; pty = pc.fy; }
+          if (posForce != null) ph = posForce;
+          if (!PH[ph]) ph = '';
+          // en el saque solo la celda de recepción (sin phase: como hoy, nada) y, en Difícil/Experto (g.posRule6: el humano que no saca se
+          // mueve también cuando saca su equipo y doServe le pita el solapamiento), su puesto base del saque propio ('serve', spot)
+          pLive = !pSv || ph === 'recv' || (ph === 'serve' && g.posRule6);
         }
-        posA += (pTo - posA) * (1 - Math.exp(-10 * pdt)); if (pTo === 0 && posA < 0.01) posA = 0;
-        posMark.visible = posA > 0.01; posMark.material.opacity = posA;
-        if (posMark.visible) { var psc = 1.25 + Math.sin(ctx.time * 4) * 0.06; posMark.position.x = posX; posMark.position.z = -posY; posMark.scale.set(psc, psc, psc); }
+        if (pLive) {
+          var pd = Math.sqrt((ptx - pc.x) * (ptx - pc.x) + (pty - pc.y) * (pty - pc.y));
+          var want = ph !== posPh || pc !== posP || (posA > 0.01 && (ptx - posX) * (ptx - posX) + (pty - posY) * (pty - posY) > 6.25);
+          posWt = want ? posWt + pdt : 0;
+          if (posA < 0.03) { // apagada (o ya fundida): toma la fase y el sitio nuevos sin deslizarse por el campo
+            if (want) hintApply(ph, pc);
+            posX = ptx; posY = pty; posSwap = false; posWt = 0;
+          } else if (posSwap || posWt > 0.08) posSwap = true; // pide otra fase > 0,08 s (no un parpadeo de la sim): fundido de salida
+          if (!posSwap) {
+            var pk = 1 - Math.exp(-12 * pdt); posX += (ptx - posX) * pk; posY += (pty - posY) * pk;
+            pTo = PH[posPh].a * hintK(g.difficulty, posPh, pd, pSv);
+          }
+        } else posSwap = false;
+        posA += (pTo - posA) * (1 - Math.exp(-(posSwap ? 16 : 10) * pdt)); if (pTo === 0 && posA < 0.01) posA = 0;
+        var pV = posA > 0.01, P6 = PH[posPh];
+        posMark.visible = pV; posMark.material.opacity = posA;
+        posMark2.visible = pV && P6.shape !== ''; posMark2.material.opacity = posA * posK2;
+        posArrow.visible = pV && posPh === 'attack'; posArrow.material.opacity = posA;
+        if (pV) {
+          var psc = P6.ring * (1 + Math.sin(ctx.time * 4) * 0.05), pz = -posY;
+          posMark.position.x = posX; posMark.position.z = pz; posMark.scale.set(psc, psc, psc);
+          if (posMark2.visible) { var ps2 = P6.ss * (posPh === 'set' ? 1 + Math.sin(ctx.time * 6) * 0.12 : 1); posMark2.position.x = posX; posMark2.position.z = pz; posMark2.scale.set(ps2, ps2, ps2); }
+          if (posArrow.visible) { // chevrón entre el aro y la red, que avanza hacia ella (0,85-1,1 m del sitio, fuera del aro de 1,3)
+            var pdir = posX > 0 ? -1 : 1, pad = 0.85 + 0.25 * (0.5 + 0.5 * Math.sin(ctx.time * 5));
+            posArrow.position.x = posX + pdir * pad; posArrow.position.z = pz; posArrow.rotation.z = pdir < 0 ? Math.PI : 0; posArrow.scale.set(0.8, 0.8, 0.8);
+          }
+        }
       }
       // ---- marcador de caída (secundario si el aro amarillo está activo) ----
       marker.visible = inPlay && b.vz < 6 && b.z > 0.5;

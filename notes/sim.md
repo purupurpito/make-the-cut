@@ -1328,3 +1328,70 @@ de que llegue la pelota), puedes tocar la red y que sea falta, pero si no lo apr
 - **Pendiente en otros ficheros** (SIGUIENTE.md, Peticiones entre lotes): pose de «bajar el bloqueo» en players.js sobre el evento
   `blockPress` (manos por encima de la red, muñecas hacia abajo) y consejo del entrenador en ui.js («En el bloqueo, GOLPEAR justo
   cuando remata = muro; antes = red»).
+
+## 6v6, lote A: posiciones jugables, rotaciones reales y pistas en el campo (11-nov-2026) — sim / ai6 / fx / players / ui
+Pedido de Ferran en SIGUIENTE.md (lote A). Todo detrás de `g.rot`: la huella 2v2 sigue idéntica (150 partidas, 1591 puntos, 572 632
+llamadas a `g.rng`). El 6v6 CPU contra CPU cambia (formaciones nuevas y pipe) y sigue dentro de sus objetivos: 1270 puntos, side-out
+61,7 %, mediana del rally 5,34 s, 0 solapamientos y 0 faltas de zaguero de la IA, 88,7 % de 2.os toques del colocador.
+
+- **Puestos jugables (sim.js)**: `CTRL_ROLES6 = ['OH', 'S', 'OPP', 'MB']` (`VB.Sim.CTRL_ROLES6`, orden de la fila Controlar: Receptor,
+  Colocador, Opuesto, Central; el líbero no se elige). `createGame({ctrlRole})` y `VB.Sim.setCtrlRole(g, role)` → `g.ctrl` = el primer
+  jugador del equipo 0 con ese puesto (OH n.º 2, S n.º 1, OPP n.º 4, MB n.º 3); `g.ctrlBase` = su atleta. main.js sigue pasando 'OH':
+  ui.js guarda la elección en `localStorage 'voley3d.role6'` y la aplica con `setCtrlRole` nada más empezar (petición a main.js:
+  `ctrlRole6` en `loadSettings` y `ctrlRole: ctx.settings.ctrlRole6` en `startMatch`).
+- **Central y líbero**: cuando el líbero entra por el central del humano (`g.liberoFor[0] === g.ctrlBase`, en `applyLibero`), el humano
+  pasa a llevar al líbero (`g.ctrl = g.libero[0]`; recibe y defiende con las reglas del líbero) y recupera a su central cuando vuelve.
+  Sin eventos `switch`; el evento `libero` lleva `human: true` cuando le afecta (ui.js: «Entra el líbero por ti…» / «Vuelves a pista»).
+- **Colocador humano**: el 2º toque es suyo (`VB.AI6.humanOwns` con n = 1: punto de toque a < `HUM.own2` 3 m o a d < `HUM.own2D` 4 de la
+  red; si no, colocador de emergencia). Al golpear (set en el suelo o `jset`) la dirección del stick elige el carril: `VB.AI6.laneOf(g, p,
+  mx, my)` → 'left' (bola alta a punta), 'right' (tensa al opuesto), 'mid' (rápida al central), 'back' (pipe al zaguero) o null (elige la
+  IA) con zona muerta 0,4 (`g.aimLen`/`g.swingLen`, ver abajo); `chooseSet(g, p, lane)`. `setReady` no se aplica al colocador.
+  «¡Pídela!» no vale para el colocador (`askOk`).
+- **Central humano**: candidato a rápida con `setReady`; bloqueo con la marca de bloqueo sin el error del bloqueador IA. **Opuesto humano**:
+  tensa por zona 2 y pipe desde zona 1 (`setReady` de zaguero: d ≤ `HUM.setDb` 7).
+- **Pipe** (ai6): tempo `'pipe'` (`FORM.set.pipe` d 3,4 / apex 4,5, `setW.pipe` 0,45, solo en sistema), candidatos `canPipe(p)` (zaguero
+  OH u OPP, no líbero ni banquillo), batida desde d 6 (`FORM.approach.pipe`) y despegue detrás de los 3 m (`p.toX` > `C.ATTACK`): 321
+  colocaciones pipe y 277 remates de zaguero en 1270 puntos, 0 faltas `backAttack`. `askOk` vale también para el zaguero no líbero.
+- **Formaciones de recepción** (ai6 `FORM.RECV[zona del colocador 1..6]`): las 6 del 5-1 con 3 receptores (líbero + los 2 receptores) en
+  línea a d ≈ 6, colocador escondido (delantero en la red; zaguero pegado a su delantero, listo para penetrar), opuesto y central
+  delanteros en la red, opuesto zaguero al fondo. Legales ANTES de `legalize()` (`VB.AI6.legalFixes()` = 0 en las 12). Penetración
+  (`recvPos`) y cambio a los puestos de especialidad tras el saque (`basePos`/`defPos`: colocador y opuesto a la derecha, central al
+  centro, receptores a la izquierda; zagueros líbero 5, receptor 6, colocador/opuesto 1) como estaban.
+- **Falta de posición** (sim.js): en Difícil/Experto (`g.posRule6`) el humano que no saca se mueve durante `mode 'serve'` (`stepServe`)
+  y, al golpe de saque, si está en un par solapado (`VB.Sim.overlapOf(g, 0, g.ctrl)` > 0) → `point` con `reason 'position'`, «Falta de
+  posición», `SIGNAL.position = 'attackFault'`. En Fácil/Normal se le coloca y no se mueve (como antes). La IA sigue sin solaparse.
+- **Fases de `spot`** (ai6): `VB.AI6.spot(g, p).phase` = '' | 'recv' | 'serve' | 'set' | 'attack' | 'cover' | 'block' | 'net' | 'dig'
+  (durante `mode 'serve'` devuelve el sitio legal `p.fx/fy` con 'recv' o 'serve'). `_tg` nace con `phase: ''`.
+- **Pistas en el campo** (fx.js, lote de calcomanías: 0 dibujos nuevos, celdas 12-15 del atlas): la marca de posición es una pista por fase
+  (`posMark` + `posMark2` + `posArrow`; tabla `PH`: recepción celda ancha celeste, colocación aro pequeño + punto, batida aro naranja con
+  chevrón hacia la red, cobertura aro tenue, bloqueo barra rosa en la red, defensa aro azul) con densidad por nivel (`hintK`): Fácil
+  siempre (atenuada encima); Normal a > 0,8 m y siempre block/set/attack; Difícil solo block/set más tenues y el sitio legal en el
+  saque; Experto solo el sitio legal durante el saque. Con balón suyo no hay marca. perf 6v6 844×390: media 331-348 k triángulos /
+  58-62 dibujos, baja 37-40 dibujos («objetivos cumplidos»).
+- **players.js**: postura agachada de cobertura (`phase 'cover'`, a ≤ 0,8 m del sitio, no el atacante ni quien acaba de tocar); el halo y
+  el galón siguen a `g.ctrl` cuando pasa al líbero.
+- **ui.js**: fila Controlar con los 4 puestos (←/→, clic, ayuda en `#ctrlHelp`, pastilla y aria), `roleName`/`sixNum` por puesto,
+  consejos `coach6` por puesto y fase, Controles «Colocar (colocador): la dirección elige a quién», sello «Ahora no: tú colocas».
+- **Pruebas**: simtest «6v6 con humano» (h) 4 puestos, (i) relevo al líbero y vuelta, (j) 2.os toques del colocador ≥ 60 % (77,4 %) y
+  carril por `laneOf`/`chooseSet`/jset, (k) 12 formaciones legales, (l) pipe > 0, (m) falta de posición en Difícil y no en Fácil;
+  `ROLE=OH|S|OPP|MB node tools/drive6.js` elige el puesto en la fila Controlar y comprueba las marcas de fase.
+- **Pendiente**: la IA no coloca pipe en salto (solo desde el suelo); legibilidad de los aros tenues y el chevrón a 844×390; equilibrio
+  de Fácil (novato 65,8 %; decisión de Ferran); CONTRACT §4.3 (texto propuesto en SIGUIENTE.md «Peticiones entre lotes»).
+
+### Arreglos tras la revisión del lote A (11-nov-2026) — sim / ai6 / fx / ui
+- `setCtrlRole` con el balón aún en la mano (`serveState 'ready'`) vuelve a preparar el saque para quien lo lleva ahora, como `setupServe`
+  (`ritualSetup`, `g.timer`/`g.cpuTossIn`, `serveAimReset`, `holdPos`): ui.js aplica el puesto justo después de empezar el partido y el
+  colocador humano sacaba el 1r saque con el ritual de la CPU congelado y sin diana (`doServe` sin apuntar).
+- Carril del colocador humano (D3): `step()` normaliza el stick desde 0,2 (`aimOn`), así que `laneOf` nunca veía la zona muerta de 0,4.
+  Nuevos `g.aimLen` (módulo del stick en el paso) y `g.swingLen` (el del último apuntado del gesto, `processSwing`, junto a `swingAim`), solo
+  con `g.rot`; `hit()` llama `laneOf(g, p, aim[0]·swingLen, aim[1]·swingLen)` en el set y en el jset. En 2v2 se quedan en 0 (huella idéntica).
+- ai6 `defPos`: la marca de bloqueo del humano (`S.isHuman`) no lleva el error del bloqueador IA (`g.blockOff × FORM.blockErr`, ±1,8 m con
+  el perfil del compañero): la pista dice dónde saltar de verdad. `offPos`: el zaguero de pipe solo recibe fase `'attack'` en sistema (mismo
+  criterio que `chooseSet`: recepción ≥ 0,45 reciente y colocador a < 3 m de la red); si no, el mismo sitio con fase `'dig'`.
+- fx `hintK`/`pLive`: en Difícil/Experto (`g.posRule6`) la marca del puesto base (`'serve'`) también durante el saque PROPIO (el humano que no
+  saca se mueve y `doServe` le pita el solapamiento en los dos saques).
+- ui `stampAsk`: al colocador, «Ahora no: tú colocas». `coach6`: zaguero sin pipe (`canPipe` false: el central recién sacado) → «defiende en la
+  marca»; «a punto para el primer tiempo» (neutro).
+- simtest (j): colocación en salto humana con carril por la sim entera (saque rival → pase reconducido al punto de colocación → salto y COLOCAR
+  con el stick en el carril): 9/9 por carril, pipe con d ≥ 3,3; con el stick a 0,3 hacia atrás el pipe sale 1/9 (zona muerta de verdad).
+  drive6 `ROLE=OH`: pulsa → al menos una vez (si no, con la fila ya en Receptor nada se guardaba en localStorage).

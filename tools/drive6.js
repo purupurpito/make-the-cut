@@ -8,7 +8,11 @@
  * con la rotación) → pausa → seguir.
  * Comprueba: sin errores JS, puntos jugados, toques del humano, saque humano, control fijo (sin eventos switch), pabellón, que el
  * personaje no se mueve solo (quieto unos segundos sin balón suyo: no se desplaza) y la marca de posición (fx posMark).
- * Capturas en tools/out/arte/6v6s3/drive6-<W>x<H>-*.png. TOUCH=1 emula pantalla táctil (el teclado sigue mandando).
+ * Capturas en tools/out/arte/6v6s3/drive6-<W>x<H>[-ROLE]-*.png. TOUCH=1 emula pantalla táctil (el teclado sigue mandando).
+ * ROLE=OH|S|OPP|MB (lote A, D9; sin definir = OH, todo como siempre): en la preparación baja a la fila Controlar y pulsa → hasta que
+ * #ctrlVal diga el puesto (Receptor / Colocador / Opuesto / Central), comprueba g.ctrlRole al empezar y que salen marcas de fase en el
+ * suelo (calcomanías posMark* / posArrow*). Con OPP/MB el saque humano tarda más (empiezan en zona 4/3: 3 o 2 rotaciones): tras los
+ * SECS s se sigue jugando hasta 80 s más por rotación (SRV_WAIT) hasta que saque o lleguen 3 puntos; con S no se pide «¡Pídela!» (askOk).
  * Uso: node tools/drive6.js [W=1280] [H=720] [segundos reales=70] [query extra]
  * Sale con 1 si hay excepciones o el flujo no avanza.
  */
@@ -16,12 +20,18 @@
 const fs = require('fs'), path = require('path');
 const W = +(process.argv[2] || 1280), H = +(process.argv[3] || 720), SECS = +(process.argv[4] || 70);
 const EXTRA = process.argv[5] || '';
+// puesto del humano (ROLE): nombre en la fila Controlar (ui.js ROLE_NAME) y dorsal (sim ROLES6: el 1r de ese puesto)
+const ROLE = process.env.ROLE || '', ROLE_NAME = { OH: 'Receptor', S: 'Colocador', OPP: 'Opuesto', MB: 'Central' }, ROLE_NUM = { OH: 2, S: 1, OPP: 4, MB: 3 };
+if (ROLE && !ROLE_NAME[ROLE]) { console.error('ROLE debe ser OH, S, OPP o MB'); process.exit(2); }
+// espera extra (s) al saque humano tras los SECS de juego: su puesto empieza en la zona ROLE_ZONE y saca al llegar a la 1 (una
+// rotación por cada saque recuperado, ~4-8 puntos/min): 90 s para el receptor (zona 2, como siempre) y 80 s más por rotación de más
+const ROLE_ZONE = { OH: 2, S: 1, OPP: 4, MB: 3 }, SRV_WAIT = 90 + 80 * Math.max(0, (ROLE_ZONE[ROLE || 'OH'] || 2) - 2);
 const OUT = path.join(__dirname, 'out', 'arte', '6v6s3');
 fs.mkdirSync(OUT, { recursive: true });
 const CDP = require('./cdp.js');
 let page = null;
 process.on('exit', () => { if (page) page.close(); });
-setTimeout(() => { console.error('TIEMPO AGOTADO'); process.exit(2); }, (SECS + 200) * 1000).unref();
+setTimeout(() => { console.error('TIEMPO AGOTADO'); process.exit(2); }, (SECS + 110 + SRV_WAIT) * 1000).unref();
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let send;
@@ -63,7 +73,7 @@ async function steer(m) {
   for (const k of [...held]) if (!want.has(k)) { held.delete(k); await key('keyUp', k); }
   for (const k of want) if (!held.has(k)) { held.add(k); await key('keyDown', k); moves++; }
 }
-async function shot(name) { const r = await send('Page.captureScreenshot', { format: 'png' }); const f = path.join(OUT, 'drive6-' + W + 'x' + H + '-' + name + '.png'); fs.writeFileSync(f, Buffer.from(r.data, 'base64')); console.log('captura', f); }
+async function shot(name) { const r = await send('Page.captureScreenshot', { format: 'png' }); const f = path.join(OUT, 'drive6-' + W + 'x' + H + (ROLE ? '-' + ROLE : '') + '-' + name + '.png'); fs.writeFileSync(f, Buffer.from(r.data, 'base64')); console.log('captura', f); }
 async function waitFor(expr, ms) { const t = Date.now(); while (Date.now() - t < ms) { if (await evalJs(expr)) return true; await sleep(120); } return false; }
 
 // Saque humano (solo si saca SU jugador, g.ctrl): espera el silbato, J lanza y J golpea en el momento ideal
@@ -95,8 +105,8 @@ const DECIDE = `(function(){var g=VB.ctx.game,p=g.ctrl,S=VB.Sim,o={m:g.mode,mv:n
     if(w.attack&&p.z===0&&w.jumpT<0.14&&w.jumpT>-0.1)o.jump=true;
     if(w.reach||w.canReach||Math.hypot(g.ball.x-p.x,g.ball.y-p.y)<2.6)o.press=w.press/ts;}
   if(!job&&p.front&&p.z===0&&g.touchTeam===1&&g.touches===2&&Math.abs(p.x)<1.4){for(var i=0;i<g.teams[1].length;i++){var q=g.teams[1][i];if(q.z>0.4&&q.vz<1.2&&Math.abs(q.x)<4)o.jump=true;}}
-  if(p.front&&g.touchTeam===0&&g.touches===1&&g.time-g.ask6>3)o.ask=true;
-  var dbg=VB.FX&&VB.FX._dbg&&VB.FX._dbg();if(dbg&&dbg.decOrder){for(var k=0;k<dbg.decOrder.length;k++){var q=dbg.decOrder[k];if(q.name==='posMark'&&q.visible)o.mark=true;}}
+  if(p.role!=='S'&&p.front&&g.touchTeam===0&&g.touches===1&&g.time-g.ask6>3)o.ask=true;
+  var dbg=VB.FX&&VB.FX._dbg&&VB.FX._dbg();if(dbg&&dbg.decOrder){for(var k=0;k<dbg.decOrder.length;k++){var q=dbg.decOrder[k];if(q.visible&&/^pos(Mark|Arrow)/.test(q.name||''))o.mark=true;}}
   return JSON.stringify(o);})()`;
 
 (async () => {
@@ -113,7 +123,7 @@ const DECIDE = `(function(){var g=VB.ctx.game,p=g.ctrl,S=VB.Sim,o={m:g.mode,mv:n
     check(await evalJs("document.activeElement.id==='btn6v6'&&!document.getElementById('btn6v6').disabled"), 'la tarjeta 6 contra 6 está activa y se llega con →');
     await press('Enter'); await sleep(500);
     check(await evalJs("VB.UI.menuPage()==='quick'&&VB.ctx.settings.format==='6v6'&&document.getElementById('fmtVal').textContent==='6 contra 6'"), 'la tarjeta abre la preparación con Formato «6 contra 6»');
-    check(await evalJs("document.getElementById('optVenue').classList.contains('lock')&&document.getElementById('venueVal').textContent==='Pabellón'&&document.getElementById('ctrlVal').textContent==='Receptor'"), '6v6: Escenario fijo en Pabellón y Controlar fijo en Receptor');
+    check(await evalJs("document.getElementById('optVenue').classList.contains('lock')&&document.getElementById('venueVal').textContent==='Pabellón'&&document.getElementById('ctrlVal').textContent==='Receptor'"), '6v6: Escenario fijo en Pabellón y Controlar en Receptor (por defecto)');
     // ←/→ en la fila Formato (↑ desde ¡A JUGAR! hasta la primera fila)
     for (let i = 0; i < 5; i++) { await press('ArrowUp'); await sleep(110); }
     check(await evalJs("document.activeElement.id==='optFmt'"), '↑ llega a la fila Formato (la primera)');
@@ -126,13 +136,30 @@ const DECIDE = `(function(){var g=VB.ctx.game,p=g.ctrl,S=VB.Sim,o={m:g.mode,mv:n
     check(await evalJs("document.getElementById('optVenue').hidden&&!document.getElementById('optCam6').hidden&&document.activeElement.id==='optCam6'&&VB.ctx.settings.cam6==='tv'&&document.getElementById('cam6Val').textContent==='Televisión'&&document.getElementById('venueVal').textContent==='Pabellón'"), '6v6: Escenario oculto y en su sitio la fila Cámara (← de 3ª persona da la vuelta a Televisión)');
     await press('ArrowRight'); await sleep(250);
     check(await evalJs("VB.ctx.settings.cam6==='3p'&&document.getElementById('cam6Val').textContent==='3ª persona'"), '→ en Cámara vuelve a 3ª persona');
+    if (ROLE) { // fila Controlar (D9): ↓ hasta la fila y → hasta el puesto pedido (recorre Receptor, Colocador, Opuesto, Central; sin lock)
+      for (let i = 0; i < 6 && !(await evalJs("document.activeElement.id==='optCtrl'")); i++) { await press('ArrowDown'); await sleep(110); }
+      check(await evalJs("document.activeElement.id==='optCtrl'&&!document.getElementById('optCtrl').classList.contains('lock')"), '↓ llega a la fila Controlar (en 6v6 ya no está fija)');
+      // (al menos una pulsación: con ROLE=OH la fila ya dice Receptor y, sin pulsar, nada se guarda en localStorage; da la vuelta a los 4)
+      for (let i = 0; i < 5 && (i === 0 || (await evalJs("document.getElementById('ctrlVal').textContent")) !== ROLE_NAME[ROLE]); i++) { await press('ArrowRight'); await sleep(250); }
+      check((await evalJs("document.getElementById('ctrlVal').textContent")) === ROLE_NAME[ROLE], '→ en Controlar llega a «' + ROLE_NAME[ROLE] + '»');
+      check(await evalJs("(function(){try{return (localStorage.getItem('voley3d.role6')||'').indexOf('" + ROLE + "')>=0}catch(e){return false}})()"), 'el puesto se guarda en localStorage voley3d.role6');
+    }
     await shot('menu');
     for (let i = 0; i < 8 && !(await evalJs("document.activeElement.id==='btnGo'")); i++) { await press('ArrowDown'); await sleep(110); }
     check(await evalJs("document.activeElement.id==='btnGo'"), '↓ vuelve a ¡A JUGAR!');
+    // contador de eventos del humano, instalado ANTES de empezar el partido (la demo del menú no cuenta): el colocador saca de salida
+    // y su 1r serveReady sale en los primeros pasos, antes de que el estado sea playing
+    await evalJs(`window.__s6={hits:0,pts:0,serves:0,sok:0,sw:0,blk:0,spk:0,ask:0,lastAsk:-9};(function(){var o=VB.Sim.step;VB.Sim.step=function(g,dt,i){var n=g.events.length;o(g,dt,i);if(g.demo)return;
+      for(var k=n;k<g.events.length;k++){var e=g.events[k],s=window.__s6;if(e.type==='hit'&&e.human){s.hits++;if(e.kind==='serve')s.sok++;if(e.kind==='spike')s.spk++;}
+      if(e.type==='point')s.pts++;if(e.type==='serveReady'&&e.player===g.ctrl)s.serves++;if(e.type==='switch')s.sw++;if(e.type==='block'&&e.human)s.blk++;}
+      if(g.ask6!==window.__s6.lastAsk){window.__s6.lastAsk=g.ask6;if(g.ask6>0)window.__s6.ask++;}};})()`);
     await press('Enter'); await sleep(500);
     if (await evalJs("VB.UI.isPanelOpen&&VB.UI.isPanelOpen()")) { await press('ArrowDown'); await sleep(150); await press('Enter'); } // «Primer partido» → Jugar ya
     check(await waitFor("VB.ctx.state==='playing'&&!VB.ctx.game.demo", 9000), 'empieza el partido');
-    check(await evalJs("(function(g){return g.size===6&&!g.watch&&!g.autopilot&&g.ctrlMode==='one'&&g.ctrl.role==='OH'&&g.ctrl.num===2&&VB.Arena.venue()==='hall'})(VB.ctx.game)"),
+    if (ROLE) { // el puesto elegido manda (ui.js goMatch → VB.Sim.setCtrlRole): g.ctrlRole y su atleta (g.ctrlBase; al central sustituido le toca el líbero)
+      check(await evalJs("(function(g){var b=g.ctrlBase||g.ctrl;return g.size===6&&!g.watch&&!g.autopilot&&g.ctrlMode==='one'&&g.ctrlRole==='" + ROLE + "'&&b.role==='" + ROLE + "'&&b.num===" + ROLE_NUM[ROLE] + "&&(g.ctrl===b||g.ctrl===g.libero[0])&&VB.Arena.venue()==='hall'})(VB.ctx.game)"),
+        'partido 6v6 humano: llevas al ' + ROLE_NAME[ROLE].toLowerCase() + ' n.º ' + ROLE_NUM[ROLE] + ', en el pabellón');
+    } else check(await evalJs("(function(g){return g.size===6&&!g.watch&&!g.autopilot&&g.ctrlMode==='one'&&g.ctrl.role==='OH'&&g.ctrl.num===2&&VB.Arena.venue()==='hall'})(VB.ctx.game)"),
       'partido 6v6 humano: llevas al receptor n.º 2, en el pabellón');
     await sleep(600); await press('Escape'); await sleep(50); await press('p'); await sleep(300);   // (salta la presentación si la hay)
     if (await evalJs("VB.ctx.state==='paused'")) { await press('p'); await sleep(300); }
@@ -141,14 +168,12 @@ const DECIDE = `(function(){var g=VB.ctx.game,p=g.ctrl,S=VB.Sim,o={m:g.mode,mv:n
       await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [p] }); await sleep(60);
       await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [p] }); await sleep(400);
     }
-    await evalJs(`window.__s6={hits:0,pts:0,serves:0,sok:0,sw:0,blk:0,spk:0,ask:0,lastAsk:-9};(function(){var o=VB.Sim.step;VB.Sim.step=function(g,dt,i){var n=g.events.length;o(g,dt,i);
-      for(var k=n;k<g.events.length;k++){var e=g.events[k],s=window.__s6;if(e.type==='hit'&&e.human){s.hits++;if(e.kind==='serve')s.sok++;if(e.kind==='spike')s.spk++;}
-      if(e.type==='point')s.pts++;if(e.type==='serveReady'&&e.player===g.ctrl)s.serves++;if(e.type==='switch')s.sw++;if(e.type==='block'&&e.human)s.blk++;}
-      if(g.ask6!==window.__s6.lastAsk){window.__s6.lastAsk=g.ask6;if(g.ask6>0)window.__s6.ask++;}};})()`);
     if (TOUCH) { joyR = (await evalJs("(function(){var b=document.querySelector('.vt-base');return b?b.getBoundingClientRect().width/2:58})()")) || 58; jx0 = Math.round(W * 0.2); jy0 = Math.round(H * 0.62); }
     const still = { done: false, d: 0, n: 0 }; let markSeen = 0;
     const t0 = Date.now(); let shotServe = false, shotRally = false, rallyT = 0, lastAsk = 0;
-    while (Date.now() - t0 < SECS * 1000 || (!(await evalJs('window.__s6.sok')) && Date.now() - t0 < (SECS + 90) * 1000)) {
+    // tras los SECS s sigue (hasta SRV_WAIT s más) si aún no ha sacado el humano o no se han jugado 3 puntos (el colocador saca de
+    // salida y toca en todos los peloteos, con la cámara lenta de novato: sus puntos van más despacio)
+    while (Date.now() - t0 < SECS * 1000 || ((await evalJs('!window.__s6.sok||window.__s6.pts<3')) && Date.now() - t0 < (SECS + SRV_WAIT) * 1000)) {
       if (await evalJs("VB.ctx.state==='paused'")) { await press('p'); await sleep(200); continue; }
       const d = JSON.parse(await evalJs(DECIDE));
       if (d.m === 'serve') { await serve(async () => { if (!shotServe) { shotServe = true; await sleep(400); await shot('saque'); } }); continue; }
@@ -188,8 +213,10 @@ const DECIDE = `(function(){var g=VB.ctx.game,p=g.ctrl,S=VB.Sim,o={m:g.mode,mv:n
     check(s.sw === 0, 'control fijo: sin eventos switch en 6v6');
     check(moves > 5, (TOUCH ? 'el joystick mueve' : 'las flechas mueven') + ' al personaje (' + moves + ' órdenes)');
     check(still.done && still.d < 0.15, 'sin tocar nada, el personaje no se mueve solo (' + (still.done ? still.d.toFixed(2) + ' m en ' + still.n + ' muestras' : 'sin muestra') + ')');
-    check(markSeen > 0, 'marca de posición en el suelo cuando estás lejos de tu sitio (' + markSeen + ' muestras)');
-    check(s.ask >= 1, (TOUCH ? '⇄' : 'C') + ' pide el balón («¡Pídela!», g.ask6: ' + s.ask + ')');
+    check(markSeen > 0, 'marca de fase en el suelo (posMark* / posArrow*) cuando estás lejos de tu sitio (' + markSeen + ' muestras)');
+    // «¡Pídela!» no vale para el colocador (S.askOk: él es quien coloca, no pide): con ROLE=S se comprueba que NO guarda nada
+    if (ROLE === 'S') check(s.ask === 0, 'el colocador no pide el balón («¡Pídela!» no se guarda, g.ask6: ' + s.ask + ')');
+    else check(s.ask >= 1, (TOUCH ? '⇄' : 'C') + ' pide el balón («¡Pídela!», g.ask6: ' + s.ask + ')');
     if (TOUCH) check(touches > 0 && (await evalJs('VB.Input.overlayShown()')), 'táctil: overlay en partido y toques de dedo (' + touches + ')');
     if (!shotRally) await shot('peloteo');
     await press('p'); await waitFor("VB.ctx.state==='paused'", 6000);
