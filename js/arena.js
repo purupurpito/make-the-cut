@@ -2131,7 +2131,7 @@
     g.restore();
   }
   /* Balón del juego (el mismo de pages/icon.svg y del botón GOLPEAR, ICON_HIT de input.js): tres costuras en remolino desde el
-   * centro y una franja curva por panel (naranja y azul; el tercero, crema), con contorno de tinta. Geometría en la caja 24×24
+   * centro y una franja curva por panel (teal y teal oscuro, como el balón del partido; el tercero, crema), con contorno de tinta. Geometría en la caja 24×24
    * del SVG (radio 10), escalada a radio r. Sin Path2D(string) (navegadores viejos): el balón de antes, de arcos. */
   var BALL_SEAM = 'M12 12C12 8 10.5 4.5 8 2.8M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8';
   var BALL_PANEL = 'M12 12C12 8 10.5 4.5 8 2.8A10 10 0 0 1 13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8C15.98 13.86 13.73 13 12 12Z';
@@ -2142,8 +2142,8 @@
     if (!seam || !panel) { g.beginPath(); g.arc(x, y, r * 0.8, 0, 6.283); g.stroke(); return; }
     g.save();
     g.translate(x, y); g.scale(s, s); g.translate(-12, -12);
-    g.beginPath(); g.arc(12, 12, 10, 0, 6.283); g.fillStyle = '#fff6e6'; g.fill();
-    var fills = ['#ff6a2e', '#3a83ff'];
+    g.beginPath(); g.arc(12, 12, 10, 0, 6.283); g.fillStyle = '#fffaf0'; g.fill();
+    var fills = ['#1cc4b4', '#0b8a86'];
     for (var i = 0; i < 2; i++) { g.save(); g.translate(12, 12); g.rotate(i * 2.0944); g.translate(-12, -12); g.fillStyle = fills[i]; g.fill(panel); g.restore(); }
     g.strokeStyle = ink; g.lineWidth = 1.3; g.lineCap = 'round'; g.lineJoin = 'round';
     for (var j = 0; j < 3; j++) { g.save(); g.translate(12, 12); g.rotate(j * 2.0944); g.translate(-12, -12); g.stroke(seam); g.restore(); }

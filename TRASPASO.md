@@ -430,6 +430,13 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **Logotipo «Make the Cut» (11-nov-2026; Ferran: «Vale, bien. Súbelos»)**: el rótulo partido en dos por la trayectoria del
+  remate (un *cut* es el remate en diagonal cerrada). Es el SVG `#mtcLogo`, definido una vez en index.html (antes del telón)
+  y usado en el menú y en el telón con `<use>`; mide 4,3 em de ancho, así que escala con el font-size de `.logo` y el FLIP
+  del telón sigue igual. Letras de Barlow Condensed Black Italic pasadas a trazados (ya no dependen de la fuente «VB Marca»,
+  que solo usa el rótulo PALAU DEL MAR). Icono nuevo en pages/ (balón partido en diagonal) con los PNG 180/192/512
+  regenerados, y el balón de las vallas (arena.js `drawGameBall`) en teal como el del partido. Fuentes del logo (gen.py,
+  symbol.py y las propuestas A-D en SVG) fuera del repo, en `carpetas/logo-make-the-cut` del PC de casa.
 - **Muñeco integrado** (10/11-nov-2026, rama `wip-doll-carrera-playa`; pedido de Ferran: «Los nuevos Doll están bien. Mételos»): el muñeco
   chibi de `js/doll.js` es el único modelo de personaje (pabellón, playa, 6v6, Carrera). players.js monta su esqueleto con
   `VB.Doll.dims()`, estirón cartoon del brazo al golpear, caras del muñeco, squash con rebote de la cabeza, aspecto por jugador (tus n.º 1 y 2
