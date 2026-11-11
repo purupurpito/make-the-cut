@@ -1,4 +1,5 @@
 # TRASPASO — Make the Cut (antes «Voley 3D»)
+n> **Siguientes tareas y decisiones de Ferran (11-nov-2026): ver SIGUIENTE.md** (lotes A/B/C para trabajar en paralelo).
 
 Proyecto personal de Ferran: juego de vóley 2 contra 2 en 3D (Three.js) con cámara en tercera
 persona detrás del jugador. Nace del prototipo isométrico (`prototipo-iso/index.html`, publicado
