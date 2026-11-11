@@ -75,7 +75,7 @@
               },
               "liberoEstimated": false,
               "ovr": 89,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Taquaral es el barrio de su pabellón; se quita el patrocinador Renata. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Taquaral\". Resultado: Ningún club ni competición con ese nombre; solo aparece Taquaral como el gimnasio donde juega Vôlei Renata. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Taquaral es el barrio de su pabellón; se quita el patrocinador Renata. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior)."
             },
             {
               "real": "Sesi Vôlei Bauru",
@@ -91,7 +91,7 @@
               },
               "liberoEstimated": true,
               "ovr": 86,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño al lema de la ciudad, «Cidade Sem Limites»; se quita el patrocinador Sesi."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Bauru Sem Limites\" vôlei. Resultado: Sin resultados de club o competición; solo Sesi Bauru. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Guiño al lema de la ciudad, «Cidade Sem Limites»; se quita el patrocinador Sesi."
             },
             {
               "real": "Osasco São Cristóvão Saúde",
@@ -107,7 +107,7 @@
               },
               "liberoEstimated": false,
               "ovr": 87,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Osasco; se quita el patrocinador. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Osasquense\". Resultado: Solo sale Osasco Voleibol Clube / Osasco São Cristóvão Saúde; nada con este nombre exacto. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio de Osasco; se quita el patrocinador. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior)."
             },
             {
               "real": "Sesc RJ Flamengo",
@@ -123,7 +123,7 @@
               },
               "liberoEstimated": true,
               "ovr": 88,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Urubu» es la mascota del Flamengo; se quita Sesc."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Urubu Rio\" clube. Resultado: Ningún club se llama así. «Urubu» es el apodo/mascota del Flamengo y hay ríos Urubu; no es nombre oficial de nada. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Urubu» es la mascota del Flamengo; se quita Sesc."
             },
             {
               "real": "Fluminense",
@@ -139,7 +139,7 @@
               },
               "liberoEstimated": true,
               "ovr": 83,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Laranjeiras es el barrio de su sede; «Tricolor» es su apodo."
+              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Laranjeiras Tricolor\" clube. Resultado: No hay club oficial con ese nombre, pero «Tricolor das Laranjeiras» es el apodo muy conocido del Fluminense (mismas palabras en otro orden). No es el nombre oficial, así que no choca con la regla; se deja como guiño reconocible. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Laranjeiras es el barrio de su sede; «Tricolor» es su apodo."
             },
             {
               "real": "Monte Carmelo Vôlei",
@@ -155,7 +155,7 @@
               },
               "liberoEstimated": true,
               "ovr": 81,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Monte Carmelo. Verificación: sube a la 1ª (7.º de la Superliga Masculina 2025-26); se quitan Azulim y Sicoob. [Integrador: abreviatura CAR → CML, para que no se repita con otro club del juego.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Carmelitano\". Resultado: Sin coincidencia exacta; solo Monte Carmelo / Azulim Monte Carmelo. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio de Monte Carmelo. Verificación: sube a la 1ª (7.º de la Superliga Masculina 2025-26); se quitan Azulim y Sicoob. [Integrador: abreviatura CAR → CML, para que no se repita con otro club del juego.]"
             },
             {
               "real": "Suzano Vôlei",
@@ -171,7 +171,7 @@
               },
               "liberoEstimated": true,
               "ovr": 83,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Suzano."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Suzanense\". Resultado: Solo Suzano Vôlei; «suzanense» solo aparece como gentilicio. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio de Suzano."
             },
             {
               "real": "Vedacit Vôlei Guarulhos",
@@ -187,7 +187,7 @@
               },
               "liberoEstimated": true,
               "ovr": 82,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Guaru», forma corta de la ciudad; se quita Vedacit."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Guaru\" y una 2ª: \"Guaru Vôlei\" OR \"Vôlei Guaru\". Resultado: El club real se llama Vôlei Guarulhos (ahora Sil Vôlei Guarulhos). En un torneo de la APV existe un «Guaru Social», pero es otro nombre. Ningún «Vôlei Guaru» exacto. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Guaru», forma corta de la ciudad; se quita Vedacit."
             },
             {
               "real": "Unilife Maringá",
@@ -203,7 +203,7 @@
               },
               "liberoEstimated": true,
               "ovr": 81,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Cidade Canção» es el apodo de Maringá; se quita Unilife. Verificación: sube a la 1ª (7.ª de la Superliga Feminina 2025-26); colores sin fuente."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Cidade Canção\". Resultado: Sin club ni competición; solo una radio, «Cidade Canção FM». Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Cidade Canção» es el apodo de Maringá; se quita Unilife. Verificación: sube a la 1ª (7.ª de la Superliga Feminina 2025-26); colores sin fuente."
             }
           ]
         },
@@ -228,7 +228,7 @@
               },
               "liberoEstimated": true,
               "ovr": 76,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio; ojo, existen «Vôlei São José» y «São José Vôlei», y el nuestro es distinto."
+              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Vôlei Joseense\" y una 2ª: \"Vôlei Feminino Joseense\" OR \"Joseense de Voleibol\". Resultado: Hacia 2019-2020 existió un equipo «Vôlei Feminino Joseense» (Associação Joseense de Voleibol, São José dos Campos; sjc.sp.gov.br, agosto de 2019). Hoy se llama São José Vôlei. El nombre no es idéntico, pero se parece mucho. También existe el Clube Atlético Joseense, de fútbol, que es otro nombre. Propuesta: Aeroespacial Vôlei (guiño al polo aeroespacial de São José dos Campos; WebSearch \"Aeroespacial Vôlei\": sin coincidencias). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio; ojo, existen «Vôlei São José» y «São José Vôlei», y el nuestro es distinto."
             },
             {
               "real": "Saneago Goiás Vôlei",
@@ -244,7 +244,7 @@
               },
               "liberoEstimated": true,
               "ovr": 78,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Goiânia; se quita Saneago."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Goianiense\". Resultado: No hay club con ese nombre. Existe una «Liga Goianiense de Voleibol Escolar» (sub-13), que es otro nombre y de nivel escolar, y el Atlético Clube Goianiense, de fútbol, que también es distinto. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio de Goiânia; se quita Saneago."
             },
             {
               "real": "JF Vôlei",
@@ -260,13 +260,13 @@
               },
               "liberoEstimated": false,
               "ovr": 72,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Juiz de Fora. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Juizforano\". Resultado: Solo JF Vôlei / Juiz de Fora Vôlei. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio de Juiz de Fora. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior)."
             },
             {
               "real": "Joinville Vôlei",
               "official": "Joinville Vôlei",
-              "name": "Manchester Catarinense",
-              "short": "MCA",
+              "name": "Vôlei Cidade das Flores",
+              "short": "FLO",
               "city": "Joinville",
               "gender": "M",
               "colors": {
@@ -276,7 +276,7 @@
               },
               "liberoEstimated": true,
               "ovr": 73,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Manchester Catarinense» es el apodo de Joinville (guiño al estilo de Blue Lock). Verificación: baja a la 2ª (11.º y descendido en la Superliga Masculina 2025-26)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Vôlei Cidade das Flores» no existe como club ni competición oficial. Método: WebSearch \"Vôlei Cidade das Flores\": ningún club de vóley con ese nombre (Joinville es la «Cidade das Flores»; Holambra usa el apodo solo en torneos locales de otros deportes). Se cambió porque el nombre anterior, «Manchester Catarinense», chocaba: Existe el «Esporte Clube Manchester Catarinense», club de fútbol de Santa Catarina que juega el Catarinense 3 (betexplorer.com/football/team/manchester-sc/xMchJBaf; en octubre de 2026 tiene partidos contra Porto-SC e Inter de Lages). Nota anterior: Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Manchester Catarinense» es el apodo de Joinville (guiño al estilo de Blue Lock). Verificación: baja a la 2ª (11.º y descendido en la Superliga Masculina 2025-26)."
             },
             {
               "real": "Montes Claros Vôlei",
@@ -292,7 +292,7 @@
               },
               "liberoEstimated": true,
               "ovr": 71,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Montes Claros."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Montesclarense\". Resultado: Solo Montes Claros Vôlei (apodo «Pequi Atômico»). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio de Montes Claros."
             },
             {
               "real": "Norde Vôlei",
@@ -308,7 +308,7 @@
               },
               "liberoEstimated": true,
               "ovr": 70,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Alencarino» es el gentilicio poético de Fortaleza (por José de Alencar)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Alencarino\". Resultado: «Alencarino/alencarina» solo aparece como adjetivo de Ceará (p. ej. «equipe alencarina» = Norde Vôlei); ningún club con ese nombre. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Alencarino» es el gentilicio poético de Fortaleza (por José de Alencar)."
             },
             {
               "real": "Flor de Ypê / Paulistano / Barueri",
@@ -324,7 +324,7 @@
               },
               "liberoEstimated": false,
               "ovr": 75,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Barueri; se quitan Flor de Ypê y la marca del socio. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior). Verificación: baja a la 2ª (9.ª de 12 en la Superliga Feminina 2025-26). [Integrador: abreviatura BAR → BRU, para que no se repita con otro club del juego.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Barueriense\". Resultado: Solo Barueri Vôlei / Hinode Barueri / Paulistano Barueri; nada con este nombre exacto. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio de Barueri; se quitan Flor de Ypê y la marca del socio. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior). Verificación: baja a la 2ª (9.ª de 12 en la Superliga Feminina 2025-26). [Integrador: abreviatura BAR → BRU, para que no se repita con otro club del juego.]"
             },
             {
               "real": "Batavo Mackenzie",
@@ -340,7 +340,7 @@
               },
               "liberoEstimated": true,
               "ovr": 76,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Mack», forma corta del club; se quita Batavo."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Mack BH\". Resultado: Solo Mackenzie Esporte Clube (BH) / Mackenzie Cia. do Terno; ningún «Vôlei Mack BH». Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Mack», forma corta del club; se quita Batavo."
             },
             {
               "real": "Brasília Vôlei",
@@ -356,7 +356,7 @@
               },
               "liberoEstimated": false,
               "ovr": 73,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Candango» es el gentilicio popular de Brasília. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior). [Integrador: abreviatura CAN → CDG, para que no se repita con otro club del juego.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Candango\". Resultado: Solo Brasília Vôlei. Existe el Candango Esporte Clube, de fútbol, pero el nombre es distinto. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Candango» es el gentilicio popular de Brasília. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior). [Integrador: abreviatura CAN → CDG, para que no se repita con otro club del juego.]"
             },
             {
               "real": "Tijuca Tênis Clube",
@@ -372,7 +372,7 @@
               },
               "liberoEstimated": true,
               "ovr": 72,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio del barrio de Tijuca."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Tijucano\". Resultado: Solo Tijuca Tênis Clube y Atlético Tijuca; nada con este nombre exacto. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio del barrio de Tijuca."
             },
             {
               "real": "Renasce Sorocaba",
@@ -388,7 +388,7 @@
               },
               "liberoEstimated": true,
               "ovr": 70,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Sorocaba. No hago guiño a «Renasce» por si es un patrocinador."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vôlei Sorocabano\". Resultado: Solo Renasce Sorocaba; «sorocabano» no figura como nombre de club. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio de Sorocaba. No hago guiño a «Renasce» por si es un patrocinador."
             },
             {
               "real": "Pinheiros",
@@ -404,7 +404,7 @@
               },
               "liberoEstimated": true,
               "ovr": 71,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño: pinheiro (pino) → araucária."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Araucárias SP\" clube. Resultado: No hay club «Araucárias» en SP. Existe el Araucária Esporte Clube (fútbol, Paraná), pero en singular y sin «SP», así que el nombre es distinto. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Guiño: pinheiro (pino) → araucária."
             }
           ]
         }
@@ -436,7 +436,7 @@
               },
               "liberoEstimated": true,
               "ovr": 70,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de San Juan. UPCN es el sindicato propietario, no un patrocinador, pero tampoco hago guiño a él."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vóley Sanjuanino\". Resultado: Solo se usa como expresión genérica («el vóley sanjuanino») y para la Selección Sanjuanina de Vóley o la Federación Sanjuanina. Ningún club ni competición se llama así. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio de San Juan. UPCN es el sindicato propietario, no un patrocinador, pero tampoco hago guiño a él."
             },
             {
               "real": "Ciudad Vóley",
@@ -452,7 +452,7 @@
               },
               "liberoEstimated": true,
               "ovr": 68,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de la ciudad de Buenos Aires."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vóley Porteño\" club. Resultado: No sale ningún club ni competición con ese nombre. Existen Club Atlético Porteño (rugby, San Vicente), Estudiantil Porteño y un equipo masculino de una liga local llamado «Porteño», pero ninguno se llama «Vóley Porteño». La prensa llama «el club porteño» a Ciudad Vóley solo como descripción. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio de la ciudad de Buenos Aires."
             },
             {
               "real": "River Plate",
@@ -468,7 +468,7 @@
               },
               "liberoEstimated": true,
               "ovr": 66,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Millonario» es su apodo y Núñez su barrio. Evito «Millonarios» a secas, que es un club colombiano. [Integrador: abreviatura NUM → NUN, para que no se repita con otro club del juego.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Núñez Millonario\". Resultado: Solo sale el futbolista Maximiliano Núñez (jugó en Millonarios), el barrio de Núñez y la canción «Millonario». No hay ningún club con ese nombre. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Millonario» es su apodo y Núñez su barrio. Evito «Millonarios» a secas, que es un club colombiano. [Integrador: abreviatura NUM → NUN, para que no se repita con otro club del juego.]"
             },
             {
               "real": "Boca Juniors",
@@ -484,7 +484,7 @@
               },
               "liberoEstimated": true,
               "ovr": 67,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Xeneize» es su apodo."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Xeneize Vóley\". Resultado: Ningún resultado con ese nombre exacto. «Xeneize» es solo el apodo de Boca Juniors, y su sección de vóley se llama oficialmente Boca Juniors. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Xeneize» es su apodo."
             },
             {
               "real": "San Lorenzo",
@@ -500,7 +500,7 @@
               },
               "liberoEstimated": true,
               "ovr": 64,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «El Ciclón» es su apodo y Boedo su barrio."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Ciclón de Boedo\" club. Resultado: Es un apodo popular de San Lorenzo de Almagro, no un nombre oficial. Existen Club Atlético Ciclón (Tarija, Bolivia) y otro en La Pampa, pero ninguno se llama «Ciclón de Boedo». Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «El Ciclón» es su apodo y Boedo su barrio."
             },
             {
               "real": "Vélez Sarsfield",
@@ -516,7 +516,7 @@
               },
               "liberoEstimated": true,
               "ovr": 62,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «El Fortín» es su apodo y Liniers su barrio."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Fortín Liniers\" club. Resultado: Combina dos apodos de Vélez Sarsfield («El Fortín», del barrio de Liniers). Existen CSyD Liniers, Liniers de Bahía Blanca y CA El Fortín (Colón), pero ninguno se llama «Fortín Liniers». Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «El Fortín» es su apodo y Liniers su barrio."
             },
             {
               "real": "Monteros Vóley",
@@ -532,7 +532,7 @@
               },
               "liberoEstimated": true,
               "ovr": 65,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño a su lema «Orgullo Naranja»."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Naranja Monteros\" vóley. Resultado: «Naranja» y «Las Naranjas» son apodos de Monteros Vóley, cuyo nombre oficial es otro. No hay ningún club llamado «Naranja Monteros». Ojo: «Naranja» (Naranja X) es también una marca financiera argentina, pero no consta como patrocinador de Monteros, así que lo dejo como libre. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Guiño a su lema «Orgullo Naranja»."
             },
             {
               "real": "Gimnasia y Esgrima La Plata",
@@ -548,7 +548,7 @@
               },
               "liberoEstimated": true,
               "ovr": 65,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «El Lobo» es su apodo."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Lobo Platense\" club. Resultado: Ningún club con ese nombre. «El Lobo» es el apodo de Gimnasia y Esgrima La Plata. Existen CA Platense (Vicente López), Platense de Uruguay y Platense FC de Honduras, pero ninguno se llama «Lobo Platense». Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «El Lobo» es su apodo."
             },
             {
               "real": "Estudiantes de La Plata",
@@ -564,7 +564,7 @@
               },
               "liberoEstimated": true,
               "ovr": 64,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Pincha» (pincharratas) es su apodo."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Pincha Platense\" club. Resultado: Ningún club con ese nombre. «Pincha» es el apodo de Estudiantes de La Plata, y CA Platense es otro club distinto. Nota: «Platense» puede recordar a CA Platense, pero no es el mismo nombre. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Pincha» (pincharratas) es su apodo."
             },
             {
               "real": "CEF 5 La Rioja",
@@ -580,7 +580,7 @@
               },
               "liberoEstimated": true,
               "ovr": 62,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. A sus jugadoras las llaman «naranjitas»."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Naranjitas Riojanas\". Resultado: No sale nada con ese nombre: solo tiendas de naranjas de Logroño y bodegas riojanas. Ningún club ni competición. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. A sus jugadoras las llaman «naranjitas»."
             }
           ]
         }
@@ -660,7 +660,7 @@
               },
               "liberoEstimated": true,
               "ovr": 72,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Juega en Frisco; guiño a «Pulse» con otra ciudad."
+              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Frisco Pulse\" volleyball; 2ª búsqueda \"Frisco Pulsar\". Resultado: No existe un equipo llamado «Frisco Pulse». Pero el real, Dallas Pulse (MLV, campeón en 2026), juega como local en el Comerica Center de Frisco, y la prensa lo llama a menudo «Frisco's Dallas Pulse». Al cambiar solo la ciudad, se identifica casi directamente con el real. Propuesta: Frisco Pulsar (comprobado: no hay ningún equipo con ese nombre). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Juega en Frisco; guiño a «Pulse» con otra ciudad."
             },
             {
               "real": "Omaha Supernovas",
@@ -676,7 +676,7 @@
               },
               "liberoEstimated": true,
               "ovr": 71,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Supernova → hipernova, como Superliga → Hiperliga."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Omaha Hypernovas\". Resultado: Ningún resultado con «Hypernovas». Solo sale el real, Omaha Supernovas, que se llama distinto. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Supernova → hipernova, como Superliga → Hiperliga."
             },
             {
               "real": "Orlando Valkyries",
@@ -692,7 +692,7 @@
               },
               "liberoEstimated": false,
               "ovr": 71,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Traducción al español."
+              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Orlando Valquirias\"; 2ª búsqueda \"Kissimmee Valquirias\". Resultado: No hay ningún equipo con el nombre en español, pero es la traducción literal de Orlando Valkyries (MLV, campeón en 2025): misma ciudad y mismo apodo traducido. No es idéntico, pero se acerca mucho a la regla de «mismas palabras». Propuesta: Kissimmee Valquirias (comprobado: no hay ningún equipo con ese nombre). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Traducción al español."
             },
             {
               "real": "Hawaiʻi Rainbow Warriors",
@@ -708,7 +708,7 @@
               },
               "liberoEstimated": true,
               "ovr": 68,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Mānoa es el campus y «Rainbow» su apodo. [Integrador: abreviatura MAN → MNO, para que no se repita con otro club del juego.]"
+              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Manoa Rainbows\" volleyball. Resultado: No es un nombre oficial: los equipos de la Universidad de Hawái en Mānoa se llaman Rainbow Warriors y Rainbow Wahine. Pero la prensa los llama a menudo «Rainbows» (p. ej. «Rainbows sweep Utah Valley»), e históricamente se llamaron «Hawaii Rainbows». El nombre se acerca mucho a ese uso histórico y coloquial. Propuesta: Manoa Arcoíris (no comprobado). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Mānoa es el campus y «Rainbow» su apodo. [Integrador: abreviatura MAN → MNO, para que no se repita con otro club del juego.]"
             },
             {
               "real": "UC Irvine Anteaters",
@@ -724,7 +724,7 @@
               },
               "liberoEstimated": true,
               "ovr": 67,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño: oso hormiguero (anteater) → cerdo hormiguero (aardvark)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Irvine Aardvarks\". Resultado: Ningún equipo con ese nombre. UC Irvine son los Anteaters; los Aardvarks que existen son de otras ciudades (Rochester Aardvarks RFC, uno recreativo de Chicago). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Guiño: oso hormiguero (anteater) → cerdo hormiguero (aardvark)."
             },
             {
               "real": "Long Beach State",
@@ -756,7 +756,7 @@
               },
               "liberoEstimated": true,
               "ovr": 65,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Westwood es su barrio; bruin (oso) → grizzly."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Westwood Grizzlies\"; 2ª búsqueda sobre la mascota de Westwood High School (CA). Resultado: Ningún equipo con ese nombre. Westwood High School (CA) son los Lumberjacks y Westwood HS (Michigan) los Patriots. Los Grizzlies que existen son de otras ciudades (Memphis, Utah, Montana, Fresno…). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Westwood es su barrio; bruin (oso) → grizzly."
             }
           ]
         }
@@ -788,12 +788,12 @@
               },
               "liberoEstimated": true,
               "ovr": 61,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Ciudad + traducción del apodo."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Langley Espartanos\". Resultado: No sale nada que una «Langley» y «Espartanos». Solo existe Los Espartanos de Pacasmayo, un club de fútbol de Perú con otro nombre. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Ciudad + traducción del apodo."
             },
             {
               "real": "UBC Thunderbirds",
               "official": "University of British Columbia (Thunderbirds)",
-              "name": "Point Grey Thunder",
+              "name": "Point Grey Thunderbolts",
               "short": "PGT",
               "city": "Vancouver",
               "gender": "MW",
@@ -804,7 +804,7 @@
               },
               "liberoEstimated": true,
               "ovr": 60,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Point Grey es su campus."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Point Grey Thunderbolts» no existe como club ni competición oficial. Método: WebSearch \"Point Grey Thunderbolts\": ningún club ni equipo; solo la empresa de cámaras Point Grey y un producto de Warhammer. Se cambió porque el nombre anterior, «Point Grey Thunder», chocaba: Point Grey Thunder es un club real de rugby league de Vancouver, en la Rugby League British Columbia (RLBC): campeón de la Grand Final en 2022 y bicampeón según Pique Newsmagazine (junio de 2023). Nota anterior: Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Point Grey es su campus."
             },
             {
               "real": "Alberta Golden Bears / Pandas",
@@ -820,7 +820,7 @@
               },
               "liberoEstimated": true,
               "ovr": 60,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Mezcla de sus dos apodos (Golden Bears y Pandas)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Edmonton Golden Pandas\". Resultado: Ningún equipo con ese nombre. El real es Alberta Golden Bears and Pandas (los equipos femeninos son las «Pandas», sin «Golden»). También existe el club juvenil de hockey Edmonton Pandas, que se llama distinto. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Mezcla de sus dos apodos (Golden Bears y Pandas)."
             },
             {
               "real": "Manitoba Bisons",
@@ -836,7 +836,7 @@
               },
               "liberoEstimated": true,
               "ovr": 57,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Ciudad + traducción del apodo."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Winnipeg Bisontes\". Resultado: Ningún equipo con ese nombre. Los reales son Manitoba Bisons (Universidad de Manitoba) y los antiguos Winnipeg Whips. Es una traducción parcial con otra ciudad, así que no coincide. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Ciudad + traducción del apodo."
             },
             {
               "real": "Sherbrooke Vert & Or",
@@ -852,7 +852,7 @@
               },
               "liberoEstimated": true,
               "ovr": 58,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Vert (verde) → esmeralda."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Sherbrooke Émeraude\" club. Resultado: Ningún club con ese nombre: solo sale un «Cabaret Émeraude», que es un espectáculo. Los equipos de la universidad son Sherbrooke Vert & Or, y en la ciudad también están las Améthystes de Sherbrooke, con otro nombre. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Vert (verde) → esmeralda."
             },
             {
               "real": "Montréal Carabins",
@@ -868,7 +868,7 @@
               },
               "liberoEstimated": true,
               "ovr": 55,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Carabin → carabine."
+              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Montréal Carabines\". Resultado: No existe ningún equipo llamado «Carabines», pero se queda a una letra del real, Montréal Carabins (Universidad de Montreal). No cambia solo una tilde, aunque casi es lo mismo; el propio buscador lo trató como el real. Propuesta: Montréal Mousquetaires (no comprobado). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Carabin → carabine."
             },
             {
               "real": "Laval Rouge et Or",
@@ -884,7 +884,7 @@
               },
               "liberoEstimated": true,
               "ovr": 55,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Or (oro) → doré (dorado), con la ciudad."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Québec Rouge-Doré\" OR \"Rouge-Doré\" équipe. Resultado: Ningún equipo con «Rouge-Doré». El real es Rouge et Or (Universidad Laval), con otras palabras («Doré» frente a «Or»). Es un guiño claro, pero no coincide. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Or (oro) → doré (dorado), con la ciudad."
             },
             {
               "real": "Calgary Dinos",
@@ -900,7 +900,7 @@
               },
               "liberoEstimated": true,
               "ovr": 56,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Dino → T. rex."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Calgary Rex\" volleyball. Resultado: Ningún club ni equipo se llama así. Rex es el nombre de la mascota de los Calgary Dinos, que es justo el guiño buscado; es una mascota, no el nombre oficial de un club. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Dino → T. rex."
             },
             {
               "real": "Saskatchewan Huskies",
@@ -916,7 +916,7 @@
               },
               "liberoEstimated": true,
               "ovr": 54,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Husky → malamute (otro perro de trineo)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Saskatoon Malamutes\". Resultado: Sin resultados de ningún equipo; solo salen la raza de perro y listas de equipos de Saskatoon donde no aparece. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Husky → malamute (otro perro de trineo)."
             },
             {
               "real": "McMaster Marauders",
@@ -932,7 +932,7 @@
               },
               "liberoEstimated": true,
               "ovr": 55,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Marauder → plunderer (saqueador)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Hamilton Plunderers\". Resultado: Ningún resultado menciona un equipo con ese nombre; solo salen otros equipos de Hamilton y una banda australiana (The Plunderers). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Marauder → plunderer (saqueador)."
             }
           ]
         }
@@ -964,13 +964,13 @@
               },
               "liberoEstimated": true,
               "ovr": 66,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Los Íntimos de La Victoria» es su apodo."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Íntimos Lima\" club. Resultado: No hay ningún club oficial con ese nombre. «Los Íntimos» es el apodo de Alianza Lima y también el nombre de su programa de socios «Íntimo», pero no es el nombre oficial del club. Es un guiño claro, no una coincidencia con un nombre oficial. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Los Íntimos de La Victoria» es su apodo."
             },
             {
               "real": "Universidad San Martín",
               "official": "Club Deportivo Universidad de San Martín de Porres",
-              "name": "Vóley Porres",
-              "short": "SMP",
+              "name": "Fray Martín Vóley",
+              "short": "FMV",
               "city": "Lima",
               "gender": "W",
               "colors": {
@@ -980,7 +980,7 @@
               },
               "liberoEstimated": true,
               "ovr": 65,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño a «de Porres»."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Fray Martín Vóley» no existe como club ni competición oficial. Método: WebSearch \"Fray Martín Vóley\": ningún club (guiño a San Martín de Porres, que da nombre a la universidad). Se cambió porque el nombre anterior, «Vóley Porres», chocaba: Existe «Porres Vóley», club de Mendoza (Argentina) que jugó la Liga Nacional de Vóleibol Masculino (diariodecuyo.com.ar, 19-ene-2025; sitioandino.com.ar, ago-2026). Son las mismas palabras en otro orden. Nota anterior: Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Guiño a «de Porres»."
             },
             {
               "real": "Universitario de Deportes",
@@ -996,7 +996,7 @@
               },
               "liberoEstimated": true,
               "ovr": 63,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Los Cremas» es su apodo."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Cremas Lima\" club. Resultado: No hay ningún club con ese nombre. «Cremas» es el apodo de Universitario y también de Sporting Pizarro (Tumbes). Existió «Cremas Esports», pero no coincide. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Los Cremas» es su apodo."
             },
             {
               "real": "Deportivo Géminis",
@@ -1012,7 +1012,7 @@
               },
               "liberoEstimated": true,
               "ovr": 61,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Géminis → gemelos, con el distrito de Comas."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Gemelos Comas\". Resultado: Sin resultados de ningún club; solo artículos sobre gemelos y sobre el distrito de Comas. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Géminis → gemelos, con el distrito de Comas."
             },
             {
               "real": "Regatas Lima",
@@ -1028,7 +1028,7 @@
               },
               "liberoEstimated": true,
               "ovr": 62,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Regatas → remo, con el distrito de Chorrillos."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Remo Chorrillos\". Resultado: Ningún club ni competición con ese nombre; solo resultados sobre el distrito de Chorrillos, que es donde está Regatas Lima. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Regatas → remo, con el distrito de Chorrillos."
             },
             {
               "real": "Atlético Atenea",
@@ -1044,7 +1044,7 @@
               },
               "liberoEstimated": true,
               "ovr": 59,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Atenea → Minerva (su versión romana)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Minerva Lima\" club. Resultado: No hay ningún «Minerva Lima». Solo aparece un «SFC Minerva» de fútbol amistoso, sin ciudad indicada, que no es el mismo nombre. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Atenea → Minerva (su versión romana)."
             },
             {
               "real": "Circolo Sportivo Italiano",
@@ -1060,7 +1060,7 @@
               },
               "liberoEstimated": true,
               "ovr": 58,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño a la bandera italiana."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Tricolore Lima\". Resultado: Sin resultados como entidad; solo «tricolore» suelto y páginas sobre Lima. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Guiño a la bandera italiana."
             },
             {
               "real": "Von Newman",
@@ -1076,7 +1076,7 @@
               },
               "liberoEstimated": true,
               "ovr": 52,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño al matemático John von Neumann. [Integrador: abreviatura MAT → MTM, para que no se repita con otro club del juego.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Matemáticos Lima\" club. Resultado: Ningún club deportivo con ese nombre; solo salen clubes académicos de matemáticas. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Guiño al matemático John von Neumann. [Integrador: abreviatura MAT → MTM, para que no se repita con otro club del juego.]"
             },
             {
               "real": "Vamos Peerless",
@@ -1092,7 +1092,7 @@
               },
               "liberoEstimated": true,
               "ovr": 52,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Peerless → sin par."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Sin Par Lima\" club. Resultado: Ningún resultado menciona un club con ese nombre. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Peerless → sin par."
             },
             {
               "real": "Litovoley",
@@ -1108,7 +1108,7 @@
               },
               "liberoEstimated": true,
               "ovr": 50,
-              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Huanca», pueblo y nombre de la región de Huancayo."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Vóley Huanca\". Resultado: Ningún club ni liga con ese nombre; solo resultados sobre el pueblo huanca, una montaña y Caja Huancayo como patrocinador de Alianza Lima, sin relación con el nombre. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. «Huanca», pueblo y nombre de la región de Huancayo."
             }
           ]
         }
@@ -1127,14 +1127,14 @@
       "real": "Superliga B",
       "name": "Hiperliga B",
       "short": "HLB2",
-      "note": "2ª de Brasil. Nombre no comprobado por separado.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Hiperliga B\". Resultado: Sin resultados; solo otras ligas «B» (Esiliiga B, Divize B, Série B…). 2ª de Brasil.",
       "kind": "skip"
     },
     {
       "real": "Copa Brasil de Vôlei",
       "name": "Taça Verde-Amarela",
       "short": "TVA",
-      "note": "Copa nacional de Brasil. PENDIENTE de comprobar.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Taça Verde-Amarela\". Resultado: No existe ningún trofeo con ese nombre; lo más parecido son «Copa Verde» / «Taça Verde» (fútbol, CBF), que no son el mismo nombre. Copa nacional de Brasil.",
       "kind": "cup",
       "country": "BR"
     },
@@ -1142,21 +1142,21 @@
       "real": "Supercopa Brasileira de Vôlei",
       "name": "Hipercopa Brasil",
       "short": "HCB",
-      "note": "Supercopa: super → hiper. PENDIENTE de comprobar.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Hipercopa Brasil\". Resultado: Sin resultados; solo salen la Supercopa do Brasil y la marca Hipercard, que no coinciden. Supercopa: super → hiper.",
       "kind": "skip"
     },
     {
       "real": "Liga de Voleibol Argentina (ACLAV) + Liga Femenina (FeVA)",
       "name": "Liga Albiceleste",
       "short": "LAB",
-      "note": "1ª de Argentina. PENDIENTE de comprobar.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Liga Albiceleste\" vóley OR deporte. Resultado: Ninguna competición usa ese nombre de forma oficial; las ligas argentinas se llaman Liga Argentina, Liga Nacional y Liga Federal. 1ª de Argentina.",
       "kind": "skip"
     },
     {
       "real": "Copa ACLAV / Copa Argentina",
       "name": "Copa Albiceleste",
       "short": "CAB",
-      "note": "Copa de Argentina. PENDIENTE de comprobar.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Copa Albiceleste\". Resultado: Ninguna competición con ese nombre; «Albiceleste» solo aparece como apodo de la selección argentina. Copa de Argentina.",
       "kind": "cup",
       "country": "AR"
     },
@@ -1164,28 +1164,28 @@
       "real": "LOVB Pro + Major League Volleyball + NCAA (EE. UU.)",
       "name": "Liga Estrellas USA",
       "short": "LEU",
-      "note": "1ª de EE. UU. Mezcla las dos ligas profesionales de mujeres con la NCAA de hombres (ver la nota del .md). PENDIENTE de comprobar.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Liga Estrellas USA\". Resultado: Sin resultados; solo salen el Juego de Estrellas MLS vs Liga MX y una «Liga de Futuras Estrellas» comunitaria, que no coinciden. 1ª de EE. UU. Mezcla las dos ligas profesionales de mujeres con la NCAA de hombres (ver la nota del .md).",
       "kind": "skip"
     },
     {
       "real": "U Sports Volleyball (Canadá)",
       "name": "Liga del Arce",
       "short": "LDA",
-      "note": "1ª de Canadá; no hay liga profesional. PENDIENTE de comprobar.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Liga del Arce\". Resultado: Sin resultados de ninguna competición; solo noticias sobre Liga de Quito y su jugador Álex Arce. 1ª de Canadá; no hay liga profesional.",
       "kind": "skip"
     },
     {
       "real": "Liga Peruana de Vóley + Liga Nacional Superior de Voleibol",
       "name": "Liga Inca de Vóley",
       "short": "LIV",
-      "note": "1ª de Perú. PENDIENTE de comprobar.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Liga Inca de Vóley\". Resultado: Sin resultados con ese nombre; la liga real se llama Liga Peruana de Vóley. 1ª de Perú.",
       "kind": "skip"
     },
     {
       "real": "Campeonato Sudamericano de Clubes (CSV)",
       "name": "Copa del Sur de Clubes",
       "short": "CSC",
-      "note": "Copa continental de Sudamérica. PENDIENTE de comprobar.",
+      "note": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Copa del Sur de Clubes\". Resultado: No existe con el nombre exacto, pero hubo una «Copa del Sur» de fútbol en Buenos Aires (ediciones de 1964 y 1968, según RSSSF) y existe la «Copa Sur» brasileña. Se parecen pero no son iguales; añadir «de Clubes» ya lo diferencia. Si se quiere más margen, se puede valorar otro nombre. Copa continental de Sudamérica.",
       "kind": "intl",
       "rank": 1,
       "zone": "sur"
@@ -1194,7 +1194,7 @@
       "real": "NORCECA Champions Cup",
       "name": "Copa Norte de Campeones",
       "short": "CNC",
-      "note": "Copa continental de Norteamérica, Centroamérica y el Caribe. PENDIENTE de comprobar.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Copa Norte de Campeones\" voleibol. Resultado: No sale nada con la frase exacta. Existe la «Copa de Campeones de Voleibol» (FIVB Grand Champions Cup, EcuRed), pero sin «Norte». Copa continental de Norteamérica, Centroamérica y el Caribe.",
       "kind": "intl",
       "rank": 1,
       "zone": "norte"
@@ -1203,7 +1203,7 @@
       "real": "FIVB Club World Championship",
       "name": "Mundial de Clubes VBF",
       "short": "MCV",
-      "note": "Mismo nombre y siglas que en elite-europa.json («VBF» por FIVB revuelto); antes «Mundial VBC de Clubes».",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Mundial de Clubes VBF\". Resultado: No sale nada con VBF. Solo aparecen el Mundialito de Clubes (fútbol playa) y el FIFA Club World Cup, que tienen otro nombre. Mismo nombre y siglas que en elite-europa.json («VBF» por FIVB revuelto); antes «Mundial VBC de Clubes».",
       "kind": "skip"
     }
   ]

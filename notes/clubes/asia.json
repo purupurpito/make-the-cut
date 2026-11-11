@@ -1074,8 +1074,8 @@
         {
           "lvl": 1,
           "real": "Premier Volleyball League 2025-26 + Spikers' Turf (mezcla; más clubes de la PVL, la liga fuerte y popular)",
-          "name": "Prime Volleyball League",
-          "short": "PRV",
+          "name": "Archipelago Volleyball League",
+          "short": "AVL",
           "strength": 54,
           "clubs": [
             {
@@ -1255,42 +1255,42 @@
       "real": "V.League (Japón, 2ª, desde 2024)",
       "name": "VL Next",
       "short": "VLN",
-      "note": "Comprobado: sin coincidencias.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"VL Next\" volleyball league. Resultado: No sale ninguna liga ni competición con ese nombre. Comprobado: sin coincidencias.",
       "kind": "skip"
     },
     {
       "real": "V-League (Corea del Sur, KOVO)",
       "name": "VK-League",
       "short": "VKL",
-      "note": "Comprobado: sin coincidencias.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"VK-League\" volleyball. Resultado: No sale nada exacto. Aparecen la V-League (Corea), la V.League (Japón) y la V-League (Filipinas), todas sin la K. Comprobado: sin coincidencias.",
       "kind": "skip"
     },
     {
       "real": "Chinese Volleyball Super League",
       "name": "CV Hyper League",
       "short": "CVH",
-      "note": "Super → Hyper. Comprobado: sin coincidencias.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"CV Hyper League\" volleyball. Resultado: No sale nada exacto. Lo más cercano es la Chinese Volleyball Super League (CVL). Super → Hyper. Comprobado: sin coincidencias.",
       "kind": "skip"
     },
     {
       "real": "Iranian Volleyball Super League / Women's Premier League",
       "name": "Persian Hyper League",
       "short": "PHL",
-      "note": "Comprobado: sin coincidencias.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Persian Hyper League\". Resultado: No sale nada exacto. Solo aparece la Persian Gulf Pro League (fútbol), que tiene otro nombre. Comprobado: sin coincidencias.",
       "kind": "skip"
     },
     {
       "real": "Qatar Volleyball League (QVA)",
       "name": "Doha Volley League",
       "short": "DVL",
-      "note": "Comprobado: sin coincidencias (la real es «Qatari Volleyball League»).",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Doha Volley League\". Resultado: No sale nada exacto. La liga real se llama Qatar Volleyball League / QVA Men's League. Comprobado: sin coincidencias (la real es «Qatari Volleyball League»).",
       "kind": "skip"
     },
     {
       "real": "Premier Volleyball League (PVL) + Spikers' Turf (Filipinas)",
-      "name": "Prime Volleyball League",
-      "short": "PRV",
-      "note": "Mantiene la «P» y la «VL». Comprobado: sin coincidencias.",
+      "name": "Archipelago Volleyball League",
+      "short": "AVL",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Archipelago Volleyball League» no existe como club ni competición oficial. Método: WebSearch \"Archipelago Volleyball League\": no existe ninguna liga con ese nombre (guiño a Filipinas como archipiélago). Se cambió porque el nombre anterior, «Prime Volleyball League», chocaba: Coincidencia exacta: la Prime Volleyball League es la liga profesional masculina de India, reconocida por la FIVB y patrocinada como RuPay Prime Volleyball League (en.wikipedia.org/wiki/Prime_Volleyball_League). Nota anterior: Mantiene la «P» y la «VL». Comprobado: sin coincidencias.",
       "kind": "skip"
     },
     {
@@ -1313,7 +1313,7 @@
       "real": "KOVO Cup (copa de Corea del Sur)",
       "name": "VKL Cup",
       "short": "VKC",
-      "note": "Va con el nombre de la liga. Cambiado en la verificación: «VK Cup» es el campeonato real de programación de la red social VK.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"VKL Cup\" volleyball. Resultado: No sale nada exacto. Aparecen la KOVO Cup, la VTV Cup y la VLA Cup, todas con otro nombre. Va con el nombre de la liga. Cambiado en la verificación: «VK Cup» es el campeonato real de programación de la red social VK.",
       "kind": "cup",
       "country": "KR"
     },
@@ -1321,14 +1321,14 @@
       "real": "FIVB Volleyball Club World Championship",
       "name": "Mundial de Clubes VBF",
       "short": "MCV",
-      "note": "Unificado por el integrador (11-nov-2026): mismo nombre y sigla en todos los ficheros. Antes «World Club Cup».",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Mundial de Clubes VBF\". Resultado: No sale nada con VBF. Solo aparecen el Mundialito de Clubes (fútbol playa) y el FIFA Club World Cup, que tienen otro nombre. Unificado por el integrador (11-nov-2026): mismo nombre y sigla en todos los ficheros. Antes «World Club Cup».",
       "kind": "skip"
     },
     {
       "real": "Volleyball Nations League (VNL)",
       "name": "VBN",
       "short": "VBN",
-      "note": "Lo marca la regla del dueño; se repite aquí porque Asia la juega.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"VBN\" volleyball league competition. Resultado: No sale ninguna competición de vóley con la sigla VBN (la real es VNL). Al ser una sigla de 3 letras puede tener otros usos fuera del deporte, pero no hay ningún club ni competición. Lo marca la regla del dueño; se repite aquí porque Asia la juega.",
       "kind": "skip"
     }
   ]

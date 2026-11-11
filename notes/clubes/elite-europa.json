@@ -845,7 +845,7 @@
               },
               "liberoEstimated": true,
               "ovr": 95,
-              "check": "El nombre anterior, «İstanbul Melekleri», guiñaba a «Sarı Melekler» (ángeles amarillos), que es el apodo de las mujeres de Fenerbahçe, el gran rival, no de VakıfBank. Guiño nuevo: su barrio (Üsküdar, sede del club) y su amarillo y negro (abejas). VakıfBank es el banco dueño: fuera. SIN COMPROBAR por búsqueda: el cupo de búsquedas web de la sesión se agotó; buscar el nombre entre comillas antes de darlo por bueno. Campeón de Sultanlar Ligi 2025-26."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Üsküdar Arıları\" voleybol. Resultado: No sale nada exacto. En Üsküdar solo aparecen el Istanbul Voleybol Kulübü y los equipos de la Üsküdar Üniversitesi. El nombre anterior, «İstanbul Melekleri», guiñaba a «Sarı Melekler» (ángeles amarillos), que es el apodo de las mujeres de Fenerbahçe, el gran rival, no de VakıfBank. Guiño nuevo: su barrio (Üsküdar, sede del club) y su amarillo y negro (abejas). VakıfBank es el banco dueño: fuera. Campeón de Sultanlar Ligi 2025-26."
             },
             {
               "real": "Eczacıbaşı Dynavit",
@@ -1126,7 +1126,7 @@
               },
               "liberoEstimated": true,
               "ovr": 68,
-              "check": "Sustituye a Keçiören, que NO jugó Sultanlar 2025-26. Guiño: «Angora», nombre antiguo de Ankara. İlbank (banco) es el dueño: fuera. SIN COMPROBAR por búsqueda: el cupo de búsquedas web de la sesión se agotó; buscar el nombre entre comillas antes de darlo por bueno."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Angora Voleybol\". Resultado: No sale ningún club con ese nombre, solo resultados genéricos de vóley turco. Sustituye a Keçiören, que NO jugó Sultanlar 2025-26. Guiño: «Angora», nombre antiguo de Ankara. İlbank (banco) es el dueño: fuera."
             },
             {
               "real": "Altekma",
@@ -1631,7 +1631,7 @@
               },
               "liberoEstimated": true,
               "ovr": 72,
-              "check": "Sustituye a Murom, que NO jugó la Superliga 2025-26 (perdió la promoción 0-3 con Minchanka). Guiño: «Korabelka» (constructora de barcos, nombre con género gramatical) → «Sudoverf» (astillero). SIN COMPROBAR por búsqueda: el cupo de búsquedas web de la sesión se agotó; buscar el nombre entre comillas antes de darlo por bueno."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Sudoverf Piter\" волейбол. Resultado: No sale nada exacto. Solo aparece «Piter Saint Petersburg» en FotMob (fútbol), que tiene otro nombre. Sustituye a Murom, que NO jugó la Superliga 2025-26 (perdió la promoción 0-3 con Minchanka). Guiño: «Korabelka» (constructora de barcos, nombre con género gramatical) → «Sudoverf» (astillero)."
             }
           ]
         }
@@ -1643,7 +1643,7 @@
       "real": "CEV Champions League (hombres y mujeres)",
       "name": "Champions Cup VEC",
       "short": "CCV",
-      "note": "La que propuso Ferran («Champions Cup») con «VEC» detrás: la Champions de la CEV se llamó oficialmente «CEV (European) Champions Cup» hasta 2000, así que «Champions Cup» a secas se queda demasiado pegado. «VEC» es CEV del revés.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Champions Cup VEC\" volleyball. Resultado: No sale nada exacto. La CEV Champions League se llamó «CEV European Champions Cup» entre 1959 y 2000, pero lleva CEV y no VEC, y el orden es otro. La que propuso Ferran («Champions Cup») con «VEC» detrás: la Champions de la CEV se llamó oficialmente «CEV (European) Champions Cup» hasta 2000, así que «Champions Cup» a secas se queda demasiado pegado. «VEC» es CEV del revés.",
       "kind": "intl",
       "rank": 1
     },
@@ -1651,7 +1651,7 @@
       "real": "CEV Cup",
       "name": "Copa VEC",
       "short": "CVC",
-      "note": "La propuesta de Ferran. No encontré ninguna competición oficial con este nombre.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Copa VEC\" voleibol. Resultado: Ningún resultado menciona «Copa VEC». La propuesta de Ferran. No encontré ninguna competición oficial con este nombre.",
       "kind": "intl",
       "rank": 2
     },
@@ -1659,7 +1659,7 @@
       "real": "CEV Challenge Cup",
       "name": "Challenge VEC",
       "short": "CHV",
-      "note": "Tercera copa europea.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Challenge VEC\" volleyball. Resultado: No sale nada exacto. Solo aparece la CEV Challenge Cup. Tercera copa europea.",
       "kind": "intl",
       "rank": 3
     },
@@ -1667,35 +1667,35 @@
       "real": "FIVB Club World Championship (Mundial de Clubes)",
       "name": "Mundial de Clubes VBF",
       "short": "MCV",
-      "note": "«VBF» por FIVB revuelto.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Mundial de Clubes VBF\". Resultado: No sale nada con VBF. Solo aparecen el Mundialito de Clubes (fútbol playa) y el FIFA Club World Cup, que tienen otro nombre. «VBF» por FIVB revuelto.",
       "kind": "skip"
     },
     {
       "real": "FIVB Volleyball Nations League (VNL)",
       "name": "VBN",
       "short": "VBN",
-      "note": "Propuesta de Ferran. Desarrollo sugerido: «Volley Battle of Nations». No encontré ninguna competición con esas siglas.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"VBN\" volleyball league competition. Resultado: No sale ninguna competición de vóley con la sigla VBN (la real es VNL). Al ser una sigla de 3 letras puede tener otros usos fuera del deporte, pero no hay ningún club ni competición. Propuesta de Ferran. Desarrollo sugerido: «Volley Battle of Nations». No encontré ninguna competición con esas siglas.",
       "kind": "skip"
     },
     {
       "real": "CEV EuroVolley (Campeonato de Europa de selecciones)",
       "name": "Europeo VEC",
       "short": "EUV",
-      "note": "Evita la marca oficial «EuroVolley».",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Europeo VEC\". Resultado: No sale nada deportivo, solo criptomonedas y siglas sin relación. Evita la marca oficial «EuroVolley».",
       "kind": "skip"
     },
     {
       "real": "FIVB Volleyball World Championship (Mundial de selecciones)",
       "name": "Mundial VBF",
       "short": "MUV",
-      "note": "",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Mundial VBF\" voleibol. Resultado: No sale la sigla VBF. Todo lo que aparece es de la FIVB.",
       "kind": "skip"
     },
     {
       "real": "Juegos Olímpicos (torneo de voleibol)",
       "name": "Juegos Cuatrienales",
       "short": "JCU",
-      "note": "«Olímpico», «Olimpiada» y los anillos son marcas del COI y no se pueden usar; «World Games» y «Juegos Mundiales» ya existen, por eso este nombre.",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Juegos Cuatrienales\". Resultado: Ningún evento se llama oficialmente así. La expresión solo se usa de forma descriptiva, por ejemplo «una segunda serie de juegos cuatrienales» al hablar de los Juegos Intercalados de 1906. «Olímpico», «Olimpiada» y los anillos son marcas del COI y no se pueden usar; «World Games» y «Juegos Mundiales» ya existen, por eso este nombre.",
       "kind": "skip"
     },
     {
