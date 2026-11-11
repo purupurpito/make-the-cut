@@ -218,8 +218,8 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - **Repo de redirección**: la URL antigua de Pages (/voley-3d/) da 404. ¿Se crea la redirección en el repo `purupurpito.github.io`?
 
 ### To-do
-- **Pendiente del muñeco y la Carrera de playa** (11-nov-2026, tras las revisiones; nada roto). Todo está en la rama
-  `wip-doll-carrera-playa`, sin publicar: falta que Ferran lo vea y decida si se fusiona y despliega.
+- **Pendiente del muñeco y la Carrera de playa** (11-nov-2026, tras las revisiones; nada roto). Fusionado en main y publicado
+  el 11-nov-2026 (9a4f10c).
   - ~~Oficiales y público sin muñeco~~ HECHO 11-nov (arena; notes/arena.md «Muñeco oficial») (~~cabezas que se cruzan en el ace~~ HECHO 11-nov): ver «Mapa de playa» abajo.
   - ~~Compañero en lo alto de la horquilla (+4/+5) y Regional al 99-100 %~~ HECHO 11-nov (carrera): techo del compañero en el partido
     (`MATE_CAP`: media + racha ≤ club + 6) y escalón «Normal suave»: Regional con el bot medio 80 %, novato 41 % (notes/carrera.md
