@@ -621,9 +621,11 @@
     var b = Math.sin(breath * 2.1) * 0.012;
     if (kind === 0) {
       s[DROP] = 0.035 + b * 0.3; s[PP] = 0.02; s[CP] = 0.03 + b; s[CY] = 0;
-      // brazos colgando RECTOS (a un brazo exacto del hombro) con los codos algo atrás: nunca "en jarras"
-      setV(v[HL], 0.245, 0.9, 0.07); setV(v[HR], -0.245, 0.9, 0.07);
-      setV(v[AL], 0.25, 0.1, -1); setV(v[AR], -0.25, 0.1, -1);
+      // brazos RELAJADOS con el codo doblado: manos a la altura de la cadera, algo delante y abiertas (como quien espera el saque),
+      // codos atrás y un poco fuera; nunca "en jarras" ni colgando rectos como palos (11-nov-2026, pedido de Ferran: el brazo recto
+      // colgando se leía largo; en coordenadas de la POSE, hombro a 1,535 y cadera a 1,042)
+      setV(v[HL], 0.27, 1.08, 0.16); setV(v[HR], -0.27, 1.08, 0.16);
+      setV(v[AL], 0.5, 0, -1); setV(v[AR], -0.5, 0, -1);
       setV(v[FL], 0.13, ANKLE, 0.03); setV(v[FR], -0.13, ANKLE, -0.02);
       s[FYL] = 0.12; s[FYR] = -0.12;
     } else if (kind === 2) {

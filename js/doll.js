@@ -42,8 +42,11 @@
       HAND_K: 1, FOOT_K: 1, TORSO_W: 1 },
     // ARM = hombro→muñeca en REPOSO (0,635 + palma 0,115 = 0,75 hombro→palma: la manopla cuelga a la altura de la cadera); lo que falta
     // hasta el alcance del atleta lo pone el ESTIRÓN cartoon de la IK (reachTo, hasta ×STRETCH_MAX ≈ 1,41). Sin ARM (v1): brazo a medida.
-    chibi: { ANKLE: 0.12, THIGH: 0.23, SHIN: 0.23, HIP_W: 0.09, SPINE_Y: 0.2, CHEST_Y: 0.2, SH_Y: 0.205, SH_X: 0.175, PALM: 0.115, ARM: 0.635,
-      HEAD_C: 0.205, HEAD_RX: 0.245, HEAD_RY: 0.25, HEAD_RZ: 0.235, TUBE_ARM: 0.05, TUBE_LEG: 0.058, BALL_SH: 0.085, BALL_EL: 0.06, BALL_KN: 0.07, BALL_HIP: 0.064,
+    // (11-nov-2026, Ferran: «los brazos largos no me convencen… en el momento normal»): ARM 0,635 → 0,47 (la manopla cuelga en la
+    // cadera, no en la rodilla: el brazo era más largo que la pierna entera), tubo del brazo 0,05 → 0,06 y bolas de hombro y codo algo
+    // mayores (brazo rechoncho de chibi, no palo). El estirón que cubre el alcance sube de ×1,4 a ×1,9 (solo en el contacto).
+    chibi: { ANKLE: 0.12, THIGH: 0.23, SHIN: 0.23, HIP_W: 0.09, SPINE_Y: 0.2, CHEST_Y: 0.2, SH_Y: 0.205, SH_X: 0.175, PALM: 0.115, ARM: 0.47,
+      HEAD_C: 0.205, HEAD_RX: 0.245, HEAD_RY: 0.25, HEAD_RZ: 0.235, TUBE_ARM: 0.06, TUBE_LEG: 0.058, BALL_SH: 0.095, BALL_EL: 0.07, BALL_KN: 0.07, BALL_HIP: 0.064,
       HAND_K: 1.15, FOOT_K: 1.15, TORSO_W: 1.12 }
   };
   var BODY = 'chibi';

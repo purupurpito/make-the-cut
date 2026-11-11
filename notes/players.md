@@ -959,3 +959,16 @@ point,dive,over,jumpserve,menu}.png`, `six-{1280,844t}/{serve6,rally6,point6}.pn
 - Revisión del sprint 3: en 6v6 el galón **no se apaga en el aire** (bloqueo, remate): sube ~0,9 m por encima de la cabeza para no tapar
   la mano y sigue marcando quién eres entre los tres que saltan en la red. El halo ya no se encoge por el aro amarillo de un compañero (en
   6v6 el aro solo sale con tu balón). «¡Pídela!» aceptado (sim `g.ask6`): el humano levanta el brazo del «¡Mía!» (`callGesture`).
+
+## Brazo de reposo corto y rechoncho (11-nov-2026; pedido de Ferran: «los brazos largos no me convencen… en el momento normal»)
+- **Diagnóstico**: en reposo el brazo (hombro → manopla) medía 0,75 m en un muñeco de piernas 0,58 y tronco 0,605: más largo que la pierna
+  entera, con la manopla a 0,37 m del suelo (la rodilla está a 0,35). Encima colgaba recto («brazos colgando RECTOS») y el tubo era fino
+  (0,05 en 0,75 de largo). El estirón del contacto no era el problema.
+- **doll.js, preset `chibi`**: `ARM` 0,635 → **0,47** (manopla en la cadera, a ~0,60 del suelo, como Sackboy o los Mii), `TUBE_ARM` 0,05 →
+  **0,06**, `BALL_SH` 0,085 → 0,095, `BALL_EL` 0,06 → 0,07. `fitReach` recalcula solo: alcance de reposo 1,77 m y `STRETCH_MAX`
+  (2,192 − 1,185 − 0,115) / 0,47 = **×1,90** (antes ×1,405); `ARM_UPK` de players baja en proporción. Estirado, el tubo adelgaza
+  ×1/√1,9 → 0,044 (antes 0,042): igual que antes en el contacto.
+- **players.js `baseStance` kind 0** (de pie, esperando): manos a la altura de la cadera, algo delante y abiertas (pose: y 1,08, z 0,16, x
+  ±0,27), codos atrás y un poco fuera. Un brazo doblado nunca se lee largo. Las demás posturas (recepción, defensa, carrera, saque) no cambian.
+- **Capturas** `tools/out/brazos/`: `antes-*` / `despues-*` (doll, serve, point, rally6h, spike, block) y `zoom-*` (recortes ×3 del contacto
+  del remate, del bloqueo y de los muñecos de pie). Sim intacta (huella 2v2 idéntica).
