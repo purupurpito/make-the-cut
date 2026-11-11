@@ -12,7 +12,7 @@ Proyecto personal. Este documento es la ley para los 6 especialistas que trabaja
 `js/prog.js` (estadísticas y progresión de tus jugadores: `VB.Prog`, guardado en `voley3d.squad`) también es de **ui_main**; sim lo recibe ya convertido en `createGame({attrs: [[st7, st11], [st3, st9]]})` (atributos 1-99 con las claves `VB.ATTR_KEYS`; 50 = neutro; sin `attrs` la sim no cambia), que deja `p.st`, `p.prof` (perfil de IA, `Sim.statProf`) y `p.ak` (multiplicadores del humano, `Sim.attrK`; constantes en `VB.ATTR_K`). Integración (10-nov-2026): `p.ak` añade `eRecv/eDig/eSet/eAtk` (precisión del toque: dispersión ×1,5-0,6 y calidad del pase/colocación) y `rRecv/rDig` (alcance del 1r toque ×0,94-1,05); con Velocidad < 50 frenar y girar es al momento (la rampa `accT` solo al arrancar).
 `tools/drive.js`, `tools/eval.js`, `tools/shot.js`, `tools/cdp.js`, `tools/chrome.js`, `tools/chrome-env.sh`, `tools/perf.js`, `tools/touchplay.js` y `tools/padplay.js` también son de **ui_main**.
 `tools/audiotest.js` es de **audio**; `tools/touchtest.js`, `tools/padtest.js` y `tools/courttest.js` son de **camera_input**.
-`js/badges.js` (`VB.Badges`, insignias), `js/career.js` (`VB.Career`, datos y lógica de la Carrera, sin DOM) y `js/career-ui.js` (`VB.CareerUI`, pantallas de la Carrera: crea su propio DOM `#career` y su `<style>` desde JS), `js/career-life.js` (`VB.CareerLife`, «vida» de la Carrera: retos, fama, patrocinios, decisiones, rival, tienda, premios, logros y legado; sin DOM) y `js/career-life-ui.js` (`VB.CareerLifeUI`, pestaña «Fama») son de **ui_main**, igual que `tools/badgetest.js` y `tools/careertest.js`. Guardados: `voley3d.squad` (v3: escuadrón inicial a media 50; los v1/v2 suben +10 cada atributo una vez) `voley3d.career` (con `c.life`) y `voley3d.legends` (Salón de la Fama).
+`js/badges.js` (`VB.Badges`, insignias), `js/career.js` (`VB.Career`, datos y lógica de la Carrera, sin DOM), `js/career-ui.js` (`VB.CareerUI`, pantallas de la Carrera: crea su propio DOM `#career` y su `<style>` desde JS), `js/career-life.js` (`VB.CareerLife`, «vida» de la Carrera: retos, fama, patrocinios, decisiones, rival, tienda, premios, logros y legado; sin DOM) y `js/career-life-ui.js` (`VB.CareerLifeUI`, pestaña «Fama») son de **ui_main**, igual que `js/leagues.js` (`VB.Leagues`, datos de las ligas de pista; GENERADO por `tools/build-leagues.js` desde `notes/clubes/*.json`, no se edita a mano), `tools/build-leagues.js`, `tools/leagues-fixture.js`, `tools/badgetest.js` y `tools/careertest.js`. Guardados: `voley3d.squad` (v3: escuadrón inicial a media 50; los v1/v2 suben +10 cada atributo una vez), `voley3d.career` (playa, con `c.life`), `voley3d.career6` (pista), `voley3d.career.mode` (cuál está activa) y `voley3d.legends` (Salón de la Fama).
 
 **Reglas**
 - Cada especialista edita SOLO sus ficheros. Nada de tocar ficheros ajenos "solo una línea".
@@ -592,3 +592,22 @@ contorno grueso DE COLOR, cara grande dibujada, uniforme de equipo con el «tajo
   marcan con `currentProgram = undefined`, `uniformsList = null` **y `__version = -1`** (sin esto, three r149 reutilizaba el programa
   indefinido tras cambiar la calidad y el partido se pintaba vacío con «reading 'getUniforms'» en cada frame).
 - `tools/perf.js` sin `EXTRA` mide el escenario por defecto (la PLAYA); el pabellón se mide con `EXTRA=map=hall`.
+
+### Carrera de pista 6v6 y ligas reales (lote C, 11-nov-2026)
+- **Dos Carreras guardadas aparte.** `VB.Career` es una fachada sobre dos motores con las mismas claves (`VB.Career.beach`, `VB.Career.hall`):
+  `create({mode:'beach'|'hall', name, num, pos, country, points, seed})`, `mode()`, `setMode(m)`, `has(m)`; el resto de claves van a la activa.
+  `matchDone(r, st, g)` va al motor de `g.career.mode`. La de playa no cambia (guardado, migración y API). Pista: `voley3d.career6` (v1,
+  `mode:'hall'`); dañado → `voley3d.career6.bak` y la activa vuelve a la playa.
+- **`matchSetup()` de pista** → `{format:'6v6', venue:'hall', ctrlRole, ctrlIdx, nums, attrs, difficulty, ref, kit, rivalKit, career}`; `kit` y
+  `rivalKit` llevan `kitLibero` (color del líbero del club; players.js aún no lo usa, notes/carrera.md «Pendiente»). main.js `startCareerMatch`
+  pasa `format`, `ctrlRole` y `nums`, y el escenario sale de `m.venue`.
+- **`VB.Leagues`** (js/leagues.js, se carga antes de career.js en index.html, careertest y simtest): `{provisional:false, regions:[{region,
+  countries:[{country, code, tier, divisions:[{lvl, name, short, strength, clubs:[{name, short, city, gender, colors:{shirt, shirt2, libero},
+  liberoEstimated, ovr}]}]}], competitions:[{name, short, kind:'intl'|'cup'|'skip', rank?, zone?, country?}]}], add(region)}`. 28 países, 37 ligas,
+  390 clubes; nombres y abreviaturas únicos en todo el juego; sin nombres reales ni oficiales (están en notes/clubes/*.json y en la lista de
+  revisión notes/clubes-reales.md). `gender` es un dato interno: ningún texto del juego lo enseña.
+- **IA de la pista** por la media del club rival (`VB.Career.hall.DIFF_AT` / `SOFT`): < 56 Fácil, 56-61 Normal suave, 62-75 Normal, 76-87
+  Difícil, ≥ 88 Experto.
+- Regla de datos: para cambiar un club o una competición se corrige el JSON de `notes/clubes/` y se ejecuta `node tools/build-leagues.js`
+  (comprueba unicidad, colores, patrocinadores conocidos y «masculino/femenino» antes de escribir). `tools/careertest.js` falla si js/leagues.js
+  no está al día con los JSON.

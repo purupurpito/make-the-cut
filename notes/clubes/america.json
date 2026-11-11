@@ -1,0 +1,1210 @@
+{
+  "region": "América",
+  "countries": [
+    {
+      "country": "Brasil",
+      "code": "BR",
+      "tier": 1,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Superliga Masculina + Superliga Feminina 2025-26 (mezcla)",
+          "name": "Hiperliga Brasil",
+          "short": "HLB",
+          "strength": 88,
+          "clubs": [
+            {
+              "real": "Sada Cruzeiro Vôlei",
+              "official": "Associação Social e Esportiva Sada (Sada Cruzeiro Vôlei)",
+              "name": "Vôlei Celeste",
+              "short": "CEL",
+              "city": "Contagem (Belo Horizonte)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0B3D91",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 93,
+              "check": "Búsqueda web del nombre exacto entre comillas: ningún club real se llama así; solo salen resultados del club real con su propio nombre. «Celeste» es el apodo del Cruzeiro; se quita el patrocinador Sada."
+            },
+            {
+              "real": "Dentil Praia Clube / Praia Clube Uberlândia Vôlei",
+              "official": "Praia Clube (Uberlândia)",
+              "name": "Areia Clube",
+              "short": "ARC",
+              "city": "Uberlândia",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#F2DE1B",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 91,
+              "check": "Búsqueda web del nombre exacto entre comillas: ningún club real se llama así; solo salen resultados del club real con su propio nombre. Guiño: praia (playa) → areia (arena); se quitan Dentil y Extra Power. [Integrador: abreviatura ARE → ARC, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "Itambé Minas / Gerdau Minas",
+              "official": "Minas Tênis Clube",
+              "name": "Minas Raquete Clube",
+              "short": "MRC",
+              "city": "Belo Horizonte",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#0C2A6B",
+                "shirt2": "#FFFFFF",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 91,
+              "check": "Búsqueda web del nombre exacto entre comillas: ningún club real se llama así; solo salen resultados del club real con su propio nombre. Guiño: tênis → raquete; se quitan Itambé y Gerdau."
+            },
+            {
+              "real": "Vôlei Renata (Campinas)",
+              "official": "Brasil Vôlei Clube",
+              "name": "Vôlei Taquaral",
+              "short": "TAQ",
+              "city": "Campinas",
+              "gender": "M",
+              "colors": {
+                "shirt": "#1E4FA3",
+                "shirt2": "#FFFFFF",
+                "libero": "#7FFF00"
+              },
+              "liberoEstimated": false,
+              "ovr": 89,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Taquaral es el barrio de su pabellón; se quita el patrocinador Renata. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior)."
+            },
+            {
+              "real": "Sesi Vôlei Bauru",
+              "official": "Associação Vôlei Bauru",
+              "name": "Bauru Sem Limites",
+              "short": "BSL",
+              "city": "Bauru",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#1A1A1A",
+                "shirt2": "#FFFFFF",
+                "libero": "#D2232A"
+              },
+              "liberoEstimated": true,
+              "ovr": 86,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño al lema de la ciudad, «Cidade Sem Limites»; se quita el patrocinador Sesi."
+            },
+            {
+              "real": "Osasco São Cristóvão Saúde",
+              "official": "Osasco Voleibol Clube",
+              "name": "Vôlei Osasquense",
+              "short": "OSQ",
+              "city": "Osasco",
+              "gender": "W",
+              "colors": {
+                "shirt": "#A53B57",
+                "shirt2": "#111111",
+                "libero": "#FBFBFB"
+              },
+              "liberoEstimated": false,
+              "ovr": 87,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Osasco; se quita el patrocinador. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior)."
+            },
+            {
+              "real": "Sesc RJ Flamengo",
+              "official": "Sesc RJ Flamengo (Serviço Social do Comércio RJ + Clube de Regatas do Flamengo)",
+              "name": "Urubu Rio",
+              "short": "URU",
+              "city": "Rio de Janeiro",
+              "gender": "W",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 88,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Urubu» es la mascota del Flamengo; se quita Sesc."
+            },
+            {
+              "real": "Fluminense",
+              "official": "Fluminense Football Club",
+              "name": "Laranjeiras Tricolor",
+              "short": "LTR",
+              "city": "Rio de Janeiro",
+              "gender": "W",
+              "colors": {
+                "shirt": "#8A1538",
+                "shirt2": "#FFFFFF",
+                "libero": "#00613C"
+              },
+              "liberoEstimated": true,
+              "ovr": 83,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Laranjeiras es el barrio de su sede; «Tricolor» es su apodo."
+            },
+            {
+              "real": "Monte Carmelo Vôlei",
+              "official": "Monte Carmelo – Academia do Vôlei Uberlândia",
+              "name": "Vôlei Carmelitano",
+              "short": "CML",
+              "city": "Monte Carmelo",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0B0427",
+                "shirt2": "#FFFFFF",
+                "libero": "#F54334"
+              },
+              "liberoEstimated": true,
+              "ovr": 81,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Monte Carmelo. Verificación: sube a la 1ª (7.º de la Superliga Masculina 2025-26); se quitan Azulim y Sicoob. [Integrador: abreviatura CAR → CML, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "Suzano Vôlei",
+              "official": "Suzano Vôlei",
+              "name": "Vôlei Suzanense",
+              "short": "SUZ",
+              "city": "Suzano",
+              "gender": "M",
+              "colors": {
+                "shirt": "#D71920",
+                "shirt2": "#FFFFFF",
+                "libero": "#1D3C8F"
+              },
+              "liberoEstimated": true,
+              "ovr": 83,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Suzano."
+            },
+            {
+              "real": "Vedacit Vôlei Guarulhos",
+              "official": "Vôlei Guarulhos",
+              "name": "Vôlei Guaru",
+              "short": "GRU",
+              "city": "Guarulhos",
+              "gender": "M",
+              "colors": {
+                "shirt": "#165197",
+                "shirt2": "#FFFFFF",
+                "libero": "#F7B500"
+              },
+              "liberoEstimated": true,
+              "ovr": 82,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Guaru», forma corta de la ciudad; se quita Vedacit."
+            },
+            {
+              "real": "Unilife Maringá",
+              "official": "Associação Maringaense de Voleibol",
+              "name": "Vôlei Cidade Canção",
+              "short": "CCA",
+              "city": "Maringá",
+              "gender": "W",
+              "colors": {
+                "shirt": "#BB025F",
+                "shirt2": "#050505",
+                "libero": "#34A961"
+              },
+              "liberoEstimated": true,
+              "ovr": 81,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Cidade Canção» es el apodo de Maringá; se quita Unilife. Verificación: sube a la 1ª (7.ª de la Superliga Feminina 2025-26); colores sin fuente."
+            }
+          ]
+        },
+        {
+          "lvl": 2,
+          "real": "Superliga B Masculina + Superliga B Feminina 2025-26 y los últimos de la Superliga (mezcla)",
+          "name": "Hiperliga B",
+          "short": "HLB2",
+          "strength": 73,
+          "clubs": [
+            {
+              "real": "Viapol Vôlei São José",
+              "official": "Vôlei São José (São José dos Campos)",
+              "name": "Vôlei Joseense",
+              "short": "SJC",
+              "city": "São José dos Campos",
+              "gender": "M",
+              "colors": {
+                "shirt": "#1D3A8F",
+                "shirt2": "#74B843",
+                "libero": "#F0731C"
+              },
+              "liberoEstimated": true,
+              "ovr": 76,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio; ojo, existen «Vôlei São José» y «São José Vôlei», y el nuestro es distinto."
+            },
+            {
+              "real": "Saneago Goiás Vôlei",
+              "official": "Goiás Vôlei",
+              "name": "Vôlei Goianiense",
+              "short": "GOI",
+              "city": "Goiânia",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00563B",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 78,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Goiânia; se quita Saneago."
+            },
+            {
+              "real": "JF Vôlei",
+              "official": "Juiz de Fora Vôlei",
+              "name": "Vôlei Juizforano",
+              "short": "JFV",
+              "city": "Juiz de Fora",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#233CA7",
+                "libero": "#821B07"
+              },
+              "liberoEstimated": false,
+              "ovr": 72,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Juiz de Fora. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior)."
+            },
+            {
+              "real": "Joinville Vôlei",
+              "official": "Joinville Vôlei",
+              "name": "Manchester Catarinense",
+              "short": "MCA",
+              "city": "Joinville",
+              "gender": "M",
+              "colors": {
+                "shirt": "#1B4DA0",
+                "shirt2": "#FFFFFF",
+                "libero": "#F5A623"
+              },
+              "liberoEstimated": true,
+              "ovr": 73,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Manchester Catarinense» es el apodo de Joinville (guiño al estilo de Blue Lock). Verificación: baja a la 2ª (11.º y descendido en la Superliga Masculina 2025-26)."
+            },
+            {
+              "real": "Montes Claros Vôlei",
+              "official": "Montes Claros Vôlei",
+              "name": "Vôlei Montesclarense",
+              "short": "MOC",
+              "city": "Montes Claros",
+              "gender": "M",
+              "colors": {
+                "shirt": "#BDBC02",
+                "shirt2": "#2C4A41",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 71,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Montes Claros."
+            },
+            {
+              "real": "Norde Vôlei",
+              "official": "Norde Vôlei (Fortaleza)",
+              "name": "Vôlei Alencarino",
+              "short": "ALE",
+              "city": "Fortaleza",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFC20E"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Alencarino» es el gentilicio poético de Fortaleza (por José de Alencar)."
+            },
+            {
+              "real": "Flor de Ypê / Paulistano / Barueri",
+              "official": "Barueri Volleyball Club",
+              "name": "Vôlei Barueriense",
+              "short": "BRU",
+              "city": "Barueri",
+              "gender": "W",
+              "colors": {
+                "shirt": "#D3001A",
+                "shirt2": "#FFFFFF",
+                "libero": "#CEBFD0"
+              },
+              "liberoEstimated": false,
+              "ovr": 75,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Barueri; se quitan Flor de Ypê y la marca del socio. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior). Verificación: baja a la 2ª (9.ª de 12 en la Superliga Feminina 2025-26). [Integrador: abreviatura BAR → BRU, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "Batavo Mackenzie",
+              "official": "Mackenzie Esporte Clube",
+              "name": "Vôlei Mack BH",
+              "short": "MCK",
+              "city": "Belo Horizonte",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FEFDFA",
+                "shirt2": "#000000",
+                "libero": "#C8102E"
+              },
+              "liberoEstimated": true,
+              "ovr": 76,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Mack», forma corta del club; se quita Batavo."
+            },
+            {
+              "real": "Brasília Vôlei",
+              "official": "Brasília Vôlei Esporte Clube",
+              "name": "Vôlei Candango",
+              "short": "CDG",
+              "city": "Brasília (Taguatinga)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#073D2F",
+                "shirt2": "#000000",
+                "libero": "#FF9C0A"
+              },
+              "liberoEstimated": false,
+              "ovr": 73,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Candango» es el gentilicio popular de Brasília. Verificación: el líbero sale de la 3.ª equipación de la ficha de pt.wikipedia, que la plantilla etiqueta «Líbero»; liberoEstimated pasa a false (dato de la wiki, puede ser de una temporada anterior). [Integrador: abreviatura CAN → CDG, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "Tijuca Tênis Clube",
+              "official": "Tijuca Tênis Clube",
+              "name": "Vôlei Tijucano",
+              "short": "TIJ",
+              "city": "Rio de Janeiro",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#D0021B",
+                "libero": "#1F4E9E"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio del barrio de Tijuca."
+            },
+            {
+              "real": "Renasce Sorocaba",
+              "official": "Renasce Vôlei Sorocaba",
+              "name": "Vôlei Sorocabano",
+              "short": "SOR",
+              "city": "Sorocaba",
+              "gender": "W",
+              "colors": {
+                "shirt": "#000000",
+                "shirt2": "#E6CE38",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de Sorocaba. No hago guiño a «Renasce» por si es un patrocinador."
+            },
+            {
+              "real": "Pinheiros",
+              "official": "Esporte Clube Pinheiros",
+              "name": "Araucárias SP",
+              "short": "ARA",
+              "city": "São Paulo",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0033A0",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 71,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño: pinheiro (pino) → araucária."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Argentina",
+      "code": "AR",
+      "tier": 3,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Liga de Voleibol Argentina 2025-26 + Liga Femenina de Voleibol Argentino 2025 (mezcla)",
+          "name": "Liga Albiceleste",
+          "short": "LAB",
+          "strength": 65,
+          "clubs": [
+            {
+              "real": "UPCN San Juan Vóley",
+              "official": "UPCN San Juan Vóley Club",
+              "name": "Vóley Sanjuanino",
+              "short": "SJN",
+              "city": "San Juan",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0047AB",
+                "shirt2": "#FFD100",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de San Juan. UPCN es el sindicato propietario, no un patrocinador, pero tampoco hago guiño a él."
+            },
+            {
+              "real": "Ciudad Vóley",
+              "official": "Ciudad Vóley (Buenos Aires)",
+              "name": "Vóley Porteño",
+              "short": "POR",
+              "city": "Buenos Aires",
+              "gender": "M",
+              "colors": {
+                "shirt": "#6CACE4",
+                "shirt2": "#FFD100",
+                "libero": "#1B1B1B"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Gentilicio de la ciudad de Buenos Aires."
+            },
+            {
+              "real": "River Plate",
+              "official": "Club Atlético River Plate",
+              "name": "Núñez Millonario",
+              "short": "NUN",
+              "city": "Buenos Aires (Núñez)",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#E1001A",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Millonario» es su apodo y Núñez su barrio. Evito «Millonarios» a secas, que es un club colombiano. [Integrador: abreviatura NUM → NUN, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "Boca Juniors",
+              "official": "Club Atlético Boca Juniors",
+              "name": "Xeneize Vóley",
+              "short": "XEN",
+              "city": "Buenos Aires (La Boca)",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#003C82",
+                "shirt2": "#FDB913",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 67,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Xeneize» es su apodo."
+            },
+            {
+              "real": "San Lorenzo",
+              "official": "Club Atlético San Lorenzo de Almagro",
+              "name": "Ciclón de Boedo",
+              "short": "CIC",
+              "city": "Buenos Aires (Boedo)",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#1F2A5C",
+                "shirt2": "#D2122E",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 64,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «El Ciclón» es su apodo y Boedo su barrio."
+            },
+            {
+              "real": "Vélez Sarsfield",
+              "official": "Club Atlético Vélez Sarsfield",
+              "name": "Fortín Liniers",
+              "short": "FOR",
+              "city": "Buenos Aires (Liniers)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#1D4F91",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «El Fortín» es su apodo y Liniers su barrio."
+            },
+            {
+              "real": "Monteros Vóley",
+              "official": "Monteros Vóley Club",
+              "name": "Naranja Monteros",
+              "short": "NAR",
+              "city": "Monteros (Tucumán)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#F47B20",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 65,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño a su lema «Orgullo Naranja»."
+            },
+            {
+              "real": "Gimnasia y Esgrima La Plata",
+              "official": "Club de Gimnasia y Esgrima La Plata",
+              "name": "Lobo Platense",
+              "short": "LOB",
+              "city": "La Plata",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#001F5B",
+                "libero": "#9EC9E2"
+              },
+              "liberoEstimated": true,
+              "ovr": 65,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «El Lobo» es su apodo."
+            },
+            {
+              "real": "Estudiantes de La Plata",
+              "official": "Club Estudiantes de La Plata",
+              "name": "Pincha Platense",
+              "short": "PIN",
+              "city": "La Plata",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 64,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Pincha» (pincharratas) es su apodo."
+            },
+            {
+              "real": "CEF 5 La Rioja",
+              "official": "Centro de Educación Física N.º 5 (CEF 5), La Rioja",
+              "name": "Naranjitas Riojanas",
+              "short": "NRJ",
+              "city": "La Rioja",
+              "gender": "W",
+              "colors": {
+                "shirt": "#F58220",
+                "shirt2": "#FFFFFF",
+                "libero": "#1B3A6B"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. A sus jugadoras las llaman «naranjitas»."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Estados Unidos",
+      "code": "US",
+      "tier": 3,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "LOVB Pro 2026 + Major League Volleyball 2026 (mujeres, profesional) + NCAA National Collegiate Men's Volleyball 2026 (mezcla)",
+          "name": "Liga Estrellas USA",
+          "short": "LEU",
+          "strength": 68,
+          "clubs": [
+            {
+              "real": "LOVB Austin",
+              "official": "LOVB Austin (League One Volleyball)",
+              "name": "Volley Austin",
+              "short": "AUS",
+              "city": "Austin",
+              "gender": "W",
+              "colors": {
+                "shirt": "#5B2C83",
+                "shirt2": "#1B2240",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 74,
+              "check": "Patrón «Volley [Ciudad]»; los clubes juveniles de LOVB llevan nombres propios. Verificación (11-nov-2026): búsqueda entre comillas sin club oficial con ese nombre; existe «Volleyball Austin» (liga recreativa), que es otro nombre. El equipo real se presenta como «LOVB Austin»."
+            },
+            {
+              "real": "LOVB Houston",
+              "official": "LOVB Houston (League One Volleyball)",
+              "name": "Volley Houston",
+              "short": "HOU",
+              "city": "Houston",
+              "gender": "W",
+              "colors": {
+                "shirt": "#8DC8E8",
+                "shirt2": "#13294B",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 73,
+              "check": "Verificación (11-nov-2026): búsqueda entre comillas sin ningún club con ese nombre (solo Houston Juniors, Houston Skyline, Houston Volleyball Academy…)."
+            },
+            {
+              "real": "LOVB Salt Lake",
+              "official": "LOVB Salt Lake (League One Volleyball)",
+              "name": "Volley Salt Lake",
+              "short": "SLC",
+              "city": "Salt Lake City",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFC72C",
+                "shirt2": "#13294B",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Verificación (11-nov-2026): búsqueda entre comillas sin club con ese nombre exacto. Ojo: la prensa llama al equipo real «Salt Lake Volleyball» (mismas palabras en otro orden) y hay un club juvenil «Salt Lake Volleyball Club». No coincide exactamente, pero es el más cercano de todo el fichero."
+            },
+            {
+              "real": "Dallas Pulse",
+              "official": "Dallas Pulse (Major League Volleyball)",
+              "name": "Frisco Pulse",
+              "short": "FRI",
+              "city": "Frisco (Dallas)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0B1F44",
+                "shirt2": "#00B5E2",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Juega en Frisco; guiño a «Pulse» con otra ciudad."
+            },
+            {
+              "real": "Omaha Supernovas",
+              "official": "Omaha Supernovas (Major League Volleyball)",
+              "name": "Omaha Hypernovas",
+              "short": "OMA",
+              "city": "Omaha",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1B2A55",
+                "shirt2": "#FFFFFF",
+                "libero": "#E8457C"
+              },
+              "liberoEstimated": true,
+              "ovr": 71,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Supernova → hipernova, como Superliga → Hiperliga."
+            },
+            {
+              "real": "Orlando Valkyries",
+              "official": "Orlando Valkyries (Major League Volleyball)",
+              "name": "Orlando Valquirias",
+              "short": "ORL",
+              "city": "Orlando",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1F3A70",
+                "shirt2": "#C9B48A",
+                "libero": "#8CC8EA"
+              },
+              "liberoEstimated": false,
+              "ovr": 71,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Traducción al español."
+            },
+            {
+              "real": "Hawaiʻi Rainbow Warriors",
+              "official": "University of Hawaiʻi at Mānoa (Rainbow Warriors)",
+              "name": "Manoa Rainbows",
+              "short": "MNO",
+              "city": "Honolulu",
+              "gender": "M",
+              "colors": {
+                "shirt": "#024731",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Mānoa es el campus y «Rainbow» su apodo. [Integrador: abreviatura MAN → MNO, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "UC Irvine Anteaters",
+              "official": "University of California, Irvine (Anteaters)",
+              "name": "Irvine Aardvarks",
+              "short": "IRV",
+              "city": "Irvine",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0064A4",
+                "shirt2": "#FFD200",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 67,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño: oso hormiguero (anteater) → cerdo hormiguero (aardvark)."
+            },
+            {
+              "real": "Long Beach State",
+              "official": "California State University, Long Beach (The Beach)",
+              "name": "Volley Long Beach",
+              "short": "LBC",
+              "city": "Long Beach",
+              "gender": "M",
+              "colors": {
+                "shirt": "#111111",
+                "shirt2": "#FFC72C",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 67,
+              "check": "Verificación (11-nov-2026): búsqueda entre comillas sin ningún club con ese nombre (solo Long Beach Volleyball Club, Mizuno Long Beach…)."
+            },
+            {
+              "real": "UCLA Bruins",
+              "official": "University of California, Los Angeles (Bruins)",
+              "name": "Westwood Grizzlies",
+              "short": "WWG",
+              "city": "Los Ángeles (Westwood)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#2D68C4",
+                "shirt2": "#F2A900",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 65,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Westwood es su barrio; bruin (oso) → grizzly."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Canadá",
+      "code": "CA",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "U Sports Men's + Women's Volleyball 2025-26 (mezcla)",
+          "name": "Liga del Arce",
+          "short": "LDA",
+          "strength": 56,
+          "clubs": [
+            {
+              "real": "Trinity Western Spartans",
+              "official": "Trinity Western University (Spartans)",
+              "name": "Langley Espartanos",
+              "short": "LAN",
+              "city": "Langley (BC)",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#002D62",
+                "shirt2": "#C99700",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 61,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Ciudad + traducción del apodo."
+            },
+            {
+              "real": "UBC Thunderbirds",
+              "official": "University of British Columbia (Thunderbirds)",
+              "name": "Point Grey Thunder",
+              "short": "PGT",
+              "city": "Vancouver",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#002145",
+                "shirt2": "#F2A900",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Point Grey es su campus."
+            },
+            {
+              "real": "Alberta Golden Bears / Pandas",
+              "official": "University of Alberta (Golden Bears y Pandas)",
+              "name": "Edmonton Golden Pandas",
+              "short": "EGP",
+              "city": "Edmonton",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#275D38",
+                "shirt2": "#F2CD00",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Mezcla de sus dos apodos (Golden Bears y Pandas)."
+            },
+            {
+              "real": "Manitoba Bisons",
+              "official": "University of Manitoba (Bisons)",
+              "name": "Winnipeg Bisontes",
+              "short": "WPG",
+              "city": "Winnipeg",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#4A2C2A",
+                "shirt2": "#F2C200",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Ciudad + traducción del apodo."
+            },
+            {
+              "real": "Sherbrooke Vert & Or",
+              "official": "Université de Sherbrooke (Vert & Or)",
+              "name": "Sherbrooke Émeraude",
+              "short": "SHE",
+              "city": "Sherbrooke",
+              "gender": "W",
+              "colors": {
+                "shirt": "#00573F",
+                "shirt2": "#FFC72C",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Vert (verde) → esmeralda."
+            },
+            {
+              "real": "Montréal Carabins",
+              "official": "Université de Montréal (Carabins)",
+              "name": "Montréal Carabines",
+              "short": "MTL",
+              "city": "Montreal",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0B2C6B",
+                "shirt2": "#FFFFFF",
+                "libero": "#5BC2E7"
+              },
+              "liberoEstimated": true,
+              "ovr": 55,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Carabin → carabine."
+            },
+            {
+              "real": "Laval Rouge et Or",
+              "official": "Université Laval (Rouge et Or)",
+              "name": "Québec Rouge-Doré",
+              "short": "QRD",
+              "city": "Quebec",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#FFC72C",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 55,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Or (oro) → doré (dorado), con la ciudad."
+            },
+            {
+              "real": "Calgary Dinos",
+              "official": "University of Calgary (Dinos)",
+              "name": "Calgary Rex",
+              "short": "REX",
+              "city": "Calgary",
+              "gender": "M",
+              "colors": {
+                "shirt": "#D6001C",
+                "shirt2": "#FFCD00",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Dino → T. rex."
+            },
+            {
+              "real": "Saskatchewan Huskies",
+              "official": "University of Saskatchewan (Huskies)",
+              "name": "Saskatoon Malamutes",
+              "short": "SAS",
+              "city": "Saskatoon",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#006341",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 54,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Husky → malamute (otro perro de trineo)."
+            },
+            {
+              "real": "McMaster Marauders",
+              "official": "McMaster University (Marauders)",
+              "name": "Hamilton Plunderers",
+              "short": "HAM",
+              "city": "Hamilton (ON)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#7A003C",
+                "shirt2": "#FDBF57",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 55,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Marauder → plunderer (saqueador)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Perú",
+      "code": "PE",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Liga Peruana de Vóley 2025-26 (mujeres) + Liga Nacional Superior de Voleibol Masculino 2025 (mezcla)",
+          "name": "Liga Inca de Vóley",
+          "short": "LIV",
+          "strength": 60,
+          "clubs": [
+            {
+              "real": "Alianza Lima",
+              "official": "Club Alianza Lima",
+              "name": "Íntimos Lima",
+              "short": "INT",
+              "city": "Lima (La Victoria)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#071241",
+                "shirt2": "#FFFFFF",
+                "libero": "#361B78"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Los Íntimos de La Victoria» es su apodo."
+            },
+            {
+              "real": "Universidad San Martín",
+              "official": "Club Deportivo Universidad de San Martín de Porres",
+              "name": "Vóley Porres",
+              "short": "SMP",
+              "city": "Lima",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#18161B",
+                "libero": "#1F4E9E"
+              },
+              "liberoEstimated": true,
+              "ovr": 65,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño a «de Porres»."
+            },
+            {
+              "real": "Universitario de Deportes",
+              "official": "Club Universitario de Deportes",
+              "name": "Cremas Lima",
+              "short": "CRE",
+              "city": "Lima",
+              "gender": "W",
+              "colors": {
+                "shirt": "#F2E6C9",
+                "shirt2": "#8B1E2D",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Los Cremas» es su apodo."
+            },
+            {
+              "real": "Deportivo Géminis",
+              "official": "Club Deportivo Cultural Géminis",
+              "name": "Gemelos Comas",
+              "short": "GEM",
+              "city": "Lima (Comas)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#263680",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 61,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Géminis → gemelos, con el distrito de Comas."
+            },
+            {
+              "real": "Regatas Lima",
+              "official": "Club de Regatas Lima",
+              "name": "Remo Chorrillos",
+              "short": "REM",
+              "city": "Lima (Chorrillos)",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#87CEEB",
+                "shirt2": "#FFFFFF",
+                "libero": "#1A2E6E"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Regatas → remo, con el distrito de Chorrillos."
+            },
+            {
+              "real": "Atlético Atenea",
+              "official": "Club Atlético Atenea",
+              "name": "Minerva Lima",
+              "short": "MIN",
+              "city": "Lima",
+              "gender": "W",
+              "colors": {
+                "shirt": "#5E2B7E",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Atenea → Minerva (su versión romana)."
+            },
+            {
+              "real": "Circolo Sportivo Italiano",
+              "official": "Circolo Sportivo Italiano",
+              "name": "Tricolore Lima",
+              "short": "TRI",
+              "city": "Lima",
+              "gender": "W",
+              "colors": {
+                "shirt": "#2E2EFE",
+                "shirt2": "#FFFFFF",
+                "libero": "#008C45"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño a la bandera italiana."
+            },
+            {
+              "real": "Von Newman",
+              "official": "Von Newman (liga de hombres)",
+              "name": "Matemáticos Lima",
+              "short": "MTM",
+              "city": "Lima",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0B3C5D",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2A900"
+              },
+              "liberoEstimated": true,
+              "ovr": 52,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Guiño al matemático John von Neumann. [Integrador: abreviatura MAT → MTM, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "Vamos Peerless",
+              "official": "Vamos Peerless",
+              "name": "Sin Par Lima",
+              "short": "SPL",
+              "city": "Lima",
+              "gender": "M",
+              "colors": {
+                "shirt": "#1A1A1A",
+                "shirt2": "#E30613",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 52,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. Peerless → sin par."
+            },
+            {
+              "real": "Litovoley",
+              "official": "Litovoley (Huancayo)",
+              "name": "Vóley Huanca",
+              "short": "HUA",
+              "city": "Huancayo",
+              "gender": "M",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#FFFFFF",
+                "libero": "#1F4E9E"
+              },
+              "liberoEstimated": true,
+              "ovr": 50,
+              "check": "PENDIENTE: no pude buscarlo (se agotó el cupo de búsquedas web de la sesión). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Hay que confirmarlo antes de usarlo. «Huanca», pueblo y nombre de la región de Huancayo."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "competitions": [
+    {
+      "real": "Superliga Banco do Brasil (masculina y femenina)",
+      "name": "Hiperliga Brasil",
+      "short": "HLB",
+      "note": "1ª de Brasil. La búsqueda de «Hiperliga» con voleibol no devuelve ninguna liga real. Si España también usa «Hiperliga», «Brasil» las distingue.",
+      "kind": "skip"
+    },
+    {
+      "real": "Superliga B",
+      "name": "Hiperliga B",
+      "short": "HLB2",
+      "note": "2ª de Brasil. Nombre no comprobado por separado.",
+      "kind": "skip"
+    },
+    {
+      "real": "Copa Brasil de Vôlei",
+      "name": "Taça Verde-Amarela",
+      "short": "TVA",
+      "note": "Copa nacional de Brasil. PENDIENTE de comprobar.",
+      "kind": "cup",
+      "country": "BR"
+    },
+    {
+      "real": "Supercopa Brasileira de Vôlei",
+      "name": "Hipercopa Brasil",
+      "short": "HCB",
+      "note": "Supercopa: super → hiper. PENDIENTE de comprobar.",
+      "kind": "skip"
+    },
+    {
+      "real": "Liga de Voleibol Argentina (ACLAV) + Liga Femenina (FeVA)",
+      "name": "Liga Albiceleste",
+      "short": "LAB",
+      "note": "1ª de Argentina. PENDIENTE de comprobar.",
+      "kind": "skip"
+    },
+    {
+      "real": "Copa ACLAV / Copa Argentina",
+      "name": "Copa Albiceleste",
+      "short": "CAB",
+      "note": "Copa de Argentina. PENDIENTE de comprobar.",
+      "kind": "cup",
+      "country": "AR"
+    },
+    {
+      "real": "LOVB Pro + Major League Volleyball + NCAA (EE. UU.)",
+      "name": "Liga Estrellas USA",
+      "short": "LEU",
+      "note": "1ª de EE. UU. Mezcla las dos ligas profesionales de mujeres con la NCAA de hombres (ver la nota del .md). PENDIENTE de comprobar.",
+      "kind": "skip"
+    },
+    {
+      "real": "U Sports Volleyball (Canadá)",
+      "name": "Liga del Arce",
+      "short": "LDA",
+      "note": "1ª de Canadá; no hay liga profesional. PENDIENTE de comprobar.",
+      "kind": "skip"
+    },
+    {
+      "real": "Liga Peruana de Vóley + Liga Nacional Superior de Voleibol",
+      "name": "Liga Inca de Vóley",
+      "short": "LIV",
+      "note": "1ª de Perú. PENDIENTE de comprobar.",
+      "kind": "skip"
+    },
+    {
+      "real": "Campeonato Sudamericano de Clubes (CSV)",
+      "name": "Copa del Sur de Clubes",
+      "short": "CSC",
+      "note": "Copa continental de Sudamérica. PENDIENTE de comprobar.",
+      "kind": "intl",
+      "rank": 1,
+      "zone": "sur"
+    },
+    {
+      "real": "NORCECA Champions Cup",
+      "name": "Copa Norte de Campeones",
+      "short": "CNC",
+      "note": "Copa continental de Norteamérica, Centroamérica y el Caribe. PENDIENTE de comprobar.",
+      "kind": "intl",
+      "rank": 1,
+      "zone": "norte"
+    },
+    {
+      "real": "FIVB Club World Championship",
+      "name": "Mundial de Clubes VBF",
+      "short": "MCV",
+      "note": "Mismo nombre y siglas que en elite-europa.json («VBF» por FIVB revuelto); antes «Mundial VBC de Clubes».",
+      "kind": "skip"
+    }
+  ]
+}

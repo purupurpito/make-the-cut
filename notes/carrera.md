@@ -1,8 +1,107 @@
-# notes/carrera.md — Modo Carrera 2v2 de vóley playa (owner: ui_main)
+# notes/carrera.md — Modo Carrera: vóley playa 2v2 y pista 6v6 (owner: ui_main)
 
 Ficheros: `js/career.js` (VB.Career, datos y reglas, sin DOM; se carga en node), `js/career-ui.js` (VB.CareerUI, pantallas; crea su
-DOM `#career` y su `<style id="careerCss">`), `js/main.js` (arranque de los partidos de Carrera), `index.html` (fila «02 Carrera»
-del menú y los dos `<script>`), `tools/careertest.js` (prueba en node). Guardado: `localStorage['voley3d.career']` (una sola carrera).
+DOM `#career` y su `<style id="careerCss">`), `js/leagues.js` (VB.Leagues, datos de las ligas de pista), `js/main.js` (arranque de
+los partidos de Carrera), `index.html` (fila «02 Carrera» del menú y los `<script>`), `tools/careertest.js` (prueba en node).
+Guardados: `localStorage['voley3d.career']` (playa, igual que siempre), `['voley3d.career6']` (pista) y `['voley3d.career.mode']`
+(cuál de las dos está activa).
+
+## Carrera de pista 6v6 (lote C, 11-nov-2026)
+
+### Diseño
+- **Dos Carreras a la vez, guardadas aparte.** Al crear se elige «Playa (2v2)» o «Pista (6v6)» (`modeSeg`). La de playa no cambia:
+  ni su guardado (`voley3d.career`, v3), ni su migración, ni su API. La pista va en `voley3d.career6` (v1, `mode: 'hall'`). La
+  activa se guarda en `voley3d.career.mode`; sin ese dato, o si la elegida no existe y la otra sí, manda la que exista (por defecto
+  la playa). Palmarés › Opciones lleva a la otra Carrera (o a crearla). Un guardado de pista dañado se copia en
+  `voley3d.career6.bak` y la activa vuelve a la playa, que no se toca.
+- **Fachada (`VB.Career`, final de career.js).** `BEACH` y `HALL` son dos motores con las mismas claves; `VB.Career.<clave>` va
+  al activo (getter) y, si el activo no la tiene, a la playa (constantes comunes). `VB.Career.beach` y `VB.Career.hall` dan acceso
+  directo. `create({mode})` elige; `matchDone(r, st, g)` va al de `g.career.mode` aunque la activa hubiera cambiado.
+- **Mundo.** `buildWorld6` copia en el guardado las ligas (id = código del país + división: `ES1`, `ES2`), los clubes (con su kit
+  ya en números), las copas nacionales (`cups[cc]`) y las internacionales por continente (`intl[region]`). Cambiar js/leagues.js no
+  rompe una Carrera empezada; la nueva coge los datos nuevos.
+  - Región por el código del país (`CONT6`: Europa, América, Asia). Zonas en América (`ZONE6`: sur y norte, cada una con su copa).
+  - Competiciones (`compKind6`): manda `kind` ('intl' | 'cup' | 'skip'), `rank` (1 la grande, 2 la segunda), `zone` ('sur', 'norte' o
+    lista de códigos) y `country` si vienen; si no, se deduce del nombre real (CEV, AVC, CSV, NORCECA → internacional; Cup, Copa,
+    Coppa, Pokal… del país → nacional; supercopas, ligas, selecciones, Mundial de Clubes → fuera). Repetidas en varios ficheros: vale
+    la 1ª.
+- **Inicio.** Eliges país (por defecto España; agrupados por continente) y puesto. Media 45. Ofertas de 3-4 clubes modestos de la
+  2ª (o de la 1ª si el país solo tiene una) y, en la 1ª ronda, quizá una prueba en el más flojo de la 1ª. «Pedir más tiempo» y
+  «Rechazar todas», como en la playa.
+- **Liga por jornadas** (`sched6`, determinista): hasta 8 clubes a doble vuelta (14 jornadas); con más, a una vuelta (11 jornadas con
+  12 clubes, 9 con 9-10). Así una temporada son 11-14 jornadas más 1-3 rondas de cada copa: unas 15-18 partidas, como las 14 de la
+  playa. Liga impar: un club descansa cada jornada (`skipBye6`: entrenas, cobras, descansas). Puntos 3/2/1/0 (2-0, 2-1, 1-2).
+  Sets a 15 por defecto (21 y 25 a elegir), el 3r a 15.
+- **Copas** (al acabar la liga, eliminatoria a un partido, hasta 8 equipos, `buildKOs6`): la nacional (6 primeros de la 1ª + 2
+  primeros de la 2ª; sin 2ª, los 8 primeros) y las internacionales de tu continente y zona (`intlFor6`): la grande con el 1r y el 2º
+  de cada 1ª, la segunda con el 3r y el 4º. Si tu club está clasificado, entra siempre aunque haya más candidatos que plazas.
+- **Ascensos y descensos** en cada país con dos divisiones: 2 y 2 (1 y 1 si las ligas son pequeñas). Las medias de los clubes se
+  mueven cada verano (vuelven un 25 % hacia la base, ±2, y ±2 al subir o bajar).
+- **Tu puesto** (`positions6`): la lista sale de `VB.Sim.CTRL_ROLES6` (hoy solo `['OH']`); cuando el lote A añada colocador, opuesto
+  y central, aparecen solos en crear y en Palmarés › Opciones (`setPosition6`). Si tu puesto deja de estar en sim, juegas de
+  receptor sin perder el tuyo (`ctrlRole6`). Perfiles de atributos por puesto en `POS6` (genSt los entiende como los roles de playa).
+- **Partido** (`matchSetup6`): `format: '6v6'`, `venue: 'hall'`, `ctrlRole` tu puesto, `ctrlIdx` el hueco de tu puesto en
+  `Sim.ROLES6`; atributos de los 12 (compañeros y rivales a la media de su club ±2, química en reacción/colocación/recepción); tu
+  dorsal en tu hueco; IA por la media del rival (`DIFF6_AT`, calibrada con los datos reales: < 56 Fácil, 56-61 Normal suave, 62-75
+  Normal, 76-87 Difícil, ≥ 88 Experto; de los 390 clubes, 18 / 81 / 182 / 87 / 22); arbitraje por la fuerza de la liga; equipaciones de los dos clubes con camiseta, segundo color y líbero. «Simular» da
+  la mitad de XP, como en la playa. Nota con `rating` y un multiplicador por puesto (`RATE6`).
+- **Ojeadores y ofertas** (`scoutCheck6`, `genOffers6`): tras una nota ≥ 7,3, a veces viene un ojeador de un club de una liga más
+  fuerte (también de fuera): +3 de interés esa temporada. Ofertas a mitad (nota media ≥ 7; de fuera o de una liga más fuerte, ≥ 7,5
+  o con ojeador) y a fin de temporada: clubes mejores que el tuyo de ligas como la tuya o más fuertes; umbral = media del club − 5,
+  +2 si es de fuera, + (fuerza − 70) / 5 en las ligas de élite. De los clubes que te quieren llegan los 3 más atractivos
+  (`appeal`: el interés cuenta hasta 5, y pesan la fuerza de la liga ×0,5 y la media del club ×0,25): con 28 países, ordenar solo
+  por interés llenaba la bandeja de un crack de clubes modestos de Irán o Eslovenia; ahora un 90 con notas de 8 recibe Conegliano,
+  Perugia y Trento, y un 70 de la Hiperliga, clubes de la 1ª turca o francesa. La ficha enseña país, liga y su nivel, media, puesto, estilo,
+  objetivo, rol prometido, sueldo (ficticio: 400 €/mes en una liga de 50, ~2.500 en una de 70, ~15.000 en la élite) y años.
+- **Reutilizado de la playa**: atleta y progresión (addXP, bump, insignias), entrenamiento y fatiga (`trainWeek`), contrato, rol
+  prometido y banquillo (`benchFor`, `pay`, `earlyExit`, `promoteCheck6`), negociar, transferible, fisio, bandeja (`msg`), nota
+  (`ingest`, `rating`) y `quickSim`. La química es la del equipo (sube +5 por partido jugado, +3 simulado; −40 % en verano; a 0 al
+  fichar).
+- **UI** (career-ui.js): mismas pestañas EA FC. En la pista, Club › Ficha · Equipo · Contrato · Ofertas (Equipo = plantilla
+  inventada y química) y Liga › Clasificación · Calendario · Copas. Clasificación de cualquier país y división (tu país primero; en
+  el móvil, una fila que se desliza). Capturas en `tools/out/arte/carrera-pista/` (`shots.js`, `REAL=1` con los datos reales).
+
+### Datos reales (integración, 11-nov-2026)
+- **Fuente:** `notes/clubes/*.json` (5 investigaciones verificadas: elite-europa, fra-ale-esp, europa-media, america, asia; detalle en
+  sus .md). **Lista para Ferran:** `notes/clubes-reales.md` (competiciones real → nuestro y una tabla por liga: club real → nuestro
+  nombre, colores con muestra, ovr, nombre oficial, búsqueda y ⚠ en los dudosos, más un resumen «Decisiones para Ferran»).
+- **`tools/build-leagues.js`** genera `js/leagues.js` (NO se edita a mano) y `notes/clubes-reales.md` a partir de los JSON.
+  Comprueba antes de escribir: nombres de club únicos, abreviaturas únicas en TODO el juego (así `uniqueShorts` no renombra nada y
+  las copas internacionales no repiten), colores hex, ovr y fuerza 0-100, ningún «masculino/femenino» y una lista de ~200
+  patrocinadores y marcas de los nombres reales (palabra entera). `--check` solo comprueba. Para corregir un club o una copa: el
+  JSON y volver a ejecutarlo.
+- **js/leagues.js:** 3 regiones (Europa 17 países, América 5, Asia 6), 37 ligas de 8 a 12 clubes, 390 clubes; 1ª y 2ª en Italia,
+  Polonia, Turquía, Rusia, Francia, Alemania, España, Brasil y Japón. Sin `real`, `official` ni `check` (llevan patrocinadores):
+  solo lo que usa el juego. Cada competición lleva `kind`/`rank`/`zone`/`country`, así que ya no se deduce nada por el nombre.
+- **Competiciones unificadas:** Europa «Champions Cup VEC» (CCV, rank 1) + «Copa VEC» (CVC, rank 2) + «Challenge VEC» (CHV, solo
+  nombre); América «Copa del Sur de Clubes» (zona sur) y «Copa Norte de Campeones» (zona norte); Asia «Champions Cup Asia»;
+  «Mundial de Clubes VBF» igual en los tres (antes «World Club Cup» y «Mundial VBC de Clubes»). Copas nacionales en 21 países;
+  nuevas del integrador: Coppa Tricolore (IT), Puchar Orła (PL), Hilal Kupası (TR) y Kubok Volgi (RU), una búsqueda cada una sin
+  coincidencias. Sin copa propia (juegan «Copa Nacional»): EE. UU., Canadá, Perú, China, Irán, Catar y Filipinas.
+- **Cambios del integrador en los JSON** (anotados en el campo `check`/`note` de cada uno, «[Integrador…]»): 29 abreviaturas que se
+  repetían entre países; «Voley Aguere» → «Voley Lagunero» (LAG), porque chocaba con el CV Aguere real de La Laguna; resultados de 20
+  búsquedas entre comillas (sin choque salvo Aguere; Manacor, Capodistria y Verona quedan con ⚠ por casi iguales).
+- **Pruebas:** `tools/careertest.js` usa en las secciones de pista las ligas de prueba inventadas de `tools/leagues-fixture.js` (los
+  antiguos datos provisionales: liga impar de 9, de 8 a doble vuelta, país sin 2ª) y prueba aparte los datos reales («datos reales»:
+  28 países, unicidad, nada de nombres reales en el juego, js/leagues.js al día con los JSON, IA por tramos, copas, 2 temporadas,
+  crear en cada uno de los 28 países). Capturas finales: `tools/out/arte/carrera-pista/final/shots.js` (1280×720 y 844×390 táctil).
+
+### Pendiente
+- **Color del líbero del club (petición al lote A, js/players.js):** `matchSetup6` ya pasa `kit.kitLibero` y `rivalKit.kitLibero`
+  (main.js los deja en `opts.kit` y `opts.kit.rival`), pero `liberoKit(team)` de players.js calcula el color solo. Cambio pedido: en
+  `setKit(st)`, guardar `st.kitLibero` (equipo 0) y `st.rival.kitLibero` (equipo 1) y, en `liberoKit`, usarlos como camiseta si son
+  número y se distinguen de las dos camisetas (`kitDist` ≥ 0,8); si no, el cálculo de ahora. Fuera de la Carrera no cambia nada.
+- **Empezar en un país de élite:** con los tramos nuevos la 2ª italiana (72-82) queda mitad Normal, mitad Difícil (antes, toda
+  Difícil). Si Ferran la quiere más suave, subir la media inicial allí o bajar los ovr de las 2ªs de élite.
+- **Revisión de Ferran** de `notes/clubes-reales.md` (ya está en el juego, pero sin publicar hasta que la revise): ⚠ en 36 clubes y
+  en varias competiciones, búsqueda entre comillas pendiente en 204 clubes y en casi todas las copas.
+- **Choque de equipaciones:** si la camiseta del rival se parece a la tuya, players.js le pone la de la CPU de siempre (roja); con
+  clubes reales sería mejor la 2ª equipación del club (su segundo color). Petición posible al lote A (players.js `setKit`).
+- Ligas de 9-10 clubes: 9 jornadas (a una vuelta), frente a 14 de las de 8 y 11 de las de 12. Si se quiere igualar, la opción es
+  una vuelta + fase final para 9-10.
+- Puestos colocador, opuesto y central: dependen del lote A (la Carrera ya los lee de `CTRL_ROLES6`). Nota y «Simular» de esos
+  puestos calibrados por analogía (`RATE6`, `SIM_SHARE6`), sin medir.
+- Escudos propios: no hay (la ficha enseña los tres colores del club).
 
 ## Vida de la Carrera (12-nov-2026; pedido de Ferran: «que el modo carrera sea más extenso y mejor, más entretenido y "enticing"»)
 

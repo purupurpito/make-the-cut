@@ -10,14 +10,15 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const SEASONS = Math.max(2, +(process.argv[2] || 8));
 let fails = 0;
-function ok(c, msg) { if (!c) { fails++; console.log('  FALLO: ' + msg); } }
+let passes = 0, verbose = false;
+function ok(c, msg) { if (!c) { fails++; console.log('  FALLO: ' + msg); } else { passes++; if (verbose) console.log('  ok: ' + msg); } }
 function section(t) { console.log('\n== ' + t); }
 
 const mem = {};
 const fakeLS = { getItem: k => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
-const ctx = { console, Math, Date, JSON, localStorage: fakeLS }; ctx.globalThis = ctx; ctx.window = ctx;
+const ctx = { console, Math, Date, JSON, Set, localStorage: fakeLS }; ctx.globalThis = ctx; ctx.window = ctx;
 vm.createContext(ctx);
-for (const f of ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/career.js', 'js/career-life.js']) {
+for (const f of ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/leagues.js', 'js/career.js', 'js/career-life.js']) {
   if (!fs.existsSync(path.join(ROOT, f))) { console.log('(sin ' + f + ')'); continue; }
   vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
 }
@@ -683,5 +684,224 @@ else {
   C.abandon(); C._reset();
 }
 
+// ------------------------------------------------------------------ Carrera de pista (6v6, lote C)
+verbose = true;   // (la pista enseña cada comprobación: sirve de informe)
+// Las secciones de la pista usan ligas de PRUEBA inventadas (tools/leagues-fixture.js: liga impar de 9, una de 8 a doble vuelta, país sin
+// 2ª); los datos reales de js/leagues.js se prueban al final («datos reales»).
+const REAL_LEAGUES = VB.Leagues && VB.Leagues.regions, REAL_PROV = VB.Leagues && VB.Leagues.provisional;
+if (VB.Leagues) { VB.Leagues.regions = require('./leagues-fixture.js')(); VB.Leagues.provisional = true; }
+section('Carrera de pista (6v6): crear, guardado aparte, modo activo');
+{
+  const H = C.hall, beachRaw = mem['voley3d.career'];
+  ok(VB.Leagues && H && H.available(), 'datos de ligas (ligas de prueba) y Carrera de pista disponible');
+  ok(C.mode() === 'beach', 'sin pista, la Carrera activa es la de playa');
+  const cs = H.countries();
+  ok(cs.length >= 3 && cs.some(x => x.code === 'ES'), 'países: ' + cs.map(x => x.code).join(', '));
+  // datos: esquema y reglas de Ferran
+  const regs = VB.Leagues.regions, allClubs = [], allNames = [];
+  regs.forEach(rg => rg.countries.forEach(co => co.divisions.forEach(d => { allNames.push(d.name); d.clubs.forEach(k => { allClubs.push(k); allNames.push(k.name); }); })));
+  ok(allClubs.every(k => k.name && k.short && k.colors && /^#[0-9a-f]{6}$/i.test(k.colors.shirt) && /^#[0-9a-f]{6}$/i.test(k.colors.shirt2) && /^#[0-9a-f]{6}$/i.test(k.colors.libero) && k.ovr >= 0 && k.ovr <= 100 && 'liberoEstimated' in k && k.check && k.official && k.real),
+    'esquema de cada club: nombre, abreviatura, 3 colores, ovr 0-100, liberoEstimated, official, real, check (' + allClubs.length + ' clubes)');
+  ok(!allNames.some(n => /masculin|femenin/i.test(n)), 'ningún nombre dice «masculino» ni «femenino»');
+  ok(regs.every(rg => rg.countries.every(co => co.divisions.every(d => d.strength >= 0 && d.strength <= 100 && d.short && d.real))), 'divisiones con fuerza 0-100, abreviatura y «real»');
+  let c6 = C.create({ mode: 'hall', name: 'Pista Prueba', num: 9, pos: 'OH', seed: 777, points: 15 });
+  ok(c6 && c6.mode === 'hall' && C.mode() === 'hall', 'crear la de pista la deja activa');
+  ok(mem['voley3d.career'] === beachRaw && mem['voley3d.career6'], 'guardado aparte (voley3d.career6); el de playa no se toca');
+  ok(c6.cc === 'ES' && c6.points === 15 && c6.player.roleKey === 'OH' && c6.player.role === 'Receptor' && C.ovrOf(c6.player.st) === H.START_OVR, 'por defecto España, sets a 15, receptor, media ' + H.START_OVR);
+  ok(c6.phase === 'pick' && c6.offers.length >= 3 && c6.offers.filter(o => !o.trial).every(o => o.lid === 'ES2'), 'ofertas de inicio de clubes modestos de la 2ª (' + c6.offers.map(o => C.club(c6, o.club).short + (o.trial ? '*' : '')).join(' ') + ')');
+  ok(c6.offers.filter(o => o.trial).every(o => o.lid === 'ES1'), 'la prueba (si la hay) es en la 1ª');
+  ok(c6.clubs.every(k => k.kit && typeof k.kit.libero === 'number' && typeof k.kit.shirt === 'number'), 'equipaciones con camiseta, segundo color y líbero');
+  const pal = c6.clubs.find(k => k.name === 'Vòlei Rocaverde'); ok(pal && pal.kit.shirt === 0xc8102e && pal.kit.libero === 0x7b3fd1, 'colores tal cual los datos (rojo, líbero lila)');
+  ok(C.setMode('beach') && C.get().v === 3 && C.get().clubs.length === 40, 'se vuelve a la playa con su carrera intacta (v3, 40 clubes)');
+  C.setMode('hall'); ok(C.get() === c6, 'y de nuevo a la pista');
+  C._reset(); c6 = C.get(); ok(c6 && c6.mode === 'hall' && c6.phase === 'pick' && C.mode() === 'hall', 'se guarda y se carga en plena elección');
+}
+section('Carrera de pista: partido 6v6, nota, calendario impar, temporada, copas');
+{
+  let c6 = C.get(); const i0 = c6.offers.findIndex(o => !o.trial);
+  ok(C.acceptOffer(i0, 2) && c6.phase === 'league' && C.myClub(c6).lid === 'ES2', 'firmar por un club de la 2ª');
+  const W = C.weeksOf(c6, 'ES2'), n2 = C.leagueClubs(c6, 'ES2').length;
+  ok(n2 === 9 && W === 9, 'liga de 9 clubes a una vuelta: 9 jornadas (' + W + ')');
+  const sch = C.sched(c6, 'ES2'); ok(sch.every(wk => wk.length === 4) && C.leagueClubs(c6, 'ES2').every(k => sch.filter(wk => wk.some(m => m[0] === k.id || m[1] === k.id)).length === 8), 'cada club juega 8 y descansa 1');
+  ok(C.weeksOf(c6, 'BR1') === 14, 'con 8 clubes, doble vuelta (14)');
+  const n = C.next(c6) || (C.simulateNext(), C.next(c6)), ms = C.matchSetup(c6);
+  ok(ms && ms.format === '6v6' && ms.venue === 'hall' && ms.ctrlRole === 'OH' && ms.ctrl === 'one', 'partido 6v6 en el pabellón, llevas al receptor');
+  ok(ms.attrs[0].length === 6 && ms.attrs[1].length === 6 && ms.attrs[0][ms.ctrlIdx].jump === Math.max(1, c6.player.st.jump - ms.fatigue + 0) , 'atributos de los 12; los tuyos en tu hueco (' + ms.ctrlIdx + ')');
+  ok(ms.nums[0][ms.ctrlIdx] === 9 && new Set(ms.nums[0]).size === 6, 'tu dorsal en tu hueco y dorsales distintos (' + ms.nums[0].join(',') + ')');
+  ok(ms.kit.kitLibero === C.myClub(c6).kit.libero && ms.rivalKit.kitLibero === n.rival.kit.libero && ms.kit.kitShirt === C.myClub(c6).kit.shirt, 'equipaciones de los dos clubes con el color del líbero');
+  ok(ms.difficulty === H6diff(n.rival.ovr) && ms.career.mode === 'hall' && /Jornada/.test(ms.career.label), 'IA por la media del rival (' + n.rival.ovr + ' → ' + ms.difficulty + (ms.rookie ? ' suave' : '') + ')');
+  function H6diff(o) { return o >= 88 ? 'expert' : o >= 76 ? 'hard' : o >= 56 ? 'normal' : 'easy'; }
+  // partido jugado con eventos falsos: tu jugador (g.ctrl) en un 6v6
+  const team0 = [0, 1, 2, 3, 4, 5].map(i => ({ team: 0, id: i, num: ms.nums[0][i] })), me6 = team0[ms.ctrlIdx];
+  const g = { career: ms.career, size: 6, teams: [team0, [0, 1, 2, 3, 4, 5].map(i => ({ team: 1, id: 16 + i }))], ctrl: me6 };
+  const evs = [{ type: 'newMatch' }];
+  for (let i = 0; i < 7; i++) evs.push({ type: 'hit', team: 0, player: me6, kind: 'spike', touch: 3, human: true, grade: 'good' }, { type: 'point', team: 0, how: 'kill' });
+  for (let i = 0; i < 3; i++) evs.push({ type: 'hit', team: 0, player: team0[3], kind: 'spike', touch: 3 }, { type: 'point', team: 0, how: 'kill' });
+  C.ingest(evs, g);
+  const wk0 = c6.week, s = C.matchDone({ sets: [2, 0], setScores: [[15, 10], [15, 12]], win: true }, null, g);
+  ok(s && s.mode === 'hall' && s.me.kills === 7 && s.nota >= 6 && s.nota <= 10 && s.xp > 0, 'partido jugado: 7 remates tuyos (no los de los compañeros), nota ' + (s && s.nota) + ', XP ' + (s && s.xp));
+  ok(c6.week > wk0 && c6.myRes.w[wk0] && c6.myRes.w[wk0].some(r => r.mine), 'la jornada avanza y se guarda tu resultado');
+  // temporada entera simulada
+  let guard = 0, sawKO = false;
+  while (c6.phase !== 'off' && guard++ < 80) { if (c6.phase === 'ko') sawKO = true; if (!C.simulateNext()) break; }
+  ok(c6.phase === 'off' && c6.review && c6.review.season === 1, 'temporada 1 completa (' + guard + ' pasos)');
+  const allPj = c6.leagues.every(L => C.table(c6, L.id).every(r => r.pj === (C.leagueClubs(c6, L.id).length <= 8 ? 2 : 1) * (C.leagueClubs(c6, L.id).length - 1)));
+  ok(allPj, 'todas las ligas acaban su calendario (cada club, todos sus partidos)');
+  ok(c6.kos.length >= 2 && c6.kos.every(ko => ko.champion >= 0), 'copa nacional e internacionales jugadas: ' + c6.kos.map(ko => ko.name + ' (' + C.club(c6, ko.champion).short + ')').join(', '));
+  ok(c6.kos[0].kind === 'cup' && c6.kos[0].name === 'Copa de la Corona' && c6.kos.some(ko => ko.name === 'Champions Cup'), 'nombres de copa cambiados (Copa de la Corona, Champions Cup)');
+  const t1 = C.table(c6, 'IT1'), cc = c6.kos.find(ko => ko.name === 'Champions Cup');
+  ok(cc.ids.indexOf(t1[0].id) >= 0 || cc.ids.length === 4, 'a la Champions Cup van los primeros de las 1ªs');
+  ok(c6.history.length === 1 && c6.history[0].lgShort === 'HP2', 'historial de la temporada');
+}
+section('Carrera de pista: ascensos y descensos, tu ascenso');
+{
+  let c6 = C.get();
+  const mv = c6.review.moves, up = mv.filter(m => m.to === 'ES1'), down = mv.filter(m => m.to === 'ES2');
+  ok(up.length === 2 && down.length === 2 && mv.filter(m => m.to === 'IT1').length === 2, '2 suben y 2 bajan en España y en Italia; Polonia y Brasil (una división) sin movimientos');
+  C.stay(2);
+  ok(C.leagueClubs(c6, 'ES1').length === 10 && C.leagueClubs(c6, 'ES2').length === 9 && c6.season === 2, 'tamaños de liga conservados en la temporada 2');
+  // tu club, muy fuerte en la 2ª: asciende
+  const mk = C.myClub(c6);
+  if (mk.lid !== 'ES2') { ok(true, '(tu club ya está en la 1ª)'); }
+  else {
+    mk.ovr = 80; C.KEYS.forEach(k => { c6.player.st[k] = 80; });
+    let g = 0; while (c6.phase !== 'off' && g++ < 80) C.simulateNext();
+    ok(c6.review.move === 1 && c6.trophies.some(t => t.kind === 'ascenso' && /Hiperliga/.test(t.name)), 'campeón de la 2ª: asciende (' + c6.trophies.map(t => t.name).join(', ') + ')');
+    C.stay(1);
+    ok(C.myClub(c6).lid === 'ES1' && C.next(c6) && /^Hiperliga ·/.test(C.next(c6).label), 'la temporada siguiente juegas en la Hiperliga');
+  }
+}
+section('Carrera de pista: ojeadores y ofertas del extranjero');
+{
+  let c6 = C.get();
+  // jugador modesto (media 60): ningún club de la élite (fuerza ≥ 85) le hace oferta
+  C.KEYS.forEach(k => { c6.player.st[k] = 60; }); c6.notes = [{ nota: 7 }, { nota: 7 }]; c6.coach = 60; c6.scouts = {};
+  let off = C._genOffers(c6, true);
+  ok(off.every(o => C.league(o.lid).strength < 85), 'media 60: las ligas de élite no le quieren (' + off.map(o => C.club(c6, o.club).short + ' ' + o.lid).join(', ') + ')');
+  // jugador muy bueno con notas altas: llegan ofertas de fuera con país, liga, nivel, rol y sueldo
+  C.KEYS.forEach(k => { c6.player.st[k] = 90; }); c6.notes = [{ nota: 8.4 }, { nota: 8.6 }, { nota: 8.2 }]; c6.coach = 80;
+  off = C._genOffers(c6, true);
+  const fo = off.filter(o => o.foreign);
+  ok(fo.length >= 1, 'media 90 y notas de 8: ofertas del extranjero (' + off.map(o => C.club(c6, o.club).name + ' ' + o.cc + ' ' + o.role).join(', ') + ')');
+  ok(fo.every(o => o.cc !== C.myClub(c6).cc && C.league(o.lid).strength > 0 && o.ovr > 0 && o.role && o.salary > 0 && o.objective), 'cada oferta lleva país, liga (con su nivel), media, rol, sueldo y objetivo');
+  ok(fo.every(o => o.salary > c6.contract.salary), 'las ligas fuertes pagan más (' + fo.map(o => o.salary).join(', ') + ' contra ' + c6.contract.salary + ')');
+  // ojeador
+  let scout = null; for (let i = 0; i < 20 && scout == null; i++) { c6.notes.push({ nota: 8 }); scout = C.hall._scout(c6, 8); }
+  ok(scout != null && c6.scouts[scout] && c6.inbox.some(m => /Ojeadores/.test(m.t)), 'un ojeador viene a verte tras un buen partido (' + (scout != null ? C.club(c6, scout).name : '-') + ')');
+  // fichar por un club extranjero a mitad de temporada
+  if (c6.phase === 'league' && fo.length) {
+    c6.offers = off; c6.window = 'mid';
+    const fi = c6.offers.indexOf(fo[0]), dest = fo[0].club;
+    ok(C.acceptOffer(fi, 2) && c6.myClub === dest && C.myClub(c6).cc !== 'ES' && c6.myRes.lid === C.myClub(c6).lid && c6.inbox.some(m => /Fichaje internacional/.test(m.t)), 'fichar por un club extranjero: nueva liga (' + C.myClub(c6).lid + ') y su calendario');
+    let g = 0; while (c6.phase !== 'off' && g++ < 80) C.simulateNext();
+    ok(c6.phase === 'off' && c6.history.slice(-1)[0].country !== 'España', 'la temporada acaba en la liga extranjera (' + c6.history.slice(-1)[0].country + ')');
+  }
+}
+section('Carrera de pista: puestos que crecen solos, guardado dañado y migración');
+{
+  let c6 = C.get();
+  ok(C.positions().join() === 'OH', 'hoy sim.js solo deja llevar al receptor');
+  VB.Sim.CTRL_ROLES6 = ['OH', 'S', 'OPP', 'MB'];
+  ok(C.positions().join() === 'OH,S,OPP,MB', 'si sim.js exporta más puestos, la lista crece sola');
+  ok(C.setPosition('S') && c6.player.roleKey === 'S' && c6.player.role === 'Colocador', 'cambiar a colocador');
+  if (c6.phase === 'off') C.stay(1);
+  const ms = C.next(c6) && !C.next(c6).bench ? C.matchSetup(c6) : null;
+  if (ms) ok(ms.ctrlRole === 'S' && ms.ctrlIdx === VB.Sim.ROLES6.indexOf('S') && ms.nums[0][ms.ctrlIdx] === c6.player.num, 'el partido te pone de colocador en su hueco');
+  delete VB.Sim.CTRL_ROLES6;
+  ok(C.ctrlRole(c6) === 'OH', 'sin el puesto en sim.js, juegas de receptor (tu perfil se queda)');
+  C._reset(); c6 = C.get(); ok(c6 && c6.player.roleKey === 'S', 'se guarda el puesto');
+  // guardado de pista dañado: se aparta, la playa sigue
+  const good6 = mem['voley3d.career6'];
+  mem['voley3d.career6'] = '{"v":1,"player":{},"leagues":[],"clubs":[]}'; C._reset();
+  ok(!C.hall.exists() && C.hall.lost() && mem['voley3d.career6.bak'] && C.mode() === 'beach' && C.get().v === 3, 'pista dañada: copia .bak, aviso, y la Carrera activa vuelve a la playa (intacta)');
+  mem['voley3d.career6'] = good6; delete mem['voley3d.career6.bak']; C._reset(); C.setMode('hall');
+  const raw = JSON.parse(good6); delete raw.tab; delete raw.myRes; delete raw.scouts; raw.chem = 'x'; delete raw.kos; raw.phase = raw.phase === 'off' ? 'off' : 'league';
+  mem['voley3d.career6'] = JSON.stringify(raw); C._reset();
+  const rc = C.get(); ok(rc && rc.mode === 'hall' && rc.tab && rc.myRes && rc.chem === 0 && Array.isArray(rc.kos), 'guardado de pista a medias: se repara');
+  let g = 0; while (rc.phase !== 'off' && g++ < 80) if (!C.simulateNext()) break;
+  ok(rc.phase === 'off', 'y se puede seguir jugando hasta el fin de temporada');
+  // la migración de un guardado de playa viejo no se ve afectada por tener una de pista
+  const v2 = JSON.parse(mem['voley3d.career']); v2.v = 2; v2.points = 15; v2.trophies = [{ season: 1, kind: 'liga', name: 'Liga Regional', club: 'X' }];
+  mem['voley3d.career'] = JSON.stringify(v2); C._reset(); C.setMode('beach');
+  const mb = C.get(); ok(mb && mb.v === 3 && mb.points === 21 && mb.trophies[0].name === 'Circuito Regional' && C.hall.exists(), 'un guardado de playa v2 migra igual con una Carrera de pista guardada al lado');
+  ok(C.matchSetup(mb) === null || C.matchSetup(mb).venue === 'beach', 'la playa sigue en la playa');
+  delete mem['voley3d.career6']; C._reset(); mem['voley3d.career.mode'] = 'hall';
+  ok(C.mode() === 'beach', 'modo pista sin guardado de pista: la activa es la playa');
+}
+
+section('Carrera de pista con los datos reales (js/leagues.js, generado de notes/clubes/*.json por tools/build-leagues.js)');
+{
+  const regs = REAL_LEAGUES;
+  if (!regs || REAL_PROV) console.log('  (js/leagues.js sin datos reales: se salta)');
+  else {
+    const keep = { c6: mem['voley3d.career6'], md: mem['voley3d.career.mode'] }, fix = VB.Leagues.regions;
+    VB.Leagues.regions = regs; VB.Leagues.provisional = false; delete mem['voley3d.career6']; C._reset();
+    const H = C.hall, cos = H.countries(), t0 = Date.now();
+    const ordn = n => n + (n === 1 || n === 3 ? 'r' : 'º');
+    const divs = [], clubs = [];
+    regs.forEach(rg => rg.countries.forEach(co => co.divisions.forEach(d => { divs.push([co, d]); d.clubs.forEach(k => clubs.push([co, d, k])); })));
+    ok(cos.length === 28 && divs.length === 37 && clubs.length === 390, cos.length + ' países, ' + divs.length + ' ligas, ' + clubs.length + ' clubes: ' + cos.map(x => x.code).join(' '));
+    const want = 'IT PL TR FR DE RU ES BE NL GR PT CH AT CZ RS SI RO BR AR US CA PE JP KR CN IR QA PH'.split(' ');
+    ok(want.every(cc => cos.some(x => x.code === cc)), 'los 28 países que pidió Ferran (17 de Europa, 5 de América, 6 de Asia)');
+    ok(cos.every(x => ['Europa', 'América', 'Asia'].indexOf(x.region) >= 0) && regs.map(r => r.region).join() === 'Europa,América,Asia', 'una región por continente');
+    const two = cos.filter(x => x.divs === 2).map(x => x.code).join(' ');
+    ok(two === 'IT PL TR RU FR DE ES BR JP', '1ª y 2ª en los países fuertes (' + two + '); solo 1ª en el resto');
+    ok(divs.every(([co, d]) => d.clubs.length >= 8 && d.clubs.length <= 12 && d.strength > 0 && d.strength <= 100), 'ligas de 8 a 12 clubes con fuerza 1-100');
+    ok(clubs.every(([co, d, k]) => k.name && /^[A-ZÀ-Ž0-9]{2,4}$/.test(k.short) && /^#[0-9a-f]{6}$/.test(k.colors.shirt) && /^#[0-9a-f]{6}$/.test(k.colors.shirt2) && /^#[0-9a-f]{6}$/.test(k.colors.libero) && k.ovr >= 40 && k.ovr <= 99 && typeof k.liberoEstimated === 'boolean'),
+      'esquema de cada club: nombre, abreviatura, 3 colores, ovr, liberoEstimated');
+    ok(clubs.every(([co, d, k]) => !('real' in k) && !('official' in k) && !('check' in k)), 'el juego no lleva los nombres reales ni oficiales (con patrocinadores)');
+    const nm = new Set(clubs.map(x => x[2].name.toLowerCase())), sh = new Set(clubs.map(x => x[2].short));
+    ok(nm.size === clubs.length, 'ningún nombre de club repetido entre países');
+    ok(sh.size === clubs.length, 'abreviaturas únicas en todo el juego (también dentro de cada liga)');
+    ok(!/masculin|femenin/i.test(JSON.stringify(regs)), 'ni «masculino» ni «femenino» en los datos');
+    // los nombres nuestros no coinciden con el real ni con el oficial de los JSON de investigación
+    const dir = path.join(ROOT, 'notes', 'clubes'), files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => /\.json$/.test(f)) : [], same = [];
+    let nsrc = 0;
+    files.forEach(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')).countries.forEach(co => co.divisions.forEach(d => d.clubs.forEach(k => {
+      nsrc++; const n = k.name.toLowerCase(); if (n === String(k.official).toLowerCase() || n === String(k.real).toLowerCase()) same.push(k.name);
+      if (!nm.has(n)) same.push(k.name + ' (no está en js/leagues.js: vuelve a ejecutar tools/build-leagues.js)');
+    }))));
+    ok(files.length === 5 && nsrc === clubs.length && !same.length, 'js/leagues.js al día con notes/clubes/*.json y ningún nombre igual al real u oficial' + (same.length ? ': ' + same.join(', ') : ''));
+    // dificultad de la IA por la media de cada club: la élite en Experto, España en Normal, las pequeñas entre Fácil y Normal
+    function H6r(o) { return o >= 88 ? 'expert' : o >= 76 ? 'hard' : o >= 62 ? 'normal' : o >= 56 ? 'soft' : 'easy'; }
+    const cnt = {}; clubs.forEach(([co, d, k]) => { const x = H6r(k.ovr); cnt[x] = (cnt[x] || 0) + 1; });
+    const lg = (cc, l) => divs.find(([co, d]) => co.code === cc && d.lvl === l)[1].clubs.map(k => H6r(k.ovr));
+    ok(cnt.easy > 0 && cnt.soft > 0 && cnt.normal > 0 && cnt.hard > 0 && cnt.expert > 0, 'IA de los clubes: ' + JSON.stringify(cnt));
+    ok(lg('IT', 1).filter(x => x === 'expert').length >= 6 && lg('ES', 1).every(x => x === 'normal') && lg('PH', 1).every(x => x === 'easy' || x === 'soft') && lg('IT', 2).some(x => x === 'normal'),
+      'la 1ª italiana casi toda en Experto, la Hiperliga en Normal, Filipinas entre Fácil y Normal suave; la 2ª italiana no es toda Difícil');
+    const c6 = C.create({ mode: 'hall', name: 'Real', num: 7, pos: 'OH', seed: 4242, autoClub: true });
+    ok(c6 && C.myClub(c6).lid === 'ES2' && c6.clubs.length === 390 && c6.leagues.length === 37 && !c6.provisional, 'Carrera de España con los datos reales: empiezas en la 2ª (' + C.myClub(c6).name + ')');
+    ok(c6.clubs.every(k => regs.some(rg => rg.countries.some(co => co.divisions.some(d => d.clubs.some(x => x.short === k.short && x.name === k.name))))), 'abreviaturas del juego = las de los datos (no hace falta renombrar ninguna)');
+    const cupOf = cc => c6.cups[cc] && c6.cups[cc].name;
+    const cupCC = 'ES FR DE IT PL TR RU BE NL GR PT CH AT CZ RS SI RO BR AR JP KR'.split(' ');
+    ok(cupCC.every(cc => cupOf(cc)), 'copa nacional propia en ' + cupCC.length + ' países: ' + cupCC.map(cc => cc + ' ' + cupOf(cc)).join(', '));
+    ok(cupOf('IT') === 'Coppa Tricolore' && cupOf('PL') === 'Puchar Orła' && cupOf('TR') === 'Hilal Kupası' && cupOf('RU') === 'Kubok Volgi', 'las copas de Italia, Polonia, Turquía y Rusia ya no son la genérica');
+    const inm = cc => H.intlFor(c6, cc).map(x => x.name + ' (' + x.rank + ')').join(' + ');
+    ok(inm('ES') === 'Champions Cup VEC (1) + Copa VEC (2)' && inm('BE') === inm('ES') && inm('BR') === 'Copa del Sur de Clubes (1)' && inm('US') === 'Copa Norte de Campeones (1)' && inm('JP') === 'Champions Cup Asia (1)',
+      'copas internacionales unificadas: Europa ' + inm('ES') + '; BR ' + inm('BR') + '; US ' + inm('US') + '; JP ' + inm('JP'));
+    const allComp = []; regs.forEach(rg => rg.competitions.forEach(x => allComp.push(x.name)));
+    ok(!allComp.some(n => /^(Champions Cup|World Club Cup|Mundial VBC de Clubes|Challenge Trophy)$/.test(n)) && allComp.filter(n => n === 'Mundial de Clubes VBF').length === 3, 'un solo nombre por competición (Champions Cup VEC; Mundial de Clubes VBF en los tres continentes)');
+    ok(!Object.keys(c6.cups).some(cc => /Super|Hiper(liga|copa)|Liga/i.test(cupOf(cc))) && !Object.keys(c6.intl).some(r => c6.intl[r].some(x => /Mundial|World|VBN|Challenge/.test(x.name))), 'ni ligas, ni supercopas, ni el Mundial, ni la 3ª copa europea pasan por copas');
+    let g = 0; while (c6.season < 3 && g++ < 200) { if (c6.phase === 'off') C.stay(1); else C.simulateNext(); }
+    ok(c6.season === 3 && c6.history.length === 2, '2 temporadas simuladas en ' + (Date.now() - t0) + ' ms (' + c6.history.map(h => h.lgShort + ' ' + ordn(h.pos)).join(', ') + ')');
+    ok(c6.history.every(h => h.cup), 'la copa nacional se juega cada temporada');
+    ok(c6.leagues.every(L => C.leagueClubs(c6, L.id).length === divs.find(([co, d]) => co.code + d.lvl === L.id)[1].clubs.length), 'ascensos y descensos conservan el tamaño de cada liga');
+    ok(mem['voley3d.career6'].length < 400000, 'guardado de ' + Math.round(mem['voley3d.career6'].length / 1024) + ' KB');
+    // empezar en cada país: ofertas de su 2ª (o de su 1ª si no tiene)
+    const bad = [];
+    cos.forEach(x => {
+      delete mem['voley3d.career6']; C._reset();
+      const c = C.create({ mode: 'hall', name: 'P', num: 5, pos: 'OH', seed: 99, country: x.code }), low = x.divs === 2 ? x.code + '2' : x.code + '1';
+      if (!c || c.cc !== x.code || c.offers.length < 2 || !c.offers.filter(o => !o.trial).every(o => o.lid === low)) bad.push(x.code);
+    });
+    ok(!bad.length, 'crear en cualquiera de los 28 países: ofertas de su división más baja' + (bad.length ? ' (fallan ' + bad.join(' ') + ')' : ''));
+    VB.Leagues.regions = fix; VB.Leagues.provisional = true;
+    if (keep.c6 != null) mem['voley3d.career6'] = keep.c6; else delete mem['voley3d.career6'];
+    if (keep.md != null) mem['voley3d.career.mode'] = keep.md; else delete mem['voley3d.career.mode'];
+    C._reset();
+  }
+}
+
+console.log('\n' + passes + ' comprobaciones bien');
 console.log(fails ? '\n' + fails + ' FALLOS' : '\nTODO OK');
 process.exit(fails ? 1 : 0);

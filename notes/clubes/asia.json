@@ -1,0 +1,1335 @@
+{
+  "region": "Asia",
+  "countries": [
+    {
+      "country": "Japón",
+      "code": "JP",
+      "tier": 2,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "SV.League Men + SV.League Women 2025-26 (mezcla)",
+          "name": "HV.League",
+          "short": "HVL",
+          "strength": 80,
+          "clubs": [
+            {
+              "real": "Suntory Sunbirds Osaka",
+              "official": "Suntory Sunbirds Osaka (サントリーサンバーズ大阪)",
+              "name": "Sunwings Osaka",
+              "short": "SWO",
+              "city": "Osaka",
+              "gender": "M",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#87CEFA",
+                "libero": "#1B365D"
+              },
+              "liberoEstimated": true,
+              "ovr": 86,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador Suntory; guiño a «Sunbirds»."
+            },
+            {
+              "real": "Osaka Bluteon",
+              "official": "Osaka Bluteon (大阪ブルテオン; antes Panasonic Panthers)",
+              "name": "Bluzeon Osaka",
+              "short": "BLZ",
+              "city": "Osaka",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFC72C"
+              },
+              "liberoEstimated": true,
+              "ovr": 86,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón 2025-26; guiño a «Bluteon»."
+            },
+            {
+              "real": "JTEKT Stings Aichi",
+              "official": "JTEKT STINGS Aichi (ジェイテクトSTINGS愛知)",
+              "name": "Stingz Aichi",
+              "short": "STZ",
+              "city": "Kariya (Aichi)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#D7001E",
+                "shirt2": "#1A1A1A",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 82,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador JTEKT; guiño a «Stings»."
+            },
+            {
+              "real": "Wolfdogs Nagoya",
+              "official": "Wolfdogs Nagoya (ウルフドッグス名古屋; club de Toyoda Gosei)",
+              "name": "Wolfhounds Nagoya",
+              "short": "WHN",
+              "city": "Inazawa (Aichi)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#111111",
+                "shirt2": "#D7001E",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 81,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Wolfdogs»."
+            },
+            {
+              "real": "Hiroshima Thunders",
+              "official": "Hiroshima Thunders (広島サンダーズ; antes JT Thunders Hiroshima)",
+              "name": "Thundra Hiroshima",
+              "short": "THU",
+              "city": "Hiroshima",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00984A",
+                "shirt2": "#FFFFFF",
+                "libero": "#F5A800"
+              },
+              "liberoEstimated": true,
+              "ovr": 78,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Thunders»."
+            },
+            {
+              "real": "Tokyo Great Bears",
+              "official": "Tokyo Great Bears (東京グレートベアーズ)",
+              "name": "Tokyo Grand Bears",
+              "short": "TGB",
+              "city": "Tokio",
+              "gender": "M",
+              "colors": {
+                "shirt": "#121F5A",
+                "shirt2": "#E4007A",
+                "libero": "#F5C400"
+              },
+              "liberoEstimated": true,
+              "ovr": 78,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Great Bears»."
+            },
+            {
+              "real": "SAGA Hisamitsu Springs",
+              "official": "SAGA Hisamitsu Springs (SAGA久光スプリングス)",
+              "name": "Sprinx Saga",
+              "short": "SPX",
+              "city": "Tosu (Saga)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0050A0",
+                "shirt2": "#111111",
+                "libero": "#FF8C00"
+              },
+              "liberoEstimated": true,
+              "ovr": 83,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón 2025-26; se quita el patrocinador Hisamitsu; guiño a «Springs»."
+            },
+            {
+              "real": "Osaka Marvelous",
+              "official": "Osaka Marvelous (大阪マーヴェラス; antes JT Marvelous)",
+              "name": "Marvelia Osaka",
+              "short": "MRV",
+              "city": "Osaka",
+              "gender": "W",
+              "colors": {
+                "shirt": "#202020",
+                "shirt2": "#00873C",
+                "libero": "#F5D000"
+              },
+              "liberoEstimated": true,
+              "ovr": 81,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Marvelous». [Integrador: abreviatura MAR → MRV, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "NEC Red Rockets Kawasaki",
+              "official": "NEC Red Rockets Kawasaki (NECレッドロケッツ川崎)",
+              "name": "Red Comets Kawasaki",
+              "short": "RCK",
+              "city": "Kawasaki",
+              "gender": "W",
+              "colors": {
+                "shirt": "#D11D58",
+                "shirt2": "#000B38",
+                "libero": "#F5C400"
+              },
+              "liberoEstimated": true,
+              "ovr": 82,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador NEC; guiño a «Red Rockets»."
+            },
+            {
+              "real": "PFU BlueCats Ishikawa Kahoku",
+              "official": "PFU BlueCats Ishikawa Kahoku (PFUブルーキャッツ石川かほく)",
+              "name": "Blue Lynx Kahoku",
+              "short": "BLX",
+              "city": "Kahoku (Ishikawa)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#00398F",
+                "shirt2": "#DB0069",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 79,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador PFU; guiño a «BlueCats» (lince = gato)."
+            },
+            {
+              "real": "Victorina Himeji",
+              "official": "Victorina Himeji (ヴィクトリーナ姫路)",
+              "name": "Vittorina Himeji",
+              "short": "VIT",
+              "city": "Himeji (Hyogo)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FF1493",
+                "shirt2": "#111111",
+                "libero": "#2B2B6E"
+              },
+              "liberoEstimated": true,
+              "ovr": 77,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; la búsqueda solo devuelve «Victorina Himeji», el real."
+            },
+            {
+              "real": "Queenseis Kariya",
+              "official": "Queenseis Kariya (クインシーズ刈谷; club de Toyota Auto Body; desde jul-2026 «Aleeza Aichi»)",
+              "name": "Queenzy Kariya",
+              "short": "QZK",
+              "city": "Kariya (Aichi)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#6A3D9A",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2B700"
+              },
+              "liberoEstimated": true,
+              "ovr": 76,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; tampoco coincide con su nombre nuevo «Aleeza Aichi»."
+            }
+          ]
+        },
+        {
+          "lvl": 2,
+          "real": "V.League Men + V.League Women 2025-26 (mezcla; 2ª categoría bajo la SV.League)",
+          "name": "VL Next",
+          "short": "VLN",
+          "strength": 63,
+          "clubs": [
+            {
+              "real": "Kubota Spears Osaka",
+              "official": "KUBOTA Spears Osaka (クボタスピアーズ大阪)",
+              "name": "Spearz Osaka",
+              "short": "SPZ",
+              "city": "Osaka",
+              "gender": "M",
+              "colors": {
+                "shirt": "#F08200",
+                "shirt2": "#1A1A1A",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón de la V.League 2025-26; se quita el patrocinador Kubota; guiño a «Spears»."
+            },
+            {
+              "real": "Hokkaido Yellow Stars",
+              "official": "Hokkaido Yellow Stars (北海道イエロースターズ; sube a la SV.League en 2026-27)",
+              "name": "Hokkaido Gold Stars",
+              "short": "HGS",
+              "city": "Sapporo",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#1A1A1A",
+                "libero": "#0072CE"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Yellow Stars»."
+            },
+            {
+              "real": "Reve's Tochigi",
+              "official": "Reve's Tochigi (レーヴィス栃木)",
+              "name": "Rêveurs Tochigi",
+              "short": "RVT",
+              "city": "Utsunomiya (Tochigi)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#1E3A8A",
+                "shirt2": "#FFFFFF",
+                "libero": "#F97316"
+              },
+              "liberoEstimated": true,
+              "ovr": 64,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Reve» (sueño, en francés)."
+            },
+            {
+              "real": "Veertien Mie",
+              "official": "Veertien Mie (ヴィアティン三重; tiene equipo en las dos ligas: cuenta una sola vez)",
+              "name": "Vierzehn Mie",
+              "short": "VZM",
+              "city": "Yokkaichi (Mie)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#F08300",
+                "shirt2": "#FFFFFF",
+                "libero": "#003D7C"
+              },
+              "liberoEstimated": true,
+              "ovr": 65,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; «Veertien» es 14 en neerlandés y «Vierzehn» es 14 en alemán."
+            },
+            {
+              "real": "Fragolad Kagoshima",
+              "official": "Fragolad Kagoshima (フラーゴラッド鹿児島)",
+              "name": "Fragola Kagoshima",
+              "short": "FRA",
+              "city": "Kagoshima",
+              "gender": "M",
+              "colors": {
+                "shirt": "#1E88E5",
+                "shirt2": "#2E7D32",
+                "libero": "#E53950"
+              },
+              "liberoEstimated": true,
+              "ovr": 64,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Fragolad» (de fragola, fresa)."
+            },
+            {
+              "real": "Fujitsu Kawasaki Red Spirits",
+              "official": "Fujitsu Kawasaki Red Spirits (富士通カワサキレッドスピリッツ)",
+              "name": "Red Spirals Kawasaki",
+              "short": "RSP",
+              "city": "Kawasaki",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E60012",
+                "shirt2": "#FFFFFF",
+                "libero": "#222222"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador Fujitsu; guiño a «Red Spirits»."
+            },
+            {
+              "real": "Shinshu Brilliant Aries",
+              "official": "Shinshu Brilliant Aries (信州ブリリアントアリーズ)",
+              "name": "Shinshu Brilliant Rams",
+              "short": "SBR",
+              "city": "Nagano",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E8679A",
+                "shirt2": "#1F2A5C",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 64,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón de la V.League 2025-26; Aries = carnero (ram)."
+            },
+            {
+              "real": "JA Gifu Rioreina",
+              "official": "JA Gifu Rioreina (JAぎふリオレーナ; desde jul-2026 «Gifu Rioreina»)",
+              "name": "Riorena Gifu",
+              "short": "RIO",
+              "city": "Gifu",
+              "gender": "W",
+              "colors": {
+                "shirt": "#00A0E9",
+                "shirt2": "#FFFFFF",
+                "libero": "#F4A300"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador JA; guiño a «Rioreina»."
+            },
+            {
+              "real": "KANOA Laulea's Fukuoka",
+              "official": "KANOA Laulea's Fukuoka (カノアラウレアーズ福岡)",
+              "name": "Laulani Fukuoka",
+              "short": "LAF",
+              "city": "Fukuoka",
+              "gender": "W",
+              "colors": {
+                "shirt": "#111111",
+                "shirt2": "#00A48E",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 61,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita KANOA (empresa propietaria); guiño a «Laulea»."
+            },
+            {
+              "real": "Forest Leaves Kumamoto",
+              "official": "Forest Leaves Kumamoto (フォレストリーヴズ熊本)",
+              "name": "Green Leaves Kumamoto",
+              "short": "GLK",
+              "city": "Uki (Kumamoto)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#111111",
+                "shirt2": "#D0021B",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Leaves»."
+            },
+            {
+              "real": "Breath Hamamatsu",
+              "official": "Breath Hamamatsu (ブレス浜松)",
+              "name": "Breeze Hamamatsu",
+              "short": "BRH",
+              "city": "Hamamatsu",
+              "gender": "W",
+              "colors": {
+                "shirt": "#30BFC4",
+                "shirt2": "#FFFFFF",
+                "libero": "#F06292"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; la búsqueda solo devuelve «Breath Hamamatsu», el real."
+            },
+            {
+              "real": "Kurashiki Ablaze",
+              "official": "Kurashiki Ablaze (倉敷アブレイズ)",
+              "name": "Kurashiki Flare",
+              "short": "KFL",
+              "city": "Kurashiki (Okayama)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E85A1B",
+                "shirt2": "#1A1A1A",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Ablaze» (en llamas → llamarada)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Corea del Sur",
+      "code": "KR",
+      "tier": 3,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "V-League (KOVO) 2025-26, las dos ligas (mezcla)",
+          "name": "VK-League",
+          "short": "VKL",
+          "strength": 67,
+          "clubs": [
+            {
+              "real": "Incheon Korean Air Jumbos",
+              "official": "Incheon Korean Air Jumbos (인천 대한항공 점보스)",
+              "name": "Incheon Jumbo Jets",
+              "short": "IJJ",
+              "city": "Incheon",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0078C1",
+                "shirt2": "#0B2D6B",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón 2025-26; se quita el patrocinador Korean Air; guiño a «Jumbos»."
+            },
+            {
+              "real": "Cheonan Hyundai Capital Skywalkers",
+              "official": "Cheonan Hyundai Capital Skywalkers (천안 현대캐피탈 스카이워커스)",
+              "name": "Cheonan Skyrunners",
+              "short": "CSR",
+              "city": "Cheonan",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#007BC1",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 69,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador Hyundai Capital; guiño a «Skywalkers»."
+            },
+            {
+              "real": "Uijeongbu KB Insurance Stars",
+              "official": "Uijeongbu KB Insurance Stars (의정부 KB손해보험 스타즈)",
+              "name": "Uijeongbu Starlights",
+              "short": "USL",
+              "city": "Uijeongbu",
+              "gender": "M",
+              "colors": {
+                "shirt": "#F8B500",
+                "shirt2": "#7C7366",
+                "libero": "#1F4E9C"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador KB Insurance; guiño a «Stars»."
+            },
+            {
+              "real": "Seoul Woori Card WooriWON",
+              "official": "Seoul Woori Card WooriWON (서울 우리카드 우리WON)",
+              "name": "Baegu Seoul",
+              "short": "BSE",
+              "city": "Seúl",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0000FF",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFB300"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; «baegu» es «voleibol» en coreano (forma local de «Voley Seúl»); se quita Woori Card y también «WON», que es la marca de banca de Woori."
+            },
+            {
+              "real": "Suwon KEPCO Vixtorm",
+              "official": "Suwon KEPCO Vixtorm (수원 한국전력 빅스톰)",
+              "name": "Suwon Vortex",
+              "short": "SVX",
+              "city": "Suwon",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FF0000",
+                "shirt2": "#FFFFFF",
+                "libero": "#1F4E9C"
+              },
+              "liberoEstimated": true,
+              "ovr": 65,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador KEPCO; guiño a «Vixtorm» (storm → vortex)."
+            },
+            {
+              "real": "Gimcheon Korea Expressway Hi-pass",
+              "official": "Gimcheon Korea Expressway Corporation Hi-pass (김천 한국도로공사 하이패스)",
+              "name": "Baegu Gimcheon",
+              "short": "BGC",
+              "city": "Gimcheon",
+              "gender": "W",
+              "colors": {
+                "shirt": "#44427F",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFC425"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Gimcheon»; se quita Korea Expressway y también «Hi-pass», que es su tarjeta de peaje; subcampeón 2025-26."
+            },
+            {
+              "real": "GS Caltex Seoul KIXX",
+              "official": "GS Caltex Seoul KIXX (GS칼텍스 서울 KIXX)",
+              "name": "Hangang Seoul",
+              "short": "HAN",
+              "city": "Seúl",
+              "gender": "W",
+              "colors": {
+                "shirt": "#003E7E",
+                "shirt2": "#00A9E0",
+                "libero": "#F58220"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón 2025-26; se quita GS Caltex y también «KIXX», que es su marca de lubricantes; guiño a la ciudad (el río Han)."
+            },
+            {
+              "real": "Suwon Hyundai E&C Hillstate",
+              "official": "Suwon Hyundai Engineering & Construction Hillstate (수원 현대건설 힐스테이트)",
+              "name": "Paldal Suwon",
+              "short": "PAL",
+              "city": "Suwon",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1F255E",
+                "shirt2": "#FFFFFF",
+                "libero": "#F9A825"
+              },
+              "liberoEstimated": true,
+              "ovr": 67,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita Hyundai E&C y también «Hillstate», que es su marca de pisos; guiño a la ciudad (Paldal, distrito y puerta de la muralla de Suwon)."
+            },
+            {
+              "real": "Incheon Heungkuk Life Pink Spiders",
+              "official": "Incheon Heungkuk Life Insurance Pink Spiders (인천 흥국생명 핑크스파이더스)",
+              "name": "Incheon Pink Tarantulas",
+              "short": "IPT",
+              "city": "Incheon",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FF66B3",
+                "shirt2": "#151B54",
+                "libero": "#4A3E8E"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador Heungkuk Life; guiño a «Pink Spiders»."
+            },
+            {
+              "real": "Hwaseong IBK Altos",
+              "official": "Hwaseong IBK Altos (화성 IBK기업은행 알토스)",
+              "name": "Hwaseong Altissimo",
+              "short": "HAL",
+              "city": "Hwaseong",
+              "gender": "W",
+              "colors": {
+                "shirt": "#00ABEB",
+                "shirt2": "#FFFFFF",
+                "libero": "#F7A600"
+              },
+              "liberoEstimated": true,
+              "ovr": 65,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador IBK; guiño a «Altos»."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "China",
+      "code": "CN",
+      "tier": 3,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Chinese Volleyball Super League 2025-26, las dos ligas (mezcla; más clubes de la liga W, que es la más fuerte)",
+          "name": "CV Hyper League",
+          "short": "CVH",
+          "strength": 68,
+          "clubs": [
+            {
+              "real": "Shanghai Bright Ubest",
+              "official": "Shanghai Bright Ubest (上海光明优倍; club con equipo en las dos ligas: cuenta una sola vez)",
+              "name": "Paiqiu Shanghai",
+              "short": "SHA",
+              "city": "Shanghái",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0050B5",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C300"
+              },
+              "liberoEstimated": true,
+              "ovr": 74,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; «paiqiu» es «voleibol» en chino (forma local de «Voley Shanghái»); campeón W 2025-26."
+            },
+            {
+              "real": "Jiangsu Zenith Steel",
+              "official": "Jiangsu Zenith Steel / Jiangsu ECE (江苏中天钢铁)",
+              "name": "Paiqiu Jiangsu",
+              "short": "JSU",
+              "city": "Nankín",
+              "gender": "W",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#FFFFFF",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 73,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Jiangsu»."
+            },
+            {
+              "real": "Tianjin Food Group / Tianjin Bohai Bank",
+              "official": "Tianjin Food Group (M) y Tianjin Bohai Bank (W) (天津; cuenta una sola vez)",
+              "name": "Paiqiu Tianjin",
+              "short": "TIA",
+              "city": "Tianjin",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00A3E0",
+                "shirt2": "#FFFFFF",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Tianjin»; campeón M 2025-26."
+            },
+            {
+              "real": "Beijing BAIC",
+              "official": "Beijing BAIC Motor (北京北汽)",
+              "name": "Paiqiu Beijing",
+              "short": "BEI",
+              "city": "Pekín",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0B5394",
+                "shirt2": "#FFFFFF",
+                "libero": "#F6B26B"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Pekín»."
+            },
+            {
+              "real": "Liaoning Donggang Strawberry",
+              "official": "Liaoning (辽宁; patrocinio «Donggang Strawberry»), liga W, División A",
+              "name": "Paiqiu Liaoning",
+              "short": "LIA",
+              "city": "Liaoning",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1F4E9C",
+                "shirt2": "#FFFFFF",
+                "libero": "#F39800"
+              },
+              "liberoEstimated": true,
+              "ovr": 67,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Liaoning»; se quita «Donggang Strawberry»."
+            },
+            {
+              "real": "Shandong",
+              "official": "Shandong (山东)",
+              "name": "Paiqiu Shandong",
+              "short": "SDG",
+              "city": "Jinan",
+              "gender": "W",
+              "colors": {
+                "shirt": "#F39800",
+                "shirt2": "#FFFFFF",
+                "libero": "#1F4E9C"
+              },
+              "liberoEstimated": true,
+              "ovr": 67,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Shandong»."
+            },
+            {
+              "real": "Fujian",
+              "official": "Fujian (福建)",
+              "name": "Paiqiu Fujian",
+              "short": "FUJ",
+              "city": "Fuzhou",
+              "gender": "W",
+              "colors": {
+                "shirt": "#008C45",
+                "shirt2": "#FFFFFF",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 64,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Fujian»."
+            },
+            {
+              "real": "Hubei Baoding",
+              "official": "Hubei Baoding (湖北), liga M, subcampeón 2024-25 y 2025-26",
+              "name": "Paiqiu Hubei",
+              "short": "HUB",
+              "city": "Wuhan",
+              "gender": "M",
+              "colors": {
+                "shirt": "#1E3A8A",
+                "shirt2": "#FFFFFF",
+                "libero": "#F59E0B"
+              },
+              "liberoEstimated": true,
+              "ovr": 69,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Hubei»; se quita «Baoding»."
+            },
+            {
+              "real": "Guangdong Taishan",
+              "official": "Guangdong Taishan (广东台山), liga M, División A",
+              "name": "Paiqiu Guangdong",
+              "short": "GDG",
+              "city": "Taishan",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E60012",
+                "shirt2": "#FFD100",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 65,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Cantón»; queda la provincia."
+            },
+            {
+              "real": "Zhejiang",
+              "official": "Zhejiang (浙江)",
+              "name": "Paiqiu Zhejiang",
+              "short": "ZHE",
+              "city": "Hangzhou",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00A651",
+                "shirt2": "#FFFFFF",
+                "libero": "#ED1C24"
+              },
+              "liberoEstimated": true,
+              "ovr": 64,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Zhejiang»."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Irán",
+      "code": "IR",
+      "tier": 3,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Iranian Volleyball Super League 2025-26 + Women's Premier League (mezcla; más clubes de la liga M, muy superior)",
+          "name": "Persian Hyper League",
+          "short": "PHL",
+          "strength": 67,
+          "clubs": [
+            {
+              "real": "Foolad Sirjan Iranian",
+              "official": "Foolad Sirjan Iranian (فولاد سیرجان ایرانیان)",
+              "name": "Valibal Sirjan",
+              "short": "SRJ",
+              "city": "Sirjan",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0D47A1",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFB300"
+              },
+              "liberoEstimated": true,
+              "ovr": 76,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; «valibal» es «voleibol» en persa (forma local de «Voley Sirjan»); se quita Foolad (empresa). [Integrador: abreviatura SIR → SRJ, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "Shahdab Yazd",
+              "official": "Shahdab Yazd (شهداب یزد)",
+              "name": "Valibal Yazd",
+              "short": "YAZ",
+              "city": "Yazd",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00796B",
+                "shirt2": "#FFFFFF",
+                "libero": "#FBC02D"
+              },
+              "liberoEstimated": true,
+              "ovr": 73,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Yazd»; se quita Shahdab (empresa)."
+            },
+            {
+              "real": "Shahrdari Urmia",
+              "official": "Shahrdari Urmia (شهرداری ارومیه; club del ayuntamiento)",
+              "name": "Valibal Urmia",
+              "short": "URM",
+              "city": "Urmia",
+              "gender": "M",
+              "colors": {
+                "shirt": "#C62828",
+                "shirt2": "#FFFFFF",
+                "libero": "#0B2D6B"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Urmia»; se quita «Shahrdari» (ayuntamiento)."
+            },
+            {
+              "real": "Chadormalu Ardakan",
+              "official": "Chadormalu Ardakan (چادرملو اردکان)",
+              "name": "Valibal Ardakan",
+              "short": "ARD",
+              "city": "Ardakan",
+              "gender": "M",
+              "colors": {
+                "shirt": "#D32F2F",
+                "shirt2": "#FFFFFF",
+                "libero": "#1565C0"
+              },
+              "liberoEstimated": true,
+              "ovr": 67,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Ardakan»; se quita Chadormalu (empresa minera)."
+            },
+            {
+              "real": "Sepahan Isfahan",
+              "official": "Sepahan Isfahan (سپاهان اصفهان)",
+              "name": "Spadana Isfahan",
+              "short": "SPD",
+              "city": "Isfahán",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD200",
+                "shirt2": "#0047AB",
+                "libero": "#E53935"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; «Spadana», nombre antiguo de Isfahán, del que viene «Sepahan»."
+            },
+            {
+              "real": "Pas Gorgan",
+              "official": "Pas Gorgan (پاس گرگان)",
+              "name": "Valibal Gorgan",
+              "short": "GRG",
+              "city": "Gorgan",
+              "gender": "M",
+              "colors": {
+                "shirt": "#2E7D32",
+                "shirt2": "#FFFFFF",
+                "libero": "#F57C00"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Gorgan». [Integrador: abreviatura GOR → GRG, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "Sanatgaran Omid Tehran",
+              "official": "Sanatgaran Omid Tehran (صنعتگران امید تهران)",
+              "name": "Omid Tehran",
+              "short": "OMI",
+              "city": "Teherán",
+              "gender": "M",
+              "colors": {
+                "shirt": "#6A1B9A",
+                "shirt2": "#FFFFFF",
+                "libero": "#FDD835"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Omid»."
+            },
+            {
+              "real": "Saipa Tehran",
+              "official": "Saipa Tehran VC (سایپا تهران)",
+              "name": "Narenji Tehran",
+              "short": "NRT",
+              "city": "Teherán",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FF4F00",
+                "shirt2": "#FFFFFF",
+                "libero": "#003A70"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; «narenji» es «naranja»: el apodo del club; no se usa la marca Saipa. [Integrador: abreviatura NAR → NRT, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "Paykan Tehran",
+              "official": "Paykan Tehran VC (پیکان تهران)",
+              "name": "Tochal Tehran",
+              "short": "TOC",
+              "city": "Teherán",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#7CB9E8",
+                "libero": "#E53935"
+              },
+              "liberoEstimated": true,
+              "ovr": 61,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a la ciudad (el Tochal, la montaña de Teherán); «Paykan» es la marca de coches de su dueño, así que se quita el guiño a «flecha»."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Catar",
+      "code": "QA",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Qatar Volleyball League 2025-26 (QVA) + liga W (mezcla; casi todo de la liga M: la W es muy pequeña)",
+          "name": "Doha Volley League",
+          "short": "DVL",
+          "strength": 65,
+          "clubs": [
+            {
+              "real": "Al Arabi SC",
+              "official": "Al-Arabi Sports Club (النادي العربي)",
+              "name": "Arabi Doha",
+              "short": "ARB",
+              "city": "Doha",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E2001A",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón 2023-24 y, según el primer informe, 2025-26 (sin confirmar)."
+            },
+            {
+              "real": "Al Wakrah SC",
+              "official": "Al-Wakrah Sports Club (نادي الوكرة)",
+              "name": "Voley Wakrah",
+              "short": "WAK",
+              "city": "Al Wakrah",
+              "gender": "M",
+              "colors": {
+                "shirt": "#5BB7E5",
+                "shirt2": "#FFFFFF",
+                "libero": "#0B2D6B"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; subcampeón 2024-25 (el de 2025-26, sin confirmar)."
+            },
+            {
+              "real": "Police SC",
+              "official": "Al-Shorta / Police Sports Club (نادي الشرطة)",
+              "name": "Shurta Doha",
+              "short": "SHU",
+              "city": "Doha",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0B2D6B",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C300"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; «shurta» es «policía»; la prensa lo llama «Al-Shorta», no «Shurta Doha»."
+            },
+            {
+              "real": "Al Rayyan SC",
+              "official": "Al-Rayyan Sports Club (نادي الريان; también campeón de la liga W 2024-25)",
+              "name": "Voley Rayyan",
+              "short": "RAY",
+              "city": "Al Rayyan",
+              "gender": "M",
+              "colors": {
+                "shirt": "#D50032",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 74,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma «Voley [Ciudad]»; campeón 2024-25 y campeón de Asia 2025 (3-0 a Osaka Bluteon)."
+            },
+            {
+              "real": "Al Sadd SC",
+              "official": "Al-Sadd Sports Club (نادي السد)",
+              "name": "Sadd Doha",
+              "short": "SAD",
+              "city": "Doha",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#111111",
+                "libero": "#0057B8"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño al barrio de Al Sadd."
+            },
+            {
+              "real": "Qatar SC",
+              "official": "Qatar Sports Club (نادي قطر)",
+              "name": "Doha Qataris",
+              "short": "QAT",
+              "city": "Doha",
+              "gender": "M",
+              "colors": {
+                "shirt": "#5B2C83",
+                "shirt2": "#F7941D",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 61,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño al apodo «Al-Qatari»."
+            },
+            {
+              "real": "Al Gharafa SC",
+              "official": "Al-Gharafa Sports Club (نادي الغرافة)",
+              "name": "Voley Gharafa",
+              "short": "GHA",
+              "city": "Al Gharafa (Doha)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#0057B8",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 61,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma «Voley [Barrio]»."
+            },
+            {
+              "real": "Al Ahli SC",
+              "official": "Al-Ahli Sports Club Doha (النادي الأهلي)",
+              "name": "Ahliya Doha",
+              "short": "AHL",
+              "city": "Doha",
+              "gender": "M",
+              "colors": {
+                "shirt": "#006B3F",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C300"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Al Ahli»."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Filipinas",
+      "code": "PH",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Premier Volleyball League 2025-26 + Spikers' Turf (mezcla; más clubes de la PVL, la liga fuerte y popular)",
+          "name": "Prime Volleyball League",
+          "short": "PRV",
+          "strength": 54,
+          "clubs": [
+            {
+              "real": "Creamline Cool Smashers",
+              "official": "Creamline Cool Smashers (Rebisco)",
+              "name": "Kool Smashers Manila",
+              "short": "KSM",
+              "city": "Gran Manila",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FF007F",
+                "shirt2": "#2E5090",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón All-Filipino 2026; se quita la marca Creamline; guiño a «Cool Smashers»."
+            },
+            {
+              "real": "Cignal HD Spikers",
+              "official": "Cignal HD Spikers (Cignal TV; tenía equipo en las dos ligas: cuenta una sola vez)",
+              "name": "Metro Spikers",
+              "short": "MSP",
+              "city": "Gran Manila",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E31B23",
+                "shirt2": "#FFFFFF",
+                "libero": "#1A1A1A"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Cignal y también «HD», que es su producto de televisión; guiño a «Spikers». [Integrador, búsqueda web 11-nov-2026: «\"Metro Spikers\" volleyball»: sin club con ese nombre (hay un «Metro Volleyball Club» juvenil en EE. UU.).]"
+            },
+            {
+              "real": "PLDT High Speed Hitters",
+              "official": "PLDT High Speed Hitters",
+              "name": "Heavy Hitters Manila",
+              "short": "HHM",
+              "city": "Gran Manila",
+              "gender": "W",
+              "colors": {
+                "shirt": "#D11F37",
+                "shirt2": "#111111",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca PLDT y también «High Speed», que es su anuncio de internet; guiño a «Hitters»."
+            },
+            {
+              "real": "Petro Gazz Angels",
+              "official": "Petro Gazz Angels",
+              "name": "Manila Angelz",
+              "short": "AGZ",
+              "city": "Gran Manila",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FF0000",
+                "shirt2": "#111111",
+                "libero": "#00A651"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Petro Gazz; guiño a «Angels». [Integrador: abreviatura ANG → AGZ, para que no se repita con otro club del juego.]"
+            },
+            {
+              "real": "Farm Fresh Foxies",
+              "official": "Farm Fresh Foxies",
+              "name": "Swift Foxes Manila",
+              "short": "SFX",
+              "city": "Gran Manila",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FF8000",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 54,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Farm Fresh (el antiguo «Farmhouse» era un guiño a ella); guiño a «Foxies»."
+            },
+            {
+              "real": "Choco Mucho Flying Titans",
+              "official": "Choco Mucho Flying Titans (Rebisco)",
+              "name": "Flying Giants",
+              "short": "FLG",
+              "city": "Gran Manila",
+              "gender": "W",
+              "colors": {
+                "shirt": "#550000",
+                "shirt2": "#6D14C4",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 54,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Choco Mucho; guiño a «Flying Titans»."
+            },
+            {
+              "real": "Akari Chargers",
+              "official": "Akari Chargers (Akari Lighting & Technology)",
+              "name": "Power Chargers",
+              "short": "PWC",
+              "city": "Gran Manila",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFD100",
+                "libero": "#E53935"
+              },
+              "liberoEstimated": true,
+              "ovr": 52,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Akari; guiño a «Chargers»."
+            },
+            {
+              "real": "Criss Cross King Crunchers",
+              "official": "Criss Cross King Crunchers",
+              "name": "Crown Crushers",
+              "short": "CCR",
+              "city": "Gran Manila",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#111111",
+                "libero": "#E53935"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Criss Cross y también «Crunch» (su producto es un snack crujiente); guiño a «King» (corona)."
+            },
+            {
+              "real": "Savouge Spin Doctors",
+              "official": "Savouge Spin Doctors",
+              "name": "Spin Medics",
+              "short": "SPM",
+              "city": "Gran Manila",
+              "gender": "M",
+              "colors": {
+                "shirt": "#6A1B9A",
+                "shirt2": "#FFFFFF",
+                "libero": "#00BCD4"
+              },
+              "liberoEstimated": true,
+              "ovr": 52,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Savouge; guiño a «Spin Doctors»."
+            },
+            {
+              "real": "PGJC-Navy Sea Lions",
+              "official": "PGJC-Navy Sea Lions (Armada de Filipinas)",
+              "name": "Bay Sealions",
+              "short": "BAY",
+              "city": "Gran Manila",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0A2240",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C300"
+              },
+              "liberoEstimated": true,
+              "ovr": 50,
+              "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita PGJC (patrocinador); guiño a «Sea Lions». [Integrador: abreviatura BSL → BAY, para que no se repita con otro club del juego.]"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "competitions": [
+    {
+      "real": "SV.League (Japón, 1ª)",
+      "name": "HV.League",
+      "short": "HVL",
+      "note": "«Super V» → «Hyper V», como Superliga → Hiperliga. Comprobado: la búsqueda no da ninguna liga real con ese nombre.",
+      "kind": "skip"
+    },
+    {
+      "real": "V.League (Japón, 2ª, desde 2024)",
+      "name": "VL Next",
+      "short": "VLN",
+      "note": "Comprobado: sin coincidencias.",
+      "kind": "skip"
+    },
+    {
+      "real": "V-League (Corea del Sur, KOVO)",
+      "name": "VK-League",
+      "short": "VKL",
+      "note": "Comprobado: sin coincidencias.",
+      "kind": "skip"
+    },
+    {
+      "real": "Chinese Volleyball Super League",
+      "name": "CV Hyper League",
+      "short": "CVH",
+      "note": "Super → Hyper. Comprobado: sin coincidencias.",
+      "kind": "skip"
+    },
+    {
+      "real": "Iranian Volleyball Super League / Women's Premier League",
+      "name": "Persian Hyper League",
+      "short": "PHL",
+      "note": "Comprobado: sin coincidencias.",
+      "kind": "skip"
+    },
+    {
+      "real": "Qatar Volleyball League (QVA)",
+      "name": "Doha Volley League",
+      "short": "DVL",
+      "note": "Comprobado: sin coincidencias (la real es «Qatari Volleyball League»).",
+      "kind": "skip"
+    },
+    {
+      "real": "Premier Volleyball League (PVL) + Spikers' Turf (Filipinas)",
+      "name": "Prime Volleyball League",
+      "short": "PRV",
+      "note": "Mantiene la «P» y la «VL». Comprobado: sin coincidencias.",
+      "kind": "skip"
+    },
+    {
+      "real": "AVC Champions League (antes Asian Club Championship)",
+      "name": "Champions Cup Asia",
+      "short": "CCA",
+      "note": "Copa continental de clubes de Asia. Comprobado: sin coincidencias. [Integrador, búsqueda «\"Champions Cup Asia\" volleyball» 11-nov-2026: sin coincidencias.]",
+      "kind": "intl",
+      "rank": 1
+    },
+    {
+      "real": "Emperor's Cup y Empress's Cup (copa de Japón)",
+      "name": "Chrysanthemum Cup",
+      "short": "CHR",
+      "note": "Una sola copa; el crisantemo es el sello imperial. Cambiado en la verificación: «Imperial Cup» es una carrera de caballos real y la regla prohíbe coincidir con cualquier competición oficial. Sin comprobar con búsqueda (no quedaban búsquedas).",
+      "kind": "cup",
+      "country": "JP"
+    },
+    {
+      "real": "KOVO Cup (copa de Corea del Sur)",
+      "name": "VKL Cup",
+      "short": "VKC",
+      "note": "Va con el nombre de la liga. Cambiado en la verificación: «VK Cup» es el campeonato real de programación de la red social VK.",
+      "kind": "cup",
+      "country": "KR"
+    },
+    {
+      "real": "FIVB Volleyball Club World Championship",
+      "name": "Mundial de Clubes VBF",
+      "short": "MCV",
+      "note": "Unificado por el integrador (11-nov-2026): mismo nombre y sigla en todos los ficheros. Antes «World Club Cup».",
+      "kind": "skip"
+    },
+    {
+      "real": "Volleyball Nations League (VNL)",
+      "name": "VBN",
+      "short": "VBN",
+      "note": "Lo marca la regla del dueño; se repite aquí porque Asia la juega.",
+      "kind": "skip"
+    }
+  ]
+}

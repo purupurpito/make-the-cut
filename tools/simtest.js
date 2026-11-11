@@ -1722,7 +1722,7 @@ if (ONLY !== 'matrix') {
     if (MIN >= 10) {
       const cx = { console, Math, Date, JSON, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } }; cx.globalThis = cx; cx.window = cx; vm.createContext(cx);
       let G = null;
-      try { for (const f of ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/career.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), cx, { filename: f }); G = cx.VB.Career && cx.VB.Career.genSt; } catch (e) { G = null; }
+      try { for (const f of ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/leagues.js', 'js/career.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), cx, { filename: f }); G = cx.VB.Career && cx.VB.Career.genSt; } catch (e) { G = null; }
       if (!G) console.log('Carrera Regional: sin js/career.js (genSt), se salta');
       else {
         const out = [], ev = [];
