@@ -45,7 +45,7 @@ let failures = 0;
 const fail = m => { failures++; console.error('FALLO:', m); };
 const KNOWN = ['hit', 'block', 'net', 'land', 'point', 'set', 'match', 'gameOver', 'whistle', 'jump', 'switch', 'serveReady',
   'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange', 'dribble', 'challenge', 'challengeResult',
-  'rotation', 'libero']; // (los dos últimos, solo 6v6)
+  'rotation', 'libero', 'blockPress']; // (rotation y libero, solo 6v6; blockPress = GOLPEAR en el aire en el bloqueo, sim.js blockPress)
 const pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '-';
 // Vocabulario del árbitro (FCVB): cada motivo de punto con sus textos válidos. Un texto nuevo debe pasar por aquí.
 const POINT_TEXTS = {
@@ -1678,17 +1678,22 @@ if (ONLY !== 'matrix') {
       for (const n of down) if (!(lo[n] / hi[n] >= 1.1)) fail('attrK.' + n + ' casi no cambia: ' + lo[n] + ' → ' + hi[n]);
       if (!(hi.spike - lo.spike >= 4 && hi.serve - lo.serve >= 3.5 && lo.accT > 0.25 && hi.accT === 0)) fail('attrK: potencia/saque/aceleración ' + JSON.stringify([lo.spike, hi.spike, lo.serve, hi.serve, lo.accT])); }
     // Bloqueo del humano: remate rival que cruza la red a ~3 m, el humano despega con un desfase aleatorio (−0,3..+0,1 s) y un error
-    // lateral (±0,6 m). Bloqueo 15/50/90 (resto 50) y Salto 15/90. Medido el 10-nov-2026 (400 remates): Bloqueo 15/50/90 → toca 91/100/100 %,
-    // directos 36/52/57 %; Salto 15/90 → toca 91/100 %, directos 46/54 %. 50 = sin atributos, exacto.
-    { const blkRun = (st, N) => { const o = { n: 0, blk: 0, stuff: 0 }, r = S._makeRng(77);
+    // lateral (±0,6 m) y, en cuanto está en el aire, pulsa GOLPEAR una vez (bloqueo activo, 11-nov-2026: sin pulsar nunca hay directo;
+    // pulsado a tiempo, el directo depende del contacto). Bloqueo 15/50/90 (resto 50) y Salto 15/90. Medido el 10-nov-2026 sin la
+    // pulsación (400 remates): Bloqueo 15/50/90 → toca 91/100/100 %, directos 36/52/57 %; Salto 15/90 → toca 91/100 %, directos 46/54 %.
+    // Medido el 11-nov-2026 con la pulsación (300): Bloqueo 15/50/90 → toca 90/100/100 %, directos 49/64/72 %; Salto 15/90 → 90/100 %,
+    // directos 57/66 %. 50 = sin atributos, exacto.
+    { const PRESS = { move: [0, 0], hit: true, jump: false, jset: false, switchPlayer: false };
+      const blkRun = (st, N) => { const o = { n: 0, blk: 0, stuff: 0 }, r = S._makeRng(77);
         for (let s = 0; s < N; s++) { const g = S.createGame({ seed: 500 + s, ctrl: 'one', ctrlIdx: 0, attrs: st ? [[st, null], null] : null }), p = g.teams[0][0], ev = []; g.ctrl = p;
           rallyAt(g, { x: -1.6, y: 0, z: 3.25, vx: 14, vz: -1 }); g.touchTeam = 1; g.lastTeam = 1; g.touches = 3; g.lastKind = 'spike'; g.lastPlayer = g.teams[1][0];
           g.teams[1][0].x = -1.8; g.teams[1][1].x = -5; g.teams[0][1].x = 6;
           const jv = C.JUMP_V * (p.ak ? p.ak.jump : 1), tj = 1.6 / 14 - jv / C.G - 0.3 + 0.4 * r(); p.x = 0.5; p.y = (r() - 0.5) * 1.2;
           if (tj <= 0) { S._jump(g, p, 0, 0); for (let k = 0; k < Math.round(-tj * 120); k++) S._stepPlayer(g, p, DT, 0, 0); }
-          let t = 0, done = false;
+          let t = 0, done = false, pressed = false;
           for (let i = 0; i < 600 && !done; i++) { t += DT; if (tj > 0 && Math.abs(t - tj) < DT / 2 + 1e-9) S._jump(g, p, 0, 0);
-            S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+            let inp = null; if (!pressed && p.z > 0.25) { pressed = true; inp = PRESS; }   // en el aire: GOLPEAR = bajar el bloqueo
+            S.step(g, DT, inp); ev.length = 0; S.drainEvents(g, ev);
             for (const e of ev) { if (e.type === 'block' && e.player === p) { o.blk++; if (e.result === 'stuff') o.stuff++; } if (e.type === 'point') done = true; } }
           o.n++; }
         return o; };

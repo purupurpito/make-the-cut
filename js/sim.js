@@ -164,6 +164,7 @@
       grade: '',      // calidad del último toque ('perfect'|'good'|'poor')
       aiTe: 0, aiTeT: -1, aiJt: 0, aiDv: 0, // desfases de la IA (muestreados por toque)
       lastAction: '', // 'pass'|'set'|'spike'|'free'|'serve'|'block'|'swing'|'jump'|'toss'|'dive'
+      pressEnd: -9,   // bloqueo activo: hasta cuándo (g.time) vale la pulsación de GOLPEAR en el aire contra el ataque rival (blockPress)
       actionT: 99,    // segundos desde lastAction
       onGround: true
     });
@@ -834,6 +835,48 @@
   /** Defensa contra el remate rival desde el aire (ver hit): BLK_ZONE = |x| máximo de la zona de bloqueo (checkBlock), BLK_AIRQ =
    *  factor de calidad del toque en el aire más atrás. */
   var BLK_ZONE = 1.1, BLK_AIRQ = 0.6;
+  /** BLOQUEO ACTIVO (11-nov-2026, pedido de Ferran: «al presionar golpear, lo que haga el bloqueo sea bajar… si lo aprietas demasiado
+   *  rápido puedes tocar la red y que sea falta; si no lo aprietas, el rebote es suave»). En el aire en la red (|x| <= BLK_ZONE) con el
+   *  balón del rival, GOLPEAR ya no es un golpe: es «bajar» el bloqueo (manos por encima de la red empujando hacia abajo).
+   *  El reloj de la pulsación es el GOLPE DEL REMATADOR (hitWindow del rival que va a atacar), no la llegada del balón: un remate
+   *  tarda 0,05-0,1 s del golpe a la red, inalcanzable por reacción; hay que anticiparse viendo el armado (revisión 11-nov).
+   *   - Sin pulsar: el contacto es un rebote SUAVE (amortiguado o toque; nunca directo).
+   *   - Pulsado a tiempo: desde PRESS_EARLY s antes del golpe del rematador hasta que el balón llega (o con el ataque ya en vuelo):
+   *     bloqueo FUERTE (directo mucho más probable; sigue dependiendo del contacto).
+   *   - Pulsado pronto (entre PRESS_EARLY y PRESS_NET_T s antes del golpe): la pulsación se desperdicia (blockPress ok:false).
+   *   - Pulsado demasiado pronto (más de PRESS_NET_T s antes, o el rival aún no ha colocado): con el cuerpo a < PRESS_NET m de la red y
+   *     frente a ella, toque de red con prob. NET_PRESS[nivel] («puedes tocar la red»: nunca seguro); si no, se desperdicia.
+   *  Un balón del rival que cruza sin ser atacado (overpass, balón libre) o ya en nuestro campo sigue siendo un golpe normal.
+   *  Solo para el humano (la IA bloquea como siempre). Vale en 2v2 y 6v6. */
+  var PRESS_EARLY = 0.30, PRESS_NET_T = 0.5, PRESS_NET = 0.9, NET_PRESS = { easy: 0.4, normal: 0.6, hard: 0.75, expert: 0.85 };
+  var _bw = {};
+  function blockPress(g, p) {
+    var b = g.ball, sd = side(p.team);
+    if (!(p.z > 0.2) || Math.abs(p.x) > BLK_ZONE || g.touchTeam === p.team) return false;
+    // (side(t) = signo del campo propio: el balón viene hacia nosotros cuando vx tiene ese signo, como exige checkBlock)
+    var spiked = g.lastKind === 'spike' || g.lastKind === 'free', toward = !b.held && b.vx * sd > 0.5;
+    // balón ya en nuestro campo: golpe normal (un ataque en vuelo sigue siendo bloqueable mientras esté en la zona de checkBlock, |x| <= 0,6)
+    if (b.x * sd > (spiked && toward ? 0.6 : 0.3)) return false;
+    if (!spiked && toward && Math.abs(b.x) < 0.6) return false;   // overpass / balón libre que cruza: golpe normal
+    var lead;   // s hasta el golpe del rematador (negativo = el ataque ya va en vuelo)
+    if (spiked && toward) lead = -1;
+    else if (g.touches < 2 && !g.rot) lead = Infinity;              // 2v2: aún no han colocado
+    else {
+      lead = Infinity;
+      for (var i = 0; i < g.players.length; i++) { var q = g.players[i]; if (q.team === p.team) continue;
+        var w = hitWindow(g, q, _bw); if (w.reach && w.t >= -0.05 && w.t < lead) lead = w.t; }
+    }
+    if (lead <= PRESS_EARLY) {
+      var tArr = spiked && toward ? (b.x * sd < 0 ? Math.abs(b.x) / Math.abs(b.vx) : 0) : lead + 0.15;   // hasta que el balón llega a la red
+      p.pressEnd = g.time + tArr + 0.2; emit(g, { type: 'blockPress', player: p, team: p.team, ok: true }); return true;
+    }
+    p.pressEnd = -9;
+    if (lead > PRESS_NET_T && Math.abs(p.x) <= PRESS_NET && Math.abs(p.y) < g.HW + 0.5 && g.rng() < (NET_PRESS[g.difficulty] || 0.85)) {
+      emit(g, { type: 'netTouch', player: p, x: p.x, y: p.y, z: p.z + 2.2 });   // demasiado pronto: los brazos a la red antes de tiempo
+      fault(g, p.team, 'net', 'Toque de red', p);
+    } else emit(g, { type: 'blockPress', player: p, team: p.team, ok: false });
+    return true;
+  }
   /** Calidad que se arrastra en el 2v2 (pase → colocación → ataque de la IA; ver hit y ai.js):
    *  pass: la colocación de la IA tras un pase de calidad c sale con q × (1 − pass·(1 − c))
    *  lo/hi: el remate de la IA tras una colocación de calidad c se resiente con k = (c − lo)/(hi − lo) en 0..1 (1 = como siempre):
@@ -852,9 +895,10 @@
     if (count > 3) { fault(g, t, 'four', '4 toques', p); return; }
     // Contra un remate rival en camino, el jugador en el aire NO ataca (antes GOLPEAR o la dejada en el bloqueo devolvían el
     // remate como un remate propio: 2v2, TRASPASO «GOLPEAR en el bloqueo»). En la red (|x| <= BLK_ZONE, donde vale el bloqueo)
-    // no hay toque de brazos: decide checkBlock con la geometría de las manos. Más atrás es una defensa en el aire (1r toque,
-    // calidad ×BLK_AIRQ). 6v6 (g.rot): sin cambios
-    var vsAtk = !g.rot && jsetVoid(g, p) && isAttackContact(p, b);
+    // no hay toque de brazos: decide checkBlock con la geometría de las manos (y GOLPEAR es «bajar» el bloqueo, blockPress).
+    // Más atrás es una defensa en el aire (1r toque, calidad ×BLK_AIRQ). También en 6v6 (11-nov-2026: antes en 6v6 GOLPEAR en
+    // el bloqueo devolvía el remate rival como un remate propio «más fuerte»)
+    var vsAtk = jsetVoid(g, p) && isAttackContact(p, b);
     if (vsAtk && Math.abs(p.x) <= BLK_ZONE) return;
     var atkC0 = isAttackContact(p, b) && !vsAtk;
     // COLOCAR en el aire donde no cabe colocación en salto (3r toque, o 1r sin el balón alto en la red): dejada si es
@@ -1127,6 +1171,8 @@
       if (g.rot && !q.front) { fault(g, q.team, 'backBlock', q.role === 'L' ? 'Bloqueo del líbero' : 'Bloqueo de zaguero', q); return; } // 6v6: solo bloquean los delanteros (14.6.2, 19.3.1.3)
       if (g.atkServe) { fault(g, g.atkServe.team, g.atkServe.reason || 'attackServe', g.atkServe.text || 'Ataque sobre el saque', g.atkServe.player); return; } // lo toca el rival: ataque completado
       var human = isHuman(g, q), prof = profOf(g, q), kindB;
+      var pressed = human && g.time <= q.pressEnd;   // bloqueo activo: GOLPEAR a tiempo = bajar el bloqueo (blockPress)
+      if (human) q.pressEnd = -9;
       var qb = blockQ(q), hands = b.z > q.z + blkHands(q), hw = hands ? blockHalfW(qb) * (q.ak ? q.ak.hands : 1) : BLK_BODY;
       var pw = clamp((b.speed - 11) / 8, 0, 1), spike = g.lastKind === 'spike';
       var cen = 1 - clamp(Math.abs(b.y - q.y) / hw, 0, 1);              // 1 = balón en el centro de las manos
@@ -1136,12 +1182,15 @@
       var k = human ? (q.ak ? Math.min(0.95, 0.9 * q.ak.blk) : 0.9) : clamp(0.3 + prof.block + BADGE.muroAI[ml], 0.3, 0.95); // oficio del bloqueador
       // resultado (probabilidades condicionadas, en este orden): directo, amortiguado, block-out, toque que sigue
       var pStuff = spike ? clamp(k * (0.15 + 0.6 * cq) - 0.15 * pw, 0.03, 0.65) : 0.12 * k * cq;
+      // humano (bloqueo activo): sin pulsar nunca es directo; pulsado a tiempo, el directo manda (sigue dependiendo del contacto cq)
+      if (human) pStuff = !pressed ? 0 : spike ? clamp(k * (0.25 + 0.7 * cq) - 0.1 * pw, 0.08, 0.85) : clamp(0.05 + 0.3 * k * cq, 0, 0.6);
       if (g.rot) pStuff *= SIX.stuff; // 6v6: con doble bloqueo hay más manos; el directo, menos probable por contacto
       // Salto del atacante (con atributos): el que remata desde abajo pega contra las manos (más directos); el que salta mucho
       // pega por encima de los dedos (menos). 15 → ×1,32; 90 → ×0,80; 50 o sin atributos, ×1
       var atkJ = spike && g.lastPlayer && g.lastPlayer.ak ? g.lastPlayer.ak.jump : 1;
       if (atkJ !== 1) pStuff = Math.min(0.75, pStuff * (1 + 2 * (1 - atkJ)));
       var pSoft = clamp(0.12 + 0.45 * k * cq + (spike ? 0 : 0.4), 0, 0.9);
+      if (human) pSoft = !pressed ? clamp(0.55 + 0.35 * cq, 0, 0.92) : clamp(0.1 + 0.3 * k * cq, 0, 0.5);   // suave sin pulsar; pulsado, poco amortiguado
       var pTool = clamp(0.1 + 0.15 * pw + 0.25 * (1 - cen), 0, 0.5);
       // Rompemanos (atacante): +x de prob. ABSOLUTA de block-out. Dado previo con x / (1 − P(tool)) para que la prob. total
       // sea exactamente P(tool) + x (el dado extra solo se tira si el atacante lleva la insignia)
@@ -1183,7 +1232,7 @@
       }
       q.lastAction = 'block'; q.actionT = 0; q.shot = kindB; q.grade = gradeOf(qb);
       if (g.stats) { g.stats.blocks++; g.stats.blockKinds[kindB]++; }
-      emit(g, { type: 'block', player: q, team: q.team, x: b.x, y: b.y, z: b.z, result: kindB, quality: qb, human: human });
+      emit(g, { type: 'block', player: q, team: q.team, x: b.x, y: b.y, z: b.z, result: kindB, quality: qb, human: human, pressed: pressed });
       return;
     }
   }
@@ -2289,7 +2338,8 @@
         // (solo vale con askOk: delantero y antes de nuestra colocación; si no, «Ahora no». El evento 'ask' lo pinta ui.js)
         if (g.rot && human && input.switchPlayer) { var ak = askOk(g); if (ak) g.ask6 = g.time; emit(g, { type: 'ask', player: g.ctrl, ok: ak }); }
       } else if (g.jobs[0] && g.jobs[0] !== g.ctrl) {
-        if (!(g.defRole === 'block' && g.touchTeam === 1) && !fastLate) { emit(g, { type: 'switch', from: g.ctrl, to: g.jobs[0], auto: true }); g.ctrl = g.jobs[0]; endSwing(g); }
+        // (bloqueo activo: con una pulsación de bloqueo viva el control no se va al compañero antes del contacto)
+        if (!(g.defRole === 'block' && g.touchTeam === 1) && !fastLate && !(g.ctrl.pressEnd >= g.time)) { emit(g, { type: 'switch', from: g.ctrl, to: g.jobs[0], auto: true }); g.ctrl = g.jobs[0]; endSwing(g); }
       } else if (!g.jobs[0] && input.switchPlayer && human) {
         var o2 = other(g, g.ctrl); emit(g, { type: 'switch', from: g.ctrl, to: o2, auto: false }); g.ctrl = o2; endSwing(g);
         if (cpuSet) g.defRole = g.defRole === 'block' ? 'dig' : 'block'; // durante la colocación rival: cambia de rol
@@ -2308,7 +2358,7 @@
       else { var am = assistMove(g, hp, mx, my); stepPlayer(g, hp, dt, am[0], am[1]); }
       if (g.rot && (ml > 0.15 || input.hit || input.jump || input.jset || input.switchPlayer)) g.hAct = g.time; // 6v6: el humano juega (VB.AI6.setReady)
       updateAim3(g, hp, dt, mx, my);
-      if (input.hit && g.mode === 'rally') startSwing(g, hp, '');
+      if (input.hit && g.mode === 'rally' && !blockPress(g, hp)) startSwing(g, hp, '');   // (en el bloqueo, GOLPEAR = bajar el bloqueo)
       if (g.mode === 'rally') processSwing(g, hp, aim);
       if (g.lastTouchT === g.time && g.mode === 'rally') refreshPred(g); // la IA de este paso ya ve el balón nuevo
     }

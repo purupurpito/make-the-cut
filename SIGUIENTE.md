@@ -163,3 +163,11 @@ Ferran lo revise. Usa búsqueda web.
   local `voley3d.guided` (partidos con guía, tope 3 a partir de Normal). Mejor de raíz: un campo nuevo `record.anyPlayed` que suba en
   TODOS los partidos humanos (2v2, 6v6, Carrera) sin tocar `played/wins` (que siguen siendo del 2v2), y que `guideOn` e `isRookie`
   (main.js) miren `anyPlayed`. account.js ya sincroniza el documento entero (`recPlayed` compara `played`: revisar).
+- **Bloqueo activo (sim.js, 11-nov-2026, pedido de Ferran; ver notes/sim.md «Bloqueo activo») → js/players.js (lote A)**: pose sobre
+  el evento nuevo `blockPress` (`player`, `ok`): con `ok:true` las manos pasan por encima de la red con las muñecas hacia abajo
+  («bajar el bloqueo», ~0,3 s); con `ok:false` un amago corto. El evento `block` lleva ahora `pressed:true|false`: con `pressed` el
+  contacto puede ser más seco (brazos rígidos). Sin esto la mecánica funciona pero no se ve.
+- **Bloqueo activo → js/ui.js consejos (lote A, coach/coach6)**: cuando el humano está en el bloqueo (`g.defRole === 'block'` o
+  sitio de bloqueo en 6v6) y la CPU va a rematar: «Salta y pulsa GOLPEAR justo cuando remata: muro. Antes de tiempo: toque de red».
+  Y en el aviso del contacto, `e.pressed` → «¡Muro!» en el sello del bloqueo directo.
+- **Bloqueo activo → js/audio.js (audio)**, opcional: `blockPress ok:true` = golpe seco de manos sobre la cinta; `ok:false` nada.

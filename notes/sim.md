@@ -1292,3 +1292,39 @@ touchplay) al balón suyo o a su sitio; comprueba que sin tocar nada no se mueve
   Escenas `serve6h`/`rally6h`: comentario corregido (el humano se queda donde se le colocó). ui.js: consejo «Juega …: ve al aro
   celeste» y Controles «Moverse (sin balón, al aro celeste)» en 6v6.
 - **Pendiente**: equilibrio de Fácil (decisión de Ferran: queda más fácil que antes); colocador humano (v2); falta de posición del humano (sigue sin poder solaparse: se le coloca antes del saque).
+
+## Bloqueo activo: GOLPEAR en el aire = bajar el bloqueo (11-nov-2026; pedido de Ferran)
+Ferran: «cuando saltas para bloquear puedes apretar golpear y colocar, y si le das a golpear puedes rematar y el bloqueo va como más
+fuerte… tendríamos que hacer que al presionar golpear lo que haga el bloqueo sea bajar. Y si lo aprietas demasiado rápido (mucho antes
+de que llegue la pelota), puedes tocar la red y que sea falta, pero si no lo aprietas, el rebote es suave. Requiere más habilidad».
+- **Lo que había**: en 2v2 `hit()` ya ignoraba GOLPEAR contra un remate rival en la red (`vsAtk`), pero el guardia llevaba `!g.rot`:
+  en **6v6** GOLPEAR en el aire contra el remate devolvía el balón como un remate propio (el «bloqueo más fuerte» que veía Ferran).
+- **Ahora** (`blockPress`, junto a `BLK_ZONE`; solo el humano, la IA bloquea como siempre; 2v2 y 6v6):
+  - En el aire (`z > 0,2`), en la zona de bloqueo (|x| ≤ `BLK_ZONE` 1,1) y con el balón del rival en su campo (o cruzando ya atacado),
+    GOLPEAR es una **pulsación de bloqueo**, no un gesto: no abre `swing`. Un balón del rival que cruza SIN ser atacado (overpass,
+    balón libre, |x| < 0,6 viniendo) o ya en nuestro campo sigue siendo un golpe normal.
+  - **El reloj es el golpe del rematador**, no la llegada del balón (revisión adversarial del 11-nov: un remate tarda 0,05-0,1 s del
+    golpe a la red; por reacción era inalcanzable y anticiparse era red). `lead` = s hasta el contacto ideal del rival que va a atacar
+    (`hitWindow` de cada rival con `reach`, el menor `t`); con el ataque ya en vuelo (`lastKind` spike/free viniendo), `lead` = −1.
+    En 2v2 con menos de 2 toques rivales (aún no han colocado), `lead` = ∞.
+  - **A tiempo** (`lead` ≤ **`PRESS_EARLY` 0,30 s**, o ataque en vuelo): `p.pressEnd` = ahora + tiempo hasta la red + 0,2 (evento
+    `blockPress ok:true`). En `checkBlock`, contacto con `g.time ≤ pressEnd` → **pulsado**: `pStuff` = k·(0,25 + 0,7·cq) − 0,1·pw en
+    0,08..0,85 (remate; balón libre: 0,05 + 0,3·k·cq), `pSoft` 0,1 + 0,3·k·cq ≤ 0,5; tool y touch como antes. El evento `block` lleva
+    `pressed: true`. Mientras la pulsación esté viva, el control del 2v2 (modo «los dos») no salta al compañero.
+  - **Sin pulsar** (o pulsación caducada): `pStuff` = **0** (nunca directo), `pSoft` = 0,55 + 0,35·cq (≤ 0,92): el balón queda jugable en
+    el propio campo (amortiguado), si no block-out o toque que sigue.
+  - **Pronto** (`lead` entre 0,30 y **`PRESS_NET_T` 0,5 s**): la pulsación se desperdicia (`blockPress ok:false`).
+  - **Demasiado pronto** (`lead` > 0,5 s, o el rival aún no ha colocado): si el cuerpo está a ≤ **`PRESS_NET` 0,9 m** de la red y frente a
+    ella (|y| < HW + 0,5, como el toque de red por posición), **toque de red** (`netTouch` + falta `net`) con probabilidad
+    **`NET_PRESS`** = Fácil 0,4 · Normal 0,6 · Difícil 0,75 · Experto 0,85 («puedes tocar la red»: nunca seguro; consume un `g.rng`);
+    si no, se desperdicia. `pressEnd` se resetea.
+  - COLOCAR en el aire contra el remate rival ya no hacía nada en 2v2 (`jsetVoid`); con el guardia `vsAtk` también en 6v6, tampoco.
+  - Revisión adversarial (workflow de 34 agentes, 11-nov): 8 hallazgos confirmados y aplicados (reloj del rematador, contacto que pesa
+    en el directo, red solo frente a la red, overpass como golpe normal, control que no cambia con la pulsación viva, Experto sin falta
+    segura); descartados 7 (entre ellos un error de signo en «viene hacia nosotros» que simtest ya había cazado).
+- **Huella 2v2** (`tools/fp-2v2.json`) regenerada con `--write`: cambia de forma legítima (las variantes human/attrs del bot pulsan en
+  el aire; la CPU contra CPU no debería cambiar). Es la única excepción a «ningún lote cambia la huella»: es un cambio de juego pedido
+  por Ferran, no un refactor.
+- **Pendiente en otros ficheros** (SIGUIENTE.md, Peticiones entre lotes): pose de «bajar el bloqueo» en players.js sobre el evento
+  `blockPress` (manos por encima de la red, muñecas hacia abajo) y consejo del entrenador en ui.js («En el bloqueo, GOLPEAR justo
+  cuando remata = muro; antes = red»).
