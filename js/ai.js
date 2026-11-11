@@ -157,13 +157,43 @@
   var _tg = { x: 0, y: 0, attack: false, block: false };
   function setTg(x, y, attack, block) { _tg.x = x; _tg.y = y; _tg.attack = !!attack; _tg.block = !!block; return _tg; }
 
+  /** Plan de la IA para el toque en curso cuando le toca el balón (2v2; una decisión por toque, p.aiPlT = g.lastTouchT):
+   *  'safe' = bola de seguridad (no salta a rematar una colocación mala: la pasa desde el suelo al fondo rival),
+   *  'jset' = colocación en salto (pase bueno y cerca de la red, compañero listo; prob. prof.jsetAI), '' = lo de siempre.
+   *  Solo la llama pos() (y pos solo update), así el azar que gasta es determinista. Umbrales en VB.SETQ (sim.js). */
+  function plan(g, p) {
+    if (p.aiPlT === g.lastTouchT) return p.aiPl;
+    var t = p.team, Q = VB.SETQ, pr = p.prof || g.prof[t], pl = '';
+    if (Q && !g.rot && g.touchTeam === t) {
+      if (S.atkPhase(g, t) && g.lastKind === 'set') {
+        var sq = g.lastQ == null ? 1 : g.lastQ, ps = Q.safeP * clamp((Q.safeQ - sq) / (Q.safeQ - Q.safeLo), 0, 1);
+        if (ps > 0 && g.rng() < ps) pl = 'safe';
+      } else if (g.touches === 1 && g.lastKind === 'pass' && (g.lastQ == null ? 1 : g.lastQ) >= Q.jsQ && (pr.jsetAI || 0) > 0 &&
+                 Math.abs(g.pr3.x) < Q.jsX && g.pr3.x * side(t) > 0.3 && g.pr3.z > 2.5) {
+        var mate = other(g, p), sd = side(t);
+        var ready = mate.down <= 0 && mate.z === 0 && timeTo(g, mate, sd * 1.85, clamp(mate.y, -3.6 * (g.cs || 1), 3.6 * (g.cs || 1))) < Q.jsMate &&
+                    timeTo(g, p, g.pr3.x + sd * 0.35, g.pr3.y) < g.pr3.t - 0.5;
+        if (ready && g.rng() < pr.jsetAI) pl = 'jset';
+      }
+    }
+    p.aiPlT = g.lastTouchT; p.aiPl = pl;
+    return pl;
+  }
+  /** Jugador de la IA del equipo t que está colocando en salto ahora mismo (plan 'jset' y ya en el aire), o null. */
+  function aiJsetUp(g, t) {
+    var q = g.jobs[t];
+    return q && g.touchTeam === t && g.touches === 1 && q.aiPl === 'jset' && q.aiPlT === g.lastTouchT && q.z > 0.05 ? q : null;
+  }
+
   /** Posición objetivo de un jugador según la fase del rally. */
   function pos(g, p) {
     if (g.size !== 2 && VB.AI6 && VB.AI6.pos) return VB.AI6.pos(g, p); // 6v6 con su IA propia (sprint 2)
     var t = p.team, sd = side(t), mate = other(g, p), job = g.jobs[t], idx = p.idx, mine = g.touchTeam === t, cs = g.cs || 1;
     if (job === p) {
-      // a atacar: tras el 2º toque propio o tras una colocación en salto en el 1r (S.atkPhase)
-      if (S.atkPhase(g, t) && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) return setTg(g.pr3.x + sd * 0.35, g.pr3.y, true, false);
+      // a atacar: tras el 2º toque propio o tras una colocación en salto en el 1r (S.atkPhase); con una colocación mala, a veces
+      // bola de seguridad (plan 'safe': no salta). Colocación en salto (plan 'jset'): salta como para rematar y coloca en el aire
+      var pl = g.teams[t].length === 2 ? plan(g, p) : '';
+      if (pl !== 'safe' && (S.atkPhase(g, t) || pl === 'jset') && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) return setTg(g.pr3.x + sd * 0.35, g.pr3.y, true, false);
       return setTg(g.pr1.x + sd * 0.2, g.pr1.y);
     }
     if (g.teams[t].length !== 2) return posN(g, p);
@@ -192,9 +222,12 @@
     // salta a bloquearle a él: si no, quedaba plantado en la red sin bloquear ni defender y el ataque en 2º toque ganaba
     // más (35 → 51 % en Normal). Sin esta lectura, tras una colocación en salto (0,8 s hasta el remate) el bloqueo no
     // llegaba nunca. Tras el toque sigue con este objetivo (reacción) y luego pasa al bloqueo normal de abajo.
-    if (opp === 0 && !S.atkPhase(g, opp) && S.jsetReady(g)) {
-      var ay0 = other(g, g.ctrl).y, bl0 = ay0 < 0 ? g.teams[t][0] : g.teams[t][1], atk0 = g.swingLive && g.swingShot !== 'jset';
-      if (p === bl0) return setTg(sd * 0.6, clamp(atk0 ? g.ctrl.y : ay0, -4.2 * cs, 4.2 * cs), false, atk0);
+    // La IA rival que coloca en salto (plan 'jset', ya en el aire) se lee igual, sin el gesto de ataque.
+    var jsP = !S.atkPhase(g, opp) ? (opp === 0 && S.jsetReady(g) ? g.ctrl : aiJsetUp(g, opp)) : null;
+    if (jsP) {
+      var hJs = jsP === g.ctrl && opp === 0 && !g.demo && !g.autopilot;
+      var ay0 = other(g, jsP).y, bl0 = ay0 < 0 ? g.teams[t][0] : g.teams[t][1], atk0 = hJs && g.swingLive && g.swingShot !== 'jset';
+      if (p === bl0) return setTg(sd * 0.6, clamp(atk0 ? jsP.y : ay0, -4.2 * cs, 4.2 * cs), false, atk0);
       return setTg(sd * 5.4 * cs, clamp(-ay0 * 0.3, -2 * cs, 2 * cs));
     }
     if (S.atkPhase(g, opp) && g.pr3.x * side(opp) > 0) { // el rival va a atacar
@@ -346,7 +379,9 @@
     }
     // ¿qué hace con el balón?
     var shot = '', tgt = null, count = g.touchTeam === t ? g.touches + 1 : 1;
-    if (p.z > 0.25 && Math.abs(b.x) < 3.8 && b.z > C.NET_H + 0.1) {
+    if (p.z > 0.25 && Math.abs(b.x) < 3.8 && b.z > C.NET_H + 0.1 && count === 2 && p.aiPl === 'jset' && p.aiPlT === g.lastTouchT) {
+      shot = 'jset'; // colocación en salto de la IA (plan): hacia la zona de ataque del compañero (sim.js JSET)
+    } else if (p.z > 0.25 && Math.abs(b.x) < 3.8 && b.z > C.NET_H + 0.1) {
       var opp2 = g.teams[1 - t], blockUp = false;
       for (var k = 0; k < opp2.length; k++) if (opp2[k].z > 0.3 && Math.abs(opp2[k].x) < 1.2 && Math.abs(opp2[k].y - p.y) < 1.2) blockUp = true;
       if (blockUp && g.rng() < pr.tip) { shot = 'tip'; tgt = [-sd * (1.3 + g.rng() * 1.4), clamp(-p.y * 0.6 + S._rnd(g, 1.5), -3.6 * (g.cs || 1), 3.6 * (g.cs || 1))]; } // playa: pokey (sim)

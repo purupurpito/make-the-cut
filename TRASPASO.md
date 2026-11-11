@@ -211,28 +211,41 @@ Desde el 9-nov-2026 el proyecto va por **sprints**, para controlar el gasto de t
 («ponte a hacer los to-do») y se trabaja el backlog hasta donde se llegue. Dentro del sprint se pueden encadenar flujos largos.
 Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apuntado, NO empezado.
 
+### Preguntas abiertas para Ferran (11-nov-2026)
+- **Circuito Mundial**: los clubes de élite (media ≥ 80, IA Experto) no los gana nadie. ¿Reto final o se suaviza (`DIFF_AT`, career.js)?
+- **«Cerrar sesión»**: hoy no borra el progreso local del dispositivo (si se comparte el móvil, el siguiente ve tu progreso). ¿Debe borrarlo?
+- **Tope de dibujos del 6v6**: perf.js acepta ≤ 45 en baja (37/39 medido el 11-nov; en media 60/63). ¿Se queda así o se baja a 33 como el 2v2?
+- **Repo de redirección**: la URL antigua de Pages (/voley-3d/) da 404. ¿Se crea la redirección en el repo `purupurpito.github.io`?
+
 ### To-do
 - **Pendiente del muñeco y la Carrera de playa** (11-nov-2026, tras las revisiones; nada roto). Todo está en la rama
   `wip-doll-carrera-playa`, sin publicar: falta que Ferran lo vea y decida si se fusiona y despliega.
-  - Oficiales y público sin muñeco, cabezas que se cruzan en el ace de la playa: ver «Mapa de playa» abajo.
-  - Compañero en lo alto de la horquilla (+4/+5): rinde como un jugador medio de su circuito (Nacional: 16,3 puntos/partido contra 16,0
-    del bot medio). Si se quiere «nunca mejor que un medio», bajar el techo de `MATE_OFF` a ~+3 o tocar `DIFF.mate` (sim). En el
-    Circuito Regional con el bot medio se gana el 99-100 % sea cual sea el compañero (solo se nota con un novato o desde el Nacional).
-  - Palmarés migrado de v2: conserva el nombre antiguo de la competición («Liga Regional») con el club ya renombrado. ¿Histórico o renombrar?
+  - ~~Oficiales y público sin muñeco~~ HECHO 11-nov (arena; notes/arena.md «Muñeco oficial») (~~cabezas que se cruzan en el ace~~ HECHO 11-nov): ver «Mapa de playa» abajo.
+  - ~~Compañero en lo alto de la horquilla (+4/+5) y Regional al 99-100 %~~ HECHO 11-nov (carrera): techo del compañero en el partido
+    (`MATE_CAP`: media + racha ≤ club + 6) y escalón «Normal suave»: Regional con el bot medio 80 %, novato 41 % (notes/carrera.md
+    §Escalón). `rookie` ya integrado en main.js (11-nov).
+  - ~~Palmarés migrado de v2 con el nombre antiguo de la competición~~ HECHO 11-nov (carrera): pasa al de playa (`beachTrophies`).
   - Equipación del rival en la playa: si se parece a la tuya, la CPU sale de azul (con 8 camisetas por liga pasa a menudo); idea: segunda
     equipación del club en `setKit`.
   - Sin comprobar: partido de Carrera completo a 844×390 y 667×375, cambio de campo cada 5 en un 3r set jugado, mando y táctil reales.
   - `tools/touchplay.js` y `tools/padplay.js` fallan a veces («al menos 3 toques humanos con GOLPEAR»): intermitente desde antes; repetir.
+  - Tras la integración del 11-nov (backlog 2): grúa del cambio de campo en la playa sin probar (`tools/courttest.js` no admite
+    `map=beach`); camera.js `boardBoxes()` podría leer `VB.Arena.landmarks.scoreBoard` (la caja de la torre de playa es algo mayor);
+    6v6 en media a 334 k de 350 k; colocación en salto, bloqueo y cuenta atrás de 5 s sin probar con mando y táctil reales;
+    campo rival pequeño en el saque del móvil (camera.js `serveUsComp`/`svcSolve`, ver notes/camera_input.md).
 - **Pendiente de la integración de menús v2** (10-nov-2026):
-  - Recepción y Colocación aún se notan poco en el resultado (bot medio ±1-2 puntos; Defensa y Control ya ±3-6): que la calidad del
-    pase cuente en el remate del compañero IA (ai.js). Reacción del humano solo afecta a levantarse.
-  - Escalón Regional → Nacional (IA Fácil → Normal): con la prueba superada a media 35 el bot medio gana 0 de 8. Decidir si la
-    Nacional baja empieza en Fácil (careertest exige Normal) o se endurece la prueba.
-  - Carrera: rol prometido sin efecto en minutos, sueldo solo texto, química de suplentes se pierde en verano, firmar en mitad de
-    temporada sin confirmación.
-  - Escuadrón a media 50: cada mejora cuesta ya 2 puntos (antes 1 hasta 50); valorar abaratar `cost()`.
-  - Hoja final: «Menú principal» vuelve al principal (cambiar dificultad/puntos son 2 pasos más); ¿botón «Cambiar opciones»?
-  - Primera visita en móvil: aviso de instalar (`js/install.js`) + panel «Primer partido» seguidos: decidir.
+  - ~~Recepción y Colocación aún se notan poco en el resultado (bot medio ±1-2 puntos; Defensa y Control ya ±3-6): que la calidad del
+    pase cuente en el remate del compañero IA (ai.js). Reacción del humano solo afecta a levantarse.~~ **HECHO 11-nov** (sim: la calidad del pase pasa a la colocación de la IA y la de la colocación al remate de la IA o a una bola de seguridad; `VB.SETQ`, notes/sim.md §Calidad que se arrastra).
+  - ~~Escalón Regional → Nacional~~ HECHO 11-nov (carrera): Normal suave (Normal + rookie) en los mejores de la Regional y los peores
+    de la Nacional; Difícil desde 56 (notes/carrera.md §Escalón).
+  - ~~Carrera: rol prometido sin efecto, sueldo solo texto, firmar en mitad de temporada sin confirmación~~ HECHO 11-nov (carrera):
+    banquillo en rotación, promesa de titular incumplida con salida libre, indiscutible con suelo de confianza, sueldo que se ahorra
+    y paga el fisio, confirmación al fichar a mitad de temporada. Sigue: química de suplentes que se pierde en verano.
+  - ~~Escuadrón a media 50: cada mejora cuesta ya 2 puntos (antes 1 hasta 50); valorar abaratar `cost()`.~~ HECHO 11-nov (integración: `cost()` 1/2/3/4 con cortes en 60/70/85; careertest y simtest OK).
+  - ~~Hoja final: «Menú principal» vuelve al principal (cambiar dificultad/puntos son 2 pasos más); ¿botón «Cambiar opciones»?~~ HECHO 11-nov
+    (ui.js `goOptions`: botón «Cambiar opciones» que lleva a la preparación del Partido rápido; no en Carrera ni 6v6).
+  - ~~Primera visita en móvil: aviso de instalar (`js/install.js`) + panel «Primer partido» seguidos: decidir.~~ HECHO 11-nov: el aviso
+    espera a la portada del menú libre 1,5 s (`VB.UI.menuIdle`); si se va a jugar antes, sale al volver del partido. Nunca a la vez.
   - Siguen los dorsales «N.º 1 / N.º 2» en Jugadores (son dorsales, no ordinales de menú): decidir con Ferran.
   - Sin probar a mano: mando y táctil reales en las páginas nuevas y en la Carrera.
 - **Carrera en 6v6** (prioridad de Ferran, 9-nov-2026: «luego adaptarlo al 6v6 no debería ser tan difícil»): la Carrera 2v2 ya está
@@ -241,17 +254,18 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - **Pendiente del sprint Carrera 2v2** (10-nov-2026, de los revisores; nada roto):
   - **Circuito Mundial**: manda la habilidad, no los atributos (bot medio 0 de 20 con media 35, 60 y 85; bot bueno 15/25/45 %), y
     los 1-2 clubes de élite (IA Experto, media 80-84) no los gana nadie (0 de 8 con media 85). ¿Subir el umbral de Experto
-    (`DIFF_AT`, career.js) o dejarlo como reto final? Decisión de diseño de Ferran.
-  - **Diana del saque en el móvil**: el campo rival mide ~48 px de alto a 844×390 (~5 px por metro), así que la profundidad casi no se
-    distingue y el radio de dispersión bueno/malo es < 1 px frente a 6 px; la diana corta del lado derecho cerca de la red la tapan
-    el compañero y el balón. Toca cámara del saque (camera.js) o la diana (fx.js).
+    (`DIFF_AT`, career.js) o dejarlo como reto final? Decisión de diseño de Ferran. (11-nov: sin tocar; sigue en pregunta.)
+  - ~~**Diana del saque en el móvil**~~ HECHO 11-nov (camara-fx, fx.js): diana visible a través del compañero y el balón, guías a lo
+    largo y ancho del campo rival, aro y disco más grandes en pantalla pequeña (notes/camera_input.md §Diana). La cámara del saque no
+    cambia (subirla cortaba al sacador; ver la nota).
   - **Muro casi imposible en Carrera con control «uno»**: el bot de simtest no salta nunca a bloquear en ese modo (0 saltos en 6
     partidos; con «Los dos», 188). Sospecha de fallo del bot, no del juego: probar a mano.
   - Sin volver a medir con la tanda larga de los revisores (`tools/out/carrera/verif/career_balance.js`, `badge_matrix.js`): los
     umbrales nuevos de las insignias (calculados con sus ritmos), Líder subido y Motor a la mitad.
   - La nota del bot «bueno» en la Regional sale alta (media 9,1, máx. 9,7; ningún 10). Con «Los dos» la nota cuenta a la pareja
     (remates ×0,85): sin medir.
-  - A 667×375 la hoja final de Carrera con subida de nivel e insignias necesita scroll para llegar a «Menú principal» (ya pasaba).
+  - ~~A 667×375 la hoja final de Carrera necesita scroll para llegar a «Menú principal»~~ HECHO 11-nov (carrera): CSS `#end.career`
+    en career-ui.js; main.js ya pone la clase `career` en `#end` (integración 11-nov; alto mínimo para que «Ver celebración» no pise las estadísticas).
   - Recargar a mitad de partido o «Reiniciar partido» evita una derrota sin penalización (¿diseño?).
   - Sin probar a mano: mando, teclado y móvil reales en la Carrera, una temporada entera jugada, la copa jugada y el control «Los dos».
 - **Mapa de playa** (pedido de Ferran, 9-nov-2026): **escenario HECHO el 10-nov-2026** (sede «Platja Llarga», Ajustes · Imagen ·
@@ -262,31 +276,32 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     gesto aparte), colocación de dedos más estricta (dobles), IA y cámara a la pista pequeña, tutorial y menú (fila «Escenario» junto a
     los puntos, que en la playa se fijan a «21 · 15»). ~~Cintas a 16×8, antenas, sin línea de ataque, texto y silbato de `'swap'`, Carrera
     que heredaba la playa~~ HECHO 10-nov (cierre TAJO + playa, ver Hecho; desde el 11-nov la Carrera es de vóley playa y el 6v6 se
-    juega siempre en el pabellón). Pendientes: regla de los 5 s del saque de playa (sigue la de 8 s), dibujo del tutorial a 16×8.
+    juega siempre en el pabellón). Pendientes: ~~regla de los 5 s del saque de playa (sigue la de 8 s)~~ (HECHO 11-nov en la sim: «Falta de saque: 5 segundos», `g.serveClockMax`; cuenta atrás y textos de ui.js integrados el 11-nov). Opcional: gesto del árbitro de 5 dedos (`'delay5'`, arena.js `refSignalStep`); hoy sale el de 8, ~~dibujo del tutorial a 16×8~~ (HECHO 11-nov, ui.js `beachFig`).
   - Idea para la Carrera (NO hecha): **torneos de playa** con cuadro (8 parejas, premios propios) además de la liga; la Carrera ya es
     toda de playa (circuitos a 21/15, ver Hecho).
   - ~~Jugadores descalzos / ropa de playa~~ HECHO (muñeco, ver Hecho). Pendiente de personajes (revisión visual del 11-nov):
-    **oficiales** (árbitros, jueces de línea, anotadores, fotógrafos, suplentes, entrenadores; arena.js) con la proporción del atleta
+    ~~**oficiales** (árbitros, jueces de línea, anotadores, fotógrafos, suplentes, entrenadores; arena.js) con la proporción del atleta
     antiguo: desentonan al lado del muñeco, sobre todo el juez de línea en primer plano en el saque de playa (pasarlos al muñeco o a
-    una versión «oficial» del muñeco). En la celebración del ace de la playa las cabezas de la pareja se meten una en otra (ala de la
-    gorra del n.º 1 en el pelo del n.º 2, mano a través del hombro). En la plancha la cara queda contra el suelo. Pose de celebración en
-    la hoja final, público de playa cabezón con sombreros y grupos de aficionados por equipo (arena; hoy grada low-poly).
+    una versión «oficial» del muñeco)~~ HECHO 11-nov (arena: muñeco oficial con el trazo del muñeco; notes/arena.md). ~~Cabezas que se meten una en otra en el ace de la playa, cara contra el suelo en la plancha,
+    pose de celebración en la hoja final~~ HECHO 11-nov (camara-fx, players.js; notes/players.md §Celebraciones). ~~Público de playa cabezón con sombreros y grupos de aficionados por equipo~~ HECHO 11-nov (arena: muñeco de grada, peñas por tramos).
   - ~~Partículas de arena y huellas~~ HECHO 10-nov tarde (fx.js: arena que salta en plancha, caída, bote; huellas, surco y cráter que
     se apagan; `notes/arena.md` §Playa a mapa principal). Decidir: el polvo del pabellón nunca se veía (`dAlive++` comentado); arreglado
     pero sigue oculto en el pabellón para no cambiarlo. ¿Encenderlo?
-  - Luz de tarde de la playa hecha (`?luz=tarde`, `VB.Arena.beachLight`); falta la opción en Ajustes (ajuste `beachLight`: 'dia' | 'tarde', ui_main).
-  - Marcador en la playa: no hay videomarcadores ni marcador colgado (las vallas LED con mensajes tampoco). Un marcador de playa
-    (torre pequeña con cifras) y la cámara del cambio de campo, que mira a `landmarks.scoreHung` (en la playa mira al cielo).
+  - Luz de tarde de la playa hecha (`?luz=tarde`, `VB.Arena.beachLight`); ~~falta la opción en Ajustes~~ HECHO 11-nov (Ajustes ◆ Imagen ◆ «Luz de playa: Día / Tarde», ajuste `beachLight`).
+  - ~~Marcador en la playa: no hay videomarcadores ni marcador colgado (las vallas LED con mensajes tampoco). Un marcador de playa
+    (torre pequeña con cifras) y la cámara del cambio de campo, que mira a `landmarks.scoreHung` (en la playa mira al cielo).~~ HECHO
+    11-nov (arena: torre con pantalla tras nuestro fondo; en la playa `landmarks.scoreHung` apunta a ella; sin probar courttest en la playa).
   - ~~Piezas del pabellón que desentonan en la arena, banderas de canto, horizonte lateral vacío, baja a 140k~~ HECHO 10-nov tarde:
     silla del árbitro de madera con toldo, mesa de anotadores con caballetes y toldo, postes de aluminio con protección fina, red/cintas/
     oficiales a la medida de la pista de la partida (16×8), banderas con bolsa, telón de pueblo/pinar/cabo con faro, gaviotas, llaüts,
     ola que rompe, cintas coral y pinos (identidad propia frente a SetPoint). Baja: 109k triángulos, 31/33 dibujos (perf.js, partido real).
 - **Pendiente del pulido 10-nov-2026** (controles PC, dorsales, separadores, pantallas grandes; menores, nada roto):
-  - A 2560 Ajustes y Jugadores ocupan casi todo el alto (en Ajustes, hueco entre Destellos y Equipación); la Carrera se queda en la
-    mitad de arriba con la cabecera pegada al borde y «Colocación25» pegado en la tabla de atributos.
+  - ~~A 2560 Ajustes y Jugadores ocupan casi todo el alto~~ (11-nov: con pestañas ya no; revisados Ajustes, Jugadores, Controles, Tutorial, Pausa,
+    preparación y hoja final a 2560×1440, bien). ~~Carrera: cabecera pegada al borde y «Colocación25» pegado~~ HECHO 11-nov
+    (integración, career-ui.js: aire arriba en pantallas grandes y `.prev` en auto-fill). La Carrera sigue ocupando solo el alto de su contenido.
   - El consejo de arriba se vuelve casi transparente (`.thru`) cuando la acción pasa por detrás: a 1280×720 en el saque se lee mal. Es
     deliberado; si molesta, subir el fondo de `#coach.thru`.
-  - Saque táctil: el aviso «SACAR Flotante / SALTAR Potente» pisa el balón del sacador a 667×375.
+  - ~~Saque táctil: el aviso «SACAR Flotante / SALTAR Potente» pisa el balón del sacador a 667×375.~~ HECHO 11-nov (ui.js `collectObstacles`/`placePrompt`).
   - En el tutorial la tecla «ESPACIO» parece más pequeña que la «J» (mismo tamaño medido, 12,5 px; es la palabra larga en mayúsculas condensadas).
   - Portátil táctil con ratón: tras tocar la pantalla el clic deja de golpear (a propósito, para no contar doble) sin avisar.
   - Lanzar con clic izquierdo y pulsar el derecho no saca: es falta (como J y luego Espacio). El texto lo explica.
@@ -381,8 +396,9 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - **Pulido profundo pausado**: el flujo de pulido se paró a mitad (oleadas 1-2 subidas en 94ba33d); falta la oleada 3,
   su verificación y el QA final. Solo si Ferran lo pide.
 - **Pendiente del sprint cartoon** (9-nov-2026, menores, nada roto):
-  - El contorno de tinta del escenario (postes, silla del árbitro, mesa, árbitros) existe pero casi no se ve sobre las piezas azul marino
-    o negras; si se quiere más «dibujo», aclarar esas piezas o subir el grosor de `props`/`poles` (cuesta 0 dibujos, ya están en la lista).
+  - ~~El contorno de tinta del escenario (postes, silla del árbitro, mesa, árbitros) existe pero casi no se ve sobre las piezas azul marino
+    o negras; si se quiere más «dibujo», aclarar esas piezas o subir el grosor de `props`/`poles` (cuesta 0 dibujos, ya están en la lista).~~
+    HECHO 11-nov (arena: piezas aclaradas y tinta más gruesa, `PROP_INK`).
   - Camiseta negra: ahora se aclara a pizarra (#383c4a) en pista y la franja del marcador usa el color de los detalles; la CPU pasa a
     blanca con ella (antes seguía azul). Si Ferran quiere el negro puro, revisar `setKit` (players.js).
   - Público: sombreado por bandas y colores de bloque; se ha comprobado en planos de punto, peloteo (alta y baja) y táctil, pero no a mano
@@ -451,7 +467,7 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     la del 2º toque (en el 1r, rematar el balón regalado vuelve a ser igual o mejor); el botón y el aviso COLOCAR solo salen si la
     colocación va a salir de verdad; COLOCAR ya no «coloca» el remate rival desde el bloqueo; la doble pulsación rápida funciona (búfer de
     0,2 s); aviso 2×2 más limpio (glifos sin estirar, K verde, sin palabras repetidas en táctil); X/□ ya no hace «volver» en menús.
-    CPU contra CPU idéntico. Pendiente: GOLPEAR en el bloqueo devuelve el remate CPU (anterior), la IA no coloca en salto, móvil y mando reales.
+    CPU contra CPU idéntico. Pendiente: ~~GOLPEAR en el bloqueo devuelve el remate CPU (anterior), la IA no coloca en salto~~ (HECHO 11-nov, notes/sim.md), móvil y mando reales.
 - **Pulido 10-nov-2026** (pedido de Ferran, en paralelo a la Carrera 2v2):
   - **Mapa de playa — escenario**: sede «Platja Llarga» (Ajustes · Imagen · Escenario, `?map=beach`): cielo con sol y nubes, mar con olas,
     arena con huellas, cinta azul, gradas con toldo y público animado, palmeras, socorrista, barcos. Se construye al elegirla y se libera al

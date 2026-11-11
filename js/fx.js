@@ -40,6 +40,11 @@
   var AIM_SV = null, AIM_SVMIN = 0.45, AIM_SVPX = 24, AIM_SVST = 3, aimSv = false, aimSvMap = null, aimSpMap = null, aimSt = 1;
   var DIG_TIGHT = 0.7; // g.digTight: el aro de golpeo del defensor humano se ve más pequeño tras un remate perfecto
   // B6 (challenge): huella del bote + línea resaltada durante g.review (3 calcomanías más en el lote del suelo, 0 dibujos)
+  // Saque dirigible en el móvil (11-nov-2026): guías finas de la diana a lo largo y a lo ancho del campo rival (aimLx / aimLy, en el
+  // lote de calcomanías: 0 dibujos) para leer la profundidad aunque el campo mida ~5 px por metro, y copia de la diana por encima de
+  // todo (aimXray, depthTest off, 1 dibujo solo mientras se apunta el saque) para que el compañero y el balón no la tapen.
+  // AIM_SVL = tope del aumento del aro y del disco de dispersión en pantallas pequeñas (bueno/malo distinguibles).
+  var aimLx = null, aimLy = null, aimXray = null, AIM_SVL = 1.8, AIM_XOP = 0.42, AIM_LOP = 0.45, AIM_LPX = 2.2;
   var aimFill = null; // A4: zona de dispersión del remate (disco tenue bajo la retícula, en el lote de calcomanías)
   var revFill = null, revLine = null, revGlow = null, rv = { on: false, hold: 0, x: 0.5, y: 0.5, res: -1, a: 0.5, k: 0.5, sx: 0.5, sy: 0.5 };
   // caché de hitWindow para el aro amarillo: la trayectoria es balística entre toques, así que «press» baja 1:1 con el
@@ -340,7 +345,7 @@
     for (var m = 0; m < MARK_N; m++) decOrder.push(markPool[m].m);
     for (var r = 0; r < MARK_N; r++) decOrder.push(markPool[r].r);
     for (var p = 0; p < RIP_N; p++) decOrder.push(ripPool[p].m);
-    decOrder.push(marker, aimFill, aimRet, revGlow, revLine, revFill);
+    decOrder.push(marker, aimLx, aimLy, aimFill, aimRet, revGlow, revLine, revFill);
     // lado del plano de cada malla (marcador 1,15 m, retícula 1,7 m; el resto 1 m; la huella de revisión lleva su escala): el lote usa un plano de 1 m
     for (var z = 0; z < decOrder.length; z++) decSz.push(decOrder[z].geometry.parameters.width || 1);
     decM = new THREE.Matrix4(); decV = new THREE.Vector3(); decP = new THREE.Vector3(); decQ = new THREE.Quaternion(); decY = new THREE.Vector3(0, 1, 0); decE = new THREE.Euler();
@@ -1198,8 +1203,11 @@
       };
       revGlow = rvMk(markTex, 0.0158, 3, 'revGlow'); revLine = rvMk(whiteTex, 0.0162, 3, 'revLine'); revFill = rvMk(revTex(), 0.0166, 3, 'revMark');
       aimFill = rvMk(markTex, 0.0185, 4, 'aimFill');
+      aimLx = rvMk(whiteTex, 0.0172, 4, 'aimLx'); aimLy = rvMk(whiteTex, 0.0174, 4, 'aimLy');
       revGlow.material.color.setRGB(0.25, 0.85, 1); revLine.material.color.setRGB(0.55, 0.95, 1);
       aimSpMap = aimMat.map; aimSvMap = aimSvTex();
+      aimXray = new THREE.Mesh(aimRet.geometry, new THREE.MeshBasicMaterial({ map: aimSvMap, transparent: true, opacity: 0, depthTest: false, depthWrite: false, toneMapped: false }));
+      aimXray.rotation.x = -Math.PI / 2; aimXray.renderOrder = 12; aimXray.visible = false; aimXray.frustumCulled = false; aimXray.name = 'aimXray'; root.add(aimXray);
       buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map, whiteTex, revFill.material.map, aimSvMap]);
       // polvo de parquet (plancha, aterrizajes): Points con alfa por vértice y mezcla normal
       var dPos = new Float32Array(DUST_N * 3), dCol = new Float32Array(DUST_N * 4);
@@ -1246,7 +1254,7 @@
       for (var r = 0; r < RIP_N; r++) { ripPool[r].t = 0; ripPool[r].m.visible = false; }
       for (var m = 0; m < MARK_N; m++) { markPool[m].t = 0; markPool[m].m.visible = false; markPool[m].r.visible = false; }
       aimR.on = false; aimFill.visible = false; rv.on = false; rv.hold = 0; rv.a = 0; revFill.visible = revLine.visible = revGlow.visible = false;
-      aim.a = 0; aim.on = false; aimRet.visible = false; aimArc.visible = false; focusRing.visible = false;
+      aim.a = 0; aim.on = false; aimRet.visible = false; aimArc.visible = false; aimXray.visible = aimLx.visible = aimLy.visible = false; focusRing.visible = false;
       confAlive = 0; conf.count = 0; conf.visible = false;
       for (var tI = 0; tI < TB_N; tI++) tb[tI].life = 0;
       speedT = 0; tbAlive = 1;
@@ -1380,16 +1388,19 @@
       var spr = am === 2 && (g.mode === 'rally' || aimSv) && typeof aimOut.spreadNow === 'number' && aimOut.spreadNow >= 0 && isFinite(aimOut.spreadNow) ? aimOut.spreadNow : -1;
       if (aimSv && spr < 0) spr = 0.6; // saque dirigible con una sim que aún no da la dispersión: aro de tamaño medio
       if (spr >= 0) {
-        var rmin = AIM_RMIN;
+        var rmin = AIM_RMIN, svL = 1;
         aimSt = 1;
         if (aimSv) { // radio mínimo legible (AIM_SVPX px CSS a esa distancia) y alargamiento en profundidad según lo rasante de la vista
           var cm = ctx.camera, cp = cm.position, dxc = aimOut.x - cp.x, dzc = -aimOut.y - cp.z, dc = Math.sqrt(dxc * dxc + dzc * dzc + cp.y * cp.y);
           var mpp = 2 * dc * Math.tan((cm.fov || 54) * Math.PI / 360) / Math.max(200, ctx.height || 720);
           rmin = Math.max(AIM_SVMIN, AIM_SVPX * mpp);
           aimSt = clampN(0.55 * dc / Math.max(0.3, cp.y), 1, AIM_SVST);
+          // pantalla pequeña (el aro mínimo legible pasa de AIM_SVMIN): aro y disco crecen en la misma proporción (hasta ×AIM_SVL), así
+          // la dispersión buena y la mala siguen distinguiéndose (a 844×390 el disco real medía < 1 px de fondo con buen timing)
+          svL = clampN(rmin / AIM_SVMIN, 1, AIM_SVL);
         }
-        var rt = clampN(spr, rmin, AIM_RMAX);
-        var ft = clampN(spr, 0.18, AIM_RMAX);
+        var rt = clampN(spr * svL, rmin, AIM_RMAX * svL);
+        var ft = clampN(spr * svL, 0.18 * svL, AIM_RMAX * svL);
         if (!aimR.on) { aimR.r = rt; aimR.f = ft; }
         aimR.on = true; aimR.r += (rt - aimR.r) * (1 - Math.exp(-22 * rdt)); aimR.f += (ft - aimR.f) * (1 - Math.exp(-22 * rdt)); aimR.p = spr <= 0.12 ? 1 : 0;
       } else if (!am) aimR.on = aimR.on && aim.a > 0.01; else aimR.on = false;
@@ -1431,6 +1442,20 @@
       }
       // arco: solo con el apuntado activo (balón lanzado / en el aire para rematar)
       if (!aimRet.visible) aimFill.visible = false;
+      // saque dirigible: guías de la diana (fondo/red y lateral) y copia por encima de los jugadores y del balón
+      var svG = aimRet.visible && aimSv;
+      aimLx.visible = aimLy.visible = aimXray.visible = svG;
+      if (svG) {
+        var gHL = courtHL(g), gHW = courtHW(g), gs = aim.x < 0 ? -1 : 1, gc = ctx.camera, gp = gc.position;
+        var gdx = aim.x - gp.x, gdz = -aim.y - gp.z, gd = Math.sqrt(gdx * gdx + gdz * gdz + gp.y * gp.y);
+        var gw = AIM_LPX * 2 * gd * Math.tan((gc.fov || 54) * Math.PI / 360) / Math.max(200, ctx.height || 720); // ~2 px CSS
+        aimLy.position.x = aim.x; aimLy.position.z = 0; aimLy.scale.set(gw * aimSt, 2 * gHW, 1);          // a lo ancho, a la altura de la diana
+        aimLx.position.x = gs * gHL * 0.5; aimLx.position.z = -aim.y; aimLx.scale.set(gHL, gw, 1);          // de la red al fondo, por la diana
+        aimLx.material.color.copy(aimMat.color); aimLy.material.color.copy(aimMat.color);
+        aimLx.material.opacity = aimLy.material.opacity = AIM_LOP * aim.a;
+        aimXray.position.copy(aimRet.position); aimXray.rotation.copy(aimRet.rotation); aimXray.scale.copy(aimRet.scale);
+        aimXray.material.color.copy(aimMat.color); aimXray.material.opacity = AIM_XOP * aim.a;
+      }
       aimArc.visible = aimRet.visible && aim.on && am === 2 && !b.held;
       if (aimArc.visible) updateAimArc(b, aim.x, aim.y, aim.a, aimSv ? AIM_SV : null);
 

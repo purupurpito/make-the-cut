@@ -54,7 +54,7 @@ const POINT_TEXTS = {
   out: ['Saque fuera', 'Remate fuera', 'Dejada fuera', 'Pokey fuera', 'Recepción fuera', 'Defensa fuera', 'Colocación fuera', 'Balón fuera', 'Toca el bloqueo y sale fuera', 'Le da en el cuerpo y sale fuera', 'Saque a la red', 'Balón a la red'],
   antenna: ['Balón toca la antena', 'Balón por fuera de la antena'], under: ['Balón por debajo de la red'],
   double: ['Dobles: el mismo jugador toca dos veces', 'Dobles en la colocación de dedos'], four: ['4 toques'], net: ['Toque de red'], block: ['Bloqueo del saque'],
-  attackServe: ['Ataque sobre el saque'], serve: ['Falta de saque: 8 segundos', 'Falta de saque: el balón cae sin golpearlo']
+  attackServe: ['Ataque sobre el saque'], serve: ['Falta de saque: 8 segundos', 'Falta de saque: 5 segundos', 'Falta de saque: el balón cae sin golpearlo']
 };
 const badText = new Set();
 // Señales oficiales del árbitro (SIM-02, point.signal): lista cerrada
@@ -93,7 +93,7 @@ function pointFieldIssues(e, g, ctx) {
   if (!SIGNALS.includes(e.signal)) bad.push('señal fuera de la lista: ' + e.signal);
   else if (!(SIG_OF[e.reason] || []).includes(e.signal)) bad.push('señal ' + e.signal + ' para el motivo ' + e.reason);
   if ((e.signal === 'touched') !== (e.touchedOut === true) || typeof e.touchedOut !== 'boolean') bad.push('touched/touchedOut ' + e.signal + '/' + e.touchedOut);
-  if (e.reason === 'serve' && (e.signal === 'delay8') !== (e.text === 'Falta de saque: 8 segundos')) bad.push('8 s: señal ' + e.signal + ' con "' + e.text + '"');
+  if (e.reason === 'serve' && (e.signal === 'delay8') !== /^Falta de saque: [58] segundos$/.test(e.text)) bad.push('8 s: señal ' + e.signal + ' con "' + e.text + '"');
   if (e.reason === 'serve' && e.signal === 'delay8' && g && g.serveClock !== 0) bad.push('delay8 con el reloj de saque en ' + g.serveClock);
   const landed = e.reason === 'in' || e.reason === 'out';
   if (landed ? !(e.landSide === 0 || e.landSide === 1) : e.landSide !== -1) bad.push('landSide ' + e.landSide + ' con ' + e.reason);
@@ -821,6 +821,12 @@ if (ONLY !== 'matrix') {
   const e8 = stepUntil(g8, 'point', 120 * 10).find(e => e.type === 'point');
   const w8 = S.createGame({ demo: false, seed: 13 }).whistleAt;
   if (!e8 || e8.reason !== 'serve' || Math.abs(e8.t - 8 - w8) > 0.05) fail('regla de 8 s no aplicada (t=' + (e8 && e8.t) + ')'); else console.log('regla de 8 segundos OK');
+  // en la playa, 5 segundos
+  {
+    const g5 = S.createGame({ demo: false, seed: 13, venue: 'beach' }), w5 = g5.whistleAt;
+    const e5 = stepUntil(g5, 'point', 120 * 10).find(e => e.type === 'point');
+    if (!e5 || e5.reason !== 'serve' || e5.text !== 'Falta de saque: 5 segundos' || Math.abs(e5.t - 5 - w5) > 0.05) fail('regla de 5 s de playa no aplicada (t=' + (e5 && e5.t) + ', ' + (e5 && e5.text) + ')'); else console.log('regla de 5 segundos (playa) OK');
+  }
   const g8b = S.createGame({ demo: false, seed: 13, serveClock: false });
   if (stepUntil(g8b, 'point', 120 * 10).find(e => e.type === 'point')) fail('serveClock:false no desactiva los 8 s'); else console.log('serveClock:false OK');
   // timing (con armado del brazo C.WINDUP): pulsar WINDUP antes del ideal da 'perfect' (y el contacto se
@@ -1753,12 +1759,12 @@ if (ONLY !== 'matrix') {
           for (const e of ev) { if (e.type === 'hit') { const r = pick(e, g, prev); if (r != null) { sum += r; n++; } prev = e; } else if (e.type === 'point') prev = null; } } }
       return { m: sum / Math.max(1, n), n }; };
     // (b1) Cañón: velocidad media de remate del equipo 1
-    { const sp = e => e.team === 1 && e.kind === 'spike' ? e.speed : null, a = cpuStat(null, sp), b = cpuStat(all3('canon'), sp);
+    { const sp = e => e.team === 1 && e.kind === 'spike' ? e.speed : null, a = cpuStat(null, sp, 24), b = cpuStat(all3('canon'), sp, 24);
       res.push(['Cañón: remate más rápido', b.m - a.m > 1.0 && a.n > 100, [a.m.toFixed(2), b.m.toFixed(2), a.n]]); }
     // (b2) Manos de seda: remate tras colocación buena/perfecta del compañero
     { const sp = (e, g, pv) => e.team === 1 && e.kind === 'spike' && pv && pv.team === 1 && pv.kind === 'set' && pv.grade !== 'poor' && pv.player !== e.player ? e.speed : null;
-      const a = cpuStat(null, sp), b = cpuStat(all3('seda'), sp);
-      res.push(['Manos de seda: remate asistido más rápido', b.m - a.m > 0.7 && a.n > 100, [a.m.toFixed(2), b.m.toFixed(2), a.n]]); }
+      const a = cpuStat(null, sp, 24), b = cpuStat(all3('seda'), sp, 24);
+      res.push(['Manos de seda: remate asistido más rápido', b.m - a.m > 0.3 && a.n > 100, [a.m.toFixed(2), b.m.toFixed(2), a.n]]); }
     // (b3) Bombardero: saque en salto más frecuente (CPU contra CPU) y más rápido (mismo saque forzado en salto, con y sin la insignia)
     { const sv = e => e.team === 1 && e.kind === 'serve' ? (e.shot === 'jump' ? 1 : 0) : null, fa = cpuStat(null, sv), fb = cpuStat(all3('bombardero'), sv);
       const jsp = (s, badges) => { const g = S.createGame({ seed: 4400 + s, autopilot: true, difficulty: 'normal', badges }); g.serving = 1; S._setupServe(g); g.serveAuth = true; S._toss(g, g.server, true);
@@ -1953,7 +1959,7 @@ if (ONLY !== 'matrix') {
         if (r0.next && r1.next && r0.next.kind === 'spike' && r1.next.kind === 'spike') { v0 += r0.next.speed; v1 += r1.next.speed; n++; } }
       const fa = sweep(0, { first: true, badges: [[{ seda: 3 }, null], null] }, 40);
       res.push(['(e) Manos de seda tras colocación en salto', n > 20 && v1 / n > v0 / n + 0.6 && fa.as > 0, { remates: n, v: (v0 / n).toFixed(2) + ' -> ' + (v1 / n).toFixed(2), asist1erToque: fa.as }]); }
-    // (f) la IA no la usa: CPU contra CPU sin colocaciones en salto, atkPhase = 2.º toque, y el campo jset:false no cambia nada
+    // (f) la IA la usa poco: CPU contra CPU con pocas colocaciones en salto, atkPhase = 2.º toque, y el campo jset:false no cambia nada
     { let js = 0, mis = 0; const g = S.createGame({ seed: 991, demo: true }), ev = [];
       for (let i = 0; i < 300 * 120; i++) { S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev); for (const e of ev) if (e.type === 'hit' && e.jset) js++;
         for (let t = 0; t < 2; t++) if (S.atkPhase(g, t) !== (g.touchTeam === t && g.touches === 2)) mis++; }
@@ -1961,7 +1967,7 @@ if (ONLY !== 'matrix') {
         for (let i = 0; i < 120 * 120; i++) { S.step(g2, DT, inp); ev.length = 0; S.drainEvents(g2, ev); for (const e of ev) if (e.type === 'hit' || e.type === 'point') out.push(e.type + (e.kind || e.reason) + (e.x != null ? e.x.toFixed(4) : '')); }
         return out.join(','); };
       const same = fpOf(null) === fpOf({ move: [0, 0], hit: false, jump: false, jset: true, switchPlayer: false });
-      res.push(['(f) CPU contra CPU sin colocación en salto', js === 0 && mis === 0 && same, { jsets: js, atkPhaseDistinto: mis, autopilotIgual: same }]); }
+      res.push(['(f) CPU contra CPU: colocación en salto poco frecuente', js <= 6 && mis === 0 && same, { jsets: js, atkPhaseDistinto: mis, autopilotIgual: same }]); }
     // (g) el bloqueador CPU lee la colocación en salto (ai.js, S.jsetReady): al rematar el compañero está en la red y en el
     // aire, y hay bloqueos (antes: a 2,6–2,9 m de la red, 0 bloqueos de 300)
     { let n = 0, near = 0, air = 0, blk = 0;

@@ -2171,6 +2171,10 @@
   // el desfase vuelve a 0 (la sim recoloca a todos en ese mismo instante). La pareja que pierde: si están cerca, uno da
   // ánimos con dos palmadas. Contactos -> VB.Players.drainFx(out) (sonido de palmadas).
   var CV_SCORER = 1.2, CV_MATE = 4.0, CV_MAXD = 6.6, CV_WALK = 3.2, CV_WALKM = 2.8;
+  // Distancia entre raíces en el contacto (×CV_K): CV_HERO con el plano de héroe, CV_S0[tipo] sin él (choque arriba, abajo, puños).
+  // MUÑECO (11-nov-2026): 0,86 → 1,0 y 0,8/0,98/0,74 → 0,92/0,98/0,86: con 0,86 las cabezas (0,49 m de ancho, más pelo, gorra o
+  // visera) quedaban a 0,6-0,7 m de centro a centro al inclinarse para el choque y se metían una en otra (ace de la playa).
+  var CV_HERO = 1.0, CV_S0 = [0.92, 0.98, 0.86];
   var CVP = [null, null], FXQ = [];
   var TAB_END = 3.6, TAB_HOLD = 0.6, TAB = { ev: null, g: null, t0: 0, t: 0, max: 0, v: new Float64Array(16) }; // cuadro vivo de la escena congelada del punto (update)
   function cvNew() { return dblFields({ on: false, ts: -1, t0: -99, type: 0, scorer: -1, ax: 0, ay: 0, bx: 0, by: 0, a0x: 0, a0y: 0, b0x: 0, b0y: 0,
@@ -2240,7 +2244,7 @@
       var hA = hs.heroId === A.id, mX0 = hA ? bx : ax, mY0 = hA ? by : ay;
       var mTx = hs.conv ? hs.mx : mX0, mTy = hs.conv ? hs.my : mY0;
       if (hs.conv && CV_K > 1) {   // PRESET: cuerpos anchos/cabezones: el sitio del compañero, como poco a 0,86·CV_K del héroe (misma dirección)
-        var hX = hA ? ax : bx, hY = hA ? ay : by, ddx = mTx - hX, ddy = mTy - hY, dd = Math.sqrt(ddx * ddx + ddy * ddy), need = 0.86 * CV_K;
+        var hX = hA ? ax : bx, hY = hA ? ay : by, ddx = mTx - hX, ddy = mTy - hY, dd = Math.sqrt(ddx * ddx + ddy * ddy), need = CV_HERO * CV_K;
         if (dd > 1e-3 && dd < need) { mTx = hX + ddx / dd * need; mTy = hY + ddy / dd * need; }
       }
       var wm = Math.sqrt((mTx - mX0) * (mTx - mX0) + (mTy - mY0) * (mTy - mY0));
@@ -2254,7 +2258,7 @@
       c.mx = (c.ax + c.bx) * 0.5; c.my = (c.ay + c.by) * 0.5; c.mz = (c.type === 0 ? 2.02 : c.type === 1 ? 0.98 : 1.32) * sch;
       return;
     }
-    var S0 = (c.type === 2 ? 0.74 : c.type === 1 ? 0.98 : 0.8) * CV_K, free = D - S0;   // PRESET: cuerpos anchos/cabezones, más lejos
+    var S0 = (c.type === 2 ? CV_S0[2] : c.type === 1 ? CV_S0[1] : CV_S0[0]) * CV_K, free = D - S0;   // PRESET: cuerpos anchos/cabezones, más lejos
     if (D > CV_MAXD + S0 || D < 0.05) { c.on = false; return; }
     dx /= D; dy /= D;
     var wa, wb;
@@ -2337,7 +2341,7 @@
       var mate = byId[(A ? c.pB : c.pA).id];
       if (mate) {
         w0 = sstep(0.1, 0.22, dtc) * (1 - sstep(0.42, 0.56, dtc));
-        if (w0 > 0) { mate.sh[0].getWorldPosition(tV3); r.cvLx = tV3.x - ux / ul * 0.06; r.cvLy = -tV3.z - uy / ul * 0.06; r.cvLz = tV3.y + 0.05; }
+        if (w0 > 0) patPoint(r, mate, ux / ul, uy / ul);
       }
     }
     r.cvW1 = w1; r.cvW0 = w0; r.cvMode = 2;
@@ -2349,6 +2353,21 @@
     // la mano libre: puño cerrado a la altura del pecho (energía; nunca colgando junto a la cadera)
     if (w0 <= 0 && tm < c.tr) { setV(P.v[HL], 0.17, 1.22, 0.28); setV(P.v[AL], 0.35, -1, -0.25); s[WRL] = 0.5; }
     return true;
+  }
+  /** Punto de la palmada en el hombro del compañero (cvLx/y/z de r). MUÑECO (11-nov-2026): con la cabeza grande el hombro queda
+   *  debajo de ella (cabeza de 0,49 m de ancho, hombros a 0,175 m del eje): la mano a hombro + 0,05 entraba en la cabeza (y en el pelo,
+   *  la gorra o la visera) del compañero. Ahora va a la parte de fuera del hombro, algo más abajo (PAT_OUT, PAT_DN), y nunca a menos de
+   *  PAT_CLR del centro de su cabeza. */
+  var PAT_OUT = 0.1, PAT_DN = 0.07, PAT_CLR = 0.08;
+  function patPoint(r, mate, ux, uy) {
+    mate.sh[0].getWorldPosition(tV3); var sx = tV3.x, sy = -tV3.z, sz = tV3.y;
+    mate.sh[1].getWorldPosition(tV3); var ox = sx - tV3.x, oy = sy + tV3.z, ol = Math.sqrt(ox * ox + oy * oy) || 1, ms = mate.scale || 1;
+    var px = sx + ox / ol * PAT_OUT * ms - ux * 0.06, py = sy + oy / ol * PAT_OUT * ms - uy * 0.06, pz = sz - PAT_DN * ms;
+    mate.head.getWorldPosition(tV3);
+    var hx = tV3.x, hy = -tV3.z, hz = tV3.y + HEAD_C * ms, dx = px - hx, dy = py - hy, dz = pz - hz, dd = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    var need = (Math.max(HEAD_RX, HEAD_RZ) + PAT_CLR) * ms;
+    if (dd < need && dd > 1e-4) { var k = need / dd; px = hx + dx * k; py = hy + dy * k; pz = hz + dz * k; }
+    r.cvLx = px; r.cvLy = py; r.cvLz = pz;
   }
   function cvEmit(g, dt) {
     if (dt <= 0) return;
@@ -2697,6 +2716,7 @@
   }
 
   /** Cabeza: mira al balón (limitado), más ajustes de la pose. */
+  var LIE_CAM = 0.35, LIE_YAW = 0.55, LIE_LIFT = 0.75;   // plancha, tumbado: tirón de la cara hacia la cámara, giro máximo, lo mínimo que se levanta
   function aimHead(r, g, dt, snap) {
     var s = r.cur.s, b = g.ball;
     toBodyV(r, b, tV);
@@ -2721,7 +2741,13 @@
       // cuerpo) y se levanta menos cuanto más gira: mira el balón sin hundir la cara en el suelo
       toBodyV(r, b, tV2); tV2.sub(r.body.position);
       tV3.set(0, HEAD_CY, 0).applyMatrix4(mA); tV2.sub(tV3);       // desde la CABEZA (va muy por delante de la raíz)
-      var ab = clamp(Math.atan2(tV2.x, tV2.z), -1.9, 1.9), lp = lerp(-0.9, -0.12, Math.min(1, Math.abs(ab) / 1.7));
+      var ab = clamp(Math.atan2(tV2.x, tV2.z), -1.9, 1.9);
+      // MUÑECO (11-nov-2026): con el balón detrás (|ab| ~1,9) la cara quedaba de lado y pegada al suelo (cabeza casi sin levantar):
+      // ahora tira un poco hacia la cámara (LIE_CAM), gira como mucho LIE_YAW y se levanta al menos LIE_LIFT: se ve la expresión
+      var cmL = ctx.camera && ctx.camera.position;
+      if (cmL) { toBody(r, cmL.x, -cmL.z, cmL.y, tV2); tV2.sub(r.body.position); tV2.sub(tV3); ab = lerp(ab, clamp(Math.atan2(tV2.x, tV2.z), -LIE_YAW, LIE_YAW), LIE_CAM); }
+      ab = clamp(ab, -LIE_YAW, LIE_YAW);
+      var lp = lerp(-0.9, -LIE_LIFT, Math.min(1, Math.abs(ab) / 1.7));
       ty = lerp(ty, ab, r.lieW); tp = lerp(tp, lp, r.lieW);
     }
     if (tp < -HEAD_UP - 0.12 && r.lieW < 0.5) tp = -HEAD_UP - 0.12;   // TAJO: tope con las poses (s[HP]) incluidas
@@ -3191,6 +3217,20 @@
     }
   }
 
+  /** Hoja final sin el 'point' del partido (11-nov-2026): la escena ?debug=over (partido jugado sin pintar y congelado en el
+   *  gameOver) o unos rigs rehechos después del último punto dejaban a los cuatro de pie en reposo detrás de la hoja. Se re-emite
+   *  el último punto como fin de partido con el reloj atrasado OVER_BACK s: los que ganan ya con los brazos arriba y los pies en el
+   *  suelo (el brinco de matchCeleb, |sin(6,5·t)|, pasa por 0 en t = 2π/6,5 tras la reacción de 0,4 s) y los que pierden ya de
+   *  rodillas / agachados. Con la sim congelada no hay convergencia (no corre el reloj): cada uno celebra en su sitio. */
+  var OVER_BACK = 0.4 + 2 * PI / 6.5;
+  function overPose(g) {
+    var lp = g.lastPoint, e = { type: 'point', t: g.time - OVER_BACK, matchWon: true, setWon: true };
+    for (var k in lp) if (k !== 'type' && k !== 't' && k !== 'matchWon' && k !== 'setWon') e[k] = lp[k];
+    if (e.team !== 0 && e.team !== 1) e.team = g.sets && g.sets[1] > g.sets[0] ? 1 : 0;
+    onEvent(g, e);
+    if (ctx.frozen) for (var t = 0; t < 2; t++) if (CVP[t]) CVP[t].on = false;
+  }
+
   VB.Players = {
     rigs: rigs,
     /** La convergencia sigue la coreografía de VB.CameraRig.heroShot() (CAM-02). */
@@ -3322,6 +3362,7 @@
       // los rigs recién creados se orientan antes de leer eventos (puntos de contacto en su espacio)
       for (i = 0; i < rigs.length; i++) if (!rigs[i].inited) rigs[i].yaw = desiredYaw(g, rigs[i]);
       for (i = 0; i < events.length; i++) { try { onEvent(g, events[i]); } catch (e) { if (!window.__plErr) { window.__plErr = 1; console.error("[VB][ERROR] Players.onEvent: " + e); } } }
+      if (g.mode === 'over' && g.finished && g.lastPoint && rigs.length && !rigs[0].matchEnd) overPose(g);
       if (g.mode === 'point' || g.mode === 'over') for (i = 0; i < 2; i++) if (CVP[i] && CVP[i].on && CVP[i].ts < 0) cvStart(g, CVP[i], i);
       var frozen = ctx.frozen, paused = dt <= 0 && !frozen;
       for (var k = 0; k < rigs.length; k++) {

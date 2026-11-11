@@ -269,8 +269,14 @@ section('Progresión de varias temporadas (todo simulado, gasta puntos en lo má
 section('Dificultad, ofertas y guardados dañados');
 {
   C.abandon(); c = C.create({ name: 'Arreglos', num: 9, role: 'atk', seed: 4321, autoClub: true });
-  ok(C.clubsOf(c, 0).every(k => C.difficultyFor(k) === 'easy'), 'Liga Regional: IA Fácil en todos los clubes');
-  ok(C.clubsOf(c, 1).every(k => C.difficultyFor(k) === 'normal'), 'Liga Nacional: IA Normal');
+  // escalón (11-nov-2026): Regional Fácil y, desde SOFT.reg, Normal suave (Normal + rookie); el mejor (≥ SOFT.regNormal) Normal;
+  // Nacional Normal (suave por debajo de SOFT.nat). Nunca Difícil en la Regional ni Fácil en la Nacional
+  const regD = C.clubsOf(c, 0).map(k => C.difficultyFor(k) + (C.softFor(k) ? '+suave' : ''));
+  ok(C.clubsOf(c, 0).every(k => C.clubOvr(k) < C.SOFT.reg ? C.difficultyFor(k) === 'easy' && !C.softFor(k) : C.difficultyFor(k) === 'normal' && C.softFor(k) === (C.clubOvr(k) < C.SOFT.regNormal)), 'Circuito Regional: Fácil, Normal suave y Normal según la media (' + regD.join(', ') + ')');
+  ok(regD.some(d => d === 'easy') && regD.some(d => d === 'normal+suave'), 'Circuito Regional con clubes en Fácil y en Normal suave');
+  ok(C.clubsOf(c, 1).every(k => C.difficultyFor(k) === 'normal' && C.softFor(k) === (C.clubOvr(k) < C.SOFT.nat)), 'Circuito Nacional: IA Normal (suave en los más flojos)');
+  ok(C.clubsOf(c, 2).every(k => !C.softFor(k) && C.difficultyFor(k) === (C.clubOvr(k) >= C.DIFF_AT[1][0] ? 'hard' : 'normal')), 'Superliga: Normal y Difícil desde ' + C.DIFF_AT[1][0]);
+  { const sk = C.clubsOf(c, 0).filter(k => C.softFor(k))[0]; ok(!sk || C.diffLabel(sk) === 'Normal suave', 'etiqueta «Normal suave» (' + (sk ? C.diffLabel(sk) : '-') + ')'); }
   // mitad de temporada: sin nota media >= 7 no hay ofertas
   c.notes = [{ nota: 6.4 }, { nota: 6.8 }]; ok(C._genOffers(c, true).length === 0, 'mitad de temporada con nota 6,6: sin ofertas');
   C.KEYS.forEach(k => { c.player.st[k] = 60; }); c.notes = [{ nota: 8 }, { nota: 8.2 }];
@@ -450,6 +456,7 @@ section('Migración de un guardado v2 (pabellón, sets a 15, clubes de pabellón
   v2.clubs.forEach((k, i) => { delete k.beach; k.name = OLDP[i % OLDP.length] + ' ' + k.city + (i % 3 ? ' Norte' : ''); k.short = k.name.replace(/^\S+\s/, '').slice(0, 3).toUpperCase(); oldName[k.id] = k.name; });
   v2.history.forEach(h => { h.clubName = oldName[h.club]; });
   v2.trophies.forEach(t => { const k = v2.clubs.find(x => x.name === t.club) || v2.clubs.find(x => x.id === v2.myClub); t.club = oldName[k.id]; });
+  v2.trophies.push({ season: 1, kind: 'copa', name: 'Copa Regional', club: oldName[v2.myClub] }, { season: 1, kind: 'ascenso', name: 'Ascenso a Liga Nacional', club: oldName[v2.myClub] }, { season: 1, kind: 'liga', name: 'Liga Regional', club: oldName[v2.myClub] });
   v2.player.role = 'Atacante'; v2.mate.role = 'Colocador-receptor'; delete v2.mate.form; v2.squad.forEach(m => { delete m.form; });
   const raw = JSON.stringify(v2); mem['voley3d.career'] = raw; C._reset();
   const m = C.get();
@@ -461,6 +468,7 @@ section('Migración de un guardado v2 (pabellón, sets a 15, clubes de pabellón
   ok(JSON.stringify(m.res) === JSON.stringify(v2.res) && JSON.stringify(m.notes) === JSON.stringify(v2.notes) && m.career.played === v2.career.played && JSON.stringify(m.sched) === JSON.stringify(v2.sched), 'resultados, notas, totales y calendario intactos (los partidos a 15 ya jugados se quedan)');
   ok(m.history.length === 1 && m.history[0].clubName === C.club(m, m.history[0].club).name && m.history[0].pos === v2.history[0].pos, 'historial con el nombre nuevo del mismo club (' + m.history[0].clubName + ')');
   ok(m.trophies.every(t => m.clubs.some(k => k.name === t.club)), 'trofeos con el nombre nuevo (' + m.trophies.length + ')');
+  ok(['Open Regional', 'Ascenso al Circuito Nacional', 'Circuito Regional'].every(n => m.trophies.some(t => t.name === n)) && !m.trophies.some(t => /^(Liga|Copa) |Ascenso a Liga/.test(t.name)), 'palmarés: competiciones con el nombre de playa (' + m.trophies.map(t => t.name).join(', ') + ')');
   ok(m.player.role === 'Bloqueador' && m.mate.role === 'Defensor' && m.mate.form === 0 && m.squad.every(s => s.form === 0), 'roles de playa y forma del compañero por defecto');
   ok(m.inbox.some(x => /playa/i.test(x.t)) && JSON.stringify(m.player.st) === JSON.stringify(v2.player.st) && m.player.xp === v2.player.xp, 'mensaje de la mudanza; jugador intacto');
   const msB = C.matchSetup(m);
@@ -516,6 +524,61 @@ section('Compañeros de distinto nivel: horquilla, roles que se notan, plantilla
   let gd = 0; while (c.phase !== 'off' && gd++ < 40) C.simulateNext(c);
   const k2 = C.myClub(c); C.KEYS.forEach(key => { c.mate.st[key] = Math.max(1, C.clubOvr(k2) - C.MATE_RENEW - 2); }); const nm0 = c.mate.name; C.stay();
   ok(c.mate.name !== nm0 || C.mateOvr(c) > C.clubOvr(C.myClub(c)) - C.MATE_RENEW, 'compañero muy por debajo del club: el club ficha otro en verano');
+}
+
+// ------------------------------------------------------------------ rol prometido, sueldo, banquillo, palmarés (11-nov-2026)
+section('Rol prometido y sueldo: banquillo, titularidad, promesa incumplida, ahorros y fisio');
+{
+  C.abandon(); c = C.create({ name: 'Rol', num: 9, role: 'atk', seed: 31, autoClub: true });
+  // matchSetup con Normal suave: rookie y nombre
+  { let soft = 0, g2 = 0; while (c.phase === 'league' && g2++ < 14) { const n = C.next(c); if (n.bench) { C.benchNext(c); continue; } const ms = C.matchSetup(c); if (n.soft) { soft++; ok(ms.rookie === true && ms.difficulty === 'normal' && ms.diffName === 'Normal suave', 'Normal suave: matchSetup con rookie'); } else ok(ms.rookie === false, 'sin suave: rookie false'); C.simulateNext(c); }
+    console.log('  partidos contra Normal suave en la temporada: ' + soft); }
+  // rotación con poca confianza: alguna jornada al banquillo (y nunca dos seguidas)
+  C.abandon(); c = C.create({ name: 'Rot', num: 9, role: 'atk', seed: 32, autoClub: true });
+  c.contract.role = 'Rotación'; let benches = 0, prevB = false, two = false, m0 = c.money, xp0 = c.player.xp + 1000 * c.player.lvl;
+  for (let i = 0; i < 12 && c.phase === 'league'; i++) {
+    c.coach = 40; const n = C.next(c);
+    if (n.bench) {
+      ok(C.matchSetup(c) === null, 'en el banquillo no hay partido que jugar');
+      const pl = c.stats.played, lv = c.player.lvl, xp = c.player.xp, wk = c.week, f0 = c.fatigue = 50, r = C.simulateNext(c);
+      ok(r && r.bench && r.nota === null && r.xp === 0 && c.player.xp === xp && c.player.lvl === lv && c.stats.played === pl && c.week === wk + 1, 'banquillo: sin nota ni experiencia, la jornada avanza');
+      ok(c.fatigue < f0, 'banquillo: descansas (fatiga ' + f0 + ' → ' + c.fatigue + ')');
+      benches++; if (prevB) two = true; prevB = true;
+    } else { C.simulateNext(c); prevB = false; }
+  }
+  ok(benches >= 1 && benches <= 7 && !two, 'rotación con confianza 40: banquillo en ' + benches + ' de 12 jornadas, nunca dos seguidas');
+  ok(c.money > m0, 'el sueldo se cobra cada jornada (ahorros ' + c.money + ' €)');
+  ok(c.stats.bench === benches && c.career.bench === benches, 'banquillos contados en la temporada y en la carrera');
+  // de la rotación a titular con PROMOTE_AT
+  c.contract.role = 'Rotación'; const s0 = c.contract.salary; c.coach = C.PROMOTE_AT + 5; let g3 = 0;
+  while (c.contract.role === 'Rotación' && c.phase === 'league' && g3++ < 3) C.simulateNext(c);
+  ok(c.contract.role === 'Titular' && c.contract.salary >= s0 && c.inbox.some(m => /titularidad/.test(m.t)), 'con ' + C.PROMOTE_AT + ' de confianza la rotación pasa a titular (sueldo ' + s0 + ' → ' + c.contract.salary + ')');
+  // titular indiscutible: nunca banquillo y la confianza no baja de ROLE_FLOOR
+  c.contract.role = 'Titular indiscutible'; c.coach = 0; ok(!C.next(c).bench, 'indiscutible: nunca al banquillo');
+  if (c.phase === 'league') { c.notes.push({ nota: 1 }); C.simulateNext(c); ok(c.coach >= C.ROLE_FLOOR[2], 'indiscutible: confianza ≥ ' + C.ROLE_FLOOR[2] + ' (' + c.coach + ')'); }
+  // titular sentado = promesa incumplida → salida sin pegas y más interés
+  C.abandon(); c = C.create({ name: 'Prom', num: 9, role: 'atk', seed: 33, autoClub: true });
+  c.contract.role = 'Titular'; c.contract.left = 3; let br = false, g4 = 0;
+  while (!br && c.phase === 'league' && g4++ < 14) { c.coach = 10; const n = C.next(c); if (n.bench) { const sc0 = C.offerScore(c); ok(C.earlyExit(c), 'con contrato en vigor, salir tiene pegas'); C.benchNext(c); br = true; ok(c.broken === c.season && !C.earlyExit(c), 'titular al banquillo: promesa incumplida, sales sin pegas'); ok(C.offerScore(c) - sc0 >= C.BROKEN_BONUS - 0.5, 'promesa incumplida: más interés de los clubes'); ok(c.inbox.some(m => m.t === 'Promesa incumplida'), 'mensaje del agente'); } else C.simulateNext(c); }
+  ok(br, 'un titular con el entrenador descontento acaba en el banquillo');
+  // fisio: cuesta, baja la fatiga, una vez por jornada
+  if (c.phase === 'league') {
+    c.money = 0; c.fatigue = 60; ok(C.physio() === 'money', 'fisio sin dinero: no');
+    c.money = 5000; const pc = C.physioCost(c); ok(C.physio() === 'ok' && c.fatigue === 60 - C.PHYSIO_FAT && c.money === 5000 - pc, 'fisio: −' + C.PHYSIO_FAT + ' de fatiga por ' + pc + ' €');
+    ok(C.physio() === 'done', 'fisio: una vez por jornada');
+  }
+  // compañero: techo en el partido (desvío + racha ≤ MATE_CAP sobre el club)
+  { const k = C.myClub(c); C.KEYS.forEach(key => { c.mate.st[key] = C.clubOvr(k) + 5; }); c.mate.form = 3; c.mate.chem = 0; c.fatigue = 0;
+    if (C.next(c) && !C.next(c).bench) { const ms = C.matchSetup(c); ok(C.ovrOf(ms.attrs[0][1]) <= C.clubOvr(k) + C.MATE_CAP && ms.mateForm === 1, 'compañero +5 en racha +3: en el partido +' + (C.ovrOf(ms.attrs[0][1]) - C.clubOvr(k)) + ' (techo +' + C.MATE_CAP + ')'); }
+    c.mate.form = -2; ok(C.mateFormCap(c, null, -2) === -2, 'la mala racha no se recorta'); }
+}
+section('Palmarés migrado: nombres de playa');
+{
+  const o = { trophies: [{ season: 1, kind: 'liga', name: 'Liga Regional', club: 'X' }, { season: 2, kind: 'copa', name: 'Copa Nacional', club: 'X' }, { season: 2, kind: 'ascenso', name: 'Ascenso a Superliga', club: 'X' },
+    { season: 3, kind: 'ascenso', name: 'Ascenso a Circuito Mundial', club: 'X' }, { season: 4, kind: 'liga', name: 'Superliga de Playa', club: 'X' }, { season: 5, kind: 'ascenso', name: 'Ascenso al Circuito Nacional', club: 'X' }] };
+  C._beachTrophies(o); const nm = o.trophies.map(t => t.name);
+  ok(nm.join('|') === 'Circuito Regional|Open Nacional|Ascenso a la Superliga de Playa|Ascenso al Circuito Mundial|Superliga de Playa|Ascenso al Circuito Nacional', 'competiciones de pabellón → circuitos de playa (' + nm.join(', ') + ')');
+  C._beachTrophies(o); ok(o.trophies.map(t => t.name).join('|') === nm.join('|'), 'idempotente');
 }
 
 // ------------------------------------------------------------------ simulación rápida

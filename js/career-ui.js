@@ -30,7 +30,7 @@
     honors: [['titles', 'Palmarés'], ['seasons', 'Temporadas'], ['opts', 'Opciones']]
   };
   var sub = { player: 'phys', club: 'info', league: 'table', honors: 'titles', pick: 0 };
-  var tabsApi = null, subApi = null, rejArm = 0, stayArm = 0;
+  var tabsApi = null, subApi = null, rejArm = 0, stayArm = 0, offArm = -1;   // offArm: oferta de mitad de temporada pendiente de confirmar
   var GROUP_OF = { atk: 'Ataque', def: 'Defensa', phys: 'Físico' };
   var TIER_C = ['#6b6390', '#d58a4a', '#c9d3de', '#ffd23f'];
   var TIER_N = ['Bloqueada', 'Bronce', 'Plata', 'Oro'];
@@ -102,6 +102,8 @@
     // pantallas grandes (index.html le pone zoom:var(--vs) y height:calc(100% / var(--vs))): en el Chrome actual (zoom estándar) el
     // % ya se resuelve sin zoom y la Carrera se quedaba en la mitad de arriba a 2560×1440 (medido: 825 de 1420 px). Alto completo:
     '#app #career .cr-in{height:100%}',
+    // a 2560×1440 la cabecera quedaba pegada al borde de arriba: algo de aire en pantallas grandes
+    '@media (min-width:1800px) and (min-height:1000px){#career{padding-top:calc(26px + var(--st,0px))}}',
     '#career button{font:800 17px/1.1 var(--display);letter-spacing:.05em;text-transform:uppercase;color:#fff;border:0;border-radius:12px;min-height:44px;padding:0 16px;cursor:pointer;',
     ' background:var(--cel-a);box-shadow:inset 0 0 0 2.5px var(--tk),3px 4px 0 var(--tk);text-shadow:var(--ring1),1.5px 2px 0 var(--tk);transition:transform .12s,box-shadow .12s,background .15s}',
     '#career button:hover{transform:translateY(-1px)}',
@@ -222,9 +224,14 @@
     '#career .stp{display:flex;align-items:center;gap:10px}',
     '#career .stp b{min-width:2.4em;text-align:center;font:900 32px var(--display);color:#ffd23f;text-shadow:var(--ring2)}',
     '#career .stp button{width:52px;padding:0;font-size:26px}',
-    '#career .prev{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px 10px;font:600 12.5px var(--ui);color:#cfc8f2}',
-    '#career .prev span{display:flex;justify-content:space-between;gap:6px}',
+    // (auto-fill con 128 px por casilla: con 5 columnas fijas, en columnas estrechas quedaba «Colocación25» pegado)
+    '#career .prev{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:4px 14px;font:600 12.5px var(--ui);color:#cfc8f2}',
+    '#career .prev span{display:flex;justify-content:space-between;gap:10px;min-width:0}',
+    '#career .prev b{flex:none}',
     '#career .prev b{color:#fff}',
+    '#career .bench{margin-top:8px;padding:8px 10px;border-radius:12px;background:rgba(224,123,43,.18);box-shadow:inset 0 0 0 2px #e07b2b}',
+    '#career .bench p{margin:0}',
+    '#career .fact b .mline{display:block;margin-top:3px}',
     '#career .confirm{margin-top:10px;padding:10px;border-radius:12px;background:rgba(168,40,58,.25);box-shadow:inset 0 0 0 2px #d8364a}',
     // gestión (v2): sub-pestañas, fichas de oferta, bandeja, entrenamiento
     '#career .cr-sub{display:flex;gap:6px;overflow-x:auto;flex:none;padding:0 4px 4px 2px;scrollbar-width:none}',
@@ -302,14 +309,27 @@
     ' #career .prev{grid-template-columns:repeat(2,minmax(0,1fr))}',
     ' #career td.hide-s,#career th.hide-s{display:none}',
     '}',
-    '@media (prefers-reduced-motion:reduce){#career,#career *{transition:none!important;animation:none!important}}'
+    '@media (prefers-reduced-motion:reduce){#career,#career *{transition:none!important;animation:none!important}}',
+    // Hoja final de un partido de Carrera en teléfonos (≤ 420 px de alto; main.js marca #end.career en careerEndSheet): con la nota,
+    // la XP, la subida de nivel y las insignias, «Menú principal» quedaba fuera a 667×375 (hoja de 424 px en 341). Sin «Jugada más
+    // larga» (la Carrera ya da la nota) y los dos botones en una fila (el largo en dos líneas): cabe entera (350 en 341, el
+    // botón entero a la vista; medido en notes/carrera.md).
+    '@media (max-height:420px){',
+    ' #end.career .end-rec>span{display:none}',
+    ' #end.career .end-xp,#end.career .end-bd{margin-top:2px}',
+    ' #end.career .end-sets{margin-top:4px}',
+    ' #end.career .row-btn{display:flex;gap:8px;margin-top:8px}',
+    ' #end.career .row-btn button{flex:1 1 0;min-width:0;padding:4px 8px;white-space:normal;line-height:1.05;font-size:14px;letter-spacing:.03em}',
+    ' #end.career #btnAgain{flex-grow:1.25}',
+    // (la hoja queda más baja que la columna de estadísticas: sin este alto mínimo «Ver celebración», abajo a la derecha, pisaba «Mejor racha»; con insignias ya crece sola)
+    ' #end.career .sheet{min-height:min(334px,100%)}',
+    '}'
   ].join('\n');
 
   // =================================================================== construcción
   function build() {
     if (root) return;
-    styleEl = document.createElement('style'); styleEl.id = 'careerCss'; styleEl.textContent = CSS;
-    document.head ? document.head.appendChild(styleEl) : document.body.appendChild(styleEl);
+    ensureCss();
     root = document.createElement('div'); root.id = 'career'; root.hidden = true;
     root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'Carrera');
     root.innerHTML = '<div class="cr-in"><div class="cr-head"></div><div class="cr-tabs" id="crTabs" role="tablist" aria-label="Secciones de la Carrera"></div>' +
@@ -415,7 +435,8 @@
     }).join('');
   }
   function stars(n) { var s = ''; for (var i = 0; i < 5; i++) s += i < n ? '★' : '<span class="off">★</span>'; return '<span class="stars" aria-label="Prestigio ' + n + ' de 5">' + s + '</span>'; }
-  function money(v) { return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' € al mes'; }
+  function eur(v) { return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €'; }
+  function money(v) { return eur(v) + ' al mes'; }
   function fact(label, val) { return '<div><small>' + esc(label) + '</small><b>' + val + '</b></div>'; }
   function teamBlock(c, club, right, extra) {
     return '<div class="team' + (right ? ' r' : '') + '">' + kitSw(club.kit, true) + '<span style="min-width:0"><b>' + esc(club.name) + '</b><small>' + extra + '</small></span></div>';
@@ -423,6 +444,12 @@
   function lastCard(c) {
     var s = c.last; if (!s) return '';
     var rv = C().club(c, s.rival), sc = s.setScores.map(function (x) { return x[0] + '-' + x[1]; }).join(', ');
+    if (s.bench) {   // jornada en el banquillo: sin nota ni experiencia
+      return '<div class="card' + (freshLast ? ' new' : '') + '"><h3>' + sp(esc(s.label).split(' · '), 'v') + ' <span class="tag r">Banquillo</span></h3>' +
+        '<p style="font:800 20px var(--display);text-transform:uppercase;letter-spacing:.04em;margin:0"><span class="' + (s.win ? 'w' : 'l') + '">' + (s.win ? 'Victoria' : 'Derrota') + ' ' + s.sets[0] + '-' + s.sets[1] + '</span> contra ' + esc(rv ? rv.name : s.rivalName) + '</p>' +
+        '<p class="muted">' + sc + '</p><p>Jugaron ' + esc(c.mate.name.split(' ')[0]) + (s.sub ? ' y ' + esc(s.sub) : '') + '. Tú, al banquillo: sin nota ni experiencia, pero descansas, entrenas y cobras.</p>' +
+        (s.train && s.train.gains && s.train.gains.length ? '<p>' + s.train.gains.map(function (k) { var LB = VB.Prog && VB.Prog.LABEL || {}; return '<span class="tag g">Entreno: +1 ' + esc(LB[k] || k) + '</span>'; }).join('') + '</p>' : '') + '</div>';
+    }
     var h = '<div class="card' + (freshLast ? ' new' : '') + '"><h3>' + sp(esc(s.label).split(' · '), 'v') + (s.sim ? ' <span class="tag">Simulado</span>' : '') + '</h3><div class="row">' +
       '<div class="nota ' + notaCls(s.nota) + '" aria-label="Nota ' + dec(s.nota) + '"><span>' + dec(s.nota) + '<small>NOTA</small></span></div>' +
       '<div class="grow"><p style="font:800 20px var(--display);text-transform:uppercase;letter-spacing:.04em;margin:0"><span class="' + (s.win ? 'w' : 'l') + '">' + (s.win ? 'Victoria' : 'Derrota') + ' ' + s.sets[0] + '-' + s.sets[1] + '</span> contra ' + esc(rv ? rv.name : s.rivalName) + '</p>' +
@@ -453,7 +480,7 @@
         // («Pareja»: la fuerza de los dos —teamOvr— y la del rival; la media de la cabecera es solo la tuya)
         teamBlock(c, n.me, false, sp([lg ? ordn(pm) : '', 'Pareja ' + n.ovrMe, n.atHome ? 'En casa' : 'Fuera'], 'c')) +
         '<div class="vs-mid">VS</div>' +
-        teamBlock(c, n.rival, true, sp([lg ? ordn(pr) : '', 'Pareja ' + n.ovrRival, 'IA ' + esc(diffName(n.diff))], 'c')) + '</div>' +
+        teamBlock(c, n.rival, true, sp([lg ? ordn(pr) : '', 'Pareja ' + n.ovrRival, 'IA ' + esc(n.diffName || diffName(n.diff))], 'c')) + '</div>' +
         '<p class="muted" style="margin-top:8px">Vóley playa en la arena de Platja Llarga: al mejor de 3 sets a ' + C().PTS + ', el tercero a ' + C().PTS3 + '. Tú llevas a ' + esc(c.player.name) + ' (dorsal ' + c.player.num + ') y a tu pareja la lleva la IA.</p>' +
         // (la pareja, en pastillas: antes era una lista metida en un paréntesis)
         '<p class="muted" style="margin-top:4px">' + (function () {
@@ -462,7 +489,11 @@
         })() + '</p>' +
         '<p class="muted">' + sp(['Entreno: ' + esc(C().TRAIN[c.train].name), 'Fatiga ' + (c.fatigue | 0) + (C().fatigueMalus(c) ? ' (−' + C().fatigueMalus(c) + ' en tus atributos)' : ''),
           'Química ' + (c.mate.chem | 0) + (C().chemBonus(c) ? ' (+' + C().chemBonus(c) + ')' : '')], 'v') + '</p>' +
-        '<div class="acts"><button class="pri" data-act="play">Jugar partido</button><button data-act="sim">Simular <small style="font:600 12px var(--ui);text-transform:none;letter-spacing:0">(mitad de XP)</small></button></div></div>';
+        (n.bench
+          // el entrenador te sienta (rol de rotación con poca confianza, o titular con el entrenador descontento): sin partido
+          ? '<div class="bench"><p><b>Esta jornada no juegas.</b> ' + esc(C().benchWhy ? C().benchWhy(c) : '') + ' La juega ' + esc(c.mate.name) + ' con uno de la plantilla; tú descansas (fatiga −' + C().BENCH_REST + '), entrenas y cobras.</p></div>' +
+            '<div class="acts"><button class="pri" data-act="bench">Ver la jornada</button></div></div>'
+          : '<div class="acts"><button class="pri" data-act="play">Jugar partido</button><button data-act="sim">Simular <small style="font:600 12px var(--ui);text-transform:none;letter-spacing:0">(mitad de XP)</small></button></div></div>');
     }
     var lastUn = (c.inbox || []).filter(function (m) { return !m.r; }).slice(-1)[0];
     if (lastUn) h += '<div class="card"><h3>Mensajes <span class="muted">(' + plural(C().unread(c), 'sin leer', 'sin leer') + ')</span></h3>' + msgHTML(lastUn) + '<div class="acts"><button data-tab="inbox">Ver mensajes</button></div></div>';
@@ -511,12 +542,21 @@
       fact('Compañero', mp ? esc(mp.name) + mateLine(mp, cov, false) : 'Media ~' + o.mate) +
       (o.objective ? fact('Objetivo', esc(o.objective)) : '') +
       fact('Rol prometido', esc(o.role) + (o.firm ? ' <span class="muted">(firme)</span>' : '') + ' <span class="muted">(entrenador: ' + ((C().ROLE_COACH || [45, 55, 65])[rl] - (early ? C().EARLY_COACH : 0) - (o.negNo ? C().NEG_COACH : 0)) + ' de confianza)</span>') +
-      (o.salary ? fact('Sueldo (ficticio)', money(o.salary)) : '') + '</div>';
+      (o.salary ? fact('Sueldo (ficticio)', money(o.salary) + (c.contract && c.contract.salary && c.phase !== 'pick' ? ' <span class="muted">(ahora ' + eur(c.contract.salary) + ')</span>' : '')) : '') + '</div>';
+    // lo que significa el rol prometido (ya no es solo texto: rotación = alguna jornada al banquillo; titular incumplido = te vas sin pegas)
+    if (!o.trial && C().ROLE_HINT) h += '<p class="muted" style="margin:0 0 6px"><b>' + esc(o.role) + ':</b> ' + esc(C().ROLE_HINT[rl]) + '</p>';
     if (early) h += '<p class="muted"><b>Tienes contrato en vigor:</b> si fichas, el club de ahora pone pegas y el entrenador nuevo empieza con ' + C().EARLY_COACH + ' menos de confianza (no pasa si te declaras transferible en Club › Contrato).</p>';
     if (o.negNo) h += '<p class="muted">Negociación rechazada: si firmas, el entrenador empieza con ' + C().NEG_COACH + ' menos de confianza.</p>';
-    if (o.trial) h += '<p class="muted">Es una <b>prueba</b>: te fichan si la superas (probabilidad ~' + Math.round(o.chance * 100) + ' %). Si no, pierdes esta oferta y sigues con las demás. Contrato de 1 temporada. Ojo: ' + esc(C().lname(C().league(1))) + ' es una categoría por encima y la IA rival ya juega en Normal.</p>';
+    if (o.trial) h += '<p class="muted">Es una <b>prueba</b>: te fichan si la superas (probabilidad ~' + Math.round(o.chance * 100) + ' %). Si no, pierdes esta oferta y sigues con las demás. Contrato de 1 temporada. Ojo: ' + esc(C().lname(C().league(1))) + ' es una categoría por encima: la IA rival juega en Normal (en Normal suave contra los clubes más flojos).</p>';
     else h += '<p class="muted" style="margin-top:6px">Duración del contrato:</p>' + yearsSeg(o.club, y);
     var canNeg = !o.trial && !o.firm && o.role !== 'Titular indiscutible';
+    if (offArm === i && c.window === 'mid') {   // fichar a mitad de temporada: confirmación con lo que cambia
+      var mk = C().myClub(c), nl = C().league(f.lvl);
+      return h + '<div class="confirm" role="alertdialog" aria-label="Confirmar fichaje"><p><b>¿Fichar ya por ' + esc(k.name) + '?</b> Dejas ' + esc(mk.name) + ' a mitad de temporada y juegas lo que queda ' +
+        (f.lvl !== mk.lvl ? (nl.art === 'el' ? 'en el ' : 'en la ') + esc(nl.name) + ' con su calendario' : 'con su calendario') + ', con ' + (mp ? esc(mp.name) : 'otra pareja') + ' (química desde cero). ' +
+        (early ? 'Sales con contrato en vigor: el entrenador nuevo empieza con ' + C().EARLY_COACH + ' menos de confianza. ' : '') + 'No se puede deshacer.</p>' +
+        '<div class="acts"><button class="pri" data-act="offer" data-i="' + i + '">Sí, fichar</button><button data-act="offno">Cancelar</button></div></div></div>';
+    }
     h += '<div class="acts"><button class="pri" data-act="offer" data-i="' + i + '">' + (o.trial ? 'Hacer la prueba' : 'Firmar') + '</button>' +
       (canNeg ? '<button data-act="neg" data-i="' + i + '" title="Si no sale, el entrenador empieza con menos confianza">Pedir más rol</button>' : '') + '</div></div>';
     return h;
@@ -624,7 +664,11 @@
       return '<div class="pbar"><span>' + esc(GROUP_OF[g]) + '</span><span class="bar"><i style="width:' + Math.round(100 * v / C().TRAIN_NEED) + '%"></i></span><b>' + v + '</b></div>';
     }).join('') +
       '<h3 style="margin-top:10px">' + sp(['Fatiga', f + ' de 100'], 'd') + '</h3>' + meter(f, 'Fatiga', fc) +
-      '<p class="muted">' + (fm ? 'Rindes menos: −' + fm + ' en todos tus atributos en el próximo partido. Una semana de Descanso la baja ' + (-T.rest.fat) + '.' : 'Por debajo de ' + C().FAT_FREE + ' no afecta al juego.') + '</p></div>';
+      '<p class="muted">' + (fm ? 'Rindes menos: −' + fm + ' en todos tus atributos en el próximo partido. Una semana de Descanso la baja ' + (-T.rest.fat) + '.' : 'Por debajo de ' + C().FAT_FREE + ' no afecta al juego.') + '</p>' +
+      // fisio: lo pagas con lo que ahorras del sueldo (una vez por jornada)
+      (C().physio && c.phase !== 'off' ? '<div class="acts"><button data-act="physio"' + (f > 0 ? '' : ' disabled') + '>Fisio <small style="font:600 12px var(--ui);text-transform:none;letter-spacing:0">(−' + C().PHYSIO_FAT + ' de fatiga, ' + eur(C().physioCost(c)) + ')</small></button></div>' +
+        '<p class="muted">' + sp(['Ahorros ' + eur(c.money || 0), 'una sesión por jornada'], 'v') + '</p><p class="note" role="status" aria-live="polite">' + esc(note) + '</p>' : '') + '</div>';
+    note = '';
     return h;
   }
   function renderClub(c) {
@@ -641,7 +685,11 @@
     var h = '<div class="card"><div class="row">' + kitSw(k.kit, true) + '<div class="grow" style="min-width:0"><p class="bigname">' + esc(k.name) + '</p>' +
       '<p class="muted" style="margin:2px 0 0">' + sp([stars(f.stars), esc(L.name), esc(k.city)], 'v') + '</p></div></div>' +
       '<div class="fact">' + fact('Media del club', C().clubOvr(k)) + fact('Posición', c.phase === 'league' && c.week === 0 ? '—' : ordn(C().posOf(c, k.id))) + fact('Sede', esc(f.beach || k.city)) + fact('Estilo', esc(f.style) + styleTrain(f.style)) +
-      fact('Compañero', esc(c.mate.name) + ' <span class="muted">(' + esc(c.mate.role).toLowerCase() + ', media ' + C().mateOvr(c) + ', ' + esc(vsClub(C().mateOvr(c) - C().clubOvr(k))) + ')</span>') +
+      // (el compañero, con pastillas como en la oferta; antes rol, media y desvío iban metidos en un paréntesis)
+      fact('Compañero', esc(c.mate.name) + (function () {
+        var mo = C().mateOvr(c), dd = mo - C().clubOvr(k), tg = dd >= 3 ? 'g' : dd <= -3 ? 'r' : '';
+        return '<span class="mline">' + sp([esc(c.mate.role), 'Media ' + mo, { h: esc(vsClub(dd)), c: tg ? 'dv ' + tg : 'dv' }], 'c') + '</span>';
+      })()) +
       fact('Objetivo', esc(c.objective.text)) + fact('Arbitraje', esc(ref.name)) + '</div>' +
       '<h3 style="margin-top:10px">' + sp(['Entrenador', esc(C().coachText(coach))], 'd') + '</h3>' + meter(coach, 'Confianza del entrenador', cc) +
       '<p class="muted">' + sp(['Nota media de la temporada: ' + dec(C().avgNota(c)), 'Forma (3 últimos): ' + dec(C().form(c))], 'v') + '</p></div>';
@@ -667,9 +715,12 @@
   /** Club › Contrato: rol, años y sueldo; pedir el traspaso. */
   function renderContract(c) {
     var ct = c.contract || {};
+    var rl = C().roleIdx ? C().roleIdx(c) : 1, brk = c.broken === c.season;
     var h = '<div class="card"><h3>Contrato</h3><div class="fact">' + fact('Rol', esc(ct.role || '—')) + fact('Quedan', plural(ct.left | 0, 'temporada', 'temporadas') + ' (con esta)') +
-      fact('Sueldo (ficticio)', ct.salary ? money(ct.salary) : '—') + fact('Firmado', 'Temporada ' + (ct.since || 1) + ', ' + plural(ct.years | 0, 'temporada', 'temporadas')) + '</div>' +
-      '<p class="muted">Al acabar la última temporada del contrato, el club te propone renovar (el rol depende de la confianza del entrenador) y eliges la duración.</p></div>';
+      fact('Sueldo (ficticio)', ct.salary ? money(ct.salary) : '—') + fact('Ahorros', eur(c.money || 0)) + fact('Firmado', 'Temporada ' + (ct.since || 1) + ', ' + plural(ct.years | 0, 'temporada', 'temporadas')) + '</div>' +
+      (C().ROLE_HINT ? '<p><b>' + esc(ct.role || '') + ':</b> ' + esc(C().ROLE_HINT[rl]) + ((c.stats.bench | 0) ? ' Esta temporada, ' + plural(c.stats.bench | 0, 'jornada', 'jornadas') + ' en el banquillo.' : '') + '</p>' : '') +
+      (brk ? '<p class="bench" style="margin:6px 0"><b>Promesa incumplida.</b> Te fichó como titular y te ha sentado: hasta final de temporada puedes irte sin pegas y los clubes se interesan más por ti.</p>' : '') +
+      '<p class="muted">Cobras el sueldo cada jornada (la mitad del mensual) y lo ahorras: sirve para el fisio (Jugador › Entreno). Al acabar la última temporada del contrato, el club te propone renovar (el rol depende de la confianza del entrenador) y eliges la duración.</p></div>';
     h += '<div class="card"><h3>' + sp(['Traspaso', c.listed ? 'Transferible' : 'No transferible'], 'd') + '</h3>' +
       (c.listed ? '<p>Estás en la lista de transferibles: llegan más ofertas (a mitad de temporada basta con una nota media de 6,5).</p><div class="acts"><button data-act="transfer" data-on="0">Retirar la petición</button></div>'
         : '<p class="muted">Si te declaras transferible, los clubes se interesan más por ti, pero el entrenador pierde confianza (−8).</p><div class="acts"><button class="warn" data-act="transfer" data-on="1">Pedir el traspaso</button></div>') + '</div>';
@@ -688,8 +739,8 @@
     var T = c.career, s = sub.honors, h = '';
     if (s === 'titles') {
       h = '<div class="card"><h3>Palmarés</h3>';
-      h += c.trophies.length ? c.trophies.map(function (t) { return '<p><span class="tag ' + (t.kind === 'ascenso' ? 'g' : 'y') + '">' + (t.kind === 'liga' ? 'Campeón' : t.kind === 'copa' ? 'Copa' : 'Ascenso') + '</span> ' + sp([esc(t.name), 'T' + t.season, esc(t.club)], 'v') + '</p>'; }).join('') : '<p class="muted">Aún sin títulos.</p>';
-      h += '<h3 style="margin-top:10px">Totales de la carrera</h3><p>' + sp([plural(T.played, 'partido', 'partidos') + ' (' + plural(T.won, 'ganado', 'ganados') + ', ' + plural(T.sim, 'simulado', 'simulados') + ')', plural(T.pts, 'punto', 'puntos'), T.kills + ' remates punto', plural(T.aces, 'ace', 'aces'), T.blocks + ' bloqueos', plural(T.assists, 'asistencia', 'asistencias')], 'v') + '</p></div>';
+      h += c.trophies.length ? c.trophies.map(function (t) { return '<p><span class="tag ' + (t.kind === 'ascenso' ? 'g' : 'y') + '">' + (t.kind === 'liga' ? 'Campeón' : t.kind === 'copa' ? 'Open' : 'Ascenso') + '</span> ' + sp([esc(t.name), 'T' + t.season, esc(t.club)], 'v') + '</p>'; }).join('') : '<p class="muted">Aún sin títulos.</p>';
+      h += '<h3 style="margin-top:10px">Totales de la carrera</h3><p>' + sp([plural(T.played, 'partido', 'partidos') + ' (' + plural(T.won, 'ganado', 'ganados') + ', ' + plural(T.sim, 'simulado', 'simulados') + ((T.bench | 0) ? ', ' + (T.bench | 0) + ' en el banquillo' : '') + ')', plural(T.pts, 'punto', 'puntos'), T.kills + ' remates punto', plural(T.aces, 'ace', 'aces'), T.blocks + ' bloqueos', plural(T.assists, 'asistencia', 'asistencias')], 'v') + '</p></div>';
       return h;
     }
     if (s === 'seasons') {
@@ -807,6 +858,15 @@
       }
       case 'transfer': C().requestTransfer(b.getAttribute('data-on') === '1'); snd('click'); render(); focusSel('[data-act="transfer"]'); syncMenu(); return;
       case 'play': snd('start'); play(); return;
+      case 'bench': {   // jornada sin ti (el entrenador te sienta): se simula y se enseña el resultado
+        var bs = C().benchNext(c); if (!bs) return;
+        snd('click'); freshLast = true; tab = 'match'; render(); syncMenu(); focusTab(); return;
+      }
+      case 'physio': {
+        var ph = C().physio(), pc = C().physioCost(c);
+        note = ph === 'ok' ? 'El fisio te deja como nuevo: fatiga −' + C().PHYSIO_FAT + ' (' + eur(pc) + ').' : ph === 'done' ? 'Ya has ido al fisio esta jornada.' : ph === 'none' ? 'No tienes fatiga.' : ph === 'money' ? 'No te llega: cuesta ' + eur(pc) + '.' : '';
+        snd(ph === 'ok' ? 'toggle' : 'back'); keepFocus(b, render); return;
+      }
       case 'sim': {
         var s = C().simulateNext(c); if (!s) return;
         // el foco se queda en «Simular» (antes saltaba a «Jugar partido» y un segundo Intro arrancaba un partido; al acabar la
@@ -828,11 +888,15 @@
         stayArm = 0; C().stay(yrs.renew); yrs = {}; snd('click'); tab = 'match'; render(); focusFirst(); syncMenu(); return;
       case 'offer': {
         var oi = +b.getAttribute('data-i'), of = c.offers[oi]; if (!of) return;
+        // a mitad de temporada, primero la confirmación (antes se fichaba con un solo toque)
+        if (c.window === 'mid' && offArm !== oi) { offArm = oi; snd('click'); render(); focusSel('[data-act="offer"][data-i="' + oi + '"]'); return; }
+        offArm = -1;
         var wasPick = c.phase === 'pick', okf = C().acceptOffer(oi, yrs[of.club]);
         if (okf) { yrs = {}; note = ''; snd('start'); tab = 'match'; render(); focusFirst(); syncMenu(); return; }
         if (wasPick && of.trial) { note = 'No has superado la prueba de ' + C().club(c, of.club).name + '. Te quedan las otras ofertas.'; sub.pick = 0; snd('back'); render(); focusTab(); syncMenu(); }
         return;
       }
+      case 'offno': { var ai = offArm; offArm = -1; snd('back'); render(); focusSel('[data-act="offer"][data-i="' + ai + '"]'); return; }
       case 'lvl': tblLvl = +b.getAttribute('data-l'); snd('select'); keepFocus(b, render); return;
       case 'up': if (C().bump(b.getAttribute('data-k'))) { snd('click'); keepFocus(b, render); syncMenu(); } else snd('back'); return;
       case 'badge': {
@@ -856,7 +920,7 @@
     }
   }
   function setTab(t, s) {
-    tab = t; confirmStep = 0; if (t !== 'league') tblLvl = -1;
+    tab = t; confirmStep = 0; offArm = -1; if (t !== 'league') tblLvl = -1;
     if (s && SUBS[t] && SUBS[t].some(function (x) { return x[0] === s; })) sub[t] = s;
     render(); var tb = tabsEl.querySelector('[data-tab="' + t + '"]'); if (tb) { focusEl(tb, kbNav); try { tb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { } } body.scrollTop = 0;
   }
@@ -864,7 +928,7 @@
   function setSub(v) {
     var c = C() && C().get(), pk = c && c.phase === 'pick' && view !== 'create';
     if (pk) sub.pick = v === 'cmp' ? 'cmp' : +v;
-    else if (SUBS[tab]) { sub[tab] = v; confirmStep = 0; if (v !== 'table') tblLvl = -1; }
+    else if (SUBS[tab]) { sub[tab] = v; confirmStep = 0; offArm = -1; if (v !== 'table') tblLvl = -1; }
     render();
     var id = pk ? sub.pick : v, bar = pk ? tabsEl : subEl, sb = bar.querySelector('[data-sub="' + id + '"],[data-tab="' + id + '"]');
     if (sb) { focusEl(sb, kbNav); try { sb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { } }
@@ -1052,7 +1116,14 @@
     else { var n = C().next(c); chip = 'T' + c.season + (n ? (n.kind === 'league' ? ' J' + (n.week + 1) : (n.round === 0 ? ' Semifinal' : ' Final')) : ''); t = n ? C().myClub(c).short + ' — ' + n.rival.short : C().myClub(c).name; }
     var h = (chip ? sp([chip], 'c') : '') + esc(t); if (s._crH !== h) { s._crH = h; s.innerHTML = h; }
   }
+  /** El <style> de la Carrera, una vez (al cargar: también lleva la hoja final del partido de Carrera, #end.career). */
+  function ensureCss() {
+    if (styleEl) return;
+    styleEl = document.createElement('style'); styleEl.id = 'careerCss'; styleEl.textContent = CSS;
+    document.head ? document.head.appendChild(styleEl) : document.body.appendChild(styleEl);
+  }
   function init() {
+    ensureCss();
     var b = document.getElementById('btnCareer');
     if (b && !b._cr) { b._cr = 1; b.addEventListener('click', function () { snd('click'); kbNav = !!(b.classList.contains('kf')); show(); }); }
     syncMenu();

@@ -934,3 +934,17 @@ point,dive,over,jumpserve,menu}.png`, `six-{1280,844t}/{serve6,rally6,point6}.pn
   atleta antiguo y desentonan al lado del muñeco, sobre todo el juez de línea en primer plano en el saque de playa; el público low-poly
   (menor). En la celebración del ace de la playa las cabezas de la pareja se meten una en otra (ala de la gorra en el pelo del n.º 2). En la
   plancha la cara queda contra el suelo (aceptable).
+
+### Celebraciones y plancha del muñeco (11-nov-2026, camara-fx)
+- **Hoja final** (`overPose`, llamada en `_update`): si en `'over'` (partido terminado) los rigs no tienen `matchEnd` (escena
+  `?debug=over`, que juega el partido sin pintar y se congela en el gameOver, o rigs rehechos tras el último punto) se re-emite
+  `g.lastPoint` como fin de partido con el reloj atrasado `OVER_BACK` (0,4 + 2π/6,5 s): ganadores con los brazos arriba y los pies en
+  el suelo, perdedores de rodillas / agachados. Congelado: sin convergencia (cada uno en su sitio). En juego real ya llegaba el 'point'.
+- **Cabezas en el choque** (ace de playa): distancias de contacto `CV_HERO` 0,86 → 1,0 (plano de héroe) y `CV_S0` 0,8/0,98/0,74 →
+  0,92/0,98/0,86 (×`CV_K`). Medido en `debug=ace&map=beach`: centros de cabeza a ≥ 0,85 m en el contacto (antes 0,6-0,7).
+- **Palmada en el hombro** (`patPoint`): el hombro del muñeco queda debajo de la cabeza (0,49 m de ancho, hombros a 0,175 m): la mano
+  iba dentro de la cabeza/pelo/gorra del compañero. Ahora a la parte de fuera del hombro (`PAT_OUT` 0,1, `PAT_DN` 0,07) y nunca a menos
+  de radio de cabeza + `PAT_CLR` (0,08) de su centro. Medido: mano–centro de la cabeza del otro ≥ 0,32 m (antes ~0,18).
+- **Plancha**: tumbado, la cabeza giraba hacia el balón hasta ±1,9 rad levantándose solo 0,12 (cara de lado contra el suelo). Ahora tira
+  un poco hacia la cámara (`LIE_CAM` 0,35), gira como mucho `LIE_YAW` 0,55 y se levanta al menos `LIE_LIFT` 0,75: se ve la cara.
+- Capturas (antes `scratchpad/b`, después `scratchpad/a`): `ace-1.8.png` 2560×1440 playa, `over*.png`, `face*-*.png` (cámara junto a la cara).

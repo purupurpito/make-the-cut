@@ -975,3 +975,19 @@ Spike (escena `spike` 1280×720 low): en el árbol actual el aviso de toques va 
 ### Playa (revisión final, 10-nov-2026)
 - `lostBall` usa la pista de la partida (`g.HL`/`g.HW`, respaldo `VB.C`): en la playa un balón que va a caer entre 8,4 y 9,4 m ya cuenta como perdido.
 - Pendiente: la grúa del fin de set en la playa mira a `landmarks.scoreHung` (en la playa, el cielo); no confirmado.
+
+## Diana del saque dirigible en el móvil (11-nov-2026, camara-fx; fx.js)
+Problema (TRASPASO, sprint Carrera): a 844×390 el campo rival mide ~30-50 px de fondo, la profundidad casi no se lee, el disco de
+dispersión bueno/malo medía < 1 px frente a ~6 px y la diana cerca de la red la tapaban el compañero y el balón.
+- `aimXray` (fx.js): copia de la diana con `depthTest: false` (renderOrder 12, opacidad `AIM_XOP` 0,42 × la de la diana) encima de
+  jugadores, red y balón; misma posición/giro/escala/color que `aimRet`. +1 dibujo SOLO mientras se apunta el saque (el resto, 0).
+- Guías `aimLx` / `aimLy` (lote de calcomanías, 0 dibujos, celda blanca): línea de la red al fondo por la y de la diana y línea a lo
+  ancho por su x, ~2 px CSS (`AIM_LPX`; la transversal ×`aimSt` por lo rasante), opacidad `AIM_LOP` 0,45, color de la diana.
+- Pantalla pequeña: cuando el aro mínimo legible (`AIM_SVPX` px) pasa de `AIM_SVMIN`, aro y disco crecen en la misma proporción
+  (`svL = rmin / AIM_SVMIN`, tope `AIM_SVL` 1,8): radio mostrado = dispersión × svL. En 1280×720 svL = 1 (como antes).
+- Cámara del saque (camera.js) SIN CAMBIOS: probé subirla en pantalla baja (3,5 → 3,9-4,3 m, con lente máx. +14°): el campo rival
+  ganaba ~2× de fondo pero el sacador salía cortado por el pecho en el pabellón y en la playa el plano se abría demasiado
+  (la búsqueda de candidatos de `serveUsComp`/`svcSolve` y `fit` dependen de esa altura). Si se retoma: hay que mover a la vez
+  `H` de `serveUsComp`/`svcPrewarm`/`PRED.z` y `SVP.nBot`/`fMax0`, y pasar `tools/camtest.js` (SERVE, 844x390t).
+- Capturas: antes `…/scratchpad/b/toss-*.png`, después `…/scratchpad/a/toss-*.png` (844×390 táctil, pabellón y playa, diana en
+  x −7 / y 0 y x −1,6 / y 3,2).

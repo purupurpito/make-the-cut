@@ -1331,3 +1331,35 @@ Lo que cantaba no era abreviar, sino pegar TODO con el mismo « · ». Reglas pa
   DE LA CPU» debajo, «IN POR 3,2 cm», «A LOS 8 DEL SET DECISIVO»; en la demo, «EL LOCAL» / «LA VISITA».
 - Los textos del árbitro que vienen de la sim («Dobles», «Falta de saque: 8 segundos»…) no se tocan. Los consejos solo pueden
   crecer si caben en 1280×720 y 844×390 (comprobado en `tools/out/textos/`).
+
+## Sprint UI 11-nov-2026 (tanda de 5 agentes)
+- **Luz de playa** (Ajustes ◆ Imagen): fila «Luz de playa: Día / Tarde» (`OPT.beachLight`, ajuste `beachLight` 'dia' | 'tarde', validado en
+  main.js `loadSettings`). arena.js ya la lee al montar y en `onSettings(s, 'beachLight')` (`VB.Arena.beachLight`); `?luz=` sigue mandando.
+- **Aviso de instalar y «Primer partido» nunca a la vez**: install.js `auto()` sondea cada 250 ms y abre solo con la portada del menú libre
+  1,5 s seguidos (`VB.UI.menuIdle()`: estado menú, sin panel, sin cortinilla, sin telón, página principal; y sin Carrera abierta) y
+  ≥ 2,2 s tras cargar. Si el jugador toca JUGAR antes, sale al volver del partido; si cierra antes, en la siguiente visita. `play()` no
+  hace nada si el aviso está abierto. Probado con eval (TOUCH=1, sin debug): JUGAR → «Primer partido» y el aviso no sale; quieto, sale solo.
+- **Hoja final ◆ «Cambiar opciones»** (`#btnEndOpts`, ui.js `goOptions`): cortinilla → menú → preparación del Partido rápido con la pila
+  Jugar/principal (Volver ×2 → portada) y foco en Dificultad. No sale en Carrera ni en 6v6. Botones secundarios en rejilla de 6
+  (`data-n` en `.row-btn`: 1 a lo ancho, 2 a medias, 3 a tercios en dos líneas), con `#app` delante para ganar a las reglas de móvil.
+- **Aviso de saque táctil a 667×375**: la caja del balón para colocar el aviso mide lo que el balón en pantalla (+10 px) y, con el balón
+  en la mano (`b.held`), crece y baja (el dibujado va ~30 px por debajo del de la sim); el sitio de la izquierda se aparta hasta dejarlo
+  libre (`gapL` en `prCands`). Capturas en 667×375 pabellón y playa, 844×390 playa: ya no lo pisa.
+- **Tutorial en la playa**: `beachFig` escala posiciones y trayectorias ×8/9 (16×8 frente a 18×9, mismo factor en largo y ancho);
+  `drawCourt/drawNet(svg, beach)`: arena, cintas coral, sin línea de ataque ni central, antenas a ±4 y postes claros a ±5.
+- **2560×1440**: Ajustes (todas las pestañas), Jugadores, Controles, Tutorial, Pausa, preparación y hoja final se ven bien proporcionados
+  (sin cambios). La Carrera (career-ui.js) sigue arriba con la cabecera pegada al borde: de su dueño.
+- **cost() a media 50**: prog.js no estaba en mi lista de esta tanda; propuesta para el integrador en el informe:
+  `cost(v) = v < 60 ? 1 : v < 70 ? 2 : v < 85 ? 3 : 4` (y el mismo respaldo en career.js `costOf`).
+
+## Integración del 11-nov-2026 (backlog 2: sim-ia, arena, ui, carrera, camara-fx)
+- tools/simtest.js: textos «Falta de saque: 5 segundos» en la lista y en la comprobación de `delay8`, prueba nueva de la regla de 5 s
+  en la playa (`venue:'beach'`, seed 13), Cañón y Manos de seda con 24 semillas (seda > 0,3), (f) «colocación en salto poco frecuente» (≤ 6).
+- js/ui.js: cuenta atrás del saque con `g.serveClockMax` (aro en los últimos 5 s en el pabellón y 3 en la playa; «Saca ya» y el consejo
+  «Regla de los N segundos»); tutorial en la playa con «5 segundos» (regla del paso 1 y lista de faltas).
+- js/main.js: `rookie` de la Carrera («Normal suave») llega a la sim (startCareerMatch → startMatch → createGame); `#end.career` lo pone
+  careerEndSheet y lo quita restoreEndButtons.
+- js/prog.js `cost()` y js/career.js `costOf` (respaldo): 1 hasta 59, 2 hasta 69, 3 hasta 84, 4 después (base 50 con 10 puntos a coste 1).
+- js/career-ui.js: hoja final de Carrera a ≤ 420 px con alto mínimo (334 px) para que «Ver celebración» no pise «Mejor racha»; a 2560
+  la cabecera baja 26 px del borde; la fila de atributos `.prev` en auto-fill de 128 px (ya no «Colocación25» pegado).
+- Capturas de control en tools/out/arte/backlog2/.

@@ -4,6 +4,81 @@ Ficheros: `js/career.js` (VB.Career, datos y reglas, sin DOM; se carga en node),
 DOM `#career` y su `<style id="careerCss">`), `js/main.js` (arranque de los partidos de Carrera), `index.html` (fila «02 Carrera»
 del menú y los dos `<script>`), `tools/careertest.js` (prueba en node). Guardado: `localStorage['voley3d.career']` (una sola carrera).
 
+## Escalón, rol y sueldo, cierre del muñeco (11-nov-2026)
+
+Sin cambiar el formato del guardado (v3; los campos nuevos tienen valor por defecto: `money` 0, `stats.bench` 0).
+
+### Escalón Regional → Nacional (`SOFT`, `softFor`, `difficultyFor`, `diffLabel`, `DIFF_AT`)
+Antes: Regional toda Fácil (bot «medio» 99-100 %) y Nacional toda Normal (con la prueba a media 35, 0 de 8). La sim solo tiene
+4 perfiles y el único intermedio que existe es **Normal + `rookie`** (`createGame({rookie})`: saque sin salto ni baile, remate ×0,9,
+error ×1,4, defensa ×0,8, bloqueo ×0,5 y la ventana de timing de Fácil para ti). En la UI, «IA Normal suave».
+- Circuito Regional: club < `SOFT.reg` (34) Fácil; 34-37 Normal suave; ≥ `SOFT.regNormal` (38, el mejor o los dos mejores) Normal.
+- Circuito Nacional: < `SOFT.nat` (42, los 2-3 peores) Normal suave; desde 42 Normal.
+- Difícil desde 56 (`DIFF_AT`, antes 52): media Superliga en Normal (con 52 el bot medio que subía ganaba 2 de 60 en la Superliga).
+- `matchSetup()` devuelve `rookie: true` y `diffName` con el suave. **Falta en main.js** pasar `rookie` a `createGame` (ver «Para el
+  integrador»): sin eso, «Normal suave» se juega como Normal pura (el muro de antes en los mejores de la Regional).
+
+Medido (scratchpad `season.js`: temporadas JUGADAS por el bot de simtest con la progresión real, control «uno», 8 carreras por caso;
+`bal.js`: partidos sueltos, 12-16 por caso):
+
+| caso | antes | ahora |
+|---|---|---|
+| Regional, bot medio, temporada 1 | 119-4 (97 %; Fácil 69-0, suave 50-4 con `SOFT.reg` 35 sin Normal) | **94-24 (80 %)**: Fácil 57-0, suave 26-1, Normal 11-23; campeón 3 de 8, 2º 4, 3º 1 |
+| Regional, bot novato | 50 % contra Fácil | **39-56 (41 %)**: Fácil 39-12, suave 0-21, Normal 0-23 (mitad de tabla) |
+| Regional, bot bueno | 100 % | 100 % (125-0) |
+| Nacional (temporada 2 del medio, media ~50) | Normal en todos | Normal 62-51 (55 %), suave 23-1 |
+| Superliga (temporada 3 del medio, media ~54) | Difícil 2-58 | Normal 24-23, Difícil 0-26 (con 56 la mitad de la liga es Normal) |
+| Superliga, bot bueno | Difícil 79-21 | Normal 64-0, Difícil 30-14 |
+| tu media 35 contra el peor de la Nacional (prueba) | Normal (rival 40): 2 de 16 (13 %) | suave (rival 40): 9 de 16 (56 %) |
+
+El compañero sigue notándose sin romper nada (temporada 1 Regional, compañero forzado): medio −7 74 %, auto 80 %, +5 86 %;
+novato −7 35 %, auto 41 %, +5 47 %.
+
+### Compañero: techo en el partido (`MATE_CAP`, `mateFormCap`)
+El desvío propio sigue en −9..+5 (puede ser mejor que el club y rinde como un jugador medio de su circuito). Lo que lo rompía era sumar
+la racha: con +5 y forma +3 la pareja jugaba a +8. Ahora media + racha nunca pasa de club + `MATE_CAP` (6) en el partido ni en
+`teamOvr` (se recorta solo la racha buena; la mala y la química, que es de los dos, no).
+
+### Rol prometido y sueldo (`BENCH`, `benchFor`, `benchNext`, `promoteCheck`, `coachFloor`, `pay`, `physio`)
+- **Rotación**: con la confianza del entrenador < 60, alguna jornada de liga (35 %, nunca dos seguidas ni la primera en el club) te
+  sienta: `next().bench`, `matchSetup()` da null y el hub enseña «Esta jornada no juegas» con el motivo y «Ver la jornada»
+  (`benchNext`: la juega tu pareja con el mejor de la plantilla, simulada; sin nota ni XP, descansas −15 de fatiga, entrenas y
+  cobras; `simulateNext` también lo deriva). Con 70 de confianza pasas a **titular** y te suben el sueldo (mensaje).
+- **Titular**: solo te sienta si está descontento (< 30). Si lo hace, **promesa incumplida** (`c.broken` = temporada): puedes irte sin
+  pegas aunque tengas contrato (`earlyExit` false), +3 de interés en las ofertas y a mitad de temporada basta nota 6,5. Mensaje del agente.
+- **Titular indiscutible**: nunca al banquillo y la confianza no baja de 35.
+- La ficha de la oferta explica cada rol (`ROLE_HINT`) y el sueldo se compara con el tuyo («(ahora 500 €)»).
+- **Sueldo**: se cobra cada jornada tuya (la mitad del mensual: 7 sueldos por temporada) en `c.money`. Club › Contrato enseña los
+  ahorros; Jugador › Entreno tiene el **fisio** (−30 de fatiga, una vez por jornada, cuesta el 60 % del sueldo base del circuito:
+  350 € en la Regional, 900 en la Nacional…).
+- Totales de Palmarés y temporadas cuentan los banquillos.
+
+### Fichar a mitad de temporada: confirmación
+«Firmar» en la ventana de mitad de temporada ya no ficha a la primera: la ficha enseña un aviso («¿Fichar ya por X? Dejas Y a mitad de
+temporada y juegas lo que queda en el Circuito Z con su calendario, con N (química desde cero)», más la pega del contrato si la
+hay) con «Sí, fichar» y «Cancelar». Cambiar de pestaña lo cancela. Probado con clics en Chrome (confirmar, cancelar, fichar).
+
+### Cierre del muñeco
+- **Palmarés migrado** (`beachTrophies`, en cada `migrate`, idempotente): «Liga Regional» → «Circuito Regional», «Copa Nacional» →
+  «Open Nacional», «Ascenso a Superliga» → «Ascenso a la Superliga de Playa»… (también los guardados que ya migraron a v3 con el
+  nombre viejo). La etiqueta de la copa en Palmarés dice «Open».
+- **Club › Ficha › Compañero**: nombre y debajo pastillas (rol, media, desvío en verde/rojo) en vez del paréntesis.
+- **Antetítulo de la hoja final**: comprobado en pantalla a 1280×720, 844×390 y 667×375: «Circuito Regional ◆ Jornada 1 de 14».
+- **Hoja final a 667×375**: con nota, XP, subida de nivel y dos insignias la hoja medía 424 px en 341 y «Menú principal» quedaba fuera.
+  CSS en career-ui.js (`#end.career`, solo ≤ 420 px de alto; el `<style id="careerCss">` se pone ya al cargar, `ensureCss`): sin
+  «Jugada más larga» y los dos botones en una fila → 350 en 341 con «Menú principal» entero a la vista (297-341); a 844×390 cabe
+  (302 en 302); a 1280×720 no cambia. **Falta en main.js** marcar `#end` con la clase `career` (ver abajo).
+
+### Para el integrador (main.js, no es mío)
+1. `ctx.actions.startCareerMatch`: añadir `rookie: !!m.rookie` a las opciones de `ctx.actions.startMatch({...})`.
+2. `startMatch`, en `Sim.createGame({...})`: cambiar `rookie: cs ? false : isRookie()` por `rookie: cs ? !!opts.rookie : isRookie()`.
+3. `careerEndSheet(g, s)`: al principio, `var en = $('end'); if (en) en.classList.add('career');` y quitarla al restaurar
+   (`restoreEndButtons`: `var e = document.getElementById('end'); if (e) e.classList.remove('career');`).
+
+### Pregunta para Ferran (sin tocar)
+**Circuito Mundial**: los 1-2 clubes de élite (media ≥ 80, IA Experto) no los gana nadie (bot medio 0 de 20, bueno 0 de 8 con media 85).
+¿Es el reto final o se suaviza (subir `DIFF_AT` de Experto a ~84, o Experto solo en la Final a Cuatro)? Se ha dejado como estaba.
+
 ## Sprint playa (10-nov-2026, v3): la Carrera es de VÓLEY PLAYA
 
 Pedido de Ferran: «Te pueden fichar clubes, pero de vóley playa», «nerfear un poco al compañero» y «que puedas tener mejores y

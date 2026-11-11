@@ -374,7 +374,7 @@
       'btnAgain', 'btnMenu', 'btnPanelBack', 'btnTutPrev', 'btnTutNext', 'btnHudPause', 'btnHudMute', 'icoSound',
       'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord',
       'btnQuick', 'btnGo', 'btnPlayBack', 'btnQuickBack', 'mpPlay', 'mpQuick', 'venueHelp', 'ptsHelp', 'ctrlHelp', 'diffHelp', 'sqPick', 'ctlTabs', 'sqTabs', 'setTabs', 'optList',
-      'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack'].forEach(function (k) { el[k] = $(k); });
+      'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack', 'btnEndOpts'].forEach(function (k) { el[k] = $(k); });
     el.bn1 = $('bn1'); el.bn2 = $('bn2'); el.bn3 = $('bn3'); el.pbug = $('pbug'); el.pbT = $('pbT'); el.pbS = $('pbS'); el.pbX = $('pbX'); el.sbBody = document.querySelector('.sb-body'); el.sb = $('sb'); el.sbSet = $('sbSet'); el.tag = $('sbTag'); el.hist = $('sbHist');
     el.row0 = $('sbRow0'); el.row1 = $('sbRow1'); el.name0 = $('sbName0'); el.name1 = $('sbName1');
     el.pts0 = $('sbPts0'); el.pts1 = $('sbPts1');
@@ -1635,10 +1635,12 @@
           : svAim(g) ? 'Tu saque · Muévete con ' + gl.move + '. ' + gl.serve + ' saca flotante y ' + gl.jump + ' en salto; al lanzar, apunta la <b>diana</b> con ' + gl.aim
           : g.serveState ? 'Tu saque · Muévete con ' + gl.move + '. ' + gl.serve + ' saca flotante y ' + gl.jump + ' en salto'
           : 'Tu saque · Con ' + gl.move + ' te colocas en el fondo, apunta con ' + gl.aim + ' (la <b>diana naranja</b> marca adónde va) y pulsa ' + gl.serve;
-        // reloj de 8 s (UI-05): aro alrededor de la tecla en los últimos 5 s (ámbar → rojo en los 2 últimos); la cifra y la
-        // unidad van en un span sin mayúsculas («3 s», no «3 S»). El texto del árbitro «Falta de saque: 8 segundos» es de sim.
-        if (g.serveClock != null && g.serveAuth && g.serveClock < 5 && g.serveClock > 0 && !(g.opts && g.opts.serveClock === false)) clockF = g.serveClock / 5;
-        if (clockF >= 0 && g.serveClock < 4.5 && g.serveT > 0.35) { ptext = 'Saca ya <span class="nu">' + Math.ceil(g.serveClock) + ' s</span>'; pcls = 'hit'; coach = 'Regla de los <b>8 segundos</b>: saca antes de que acabe la cuenta'; }
+        // reloj de saque (UI-05): 8 s en el pabellón y 5 en la playa (sim g.serveClockMax). Aro alrededor de la tecla en los
+        // últimos 5 s (3 en la playa; ámbar → rojo en los 2 últimos); la cifra y la unidad van en un span sin mayúsculas
+        // («3 s», no «3 S»). El texto del árbitro «Falta de saque: 8 segundos» (o 5) es de sim.
+        var cm = g.serveClockMax || 8, lim = cm > 5 ? 5 : 3;
+        if (g.serveClock != null && g.serveAuth && g.serveClock < lim && g.serveClock > 0 && !(g.opts && g.opts.serveClock === false)) clockF = g.serveClock / lim;
+        if (clockF >= 0 && g.serveClock < lim - 0.5 && g.serveT > 0.35) { ptext = 'Saca ya <span class="nu">' + Math.ceil(g.serveClock) + ' s</span>'; pcls = 'hit'; coach = 'Regla de los <b>' + cm + ' segundos</b>: saca antes de que acabe la cuenta'; }
       } else if (myServe) {
         // Balón lanzado. Mientras SUBE, hitWindow().t pasa por ~0 (cruza la altura de contacto de subida):
         // la tecla encendida y «¡Golpea ahora!» SOLO con el balón BAJANDO y dentro de la ventana del brillo de SACAR.
@@ -1793,10 +1795,10 @@
   // Si el jugador no está en pantalla, vuelve abajo al centro (clase 'bot' sin 'anch').
   var anchorOn = true, promptW = 0, promptH = 0, prX = -1, prY = -1, _pv = null, _ph = null, prSide = 1, prThru = false;
   // cajas en pantalla de los OTROS atletas y del balón (px CSS, preasignadas): el aviso no debe taparlos en el momento clave
-  var _ob = [], _obN = 0;
+  var _ob = [], _obN = 0, _obHeld = null;  // _obHeld: caja del balón en la mano del sacador (o null)
   function obBox(i) { return _ob[i] || (_ob[i] = { l: 0, r: 0, t: 0, b: 0, w: 1 }); }
   function collectObstacles(g, p, W, H) {
-    _obN = 0;
+    _obN = 0; _obHeld = null;
     for (var t = 0; t < 2; t++) for (var i = 0; i < (g.teams && g.teams[t] ? g.teams[t].length : 0); i++) {
       var q = g.teams && g.teams[t] && g.teams[t][i];
       if (!q || q === p) continue;
@@ -1809,7 +1811,17 @@
     var bl = g.ball;
     if (bl) {
       VB.toThree(bl.x, bl.y, bl.z, _pv); _pv.project(ctx.camera);
-      if (_pv.z < 1 && _pv.z > -1) { var bx = (_pv.x + 1) * 0.5 * W, by = (1 - _pv.y) * 0.5 * H, o2 = obBox(_obN++); o2.l = bx - 14; o2.r = bx + 14; o2.t = by - 14; o2.b = by + 14; o2.w = 1.5; }
+      if (_pv.z < 1 && _pv.z > -1) {
+        // caja del balón a su tamaño en pantalla (+10 px de aire): con la cámara del saque pegada al sacador (móvil, 667×375) el
+        // balón en la mano mide ~32 px y la caja fija de 28 px dejaba el aviso «SACAR / SALTAR» encima de él
+        var bx = (_pv.x + 1) * 0.5 * W, by = (1 - _pv.y) * 0.5 * H;
+        VB.toThree(bl.x, bl.y, bl.z + 0.5, _ph); _ph.project(ctx.camera);
+        var br = Math.abs(by - (1 - _ph.y) * 0.5 * H) / 0.5 * 0.11, bh = Math.max(14, Math.min(60, br + 10)), o2 = obBox(_obN++);
+        // en la mano del sacador (b.held) el balón que se ve (players.js) cae algo más abajo y a un lado del de la sim: caja más
+        // grande y bajada (medido a 667×375 en la playa: el de la sim en 346,259 y el dibujado en 335,290)
+        if (bl.held && p && Math.abs(bl.x - p.x) + Math.abs(bl.y - p.y) < 1.2) { bh = Math.max(bh, Math.min(70, br * 2.2 + 12)); by += br * 1.5; _obHeld = o2; }
+        o2.l = bx - bh; o2.r = bx + bh; o2.t = by - bh; o2.b = by + bh; o2.w = 1.5;
+      }
     }
   }
   /** Fracción (ponderada) de las cajas de obstáculos que quedaría bajo el aviso en (x, y). */
@@ -1852,8 +1864,8 @@
   }
   var _prX = [0, 0, 0], prLast = { x: 0, y: 0, w: 0, h: 0 }, prC = [9, 9, 9];
   /** Costes de los tres sitios (derecha, izquierda, encima) para un aviso de ancho wd; 9 = descartado (borde, joystick o botón táctil). */
-  function prCands(TB, wd, sx, gap, y0, yT, hy, lEdge, rEdge, m, W) {
-    var xR = sx + gap, xL = sx - gap - wd, xT = Math.max(m, Math.min(W - m - wd, sx - wd * 0.5));
+  function prCands(TB, wd, sx, gap, y0, yT, hy, lEdge, rEdge, m, W, gapL) {
+    var xR = sx + gap, xL = sx - (gapL || gap) - wd, xT = Math.max(m, Math.min(W - m - wd, sx - wd * 0.5));
     var w0 = promptW; promptW = wd;                       // overlapAt mide con promptW
     prC[0] = xR + wd > rEdge || hitTouch(TB, xR, y0, wd, promptH) ? 9 : overlapAt(xR, y0);
     prC[1] = xL < lEdge || hitTouch(TB, xL, y0, wd, promptH) ? 9 : overlapAt(xL, y0);
@@ -1886,8 +1898,10 @@
     collectObstacles(g, p, W, H);
     var yT = Math.max(64, hy - body * 0.55 - promptH);
     var ko = false, wd = promptW, X = _prX, C = prC;
-    prCands(TB, wd, sx, gap, y0, yT, hy, lEdge, rEdge, m, W);
-    if (C[0] >= 9 && C[1] >= 9 && C[2] >= 9 && TB && TB.length) { ko = true; wd = promptWK; prCands(TB, wd, sx, gap, y0, yT, hy, lEdge, rEdge, m, W); }   // no cabe entero: solo la tecla
+    // saque táctil (667×375): el balón en la mano sale a la izquierda del sacador; el sitio de la izquierda se aparta hasta dejarlo libre
+    var gapL = _obHeld && _obHeld.l < sx ? Math.max(gap, sx - _obHeld.l + 6) : gap;
+    prCands(TB, wd, sx, gap, y0, yT, hy, lEdge, rEdge, m, W, gapL);
+    if (C[0] >= 9 && C[1] >= 9 && C[2] >= 9 && TB && TB.length) { ko = true; wd = promptWK; prCands(TB, wd, sx, gap, y0, yT, hy, lEdge, rEdge, m, W, gapL); }   // no cabe entero: solo la tecla
     var y = y0, best = prSide;
     if (C[0] >= 9 && C[1] >= 9 && C[2] >= 9) {
       // nada cabe a la altura del pecho: se sube por encima de los botones (a la derecha o a la izquierda, lo que quede libre)
@@ -2210,6 +2224,10 @@
     if (!win && alt >= 0 && !career) rec += '<span class="new">¿Te cuesta? Prueba el nivel <b>' + OPT.difficulty.labels[alt] + '</b></span>';
     el.btnAgainAlt.hidden = alt < 0;
     if (alt >= 0) { el.btnAgainAlt.textContent = 'Revancha en ' + OPT.difficulty.labels[alt]; el.btnAgainAlt.setAttribute('data-d', OPT.difficulty.vals[alt]); }
+    // «Cambiar opciones»: al menú, directo a la preparación del Partido rápido (dificultad, puntos, control, escenario). En la
+    // Carrera no (main.js careerEndSheet esconde además «Revancha en…»); en el 6v6 de pruebas tampoco (no tiene preparación)
+    var noOpts = !!career || !!(ctx.game && ctx.game.size === 6);
+    if (el.btnEndOpts) { el.btnEndOpts.hidden = noOpts; el.btnEndOpts.parentNode.setAttribute('data-n', String((alt >= 0 && !career ? 1 : 0) + (noOpts ? 0 : 1) + 1)); }
     // (partido de Carrera, g.career: la experiencia y las insignias de su atleta las reparte VB.Career.matchDone, no el escuadrón)
     // (6v6 de pruebas, ?format=6v6: tampoco reparte al escuadrón de 2v2)
     if (!ctx.debug && VB.Prog && ctx.game && !ctx.game.autopilot && !ctx.game.career && ctx.game.size !== 6) {
@@ -2478,6 +2496,7 @@
   var firstAsked = false;
   /** JUGAR desde el menú: la primera vez (sin partidos ni tutorial) ofrece ver el tutorial o jugar ya. */
   function play() {
+    if (VB.Install && VB.Install.isOpen && VB.Install.isOpen()) return;   // el aviso de instalar está delante: nunca los dos a la vez
     if (!firstAsked && !record.played && !record.tut && !ctx.debug) {
       firstAsked = true; uiSound('click');
       var di = optIndex('difficulty');
@@ -2491,6 +2510,19 @@
     if (!wipeRun(2, function () { if (diff) ctx.actions.setSetting('difficulty', diff); ctx.actions.startMatch(); }) && !wp.cb) ctx.actions.startMatch();
   }
   function goMenu() { if (!wipeRun(2, function () { ctx.actions.toMenu(); }) && !wp.cb) ctx.actions.toMenu(); }
+  /** Hoja final → «Cambiar opciones»: al menú y directo a la preparación del Partido rápido (Volver lleva a Jugar y luego a la portada). */
+  function goOptions() {
+    var f = function () {
+      ctx.actions.toMenu();
+      if (ctx.state !== 'menu') return;
+      mstack.length = 0; mstack.push({ p: 'main', f: 'btnPlay' }); mstack.push({ p: 'play', f: 'btnQuick' });
+      setPage('quick');
+      // foco en la primera opción (Dificultad), después del foco por defecto de la página (¡A jugar!) que pone el cambio de estado
+      var kb = kbNow() || ctx.inputDevice === 'gamepad', fo = el.optDiff || pageFocus();
+      setTimeout(function () { if (mpage === 'quick' && !panel && ctx.state === 'menu' && fo && !fo.closest('[hidden]')) focusEl(fo, kb); }, 250);
+    };
+    if (!wipeRun(2, f) && !wp.cb) f();
+  }
   function openPanel(name, from) {
     panel = name; panelFrom = from || ctx.state;
     for (var k in PANELS) $(PANELS[k][0]).hidden = k !== name;
@@ -2613,7 +2645,9 @@
     hudScale: { vals: [1, 1.15, 1.3], labels: ['100%', '115%', '130%'] },
     softFlash: { vals: [true, false], labels: ['Sí', 'No'] },
     // sede (Ajustes · Imagen): arena.js la cambia en vivo, también con la demo del menú de fondo
-    arena: { vals: ['hall', 'beach'], labels: ['Pabellón', 'Playa'] }
+    arena: { vals: ['hall', 'beach'], labels: ['Pabellón', 'Playa'] },
+    // luz de la playa (Ajustes · Imagen): arena.js la cambia en vivo (VB.Arena.beachLight, onSettings 'beachLight'); en el pabellón no se nota
+    beachLight: { vals: ['dia', 'tarde'], labels: ['Día', 'Tarde'] }
   };
   /** Nombre de la sede (arena.js: ajuste `arena` o ?map=): Palau del Mar / Platja Llarga. */
   function venueName() { return VB.Arena && VB.Arena.venueName ? VB.Arena.venueName() : 'Palau del Mar'; }
@@ -2788,22 +2822,36 @@
     return n;
   }
   function pts(list) { return list.map(function (q) { var p = P(q[0], q[1], q[2]); return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '); }
-  function drawCourt(svg) {
+  /** Pista del dibujo del tutorial: pabellón 18×9 (zona libre azul, línea de ataque) o playa 16×8 (arena, cintas coral, sin línea
+   *  de ataque ni central; antenas a ±4 y postes a ±5). Misma perspectiva P(): la de la playa se ve algo más pequeña. */
+  function drawCourt(svg, beach) {
+    var hl = beach ? 8 : 9, hw = beach ? 4 : 4.5;
     svgEl('rect', { x: 0, y: 0, width: 400, height: 275, fill: '#2b2547' }, svg);
-    svgEl('polygon', { points: pts([[-10.5, -6.3], [-10.5, 6.3], [11.6, 6.3], [11.6, -6.3]]), fill: '#3d8fd1', stroke: '#1d1530', 'stroke-width': 2.4, 'stroke-linejoin': 'round' }, svg);
-    svgEl('polygon', { points: pts([[-9, -4.5], [-9, 4.5], [9, 4.5], [9, -4.5]]), fill: '#ffc979' }, svg);
-    svgEl('polygon', { points: pts([[-3, -4.5], [-3, 4.5], [3, 4.5], [3, -4.5]]), fill: '#ffb85c' }, svg);
-    var L = { fill: 'none', stroke: '#fff', 'stroke-width': 1.6, 'stroke-linejoin': 'round' };
-    svgEl('polygon', Object.assign({ points: pts([[-9, -4.5], [-9, 4.5], [9, 4.5], [9, -4.5]]) }, L), svg);
+    svgEl('polygon', { points: pts([[-10.5, -6.3], [-10.5, 6.3], [11.6, 6.3], [11.6, -6.3]]), fill: beach ? '#e8c27e' : '#3d8fd1', stroke: '#1d1530', 'stroke-width': 2.4, 'stroke-linejoin': 'round' }, svg);
+    svgEl('polygon', { points: pts([[-hl, -hw], [-hl, hw], [hl, hw], [hl, -hw]]), fill: beach ? '#f3d699' : '#ffc979' }, svg);
+    if (!beach) svgEl('polygon', { points: pts([[-3, -4.5], [-3, 4.5], [3, 4.5], [3, -4.5]]), fill: '#ffb85c' }, svg);
+    var L = { fill: 'none', stroke: beach ? '#ff6a55' : '#fff', 'stroke-width': beach ? 2 : 1.6, 'stroke-linejoin': 'round' };
+    svgEl('polygon', Object.assign({ points: pts([[-hl, -hw], [-hl, hw], [hl, hw], [hl, -hw]]) }, L), svg);
+    if (beach) return;
     svgEl('polyline', Object.assign({ points: pts([[-3, -4.5], [-3, 4.5]]) }, L), svg);
     svgEl('polyline', Object.assign({ points: pts([[3, -4.5], [3, 4.5]]) }, L), svg);
     svgEl('polyline', Object.assign({ points: pts([[0, -4.5], [0, 4.5]]) }, L), svg);
   }
-  function drawNet(svg) {
-    svgEl('polygon', { points: pts([[0, -4.5, 1.43], [0, 4.5, 1.43], [0, 4.5, 2.43], [0, -4.5, 2.43]]), fill: 'rgba(10,14,22,.55)', stroke: 'rgba(255,255,255,.35)', 'stroke-width': 0.6 }, svg);
-    svgEl('polyline', { points: pts([[0, -4.5, 2.43], [0, 4.5, 2.43]]), stroke: '#fff', 'stroke-width': 2.2, fill: 'none' }, svg);
-    [-4.5, 4.5].forEach(function (y) { svgEl('polyline', { points: pts([[0, y, 1.43], [0, y, 3.23]]), stroke: '#ff4d4d', 'stroke-width': 1.6, 'stroke-dasharray': '3 3', fill: 'none' }, svg); });
-    [-5.5, 5.5].forEach(function (y) { svgEl('polyline', { points: pts([[0, y, 0], [0, y, 2.6]]), stroke: '#1b2b44', 'stroke-width': 3.4, fill: 'none' }, svg); });
+  function drawNet(svg, beach) {
+    var hw = beach ? 4 : 4.5, po = beach ? 5 : 5.5;
+    svgEl('polygon', { points: pts([[0, -hw, 1.43], [0, hw, 1.43], [0, hw, 2.43], [0, -hw, 2.43]]), fill: 'rgba(10,14,22,.55)', stroke: 'rgba(255,255,255,.35)', 'stroke-width': 0.6 }, svg);
+    svgEl('polyline', { points: pts([[0, -hw, 2.43], [0, hw, 2.43]]), stroke: '#fff', 'stroke-width': 2.2, fill: 'none' }, svg);
+    [-hw, hw].forEach(function (y) { svgEl('polyline', { points: pts([[0, y, 1.43], [0, y, 3.23]]), stroke: '#ff4d4d', 'stroke-width': 1.6, 'stroke-dasharray': '3 3', fill: 'none' }, svg); });
+    [-po, po].forEach(function (y) { svgEl('polyline', { points: pts([[0, y, 0], [0, y, 2.6]]), stroke: beach ? '#c9ced6' : '#1b2b44', 'stroke-width': 3.4, fill: 'none' }, svg); });
+  }
+  /** Figura a la pista de playa: posiciones y trayectorias ×8/9 en planta (16×8 frente a 18×9: el mismo factor en largo y ancho). */
+  function beachFig(F) {
+    var k = 8 / 9, sc = function (v) { return [v[0] * k, v[1] * k].concat(v.length > 2 ? [v[2]] : []); }, o = Object.assign({}, F);
+    o.players = F.players.map(function (p) { return Object.assign({}, p, { x: p.x * k, y: p.y * k }); });
+    o.segs = F.segs.map(function (sg) { return Object.assign({}, sg, { a: sc(sg.a), b: sc(sg.b) }); });
+    if (F.ring) o.ring = sc(F.ring);
+    o.beach = true;
+    return o;
   }
   function drawPlayer(svg, pl) {
     var g = svgEl('g', {}, svg), p = P(pl.x, pl.y, 0), s = p[2] * 1.45;
@@ -2905,7 +2953,8 @@
     var f = oneMode() ? FAULTS.replace('(y lo controlas tú)', '(si le toca a tu compañero, saca la IA)') : FAULTS;
     if (!tutBeach()) return f;
     // vóley playa (sim g.beach): pista 16×8, el bloqueo es toque, pokey, cambio de campo cada 7, sets a 21 / 15
-    return f.replace('Un equipo toca el balón más de 3 veces (el bloqueo no cuenta).', 'Un equipo toca el balón más de 3 veces. En la playa el bloqueo cuenta como toque.')
+    return f.replace('<b>Falta de saque: 8 segundos</b>Tras el silbato del árbitro tienes 8 segundos para sacar.', '<b>Falta de saque: 5 segundos</b>Tras el silbato del árbitro tienes 5 segundos para sacar.')
+      .replace('Un equipo toca el balón más de 3 veces (el bloqueo no cuenta).', 'Un equipo toca el balón más de 3 veces. En la playa el bloqueo cuenta como toque.')
       .replace('El mismo jugador toca el balón dos veces seguidas.', 'El mismo jugador toca el balón dos veces seguidas, o una colocación de dedos mal hecha. Dejar el balón con la yema de los dedos también es falta: en la playa se hace de nudillos (pokey).')
       .replace('Al acabar cada set y a los 8 puntos del set decisivo.', 'En la playa, cada 7 puntos jugados (cada 5 en el 3r set) y al acabar cada set.')
       .replace('A 25 puntos con 2 de diferencia; el 3r, a 15. Gana quien se lleva 2 sets.', 'En la playa, a 21 puntos con 2 de diferencia; el 3r, a 15. Gana quien se lleva 2 sets. La pista mide 16 × 8 m.');
@@ -2917,9 +2966,10 @@
   function tutGo(i) {
     i = Math.max(0, Math.min(TUT.length - 1, i));
     tut.i = i; tut.seen[i] = 1;
-    var S = TUT[i], g = G();
+    var S = TUT[i], g = G(), rl = tutBeach() && S.ruleBeach ? S.ruleBeach : S.rule;
+    if (rl && tutBeach()) rl = rl.replace('<b>8 segundos</b>', '<b>5 segundos</b>'); // en la playa, 5 s para sacar (sim C.SERVE_CLOCK_BEACH)
     el.tutStep.textContent = S.step; el.tutTitle.innerHTML = coachHTML(escT(S.title)); // «1r toque» en pastilla
-    el.tutText.innerHTML = S.faults ? faultsHtml() : '<p class="tut-text">' + S.text(g) + '</p>' + (S.rule ? '<div class="tut-rule">' + (tutBeach() && S.ruleBeach ? S.ruleBeach : S.rule) + '</div>' : '');
+    el.tutText.innerHTML = S.faults ? faultsHtml() : '<p class="tut-text">' + S.text(g) + '</p>' + (rl ? '<div class="tut-rule">' + rl + '</div>' : '');
     restartAnim(el.tutBody, 'tut-anim');
     el.tutFig.hidden = !!S.faults;
     el.tutBody.style.gridTemplateColumns = S.faults ? '1fr' : '';
@@ -2929,13 +2979,13 @@
     el.btnTutNext.textContent = i === TUT.length - 1 ? (panelFrom === 'menu' ? '¡A jugar!' : 'Volver al partido') : 'Siguiente ›';
     if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
     tutStop();
-    if (!S.faults) buildFig(oneMode() && S.figOne ? Object.assign({}, S.fig, S.figOne) : S.fig);
+    if (!S.faults) { var F0 = oneMode() && S.figOne ? Object.assign({}, S.fig, S.figOne) : S.fig; buildFig(tutBeach() ? beachFig(F0) : F0); }
     if (i === TUT.length - 1 && !ctx.debug) { record.tut = 1; saveRecord(); }
   }
   function buildFig(F) {
     var svg = document.createElementNS(SVGNS, 'svg');
     svg.setAttribute('viewBox', '0 0 400 275'); svg.setAttribute('aria-hidden', 'true');
-    drawCourt(svg);
+    drawCourt(svg, !!F.beach);
     var ring = null;
     if (F.ring) { var rp = P(F.ring[0], F.ring[1], 0); ring = svgEl('ellipse', { cx: rp[0], cy: rp[1], rx: 15 * rp[2], ry: 5.5 * rp[2], fill: 'rgba(255,190,20,.28)', stroke: '#f2a900', 'stroke-width': 2.6 }, svg); }
     // jugadores ordenados por profundidad (los del fondo primero)
@@ -2947,7 +2997,7 @@
     var path = '', tmp = [0, 0, 0];
     F.segs.forEach(function (sg) { for (var k = 0; k <= 24; k++) { segPos(sg, k / 24, tmp); var p = P(tmp[0], tmp[1], tmp[2]); path += (path ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); } });
     var ballShadow = svgEl('ellipse', { rx: 4, ry: 1.6, fill: 'rgba(0,0,0,.45)' }, svg);
-    drawNet(svg);
+    drawNet(svg, !!F.beach);
     near.forEach(function (i) { figs[i] = drawPlayer(svg, F.players[i]); });
     svgEl('path', { d: path, fill: 'none', stroke: 'rgba(13,26,46,.35)', 'stroke-width': 2.6, 'stroke-dasharray': '2 5', 'stroke-linecap': 'round' }, svg);
     svgEl('path', { d: path, fill: 'none', stroke: 'rgba(255,255,255,.85)', 'stroke-width': 1.3, 'stroke-dasharray': '2 5', 'stroke-linecap': 'round' }, svg);
@@ -3093,6 +3143,8 @@
     /** Pruebas (UI-20): última caja del aviso anclado {x, y, w, h} (px CSS), solo la tecla (konly) y zonas de los botones táctiles. */
     _prompt: function () { return { x: prLast.x, y: prLast.y, w: prLast.w, h: prLast.h, konly: prKonly, side: prSide, tb: tbx.L.slice() }; },
     isPanelOpen: function () { return !!panel; },
+    /** Portada del menú libre (sin panel, sin cortinilla, sin telón): install.js espera a esto para su aviso (nunca encima de «Primer partido»). */
+    menuIdle: function () { return ctx.state === 'menu' && !panel && !wp.ph && mpage === 'main' && !(bootStage < 2 && bootBusy()); },
     /** Pestañas reutilizables (ver «PESTAÑAS» arriba): VB.UI.tabs(host, items, opts) → api {get, set, step, refresh, hint, focus}. */
     tabs: makeTabs,
     /** Mando: −1 con LB/L1 pulsado, +1 con RB/R1 (o Y). Para cambiar de pestaña con it.switchPlayer fuera de ui.js. */
@@ -3191,6 +3243,7 @@
       on(el.btnQuit, function () { goMenu(); });
       el.btnAgain.addEventListener('click', function () { uiSound('start'); goMatch(); });
       el.btnMenu.addEventListener('click', function () { uiSound('back'); goMenu(); });
+      if (el.btnEndOpts) el.btnEndOpts.addEventListener('click', function () { uiSound('click'); goOptions(); });
       el.btnAgainAlt.addEventListener('click', function () {
         var d = el.btnAgainAlt.getAttribute('data-d'); uiSound('start');
         goMatch(d || null);

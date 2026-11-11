@@ -54,7 +54,8 @@
     W_GOOD: 0.10,    // |desfase| máximo para 'good' (s)
     SWING_LOCK: 0.12,// bloqueo tras un gesto fallido (evita aporrear el botón)
     NET_TOUCH: 0.30, // un jugador en el aire a menos de esto de la red la toca
-    SERVE_CLOCK: 8,  // regla de los 8 segundos para sacar
+    SERVE_CLOCK: 8,  // regla de los 8 segundos para sacar (pabellón)
+    SERVE_CLOCK_BEACH: 5, // vóley playa: 5 segundos para sacar (g.serveClockMax)
     // altura ideal de contacto sobre los pies del jugador, por tipo de toque
     ZC: { pass: 0.85, set: 2.2, free: 1.5, spike: 2.45, fserve: 2.55, jserve: 2.45 },
     // balón en la mano del sacador antes del lanzamiento: a la altura del pecho, delante del cuerpo
@@ -75,10 +76,10 @@
    * tercera persona. 'normal' es ahora un nivel intermedio; el Normal anterior pasa a 'hard' (Difícil) y el
    * Difícil anterior a 'expert' (Experto). */
   var DIFF = VB.DIFF = {
-    easy:   { name: 'Fácil',   react: 0.30, speed: 0.82, timing: 0.11,  err: 1.35, block: 0.12, dig: 0.27, recv: 0.72, spike: 13.5, jserve: 12.0, jumpServe: 0.00, tip: 0.04, aimNoise: 4.0, netErr: 0.06,  blockReact: 0.18, atkErr: 0.11, srvErr: 0.12, seam: 0.00, srvNoise: 1.6, float: 0.75 },
-    normal: { name: 'Normal',  react: 0.18, speed: 0.90, timing: 0.07, err: 1.1,  block: 0.30, dig: 0.42, recv: 0.83, spike: 15.4, jserve: 14.0, jumpServe: 0.08, tip: 0.08, aimNoise: 1.9, netErr: 0.03, blockReact: 0.10, atkErr: 0.105, srvErr: 0.12, seam: 0.08, srvNoise: 1.4, float: 0.76 },
-    hard:   { name: 'Difícil', react: 0.13, speed: 0.94, timing: 0.05,  err: 0.9,  block: 0.40, dig: 0.48, recv: 0.89, spike: 16.2, jserve: 15.6, jumpServe: 0.18, tip: 0.12, aimNoise: 1.1, netErr: 0.018, blockReact: 0.065, atkErr: 0.09, srvErr: 0.10, seam: 0.18, srvNoise: 1.2, float: 0.8 },
-    expert: { name: 'Experto', react: 0.06, speed: 1.00, timing: 0.028, err: 0.55, block: 0.55, dig: 0.61, recv: 0.95, spike: 19.0, jserve: 18.0, jumpServe: 0.70, tip: 0.15, aimNoise: 0.4, netErr: 0.005, blockReact: 0.04, atkErr: 0.05, srvErr: 0.07, seam: 0.75, srvNoise: 0.6, float: 1.0 },
+    easy:   { name: 'Fácil',   react: 0.30, speed: 0.82, timing: 0.11,  err: 1.35, block: 0.12, dig: 0.27, recv: 0.72, spike: 13.5, jserve: 12.0, jumpServe: 0.00, tip: 0.04, aimNoise: 4.0, netErr: 0.06,  blockReact: 0.18, atkErr: 0.11, srvErr: 0.12, seam: 0.00, srvNoise: 1.6, float: 0.75, jsetAI: 0.04 },
+    normal: { name: 'Normal',  react: 0.18, speed: 0.90, timing: 0.07, err: 1.1,  block: 0.30, dig: 0.42, recv: 0.83, spike: 15.4, jserve: 14.0, jumpServe: 0.08, tip: 0.08, aimNoise: 1.9, netErr: 0.03, blockReact: 0.10, atkErr: 0.105, srvErr: 0.12, seam: 0.08, srvNoise: 1.4, float: 0.76, jsetAI: 0.12 },
+    hard:   { name: 'Difícil', react: 0.13, speed: 0.94, timing: 0.05,  err: 0.9,  block: 0.40, dig: 0.48, recv: 0.89, spike: 16.2, jserve: 15.6, jumpServe: 0.18, tip: 0.12, aimNoise: 1.1, netErr: 0.018, blockReact: 0.065, atkErr: 0.09, srvErr: 0.10, seam: 0.18, srvNoise: 1.2, float: 0.8, jsetAI: 0.18 },
+    expert: { name: 'Experto', react: 0.06, speed: 1.00, timing: 0.028, err: 0.55, block: 0.55, dig: 0.61, recv: 0.95, spike: 19.0, jserve: 18.0, jumpServe: 0.70, tip: 0.15, aimNoise: 0.4, netErr: 0.005, blockReact: 0.04, atkErr: 0.05, srvErr: 0.07, seam: 0.75, srvNoise: 0.6, float: 1.0, jsetAI: 0.25 },
     // demo del menú (CPU vs CPU), perfil propio (R6). Antes era el Difícil de la revisión 2 congelado (dig 0,51,
     // block 0,42, tip 0,12, atkErr 0,08, spike 16,6), valores afinados con el modelo de defensa de la revisión 1. La
     // revisión 2 (bloqueo geométrico con 'touch'/'soft' jugables, contacto con el cuerpo) alarga la defensa CPU vs CPU:
@@ -86,12 +87,13 @@
     // (mediana 5 u 8 s según la semilla). Solo la demo: defensa base 0,37, remate 17,4 m/s, más bloqueo directo (0,58),
     // más error de ataque (0,15) y pocas dejadas (0,04; se defienden siempre). Medido (105 semillas × 20 min):
     // mediana 5,0 s, 52 % de remates punto, 5,7 puntos/min. Ver notes/sim.md §R6.
-    demo:   { name: 'Demo',    react: 0.12, speed: 0.95, timing: 0.045, err: 0.85, block: 0.58, dig: 0.37, recv: 0.90, spike: 17.4, jserve: 16.0, jumpServe: 0.20, tip: 0.04, aimNoise: 1.0, netErr: 0.015, blockReact: 0.06, atkErr: 0.15, srvErr: 0.10, seam: 0.2, srvNoise: 1.2, float: 0.8 },
+    demo:   { name: 'Demo',    react: 0.12, speed: 0.95, timing: 0.045, err: 0.85, block: 0.58, dig: 0.37, recv: 0.90, spike: 17.4, jserve: 16.0, jumpServe: 0.20, tip: 0.04, aimNoise: 1.0, netErr: 0.015, blockReact: 0.06, atkErr: 0.15, srvErr: 0.10, seam: 0.2, srvNoise: 1.2, float: 0.8, jsetAI: 0.15 },
     // compañero IA del humano (y equipo 0 en autopilot): nivel fijo, el peso del partido lo lleva el humano
-    mate:   { name: 'Compañero', react: 0.16, speed: 0.92, timing: 0.065, err: 1.0, block: 0.30, dig: 0.56, recv: 0.85, spike: 16.0, jserve: 14.5, jumpServe: 0.35, tip: 0.10, aimNoise: 1.6, netErr: 0.02, blockReact: 0.09, atkErr: 0.05, srvErr: 0.08, seam: 0.4, srvNoise: 1.0, float: 1.0 }
+    mate:   { name: 'Compañero', react: 0.16, speed: 0.92, timing: 0.065, err: 1.0, block: 0.30, dig: 0.56, recv: 0.85, spike: 16.0, jserve: 14.5, jumpServe: 0.35, tip: 0.10, aimNoise: 1.6, netErr: 0.02, blockReact: 0.09, atkErr: 0.05, srvErr: 0.08, seam: 0.4, srvNoise: 1.0, float: 1.0, jsetAI: 0.15 }
   };
   /*  seam: prob. de sacar a la zona libre (entre receptores)   srvNoise: ruido del destino del saque (m)
-   *  float: multiplicador del baile del saque flotante */
+   *  float: multiplicador del baile del saque flotante
+ *  jsetAI: prob. de colocar en salto cuando se puede (2v2: pase bueno y cerca de la red, ver SETQ y ai.js) */
 
   var DIFF_ALIAS = { facil: 'easy', 'fácil': 'easy', easy: 'easy', normal: 'normal', medio: 'normal', dificil: 'hard', 'difícil': 'hard', hard: 'hard',
     experto: 'expert', expert: 'expert' };
@@ -171,7 +173,7 @@
    *  opts: { demo:bool (CPU vs CPU), autopilot:bool (equipo humano lo lleva la IA
    *          pero la cámara/HUD son de partido), seed:int,
    *          difficulty:'easy'|'normal'|'hard' (también 'facil','dificil'): nivel de la CPU,
-   *          serveClock:bool (regla de 8 s para el saque humano, por defecto true),
+   *          serveClock:bool (regla de 8 s para el saque humano, 5 s en la playa: g.serveClockMax; por defecto true),
    *          ctrl:'both'|'one' (controlar a los dos jugadores o solo a uno; g.ctrlMode, por defecto 'both'),
    *          ctrlIdx:0|1 (modo 'one': a quién lleva el humano, 0 = teams[0][0] dorsal 1, 1 = teams[0][1] dorsal 2; g.ctrlIdx;
    *          el juego ya solo usa 0, el 1 queda para pruebas y &ctrlidx=),
@@ -256,9 +258,10 @@
       server: null,            // jugador que saca en este punto
       serveState: 'ready',     // 'ready' (balón en la mano) | 'toss' (balón lanzado)
       serveJump: false,        // saque en salto (true) o flotante (false)
-      serveClock: C.SERVE_CLOCK, // segundos que quedan para sacar (regla de 8 s, solo humano)
+      serveClock: beach ? C.SERVE_CLOCK_BEACH : C.SERVE_CLOCK, // segundos que quedan para sacar (regla de 8 s; 5 s en la playa; solo humano)
+      serveClockMax: beach ? C.SERVE_CLOCK_BEACH : C.SERVE_CLOCK, // duración de esa cuenta en esta partida (UI: cuenta atrás y textos)
       serveT: 0, tossT: 0, jumpAt: 0, aiServeTe: 0, serveAuth: false, whistleAt: 0.7, // serveAuth: ya ha pitado el saque
-      touchTeam: -1, touches: 0, lastPlayer: null, lastTeam: -1, lastKind: '', lastShot: '',
+      touchTeam: -1, touches: 0, lastPlayer: null, lastTeam: -1, lastKind: '', lastShot: '', lastQ: 1, // lastQ: calidad (0..1) del último toque (hit)
       lastTouchT: 0,           // g.time del último contacto (toque, bloqueo, saque)
       ctrl: teams[0][opts.ctrl === 'one' && +opts.ctrlIdx === 1 ? 1 : 0], // jugador que controla el humano (g.ctrlIdx)
       jobs: [null, null],      // quién de cada equipo va al balón
@@ -355,6 +358,7 @@
     o.jserve = base.jserve + AK.serve * d('serve');
     o.srvErr = base.srvErr * (1 - 0.8 * d('serve'));
     o.jumpServe = clamp(base.jumpServe + 0.5 * d('serve'), 0, 0.9);
+    if (base.jsetAI != null) o.jsetAI = clamp(base.jsetAI * (1 + d('set')), 0, 0.5); // Colocación: 15 → ×0,65; 90 → ×1,4
     return o;
   }
   /** Multiplicadores del humano (y de la física de todos los que llevan atributos) a partir de los atributos; 50 en todo = 1
@@ -817,16 +821,36 @@
   /** Golpeo: el tipo de toque lo decide el juego según contexto.
    *  te: desfase con el momento ideal (s). shot: '' | 'tip' | 'dive'.
    *  tgt: [x,y] destino explícito (IA) o null para usar aim. */
+  /** Defensa contra el remate rival desde el aire (ver hit): BLK_ZONE = |x| máximo de la zona de bloqueo (checkBlock), BLK_AIRQ =
+   *  factor de calidad del toque en el aire más atrás. */
+  var BLK_ZONE = 1.1, BLK_AIRQ = 0.6;
+  /** Calidad que se arrastra en el 2v2 (pase → colocación → ataque de la IA; ver hit y ai.js):
+   *  pass: la colocación de la IA tras un pase de calidad c sale con q × (1 − pass·(1 − c))
+   *  lo/hi: el remate de la IA tras una colocación de calidad c se resiente con k = (c − lo)/(hi − lo) en 0..1 (1 = como siempre):
+   *    velocidad × (spd0 + (1 − spd0)·k), dispersión × (1 + er·(1 − k)), error no forzado × (1 + err·(1 − k))
+   *  safeQ/safeP/safeLo: bola de seguridad de la IA (ai.js) con prob. safeP·(safeQ − c)/(safeQ − safeLo) (0 con c >= safeQ)
+   *  jsQ/jsX/jsMate: colocación en salto de la IA (ai.js; prob. prof.jsetAI) solo con pase >= jsQ, balón a < jsX m de la red y el
+   *  compañero a < jsMate s de su sitio de remate */
+  var SETQ = VB.SETQ = { pass: 0.5, lo: 0.25, hi: 0.85, spd0: 0.85, er: 1.0, err: 1.0, safeQ: 0.45, safeP: 0.85, safeLo: 0.1, jsQ: 0.78, jsX: 2.4, jsMate: 0.75 };
   function hit(g, p, aim, te, shot, tgt) {
     var t = p.team, sd = side(t), b = g.ball, prof = profOf(g, p);
     var inKind = g.lastKind, inShot = g.lastShot, inPrev = g.prevKind; // lo que llega (para contar defensas de remate)
     var prevPlayer = g.lastPlayer;                                          // autor del toque anterior (colocador: asistencia, Manos de seda)
+    var prevQ = g.touchTeam === t ? g.lastQ : 1;                            // calidad del toque anterior del propio equipo (SETQ)
     if (g.touchTeam === t && g.lastPlayer === p) { fault(g, t, 'double', 'Dobles: el mismo jugador toca dos veces', p); return; }
     var count = g.touchTeam === t ? g.touches + 1 : 1;
     if (count > 3) { fault(g, t, 'four', '4 toques', p); return; }
+    // Contra un remate rival en camino, el jugador en el aire NO ataca (antes GOLPEAR o la dejada en el bloqueo devolvían el
+    // remate como un remate propio: 2v2, TRASPASO «GOLPEAR en el bloqueo»). En la red (|x| <= BLK_ZONE, donde vale el bloqueo)
+    // no hay toque de brazos: decide checkBlock con la geometría de las manos. Más atrás es una defensa en el aire (1r toque,
+    // calidad ×BLK_AIRQ). 6v6 (g.rot): sin cambios
+    var vsAtk = !g.rot && jsetVoid(g, p) && isAttackContact(p, b);
+    if (vsAtk && Math.abs(p.x) <= BLK_ZONE) return;
+    var atkC0 = isAttackContact(p, b) && !vsAtk;
     // COLOCAR en el aire donde no cabe colocación en salto (3r toque, o 1r sin el balón alto en la red): dejada si es
     // un toque de ataque, si no el toque normal
-    if (shot === 'jset' && !canJset(g, p, count)) shot = isAttackContact(p, b) ? 'tip' : '';
+    if (shot === 'jset' && !canJset(g, p, count)) shot = atkC0 ? 'tip' : '';
+    if (vsAtk && shot === 'tip') shot = '';
     var jset = shot === 'jset';
     // Regla 13.3.4: atacar el saque rival en zona de ataque con el balón entero por encima de la red. El golpe solo
     // es falta cuando se COMPLETA como ataque (el balón cruza entero el plano de la red o lo toca el rival): una
@@ -844,7 +868,7 @@
     var d = Math.hypot(b.x - p.x, b.y - p.y), inSp = fastInFor(g);
     var hardIn = g.lastKind === 'spike' || (g.lastKind === 'serve' && inSp > 13);
     if (human && p.ak) { // atributos: ventana de timing del toque (recepción/defensa, colocación, ataque) ±12 %
-      var wk = jset ? p.ak.wSet : isAttackContact(p, b) ? p.ak.wAtk * p.ak.wJmp : count === 2 ? p.ak.wSet : g.lastKind === 'serve' ? p.ak.wRecv : p.ak.wDig;
+      var wk = jset ? p.ak.wSet : atkC0 ? p.ak.wAtk * p.ak.wJmp : count === 2 ? p.ak.wSet : g.lastKind === 'serve' ? p.ak.wRecv : p.ak.wDig;
       te /= wk; // remate: también el Salto (con poco salto la ventana es más justa; dependes más del timing)
     }
     // Manos de seda: remate del compañero tras una colocación buena o perfecta del que la lleva
@@ -852,39 +876,45 @@
     var setIn = inKind === 'set' && (count === 3 || (count === 2 && inShot === 'jump'));
     var sedaL = setIn && prevPlayer && prevPlayer !== p && prevPlayer.team === t && prevPlayer.grade !== 'poor' ? bl(prevPlayer, 'seda') : 0;
     if (human && p.badges) { // insignias: ventanas de timing del humano (Sangre fría, Manos de seda, Ancla, Red de seguridad)
-      var bw = sangreW(g, p), atkC = isAttackContact(p, b);
+      var bw = sangreW(g, p), atkC = atkC0;
       if (atkC && sedaL && shot !== 'tip') bw *= BADGE.sedaW[sedaL];
       if (count === 1 && !atkC) {
         if (inKind === 'serve') bw *= BADGE.anclaW[bl(p, 'ancla')];
         else if (inKind === 'spike' || (inKind === 'block' && inPrev === 'spike')) bw *= BADGE.redW[bl(p, 'red')];
       }
       if (bw !== 1) te /= bw;
-    } else if (human && sedaL && shot !== 'tip' && isAttackContact(p, b)) te /= BADGE.sedaW[sedaL];
+    } else if (human && sedaL && shot !== 'tip' && atkC0) te /= BADGE.sedaW[sedaL];
     if (jset) te *= JSET.win; // colocación en salto: ventana más justa
     // calidad: timing x distancia x dificultad de lo que llega
     var q = timingQ(te);
     q *= 1 - 0.3 * clamp((d / C.REACH - 0.55) / 0.45, 0, 1);
     if (hardIn) q *= 1 - 0.25 * clamp((inSp - 11) / 8, 0, 1);
     if (shot === 'dive') q = Math.min(q, 0.62) * 0.85;
+    if (vsAtk) q *= BLK_AIRQ; // defensa en el aire de un remate: casi nunca sale limpia
     q = clamp(q, 0, 1);
     var grade = gradeOf(q), mul = human ? 1 : prof.err;
     // atributos del humano: precisión del toque (VB.ATTR_K.err). Recepción (saque), Defensa (resto de 1.os toques), Colocación
     // (2º toque y colocación en salto) y Control (ataque): ×er y ×prob. de fallo gordo. 1 con 50 o sin atributos
     var ek = 1;
-    if (human && p.ak) ek = jset ? p.ak.eSet : isAttackContact(p, b) ? p.ak.eAtk : count === 2 ? p.ak.eSet : count === 1 ? (inKind === 'serve' ? p.ak.eRecv : p.ak.eDig) : 1;
+    if (human && p.ak) ek = jset ? p.ak.eSet : atkC0 ? p.ak.eAtk : count === 2 ? p.ak.eSet : count === 1 ? (inKind === 'serve' ? p.ak.eRecv : p.ak.eDig) : 1;
     mul *= ek;
     // ...y en la calidad del pase/colocación (no del ataque: ahí ya están la diana y la potencia). Con el timing clavado la
     // dispersión ya era mínima y el atributo no se notaba: bajo, la calidad se recorta (15 → ×0,75); alto, se acerca a la
     // perfecta (90 → recupera un tercio de lo que le falta)
-    if (ek !== 1 && !isAttackContact(p, b) && shot !== 'body') {
+    if (ek !== 1 && !atkC0 && shot !== 'body') {
       q = ek > 1 ? q * (1 - AK.errQ[0] * (ek - 1)) : q + (1 - q) * (1 - ek) * AK.errQ[1];
       grade = gradeOf(q);
     }
     // playa: la colocación de dedos se pita más (dobles). Un 2º toque de dedos (balón alto, no en salto ni de ataque, cuerpo o
     // plancha) con mal timing es falta con prob. BEACH.dblSet (la IA, ×dblSetAI). Solo en la playa: el pabellón no gasta azar aquí
     if (g.beach && count === 2 && grade === 'poor' && !jset && shot !== 'body' && shot !== 'dive' && shot !== 'tip' && b.z - p.z > 1.6 &&
-        !isAttackContact(p, b) && g.rng() < BEACH.dblSet * (human ? 1 : BEACH.dblSetAI)) {
+        !atkC0 && g.rng() < BEACH.dblSet * (human ? 1 : BEACH.dblSetAI)) {
       fault(g, t, 'double', 'Dobles en la colocación de dedos', p); return;
+    }
+    // 2v2: la colocación de la IA hereda la calidad del pase que le llega (SETQ.pass). Un pase malo (del humano o de la IA) da
+    // una colocación peor y, con ella, un ataque más flojo o una bola de seguridad del compañero IA (abajo y ai.js)
+    if (!g.rot && !human && !jset && count === 2 && inKind === 'pass' && shot !== 'body' && prevQ < 1) {
+      q *= 1 - SETQ.pass * (1 - prevQ); grade = gradeOf(q);
     }
     g.touchTeam = t; g.touches = count; g.lastPlayer = p; g.lastTeam = t; p.anim = 0.3; p.cool = 0.3;
     var o = { x: b.x, y: b.y, z: b.z };
@@ -915,7 +945,7 @@
       g.blockOff[1 - t] = rnd(g, (0.35 + 0.9 * (1 - g.prof[1 - t].block)) * (1 + JSET.blk * q)); // rápida: el bloqueo rival llega peor colocado
       g.hardIn = false; g.digOk = true;
       if (g.stats) g.stats.jsets = (g.stats.jsets || 0) + 1;
-    } else if (isAttackContact(p, b)) {
+    } else if (atkC0) {
       if (shot === 'tip') { // dejada: suave, corta, por encima del bloqueo
         at = tgt || [-sd * (1.6 + (aim ? clamp(-sd * aim[0], -0.3, 1) : 0.3)), clamp(aim ? p.y + aim[1] * 2.6 : -p.y, -3.8 * g.cs, 3.8 * g.cs)];
         er = (0.25 + 0.9 * (1 - q)) * mul;
@@ -923,12 +953,15 @@
         v = launchSafe(o, at[0] + rnd(g, er), at[1] + rnd(g, er), 0, g.beach ? Math.max(b.z + BEACH.pokeyUp, C.NET_H + BEACH.pokeyNet) : Math.max(b.z + 0.45, C.NET_H + 0.9));
         kind = 'free'; power = 0.1;
       } else { // remate
+        // 2v2: el remate de la IA depende de la colocación que le llega (SETQ): con una colocación mala sale más lento, más
+        // disperso y con más error no forzado; con una buena (>= SETQ.hi), como siempre. Sin azar nuevo
+        var sk = !g.rot && !human && setIn && prevQ < SETQ.hi ? clamp((prevQ - SETQ.lo) / (SETQ.hi - SETQ.lo), 0, 1) : 1;
         var free3 = human && !tgt && g.aim3.on && g.aim3.kind !== 'serve'; // A1: mira libre del humano
         at = tgt || (free3 ? [g.aim3.x, g.aim3.y] : attackTarget(p, aim, 6, g.cs));
-        var spd = human ? 13.5 + 5.5 * q + (p.ak ? p.ak.spike : 0) : prof.spike * (0.82 + 0.18 * q);
+        var spd = human ? 13.5 + 5.5 * q + (p.ak ? p.ak.spike : 0) : prof.spike * (0.82 + 0.18 * q) * (SETQ.spd0 + (1 - SETQ.spd0) * sk);
         var boost = p.badges || sedaL ? BADGE.canon[bl(p, 'canon')] + BADGE.sedaV[sedaL] : 0; // Cañón, Manos de seda (m/s)
         power = clamp((spd + boost - 11) / 8, 0, 1);
-        er = (0.25 + 1.5 * (1 - q)) * mul;
+        er = (0.25 + 1.5 * (1 - q)) * mul * (1 + SETQ.er * (1 - sk));
         dip = C.G * (0.15 + 0.3 * q); // liftado: el balón "cae" más
         if (boost > 0) { dip = boostDip(dip, spd, spd + boost); spd += boost; }
         if (free3) { // A2: dispersión según el timing, uniforme en un círculo de radio spikeSpread(q) (mismo gasto de azar)
@@ -936,7 +969,7 @@
           v = launchDirect(o, at[0] + sr * Math.cos(sa), at[1] + sr * Math.sin(sa), C.BR, spd, C.G + dip); // bota justo en la diana
         } else v = launchDirect(o, at[0] + rnd(g, er), at[1] + rnd(g, er), 0, spd, C.G + dip);
         if (q < 0.45 && g.rng() < (0.48 - q) * 0.75 * ek) v[2] -= 1.4 + g.rng(); // a la red (×ek: Control)
-        else if (!human && g.rng() < prof.atkErr * BADGE.miraAI[bl(p, 'mira')] * BADGE.sedaAI[sedaL]) aiError(g, o, v, spd, sd, C.G + dip); // error no forzado de la IA
+        else if (!human && g.rng() < prof.atkErr * BADGE.miraAI[bl(p, 'mira')] * BADGE.sedaAI[sedaL] * (1 + SETQ.err * (1 - sk))) aiError(g, o, v, spd, sd, C.G + dip); // error no forzado de la IA
         kind = 'spike'; sub = 'power';
       }
       // ¿defenderá la IA del otro equipo? Depende de la potencia y de la COLOCACIÓN: margen de tiempo entre el
@@ -1002,7 +1035,7 @@
     if (kind !== 'spike') g.digTight = false;
     g.aim3.on = false;
     g.prevKind = g.lastKind;
-    g.lastKind = kind; g.lastShot = sub; g.lastTouchT = g.time; g.netSince = false;
+    g.lastKind = kind; g.lastShot = sub; g.lastQ = q; g.lastTouchT = g.time; g.netSince = false;
     if (kind === 'spike' || (kind === 'free' && sub === 'tip')) {
       g.atkTeam = t; g.atkHow = kind === 'spike' ? 'kill' : 'tip'; g.atkHits = g.rally.hits + 1; g.atkHuman = human; g.atkGrade = grade;
       // colocador del ataque (point.assist): el 2º toque del mismo equipo, si el ataque es el 3r (o el 1r si colocó en salto
@@ -1894,7 +1927,7 @@
       p.shot = ''; p.aiTeT = -1;
     }
     g.lastLand = null; g.antennaHit = null; g.atkServe = null;
-    g.server = sv; g.serveState = 'ready'; g.serveJump = false; g.serveClock = C.SERVE_CLOCK; g.serveT = 0; g.tossT = 0;
+    g.server = sv; g.serveState = 'ready'; g.serveJump = false; g.serveClock = g.serveClockMax; g.serveT = 0; g.tossT = 0;
     g.serveNo++;
     g.serveAuth = false; g.whistleAt = g.demo ? RITUAL.demoWhistle : 0.7; // (también abajo, tras el serveReady: el ritual lo necesita ya)
     b.held = sv; b.vx = b.vy = b.vz = 0; b.dip = 0; b.wobA = 0;
@@ -2103,7 +2136,7 @@
         if (g.serveAuth) { if (input.jump || input.jset) toss(g, sv, true); else if (input.hit) toss(g, sv, false); }
         if (g.serveState === 'ready' && g.serveAuth && g.opts.serveClock !== false) {
           g.serveClock -= dt;
-          if (g.serveClock <= 0) { g.serveClock = 0; fault(g, sv.team, 'serve', 'Falta de saque: 8 segundos', sv, 'delay8'); return; }
+          if (g.serveClock <= 0) { g.serveClock = 0; fault(g, sv.team, 'serve', g.beach ? 'Falta de saque: 5 segundos' : 'Falta de saque: 8 segundos', sv, 'delay8'); return; }
         }
       } else {
         stepPlayer(g, sv, dt, 0, 0);

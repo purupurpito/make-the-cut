@@ -836,6 +836,12 @@ h2 span{color:var(--hot)}
   #end .row-btn button{padding:12px;font-size:16px;text-align:center;justify-content:center}
   #end .row-btn #btnAgainAlt[hidden]+#btnMenu{grid-column:1/-1}
 }
+/* botones secundarios de la hoja final (Revancha en…, Cambiar opciones, Menú principal): en rejilla de 6, a partes iguales según
+   cuántos se ven (data-n de .row-btn, ui.js showEnd): 1 a lo ancho, 2 a medias, 3 a tercios (en dos líneas si no caben) */
+#app #end .row-btn,#app #end.dock .row-btn{grid-template-columns:repeat(6,minmax(0,1fr));align-items:stretch}
+#app #end .row-btn>button{grid-column:span 3}
+#app #end .row-btn[data-n="1"]>button,#app #end .row-btn>#btnAgain{grid-column:1/-1}
+#app #end .row-btn[data-n="3"]>button:not(#btnAgain){grid-column:span 2;white-space:normal;line-height:1.12;overflow:visible}
 /* durante la pantalla final el marcador y los botones del HUD se apartan (el marcador colgado del pabellón sigue a la vista) */
 #app.end-on .sb,#app.end-on .hud-btns,#app.end-on #touchbar,#app.end-on #coach{opacity:0!important;transition:opacity .3s}
 
@@ -1983,6 +1989,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
       <div class="row-btn" data-nav>
         <button id="btnAgain">Revancha</button>
         <button class="ghost" id="btnAgainAlt" hidden>Revancha en Normal</button>
+        <button class="ghost" id="btnEndOpts" title="Dificultad, puntos, control y escenario">Cambiar opciones</button>
         <button class="ghost" id="btnMenu">Menú principal</button>
       </div>
       <div class="end-peek" data-nav><button class="ghost" id="btnPeek"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5C6.5 5 2.7 9.4 1.6 12c1.1 2.6 4.9 7 10.4 7s9.3-4.4 10.4-7C21.3 9.4 17.5 5 12 5zm0 11.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm0-2.3a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4z"/></svg>Ver celebración</button></div>
@@ -2043,6 +2050,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
             <p class="opt-h">Imagen</p>
             <button class="opt" data-opt="quality"><span>Calidad<small id="qualNote">Auto la ajusta sola</small></span><span class="seg" data-seg="quality"></span></button>
             <button class="opt" data-opt="camSens"><span>Cámara<small>Rapidez con la que sigue a tu jugador</small></span><span class="slider" data-sl="camSens"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></button>
+            <button class="opt" data-opt="beachLight"><span>Luz de playa<small>Al mediodía o de tarde, con el sol bajo</small></span><span class="seg" data-seg="beachLight"></span></button>
           </div>
           <div class="opt-g" data-tab="game">
             <p class="opt-h">Juego</p>

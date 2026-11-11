@@ -1156,3 +1156,41 @@ la variante attrs regenerada con `fingerprint6.js --write`).
   Difícil Defensa 52,8/56,5, Control 52,6/54,9 (sin 54,7). **Recepción y Colocación siguen notándose poco** en el resultado: la IA del
   compañero remata casi igual tras un pase regular. Probado y descartado: un fallo gordo fijo con el atributo bajo (recepción 15 daba
   59 % por caos del bot). Pendiente: que la calidad del pase cuente en el remate del compañero IA (ai.js).
+
+## Calidad que se arrastra, colocación en salto de la IA, golpe desde el bloqueo y 5 s de playa (11-nov-2026) — sim
+Solo 2v2 (todo con `!g.rot`; 6v6 y `ai6.js` sin tocar). Huella 2v2 regenerada a propósito (ver abajo).
+- **Calidad pase → colocación → ataque** (`VB.SETQ`, sim.js `hit`; ai.js `plan`). `g.lastQ` = calidad del último toque (nuevo).
+  - Colocación de la IA tras un pase de calidad c: q × (1 − 0,5·(1 − c)) (pase del humano o de la IA; no la colocación en salto).
+  - Remate de la IA tras una colocación de calidad c, con k = (c − 0,25)/0,6 en 0..1 (c ≥ 0,85 = como siempre): velocidad
+    ×(0,85 + 0,15·k), dispersión ×(1 + (1 − k)), error no forzado ×(1 + (1 − k)). Sin azar nuevo. Escena fija (remate IA Normal):
+    colocación 1 / 0,8 / 0,6 / 0,4 → 15,6 / 15,4 / 14,6 / 13,7 m/s.
+  - Bola de seguridad (ai.js, plan 'safe'): con colocación c < 0,45 la IA no salta y la pasa desde el suelo al fondo (count 3 de
+    siempre) con prob. 0,85·(0,45 − c)/0,35 (c 0,3 → 36 %, 0,2 → 61 %, ≤ 0,1 → 85 %).
+  - Medido (40 semillas × 300 s, % de remates que son punto tras colocación mala/buena/perfecta): compañero IA contra Normal
+    54/47/44 → 35/39/45 % (antes no dependía de la colocación); demo 35/48/51 → 38/48/52. Bolas de seguridad tras colocación mala:
+    contra Normal 4 → 84 de 274 ataques.
+- **Colocación en salto de la IA** (ai.js `plan` 'jset' + `update`, prob. `prof.jsetAI`: Fácil 0,04, Normal 0,12, Difícil 0,18,
+  Experto 0,25, demo y compañero 0,15; con atributos ×(1 + d(Colocación)), máx. 0,5). Solo en el 2º toque, con pase ≥ 0,78, el
+  balón a < 2,4 m de la red y por encima de 2,5 m, el compañero listo (en el suelo, a < 0,75 s de su sitio) y tiempo para llegar.
+  Salta como para rematar y coloca en el aire (`shot 'jset'`, el JSET de siempre). El bloqueador CPU rival la lee como la del humano
+  (ai.js `aiJsetUp`, sin el gesto de ataque). Medido (40 × 300 s): 4,2 % de las colocaciones en la demo, 2,4 % compañero contra
+  Normal, 7,4 % contra Experto, 5,9 % playa; remate punto tras ella 51-60 % (media general 45-50 %).
+- **Golpe desde el bloqueo** (sim.js `hit`, `BLK_ZONE` 1,1 / `BLK_AIRQ` 0,6): con un remate rival en camino, el jugador en el aire ya
+  no ataca (GOLPEAR o la dejada devolvían el remate como remate propio). A |x| ≤ 1,1 m de la red no hay toque de brazos: decide el
+  bloqueo (`checkBlock`); más atrás es una defensa en el aire (1r toque, calidad ×0,6). Escena (remate a 14 m/s, 600 casos, GOLPEAR
+  a destiempo): a 1,4 m de la red 198 remates de vuelta → 0 (200 defensas); a 0,5/0,9 m todo bloqueo como antes.
+- **5 s para sacar en la playa**: `C.SERVE_CLOCK_BEACH = 5`, `g.serveClockMax` (5 en la playa, 8 en el pabellón), texto «Falta de
+  saque: 5 segundos» (pabellón igual: «Falta de saque: 8 segundos»), señal `'delay8'` (la misma de retraso del saque). Probado: falta a
+  los 4,99 s del silbato en la playa y 7,99 s en el pabellón.
+- **Huella 2v2**: `node tools/fingerprint6.js --write` (el procedimiento de siempre: comparar, mirar que cambia lo esperado y la partida
+  sigue sana, y escribir). Antes de regenerar: solo el arreglo del bloqueo cambiaba 7 partidas (human 13/16/17/34/40/46, attrs 50; cpu
+  idéntica); con todo cambian las 150 (la IA nueva juega en las tres variantes). Puntos en 150 s: cpu 735 → 717, human 439 → 414,
+  attrs 489 → 460; llamadas a g.rng 563 424 → 572 632. La nota del JSON sigue siendo el texto fijo de fingerprint6.js.
+- **Partida sana** (simtest completo, antes → después): demo rally mediana 5,00 → 4,91 s, remates punto 55 → 46 % (objetivo 38-65);
+  compañero IA contra Fácil/Normal/Difícil/Experto 77,2/60,0/48,0/29,0 → 77,0/57,7/49,7/26,3 %; bot medio contra Normal/Difícil
+  52,1/37,2 → 52,4/40,4 %, novato contra Fácil 46,3 → 48,6 %; atributos 15/50/85 23,7/42,4/61,8 → 20,0/43,7/62,7 (se nota más);
+  Carrera Regional novato/medio 51,3/69,0 → 53,5/71,4 %. Harness: 40 semillas × 300 s, puntos por 300 s demo 29,2 → 28,8, rally
+  medio 6,5 → 6,6 s.
+- **simtest falla en 3 comprobaciones** (no es mío el fichero; ver informe al integrador): «(f) CPU contra CPU sin colocación en salto»
+  (ya no es cierto, a propósito) y «Cañón» / «Manos de seda» con 8 semillas (estadística frágil: con 32 semillas el código anterior
+  daba seda +0,82 y con 8 a veces menos de 0,7; la escena fija da +1,2 m/s exactos con y sin el cambio).

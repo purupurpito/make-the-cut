@@ -695,3 +695,34 @@ jugador vería caer «dentro» de la cinta balones que se cantan fuera.
 `drawDeco(..., 'ball')` llama a `drawGameBall(g, x, y, r)`: el balón del juego de pages/icon.svg (caja 24×24, radio 10), panel naranja
 y azul con `Path2D` de los mismos trazados que ICON_HIT de input.js, tres costuras de tinta en remolino, contorno y brillo. Sin
 `Path2D(string)` (navegador viejo) sale un círculo. Vale para la valla LED y para el otro uso de `drawDeco` (marcas a 0,86 de alto).
+
+## Muñeco oficial, marcador de playa, público de playa y tinta (11-nov-2026)
+- **Oficiales al estilo muñeco** (`makePerson`, constantes `CH`): árbitros, jueces de línea, anotadores, suplentes, entrenadores, fotógrafos
+  y operador de TV con las proporciones del muñeco de doll.js (~3,3 cabezas): cadera a 0,6 m (sentado 0,52, de rodillas 0,42), tronco
+  «judía» corto y redondo (escala 1,2 × 0,9), cabeza grande sin cuello (radios 0,245 / 0,25 / 0,232 sobre el hueso a 0,6 m) con ojos de
+  dibujo (blanco, pupila de tinta y brillo), cejas, nariz y sonrisa; bola en el hombro, manga, tubo de brazo, codo, manopla (o dedos
+  gordos en los árbitros), pantalón de tubo y zapatones con suela. MISMOS huesos y nombres: POSE, señales, banderas y reacciones no
+  cambian (reposo de pie algo más abierto, z −0,3, por la barriga). Utillaje del entorno recolocado (peto y cámara del fotógrafo,
+  auriculares, trípode y cabezal de TV a 1,35 m, canesú de los suplentes). Barandilla de la silla del árbitro a PZ + 0,84 (antes 0,98 /
+  0,95 en la playa) para que se le vea el tronco. Uniformes aclarados (polo #2f4f86, pantalón #2c3240; anotadores #3b5d93).
+  Tinta = la del muñeco (`OFF_INK`: 0,003 m, tope 0,06, 3,6 px) y ahora también en MEDIA (antes solo alta). 43 k triángulos (antes 46 k).
+- **Marcador de playa** (`beachScoreboard`, `BSB`): torre de aluminio con riostras y sacos, marco turquesa, lona coral con el tajo, tras
+  NUESTRO fondo en la esquina del 1r árbitro (x 16,6, y −10,6), de cara al centro: fuera del plano de saque (en el fondo rival tapaba el
+  HUD y se cortaba por arriba) y visible en la grúa del cambio de campo, en los planos de punto de frente y en el menú. Pantalla
+  `beachScore` (1 dibujo, MeshBasic sin tono) pintada con `drawScoreHung` (SET n / PUNTO DE SET, nombres, cifras, sets y los avisos de
+  `screenMsg`, también «CAMBIO DE CAMPO»); en la playa `update` repinta solo la torre y `setVenue` vuelve a marcar `SB.dirty`.
+  **Cámara**: `scoreLandmark()` cambia los campos de `landmarks.scoreHung` según la sede (playa: `{x 16,6, y −10,6, z 3,7}`, así la caja de
+  camera.js z − 1,9 … z + 1,3 cubre la pantalla; pabellón: `{0, 0, 11,4}`) y publica `landmarks.scoreBoard = {venue, x, y, z0, z1, w}`
+  con las medidas reales. 3 idas y vueltas pabellón ↔ playa: 65 geometrías / 45 texturas siempre.
+- **Público de playa de muñeco** (`crowdGeometry(hi, chibi)`, `CROWD_CHB`): cabeza r 0,19 sin cuello, tronco corto, brazos cortos con
+  manopla (alta), pies descalzos (alta) y sombrero de paja (pieza 4, color `aAcc`, la mitad lo lleva). MISMO material y programa que el
+  pabellón (`vb-crowd-8`): `color.z` = marca + 3 en el muñeco y el shader cambia con ella pivotes de hombro/codo/cuello y escala de la
+  cara (los rasgos del fragmento crecen con la cabeza); el pabellón no cambia. Peñas por tramos de 3,2 m (`BEACH_FANS`: local, visitante
+  o neutral, 78 % del tramo). 218 triángulos por persona en la LOD baja (668 en alta).
+- **Tinta en props oscuros**: protecciones de los postes del pabellón (#22527e / #2d679a), bases, acero, acolchado de la silla y mesa más
+  claros; postes de la red de playa #3a3d48; grosor mínimo `PROP_INK` (postes 0,016, antes 0,012; props / red / estática de playa 0,011,
+  antes 0,008). 0 dibujos.
+- **Medido** (`perf.js 844x390 10 high,medium,low 4`): playa alta 40/43 dibujos · 449 k; media 40/45 · 260 k; baja 30/33 · 124 k.
+  Pabellón (`EXTRA=map=hall`) media 49/50 · 321 k; baja 30/34 · 105 k. 6v6 media 58/60 · 334 k; baja 37/39 · 121 k. «Objetivos cumplidos»
+  en los tres. Capturas `tools/out/arena-w/` (`final/`: pabellón y playa a 1280×720 y 844×390 táctil, alta y baja; 6v6).
+- Pendiente: probar la grúa del cambio de campo en la playa (courttest no admite `map=beach`); 6v6 en media a 334 k (cerca de 350 k).

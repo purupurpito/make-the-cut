@@ -79,7 +79,7 @@
   /** Experiencia para pasar del nivel lvl al siguiente. */
   function need(lvl) { return 80 + 40 * lvl; }
   /** Puntos de mejora que cuesta subir un atributo de v a v+1. */
-  function cost(v) { return v < 50 ? 1 : v < 65 ? 2 : v < 80 ? 3 : 4; }
+  function cost(v) { return v < 60 ? 1 : v < 70 ? 2 : v < 85 ? 3 : 4; } // base 50: 10 puntos a coste 1
   /** Valoración global: media de los atributos. */
   function ovr(st) { var s = 0; KEYS.forEach(function (k) { s += st[k]; }); return Math.round(s / KEYS.length); }
 

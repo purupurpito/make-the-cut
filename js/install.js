@@ -178,13 +178,26 @@
   function useful() { return touch() && !standalone(); }
 
   // Primera visita desde el móvil: sale sola una vez, cuando ya se ve el menú. Nunca en las pruebas (?debug=…) ni instalada.
+  // Nunca a la vez que otro panel (p. ej. «Primer partido», que sale al tocar JUGAR la primera vez): espera a que la portada del
+  // menú esté libre (VB.UI.menuIdle: sin panel, sin cortinilla, sin Carrera) 1,5 s seguidos. Si el jugador se va a jugar antes,
+  // sale al volver al menú tras el partido; si cierra la página antes, en la próxima visita (no se marca como visto).
+  function idle() {
+    var c = VB.ctx, U = VB.UI;
+    if (c && c.state && c.state !== 'menu') return false;
+    if (U && U.menuIdle) { try { if (!U.menuIdle()) return false; } catch (e) { return false; } }
+    else if (U && U.isPanelOpen && U.isPanelOpen()) return false;
+    if (VB.CareerUI && VB.CareerUI.isOpen) { try { if (VB.CareerUI.isOpen()) return false; } catch (e) { } }
+    return document.visibilityState !== 'hidden';
+  }
   function auto() {
     var q = location.search || '';
     if (/[?&](debug|autopilot|noinstall)\b/.test(q) || wasSeen() || !useful()) return;
-    setTimeout(function () {
-      var c = VB.ctx; if (c && c.state && c.state !== 'menu') return; // si ya está jugando, no se interrumpe
-      open();
-    }, 2200);
+    var t0 = Date.now(), calm = 0;
+    var iv = setInterval(function () {
+      if (wasSeen() || isOpen()) { clearInterval(iv); return; }        // abierto a mano (Pantalla completa) o ya visto
+      calm = idle() ? calm + 250 : 0;
+      if (Date.now() - t0 >= 2200 && calm >= 1500) { clearInterval(iv); open(); }
+    }, 250);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', auto); else auto();
 
