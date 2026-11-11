@@ -261,7 +261,7 @@ Solo `js/players.js`. Herramientas de medida en `tools/out/ply1/` (`m.js` métri
   2 % / 2 % / 0 % (antes 86 / 85 / 85 %). `slide.pctBadMoving` 0,7 % / 1,2 % (antes 84 / 85 %).
 - Saque: palma bajo el balón, 0,226-0,239 m de la muñeca al centro (radio 0,21) en todos los frames; antebrazo derecho a 0,58 m o más del
   balón; paso del pie izquierdo 0,31 m; manos a 0,36 m o más de la cadera de +0,05 a +0,5 s; altura de la mano 1,96 a 2,54 m sin bajar.
-- Plancha (semilla 7, 1.ª): tronco 60º en el contacto; cabeza 0,25-0,63 m sobre el suelo y a 41-44º del balón de +0,35 a +0,8 s;
+- Plancha (semilla 7, 1ª): tronco 60º en el contacto; cabeza 0,25-0,63 m sobre el suelo y a 41-44º del balón de +0,35 a +0,8 s;
   de pie (cabeza por encima de 1,3 m) 0,82 s después de apoyar el pecho.
 - Convergencia: 19/19 (semilla 7) y 19/20 (semilla 99) puntos con manos de la pareja a 0,12 m o menos entre 0,3 y 1,6 s; 1 evento por punto.
 - Galón: 1920×1080 alta, relleno RGB 208,125,68 (tono 24º, objetivo 19º), luma máxima 204; no aparece en saque ni en punto de set.
@@ -274,7 +274,7 @@ Solo `js/players.js`. Herramientas de medida en `tools/out/ply1/` (`m.js` métri
 - **Radio del balón**: los criterios de PLY-01/PLY-03 en `metrics.js` (−0,105) y `hbd ≤ 0,12` suponen un balón de 0,105 m; el del juego es
   de 0,21. Con la mano en la superficie real la muñeca queda a ~0,23 m del centro. Meter la mano hasta la mitad del balón cumpliría el número
   pero se ve mal en primeros planos; se ha elegido la superficie real. Si se quiere el criterio literal, cambiar la resta a `VB.C.BR`.
-- Plancha con el balón ya casi detrás del que se lanza (p. ej. semilla 7, 2.ª): la cabeza gira hasta ~110º, pero queda a ~55º del balón.
+- Plancha con el balón ya casi detrás del que se lanza (p. ej. semilla 7, 2ª): la cabeza gira hasta ~110º, pero queda a ~55º del balón.
 - Pausa del punto (1,9 s normal): en convergencias largas el compañero no tiene tiempo de volver a trote; el resto lo absorbe la
   recolocación de la sim en `serveReady` (que mueve a todos a la formación de saque en ese mismo instante).
 
@@ -738,11 +738,11 @@ dibujos (rally baja 844×390: 113.676 triángulos / 34 dibujos con tajo y con ta
   (0,8 · CV_K, 0,6 · CV_K…), el sitio del compañero del plano de héroe (≥ 0,86 · CV_K) y `SEP_MIN`.
 - **tanque** (Fall Guys / Strikers): legs 0,88, head 1,5, hand 2,1, foot 2,1, neck 0,85, neckW 1,6, sh 1,35, shX 1,3, hipW 1,4, up [1,9 1,85 0],
   fore [1,85 1,75 0], thigh [1,8 1,7 0], shin [1,8 1,75 0], chest [1,2 1,55 0,95], waist [1,3 1,7], hips [1,5 1,6].
-- **chibi** (muñeco cabezón y bajito, 2.ª versión a petición de Ferran: «que se vea pequeño de verdad»): legs 0,63, torso 0,92, arm 1,6 (hacía
+- **chibi** (muñeco cabezón y bajito, 2ª versión a petición de Ferran: «que se vea pequeño de verdad»): legs 0,63, torso 0,92, arm 1,6 (hacía
   falta ×1,6, no ×1,4-1,5, para el mismo alcance), head 2,3, hand 2, foot 2,3, neck 0,72 (la cabeza se asienta entre los hombros), neckW 1,3,
   sh 1,25, shX 1,25, hipW 1,1, up [1,45 1,4 1], fore [1,45 1,35 1], thigh/shin [1,6 1,5 1], chest [1,05 1,1 1], waist [1,1 1,15], hips
   [1,15 1,15]. De pie ≈ 1,65 m (hombros a 1,13; tajo ≈ 1,9); los brazos cuelgan casi hasta el suelo (tipo muñeco).
-- **mini** (para comparar): el chibi de la 1.ª versión (legs 0,78, head 2,1, hand 2,2, foot 2,3, extremidades ×1,5, neck 1) con `scale` 0,85
+- **mini** (para comparar): el chibi de la 1ª versión (legs 0,78, head 2,1, hand 2,2, foot 2,3, extremidades ×1,5, neck 1) con `scale` 0,85
   (todo el rig, ≈ 1,7 m de pie) y `stretch` 1,28: en remate y bloqueo el brazo se alarga hasta un 28 % para llegar al balón. Visto de cerca
   (`close.js mini out.png at:0 spike` / `at:1 block`): el brazo recto largo se lee como estirón de dibujo, sin codo roto; en reposo vuelve.
 - **heroe** (cómic): legs 1, head 1,35, hand 1,5, foot 1,75, neck 0,88, neckW 1,3, sh 1,5, shX 1,6, up [1,5 1,25 2], fore [1,3 1 5 a 0,3]
@@ -928,7 +928,7 @@ point,dive,over,jumpserve,menu}.png`, `six-{1280,844t}/{serve6,rally6,point6}.pn
   (−0,15 rad), sin la banda (quedaba dentro de la bola). Antes nacía dentro del pelo y asomaba por arriba o de lado como una pieza suelta.
 - **Afro**: rizos (2 × 9 bultos medio hundidos por detrás, los lados y arriba, fuera de la cuña de la cara + uno arriba): la silueta y el
   contorno de tinta ya no son una bola lisa tipo casco. Pelo del n.º 2 algo más claro (`0x3a2a1e`, antes `0x241a14`, casi negro).
-- **Tupé (pabellón)**: el 2.º mechón va echado hacia delante y pegado al 1.º (visto por detrás eran dos picos, «orejas de gato»).
+- **Tupé (pabellón)**: el 2º mechón va echado hacia delante y pegado al 1r (visto por detrás eran dos picos, «orejas de gato»).
 - Capturas de antes/después de las cabezas: `tools/out/arte/doll-fix/h*.png`; finales en `tools/out/arte/doll-final/`.
 - **Pendiente (no arreglado)**: los oficiales (árbitros, jueces de línea, anotadores, fotógrafos; arena.js) siguen con la proporción del
   atleta antiguo y desentonan al lado del muñeco, sobre todo el juez de línea en primer plano en el saque de playa; el público low-poly

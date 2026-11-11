@@ -9,7 +9,7 @@ Proyecto personal. Este documento es la ley para los 6 especialistas que trabaja
 {"sim":"js/sim.js and js/ai.js (gameplay simulation, rules, AI, hit quality/timing, serve types, difficulty) and tools/simtest.js","players":"js/players.js (athlete models, materials, procedural animation state machine, celebrations)","arena":"js/arena.js and js/fx.js (pavilion, floor, lines, net, antennas, posts, lighting, shadows, stands, crowd, LED boards, hanging scoreboard, ball mesh+shadow+trail, particles/impact FX)","camera_input":"js/camera.js and js/input.js (third-person camera rig, transitions, shake, slow-mo hook, camera-relative input mapping, keyboard, gamepad, touch controls overlay)","audio":"js/audio.js (procedural WebAudio: hit sounds per touch type, spike crack, net, block, whistle, crowd ambience and reactions, UI clicks, music sting)","ui_main":"index.html, css (inline in index.html), js/ui.js and js/main.js (boot, loop, renderer setup, adaptive quality, menus, HUD, scoreboard overlay, pause, end screen, settings, tutorial/onboarding, debug scenes, tools/shot.sh, tools/console.sh)"}
 ```
 
-`js/prog.js` (estadísticas y progresión de tus jugadores: `VB.Prog`, guardado en `voley3d.squad`) también es de **ui_main**; sim lo recibe ya convertido en `createGame({attrs: [[st7, st11], [st3, st9]]})` (atributos 1-99 con las claves `VB.ATTR_KEYS`; 50 = neutro; sin `attrs` la sim no cambia), que deja `p.st`, `p.prof` (perfil de IA, `Sim.statProf`) y `p.ak` (multiplicadores del humano, `Sim.attrK`; constantes en `VB.ATTR_K`). Integración (10-nov-2026): `p.ak` añade `eRecv/eDig/eSet/eAtk` (precisión del toque: dispersión ×1,5-0,6 y calidad del pase/colocación) y `rRecv/rDig` (alcance del 1.er toque ×0,94-1,05); con Velocidad < 50 frenar y girar es al momento (la rampa `accT` solo al arrancar).
+`js/prog.js` (estadísticas y progresión de tus jugadores: `VB.Prog`, guardado en `voley3d.squad`) también es de **ui_main**; sim lo recibe ya convertido en `createGame({attrs: [[st7, st11], [st3, st9]]})` (atributos 1-99 con las claves `VB.ATTR_KEYS`; 50 = neutro; sin `attrs` la sim no cambia), que deja `p.st`, `p.prof` (perfil de IA, `Sim.statProf`) y `p.ak` (multiplicadores del humano, `Sim.attrK`; constantes en `VB.ATTR_K`). Integración (10-nov-2026): `p.ak` añade `eRecv/eDig/eSet/eAtk` (precisión del toque: dispersión ×1,5-0,6 y calidad del pase/colocación) y `rRecv/rDig` (alcance del 1r toque ×0,94-1,05); con Velocidad < 50 frenar y girar es al momento (la rampa `accT` solo al arrancar).
 `tools/drive.js`, `tools/eval.js`, `tools/shot.js`, `tools/cdp.js`, `tools/chrome.js`, `tools/chrome-env.sh`, `tools/perf.js`, `tools/touchplay.js` y `tools/padplay.js` también son de **ui_main**.
 `tools/audiotest.js` es de **audio**; `tools/touchtest.js`, `tools/padtest.js` y `tools/courttest.js` son de **camera_input**.
 `js/badges.js` (`VB.Badges`, insignias), `js/career.js` (`VB.Career`, datos y lógica de la Carrera, sin DOM) y `js/career-ui.js` (`VB.CareerUI`, pantallas de la Carrera: crea su propio DOM `#career` y su `<style>` desde JS) son de **ui_main**, igual que `tools/badgetest.js` y `tools/careertest.js`. Guardados: `voley3d.squad` (v3: escuadrón inicial a media 50; los v1/v2 suben +10 cada atributo una vez) y `voley3d.career`.
@@ -117,7 +117,7 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
   `lastGrade`, `lastShot`, `lastTouchT`, `netSince`; balón: `ball.dip`, `ball.wobA/wobF/wobP` (baile del flotante).
 - **Revisión 2**: `g.tm` (`{assist, swing, lock}` ayuda de timing del humano por nivel, `VB.TIMING[nivel]`); `g.defRole` (`''|'dig'|'block'`:
   al colocar la CPU el humano defiende y su compañero bloquea; CAMBIAR durante la colocación = bloquear tú); `g.recvRisk` (dificultad del
-  último saque para el receptor); `g.blockBy` (último bloqueador); `g.courtSwap3` (ya se cambió de campo a los 8 del 3.er set);
+  último saque para el receptor); `g.blockBy` (último bloqueador); `g.courtSwap3` (ya se cambió de campo a los 8 del 3r set);
   `p.shot` admite `'body'` (el balón le da en el cuerpo: cuenta como toque).
 - **R4 (verificación de reglas)**: `g.atkServe` (`{team, player}`: ataque del saque rival por encima de la red en zona de ataque pendiente; solo es falta si el balón cruza entero el plano de la red o lo toca el bloqueo rival; se borra en cada toque y en `serveReady`); `rookie` tiene efecto real en Fácil/Normal (`rookieProf(pr, on, diff)`: en Fácil solo saque suave y `srvErr` ×0,65; en Normal además remate un 10 % más lento, `atkErr` ×1,4, `aimNoise` ×1,25, `dig` ×0,8, `block` ×0,5).
 - **R5 (verificación 2)**: criterio único de remate `isAttackContact(p, b)` (interno: `p.z > 0,25 && |b.x| < 3,8 && b.z > NET_H + 0,1`) que usan `hit()` y `aimPoint()` (la retícula promete el mismo tipo de golpe que sale). Un saque/remate que roza la cinta y cae dentro sin que nadie lo toque es `how:'ace'|'kill'` (ya no `'error'`).
@@ -175,8 +175,8 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
   las escenas de depuración) → `g.beach = true`, `g.venue = 'beach'`. Sin `venue` (o `'hall'`), el pabellón byte a byte (huella idéntica).
   Pista POR PARTIDA: `g.HL` / `g.HW` (9 / 4,5 en el pabellón; **8 / 4** en la playa, `VB.C.BEACH`) y `g.cs` (escala respecto a 18×9: 1 / 8⁄9).
   `VB.Sim.court(g | 'beach' | 'hall')` → `{HL, HW, cs, beach}` (cacheado, no modificar): quien pinte o encuadre la pista debe usarlo, no
-  `C.HL/C.HW`. `lineDist(x, y, g)` (sin g, la de 18×9). Reglas de playa (`VB.BEACH`, solo lectura): sets a 21 y el 3.º a 15 (`g.points = 21`
-  aunque se pida otro), cambio de campo cada 7 puntos jugados (cada 5 en el 3.º; sin el de los 8), el toque de bloqueo cuenta como toque
+  `C.HL/C.HW`. `lineDist(x, y, g)` (sin g, la de 18×9). Reglas de playa (`VB.BEACH`, solo lectura): sets a 21 y el 3r a 15 (`g.points = 21`
+  aunque se pida otro), cambio de campo cada 7 puntos jugados (cada 5 en el 3r; sin el de los 8), el toque de bloqueo cuenta como toque
   (`g.touches = 1` tras él; el bloqueador puede dar el siguiente), la dejada se juega de nudillos («pokey»: más tensa; `hit.pokey = true`,
   `shot` sigue `'tip'`; textos «Pokey fuera»), y una colocación de dedos «poor» puede ser **dobles** (`point reason 'double'`, texto
   «Dobles en la colocación de dedos»). Sin rotación (el saque alterna en el equipo como en 2v2). `newMatch.venue`. Evento `courtChange`
@@ -191,7 +191,7 @@ Todos llevan `type` y `t` (tiempo de juego). `player` es la referencia al objeto
 |---|---|---|
 | `newMatch` | `{demo, difficulty}` | partido creado |
 | `serveReady` | `{team, player, setPoint, matchPoint}` | sacador con el balón |
-| `whistle` | `{reason:'serve'|'point'}` | autorización del saque / fin de jugada (el 1.er árbitro de arena señala con el brazo) |
+| `whistle` | `{reason:'serve'|'point'}` | autorización del saque / fin de jugada (el 1r árbitro de arena señala con el brazo) |
 | `hit` | `{kind:'serve'|'pass'|'set'|'spike'|'free', player, team, touch (0 saque,1..3), quality 0..1, x,y,z, speed, human, grade:'perfect'|'good'|'poor', timing (s, <0 pronto), power 0..1, shot, dive (bool), aim [x,y]|null, target [x,y]|null, jset (bool)}` | toque válido. `shot`: saque `'float'|'jump'`; recepción `'forearm'|'dig'|'shank'|'dive'`; colocación `'overhead'`, **colocación en salto `'jump'` (`kind 'set'`, `jset: true`, también con `touch 1`)**; ataque `'power'|'tip'`; 3er toque desde el suelo `'overhead'|'forearm'`. **La dejada es `kind:'free', shot:'tip'`**. `shot:'body'` = el balón da en el cuerpo sin gesto (`grade:'poor'`, `kind` según el toque) |
 | `swing` | `{player, shot:''|'tip'}` | el humano pulsa golpear (gesto aunque no llegue) |
 | `toss` | `{player, team, jump, human}` | el sacador lanza el balón (flotante / en salto) |
@@ -212,7 +212,7 @@ Todos llevan `type` y `t` (tiempo de juego). `player` es la referencia al objeto
 | `newSet` | `{setNo}` | empieza el set siguiente |
 | `switch` | `{from, to, auto, reset?, reason?}` | cambia el jugador controlado (auto = lo decide el juego; `reason:'defense'` = al colocar la CPU, ~1,5 s antes del remate) |
 | `dribble` | `{player, team, x, y, n (1..of), of (botes de este ritual), speed (m/s contra el suelo), last (bool)}` | cada bote del ritual del sacador CPU (SIM-04); en ese paso `ball.z === BR`. Audio: bote controlado |
-| `courtChange` | `{setNo, why:'set'|'eight'|'swap', score, sets, pause, every?}` | cambio de campo (18.2.1 / 18.2.2): al acabar un set que no cierra el partido y a los 8 del 3.er set; en la playa (`'swap'`), cada `every` puntos jugados (7; 5 en el 3.º). Solo presentación (el humano sigue en x > 0) |
+| `courtChange` | `{setNo, why:'set'|'eight'|'swap', score, sets, pause, every?}` | cambio de campo (18.2.1 / 18.2.2): al acabar un set que no cierra el partido y a los 8 del 3r set; en la playa (`'swap'`), cada `every` puntos jugados (7; 5 en el 3r). Solo presentación (el humano sigue en x > 0) |
 | `fx:highfive` / `fx:fistbump` / `fx:chestbump` / `fx:clap` | `{team, x, y, z (sim), strength 0..1}` | NO los emite sim: main.js vacía `VB.Players.drainFx()` justo después de `Players.update` y los añade al array del frame (contactos cosméticos de la celebración; FX, cámara, audio y UI los ven). Audio: `highfive` → choque, `fistbump` → puños, `chestbump` → pecho (PLY-15, victoria del partido, strength 1), `clap` → palmada de ánimo; `fx:catch` (players, cada recogida del bote en el ritual del sacador CPU, strength 0,6) → recogida blanda; `fx:call` (players, PLY-20: «¡mía!» del que va a por el balón, un evento por balón, `z` = cabeza, strength 0,6; audio lo ignora por ahora) |
 
 **Añadidos del sprint Carrera a los eventos**: `hit.dig` (bool, defensa controlada de un remate rival), `hit.recv` (bool, 1r toque tras un saque);
@@ -343,7 +343,7 @@ sim: `checkBody` no da toque de cuerpo de su propio equipo a un jugador de IA (n
 compañero soltó el balón hace < 0,3 s (el humano sigue expuesto a la regla); ai.js `TEAM_GAP` 0,2 s y `dodgeOwnBall` (`DODGE_R` 0,9 m). `VB.HOLD.set` = 4,0 (antes 3,4; CAM-09).
 players: con la sim parada en una escena de depuración (`ctx.frozen && ctx.debug && dt <= 0 && g.mode === 'point'`) la celebración se representa como cuadro vivo
 en bucle (re-emite el `point`, así que `fx:highfive` y familia llegan a FX/audio/UI también en `debug=point|ace`); pruebas `VB.Players._tab()` → `{t, max}`.
-arena: la señal `antenna` del 1.er árbitro es «balón fuera» (`POSE.outFa`); señalar la antena es del juez de línea (`judgeSignal`). `POSE.antenna` desaparece.
+arena: la señal `antenna` del 1r árbitro es «balón fuera» (`POSE.outFa`); señalar la antena es del juez de línea (`judgeSignal`). `POSE.antenna` desaparece.
 camera: `getDebug()` añade `svcEval`, `svcOff` (candidatos del saque y proyecciones de oficiales de este frame) y `bgP` (desvío de cabeceo del plano final, °);
 en el plano `over`, `board` vale `'baja'|'fuera'` (marcador colgado y pantallas LED de los fondos siempre fuera por arriba). Hit-stop con tope nominal + 2 frames.
 ui_main: chip de la jugada «JUGADA · N» y subtítulo «¡Jugada de N toques!» (visible: «Jugada», no «Peloteo»); `.rl.fade` (animación `rlFade` 0,25 s) al salir el rótulo de
@@ -387,7 +387,7 @@ set/partido; `placeT3` coloca `#banner` fuera del marcador entero, `.hud-btns` y
 cortes deliberados de retransmisión (a ~0,45 s del bote y de vuelta al saque si cruza la red o está a > 11 m); no son cambios de control.
 **Señal de golpeo (una sola ventana)**: el brillo de GOLPEAR/SACAR (input.js `CUE_OFF/CUE_ON`), el aro que se cierra sobre el botón (`.vt-ring`, clase `.cue`),
 el aro amarillo de la pista (fx.js) y el aviso "¡Golpea!" de ui.js (`HINT_OFF/HINT_ON`) usan `hitWindow().press` en (−0,15, 0,24). Si cambia, cambiar input.js, ui.js y simtest a la vez.
-input.js escucha `pointerdown` en captura sobre `window` (1.er toque tras jugar con mando); un control de UI se excluye con `data-ui`.
+input.js escucha `pointerdown` en captura sobre `window` (1r toque tras jugar con mando); un control de UI se excluye con `data-ui`.
 El plano de héroe dicta la coreografía de la celebración: el que anota, de cara a la cámara; el compañero llega por detrás y a un lado (`heroShot`). El plano de reacción entra siempre por corte a los 0,45 s;
 la vuelta al saque se anuncia en `nextCutIn` y casi siempre es corte.
 El cierre del set/partido (CAM-09) entra por corte al seguimiento del balón a cámara lenta y corta otra vez a la órbita de los ganadores (`'clinch'`). Antes de cada saque rival hay un plano corto del sacador (CAM-14, 0,95-1,4 s) que vuelve a la recepción ≥ 0,55 s antes del lanzamiento. Tras nuestro ataque la cámara sigue el balón hasta el bote (CAM-08), sin corte.
@@ -431,7 +431,7 @@ El cambio de campo (`courtChange`, plano `'court'`) usa un corte deliberado (rea
 - `node tools/eval.js "<query>" "<expr>" [ms] [WxH]` — evalúa JS en la página (p. ej. `JSON.stringify(VB.ctx.renderer.info.render)`); espera Promises;
   `SHOT=out.png` captura DESPUÉS de evaluar (aislar artefactos, inyectar eventos con `VB.FX._event`, mover la cámara…).
 - Escenas `?debug=`: `menu serve hud rally spike block point ace setpoint switch over|end mobile pause tutorial controls settings toss jumpserve dive`
-  y, del 6v6 (espectador, sprint 2; no hace falta `&format=6v6`): `serve6` (sacador con el balón lanzado, `&n=N` el N-ésimo saque, 3.º por defecto; `&t=s`),
+  y, del 6v6 (espectador, sprint 2; no hace falta `&format=6v6`): `serve6` (sacador con el balón lanzado, `&n=N` el N-ésimo saque, 3r por defecto; `&t=s`),
   `rally6` (colocación del equipo 0 tras la recepción) y `point6` (el punto con su plano). Están en `shot.js all` / `console.sh all`.
 - **6v6 espectador (sprint 2)**: `?format=6v6` (NO en el menú) hace que «Jugar» empiece CPU contra CPU (`autopilot` + `present`, sin presentación)
   con `g.watch = true` (marca de main.js, la sim no la lee) y `ctrl: 'one'` (sin eventos `switch`): ui.js rotula LOC / VIS (también en la pestaña del punto: «Remate del rival», nunca «de la CPU»), no enseña avisos de mando ni cuenta el partido en el récord;
@@ -524,21 +524,21 @@ contorno grueso DE COLOR, cara grande dibujada, uniforme de equipo con el «tajo
 ### Colocación en salto (10-nov-2026)
 - **Controles, el mismo concepto en todo**: en el aire, GOLPEAR = remate (o el toque que toque) y **COLOCAR = colocación en salto**; SALTAR otra
   vez sigue siendo la dejada. COLOCAR en el suelo (y en el saque) salta, así que pulsarlo dos veces = salta y coloca.
-  Teclado **K** (antes alias oculto de saltar) · ratón **clic central** (`Mouse1`, sin autodesplazamiento) · mando **X** (PS □; antes 2.º botón de
+  Teclado **K** (antes alias oculto de saltar) · ratón **clic central** (`Mouse1`, sin autodesplazamiento) · mando **X** (PS □; antes 2º botón de
   saltar, B sigue saltando) · táctil: botón contextual **COLOCAR** (verde, 64 px; 56/52 px en pantallas bajas) encima de SALTAR, solo en el aire con
   el balón jugable (`VB.Sim.jsetReady(g)`), se va al caer; deslizar de SALTAR a COLOCAR vale. `VB.Input.poll()` añade `jset` (flanco; con él
   `jump` también es true), `_debug().setOn`, `stats.press.set`, `stats.out.jset`, `stats.mouse.jset`; `glyphs().jset`. main.js pasa `simIn.jset`.
-- **Sim**: `hit(..., shot 'jset')` (gesto del humano) en el 2.º toque, o en el 1.º con el balón alto en la red (`isAttackContact`): `kind 'set'`,
-  `shot 'jump'`, `hit.jset`. Más tensa que la de suelo (cima = contacto + 0,75 m, mín. 4,1; 1.er toque + 1,15), ventana ÷1,2 y `p.ak.wSet`;
+- **Sim**: `hit(..., shot 'jset')` (gesto del humano) en el 2º toque, o en el 1r con el balón alto en la red (`isAttackContact`): `kind 'set'`,
+  `shot 'jump'`, `hit.jset`. Más tensa que la de suelo (cima = contacto + 0,75 m, mín. 4,1; 1r toque + 1,15), ventana ÷1,2 y `p.ak.wSet`;
   con mal timing (q < 0,45) a veces sale pegada a la red o larga. El remate que sigue a una buena tiene la defensa rival ×0,8 (`VB.JSET`).
-  Donde no cabe (3.er toque) COLOCAR es dejada en la red o el toque normal. Tras una colocación en salto en el 1.er toque se ataca en el 2.º:
+  Donde no cabe (3r toque) COLOCAR es dejada en la red o el toque normal. Tras una colocación en salto en el 1r toque se ataca en el 2º:
   `VB.Sim.atkPhase(g, t)` sustituye a «touchTeam === t && touches === 2» (ai.js, hitWindow.attack, assistMove, aim3, aimPoint, focusPoint,
   updateDefense, players.js approachTime, fx.js retícula). `point.assist`/Manos de seda cuentan la colocación en salto. La IA no la usa: CPU contra
   CPU idéntico. Funciones nuevas: `VB.Sim.atkPhase`, `canJset(g,p,count)`, `jsetReady(g)`, `jsetVoid(g,p)`, `VB.JSET`; `stats.jsets`.
 - **Arreglos tras la revisión (10-nov-2026)**: (1) el bloqueador CPU **lee** la colocación en salto: con `jsetReady` (humano en el aire en un
   toque donde puede colocar) va ya a la red frente al compañero del humano, sin saltar; si el humano arma GOLPEAR o dejada, salta a por él
-  (ai.js `pos`; nunca en CPU contra CPU). (2) `JSET.dig` (×0,8) solo tras la del 2.º toque. (3) `jsetReady` mira el contacto previsto
-  (`hitWindow`): jugador aún > 0,25 m y, en el 1.er toque, balón > NET_H + 0,1, lo mismo que pide `canJset`; caché por `g.time`.
+  (ai.js `pos`; nunca en CPU contra CPU). (2) `JSET.dig` (×0,8) solo tras la del 2º toque. (3) `jsetReady` mira el contacto previsto
+  (`hitWindow`): jugador aún > 0,25 m y, en el 1r toque, balón > NET_H + 0,1, lo mismo que pide `canJset`; caché por `g.time`.
   (4) `jsetVoid(g,p)`: con un remate rival en camino COLOCAR en el aire no hace nada (se bloquea) ni se ofrece. (5) COLOCAR pulsado
   justo al despegar se guarda `JSET.buf` (0,2 s, `g.jsetQ`): la doble pulsación rápida = salta y coloca.
 - **UI**: aviso en el aire en rejilla 2×2 (`#prompt.two`): «[GOLPEAR] Rematar / [COLOCAR] Colocar» (táctil «… / [COLOCAR] en salto»,
@@ -558,7 +558,7 @@ contorno grueso DE COLOR, cara grande dibujada, uniforme de equipo con el «tajo
   todos los módulos, sin tocar `ctx.settings`) y `unforceVenue()` (en `toMenu`) vuelve al del ajuste (si se cambió en la pausa, manda el ajuste).
   La **Carrera** (`startMatch` con `opts.career`) fuerza `'beach'`; el **6v6** (`?format=6v6`: partido, demo del menú y escenas serve6/rally6/
   point6) fuerza `'hall'`, porque la sim juega en su pista 18×9.
-- **Carrera de vóley playa** (`voley3d.career` v3; v1/v2 migran sin perder nada): `matchSetup()` → `venue: 'beach'`, `points: 21` (3.º a 15),
+- **Carrera de vóley playa** (`voley3d.career` v3; v1/v2 migran sin perder nada): `matchSetup()` → `venue: 'beach'`, `points: 21` (3r a 15),
   clubes de playa con `club.beach` (sede), circuitos Regional / Nacional / Superliga de Playa / Continental / Mundial y el Open. `quickSim` también
   a 21/15. Detalle en notes/carrera.md «Sprint playa».
 - **Compañeros**: media = media del club + desvío propio (`VB.Career.MATE_OFF` −9..+5, media −2), rol complementario, `mateProfile(m)`, forma

@@ -140,7 +140,7 @@
           if (recv && perfect) add(s, 'ancla');
           if (dig) add(s, 'red');
           if (e.touch === 1) { cur.setter = -1; cur.assist = -1; }
-          // colocador: el 2.º toque, o el 1.º si fue colocación en salto (e.jset; el ataque es entonces el 2.º)
+          // colocador: el 2º toque, o el 1r si fue colocación en salto (e.jset; el ataque es entonces el 2º)
           if ((e.touch === 2 || (e.touch === 1 && e.jset)) && e.kind !== 'spike') { cur.setter = s; cur.setGood = e.grade === 'perfect' || e.grade === 'good'; }
           if (e.kind === 'spike') {
             if (perfect) add(s, 'mira');

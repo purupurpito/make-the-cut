@@ -256,7 +256,7 @@ inyectados, sin avanzar la sim, cámara a ~6 m del rematador). WAV para escuchar
     pico real, centroide 3,1 kHz frente a 2,8) por el bus de refuerzo, techo 0,6; un pelo más grave (×0,97);
   - bloqueo directo del humano → `blockHero` (igual idea, +2,6 dB de densidad), techo 0,54 (lleva además el traqueteo de la red);
   - saque en salto perfecto (versión ligera) → `spikeHero` con techo 0,5, sub y agachada al 55 %;
-  - en los tres: «thump» sub `sub` (62→45 Hz, ataque de 7 ms en coseno, ~120 ms audibles, armónicos 2.º y 3.º para altavoces pequeños) por el
+  - en los tres: «thump» sub `sub` (62→45 Hz, ataque de 7 ms en coseno, ~120 ms audibles, armónicos 2º y 3r para altavoces pequeños) por el
     bus de refuerzo con techo 0,12, 8 ms tarde (sobre la cola, no encima del pico), y **agachada de la grada** de 60 ms a -4 dB (`N.duck`, nodo
     propio en la cadena de la grada; ataque 5 ms, vuelta 35 ms).
   - El destello «perfecto» de remate y saque baja de 0,22 a 0,16 y entra 45 ms tarde: es una campana (picos de seno) y encima del contacto
@@ -385,7 +385,7 @@ AUD-01..04, robustez, partido de 60 s, silbato sobre la grada, arranque en frío
 
 ### AUD-05 · Contactos de celebración y botes del ritual de saque
 - Sonidos nuevos: `handclap` (3 variantes: palmada de ánimo de UNA persona, manos ahuecadas: resonancia de ~1 kHz de 8-11 ms y 2-3
-  micro-impactos; distinta del choque de manos), `chest` (2: golpe de tórax 92→62 Hz con 2.º/3.er armónico para el móvil, "plaf" de ropa,
+  micro-impactos; distinta del choque de manos), `chest` (2: golpe de tórax 92→62 Hz con 2º/3r armónico para el móvil, "plaf" de ropa,
   roce de camiseta y las manos que se agarran 25-40 ms después), `dribble` (3: bote controlado en el parqué, ~5 m/s, poco cuerpo, "ping" de
   la cámara del balón y knock de la tarima). `fist` re-voceado: tenía el 99 % de la energía bajo 150 Hz y perdía 14 dB en un altavoz de
   móvil; ahora con «toc» de nudillos en 560 Hz pierde 6,6 dB (como un toque).
@@ -397,7 +397,7 @@ AUD-01..04, robustez, partido de 60 s, silbato sobre la grada, arranque en frío
   libres). Si las 8 están ocupadas cae a `play()`.
 - Niveles (plan, a ~8 m): choque/puños/pecho -24 (foley), palmada de ánimo -27 (`foleySoft`: un transitorio de 60 ms suena más de lo que
   marca su LUFS de 400 ms; a -24 tenía picos de -1 dBFS), bote del ritual -23 (~5 LU bajo un bote de peloteo, por encima de los muertos).
-- Medido: celebración (choque + palmada en el mismo frame, 2.ª palmada, puños, pecho) → 5 eventos, 5 sonidos, los correctos, 0 nodos de
+- Medido: celebración (choque + palmada en el mismo frame, 2ª palmada, puños, pecho) → 5 eventos, 5 sonidos, los correctos, 0 nodos de
   ganancia/paneo creados; 12 contactos en un frame → 12 sonidos; ritual 3 + 3 botes → 6; tiras 8/8 libres y 0 voces al acabar.
   Chrome, 240 s de partido real (sim + contactos como los emite players): todos los contactos y todos los botes nativos de la sim suenan una
   vez, 0 voces y 8/8 tiras libres tras 6 s de silencio, sin recortes. **Partida real (index.html, players.js de verdad)**: `fx:*` repartidos
@@ -423,7 +423,7 @@ AUD-01..04, robustez, partido de 60 s, silbato sobre la grada, arranque en frío
   (sin hueco ni golpe doble: separación 0,42-0,84 s medida); punto de set salvado → capa de alivio y aplauso largo. Punto rival → lamento
   (más si es error local o si la CPU salva un punto de set), aplauso de reconocimiento desde h 0,45, "uuuh" de admiración con digs ≥ 2.
   Sin `highlight` (sim antigua) se estima con los términos de `VB.Sim.highlightOf`.
-- En peloteo, el "uuuh" de cada defensa de remate crece con `g.rally.digs` (×1,22 y ×1,43 en la 2.ª y la 3.ª, un pelo más agudo) y el ánimo
+- En peloteo, el "uuuh" de cada defensa de remate crece con `g.rally.digs` (×1,22 y ×1,43 en la 2ª y la 3ª, un pelo más agudo) y el ánimo
   del lecho sube con él.
 - Escenarios de mezcla de reacciones anclados en h 0,35 (mediana de un partido humano, notes/sim.md SIM-01): -20 LUFS, como antes.
 
@@ -520,7 +520,7 @@ sigue igual). Secciones nuevas del informe: **2d** (AUD-08, modelo), **2e** (jer
   (suelto, sin cuenta: nada).
 - **MVP**: `ui('mvp', win)` al empezar la cuenta (el acento cae a 0,6 s, con las cifras posadas); sin `win`, el ganador del evento `match`;
   anti-repetición 1,5 s.
-- **Foco en la hoja**: con state `over` y tras la 1.ª cifra o el MVP, la grada baja 6 dB (`END_DUCK` 0,5; con el compresor ≈ -3,4 dB a la
+- **Foco en la hoja**: con state `over` y tras la 1ª cifra o el MVP, la grada baja 6 dB (`END_DUCK` 0,5; con el compresor ≈ -3,4 dB a la
   salida) en ~0,35 s; vuelve al salir de `over`. Sin ese hueco, en el final más ruidoso los tics quedaban 4 dB bajo la ovación en su banda.
 - **Menús**: `ui('arrowHover', dir)`, `ui('arrow', dir, nivel, n)`, `ui('arrowEdge', dir)`, `ui('optHover')`, `ui('toggle', on)`,
   `ui('select', i, n)`, `ui('slide', v)` (tic suelto a -28; el de Efectos sigue sonando con el toque `pass` de muestra).
@@ -587,8 +587,8 @@ sigue igual). Secciones nuevas del informe: **2d** (AUD-08, modelo), **2e** (jer
 ## Aplicado (log, integración del pulido ola 3, 9-nov-2026, PC de casa)
 - AUD-08 cableado en ui.js (los 8 cambios de notes/ui_main.md, tal cual): `--endui-only` → TODO OK.
 - **Arreglo (cola sin Worker)**: con la ola 3 players emite `fx:catch` (→ `set`) y pasos en los primeros segundos del primer saque de la CPU; en el respaldo sin
-  Worker / con CSP la 1.ª pasada aún no los tenía y la parte 5 fallaba de forma intermitente (`missed {feet:3}`, luego `{set:1}`). `CORE` empieza ahora por
-  `click, start, whistle, dribble, set, feet, serve…` (antes `set` 9.º y `feet` 17.º). `--cold-only` 3/3 TODO OK; con Worker, el banco es idéntico.
+  Worker / con CSP la 1ª pasada aún no los tenía y la parte 5 fallaba de forma intermitente (`missed {feet:3}`, luego `{set:1}`). `CORE` empieza ahora por
+  `click, start, whistle, dribble, set, feet, serve…` (antes `set` 9º y `feet` 17º). `--cold-only` 3/3 TODO OK; con Worker, el banco es idéntico.
 - `hlOf` de reserva se deja (solo sin `e.highlight`, que ya no pasa). `fx:call` sin sonido (opcional; un «¡mía!» sintético no compensa el riesgo de sonar a juguete).
 - `node tools/audiotest.js` completo → TODO OK (mezcla, 2d/2e, partido -18,9 LUFS, barrido de pico real, arranque en frío, parte 6).
 
@@ -619,7 +619,7 @@ sin volverlo de juguete. Todo sintetizado (generador `genToon`, dos senos con en
 | `toonPop` (3) | «bonk» redondo, octava que cae en 12 ms | cada toque: recepción ×1, colocación/dejada ×1,38 («pip»), saque flotante ×1,12, balón libre ×0,92 (de dedos ×1,2), `shank` ×0,8, balón en el cuerpo ×0,72 | -25 (7 LU bajo el toque) |
 | `toonWhack` (2) | «¡zas!»: seno 950 → 150 Hz en 9 ms + palmada de ruido a 1,9 kHz | remate y saque en salto (×0,8); en el perfecto ×0,4 (manda el chasquido del bus de refuerzo) | -21 (7 LU bajo el remate) |
 | `toonZip` (2) | zumbido de «líneas de velocidad» 2,6 → 0,7 kHz | remate / saque en salto fuerte (potencia ≥ 0,65 o ≥ 19 m/s), 15 ms tras el golpe | -24 |
-| `boing` (2) | muelle sutil 175 → 200 Hz, vibrato de 12,5 Hz que se apaga, armónicos 2.º-3.º | `block` (toque ×0,6, block-out ×0,5, directo ×0,35 y más grave) y `net` (red ×0,5, cinta ×0,45 más agudo) | -24 (≥ 6 LU bajo la red) |
+| `boing` (2) | muelle sutil 175 → 200 Hz, vibrato de 12,5 Hz que se apaga, armónicos 2º-3r | `block` (toque ×0,6, block-out ×0,5, directo ×0,35 y más grave) y `net` (red ×0,5, cinta ×0,45 más agudo) | -24 (≥ 6 LU bajo la red) |
 | `pamSting` (1, partitura) | golpe de metal en Re mayor + platillo pequeño + tres campanas que suben (sin bombo) | remate perfecto del humano (no dejada), 160 ms tras el chasquido, bus de música; sustituye al destello `perfect` en ese caso | -21 (≥ 6 LU bajo el remate, ≥ 3 LU bajo la ráfaga de set) |
 - Sin reverb apreciable (envío 0,04: «de dibujo», secos). En demo, a la mitad y sin «¡PAM!».
 - **Onomatopeya (lectura defensiva)**: el contrato no fija aún un evento de fx. Audio lanza el «¡PAM!» por sí mismo con la misma condición
@@ -642,7 +642,7 @@ sin volverlo de juguete. Todo sintetizado (generador `genToon`, dos senos con en
   añade un ajuste para quitarla, llamarlo `onoma` (audio ya lo lee). WAV de cada sonido nuevo en tools/out/audio/<nombre>.wav.
 
 ## Petición de sim (reglas de playa, 10-nov-2026): `courtChange` con `why: 'swap'`
-Vóley playa (`g.beach`): cambio de campo cada 7 puntos (cada 5 en el 3.er set), `e.every` = 7 | 5, `e.pause` = 1,0 s. Hoy audio.js lo
+Vóley playa (`g.beach`): cambio de campo cada 7 puntos (cada 5 en el 3r set), `e.every` = 7 | 5, `e.pause` = 1,0 s. Hoy audio.js lo
 trata como fin de set (silbato de 2,7 s). Para `'swap'` iría el silbato corto del `'eight'` (1,0) o ninguno: es frecuente (~5 por set) y
 el juego sigue enseguida. Golpe nuevo: `hit` con `pokey: true` (dejada de nudillos de la playa; `shot` sigue siendo `'tip'`): podría
 sonar más seco que la yema de los dedos.

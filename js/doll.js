@@ -601,7 +601,7 @@
       case 'tupe':        // tupé: casquete + mechón grande hacia delante y arriba
         cap(hr, PI * 0.42, -0.25);
         G.add(tuft(0.26 * FK, 0.11 * FK), hr, 0.01, HEAD_C + 0.13 * FK, 0.03 * FK, 0.95, 0, -0.15, 1.5, 1, 0.75);
-        // (2.º mechón echado hacia delante y pegado al 1.º: casi derecho, visto por detrás eran dos picos como orejas de gato)
+        // (2º mechón echado hacia delante y pegado al 1r: casi derecho, visto por detrás eran dos picos como orejas de gato)
         G.add(tuft(0.15 * FK, 0.085 * FK), hr, -0.01, HEAD_C + 0.13 * FK, -0.03 * FK, 0.7, 0, 0.05, 1.4, 1, 0.7);
         break;
       case 'coleta':      // coleta alta: casquete + goma + cola (en el hueso del pelo, para el muelle)

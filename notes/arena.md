@@ -5,8 +5,8 @@ Fecha: 2026-11-06 (pasada de "termina y verifica", PC de casa con RTX 3060 Ti).
 
 ## 1. Qué hay (resumen)
 - **arena.js**: suelo de tarima procedural con líneas FIVB (incluida la prolongación discontinua de la línea de ataque y
-  las marcas de zona de saque), red con malla real que ondula, antenas, postes acolchados, silla del 1.er árbitro,
-  2.º árbitro, jueces de línea con bandera (señalan dentro/fuera/antena), mesa del anotador, gradas con público instanciado
+  las marcas de zona de saque), red con malla real que ondula, antenas, postes acolchados, silla del 1r árbitro,
+  2º árbitro, jueces de línea con bandera (señalan dentro/fuera/antena), mesa del anotador, gradas con público instanciado
   animado en GPU (botes, brazos, ola, tensión en punto de set/partido), vallas LED con marcas ficticias y mensajes,
   videomarcadores en los fondos, **marcador central colgado (4 caras)**, cerchas, focos, haces de luz, banderolas,
   flashes de cámaras en la grada, mapa de entorno PMREM y post-proceso propio (bloom + viñeta) en calidad alta de escritorio.
@@ -57,7 +57,7 @@ Fecha: 2026-11-06 (pasada de "termina y verifica", PC de casa con RTX 3060 Ti).
   grada + bolsas visitantes, filas altas más oscuras/desaturadas, balanceo y reacción escalonados por instancia (GPU).
 - Oficiales rehechos: proporciones de atleta (tronco torneado, pelvis, piernas y brazos con perfil, manos), polo oscuro con
   cuello blanco y escudo, pantalón largo, zapatillas con suela, cara (orejas, nariz, ojos, cejas, boca). Pivote `upper` con
-  respiración/balanceo. 1.er árbitro en plataforma acolchada con barandilla, peto y 3 peldaños; brazo hacia el equipo que saca
+  respiración/balanceo. 1r árbitro en plataforma acolchada con barandilla, peto y 3 peldaños; brazo hacia el equipo que saca
   en el silbato de saque (`whistle reason:'serve'`) y al pitar el punto. Jueces de línea: bandera abajo = dentro, arriba = fuera,
   agitada = antena.
 - Sombras: en calidad baja ni utillaje, ni postes, ni oficiales proyectan (5 casters: jugadores y balón).
@@ -85,7 +85,7 @@ Comprobado con capturas en `tools/out/r2-arena/` (GPU real) y `tools/console.sh`
   va a jugar el balón (p. ej. va fuera), azul en campo rival. Ambos con filo oscuro (se leen sobre la tarima).
 - **Apuntado**: retícula naranja en el campo rival + arco punteado balón → objetivo por encima de la red, en el saque
   humano (`ready` tras el silbato = previsualización tenue; `toss` = activo) y en el remate (control en el aire,
-  3.er toque propio). Reproduce las fórmulas de `sim.js` (`doServe` sin objetivo de IA, `attackTarget` con dd = 6),
+  3r toque propio). Reproduce las fórmulas de `sim.js` (`doServe` sin objetivo de IA, `attackTarget` con dd = 6),
   sin el error aleatorio. Se apaga en el contacto. Usa `Sim.aimPoint(g, out)` si algún día existe.
 - **Marca del bote**: huella oscura orientada según el vuelo + filo verde (dentro) / rojo (fuera), opacidad 0,9,
   5,2 s de vida (cubre el plano del punto), pulso de entrada.
@@ -226,9 +226,9 @@ Traza de 30 s de peloteo (×4): rAF p95 11,5 ms (baja) / 15,4 ms (media); 11 GC 
   partida deprecaba el mapa de las chispas, `addSpark` L161 + `update` L701, dentro de una desoptimización en masa). Mismos valores.
 - Polvo de plancha (ronda 2): visto en `debug=dive` (alta y baja) y en la escena viva; nada pendiente.
 
-## Aviso de sim (pulido ola 1, SIM-02): `point.signal` para el 1.er árbitro y los jueces de línea (ARN-07) (2026-11-07)
+## Aviso de sim (pulido ola 1, SIM-02): `point.signal` para el 1r árbitro y los jueces de línea (ARN-07) (2026-11-07)
 Ver notes/sim.md §P1. Cada `point` trae `signal` (lista cerrada), `touchedOut` y `landSide` (0 = campo x > 0, 1 = x < 0, -1 sin bote):
-| `signal` | 1.er árbitro (FIVB) | jueces de línea |
+| `signal` | 1r árbitro (FIVB) | jueces de línea |
 |---|---|---|
 | `in` | balón dentro (brazo y dedos hacia el suelo, lado de `landSide`) | bandera abajo (los del lado `landSide`) |
 | `out` | balón fuera (antebrazos verticales, palmas hacia el cuerpo) | bandera arriba |
@@ -422,7 +422,7 @@ Scripts y capturas en `tools/out/arn3/` (`calls.js` = dibujos por frame y por ob
 ## 14. Pulido, ola 3 (arena, 8-nov-2026 noche): ARN-14, ARN-15, ARN-16 (+ ARN-09 re-medido, halo LED)
 Scripts y capturas en `tools/out/arn4/` (`views.js` = una carga y cámara libre a vistas fijas, `anim.js` = secuencias, `sheet.js` = hojas de
 contacto, `ik.js` = IK numérico de los brazos de makePerson, `cpucost.js`/`crewcost.js` = coste por frame, `ptband.js`/`band.js` = franja alta).
-- **ARN-16 silla del 1.er árbitro y mesa del anotador** (todo en la malla `props`, 0 dibujos nuevos, +1 064 triángulos en `props` y +36 en `emissive`):
+- **ARN-16 silla del 1r árbitro y mesa del anotador** (todo en la malla `props`, 0 dibujos nuevos, +1 064 triángulos en `props` y +36 en `emissive`):
   `Builder.cbox()` = caja achaflanada (aristas verticales y bisel superior, ~44 tri; `chamferGeo` con caché). Silla: acolchado como la protección
   de los postes (azul marino `#1d4a6e`, banda naranja abajo, filete amarillo arriba), base/columna/plataforma/peto achaflanados, remates redondos en
   la barandilla acolchada, zancas inclinadas y pasamanos de acero a los dos lados de la escalera con poste al pie. Mesa: tablero achaflanado con canto
@@ -436,7 +436,7 @@ contacto, `ik.js` = IK numérico de los brazos de makePerson, `cpucost.js`/`crew
   (bancos en y = 10,2-11,0; entrenadores y = 10,5; fotógrafos |x| ≥ 16,25 en los huecos de las esquinas; TV y = −10,6). makePerson amplía opciones:
   `lo` (versión ligera, ~1,6 k tri por persona), `kneel`, `shorts`, `spread`, `restR/restL` = [x, z, y, e, t] como POSE (IK resuelta con `ik.js`),
   `lean`, `upperProps/headProps/rootProps/extraBones`; el tronco usa orden `YXZ` (giro del fotógrafo). Van en la MISMA SkinnedMesh `officials`
-  (0 dibujos nuevos). **Baja**: el 3.er suplente de cada banquillo y la cámara de TV quedan al final del índice y `setQuality` los recorta con
+  (0 dibujos nuevos). **Baja**: el 3r suplente de cada banquillo y la cámara de TV quedan al final del índice y `setQuality` los recorta con
   `geometry.setDrawRange` (`userData.lowIdx`): ni se dibujan ni cuentan triángulos. Animación (misma técnica sin basura que los oficiales, a media
   cadencia: cada frame la mitad del entorno con dt doble): cabezas que siguen el balón, posturas de espera que se alternan cada 4-11 s (manos en las
   rodillas / en el regazo / inclinado; entrenador: brazos cruzados / manos en la cintura / mano en la barbilla), fotógrafos que giran el tronco con
@@ -474,11 +474,11 @@ contacto, `ik.js` = IK numérico de los brazos de makePerson, `cpucost.js`/`crew
 - perf integrado 844×390 ×4: baja 112 k tri / 31-34 dibujos; media 246-251 k tri; ARN-09 sigue parcial (decisión pendiente: encuadre o relajar el objetivo).
 
 ## Arreglos ola 4 (arena, 9-nov-2026)
-- Señal `antenna` del 1.er árbitro: ahora «balón fuera» (POSE.outFa, las dos manos), como dice la tabla §10; señalar la antena queda solo para el juez de línea (`judgeSignal`). Se quita `POSE.antenna` (sin uso). Capturas: tools/out/arn-w4/sig/{out,antenna}-c.png (idénticas); dibujos 23 → 23 en baja.
+- Señal `antenna` del 1r árbitro: ahora «balón fuera» (POSE.outFa, las dos manos), como dice la tabla §10; señalar la antena queda solo para el juez de línea (`judgeSignal`). Se quita `POSE.antenna` (sin uso). Capturas: tools/out/arn-w4/sig/{out,antenna}-c.png (idénticas); dibujos 23 → 23 en baja.
 - ARN-02 (saturación de grada lateral): `vbCrowdTone` desatura 0,33 + k·0,3 (antes 0,28), camisetas de afición con `SHIRT_DESAT_TEAM` 0,30 (neutras 0,25), `nLight` algo más apagadas, asientos `seatA/B/C` con menos croma y bruma `uHazeC` más neutra. hi1080 rally: (1600,150,1900,300) sat 0,413 / std 31,3 (antes 0,440 / 32,2); (700,120,1400,300) sat 0,380 / std 27,0. Pista 192,5 (sin cambio). Solo colores: dibujos y triángulos iguales.
 
 ## Aplicado (log, integración de los arreglos tras la verificación de la ola 3, 9-nov-2026, PC de casa)
-- CONTRACT: `POSE.antenna` fuera; la señal `antenna` del 1.er árbitro es `POSE.outFa` (§4.4, añadidos de los arreglos ola 3).
+- CONTRACT: `POSE.antenna` fuera; la señal `antenna` del 1r árbitro es `POSE.outFa` (§4.4, añadidos de los arreglos ola 3).
 - **Cambio del lead en arena.js (rendimiento, primer punto en el móvil)**: `warmMsgFonts()` (al construir y otra vez en `document.fonts.ready`) crea de antemano, en un lienzo de 8×8, las tallas de letra del mensaje del videomarcador (`drawMsgOverlay`: italic 900 a `bh·0,46`/`bh·0,6`, 800 a `bh·0,22`, en el ancho y el colgado) y la de las vallas (`drawMsg`, italic 900 a `H·0,66`), y da forma a sus textos (PUNTO/SET + equipo, HOW, REASON, mensajes de las vallas). Medido con `tools/out/w4lead/trace3.js` (partido real, 844×390 dpr 2,75 CPU ×4): en el primer punto `measureText` de `fitFont` era ~65 muestras (~45 ms) de un frame de 155-163 ms; ahora no aparece o 5 muestras, frame del primer punto 89-118 ms (3 tomas). Sin dibujos ni texturas nuevas.
 - ARN-02 y la señal de antena vistos en las capturas `tools/out/w4lead/hi/*.png` (alta 1280×720) y `lo/*.png` (baja 844×390).
 - Verificado en el árbol integrado: simtest completo + barrido `simtest <10|20> <1..25> 0` 50/50 TODO OK; console.sh 19 escenas (1280×720 y 844×390 táctil) sin errores; drive, touchplay, padplay (estándar y DualSense) y audiotest completo TODO OK; perf 844×390 ×4 «objetivos cumplidos» (ver TRASPASO).
@@ -495,7 +495,7 @@ contacto, `ik.js` = IK numérico de los brazos de makePerson, `cpucost.js`/`crew
   halo (`revLine` celda 6 blanca, `revGlow` con `fillTex`). La huella aparece a `review.t` 0,55-0,9 s, blanca; con `challengeResult` se tiñe
   verde (dentro) / rojo (fuera) según `truthIn`. El evento `challenge` borra las marcas del bote (llevan la llamada del árbitro).
   Todo va en el lote `floorDecals`: **0 dibujos nuevos** (N de instancias 17 → 21).
-- **B6 (arena.js)**: evento `challenge` → 1.er árbitro: silbato + `POSE.chal` (los dos índices dibujan un rectángulo, vaivén 9, 2,6 s;
+- **B6 (arena.js)**: evento `challenge` → 1r árbitro: silbato + `POSE.chal` (los dos índices dibujan un rectángulo, vaivén 9, 2,6 s;
   `R1.sig = 'challenge'`), vallas «VIDEO CHALLENGE», pantallas «CHALLENGE / REVISIÓN · equipo», la grada deja de animar.
   `challengeResult` → marcador desde `g` (`scoreFromGame`), pantallas «IN|OUT · x,x cm» + «PUNTO equipo» / «SE MANTIENE», brazo hacia el
   equipo que gana el punto; si se anula, ánimo de ese lado y reacción del banquillo. «VIDEO CHALLENGE» añadido a `warmMsgFonts`.
@@ -671,7 +671,7 @@ jugador vería caer «dentro» de la cinta balones que se cantan fuera.
   jueces de línea en las esquinas (`C.HL + 1.4`, `C.HW + 1.4`), arena rastrillada/franja, marca del bote y FX de la retícula (fx.js
   usa `C.HL/C.HW` en 4 sitios: con la partida a mano, `ctx.game.HL / ctx.game.HW`, o `VB.Sim.court(ctx.game)`).
 - **Sin línea de ataque ni central** en vóley playa (el cordel discontinuo de la línea de ataque sobra).
-- `courtChange` trae un `why` nuevo: **`'swap'`** (playa: cada 7 puntos jugados, cada 5 en el 3.er set; campo `every` = 7 | 5; pausa
+- `courtChange` trae un `why` nuevo: **`'swap'`** (playa: cada 7 puntos jugados, cada 5 en el 3r set; campo `every` = 7 | 5; pausa
   `pause` = `VB.BEACH.swapHold`, 1,0 s). Hoy arena lo trata como fin de set («FIN DEL SET N» en videomarcadores/LED): para `'swap'` el
   texto sería `'CADA ' + e.every + ' PUNTOS'` o el marcador, y sin la ovación larga (es frecuente: ~5 por set). La cámara no hace grúa en
   `'swap'` (camera.js), ui.js saca «Cambio de campo · Cada 7 puntos · 4-3».

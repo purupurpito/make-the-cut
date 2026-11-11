@@ -546,7 +546,7 @@
     if (K.netK > 0.001) {
       // lado: hacia donde está el balón respecto al jugador; si está justo delante, hacia el centro de la pista
       var dyb = mn(mx(b.y, -5), 5) - S.y, sideW = Math.abs(dyb) > 0.35 ? (dyb > 0 ? 1 : -1) : (S.y > 0 ? -1 : 1);
-      // (CAM-17: en el plano bajo del bloqueo, la diagonal desde el lado de la mesa: la silla del 1.er árbitro, en y = -6,1, queda fuera)
+      // (CAM-17: en el plano bajo del bloqueo, la diagonal desde el lado de la mesa: la silla del 1r árbitro, en y = -6,1, queda fuera)
       if (bkN > 0.3) sideW = 1;
       K.netSide += (sideW - K.netSide) * mn(1, dt > 0 ? dt * 2.2 : 1);
       D.y = mn(mx(D.y + K.netSide * (1.25 * K.netK + 0.9 * bkN), -8.5), 8.5);   // (CAM-17: más en diagonal a lo largo de la red)
@@ -729,9 +729,9 @@
    * (grúa suave) y el cabeceo acompaña la cumbre; al bajar el balón vuelve la línea de fondo. El sitio lateral y el sesgo del sacador
    * se eligen entre 21 candidatos: sin oficiales (árbitros, jueces de línea, mesa) cortados por un borde, el campo rival centrado,
    * con histéresis (sin saltos). Sustituye a la cámara alta (5,4 m) con el sacador cortado por el pecho. */
-  // oficiales [x, y, z0, z1, radio] (sim): silla del 1.er árbitro, 2.º árbitro, mesa con anotadores, jueces de línea (con bandera alta)
+  // oficiales [x, y, z0, z1, radio] (sim): silla del 1r árbitro, 2º árbitro, mesa con anotadores, jueces de línea (con bandera alta)
   var OFFI = [[0, -6.12, 0, 3.2, 0.55], [0, 6.05, 0, 1.9, 0.42], [-0.6, 8.6, 0, 1.4, 0.42], [0.6, 8.6, 0, 1.4, 0.42], [10.4, -5.9, 0, 2.3, 0.42], [-10.4, 5.9, 0, 2.3, 0.42]];
-  /** Sitios reales de los oficiales (arena los coloca al construir; el 2.º árbitro se mueve junto al poste): se leen al empezar cada saque propio. */
+  /** Sitios reales de los oficiales (arena los coloca al construir; el 2º árbitro se mueve junto al poste): se leen al empezar cada saque propio. */
   function readOfficials() {
     var A = VB.Arena, d = null;
     try { d = A && A._dbg ? A._dbg() : null; } catch (e) { d = null; }
@@ -739,7 +739,7 @@
     var L = d.refs.concat(d.judges), n = 0;
     for (var i = 0; i < L.length && n < OFFI.length; i++) {
       var q = L[i] && L[i].sim; if (!q) continue;
-      var o = OFFI[n++], r1 = q.z > 0.5;   // (el 1.er árbitro, subido en su silla: toda la silla cuenta)
+      var o = OFFI[n++], r1 = q.z > 0.5;   // (el 1r árbitro, subido en su silla: toda la silla cuenta)
       o[0] = q.x; o[1] = q.y; o[2] = r1 ? 0 : q.z; o[3] = q.z + (r1 ? 1.85 : Math.abs(q.y) > 8 ? 1.35 : L[i].lines ? 2.25 : 1.85); o[4] = r1 ? 0.55 : 0.4;
     }
   }
@@ -923,7 +923,7 @@
      *  - pasada completa solo al empezar el saque (SVC.idx < 0), al asentar un corte o colocar una escena (UNA vez: las vueltas del
      *    asentado la reutilizan) o si cambia la pantalla (aspecto, táctil);
      *  - en la espera (balón en la mano), 12 candidatos por frame en rueda + el actual: todos se repasan en ~7 frames (0,12 s), así que
-     *    un sacador que se mueve o el 2.º árbitro que se recoloca entran solos;
+     *    un sacador que se mueve o el 2º árbitro que se recoloca entran solos;
      *  - al lanzar el balón, otra pasada completa (las cuentas cambian: cumbre del lanzamiento, grúa del salto) y luego 21 por frame
      *    (todos en 4 frames): el cambio de candidato, suavizado, saca a un oficial que la grúa iba a dejar cortado. */
     // (pasada hecha de antemano durante el plano del punto —svcPrewarm— con el mismo sacador y la misma pantalla: se aprovecha y el
@@ -975,7 +975,7 @@
    * vez de cortar. El borde superior queda por debajo del marcador colgado (nunca a medias).
    * (Antes: dolly hacia el bote desde la cámara de juego -> media pantalla de grada, red y poste delante,
    * marcador cortado y un oficial asomando por la esquina.) */
-  // obstáculos fijos [x, y, radio] (coords de sim): postes, silla del 1.er árbitro, 2.º árbitro, mesa, jueces de línea
+  // obstáculos fijos [x, y, radio] (coords de sim): postes, silla del 1r árbitro, 2º árbitro, mesa, jueces de línea
   var OBST = [[0, 5.5, 0.25], [0, -5.5, 0.25], [0, -6.12, 0.6], [0, 6.05, 0.35], [-1.2, 8.25, 0.7], [0, 8.25, 0.7], [1.2, 8.25, 0.7],
               [10.4, -5.9, 0.35], [-10.4, 5.9, 0.35]];
   var PF = { lx: 0, ly: 0, vic: null, hero: null, heroIn: false, c0x: 0, c0y: 0, cx: 0, cy: 0, R: 6, ang: 0, fov: 34, z: 1.75,
@@ -1670,8 +1670,8 @@
 
   /* ---------------- CAMBIO DE CAMPO (courtChange) ----------------
    * Es presentación (sim deja al humano en x > 0 y los controles no cambian). Plano de transición de retransmisión
-   * en vez de volver al saque de golpe: el plano de reacción del punto se ve ~1,4 s (1,25 s a los 8 del 3.er set),
-   * CORTE a una grúa alta en la banda de la mesa (lado y > 0: la silla del 1.er árbitro, al otro lado, no tapa la red)
+   * en vez de volver al saque de golpe: el plano de reacción del punto se ve ~1,4 s (1,25 s a los 8 del 3r set),
+   * CORTE a una grúa alta en la banda de la mesa (lado y > 0: la silla del 1r árbitro, al otro lado, no tapa la red)
    * sobre el campo rival, que recorre la banda hasta detrás de nuestro equipo bajando de 7,2 a 6,3 m y girando ~85°
    * (<= 45-53°/s; tope del rig 60°/s). Al empezar el saque, la grúa baja deslizando (1,4 s) al plano del saque: sin corte.
    * El ritmo se ajusta a la pausa real (sim: 3,6 s de juego tras el set con ×0,5 los primeros 0,8 s reales; 3,3 s a los 8). */
@@ -1727,7 +1727,7 @@
   var ccAbort = false;
   function courtPose(k, out, look) {
     // (mira casi fija cerca del centro: si la mira se moviera al revés que la grúa, el giro pasaría de 60°/s)
-    // (y hasta 10,2 m: por encima de las vallas y antes de la grada; así el poste y el 2.º árbitro no llenan el primer plano)
+    // (y hasta 10,2 m: por encima de las vallas y antes de la grada; así el poste y el 2º árbitro no llenan el primer plano)
     // (grúa corta, tras el cierre del set con poca pausa: arco proporcional para no pasar de ~45°/s)
     var calm = comfort(), sw0 = mn(1, CC.len / 2.0), a0 = 40 * DEG + ((calm ? 90 : 108) - 40) * DEG * sw0, a1 = 40 * DEG;
     var a = a0 + (a1 - a0) * k;
@@ -2276,7 +2276,7 @@
     MN.w = 1;
     MN.s = mnRand() < 0.5 ? -1 : 1;
     if (ty === 'wide') { MN.a0 = (35 + 110 * mnRand()) * DEG; MN.v = (mnRand() < 0.5 ? -1 : 1) * 0.035; }
-    else if (ty === 'side') { var sx0 = MNC.x >= 0 ? 1 : -1; MN.v = sx0 * 0.42; MN.x0 = sx0 * mn(mx(Math.abs(MNC.x) - 1.0, 2.6), 7.5); }   // (hacia fuera: nunca pasa por la mesa ni el 2.º árbitro)
+    else if (ty === 'side') { var sx0 = MNC.x >= 0 ? 1 : -1; MN.v = sx0 * 0.42; MN.x0 = sx0 * mn(mx(Math.abs(MNC.x) - 1.0, 2.6), 7.5); }   // (hacia fuera: nunca pasa por la mesa ni el 2º árbitro)
     else if (ty === 'net') { MN.s = MNC.x > 0 ? 1 : -1; }
     else if (ty === 'setter') { MN.a0 = (60 + 60 * mnRand()) * DEG; MN.v = (mnRand() < 0.5 ? -1 : 1) * 0.05; MN.subj = null; }
     else if (ty === 'board') { MN.s = 1; MN.sp = 1; }   // (esquina x > 0 del lado de la mesa: la otra tiene un juez de línea delante)
@@ -2313,13 +2313,13 @@
       A.x = MN.cx * 0.45; A.y = MN.cy * 0.35; A.z = 0.9;
       f0 = 38; f1 = 58;
     } else if (ty === 'side') {
-      // (travelling por la banda que además acompaña un poco la jugada; nunca a |x| < 2,6: mesa y 2.º árbitro)
+      // (travelling por la banda que además acompaña un poco la jugada; nunca a |x| < 2,6: mesa y 2º árbitro)
       var sdx = MN.x0 + MN.v * t; sdx += (MN.cx - sdx) * 0.35; sdx = (MN.x0 >= 0 ? 1 : -1) * mn(mx(Math.abs(sdx) * ((sdx >= 0) === (MN.x0 >= 0) ? 1 : -1), 2.6), 12);
       D.x = sdx; D.y = mn(8.7, K.bY - 0.3); D.z = 2.5 + 0.06 * Math.sin(t * 0.5);
       A.x = MN.cx; A.y = MN.cy * 0.7 - 0.8; A.z = MN.cz;
       f0 = 32; f1 = 58;
     } else if (ty === 'net') {
-      // (a la altura de la cinta, en diagonal hacia el poste lejano: desde x = ±5,2 el poste cercano y el 2.º árbitro quedan fuera)
+      // (a la altura de la cinta, en diagonal hacia el poste lejano: desde x = ±5,2 el poste cercano y el 2º árbitro quedan fuera)
       D.x = MN.s * (5.2 + 0.08 * t); D.y = mn(8.4, K.bY - 0.4); D.z = 2.45 + 0.05 * Math.sin(t * 0.4);
       A.x = MN.cx * 0.35; A.y = -5.0 + (MN.cy + 5.0) * 0.35; A.z = 2.25;
       f0 = 44; f1 = 66;
@@ -2339,7 +2339,7 @@
       if (!MN.subj || (sj !== MN.subj && t > 1.5)) MN.subj = sj;
       var q = MN.subj, vp = visPos(q, VP), ang = MN.a0 + MN.v * t;
       var tx = vp.x + Math.cos(ang) * 7.0, ty2 = mx(0.6, vp.y + Math.sin(ang) * 7.0);
-      // (lejos de la red junto a los postes y el 2.º árbitro)
+      // (lejos de la red junto a los postes y el 2º árbitro)
       if (Math.abs(tx) < 1.8 && ty2 > 4.2) tx = (vp.x >= 0 ? 1 : -1) * 1.8;
       if (dt > 0) { var kd = mn(1, dt * 0.9); MN.x0 += (tx - MN.x0) * kd; MN.tgt += (ty2 - MN.tgt) * kd; } else { MN.x0 = tx; MN.tgt = ty2; }
       D.x = mn(mx(MN.x0, -13.5), 13.5); D.y = mn(MN.tgt, 8.8); D.z = 1.85;
@@ -3029,7 +3029,7 @@
     dbg.board = BG.state;
     // OFICIALES NUNCA CORTADOS en el saque propio (CAM-15, red de seguridad sobre la pose REAL: la grúa del salto y el sacador que se
     // mueve cambian el encuadre): si un oficial cruza un borde, la lente busca el cambio más pequeño (cerrar o abrir hasta un 16 %) que
-    // lo deje entero o fuera (cambio pequeño y continuo: se aplica directo). Los sitios de los oficiales se releen cada 8 frames (el 2.º árbitro se mueve).
+    // lo deje entero o fuera (cambio pequeño y continuo: se aplica directo). Los sitios de los oficiales se releen cada 8 frames (el 2º árbitro se mueve).
     var ofW = 1, ofY = 0;
     if (shot === 'serveUs' && !FB.on) {
       if ((ctx.frame | 0) % 8 === 0) readOfficials();

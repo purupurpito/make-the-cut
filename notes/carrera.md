@@ -13,7 +13,7 @@ peores compañeros». Guardado `v: 3` (`migrate()` pasa v1 y v2 sin perder nada:
   main.js (`startMatch` con `opts.career`) fuerza el escenario Platja Llarga aunque el ajuste «Escenario» sea el pabellón
   (`forceVenue('beach')`: `onSettings(copia de settings con arena 'beach', 'arena')` a todos los módulos, sin tocar `ctx.settings`)
   y lo deshace al volver al menú (`toMenu` → `unforceVenue`; si se cambió el ajuste en la pausa, manda el ajuste). La sim juega con
-  reglas de playa (pista 16×8, sets a 21 y el 3.º a 15, cambio de campo cada 7/5, bloqueo = toque, pokey, dobles); `quickSim` (resto
+  reglas de playa (pista 16×8, sets a 21 y el 3r a 15, cambio de campo cada 7/5, bloqueo = toque, pokey, dobles); `quickSim` (resto
   de la jornada y «Simular») también a 21/15. El selector «Puntos por set» de Crear jugador desaparece (`c.points` = 21 siempre).
   La equipación del rival sigue por `Players.setKit({..., rival})` (players.js, de otro dueño): en la playa es camiseta de tirantes
   con los colores del club; si se parece a la tuya, la CPU azul de siempre.
@@ -77,7 +77,7 @@ ligas, copas y nombres de jugadores.
 
 ## Bucle
 
-1. **Crear jugador**: nombre (18 car.), dorsal 1-99 y rol (v3: sin puntos por set, vóley playa a 21 y el 3.º a 15). Control: siempre solo
+1. **Crear jugador**: nombre (18 car.), dorsal 1-99 y rol (v3: sin puntos por set, vóley playa a 21 y el 3r a 15). Control: siempre solo
    tu jugador (v2; antes había «Los dos»). Media inicial 35 con el perfil del rol:
    - Bloqueador (`atk`; antes «Atacante»): salto +6, potencia +7, control +3, bloqueo +4, saque +1 · recepción −7, defensa −4, colocación −10.
    - Universal: casi plano (velocidad y reacción +2, bloqueo −3).
@@ -194,7 +194,7 @@ difficulty, points: 15})` y cuenta puntos; se puede rehacer con `VB.Career.genSt
 - Huecos de insignias: los de VB.Badges (`2 + floor(nivel / 5)`, hasta 6).
 - Curva medida en `tools/careertest.js` (todo SIMULADO, mitad de XP, gastando en lo más barato y aceptando la mejor oferta):
   media 39 → 43 → 46 → 50 → 52 → 54 → 56 → 57 en 8 temporadas (Regional → Continental). Jugando los partidos la XP es el doble:
-  ~+8 de media la 1.ª temporada y la élite (~65-70) hacia la 6.ª-8.ª. Simulando todo te estancas en la Continental (a propósito).
+  ~+8 de media la 1ª temporada y la élite (~65-70) hacia la 6ª-8ª. Simulando todo te estancas en la Continental (a propósito).
 
 ## Nota del partido (1-10, una decimal)
 
@@ -204,15 +204,15 @@ difficulty, points: 15})` y cuenta puntos; se puede rehacer con `VB.Career.genSt
 ×0,85). Antes (remate a 0,32) la nota era casi siempre 10 con control «uno» (15-18 remates punto por partido: medio 27 de 28 partidos
 con 10, bueno 28 de 28). Ahora (Regional, temporada 1, 28 partidos por bot): novato 6,14 (4,6-7,9), medio 7,78 (5,7-9,1), bueno
 9,10 (7,3-9,7), ningún 10. Errores = faltas personales tuyas y puntos del rival con `how:'error'` cuyo último toque fue tuyo. Asistencia =
-`point.assist` (sim) o, sin él, tu colocación (2.º toque) antes del remate punto del compañero. Simulado: 6,1 + 0,04 × diferencia
+`point.assist` (sim) o, sin él, tu colocación (2º toque) antes del remate punto del compañero. Simulado: 6,1 + 0,04 × diferencia
 de fuerza ± 0,6 por el resultado ± 0,8 de azar (3-9,5).
 
 ## Entrenador, objetivos y ofertas
 
 - Confianza 0-100 (empieza en 50): `+ (nota − 6,2) × 2,5 ± 1` por partido; ±15 al cumplir o no el objetivo. Textos: Descontento
   (< 30), Tiene dudas, Confía en ti, Pieza clave (≥ 70), Intocable (≥ 85).
-- Objetivo según la posición esperada del club por su media: 1-2.º «Subir de categoría» (en el Circuito: «Ganar el Circuito
-  Mundial»), 3-4.º «Entre los 4 primeros», 5-6.º «Mitad de tabla», 7-8.º «Evitar el descenso» («No acabar último» en Regional).
+- Objetivo según la posición esperada del club por su media: 1-2º «Subir de categoría» (en el Circuito: «Ganar el Circuito
+  Mundial»), 3-4º «Entre los 4 primeros», 5-6º «Mitad de tabla», 7-8º «Evitar el descenso» («No acabar último» en Regional).
 - Ofertas: `interés = tu media + 6 × (nota media − 6) + (entrenador − 50) / 10 + 0,5 × nivel de insignias equipadas −
   umbral(club) ± 4`, con `umbral = media del club − 5 (+2 si es de la liga de arriba)`; solo clubes mejores que el tuyo (misma
   liga con q mayor o la liga de arriba); a mitad de temporada −3. Se eligen 3 (preferencia por la liga de arriba) y se enseñan de
@@ -266,8 +266,8 @@ Resuelto en la integración del 9-nov-2026 (ver notes/ui_main.md, «Integración
 
 ### Revisión y arreglos (11-nov-2026)
 - **Plantilla** (`genSquad`): las dos alternativas quedan siempre dentro de `MATE_OFF` (−9..+5), a ≥ 3 del titular y distintas entre sí
-  (`fit`: valor válido más cercano, primero alejándose del titular). Antes, al deshacer el empate entre las dos, la 2.ª se movía 3 puntos
-  HACIA el titular (p. ej. titular −6 y las dos a −9 → la 2.ª en −6, «±0 respecto a Unai»: 56 de 600 a menos de 3) y el clamp dejaba la
+  (`fit`: valor válido más cercano, primero alejándose del titular). Antes, al deshacer el empate entre las dos, la 2ª se movía 3 puntos
+  HACIA el titular (p. ej. titular −6 y las dos a −9 → la 2ª en −6, «±0 respecto a Unai»: 56 de 600 a menos de 3) y el clamp dejaba la
   plantilla en −10..+6. Medido en 300 carreras (scratchpad `rv/sq.js`): plantilla −9..+5, |alternativa − titular| mín. 3, media 4,6.
 - **Ficha de la oferta** (`mateLine`): el desvío («−7 bajo el club») va en su propia pastilla (verde/roja si se nota, `.chip.dv.g/.r`)
   y no dentro de la de «Media 30» (pastilla dentro de pastilla que se salía de la columna a 1280 y a 844).

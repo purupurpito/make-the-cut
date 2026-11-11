@@ -309,7 +309,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 /* balón detrás del consejo (.thru, como el contador): pastilla casi transparente y texto con sombra para seguir legible */
 /* translúcida con el balón detrás, pero con fondo suficiente para leerse sobre los LED saturados */
 #coach.thru:not(.off){background:rgba(8,13,24,.38);border-color:rgba(255,255,255,.22);text-shadow:0 1px 2px #000,0 0 4px #000,0 0 10px rgba(0,0,0,.85)}
-/* y casi se apaga (en todas las pantallas, no solo en el móvil): en el remate rival del 1.er toque guiado el balón pasaba justo
+/* y casi se apaga (en todas las pantallas, no solo en el móvil): en el remate rival del 1r toque guiado el balón pasaba justo
    bajo el texto de la pastilla a 1280×720, en el momento en que el defensor más necesita leerlo (verificación ola 3) */
 #coach.thru:not(.off){opacity:.28;transition:opacity .14s,color .25s}
 /* mira libre del remate: el consejo «Apunta con…» no se apaga sobre la cinta LED (revisión visual) */
@@ -426,7 +426,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes bnOut{to{opacity:0;transform:translateY(-14px) scale(.98)}}
 
-/* Peloteo largo (UI-15): desde el 8.º toque, chip bajo el marcador con la cuenta, que late en cada contacto; al acabar la
+/* Peloteo largo (UI-15): desde el 8º toque, chip bajo el marcador con la cuenta, que late en cada contacto; al acabar la
    jugada se queda un momento en dorado. Desde 15, en naranja vivo. Solo transform/opacidad en las animaciones. */
 .rl{display:none;align-self:flex-start;align-items:center;gap:7px;margin-top:7px;height:30px;box-sizing:border-box;padding:0 12px 0 8px;border-radius:9px;
   background:rgba(8,13,24,.9);border:1px solid rgba(255,178,56,.5);box-shadow:0 6px 18px rgba(0,0,0,.35);font-family:var(--display);color:var(--amber)}
@@ -484,7 +484,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 #pbug.t0{background:linear-gradient(100deg,#b23510,#d4461b 30%,#d9501f)}
 #pbug.t1{top:62px;background:linear-gradient(100deg,#1840a8,#2459d8 30%,#2a64e4)}
 #pbug b{font:900 italic 21px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.35)}
-/* 2.ª línea = la llamada del árbitro tal cual (sin pasarla a mayúsculas: «Dobles: el mismo jugador toca dos veces») */
+/* 2ª línea = la llamada del árbitro tal cual (sin pasarla a mayúsculas: «Dobles: el mismo jugador toca dos veces») */
 #pbug span{margin-top:2px;font:700 14.5px/1.05 var(--display);letter-spacing:.03em;color:rgba(255,255,255,.95)}
 #pbug.two{min-height:46px;height:auto;padding-top:5px;padding-bottom:6px}
 #pbug em{position:absolute;left:100%;top:50%;margin:-10px 0 0 7px;height:20px;box-sizing:border-box;display:flex;align-items:center;padding:0 7px;border-radius:6px;
@@ -1937,7 +1937,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
       <div class="qlist" data-nav aria-label="Opciones del partido">
         <button class="mi" id="optVenue" data-opt="arena" aria-label="Escenario: Pabellón"><span class="mi-l">Escenario<small class="mi-h" id="venueHelp">Palau del Mar, pista cubierta de 18 × 9</small></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Pabellón"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="venueVal">Pabellón</b></span><span class="arr" data-d="1" aria-label="Playa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
         <button class="mi" id="optDiff" data-opt="difficulty"><span class="mi-l">Dificultad<small class="mi-h" id="diffHelp">Nivel de la CPU</small></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Más fácil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="diffVal">Normal</b><span class="lvl" id="diffLvl"><em></em><em></em><em></em><em></em></span></span><span class="arr" data-d="1" aria-label="Más difícil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
-        <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-l">Puntos por set<small class="mi-h" id="ptsHelp">Al mejor de 3; el 3.º set, a 15</small></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
+        <button class="mi" id="optPts" data-opt="setPoints"><span class="mi-l">Puntos por set<small class="mi-h" id="ptsHelp">Al mejor de 3; el 3r set, a 15</small></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Menos puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ptsVal">25</b></span><span class="arr" data-d="1" aria-label="Más puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
         <button class="mi" id="optCtrl" data-opt="ctrlMode"><span class="mi-l">Controlar<small class="mi-h" id="ctrlHelp">El control pasa a quien toca</small></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="Control anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="ctrlVal">A los dos<span class="cv-x"> jugadores</span></b></span><span class="arr" data-d="1" aria-label="Control siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
         <button class="mi primary" id="btnGo"><span>¡A jugar!<br><span class="mi-s" id="playSub"><span class="chip">Partido rápido</span></span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
       </div>

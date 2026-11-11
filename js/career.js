@@ -4,7 +4,7 @@
  * Tu jugador es un atleta de VB.Prog (st, lvl, xp, pts, bp/bd/beq de VB.Badges) con su propio guardado ('voley3d.career').
  * Empiezas en un club modesto del circuito más bajo; el club te pone pareja. 5 circuitos de 8 clubes de vóley playa (inventados),
  * temporada = liga a doble vuelta (14 jornadas) + open de los 4 primeros (semifinales 1-4 y 2-3, final). Cada jornada juegas tu
- * partido de verdad en la arena (main.js lo arranca con matchSetup: reglas de playa, sets a 21 y el 3.º a 15, pista 16×8) o lo
+ * partido de verdad en la arena (main.js lo arranca con matchSetup: reglas de playa, sets a 21 y el 3r a 15, pista 16×8) o lo
  * simulas; el resto se simula (quickSim). Nota del partido 1-10, objetivo del club, confianza del entrenador, ofertas (mitad y
  * final de temporada), ascensos y descensos. Diseño y calibrado en notes/carrera.md.
  *
@@ -34,6 +34,8 @@
  */
 (function () {
   'use strict';
+  /** Ordinal corto (estilo de Ferran): 1r, 2º, 3r, 4º… Nunca «1.er». */
+  function ordn(n) { return n + (n === 1 || n === 3 ? 'r' : 'º'); }
   var root = typeof window !== 'undefined' ? window : globalThis;
   var VB = root.VB = root.VB || {};
   var KEY = 'voley3d.career', VER = 3;   // v1 → v2: gestión (inicio sin club, contrato, entrenamiento, plantilla, bandeja); v2 → v3: playa; migrate()
@@ -65,7 +67,7 @@
   /** «el Circuito Regional» / «la Superliga de Playa» (art = artículo); toL: «al Circuito…» / «a la Superliga…». */
   function lname(L) { return L.art + ' ' + L.name; }
   function toL(L) { return (L.art === 'el' ? 'al ' : 'a la ') + L.name; }
-  var POINTS = [PTS];   // (v1/v2 elegían 11/15/21/25; en la playa siempre a 21 y el 3.º a 15)
+  var POINTS = [PTS];   // (v1/v2 elegían 11/15/21/25; en la playa siempre a 21 y el 3r a 15)
 
   // ------------------------------------------------------------------ roles (desviaciones sobre la media; suman 0)
   // (vóley playa: la pareja es bloqueador + defensor; las claves atk/cr/uni se conservan en los guardados)
@@ -93,7 +95,7 @@
   // gratis el atributo más bajo del grupo. La fatiga sube con el entrenamiento y baja descansando; por encima de FAT_FREE resta
   // atributos en el partido (matchSetup) y fuerza en la simulación (teamOvr). Grupos = los de VB.Prog.GROUPS.
   // Integración (10-nov-2026, revisión de la Carrera): Equilibrado ya no cansa (con +4 por partido y sin recuperación hundía al
-  // jugador para siempre: −4 permanente desde la 2.ª temporada); los enfoques dan algo más (60) para que compense la fatiga, y en
+  // jugador para siempre: −4 permanente desde la 2ª temporada); los enfoques dan algo más (60) para que compense la fatiga, y en
   // verano la fatiga vuelve a 0 (newSeason).
   var TRAIN = {
     bal: { name: 'Equilibrado', hint: 'Un poco de todo, sin fatiga', prog: { phys: 15, def: 15, atk: 15 }, fat: 0 },
@@ -386,7 +388,7 @@
 
   // ------------------------------------------------------------------ simulación rápida
   /** Partido al mejor de 3 punto a punto: prob. de ganar cada punto 0,5 + 0,009 × (oa − ob) (0,2-0,8). Playa: sets a 21 y el
-   *  3.º a 15 (points por defecto PTS; el tercero siempre a mín(PTS3, points)). */
+   *  3r a 15 (points por defecto PTS; el tercero siempre a mín(PTS3, points)). */
   function quickSim(oa, ob, r, points) {
     points = points || PTS;
     var pA = clamp(0.5 + 0.009 * (oa - ob), 0.2, 0.8), sets = [0, 0], sc = [];
@@ -438,7 +440,7 @@
   function genSquad(c, k, mate, r) {
     var base = clubOvr(k), mr = mate && mate.roleKey || MATE_ROLE[c.player.roleKey] || 'uni', t = mate ? ovrOf(mate.st) - base : 0;
     var alt = mr === 'uni' ? (c.player.roleKey === 'uni' ? 'atk' : 'uni') : 'uni';
-    // cada alternativa: dentro de MATE_OFF, a ≥ 3 del titular y distinta de la otra (antes, al deshacer el empate, la 2.ª podía
+    // cada alternativa: dentro de MATE_OFF, a ≥ 3 del titular y distinta de la otra (antes, al deshacer el empate, la 2ª podía
     // caer encima del titular, y el clamp dejaba salir la plantilla a −10..+6). fit busca el valor válido más cercano, primero
     // alejándose del titular.
     var lo = MATE_OFF[0], hi = MATE_OFF[1], offs = [];
@@ -551,7 +553,7 @@
     var player = p && p.newAthlete ? p.newAthlete({ num: num, role: ROLES[roleKey].name, name: name, st: st })
       : { num: num, role: ROLES[roleKey].name, name: name, lvl: 1, xp: 0, pts: 0, st: st, matches: 0, bp: {}, bd: {}, beq: [] };
     player.roleKey = roleKey; player.age = 18;
-    var c = { v: VER, seed: seed, created: o.now || Date.now(), points: PTS, ctrl: 'one',   // (playa: siempre a 21, el 3.º a 15)
+    var c = { v: VER, seed: seed, created: o.now || Date.now(), points: PTS, ctrl: 'one',   // (playa: siempre a 21, el 3r a 15)
       season: 1, week: 0, phase: 'pick', player: player, clubs: genClubs(r), myClub: -1, mate: null, sched: null, res: null,
       cup: null, notes: [], coach: 50, objective: null, offers: [], window: 'start', review: null, last: null,
       stats: newSeasonStats(), career: newSeasonStats(), history: [], trophies: [],
@@ -694,7 +696,7 @@
     return {
       attrs: [[stMe, stMate], [rivA, rivB]],
       badges: bd ? [[bd, null], null] : null,
-      points: PTS, venue: VENUE, difficulty: n.diff, ctrl: 'one', ctrlIdx: 0,   // vóley playa (sets a 21, el 3.º a 15); en la Carrera solo tu jugador
+      points: PTS, venue: VENUE, difficulty: n.diff, ctrl: 'one', ctrlIdx: 0,   // vóley playa (sets a 21, el 3r a 15); en la Carrera solo tu jugador
       chem: ch, fatigue: fm, mateForm: mf,
       ref: copy(REF[league(n.me.lvl).ref]),
       kit: { kitShirt: k.shirt, kitAccent: k.accent, kitShorts: k.shorts, kitPattern: k.pattern },
@@ -997,8 +999,8 @@
     if (o.length) msg(c, 'offer', 'Ventana de fichajes: ' + plural(o.length, 'oferta', 'ofertas'), 'Tu agente ha recibido ' + plural(o.length, 'oferta', 'ofertas') + ' a mitad de temporada. Caducan al jugar o simular el siguiente partido. Míralas en Club › Ofertas.');
     // el entrenador repasa el objetivo a mitad de temporada
     var pos = posOf(c, c.myClub), okp = pos <= c.objective.pos;
-    msg(c, 'obj', 'Mitad de temporada: ' + pos + '.º', okp ? 'Vamos ' + pos + '.º y el objetivo (' + c.objective.text.toLowerCase() + ') está a nuestro alcance. No bajemos el ritmo.'
-      : 'Vamos ' + pos + '.º y así no llegamos al objetivo (' + c.objective.text.toLowerCase() + '). Necesito más de ti en la segunda vuelta.');
+    msg(c, 'obj', 'Mitad de temporada: ' + ordn(pos), okp ? 'Vamos ' + ordn(pos) + ' y el objetivo (' + c.objective.text.toLowerCase() + ') está a nuestro alcance. No bajemos el ritmo.'
+      : 'Vamos ' + ordn(pos) + ' y así no llegamos al objetivo (' + c.objective.text.toLowerCase() + '). Necesito más de ti en la segunda vuelta.');
   }
 
   // ------------------------------------------------------------------ fin de temporada
@@ -1036,7 +1038,7 @@
       var rl = c.coach >= 70 ? 2 : c.coach >= 45 ? 1 : 0, nq = c.pendingQ[me.id] != null ? c.pendingQ[me.id] : me.q;
       c.review.renew = { role: ROLE_LV[rl], salary: salaryOf(nextLvl(c, me), nq, rl), years: c.coach >= 45 ? 2 : 1 };
     }
-    msg(c, 'club', 'Fin de la temporada ' + c.season + ': ' + pos + '.º', 'Objetivo ' + (objOk ? 'cumplido' : 'no cumplido') + ' (' + c.objective.text.toLowerCase() + ').' +
+    msg(c, 'club', 'Fin de la temporada ' + c.season + ': ' + ordn(pos), 'Objetivo ' + (objOk ? 'cumplido' : 'no cumplido') + ' (' + c.objective.text.toLowerCase() + ').' +
       (myMove > 0 ? ' ¡El club asciende!' : myMove < 0 ? ' El club desciende.' : '') + ' ' + (c.offers.length ? 'Tienes ' + plural(c.offers.length, 'oferta', 'ofertas') + ' de otros clubes.' : 'No han llegado ofertas de otros clubes.') +
       (c.review.renew ? ' Se te acaba el contrato: el club te ofrece renovar como ' + c.review.renew.role.toLowerCase() + '.' : ''));
   }

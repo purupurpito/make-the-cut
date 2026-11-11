@@ -447,7 +447,7 @@
 
   /** Refuerzo del golpe perfecto (remate / bloqueo directo / saque en salto del humano): "thump" sub que cae de 62 a 45 Hz,
    *  ~120 ms audibles. Ataque de 7 ms en coseno (sin pico encima del chasquido, que ya va saturado), cuerpo largo para que
-   *  la energía esté en el tiempo y no en el pico, y armónicos 2.º y 3.º (90-190 Hz) que se apagan antes: le dan peso en un
+   *  la energía esté en el tiempo y no en el pico, y armónicos 2º y 3r (90-190 Hz) que se apagan antes: le dan peso en un
    *  altavoz pequeño, donde 50 Hz no existe. Fase en 0 al empezar: sin escalón. */
   function* genSub(rng, sr) {
     var dur = 0.17, n = Math.ceil(dur * sr), d = new Float32Array(n), na = (0.007 * sr) | 0;
@@ -518,7 +518,7 @@
    *  - whack: «¡zas!» del remate: seno que cae de ~950 a 150 Hz en 9 ms + palmada de ruido a 1,9 kHz.
    *  - zip:   zumbido de las «líneas de velocidad» de un remate fuerte: silbido que baja de 2,6 a 0,7 kHz con ruido que lo sigue.
    *  - boing: muelle sutil del balón que rebota en el bloqueo o en la red: 175 → 200 Hz con vibrato de 12,5 Hz que se apaga
-   *           y armónicos 2.º y 3.º (se oye en un altavoz pequeño). */
+   *           y armónicos 2º y 3r (se oye en un altavoz pequeño). */
   var TOON = {
     pop: { dur: 0.13, f0: 640, f1: 250, pt: 0.012, ad: 0.032, att: 0.0015, hr: 1.5, ha: 0.3, hd: 0.015, h3: 0, na: 0, nf: 2000, nq: 1, nd: 0.01, vf: 0, va: 0, vd: 1, sw: 0, peak: 0.8 },
     whack: { dur: 0.2, f0: 950, f1: 150, pt: 0.009, ad: 0.05, att: 0.001, hr: 2.02, ha: 0.25, hd: 0.012, h3: 0, na: 0.9, nf: 1900, nq: 1.2, nd: 0.011, vf: 0, va: 0, vd: 1, sw: 0, peak: 0.85 },
@@ -667,7 +667,7 @@
       if (kind === 'hover') { ph += TAU * 2100 / sr; y = Math.sin(ph) * 0.3 * Math.exp(-t / 0.012); }
       else if (kind === 'back') { f = 900 - t * 3000; ph += TAU * f / sr; y = Math.sin(ph) * 0.6 * Math.exp(-t / 0.03); }
       else if (kind === 'start') { // dos notas ascendentes con brillo
-        // la 1.ª nota (784 Hz) sigue sonando bajo la 2.ª (1175 Hz, desde 80 ms) en vez de cortarse, y la 2.ª
+        // la 1ª nota (784 Hz) sigue sonando bajo la 2ª (1175 Hz, desde 80 ms) en vez de cortarse, y la 2ª
         // entra con 3 ms de ataque: sin escalones de amplitud, sin clic al pulsar JUGAR
         ph += TAU * 784 / sr; ph2 += TAU * 1568 / sr;
         y = (Math.sin(ph) * 0.6 + Math.sin(ph2) * 0.15) * Math.exp(-t / 0.05);
@@ -1965,7 +1965,7 @@
       default: // 'pass' y cualquier tipo futuro
         if (shot === 'shank') play('free', 0.7 * hg, x, y, jit(0.1) * 0.82, 0.2);     // sale de lado: golpe "feo" y apagado
         else play('pass', 0.75 * hg * (0.85 + 0.15 * q), x, y, jit(0.08) * (0.92 + 0.08 * q), 0.2);
-        // defensa de un remate rival: "uuuh" de la grada que crece con cada defensa del peloteo (AUD-07: la 2.ª y la 3.ª
+        // defensa de un remate rival: "uuuh" de la grada que crece con cada defensa del peloteo (AUD-07: la 2ª y la 3ª
         // suben de volumen y un pelo de tono; el ánimo del lecho sube con ellas). digs: g.rally.digs (SIM-01) o cuenta propia.
         if (k === 'pass' && lastSpikeTeam >= 0 && lastSpikeTeam !== e.team && isFinite(e.t) && e.t - lastSpikeT < 1.2 && !demo) {
           rallyDigs++;
@@ -2304,7 +2304,7 @@
       }
       case 'whistle': // el silbato llena el pabellón: mucho envío a la reverb
         if (e.reason === 'point') whistle(longWhistle ? 'whistleEnd' : 'whistleLong', demo ? 0.35 : 0.55, 0);
-        else { whistle('whistle', demo ? 0.3 : 0.5, 0); if (intro.on) introEnd('whistle'); } // el 1.er pitido suelta la presentación
+        else { whistle('whistle', demo ? 0.3 : 0.5, 0); if (intro.on) introEnd('whistle'); } // el 1r pitido suelta la presentación
         break;
       case 'point': // un punto corregido por el challenge (mismo frame o < 0,5 s tras el resultado) ya tiene su reacción
         if (!e.setWon && !e.matchWon && (frame.cr || (rev.last && now() - rev.last.t < 0.5))) break;

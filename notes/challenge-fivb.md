@@ -10,7 +10,7 @@ Existe una edición 2026 (CEV, https://inside.cev.eu/media/xkre2nzd/vcs-regs-202
   bloquea 7 s después de anotar el punto. Se puede revisar **cualquier acción de la jugada**, saque incluido.
 - **Cuántos** (2, 11, 20, 24): **máximo 2 por set**, no se acumulan entre sets.
   - Acertado: lo **conserva**.
-  - Fallado: lo **pierde**. Con el 2.º fallado ya no puede pedir más en ese set.
+  - Fallado: lo **pierde**. Con el 2º fallado ya no puede pedir más en ese set.
   - Dudoso (las imágenes no lo aclaran): se mantiene la decisión del árbitro y el equipo **conserva** el challenge.
   - Pulsar el botón y no elegir motivo en 7 s: lo pierde.
 - **Quién y cómo** (4, 8, 21): el entrenador, con la tableta del banquillo, en **dos pasos**: botón CHALLENGE (suena una bocina)
@@ -23,12 +23,12 @@ Existe una edición 2026 (CEV, https://inside.cev.eu/media/xkre2nzd/vcs-regs-202
   Pedir algo que no está en la lista cuenta como challenge fallado, y repetirlo se puede sancionar como retraso (5).
 - **Con ojo de halcón automático** (3a): el dentro/fuera ya **no se puede pedir**; el sistema lo muestra solo
   (en la pantalla gigante, los botes a menos de 20 cm de la línea; en la tele, a menos de 7 cm).
-- **El procedimiento** (9, 10): el 2.º árbitro aclara con el entrenador qué y cuándo («toque de red en el 2.º ataque…»), el 1.º hace la
+- **El procedimiento** (9, 10): el 2º árbitro aclara con el entrenador qué y cuándo («toque de red en el 2º ataque…»), el 1r hace la
   señal de aceptar, el árbitro de vídeo revisa (prima la precisión sobre la rapidez), se ve la imagen en la **pantalla gigante**,
-  el 1.º anuncia y señala quién gana el punto y saca. El marcador se corrige si hace falta.
+  el 1r anuncia y señala quién gana el punto y saca. El marcador se corrige si hace falta.
 - **La primera falta manda** (13, 18): si en las imágenes aparece una falta anterior, aunque no sea la pedida, es la que decide el punto.
   Si la falta pedida existe pero no es la primera, el equipo pierde el punto pero conserva el challenge.
-- **El 1.º árbitro también puede pedir revisión** (12): al acabar cualquier jugada, si duda (señal con las dos manos). El equipo que pierde
+- **El 1r árbitro también puede pedir revisión** (12): al acabar cualquier jugada, si duda (señal con las dos manos). El equipo que pierde
   el punto por esa revisión puede pedir otro challenge en la misma interrupción.
 - **Otros** (6, 14, 16, 19, 23): el challenge va antes que tiempos muertos y cambios. Si el equipo que lo pide gana la jugada igualmente,
   se anula. Si el rival admite el toque, punto para el que lo pidió y lo conserva. Cada equipo, 1 por interrupción (los dos pueden pedir).

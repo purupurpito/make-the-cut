@@ -124,7 +124,7 @@ Las interfaces de CONTRACT.md §4 siguen intactas. Todo lo de abajo son AÑADIDO
     ("Remate fuera", "Recepción fuera", "Dejada fuera", "Toca el bloqueo y sale fuera"…) en vez del texto de sim.
   - Consejo de arriba: la pastilla no se atenúa (solo el texto) y desaparece con el balón del saque en el aire.
     Táctil: consejo compacto de una línea bajo el contador (primeros 3 partidos, 3 s de juego por tipo).
-  - Ordinales "1.er / 2.º / 3.er" en HUD, tutorial y controles. Tutorial táctil: SACAR en el paso del saque. Tarjeta
+  - Ordinales "1r / 2º / 3r" en HUD, tutorial y controles. Tutorial táctil: SACAR en el paso del saque. Tarjeta
     ANTENA: "El balón toca la antena o cruza por fuera de ella"; pie: "…recuperas el saque (cambio de saque) y saca tu compañero".
   - Primer partido: primera recepción/defensa, primera colocación y primer remate llegan a cámara lenta (0,4 durante 1,3 s,
     `CameraRig.slowmo`) con una tarjeta grande arriba ("PRIMER TOQUE · RECEPCIÓN — Ve al aro amarillo y pulsa ESPACIO").
@@ -373,7 +373,7 @@ sim.js ya expone (ver notes/sim.md §P1): `createGame({present:true})` (o `g.pre
   ```
   (en ese caso audio leería `ev[i].type === 'fx:highfive'…` en vez de llamar a `drainFx`).
 
-## De camera_input (pulido ola 1, 2.ª pasada, 2026-11-08)
+## De camera_input (pulido ola 1, 2ª pasada, 2026-11-08)
 1. **CONTRACT §4.4** (añadidos opcionales de camera.js): `VB.CameraRig.heroShot()` → `null` o `{heroId, mateId, team, camX, camY, hx, hy,
    heroYaw, conv, mx, my, mateYaw, t}` (coreografía del plano de héroe; solo en `g.mode === 'point'`; objeto reutilizado, no modificar) y
    `VB.Players.heroShotAware` (players: la convergencia la sigue; ver notes/players.md). Convención de cámara: «el plano de héroe dicta la
@@ -428,7 +428,7 @@ Todo medido con GPU real; scripts de prueba en `tools/out/ui1/` (no se suben). I
 - Nivel 3 (set/partido) se coloca arriba, a media altura o en el tercio inferior, donde menos tape al héroe y nunca sobre el marcador.
 - Nivel 2 (bloqueo, ace, jugada ≥ 10 toques, racha tuya de 3 o 5, punto de set salvado o `highlight ≥ 0,55`): cinta tras el corte al plano de
   reacción, en el tercio inferior (izq./dcha.) en escritorio y en la franja alta en táctil/alto ≤ 560 px, en el sitio que no tapa `pf.hero` /
-  `pf.vic`; la misma cinta no se repite dos puntos seguidos (2.º ace del mismo equipo → pestaña). Nivel 3 (set/partido): centro, tras el héroe.
+  `pf.vic`; la misma cinta no se repite dos puntos seguidos (2º ace del mismo equipo → pestaña). Nivel 3 (set/partido): centro, tras el héroe.
 - Calibrado con la sim (`tierstat5.js`, 16 partidos por nivel): cinta grande en el 32,5 % (Fácil), 28,5 % (Normal), 27 % (Difícil) de los puntos.
 - Medido: timeline de 120 s → 25 % con cinta, 0 subtítulos repetidos seguidos; `REF=1 pres.js` (motivo y texto del árbitro inyectados en puntos
   reales) → los 10 textos salen idénticos; 10 puntos a 1280×720 y 9 a 844×390: la cinta no corta las cajas del héroe ni de la víctima; titular
@@ -867,7 +867,7 @@ después), MVP una vez; flechas → paso arriba/abajo/tope y hover propio; Ayuda
   de rAF en ms) · `ui('mvp', win)` (al EMPEZAR la cuenta: el acento cae a 0,6 s, cuando se posan las cifras) · `ui('arrowHover', dir)` ·
   `ui('arrow', dir, nivel, nNiveles)` · `ui('arrowEdge', dir)` · `ui('optHover')` · `ui('toggle', on)` · `ui('select', i, n)` · `ui('slide', v)`.
 - El ritmo de los tics lo pone audio.js (no hace falta limitar nada en ui.js): llamar en cada frame con cambio basta.
-- Mientras se ve la hoja (state `over` tras la 1.ª cifra o el MVP), la grada baja 6 dB (≈ 3 dB a la salida) y vuelve al salir de `over`.
+- Mientras se ve la hoja (state `over` tras la 1ª cifra o el MVP), la grada baja 6 dB (≈ 3 dB a la salida) y vuelve al salir de `over`.
 - Nota: el interruptor «Sonido: Sí» no puede sonar (el contexto se reanuda de forma asíncrona) y «Sonido: No» lo silencia: es lo esperado.
 - Los cambios (sangría +2 por la lista; el texto es el del fichero):
 - **cuenta: MVP al empezar** — sustituir:
@@ -975,8 +975,8 @@ Pruebas y capturas en `tools/out/w3/` (no se suben). Interfaces de CONTRACT inta
 - `miss17.js` (partido humano real, teclado): «¡Pronto!» en vivo → color rgb(255,255,255), filo #ff5a2c, punto 16 px a la izquierda del centro;
   «¡Tarde!» (evento inyectado) → punto 19 px a la derecha.
 ### UI-18 · textos
-- Ace / antenas / «Un punto para ganar el 1.er set» / «Un punto para ganar el partido» / «¡Ganas el partido!» / «Balón libre · [SALTAR] para
-  rematar» / «3.er toque · Ataque: ponte bajo el balón, salta con K y golpea con ESPACIO arriba» / «Primer partido» / «Al mejor de 3 sets» /
+- Ace / antenas / «Un punto para ganar el 1r set» / «Un punto para ganar el partido» / «¡Ganas el partido!» / «Balón libre · [SALTAR] para
+  rematar» / «3r toque · Ataque: ponte bajo el balón, salta con K y golpea con ESPACIO arriba» / «Primer partido» / «Al mejor de 3 sets» /
   «Voley 3D se juega en horizontal». Antetítulos con contexto: pausa «Set 1 · 24-10 · Normal» («Mando desconectado» si se va el mando; en medio
   solo los sets), final «Palau del Mar · Nivel Normal · 3 sets», paneles «Botones y gestos» / «Se guardan en este navegador». Tarjeta guiada:
   solo el ordinal («SEGUNDO TOQUE»; el nombre ya está en el contador). `#sbTag` oculto mientras la cinta «Punto de set/partido» está a la vista.
@@ -1051,14 +1051,14 @@ Pruebas y capturas en `tools/out/w4/` (no se suben). Interfaces de CONTRACT inta
   vale una transición) al salir el rótulo de set/partido o una cinta con «¡Jugada de N toques!». Medido: fundido a los 0,7 s del punto de partido.
 - **«Peloteo» → «Jugada»**: chip «JUGADA · N» y subtítulo «¡Jugada de N toques!» (la hoja final ya decía «Jugada más larga»). Las frases del
   árbitro intactas (grep: sim.js 4, ui.js 5). 70 s de autopiloto: chips «Jugada 8…12», subtítulo «¡Jugada de 12 toques!», chip fundido.
-- **Tarjeta del 1.er toque guiado sobre el balón en el remate rival**: la pastilla era `#coach` (ya tenía `.thru`, pero en escritorio solo
+- **Tarjeta del 1r toque guiado sobre el balón en el remate rival**: la pastilla era `#coach` (ya tenía `.thru`, pero en escritorio solo
   aclaraba el fondo); ahora `#coach.thru` baja a opacidad 0,28 en todas las pantallas (0,14 s) y `#guide.thru` a 0,22 (antes solo en el móvil).
   `debug=spike&guide=1` a 1280×720: balón en (538,77) bajo la pastilla → opacidad 0,28, el balón se lee (`spike-guide2.png`).
 - **Pestaña blanca vacía del marcador en el móvil**: el `letter-spacing:.2em` de `.sb-top` se hereda ya resuelto (2,5 px) y los 13 caracteres
   invisibles de «PALAU DEL MAR» con `font-size:0` ensanchaban la pestaña a 55 px. `letter-spacing:0` → 22 px, solo el balón (`rally-ph2.png`).
-- **`debug=menu` sin pabellón (también a 1280×720, no solo en el móvil)**: carrera. En escenas `debug=` no hay `bootReady`; si el 3.er frame
+- **`debug=menu` sin pabellón (también a 1280×720, no solo en el móvil)**: carrera. En escenas `debug=` no hay `bootReady`; si el 3r frame
   pintado llegaba pasado BOOT_CAP (2,6 s; enlace de programas lento), `tryReveal` hacía un relevo PARCIAL y el fondo del telón quedaba bajo el
-  menú hasta los 7,6 s. Ahora `tryReveal` no empieza nunca un relevo en depuración (el telón lo quita main.js en el 3.er frame, como siempre).
+  menú hasta los 7,6 s. Ahora `tryReveal` no empieza nunca un relevo en depuración (el telón lo quita main.js en el 3r frame, como siempre).
   No se pasa `debug=menu` por el telón real: audiotest/camtest lo usan e interactúan a ~1,2 s y `bootBusy` los frenaría. 5/5 capturas con escena.
 - **Perfiles vb3c-* huérfanos (UI-08)**: `cdp.js` `sweepDead(deadMs=8 min, dry)` borra carpetas de más de 8 min que NINGÚN proceso vivo nombra
   en su línea de órdenes (`listVbProcs()`, sacado de `killOrphans`; si no se puede listar, `null` → no se borra nada). `open()` lo llama si hay
@@ -1082,8 +1082,8 @@ Pruebas y capturas en `tools/out/w4/` (no se suben). Interfaces de CONTRACT inta
 
 ## Sprint remate apuntado + challenge — ui_main (9-nov-2026, PC de casa): A5 y B7
 Pruebas y capturas en `tools/out/chal/` (no se suben). Solo añadidos opcionales.
-- **A5**: `aim3(g, p)` (lee `g.aim3.on`; sin él, humano en el aire en su lado). Consejo del 3.er toque en el aire: escritorio
-  «3.er toque · Apunta con <glifo> y golpea con <glifo> en lo alto», táctil «Apunta con el joystick». Tutorial paso 4: mira libre
+- **A5**: `aim3(g, p)` (lee `g.aim3.on`; sin él, humano en el aire en su lado). Consejo del 3r toque en el aire: escritorio
+  «3r toque · Apunta con <glifo> y golpea con <glifo> en lo alto», táctil «Apunta con el joystick». Tutorial paso 4: mira libre
   y timing perfecto = exacto a la diana (texto acortado: 0 px de desborde a 844×390, 667×375, 1280×720, 1024×768).
 - **B7**: contador `#sbChal` (2 iconos, `g.challenges[0]`) en la franja del marcador tras SET. `#chal` (botón, FUERA de `#hud`, z 6 > `#touch`)
   arriba a la derecha bajo los botones del HUD/pausa: ventana `Sim.canChallenge(g,0) > 0` → «Challenge · V» / LT (L2 en PlayStation) /
@@ -1162,7 +1162,7 @@ Pruebas: simtest TODO OK; console.sh all sin errores JS; perf «objetivos cumpli
   («Solo tu jugador» / «Los dos»); solo gana el `title` con la misma ayuda.
 
 ## Arreglos finales del sprint Carrera (10-nov-2026)
-- **career-ui.js**: tras «Simular» el foco se queda en «Simular» (antes saltaba a «Jugar partido» y un 2.º Intro / A arrancaba un
+- **career-ui.js**: tras «Simular» el foco se queda en «Simular» (antes saltaba a «Jugar partido» y un 2º Intro / A arrancaba un
   partido); al acabar la temporada (y al abrir el hub en fin de temporada) el foco va a la pestaña Partido con el cuerpo arriba (antes
   caía en «Seguir en…», que con otro Intro rechazaba todas las ofertas, y el `scrollIntoView` tapaba la tarjeta del resumen a 844×390).
   Posiciones «N.º» solo con la liga empezada; equipar sin hueco o una bloqueada explica por qué (`.bd-msg`, `aria-live`); textos «caducan
@@ -1211,7 +1211,7 @@ Pruebas: simtest TODO OK; console.sh all sin errores JS; perf «objetivos cumpli
 - Panel Controles: el ratoncito es más grande, el botón pulsado va en ámbar y lleva «izq.» / «der.» al lado; táctil «Golpear y
   sacar (joystick: diana del saque)»; mando «Menús: aceptar y volver».
 - Saque táctil: «SACAR Flotante / SALTAR Potente» (antes «SALTAR En salto»).
-- Ordinales en castellano: «1.er set», «1.er toque» (antes «1r», abreviatura catalana).
+- Ordinales en castellano: «1r set», «1r toque» (antes «1r», abreviatura catalana).
 - Sin cambiar (deliberado): el consejo de arriba se vuelve translúcido (`.thru`) cuando el balón o los jugadores pasan por detrás;
   el clic sobre el marcador cuenta como clic en pantalla (golpea), tal como pidió Ferran («clicar en la pantalla»).
 
@@ -1220,17 +1220,17 @@ Pruebas: simtest TODO OK; console.sh all sin errores JS; perf «objetivos cumpli
   la rueda del ratón; `T(t, 's')` el botón COLOCAR.
 - Aviso `#prompt` en el aire con `VB.Sim.jsetReady(g)` (y «Avisos» encendido): rejilla 2×2 `.two` con la tecla de GOLPEAR + «Rematar» (o «Golpear»
   si el balón no está alto en la red) y la de COLOCAR + «Colocar»; encendido (`go`) dentro de la ventana de golpeo.
-- Consejos: 2.º toque «… o salta y coloca en el aire con K, más rápido» (táctil «Bajo el balón y Golpear · o salta y Colocar»); en el aire
+- Consejos: 2º toque «… o salta y coloca en el aire con K, más rápido» (táctil «Bajo el balón y Golpear · o salta y Colocar»); en el aire
   «En el aire: J remata · K coloca en salto a tu compañero» (táctil corto). Panel Controles: fila «Colocar en salto» en teclado (K o rueda),
   mando (X, «B» queda solo para saltar) y táctil. Tutorial paso 3 (colocación) lo explica en los dos modos de control.
 - main.js: `simIn.jset`/`edge.jset` (se consumen como los demás flancos).
 - Arreglos 10-nov-2026 (revisión de dispositivos): en `.two` los glifos ya no se estiran (`min-width:4.7em` solo para `.key.tch`; glifos
   centrados en su columna); encendido, la tecla de COLOCAR del teclado sale verde (J naranja, K verde). Táctil: «[GOLPEAR] Rematar /
   [COLOCAR] en salto» (no «COLOCAR Colocar») y sin la línea de consejo «GOLPEAR remata · COLOCAR coloca» mientras se ve el aviso (con
-  «Avisos» apagado sigue saliendo). Panel Controles (teclado y mando): «Colocar en salto (en el aire, 1.er o 2.º toque; en el 3.º, dejada; en
-  el suelo salta)»; en táctil el botón no sale en el 3.er toque. `nav` de mando: X/□ (COLOCAR, que también manda `jump`) ya no hace «volver».
-  badges.js: la cuenta de reserva del colocador (sin `assist`) incluye la colocación en salto del 1.er toque.
-- Herramientas: `tools/jsetdrill.js` (prepara un 2.º toque en el juego real y pulsa SALTAR y, en el aire, COLOCAR con el dispositivo de cada
+  «Avisos» apagado sigue saliendo). Panel Controles (teclado y mando): «Colocar en salto (en el aire, 1r o 2º toque; en el 3r, dejada; en
+  el suelo salta)»; en táctil el botón no sale en el 3r toque. `nav` de mando: X/□ (COLOCAR, que también manda `jump`) ya no hace «volver».
+  badges.js: la cuenta de reserva del colocador (sin `assist`) incluye la colocación en salto del 1r toque.
+- Herramientas: `tools/jsetdrill.js` (prepara un 2º toque en el juego real y pulsa SALTAR y, en el aire, COLOCAR con el dispositivo de cada
   herramienta). drive.js: Espacio + K y clic derecho + clic central; touchplay.js: SALTAR + botón COLOCAR (comprueba que solo sale en el aire,
   ≥ 44 px y sin pisar joystick/GOLPEAR/SALTAR); padplay.js: B + X. Capturas en tools/out/colocar/.
 
@@ -1262,7 +1262,7 @@ Petición de Ferran: quitar los números del menú, dividirlo en submenús (móv
 - **Páginas** dentro de `#menu` (misma demo, `ctx.state === 'menu'`): `#mpPlay` (JUGAR: tarjetas `.mode` #btnQuick, #btnCareer —la
   abre career-ui.js como siempre y su `#careerSub` sigue ahí—, #btn6v6 deshabilitada «Próximamente»; el 6v6 sigue tras `?format=6v6`)
   y `#mpQuick` (PARTIDO RÁPIDO: filas #optVenue, #optDiff, #optPts, #optCtrl con una línea de ayuda `.mi-h` —con Playa, Puntos dice
-  «Reglas de playa: sets a 21 y el 3.º a 15» y queda fijo— y #btnGo «¡A jugar!» con el resumen en pastillas `#playSub`).
+  «Reglas de playa: sets a 21 y el 3r a 15» y queda fijo— y #btnGo «¡A jugar!» con el resumen en pastillas `#playSub`).
   ui.js: `mpage`, `mstack`, `menuGo(p)`, `menuBack()` (Esc / B / botón `.mp-back`; vuelve al botón que abrió la página), `menuReset()`
   (al volver de un partido), foco por defecto JUGAR → Partido rápido → ¡A jugar! (tres Intro / tres A desde el arranque). ←/→ en las
   tarjetas mueven a la vecina. Con la Carrera abierta el menú se pone solo en Jugar (cada 8 frames), así al cerrarla el foco vuelve a
@@ -1310,7 +1310,7 @@ Petición de Ferran: quitar los números del menú, dividirlo en submenús (móv
 ## Textos: guía de estilo (10-nov-2026, pedido de Ferran: «los separadores con "·" cantan a texto generado»)
 Lo que cantaba no era abreviar, sino pegar TODO con el mismo « · ». Reglas para cualquier texto nuevo que vea el jugador:
 - **Etiquetas, HUD, marcador, fichas, tablas, pestañas y pastillas: cortas y con abreviaturas**, como en un juego deportivo de verdad
-  («Nv 1», «Media 50», «⇄ Saque», «N.º 1», «T1 J3», «1.er toque» como título de paso). Nunca más largas que antes.
+  («Nv 1», «Media 50», «⇄ Saque», «N.º 1», «T1 J3», «1r toque» como título de paso). Nunca más largas que antes.
 - **El separador depende del contexto y de la jerarquía** (ui.js `sepHTML`/`setSep`, `VB.UI.sep`; career-ui.js `sp()`):
   - barra vertical fina `'v'` para datos del HUD y líneas de datos («Set 1 | 24-10», «Entrenador | T1 J3», «S1 25-20 | S2 25-15»);
     en `banner()`, un subtítulo con « | » se dibuja así («Set 1 | 25-20», «Cada 7 puntos | 21-18»);
@@ -1322,11 +1322,11 @@ Lo que cantaba no era abreviar, sino pegar TODO con el mismo « · ». Reglas pa
   - pastillas `'c'` solo para metadatos sueltos (subtítulo de JUGAR, resumen de ¡A JUGAR!, «T1 J2» en la tarjeta Carrera, fichas);
   - un «·» suelto puede quedar donde sea lo mejor, pero no como pegamento universal.
 - **Lo que es una frase disfrazada de lista pasa a frase corta** (con comas, «y», punto y seguido, dos puntos solo si introducen):
-  consejos del coach (la pastilla corta «Tu saque» / «2.º toque» se queda como etiqueta y detrás UNA frase, sin más « · »), avisos y
+  consejos del coach (la pastilla corta «Tu saque» / «2º toque» se queda como etiqueta y detrás UNA frase, sin más « · »), avisos y
   banners («Al mejor de 3 sets a 25, sacas tú», «Set decisivo, a 15 puntos», «A 3,2 cm de la línea. Se mantiene, te quedan 2»),
   ayudas de las opciones («Platja Llarga, vóley playa en pista de 16 × 8»), descripciones de entrenos e insignias
   («Salto, velocidad y reacción (cansa). +60 por semana, fatiga +12»), arbitraje («Jueces de línea y challenge»), reglas de puntos.
-  En frases, ordinales con palabra («Un punto para ganar el primer set»: `ORD`); en etiquetas, «1.er / 2.º / 3.er» se quedan.
+  En frases, ordinales con palabra («Un punto para ganar el primer set»: `ORD`); en etiquetas, «1r / 2º / 3r» se quedan. Nunca «1.er / 2.º / 3.er» (lo pidió Ferran el 11-nov-2026); en código, `ordn(n)` de career.js y career-ui.js.
 - **Rótulos grandes del pabellón** (arena.js `teamFor`/`teamOf`): «PUNTO PARA TI», «SET PARA LA CPU», «REVISIÓN» con «CHALLENGE TUYO /
   DE LA CPU» debajo, «IN POR 3,2 cm», «A LOS 8 DEL SET DECISIVO»; en la demo, «EL LOCAL» / «LA VISITA».
 - Los textos del árbitro que vienen de la sim («Dobles», «Falta de saque: 8 segundos»…) no se tocan. Los consejos solo pueden

@@ -178,14 +178,14 @@
    *          stats:bool } */
   /** Puntos por set que se pueden elegir (Partido rápido). */
   var SET_POINTS = [11, 15, 21, 25];
-  /** Puntos para ganar el set en curso: g.points, y el set decisivo (3.º) a min(15, g.points). */
+  /** Puntos para ganar el set en curso: g.points, y el set decisivo (3r) a min(15, g.points). */
   function setTarget(g) { var p = g.points || 25; return g.setNo === 3 ? Math.min(15, p) : p; }
   function createGame(opts) {
     opts = opts || {};
     // formato (sprint 1 del 6v6): '2v2' por defecto (idéntico a siempre); '6v6' solo con opts.format === '6v6' (en pruebas:
     // ?format=6v6). El 6v6 aún NO tiene reglas ni IA propias (sprint 2): seis por equipo con la IA de 2v2 generalizada.
     var six = opts.format === '6v6', size = six ? 6 : 2;
-    // vóley playa (solo 2v2): pista 16×8, sets a 21 (3.º a 15), cambio de campo cada 7 (5 en el 3.º), el bloqueo cuenta
+    // vóley playa (solo 2v2): pista 16×8, sets a 21 (3r a 15), cambio de campo cada 7 (5 en el 3r), el bloqueo cuenta
     // como toque, la dejada es de nudillos («pokey») y la colocación de dedos se pita más. Sin venue = pabellón byte a byte
     var beach = opts.venue === 'beach' && !six;
     var teams = six ? [mkTeam6(0), mkTeam6(1)] : [[mkPlayer(0, 1, 0), mkPlayer(0, 2, 1)], [mkPlayer(1, 3, 0), mkPlayer(1, 9, 1)]];
@@ -232,7 +232,7 @@
       // multiplicar por g.cs deja los números exactos y la huella 2v2 intacta)
       venue: beach ? 'beach' : 'hall', beach: beach,
       HL: beach ? C.BEACH.HL : C.HL, HW: beach ? C.BEACH.HW : C.HW, cs: beach ? C.BEACH.HL / C.HL : 1,
-      courtSwapAt: 0,          // playa: suma de puntos del último cambio de campo (cada 7; cada 5 en el 3.er set)
+      courtSwapAt: 0,          // playa: suma de puntos del último cambio de campo (cada 7; cada 5 en el 3r set)
       antennaHit: null,        // {x,y,z} donde el balón tocó la antena en este punto (null si no)
       atkServe: null,          // {team, player}: toque por encima de la red sobre el saque rival en zona de ataque; es falta
                                // (13.3.4) solo si se COMPLETA como ataque: el balón cruza la red o lo toca el rival
@@ -273,7 +273,7 @@
       swingT0: 0,              // g.time de la pulsación que abrió el gesto humano en curso
       prevKind: '',            // tipo del toque anterior al último
       atkTeam: -1, atkHow: '', atkHits: 0, // último ataque/saque (para atribuir kill/ace aunque el rival lo toque y no lo salve)
-      atkSet: null,            // colocador (2.º toque del mismo equipo) del último ataque, o null (point.assist)
+      atkSet: null,            // colocador (2º toque del mismo equipo) del último ataque, o null (point.assist)
       jobMem: [null, null], jobMemT: [-1, -1], jobSwT: [-9, -9], jobHop: [-1, -1], // IA: memoria de quién va al balón (histéresis)
       digMargin: 0,            // margen de defensa (s) del último remate (>0 el defensor llega con tiempo; <0 al hueco)
       lastPoint: null,         // {team, reason, text, how, highlight, digs, streak, savedSetPoint, clutch, signal, touchedOut, landSide, hold, setWon, matchWon}
@@ -284,7 +284,7 @@
       present: !!opts.present, hold: 0,
       streakTeam: -1, streakN: 0, // racha de puntos seguidos en el set (SIM-01)
       atkHuman: false, atkGrade: '', // quién/cómo fue el último ataque o saque (para 'kill perfecto del humano')
-      // remate apuntado (A1-A3): mira libre del humano en el aire en el 3.er toque; defensa más justa tras remate perfecto
+      // remate apuntado (A1-A3): mira libre del humano en el aire en el 3r toque; defensa más justa tras remate perfecto
       // saque dirigible: la misma diana con kind 'serve' mientras saca el humano (serveAimReset / updateServeAim)
       aim3: dblFields({ on: false, x: 0.5, y: 0.5, kind: '' }), digTight: false,
       // error arbitral + challenge (B1-B3): llamada del último bote, challenges por set, revisión en curso, petición de la CPU
@@ -336,7 +336,7 @@
     // solo movían la ventana y el resultado no cambiaba): dispersión del balón que sale (er) ×1,5-0,6 y prob. de recepción
     // desviada / colocación que pasa la red ×1,5-0,6. Sin gasto de azar extra (mismos dados, otro umbral)
     err: [1.4, 1.0],
-    reach: [0.16, 0.12],   // alcance del 1.er toque del humano (Recepción / Defensa): ×0,94-1,05
+    reach: [0.16, 0.12],   // alcance del 1r toque del humano (Recepción / Defensa): ×0,94-1,05
     errQ: [0.5, 0.8]       // calidad del pase/colocación del humano: ×(1 − 0,5·(ek − 1)) por debajo de 50; + (1 − q)·(1 − ek)·0,8 por encima
   };
   function statProf(base, st) {
@@ -442,7 +442,7 @@
    *  del saque; la recepción es cosa de Ancla). La plancha usa (REACH + DIVE) × redR en canDive. */
   function reachOf(g, p) {
     var l = bl(p, 'red'), first = g.touchTeam !== p.team, r = l && first && g.lastKind !== 'serve' ? C.REACH * BADGE.redR[l] : C.REACH;
-    // atributos del humano (integración): alcance del 1.er toque por Recepción (saque) o Defensa (lo demás), ×0,94-1,05
+    // atributos del humano (integración): alcance del 1r toque por Recepción (saque) o Defensa (lo demás), ×0,94-1,05
     if (p.ak && first && isHuman(g, p)) r *= g.lastKind === 'serve' ? p.ak.rRecv : p.ak.rDig;
     return r;
   }
@@ -465,16 +465,16 @@
    *  de apuntado prediga el mismo tipo de golpe que luego se ejecuta. */
   function isAttackContact(p, b) { return p.z > 0.25 && Math.abs(b.x) < 3.8 && b.z > C.NET_H + 0.1; }
 
-  /* Colocación en salto (solo el humano; input.jset = COLOCAR estando en el aire). Vale en el 2.º toque y en el 1.º si el
-   * balón llega alto a la red (isAttackContact): el compañero ataca entonces en el 2.º. Sale más tensa que la de suelo (cima
+  /* Colocación en salto (solo el humano; input.jset = COLOCAR estando en el aire). Vale en el 2º toque y en el 1r si el
+   * balón llega alto a la red (isAttackContact): el compañero ataca entonces en el 2º. Sale más tensa que la de suelo (cima
    * baja: llega antes al atacante), con la ventana de timing ÷win y, con mal timing, se pega a la red o se va larga.
    *  win: divisor de la ventana (1,2 = un 17 % más justa que una colocación de suelo)
    *  tx, tz: destino (m de la red, altura) como la colocación de suelo (1,35 / 3), algo más separada de la red
-   *  rise/rise1: cima = contacto + rise (2.º toque) / rise1 (1.er toque, el compañero viene de más lejos), mínimo minApex
+   *  rise/rise1: cima = contacto + rise (2º toque) / rise1 (1r toque, el compañero viene de más lejos), mínimo minApex
    *  err0/err1: dispersión (como la de suelo, 0,1 + 1,15·(1−q)); badQ/badP: por debajo de badQ, prob. (badQ+0,05−q)·badP
    *  de colocación mala (mitad pegada a la red, mitad larga); blk: el error de colocación del bloqueador rival (blockOff) crece
  *  ×(1 + blk·q): la rápida y bien dada le pilla peor colocado; dig: el dado de defensa del remate que sigue a una colocación en
- *  salto buena/perfecta del 2.º toque ×dig (tempo rápido; el bloqueador CPU la lee y llega, ai.js, y sin esto no compensaba
+ *  salto buena/perfecta del 2º toque ×dig (tempo rápido; el bloqueador CPU la lee y llega, ai.js, y sin esto no compensaba
  *  arriesgar); mate: |y| máximo del destino; buf: s que se guarda COLOCAR pulsado justo al despegar (g.jsetQ). */
   var JSET = VB.JSET = { win: 1.2, tx: 1.5, tz: 3, rise: 0.75, rise1: 1.15, minApex: 4.1, err0: 0.12, err1: 1.3, badQ: 0.45, badP: 1.5, blk: 0.6, dig: 0.8, mate: 3.6, buf: 0.2 };
   /** El remate rival no se «coloca» desde el bloqueo: con un remate del otro equipo en camino COLOCAR no hace nada en el
@@ -482,9 +482,9 @@
   function jsetVoid(g, p) { return g.touchTeam !== p.team && g.lastKind === 'spike'; }
   function canJset(g, p, count) { return p.z > 0.25 && !jsetVoid(g, p) && (count === 2 || (count === 1 && isAttackContact(p, g.ball))); }
   /** Para la UI (botón táctil COLOCAR, aviso «Rematar | Colocar») y la lectura del bloqueador CPU (ai.js): el jugador humano
-   *  está en el aire, el balón le queda a < 3 m en un toque donde cabe la colocación en salto (2.º, o 1.º con el balón alto
+   *  está en el aire, el balón le queda a < 3 m en un toque donde cabe la colocación en salto (2º, o 1r con el balón alto
    *  junto a la red) y el contacto previsto (hitWindow, el mismo que el aro) cumple lo que luego pide canJset: el jugador
-   *  aún en el aire (> 0,25 m) y, en el 1.er toque, el balón por encima de NET_H + 0,1 (isAttackContact). Así lo que se
+   *  aún en el aire (> 0,25 m) y, en el 1r toque, el balón por encima de NET_H + 0,1 (isAttackContact). Así lo que se
    *  ofrece es lo que sale. Una llamada por paso (caché por g.time). */
   var _jw = { t: 0, press: 0, d: 9, dz: 9, reach: false, kind: '', zc: 0, x: 0, y: 0, z: 0, active: false, canReach: false, attack: false, jumpT: NaN };
   var _jrG = null, _jrT = -1, _jrV = false;
@@ -506,7 +506,7 @@
     if (count === 1 && !(Math.abs(w.x) < 3.8 && w.z > C.NET_H + 0.1 && w.x * side(p.team) > -0.5)) return false;
     return true;
   }
-  /** ¿Toca atacar al equipo t en su siguiente toque? Tras su 2.º toque o tras una colocación en salto en el 1.º. */
+  /** ¿Toca atacar al equipo t en su siguiente toque? Tras su 2º toque o tras una colocación en salto en el 1r. */
   function atkPhase(g, t) { return g.touchTeam === t && (g.touches === 2 || (g.touches === 1 && g.lastKind === 'set')); }
 
   /* ---------- Equipos de N jugadores (sprint 1 del 6v6, notes/diseno-6v6-carrera.md §1.1) ----------
@@ -824,7 +824,7 @@
     if (g.touchTeam === t && g.lastPlayer === p) { fault(g, t, 'double', 'Dobles: el mismo jugador toca dos veces', p); return; }
     var count = g.touchTeam === t ? g.touches + 1 : 1;
     if (count > 3) { fault(g, t, 'four', '4 toques', p); return; }
-    // COLOCAR en el aire donde no cabe colocación en salto (3.er toque, o 1.º sin el balón alto en la red): dejada si es
+    // COLOCAR en el aire donde no cabe colocación en salto (3r toque, o 1r sin el balón alto en la red): dejada si es
     // un toque de ataque, si no el toque normal
     if (shot === 'jset' && !canJset(g, p, count)) shot = isAttackContact(p, b) ? 'tip' : '';
     var jset = shot === 'jset';
@@ -848,7 +848,7 @@
       te /= wk; // remate: también el Salto (con poco salto la ventana es más justa; dependes más del timing)
     }
     // Manos de seda: remate del compañero tras una colocación buena o perfecta del que la lleva
-    // (también el ataque del 2.º toque tras una colocación en salto en el 1.º)
+    // (también el ataque del 2º toque tras una colocación en salto en el 1r)
     var setIn = inKind === 'set' && (count === 3 || (count === 2 && inShot === 'jump'));
     var sedaL = setIn && prevPlayer && prevPlayer !== p && prevPlayer.team === t && prevPlayer.grade !== 'poor' ? bl(prevPlayer, 'seda') : 0;
     if (human && p.badges) { // insignias: ventanas de timing del humano (Sangre fría, Manos de seda, Ancla, Red de seguridad)
@@ -869,7 +869,7 @@
     q = clamp(q, 0, 1);
     var grade = gradeOf(q), mul = human ? 1 : prof.err;
     // atributos del humano: precisión del toque (VB.ATTR_K.err). Recepción (saque), Defensa (resto de 1.os toques), Colocación
-    // (2.º toque y colocación en salto) y Control (ataque): ×er y ×prob. de fallo gordo. 1 con 50 o sin atributos
+    // (2º toque y colocación en salto) y Control (ataque): ×er y ×prob. de fallo gordo. 1 con 50 o sin atributos
     var ek = 1;
     if (human && p.ak) ek = jset ? p.ak.eSet : isAttackContact(p, b) ? p.ak.eAtk : count === 2 ? p.ak.eSet : count === 1 ? (inKind === 'serve' ? p.ak.eRecv : p.ak.eDig) : 1;
     mul *= ek;
@@ -880,7 +880,7 @@
       q = ek > 1 ? q * (1 - AK.errQ[0] * (ek - 1)) : q + (1 - q) * (1 - ek) * AK.errQ[1];
       grade = gradeOf(q);
     }
-    // playa: la colocación de dedos se pita más (dobles). Un 2.º toque de dedos (balón alto, no en salto ni de ataque, cuerpo o
+    // playa: la colocación de dedos se pita más (dobles). Un 2º toque de dedos (balón alto, no en salto ni de ataque, cuerpo o
     // plancha) con mal timing es falta con prob. BEACH.dblSet (la IA, ×dblSetAI). Solo en la playa: el pabellón no gasta azar aquí
     if (g.beach && count === 2 && grade === 'poor' && !jset && shot !== 'body' && shot !== 'dive' && shot !== 'tip' && b.z - p.z > 1.6 &&
         !isAttackContact(p, b) && g.rng() < BEACH.dblSet * (human ? 1 : BEACH.dblSetAI)) {
@@ -949,8 +949,8 @@
         if (g._digWho && g._digWho.prof) dp = g._digWho.prof;
         // A3: remate perfecto del humano -> la IA rival defiende peor (x0,8); remate perfecto contra el humano -> g.digTight
         var tightK = human && grade === 'perfect' ? 0.8 : 1;
-        // remate tras una colocación en salto buena o perfecta en el 2.º toque: el tempo rápido pilla a la defensa rival a
-        // medio colocar. No tras la del 1.er toque: ahí ya sale sola (balón regalado en la red) y con el ×dig colocar ganaba
+        // remate tras una colocación en salto buena o perfecta en el 2º toque: el tempo rápido pilla a la defensa rival a
+        // medio colocar. No tras la del 1r toque: ahí ya sale sola (balón regalado en la red) y con el ×dig colocar ganaba
         // más que rematarlo uno mismo
         if (setIn && count === 3 && inShot === 'jump' && prevPlayer && prevPlayer.grade !== 'poor') tightK *= JSET.dig;
         if (g.rot) tightK *= SIX.dig * (VB.AI6 ? VB.AI6.digK(g, t) : 1); // 6v6: con 3 zagueros el margen de defensa sale alto; en sistema, más
@@ -1005,8 +1005,8 @@
     g.lastKind = kind; g.lastShot = sub; g.lastTouchT = g.time; g.netSince = false;
     if (kind === 'spike' || (kind === 'free' && sub === 'tip')) {
       g.atkTeam = t; g.atkHow = kind === 'spike' ? 'kill' : 'tip'; g.atkHits = g.rally.hits + 1; g.atkHuman = human; g.atkGrade = grade;
-      // colocador del ataque (point.assist): el 2.º toque del mismo equipo, si el ataque es el 3.º (o el 1.º si colocó en salto
-      // y el ataque es el 2.º)
+      // colocador del ataque (point.assist): el 2º toque del mismo equipo, si el ataque es el 3r (o el 1r si colocó en salto
+      // y el ataque es el 2º)
       g.atkSet = setIn && prevPlayer && prevPlayer !== p && prevPlayer.team === t ? prevPlayer : null;
       if (g.stats && kind === 'spike') g.stats.spikes[t]++;
     }
@@ -1501,10 +1501,10 @@
   var HOLD = VB.HOLD = { routine: 1.9, big: 2.4, bigAt: 0.55, set: 4.0, match: 4.2, eight: 1.4, skipAfter: 0.8, skipTo: 0.3 };
   /** Pausa clásica (demo, autopilot, tests sin g.present): la de siempre. */
   var HOLD_LEGACY = { routine: 1.9, set: 3.6, match: 2.2, eight: 1.4 };
-  /** Reglas de VÓLEY PLAYA (g.beach; solo lectura para los demás). Cambio de campo cada `swap` puntos jugados (`swap3` en el 3.er
-   *  set) con `swapHold` s más de pausa (0 en la demo del menú); colocación de dedos: prob. de dobles de un 2.º toque «poor»
+  /** Reglas de VÓLEY PLAYA (g.beach; solo lectura para los demás). Cambio de campo cada `swap` puntos jugados (`swap3` en el 3r
+   *  set) con `swapHold` s más de pausa (0 en la demo del menú); colocación de dedos: prob. de dobles de un 2º toque «poor»
    *  (`dblSet`, la IA ×`dblSetAI`); pokey (dejada de nudillos): cima sobre el contacto `pokeyUp` y mínima `pokeyNet` sobre la red.
-   *  Sets a 21 y el 3.º a 15 (g.points = 21, setTarget), pista 16×8 (C.BEACH), el bloqueo cuenta como toque. */
+   *  Sets a 21 y el 3r a 15 (g.points = 21, setTarget), pista 16×8 (C.BEACH), el bloqueo cuenta como toque. */
   var BEACH = VB.BEACH = { swap: 7, swap3: 5, swapHold: 1.0, dblSet: 0.3, dblSetAI: 0.5, pokeyUp: 0.25, pokeyNet: 0.6, points: 21, points3: 15 };
   /** Pesos de highlightOf (SIM-01, calibrados en SIM-05; ver notes/sim.md §P3). Solo lectura para los demás módulos. */
   var HL = VB.HL = { base: 0.15, rallyFrom: 4, rally: 0.025, rallyMax: 0.35, dig: 0.08, digMax: 0.3, playMax: 0.4,
@@ -1513,7 +1513,7 @@
   /** "Lo grande que ha sido" un punto, 0..1 (SIM-01, calibrado en SIM-05). o = {how, rallyHits, digs, perfectKill, setPoint,
    *  matchPoint, clutch, saved, streak, setWon, matchWon}. Base 0,15 +
    *  - JUGADA (tope conjunto 0,4: con la base, una jugada épica sola ya llega a 0,55): peloteo largo +0,025 por toque a partir
-   *    del 5.º (máx. 0,35) y +0,08 por defensa de remate (máx. 0,3);
+   *    del 5º (máx. 0,35) y +0,08 por defensa de remate (máx. 0,3);
    *  - CÓMO: bloqueo directo +0,4 (un punto de bloqueo siempre es grande), ace +0,25, remate perfecto del humano +0,1;
    *  - PRESIÓN: punto de set +0,15, o final apretado (`clutch`: últimos 8 puntos del set con 2 o menos de diferencia) +0,28,
    *    lo que sea mayor (no se suman: el 24-23 no vale menos que el 23-22); punto de partido +0,45 más;
@@ -1568,7 +1568,7 @@
     var tgt = setTarget(g), a = g.score[0], bb = g.score[1], half = Math.ceil(tgt / 2);
     var setWon = g.score[w] >= tgt && g.score[w] - g.score[1 - w] >= 2, matchWon = setWon && g.sets[w] === 1;
     var eight = !g.beach && !setWon && g.setNo === 3 && !g.courtSwap3 && g.score[w] === half && g.score[1 - w] < half;
-    // playa: cambio de campo cada BEACH.swap puntos jugados (cada BEACH.swap3 en el 3.er set), sin parar el juego
+    // playa: cambio de campo cada BEACH.swap puntos jugados (cada BEACH.swap3 en el 3r set), sin parar el juego
     var bswap = g.beach && !setWon && (a + bb) % (g.setNo === 3 ? BEACH.swap3 : BEACH.swap) === 0;
     // contexto (SIM-01): racha en el set, punto de set/partido salvado, defensas de remate del peloteo
     if (g.streakTeam === w) g.streakN++; else { g.streakTeam = w; g.streakN = 1; }
@@ -1705,7 +1705,7 @@
    *  a la cámara); la UI muestra el aviso y arena/cámara pueden escenificarlo. */
   function courtChange(g, why) {
     if (g.stats) g.stats.courtChanges++;
-    // why: 'set' (fin de set) | 'eight' (8 del set decisivo, pabellón) | 'swap' (playa: cada 7 puntos, cada 5 en el 3.º; `every`)
+    // why: 'set' (fin de set) | 'eight' (8 del set decisivo, pabellón) | 'swap' (playa: cada 7 puntos, cada 5 en el 3r; `every`)
     var ev = emit(g, { type: 'courtChange', setNo: g.setNo, why: why, score: [g.score[0], g.score[1]], sets: [g.sets[0], g.sets[1]], pause: why === 'set' ? 1.0 : why === 'swap' ? BEACH.swapHold : 1.4 });
     if (why === 'swap') ev.every = g.setNo === 3 ? BEACH.swap3 : BEACH.swap;
   }
@@ -2178,7 +2178,7 @@
    *    para saque en salto; luego GOLPEAR en el momento justo (dirección = apuntar).
    *  - Peloteo: GOLPEAR = toque (el juego decide recepción/colocación/remate);
    *    SALTAR en el suelo = salto (remate/bloqueo); SALTAR en el aire = dejada.
-   *    jset (COLOCAR): en el suelo = SALTAR; en el aire = colocación en salto (2.º toque, o 1.º con el balón alto en la red). */
+   *    jset (COLOCAR): en el suelo = SALTAR; en el aire = colocación en salto (2º toque, o 1r con el balón alto en la red). */
   function step(g, dt, input) {
     input = input || NOIN;
     var AI = VB.AI, b = g.ball;
@@ -2256,7 +2256,7 @@
     refreshPred(g);
   }
 
-  /** A1: mira libre del remate. Atacante humano del 3.er toque en el aire: g.aim3 empieza en el objetivo por defecto
+  /** A1: mira libre del remate. Atacante humano del 3r toque en el aire: g.aim3 empieza en el objetivo por defecto
    *  (diagonal) y la dirección (mundo) lo mueve a AIM3_SPEED m/s dentro del campo rival. Fuera de ese caso, off. */
   var AIM3_SPEED = 11;
   function updateAim3(g, p, dt, mx, my) {

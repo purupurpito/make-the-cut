@@ -345,7 +345,7 @@
     var fmt = !cs && Q.format === '6v6' ? '6v6' : undefined; if (fmt) own = false;
     var auto = !!opts.autopilot || !!fmt;
     applyVenuePend();
-    // Carrera: VÓLEY PLAYA (sprint playa, 10-nov-2026): el partido se juega en Platja Llarga con sus reglas (sets a 21 y el 3.º a
+    // Carrera: VÓLEY PLAYA (sprint playa, 10-nov-2026): el partido se juega en Platja Llarga con sus reglas (sets a 21 y el 3r a
     // 15, pista 16×8, cambio de campo cada 7) aunque el ajuste «Escenario» sea el pabellón; el hub y quickSim cuentan con ellas
     // (el 6v6 al revés: siempre en el pabellón, aunque el ajuste sea la playa; la sim juega en su pista 18×9)
     var cv = cs ? (opts.venue === 'hall' ? 'hall' : 'beach') : fmt ? 'hall' : null;
@@ -552,7 +552,7 @@
     // táctil: el primer toque en cualquier parte ya pone la pantalla completa (necesita un gesto del usuario)
     var first = function () { window.removeEventListener('pointerup', first, true); tryFullscreen(); };
     if (isTouch) window.addEventListener('pointerup', first, true);
-    // doble toque: sin zoom aunque el navegador ignore user-scalable=no (Safari): el 2.º toque rápido fuera de un control no hace nada
+    // doble toque: sin zoom aunque el navegador ignore user-scalable=no (Safari): el 2º toque rápido fuera de un control no hace nada
     var lastTE = 0;
     document.addEventListener('touchend', function (e) {
       var t = e.target, now = e.timeStamp || 0;
@@ -867,7 +867,7 @@
         g = mk(true);
         // Por defecto, plancha de NUESTRO equipo hecha por el que NO controlamos, con el compañero controlado más cerca de
         // la red (≥ 1,5 m) y el que se tira a < 4,8 m de ella: la cámara va detrás del controlado y el que se tira queda
-        // DELANTE, a media distancia y grande en el plano (seed 7: la 6.ª plancha propia, ~325 s de juego; seeds 2-5 también
+        // DELANTE, a media distancia y grande en el plano (seed 7: la 6ª plancha propia, ~325 s de juego; seeds 2-5 también
         // tienen una). La de la CPU, al otro lado de la red, quedaba diminuta (~85 px a 1280x720, ~25 px a 844x390), y la
         // del jugador controlado tampoco sirve (el cambio automático lleva la cámara al compañero y el que se tira queda
         // detrás de ella). Si no hay ninguna en 30 min de juego, la primera de la CPU.
@@ -918,7 +918,7 @@
         g = mk(true);
         keep = advanceUntil(g, function (e) { return e && e.type === 'switch' && e.auto && !e.reset; }, 0.18); break;
       // 6v6 (sprint 2, espectador: CPU contra CPU con el HUD de partido y la cámara de televisión). serve6: el sacador con el balón
-      // lanzado (&n=N el N-ésimo saque, por defecto el 3.º: ya ha habido rotación); rally6: la colocación del equipo 0 tras la
+      // lanzado (&n=N el N-ésimo saque, por defecto el 3r: ya ha habido rotación); rally6: la colocación del equipo 0 tras la
       // recepción (como 'rally'); point6: el punto (con su plano). &live=1 sigue jugando.
       case 'serve6': case 'rally6': case 'point6':
         forceVenue('hall');   // (6v6: siempre pabellón, también con &map=beach)

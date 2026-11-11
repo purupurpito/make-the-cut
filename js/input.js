@@ -89,7 +89,7 @@
   // ---------------- Ratón ----------------
   // Clic izquierdo = golpear, derecho = saltar: entran en el mismo mapa que las teclas (ids 'Mouse0'/'Mouse2'), así que
   // mantener pulsado da hitHeld/jumpHeld igual que una tecla. Se lee e.buttons (no e.button) en pointerdown/move/up: con un
-  // botón ya pulsado, el 2.º solo llega como pointermove «acordado» (e.button !== -1). Solo pointerType 'mouse' (el dedo y
+  // botón ya pulsado, el 2º solo llega como pointermove «acordado» (e.button !== -1). Solo pointerType 'mouse' (el dedo y
   // el lápiz van por el overlay táctil), solo en partido y nunca sobre un control de la UI, un panel o el overlay táctil.
   var MOUSE_UI = 'button,a,input,select,textarea,label,[role="button"],[data-ui],[data-opt],[data-nav],.screen,.sheet,#touch';
   function mouseOk(e) {
@@ -216,7 +216,7 @@
   // botones (mapeo estándar W3C): 0 A, 1 B, 2 X, 3 Y, 4 LB, 5 RB, 8 Select, 9 Start, 12-15 cruceta
   // challenge (B4): gatillo izquierdo LT/L2 = botón 6 del mapeo estándar (analógico: cuenta por encima de 0,5). En XInput no
   // estándar los gatillos son ejes (sin mapeo fiable): ahí no hay challenge por mando (teclado V o botón táctil).
-  // X (PS: cuadrado), antes 2.º botón de saltar, es COLOCAR (jset): en el aire coloca en salto, en el suelo sigue saltando
+  // X (PS: cuadrado), antes 2º botón de saltar, es COLOCAR (jset): en el aire coloca en salto, en el suelo sigue saltando
   var PB = { hit: [0], jump: [1], jset: [2], sw: [4, 5, 3], pause: [9], mute: [8], chal: [6] };
   var PB_X = { hit: [0], jump: [1], jset: [2], sw: [3, 4, 5], pause: [7], mute: [6], chal: [] };    // no estándar, <= 11 botones (XInput)
   var PB_D = { hit: [0], jump: [1], jset: [2], sw: [3, 4, 5], pause: [9], mute: [8], chal: [6] };    // no estándar, DirectInput genérico (L2)
@@ -359,7 +359,7 @@
 
     // GESTOR ÚNICO DE PUNTEROS sobre todo el overlay (no un listener por botón): cada dedo tiene un papel.
     // - Dedo que nace sobre un botón (círculo + margen de 16 px en GOLPEAR/SALTAR para dedos gordos) -> ese botón.
-    // - Dedo en la mitad izquierda (y fuera de los botones) -> joystick flotante; un 2.º dedo allí espera y, si el
+    // - Dedo en la mitad izquierda (y fuera de los botones) -> joystick flotante; un 2º dedo allí espera y, si el
     //   del joystick se levanta, lo hereda (sin soltar y volver a poner).
     // - DESLIZAR entre GOLPEAR y SALTAR (o desde una zona vacía de la derecha) pulsa el botón al que se llega
     //   (salto + remate de un solo gesto). Salir de un botón a zona vacía lo mantiene pulsado (perdona el pulgar).
@@ -374,7 +374,7 @@
     rootEl.addEventListener('contextmenu', function (e) { if (e.cancelable) e.preventDefault(); });
     rootEl.addEventListener('dblclick', function (e) { if (e.cancelable) e.preventDefault(); });
     try { document.addEventListener('gesturestart', function (e) { if (e.cancelable) e.preventDefault(); }, { passive: false }); } catch (_) { }
-    // Overlay OCULTO (se jugaba con mando/teclado) en un equipo táctil: el 1.er dedo no se pierde. Sin esto, el dedo
+    // Overlay OCULTO (se jugaba con mando/teclado) en un equipo táctil: el 1r dedo no se pierde. Sin esto, el dedo
     // cae en el canvas (que lo captura implícitamente), el overlay vuelve un frame después y ni el toque en GOLPEAR
     // cuenta ni el dedo de la izquierda llega a ser joystick. Aquí (fase de captura) se muestra el overlay al
     // instante, se le pasa el dedo y el overlay lo captura.

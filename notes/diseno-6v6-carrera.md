@@ -141,22 +141,22 @@ var tg = J ? J.pos(g, p) : pos(g, p);                     // (en update)
 `VB.AI6 = { computeJob, pos, decide, chooseAttacker, blockPlan, FORM }`:
 
 - **`computeJob(g, t)`** (quién va al balón), por número de toque:
-  - 1.er toque (recepción/defensa): coste = `AI.timeTo(g, p, pr1.x, pr1.y)` + penalización de rol: colocador +0,35 s (que
+  - 1r toque (recepción/defensa): coste = `AI.timeTo(g, p, pr1.x, pr1.y)` + penalización de rol: colocador +0,35 s (que
     no reciba si hay otro), central delantero +0,25 s, líbero −0,10 s, OH receptor −0,05 s; con la histéresis y la «memoria
     por trayectoria» de `computeJob` actual (`jobMem`, `jobSwT`, `jobHop`), generalizada de 2 a N candidatos (mejor y segundo).
-  - 2.º toque: el colocador si no hizo el 1.º y llega (`timeTo < pr3.t + 0.1`); si no, el líbero (colocación de dedos con la
+  - 2º toque: el colocador si no hizo el 1r y llega (`timeTo < pr3.t + 0.1`); si no, el líbero (colocación de dedos con la
     regla de 3 m) y si no, el opuesto o el más cercano («colocador de emergencia»: siempre bola alta a zona 4).
-  - 3.er toque: el elegido por `chooseAttacker` en el momento del 2.º toque (`g.setPlan[t].to`).
+  - 3r toque: el elegido por `chooseAttacker` en el momento del 2º toque (`g.setPlan[t].to`).
 - **`chooseAttacker(g, t)`** (el colocador decide al tocar): opciones válidas según rotación (delanteros OH, MB, OPP; zagueros
-  OH/OPP en «pipe» desde detrás de 3 m). Peso = calidad de la recepción (`grade` del 1.er toque: `poor` → solo bola alta a
+  OH/OPP en «pipe» desde detrás de 3 m). Peso = calidad de la recepción (`grade` del 1r toque: `poor` → solo bola alta a
   punta u opuesto), estadística de ataque del atacante, bloqueadores rivales delante (su `y` frente al destino) y un poco de
   azar según `aimNoise` del colocador. Devuelve `{to, tempo, x, y}`:
   - `high` (bola alta a punta): `launchApex` con ápice 3,8-4,2 m en `yl = -3.6, d = 0.8`;
   - `shoot` (tensa al opuesto): ápice 3,0 m en `yl = +3.6`;
-  - `quick` (rápida del central, 1.er tiempo): ápice 2,85 m a 0,8-1,2 m del colocador; el central salta ANTES del toque de
+  - `quick` (rápida del central, 1r tiempo): ápice 2,85 m a 0,8-1,2 m del colocador; el central salta ANTES del toque de
     colocación (salto programado como el de la IA actual con `pr3`, pero con la predicción del destino planificado);
   - `pipe`: ápice 3,4 m en `d = 3.6, yl = 0`, atacante zaguero despegando detrás de la línea.
-  El colocador también puede **atacar de segunda** (dejada a 2.º toque) si es delantero: prob. `tip × 0.5` con el bloqueo rival
+  El colocador también puede **atacar de segunda** (dejada a 2º toque) si es delantero: prob. `tip × 0.5` con el bloqueo rival
   abierto. Con humano colocador, ver 1.5.
 - **`pos(g, p)`** (dónde estar): tabla de fases → `setTg(x, y, attack, block)` como ahora.
   - Recepción: `FORM.RECV[rotación][zona]`. Saque propio: `FORM.SERVE` y al golpear, `BASE`.
@@ -168,8 +168,8 @@ var tg = J ? J.pos(g, p) : pos(g, p);                     // (en update)
     Zagueros a la defensa «perímetro»: tabla `FORM.DEF[zonaDeAtaque]` (4, 3, 2, pipe) con el líbero en 5 o 6 y la línea
     cubierta según dónde cierra el bloqueo (la idea de «defensor algo a la diagonal» de `pos` actual, en 3 jugadores).
   - Transición: tras defender, los delanteros se abren a la línea de 3 m para tener carrera de batida.
-- **`decide(g, p, w)`** (qué hace con el balón): 1.er toque → al punto de colocación (`d = 0.8, yl = +0.8`, «zona 2,5»), con error
-  según `st.recv`/`st.dig`; 2.º → `chooseAttacker`; 3.º → la lógica actual de remate/dejada (`openSpot` con N defensores
+- **`decide(g, p, w)`** (qué hace con el balón): 1r toque → al punto de colocación (`d = 0.8, yl = +0.8`, «zona 2,5»), con error
+  según `st.recv`/`st.dig`; 2º → `chooseAttacker`; 3r → la lógica actual de remate/dejada (`openSpot` con N defensores
   y lectura del bloqueo). `openSpot` y `serveTarget` se generalizan a N rivales (bucle sobre `g.teams[1 - t]`, sin asignar).
 
 Coste de CPU: `AI.update` corre a 120 Hz por jugador; con 11 jugadores IA la función pesa poco (sin asignaciones; `pos` es
@@ -196,7 +196,7 @@ En 6v6 el control es siempre «Uno» (cambiar de jugador sería poco habitual). 
   - **«¡Pídela!»**: el botón de cambiar jugador (⇄ / tecla de cambio / LB) se reutiliza en 6v6: durante nuestra recepción sube el
     peso del humano en `chooseAttacker` (×2,5) y muestra un bocadillo «¡Aquí!». Texto de controles y tutorial adaptados.
 - **Saque**: cuando `rot[0][0] === g.ctrl` saca el humano con el flujo actual (`stepServe`, ritual solo CPU); si no, saca la IA.
-- **Colocador humano (v2)**: al tocar de 2.º, la dirección del stick elige el destino (izquierda → punta, adelante → rápida,
+- **Colocador humano (v2)**: al tocar de 2º, la dirección del stick elige el destino (izquierda → punta, adelante → rápida,
   derecha → opuesto, atrás → pipe; sin dirección → lo que elegiría la IA) y el timing da la calidad de la colocación (ápice y
   precisión), como el remate apuntado. Retícula: la diana de `g.aim3` reutilizada con el radio de la dispersión.
 - Métrica de diversión a vigilar (simtest con bot): toques del humano por rally ≥ 0,7 como OH; si baja, subir el sesgo de responsabilidad.
@@ -260,7 +260,7 @@ Escala 1-99 (`p.st`), con normalización `s(k) = (st[k] - 1) / 98`:
 | Reacción | `react` | retardo de lectura tras cada toque |
 | Recepción | `recv` | saque recibido: calidad y fallo |
 | Defensa | `dig` | defensa de remate, alcance de plancha |
-| Colocación | `set` | precisión del 2.º toque, tempos disponibles |
+| Colocación | `set` | precisión del 2º toque, tempos disponibles |
 | Ataque | `spike` | velocidad del remate |
 | Control | `ctl` | dispersión del remate, error no forzado, lectura del bloqueo, dejadas |
 | Bloqueo | `block` | prob. de cerrar, tamaño de manos, reacción del bloqueo |

@@ -29,7 +29,7 @@ salida de `node tools/simtest.js 10 12345 0` es idéntica línea a línea a la d
 | término | valor |
 |---|---|
 | base | 0,15 |
-| peloteo largo | +0,03 por toque a partir del 5.º (`rallyHits − 4`), máx. 0,35 (el saque no cuenta como toque en `rallyHits`) |
+| peloteo largo | +0,03 por toque a partir del 5º (`rallyHits − 4`), máx. 0,35 (el saque no cuenta como toque en `rallyHits`) |
 | defensas de remate (`digs`) | +0,12 cada una, máx. 0,24 |
 | `how 'block'` (bloqueo directo) | +0,25 |
 | `how 'ace'` | +0,2 |
@@ -68,7 +68,7 @@ Distribución medida (`tools/out/sim-p1/hlsweep.js`, `tools/out/sim-p1/hlhuman.j
 **Para SIM-05 (calibración, ola 3)**: en partidos humanos los puntos «grandes» (≥ 0,55 → pausa de 2,4 s) son frecuentes en
 cuanto el jugador es bueno, porque remate perfecto (0,35) + una defensa (0,12) + dos toques de peloteo (0,06) ya llegan.
 Propuesta a medir entonces: contar como `digs` solo las defensas de remate de ≥ 13 m/s o en plancha, y subir el umbral de
-peloteo largo a partir del 7.º toque; objetivo ≤ 15 % de puntos grandes para un jugador bueno. No se ha tocado ahora para
+peloteo largo a partir del 7º toque; objetivo ≤ 15 % de puntos grandes para un jugador bueno. No se ha tocado ahora para
 no mover el contrato que las demás ramas están empezando a usar.
 
 ### SIM-02 — señal del árbitro
@@ -119,7 +119,7 @@ ya terminado (`g.finished`). El orden de eventos al acabar la pausa no cambia (`
   remate perfecto del humano con punto de partido (0,8), bloqueo directo con punto de partido propio (0,85) y salvándolo (1,0);
   fórmula en 6 extremos; `digs` (remate y toque de bloqueo sí, saque y cuerpo no) y `streak` (corta la del rival); pausa con
   `present` (set 3,4: `skipHold` false a 0,5 s, true a 0,9 s y saque a los 0,3 s; normal 1,9; grande 2,4; partido 4,2 con
-  `gameOver` a los 0,3 s del skip; 8 del 3.er set +1,4; sin `present` 3,6; sin efecto en saque/peloteo).
+  `gameOver` a los 0,3 s del skip; 8 del 3r set +1,4; sin `present` 3,6; sin efecto en saque/peloteo).
 - Partido humano de 6 min con `present: true` (bot bueno vs Normal).
 
 Herramientas de medida: `node tools/out/sim-p1/hlsweep.js [semillas] [min] [desde]` (demo) y
@@ -205,7 +205,7 @@ NÚMERO `highlight` (y con él la pausa de 2,4 s de `g.present`). **Para que el 
 | término | antes (SIM-01) | ahora |
 |---|---|---|
 | base | 0,15 | 0,15 |
-| peloteo largo | +0,03/toque desde el 5.º, máx. 0,35 | +0,025/toque desde el 5.º, máx. 0,35 |
+| peloteo largo | +0,03/toque desde el 5º, máx. 0,35 | +0,025/toque desde el 5º, máx. 0,35 |
 | defensas de remate | +0,12 c/u, máx. 0,24 | +0,08 c/u, máx. 0,3 |
 | **tope conjunto de la jugada** (peloteo + defensas) | — (0,59) | **0,4**: con la base, una jugada épica sola llega a 0,55 justo |
 | bloqueo directo | +0,25 | **+0,4** (un punto de bloqueo siempre es grande: 0,55) |
@@ -437,7 +437,7 @@ Verificación R5: `node tools/simtest.js` completo → TODO OK (novato:Fácil 46
 5. **4 niveles**: Fácil, Normal (nuevo, intermedio), Difícil (= Normal anterior), Experto (= Difícil anterior).
 6. **Contacto con el cuerpo**: el balón ya no atraviesa a un jugador: toque `shot:'body'`.
 7. Salto del humano junto a la red con el balón del rival (cualquier toque): la inercia no le mete en la red.
-8. **Cambio de campo** (18.2.1 / 18.2.2): evento `courtChange` al acabar cada set y a los 8 del 3.º.
+8. **Cambio de campo** (18.2.1 / 18.2.2): evento `courtChange` al acabar cada set y a los 8 del 3r.
 9. **Ayuda de timing por nivel** (`VB.TIMING`, `g.tm`): en Fácil/primer partido el gesto espera más y dura más.
 10. Texto: "La CPU manda el balón fuera" (antes "Balón fuera de la CPU").
 
@@ -489,7 +489,7 @@ Verificación R5: `node tools/simtest.js` completo → TODO OK (novato:Fácil 46
 
 ### Rol defensivo del humano (nuevo, revisión 2)
 - `g.defRole`: `''` (fuera de la fase de ataque rival) | `'dig'` | `'block'`.
-- Cuando la CPU coloca para atacar (2.º toque, el balón se queda en su campo), `defRole = 'dig'`: si el jugador del
+- Cuando la CPU coloca para atacar (2º toque, el balón se queda en su campo), `defRole = 'dig'`: si el jugador del
   humano es el más cercano a la red, el control pasa al de atrás (`switch {auto:true, reason:'defense'}`) y el
   compañero IA va al bloqueo. Así la cámara se asienta ~1,5 s antes del remate y el humano conserva
   defensa → (colocación del compañero) → remate.
@@ -515,7 +515,7 @@ Verificación R5: `node tools/simtest.js` completo → TODO OK (novato:Fácil 46
 
 ### Cambio de campo (nuevo, reglas 18.2.1 / 18.2.2)
 - Evento `courtChange {setNo, why:'set'|'eight', score, sets, pause}` al ganar un set que no acaba el partido (pausa del
-  set 3,6 s en vez de 2,6) y cuando un equipo llega a 8 en el 3.er set (una vez; +1,4 s de pausa antes del saque).
+  set 3,6 s en vez de 2,6) y cuando un equipo llega a 8 en el 3r set (una vez; +1,4 s de pausa antes del saque).
 - Es PRESENTACIÓN: el humano sigue en x > 0 (controles relativos a la cámara). Ver peticiones abajo.
 
 ### Reglas implementadas (terminología FCVB)
@@ -553,7 +553,7 @@ entrada real y modelan a un jugador detrás de la cámara:
 
 | perfil | reacción (mediana) | error de lectura | malas lecturas | timing σ | inercia stick |
 |---|---|---|---|---|---|
-| novato (1.ª sesión) | 0,34 s (+10 % despistes) | 1,2 m (×1,6 prof.) | 12 % | 110 ms, pronto 40 ms | 5 /s |
+| novato (1ª sesión) | 0,34 s (+10 % despistes) | 1,2 m (×1,6 prof.) | 12 % | 110 ms, pronto 40 ms | 5 /s |
 | medio | 0,26 s (+5 %) | 0,8 m (×1,5) | 6 % | 70 ms | 8 /s |
 | bueno | 0,20 s (+2 %) | 0,45 m (×1,4) | 2 % | 45 ms | 12 /s |
 | perfecto (cota superior) | 0,13 s | 0,12 m | 0 | 20 ms | 40 /s |
@@ -562,7 +562,7 @@ Matriz nueva (`node tools/simtest.js`, 4 semillas × 20 min por casilla, ~300-44
 
 | bot | Fácil | Normal | Difícil | Experto |
 |---|---|---|---|---|
-| novato (1.ª sesión) | **47 %** (R5; antes 51-53 %) | 34 % | 19 % | 12 % |
+| novato (1ª sesión) | **47 %** (R5; antes 51-53 %) | 34 % | 19 % | 12 % |
 | medio | 74 % | **53 %** | 40 % | 24 % |
 | bueno | 84 % | 69 % | 57 % | 39 % |
 | perfecto | 94 % | 82 % | 77 % | 58 % |
@@ -597,7 +597,7 @@ en Fácil/Normal).
   `g.aimOn` (bool): dirección de apuntado de la entrada del último paso. `VB.DIFF.demo` (perfil de la demo del menú).
 - `g.difficulty` (`'easy'|'normal'|'hard'|'expert'`), `g.prof[team]`, **`g.tm`** (`{assist, swing, lock}` del humano).
 - **`g.defRole`** (`''|'dig'|'block'`, ver arriba). **`g.recvRisk`** (dificultad del último saque para el receptor).
-- **`g.blockBy`** (último jugador que bloqueó), **`g.courtSwap3`** (ya se cambió de campo a los 8 del 3.º).
+- **`g.blockBy`** (último jugador que bloqueó), **`g.courtSwap3`** (ya se cambió de campo a los 8 del 3r).
 - Saque, gesto, balón, jugador, `digMargin`, `jobMem...`, `lastLand`: sin cambios (ver CONTRACT §4.2).
 - `p.shot` nuevo valor `'body'` (con `p.lastAction` = `'pass'|'set'|'free'` según el toque y `p.anim = 0,12`).
 - `g.stats` (solo tests): `blockKinds.touch`, `body`, `courtChanges`.
@@ -615,13 +615,13 @@ en Fácil/Normal).
 
 ## 4. Funciones nuevas en `VB.Sim` / `VB`
 - **Revisión 3: `VB.Sim.aimPoint(g, out?, move?)`** devuelve `{x, y, kind, mode, aimed, spread, spreadPoor}` o `null`.
-  - `kind`: `'serve'` (saque del humano), `'spike'` (remate en el aire, 3.er toque propio), `'tip'` (dejada: gesto en curso con
-    `swingShot 'tip'`), `'free'` (3.er toque desde el suelo). `mode`: 1 = vista previa (saque tras el silbato, aún sin lanzar),
+  - `kind`: `'serve'` (saque del humano), `'spike'` (remate en el aire, 3r toque propio), `'tip'` (dejada: gesto en curso con
+    `swingShot 'tip'`), `'free'` (3r toque desde el suelo). `mode`: 1 = vista previa (saque tras el silbato, aún sin lanzar),
     2 = activo. `aimed`: hay dirección (si no, el destino por defecto: saque al centro a 6 m, remate en diagonal).
   - `spread` / `spreadPoor`: dispersión (m, ± por eje) del destino con un toque perfecto / 'poor' (para dimensionar la retícula).
   - `move` (opcional) = entrada de MUNDO del frame (`ctx.simMove`); sin él usa `g.aimIn` del último paso y, si no hay
     dirección, la que se dio durante el gesto (`g.swingAim`), igual que el golpe real.
-  - `null` en demo/autopilot, con la CPU sacando, antes del silbato y fuera del 3.er toque propio. Reutiliza un objeto
+  - `null` en demo/autopilot, con la CPU sacando, antes del silbato y fuera del 3r toque propio. Reutiliza un objeto
     interno si no se pasa `out` (sin asignaciones por frame).
   - simtest: el destino (`hit.target`) del saque real apuntado y del remate (con y sin dirección) coincide con `aimPoint`.
 - `VB.DIFF_ORDER`, `VB.TIMING` (= `VB.Sim.TIMING`).
@@ -669,8 +669,8 @@ Las tres pendientes de la revisión 2 quedan HECHAS en sim.js (texto de 'out', a
   ("¡Salta! · Bloqueo" solo con `'block'` o sin rol; "defiende el aro · tu compañero bloquea · C para bloquear tú"); "DEFENSA" tras
   bloqueo propio; `shot:'body'` → "¡Te ha dado!" + consejo, FX apagado sin destello, golpe sordo en audio, reacción de encogerse en
   players.js; camera.js deslizamiento más largo (0,6-0,85 s) con `switch.reason:'defense'`; tutorial del bloqueo y reglas CUERPO /
-  CAMBIO DE CAMPO; CONTRACT §4.2/§4.3 al día. Comprobado con `tools/out/int2/flow3.js` (set 1 → "Cambio de campo / Fin del 1.er set";
-  3.er set a los 8 → "Cambio de campo / Set decisivo · 8 puntos") y `tools/out/int2/coach.js` (consejo de defensa en vivo).
+  CAMBIO DE CAMPO; CONTRACT §4.2/§4.3 al día. Comprobado con `tools/out/int2/flow3.js` (set 1 → "Cambio de campo / Fin del 1r set";
+  3r set a los 8 → "Cambio de campo / Set decisivo · 8 puntos") y `tools/out/int2/coach.js` (consejo de defensa en vivo).
 - 7-nov-2026 (revisión 3, sim): `Sim.aimPoint`, antena tocada sin cruzar y cruce en parte por fuera sobre la antena, `point.antenna`,
   textos de 'out' por toque y vocabulario revisado con lista cerrada en simtest, bots humanos en tercera persona (4 perfiles, 4
   semillas por casilla, `SIMTEST_ONLY`/`MATRIX_FILTER`), reajuste de Fácil/Normal/Difícil, demo congelada en `VB.DIFF.demo`.
@@ -681,7 +681,7 @@ Las tres pendientes de la revisión 2 quedan HECHAS en sim.js (texto de 'out', a
 ## Aplicado (log, integración de pendientes)
 - 7-nov-2026 (integración de pendientes): CONTRACT §4.2 (Revisión 3: `antennaHit`, `aimIn/aimOn`, `VB.DIFF.demo`, `aimPoint`), §4.3 (`point.antenna`, textos) y §6 (uso de simtest)
   al día. fx.js pasa `ctx.simMove` a `aimPoint`. ui.js usa `e.text` para el subtítulo de 'out' (el cálculo propio queda de reserva).
-  arena.js: juez de línea del lado de `point.antenna`. TRASPASO actualizado (pendientes de sim hechos; equilibrio con bots en 3.ª persona).
+  arena.js: juez de línea del lado de `point.antenna`. TRASPASO actualizado (pendientes de sim hechos; equilibrio con bots en 3ª persona).
   Comprobado: `node tools/simtest.js` completo → TODO OK.
 
 ## Aplicado (log, integración ronda 1 de verificación, 7-nov-2026)
@@ -797,7 +797,7 @@ pausa rutinaria de la demo).
 - **IA sin dobles ni 4 toques** (antes ~1/1.800 puntos, igual que HEAD). Causa medida con una sonda (40 semillas × 10 min × demo + autopilot
   vs 4 niveles, 9.645 puntos): los 7 casos venían de `checkBody` (balón que da en el cuerpo), no del reparto de `computeJob` (que ya daba el
   toque siguiente al compañero): (a) recepción desviada que, pasados los 0,5 s de gracia, le cae encima al propio receptor → dobles;
-  (b) colocación que en el mismo paso o el siguiente toca al compañero pegado (3.er toque de cuerpo o de antebrazo instantáneo) y luego
+  (b) colocación que en el mismo paso o el siguiente toca al compañero pegado (3r toque de cuerpo o de antebrazo instantáneo) y luego
   rebota en el colocador → 4 toques. Arreglo:
   - sim.js `checkBody`: un jugador de IA (no `isHuman`) NO recibe toque de cuerpo de su equipo si sería falta (`g.lastPlayer === p` o
     `g.touches >= 3`) o si el compañero acaba de soltar el balón (< 0,3 s). El humano sigue expuesto a la regla.
@@ -822,7 +822,7 @@ pausa rutinaria de la demo).
 
 ## Sprint 9-nov-2026: remate apuntado (A1-A3) y error arbitral + challenge (B1-B3) — sim
 Todo en coordenadas de simulación; equipo 0 = humano. Nada de lo nuevo cambia `g.mode` (no hay mode 'review').
-- **A1 mira libre** `g.aim3 = {on, x, y}`: `on` solo con el humano atacando el 3.er toque de su equipo y EN EL AIRE (`p.z > 0`,
+- **A1 mira libre** `g.aim3 = {on, x, y}`: `on` solo con el humano atacando el 3r toque de su equipo y EN EL AIRE (`p.z > 0`,
   `touchTeam 0`, `touches 2`, modo 'rally'). Al despegar arranca en `attackTarget(p, null, 6)` (diagonal); la dirección de mundo de
   `input.move` la mueve a 11 m/s (`updateAim3`), limitada a |x| 1,4..8,3 del lado rival y |y| <= 3,9. El remate (no la dejada) del
   humano va a `g.aim3` y bota justo en la diana (`launchDirect` con `tz = C.BR`). Se apaga al golpear y en cada punto.
@@ -856,7 +856,7 @@ Todo en coordenadas de simulación; equipo 0 = humano. Nada de lo nuevo cambia `
   1 = n.º 11) y la IA al otro en todo (toques, posición, su saque y el bloqueo dinámico de `updateDefense`, que ya trabaja con
   `g.ctrl`/`other()` sin suponer el índice). Queda en `g.ctrlIdx` (0 fuera del modo 'one' o con un valor que no sea 0/1; acepta '1').
   Con el n.º 11 el orden de saque del equipo 0 va en espejo (`newGame`/`nextSet`: `serverIdx[0]` invertido), así el jugador del
-  humano saca primero en el 1.er set, igual que con el n.º 7. En modo 'both' nada cambia (el control empieza y vuelve a `teams[0][0]`).
+  humano saca primero en el 1r set, igual que con el n.º 7. En modo 'both' nada cambia (el control empieza y vuelve a `teams[0][0]`).
   main.js debe pasar `ctrlIdx: ctx.settings.ctrlPlayer` (pendiente de ui_main).
 - **Error arbitral visible**: `VB.REF_ERR` p1/p2/p3 de 0,35/0,15/0,05 a **0,45/0,30/0,15**; las bandas siguen en <2 / <5 / <=10 cm
   (verosímil: un árbitro solo, sin jueces de línea, con la huella a 1-2 cm es casi una moneda). Es el error BASE = Partido rápido sin
@@ -932,7 +932,7 @@ puntos y de velocidades de cada toque). Lo que sí cambia sin insignias es el SA
 - `hit` añade `dig` (bool: defensa CONTROLADA de un remate rival — 1r toque tras un `spike` rival o tras el toque de bloqueo propio
   `'touch'` de ese remate; no la desviada `'shank'`, ni el rebote en el cuerpo, ni la cobertura del propio remate tras un bloqueo
   directo rival) y `recv` (bool: 1r toque tras un saque, cualquiera, también desviado: la nota va en `grade`). En el saque, ambos false.
-- `point` añade `assist` (jugador que hizo la colocación —2.º toque del mismo equipo— del remate que gana el punto, solo con
+- `point` añade `assist` (jugador que hizo la colocación —2º toque del mismo equipo— del remate que gana el punto, solo con
   `how 'kill'`; null si no) y `tool` (bool: el punto es un remate que tocó el bloqueo rival y salió fuera, `reason 'out'` o antena).
   `g.lastPoint` también los copia. Estado nuevo: `g.atkSet` (colocador del último ataque).
 - Medido en demo (4 × 10 min, simtest «(d)»): 222 puntos, 153 remates punto con 153 asistencias, 14 block-out, 108 defensas
@@ -943,7 +943,7 @@ puntos y de velocidades de cada toque). Lo que sí cambia sin insignias es el SA
   demo) y normalización de `p.badges`; (b) las 12 insignias; (c) saque dirigible; (d) eventos. `aimPoint` de saque, «mira libre
   apagada» y «aces de flotante» adaptados a la diana; el bot lleva la diana con el stick al punto que antes elegía con la dirección.
 - «modo controlar 1 jugador»: la falta de dobles/4 toques del compañero IA se atribuye con `point.player` (antes `g.lastPlayer`,
-  que contaba como de la IA un 4.º toque del humano en el cuerpo tras el 3.º del compañero; salió con las semillas nuevas).
+  que contaba como de la IA un 4º toque del humano en el cuerpo tras el 3r del compañero; salió con las semillas nuevas).
 
 ### Para los demás
 - **fx/ui (diana)**: la diana del saque ya sale por `aimPoint` (kind 'serve', radio = `spreadNow`) desde el silbato (vista en la
@@ -978,28 +978,28 @@ Pedido: «añadir (incluyendo móvil y mando siempre) la posibilidad de colocar 
 - **Entrada**: `input.jset` (flanco, COLOCAR). En el suelo y en el saque = `jump` (lanzamiento en salto incluido). En el aire, con las mismas
   condiciones que la dejada (`z > 0,2`, `actionT > 0,12`, balón a < 3 m), abre el gesto con `swingShot 'jset'` (la última pulsación del gesto
   decide, como siempre). SALTAR en el aire sigue siendo la dejada.
-- **`hit(..., 'jset')`**: vale si `canJset(g, p, count)` = en el aire y 2.º toque, o 1.er toque con `isAttackContact` (balón alto en la red: el
-  compañero ataca en el 2.º). Si no: dejada si es contacto de ataque (3.er toque en la red), si no el toque normal. Mismo instante ideal que el
+- **`hit(..., 'jset')`**: vale si `canJset(g, p, count)` = en el aire y 2º toque, o 1r toque con `isAttackContact` (balón alto en la red: el
+  compañero ataca en el 2º). Si no: dejada si es contacto de ataque (3r toque en la red), si no el toque normal. Mismo instante ideal que el
   remate (hitWindow no cambia: el aro y el aviso valen igual), ventana `te × JSET.win` (1,2) y atributo `p.ak.wSet`. Trayectoria
-  `launchApex` a (1,5 m de la red, `mate.y` ±3,6, z 3) con cima max(4,1, contacto + 0,75) (1.er toque + 1,15): vuela ~0,8-0,95 s frente a ~1,5 s
+  `launchApex` a (1,5 m de la red, `mate.y` ±3,6, z 3) con cima max(4,1, contacto + 0,75) (1r toque + 1,15): vuela ~0,8-0,95 s frente a ~1,5 s
   de la de suelo. Dispersión `(0,12 + 1,3·(1−q))·mul`. Con q < 0,45, prob. `(0,5 − q)·1,5` de colocación mala: mitad pegada a la red (0,25-0,6 m),
   mitad larga y baja (3,6-5,4 m, cima −0,35). `blockOff` rival ×(1 + 0,6·q). Evento `hit {kind 'set', shot 'jump', jset: true}`; `p.lastAction 'set'`;
   `stats.jsets`.
 - **Ataque tras ella**: `atkPhase(g, t)` = `touchTeam === t && (touches === 2 || (touches === 1 && lastKind === 'set'))` (un 'set' con 1 toque solo
   sale de una colocación en salto). Lo usan ai.js `pos` (atacante y bloqueo rival), `hitWindow().attack`, `assistMove`, `updateAim3`, `aimPoint`
   (null mientras el gesto es 'jset'), `focusPoint`, `updateDefense`; players.js `approachTime` y la retícula de fx.js (con guarda). En ai.js el que
-  acaba de colocar en salto en el 1.er toque ya no corre a «seré el atacante» (cubre). Manos de seda (`setIn`) y `g.atkSet`/`point.assist`
-  cuentan el ataque del 2.º toque tras la colocación en salto del 1.º. Remate tras una colocación en salto buena/perfecta: dado de defensa rival
+  acaba de colocar en salto en el 1r toque ya no corre a «seré el atacante» (cubre). Manos de seda (`setIn`) y `g.atkSet`/`point.assist`
+  cuentan el ataque del 2º toque tras la colocación en salto del 1r. Remate tras una colocación en salto buena/perfecta: dado de defensa rival
   `× JSET.dig` (0,8).
 - **IA**: no la usa (ni compañero ni CPU). Haría falta que la IA colocadora saltara (más azar y otra carrera) y el ataque rápido de la IA ya sale de
   forma natural; CPU contra CPU queda idéntico (huellas de 6 partidos y simtest completo iguales, salvo los ms). Pendiente si se quiere.
 - **Medido** (escenario de simtest, 120-200 semillas, control 'one', Normal; ganados = punto del equipo humano):
   colocación de suelo perfecta 53,5 %; en salto perfecta 52,5-58,5 % (sin `dig` era 46-51 %: sin bloqueo rival —el bloqueador no llega a la red en
   0,8 s— hay dos defensores atrás y no compensaba); en salto con 0,15 s de error 37-40 % y remata el compañero un 78-82 % (100 % con buen timing);
-  1.er toque: perfecta 60-62,5 %, mala 46-49 %; rematarla tú directamente desde el 1.er toque, 49,5 % (perfecto) / 30,5 % (malo).
-- **simtest**: bloque «colocación en salto» (a) ocurre y el compañero remata ≥ 90 %, (b) 1.er toque, (c) mal timing empeora (calidad, remates,
-  puntos), (d) reglas (COLOCAR en el suelo salta, 3.er toque = dejada, 1.er toque lejos = recepción, ventana más justa), (e) Manos de seda y
-  asistencia, (f) CPU contra CPU sin colocaciones en salto, `atkPhase` = 2.º toque y `jset:true` sin efecto en autopilot. Fuzz aparte con COLOCAR.
+  1r toque: perfecta 60-62,5 %, mala 46-49 %; rematarla tú directamente desde el 1r toque, 49,5 % (perfecto) / 30,5 % (malo).
+- **simtest**: bloque «colocación en salto» (a) ocurre y el compañero remata ≥ 90 %, (b) 1r toque, (c) mal timing empeora (calidad, remates,
+  puntos), (d) reglas (COLOCAR en el suelo salta, 3r toque = dejada, 1r toque lejos = recepción, ventana más justa), (e) Manos de seda y
+  asistencia, (f) CPU contra CPU sin colocaciones en salto, `atkPhase` = 2º toque y `jset:true` sin efecto en autopilot. Fuzz aparte con COLOCAR.
 
 ### Arreglos tras la revisión de jugabilidad (10-nov-2026)
 - **GRAVE, sin bloqueo rival**: tras la colocación en salto el bloqueador CPU seguía al fondo (|x| 2,6-2,9 m al rematar, 0 bloqueos de 300) y en
@@ -1007,13 +1007,13 @@ Pedido: «añadir (incluyendo móvil y mando siempre) la posibilidad de colocar 
   colocación en salto**. Con `S.jsetReady(g)` (humano en el aire en un toque donde puede colocar; nunca en demo/autopilot) y aún sin
   `atkPhase`, el bloqueador (el del lado de `y` del compañero del humano) va a `sd·0,6` frente a ese compañero sin saltar, y el otro a defender
   (`sd·5,4`). Si el humano arma un ataque (gesto vivo que no es 'jset': GOLPEAR o dejada), salta a bloquearle a él (`block` true, `y` del
-  humano): sin eso se quedaba plantado en la red y el ataque en 2.º toque pasaba del 35 al 51 %. Tras el toque sigue con ese objetivo
+  humano): sin eso se quedaba plantado en la red y el ataque en 2º toque pasaba del 35 al 51 %. Tras el toque sigue con ese objetivo
   (reacción) y luego pasa al bloqueo normal.
-- `JSET.dig` (×0,8) solo tras la colocación en salto del **2.º** toque (`count === 3`): tras la del 1.º (balón regalado en la red) colocar
+- `JSET.dig` (×0,8) solo tras la colocación en salto del **2º** toque (`count === 3`): tras la del 1r (balón regalado en la red) colocar
   ganaba más que rematarlo uno mismo. `JSET.blk` se queda (con el bloqueador ya en la red apenas cambia nada: 54 / 55 % con blk 0,6 / 0).
-- `jsetReady` predictivo: mira el contacto previsto (`hitWindow`, objeto privado `_jw`): jugador aún > 0,25 m y, en el 1.er toque, balón por
-  encima de `NET_H + 0,1` y |x| < 3,8 (lo que pide `canJset`/`isAttackContact`). Fuzz: con el aviso en pantalla, 1.er toque 27 colocaciones / 7
-  otros toques (antes 53 / 89); 2.º toque 280 / 23 de suelo (antes 273 / 69). Caché por `g.time` (lo llaman la UI, input y ai.js cada paso).
+- `jsetReady` predictivo: mira el contacto previsto (`hitWindow`, objeto privado `_jw`): jugador aún > 0,25 m y, en el 1r toque, balón por
+  encima de `NET_H + 0,1` y |x| < 3,8 (lo que pide `canJset`/`isAttackContact`). Fuzz: con el aviso en pantalla, 1r toque 27 colocaciones / 7
+  otros toques (antes 53 / 89); 2º toque 280 / 23 de suelo (antes 273 / 69). Caché por `g.time` (lo llaman la UI, input y ai.js cada paso).
 - `jsetVoid(g, p)` = remate rival en camino (`touchTeam !== p.team && lastKind === 'spike'`): COLOCAR en el aire no abre gesto (se bloquea como
   si no se hubiera pulsado), `canJset` y `jsetReady` falsos. Antes salían 89 de 280 «colocaciones» del remate CPU desde el bloqueo (36,7 %
   frente al 23,3 % solo bloqueando); ahora 24,7 %: las que quedan son tras tocar el bloqueo, legales.
@@ -1025,12 +1025,12 @@ Pedido: «añadir (incluyendo móvil y mando siempre) la posibilidad de colocar 
   «controlar a los dos»: Normal 51,5 / 54,0 %, Difícil 43,5 / 47,5 % (antes 76,5 y 65,5); con ±0,15 s, 42-43,5 % (Normal) y 31,5-36 %
   (Difícil). Bloqueador en la red y en el aire al rematar: 100 % (antes 0 %); bloqueos en el 45-47 % de los remates (suelo 52-55 %).
   «Un jugador»: Normal 55,0 / 58,0 %, Difícil 42,5 / 46,5 %; con ±0,15 s, 37-42 % y 24,5-28 %. Ruido gaussiano σ 0,04/0,08/0,12: salto − suelo
-  entre −3,2 y +4,3 (antes hasta +21,5). 1.er toque («un jugador», 300): colocar 52,3 % / rematarlo tú 53,3 % (Normal), 38,7 / 47,0 %
-  (Difícil); antes 60,7 / 52,7. Ataque en 2.º toque (rematar tú la recepción): 33 / 28,5 % (antes 35 / 26).
+  entre −3,2 y +4,3 (antes hasta +21,5). 1r toque («un jugador», 300): colocar 52,3 % / rematarlo tú 53,3 % (Normal), 38,7 / 47,0 %
+  (Difícil); antes 60,7 / 52,7. Ataque en 2º toque (rematar tú la recepción): 33 / 28,5 % (antes 35 / 26).
 - simtest añade (g) bloqueo rival tras la colocación en salto (en la red 100 %, en el aire 100 %, con bloqueo 13,8 %), (h) doble pulsación
   rápida 30/30 y (i) COLOCAR no coloca el remate rival.
 - Pendiente: GOLPEAR en el bloqueo de un remate CPU lo devuelve como remate (45 % frente al 23 % solo bloqueando; anterior a la colocación en
-  salto). Que la IA use la colocación en salto. El 1.er toque en «controlar a los dos» sin medir (el harness pierde el control).
+  salto). Que la IA use la colocación en salto. El 1r toque en «controlar a los dos» sin medir (el harness pierde el control).
 
 ## 6v6, sprints 1 y 2 (10-nov-2026) — sim
 
@@ -1048,7 +1048,7 @@ huella `tools/fp-2v2.json` (generada con el código de antes del sprint 1): «15
 - **Sprint 2, 6v6 CPU contra CPU**: líbero por equipo (`g.libero`, `g.roster`, `g.liberoFor`; entra por el central zaguero en cada
   `setupServe`, salvo si ese central va a sacar), eventos `rotation` y `libero`, ataque y bloqueo de zaguero pitados (`backAttack`,
   `backBlock`), faltas de posición solo contadas (`overlapCount`, `g.overlap`; la IA siempre 0 gracias a `legalize`), formación de recepción
-  en «W» (dos receptores + líbero), `js/ai6.js` v1 (1.er toque por tiempo de llegada + rol, 2.º el colocador, 3.º el atacante elegido;
+  en «W» (dos receptores + líbero), `js/ai6.js` v1 (1r toque por tiempo de llegada + rol, 2º el colocador, 3r el atacante elegido;
   `chooseSet` alta/tensa/rápida según la recepción; bloqueo de zona con doble del central; defensa perímetro; batida y cobertura).
   Afinado solo 6v6: `VB.SIX {stuff 0.6, dig 0.75}`, `FORM.blockErr` 1.8, `AI6.digK` (en sistema cuesta más defender), lectura del
   segundo bloqueador en `openSpot`.
@@ -1063,7 +1063,7 @@ huella `tools/fp-2v2.json` (generada con el código de antes del sprint 1): «15
 - **M3, receptor zaguero y central zaguero en el mismo sitio** al cubrir la colocación (`offPos`, los dos con `lv 0` cuando saca el
   central y el líbero aún no ha entrado): el central zaguero cubre ahora en el sitio del líbero (`lv -1`).
 - **M4 (con main.js / players.js / fx.js)**: el partido espectador va con `ctrl:'one'` (sin eventos `switch`).
-- Pendiente para el sprint 3 (humano): `AI6.decide` (2.º/3.er toque del humano, «¡Pídela!»), sin `switch` en 6v6 también con humano,
+- Pendiente para el sprint 3 (humano): `AI6.decide` (2º/3r toque del humano, «¡Pídela!»), sin `switch` en 6v6 también con humano,
   faltas de posición pitadas al humano en Difícil/Experto e imán en Fácil/Normal, regla del líbero colocando de dedos delante de 3 m,
   saque que lea la formación (aces 2-3 % frente al 4 % del 2v2), recepción de la rotación 1 (el colocador en zona 1 acaba muy al fondo),
   cruces entre compañeros (la sim no los separa), el líbero «delantero» durante la pausa del punto (zona del central hasta `setupServe`).
@@ -1076,13 +1076,13 @@ huella `tools/fp-2v2.json` (generada con el código de antes del sprint 1): «15
   la rejilla sin escalar). Con `g.cs = 1` las multiplicaciones son exactas: **huella 2v2 idéntica** (150 partidas, 565 775 llamadas a g.rng).
 - Reglas (`VB.BEACH = {swap 7, swap3 5, swapHold 1.0, dblSet 0.3, dblSetAI 0.5, pokeyUp 0.25, pokeyNet 0.6}`): cambio de campo cada 7 / 5
   (`courtChange 'swap'`, `g.courtSwapAt`; pausa +1,0 s en partido, 0 en la demo), sin el de los 8; bloqueo = toque (`touches = 1`, el
-  bloqueador puede seguir); dejada → pokey (más tensa, `hit.pokey`); dobles de dedos: 2.º toque de dedos (balón > 1,6 m sobre los pies, no
+  bloqueador puede seguir); dejada → pokey (más tensa, `hit.pokey`); dobles de dedos: 2º toque de dedos (balón > 1,6 m sobre los pies, no
   en salto, ni de ataque/cuerpo/plancha) «poor» → falta con prob. 0,3 (IA ×0,5). Gasta azar SOLO en la playa.
 - Medido (simtest §Vóley playa, 8 partidos demo/autopilot Normal): side-out 58 %, 5,4 toques/rally, mediana 5,3 s, fuera 20 %, botes de más
   de 8,6 m 14 % (pabellón 12 %), dobles de dedos 3 en 679 puntos, ~11 cambios de campo por partido, partidos de ~16-17 min (pabellón ~18).
   `scratchpad` bench: autopilot Difícil playa side-out 57,8 %, 6,9 toques/rally.
 - No hecho: regla de 5 s del saque de playa (sigue 8 s y los textos «8 segundos»); el bloqueo tras el que el bloqueador toca no se marca
-  como «2.º toque» en la UI; el 6v6 con `venue:'beach'` juega en pabellón (`g.beach = false`).
+  como «2º toque» en la UI; el 6v6 con `venue:'beach'` juega en pabellón (`g.beach = false`).
 
 ## Atributos que se notan (10-nov-2026) — sim
 Petición de Ferran: «si tienes baja la velocidad, no corres tanto; si tienes bajo el salto, saltas poquito y dependes más de tu timing».
@@ -1148,7 +1148,7 @@ la variante attrs regenerada con `fingerprint6.js --write`).
   colocación que pasa la red con q < 0,35, remate a la red con q < 0,45). Mismos dados: no hay gasto de azar nuevo.
 - **Calidad del pase/colocación** (`ATTR_K.errQ = [0,5, 0,8]`, no en el ataque): bajo → q × (1 − 0,5·(ek − 1)) (15 → ×0,75); alto →
   q + (1 − q)·(1 − ek)·0,8. Se recalcula `grade`.
-- **Alcance del 1.er toque** del humano (`ATTR_K.reach = [0,16, 0,12]`, `rRecv/rDig`, ×0,94-1,05) en `reachOf`.
+- **Alcance del 1r toque** del humano (`ATTR_K.reach = [0,16, 0,12]`, `rRecv/rDig`, ×0,94-1,05) en `reachOf`.
 - **Frenar y girar al momento** con Velocidad < 50: solo cuenta la velocidad que ya lleva en la dirección pedida; la rampa `accT` es
   solo para arrancar (simtest: giro de 180° a toda velocidad, 0,000 m de deslizamiento con 15 y con 35; antes 0,74 / 0,34 m).
 - Medido con el harness de la revisión (`scratchpad/h.js`, 24 semillas × 360 s, % de puntos; ruido ±2): bot medio contra Normal

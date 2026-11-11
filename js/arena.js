@@ -2,7 +2,7 @@
  * VOLEY 3D — js/arena.js   (owner: arena)
  * Pabellón "PALAU DEL MAR": suelo deportivo procedural (tarima pintada,
  * líneas reglamentarias FIVB), red con malla real y onda al tocarla,
- * antenas, postes acolchados, silla del 1.er árbitro, 2.º árbitro, jueces
+ * antenas, postes acolchados, silla del 1r árbitro, 2º árbitro, jueces
  * de línea con bandera, mesa del anotador, gradas con público instanciado
  * animado en GPU (botes, brazos arriba, ola), vallas LED con marcas
  * ficticias y mensajes de partido, videomarcadores de fondo y marcador
@@ -541,7 +541,7 @@
   }
 
   /* =====================================================================
-   * PERSONAS de arbitraje (1.er y 2.º árbitro, jueces de línea, anotadores)
+   * PERSONAS de arbitraje (1r y 2º árbitro, jueces de línea, anotadores)
    * Geometría fusionada con color por vértice; brazos y cabeza articulados.
    * ===================================================================== */
   var personMat, refs = [], judges = [], R1 = null, R2 = null, officials = [];
@@ -653,7 +653,7 @@
     HB.box(0.024, 0.042, 0.03, 0, 0.098, 0.104, skin, 0, 0.18);                                              // nariz
     HB.box(0.034, 0.007, 0.01, 0, 0.058, 0.094, col('#7a4a3a'));                                             // boca
     parts.push({ g: HB.build(), b: 2 });
-    // Brazo en DOS huesos (ARN-07): hombro (manga + brazo) y codo (antebrazo + mano). El 1.er y el 2.º árbitro llevan además
+    // Brazo en DOS huesos (ARN-07): hombro (manga + brazo) y codo (antebrazo + mano). El 1r y el 2º árbitro llevan además
     // dedos en 4 huesos por mano (índice, corazón, anular+meñique, pulgar) que se «pliegan» escalándolos hacia el nudillo:
     // así hay 4 dedos, 2 dedos, índice que señala, 8 dedos, palma abierta o puño sin dibujos nuevos (misma SkinnedMesh).
     var sleeveG = lathePts(OFF_SLEEVE, sg(9)), uArmG = lathePts(OFF_UARM, sg(8)), fArmG = lathePts(OFF_FARM, sg(8));
@@ -729,7 +729,7 @@
     root.updateMatrixWorld(true);
     var allParts = [], allBones = [], lowIdx = 0, beachIdx = 0, beachLowIdx = 0;
     // ARN-14: lo que no sale en calidad baja (P.lowSkip) va al final del índice: setQuality lo recorta con drawRange.
-    // Orden por grupos: [árbitros, jueces, anotadores, entrenadores] [fotógrafos] [suplentes] [lowSkip: 3.er suplente y cámara de TV].
+    // Orden por grupos: [árbitros, jueces, anotadores, entrenadores] [fotógrafos] [suplentes] [lowSkip: 3r suplente y cámara de TV].
     // Pabellón: baja = los tres primeros (como antes). Playa (en el vóley playa no hay suplentes): media/alta = los dos primeros,
     // baja = solo el primero (−20 k triángulos en el móvil).
     function grp(b) { return b.P.lowSkip ? 3 : b.P.kind === 'sub' ? 2 : b.P.kind === 'photo' ? 1 : 0; }
@@ -784,7 +784,7 @@
   function buildOfficials(S, E) {
     personMat = VB.TOON.toonMat({ vertexColors: true });
     var ref = { shirt: '#1a2540', collar: '#f1efe8', pants: '#14171c', skin: '#d9a77f', hair: '#2a1c12', badge: '#f4f2ec', badgeMark: '#c4532f', fingers: true };
-    // Silla del 1.er árbitro (junto al poste del lado -y), plataforma a 1.25 m (ARN-16): mismo acolchado que las protecciones
+    // Silla del 1r árbitro (junto al poste del lado -y), plataforma a 1.25 m (ARN-16): mismo acolchado que las protecciones
     // de los postes (azul marino, banda naranja abajo y filete amarillo arriba), aristas achaflanadas, barandilla acolchada con
     // remates redondos, peto frontal, escalera de 3 peldaños con zancas y pasamanos de acero a los dos lados.
     var ry = -(C.HW + 1.62), steel = col('#3a4350'), steelL = col('#8d97a5'), dark = col('#1b212b'), padc = col('#1d4a6e'), padd = col('#173f5f');
@@ -819,9 +819,9 @@
       S.geo(hpG, sd * 0.34, 0.45, -stY1, steelL);
     }
     R1 = makePerson(ref); placePerson(R1, 0, ry, PZ + 0.04, 0, 1); refs.push(R1);
-    // 2.º árbitro de pie junto al poste opuesto
+    // 2º árbitro de pie junto al poste opuesto
     R2 = makePerson(ref); placePerson(R2, 0, C.HW + 1.55, 0, 0, -1); refs.push(R2);
-    // Mesa del anotador detrás del 2.º árbitro (ARN-16): tablero achaflanado con canto naranja, laterales acolchados, acta electrónica
+    // Mesa del anotador detrás del 2º árbitro (ARN-16): tablero achaflanado con canto naranja, laterales acolchados, acta electrónica
     // (tableta con pantalla encendida) delante de cada anotador, monitor central, paletas de cambio de cada equipo y zumbador.
     var ty = C.HW + 3.6, tabc = col('#121a26'), navyT = col('#1a2433');
     S.cbox(2.86, 0.74, 0.05, 0, ty, 0.765, navyT, 0.045, 0.012);
@@ -860,7 +860,7 @@
    * ENTORNO DE PISTA (ARN-14): banquillos con 3 suplentes sentados (equipación) y el entrenador de pie, 4 fotógrafos
    * arrodillados en las esquinas tras los fondos y una cámara de TV con su operador en las vallas del lado opuesto a la mesa.
    * Todos fuera de la zona libre (|x| ≥ 15,5 o |y| ≥ 9,5). Reutilizan makePerson en versión ligera (`lo`) y van en la MISMA
-   * SkinnedMesh que los oficiales (0 dibujos nuevos). En calidad baja, el 3.er suplente de cada banquillo y la cámara de TV
+   * SkinnedMesh que los oficiales (0 dibujos nuevos). En calidad baja, el 3r suplente de cada banquillo y la cámara de TV
    * quedan al final del índice y se recortan con drawRange (ni se dibujan ni cuentan triángulos).
    * ===================================================================== */
   var crewFrame = 0, crew = [], CREW_BENCH_X = 5.15, CREW_BENCH_Y = 10.72, CREW_RISER = 0.22;
@@ -1062,7 +1062,7 @@
    * SEÑALES OFICIALES (ARN-07). Pose de un brazo = [x, z, y, e, t] del brazo DERECHO (el izquierdo se refleja: z, y, t
    * cambian de signo): x = flexión del hombro (negativo = hacia delante/arriba), z = abducción (negativo = hacia fuera),
    * y = giro del brazo, e = flexión del codo (positivo = doblar), t = pronación del antebrazo. Dedos = [índice, corazón,
-   * anular+meñique, pulgar] (1 = extendido, 0 = plegado). El 1.er árbitro mira a +y: su DERECHA es el campo x > 0
+   * anular+meñique, pulgar] (1 = extendido, 0 = plegado). El 1r árbitro mira a +y: su DERECHA es el campo x > 0
    * (equipo 0), así que el brazo «del lado» de un equipo es el derecho para el 0 y el izquierdo para el 1.
    * --------------------------------------------------------------------- */
   var F_OPEN = [1, 1, 1, 1], F_FOUR = [1, 1, 1, 0], F_TWO = [1, 1, 0, 0], F_POINT = [1, 0, 0, 0], F_FIST = [0, 0, 0, 0], F_REL = [0.55, 0.55, 0.55, 0.7];
@@ -1098,7 +1098,7 @@
   function step(d, rate, R, L, fR, fL, osc) { return { d: d, rate: rate, R: R, L: L, fR: fR || F_REL, fL: fL || F_REL, osc: osc || 0 }; }
   /** Pose con el brazo del lado `side` (0 = derecho, 1 = izquierdo) y el otro en reposo. */
   function sideStep(d, rate, pose, side, f, osc) { return side === 1 ? step(d, rate, null, pose, F_REL, f, osc) : step(d, rate, pose, null, f, F_REL, osc); }
-  /** Señal oficial del 1.er árbitro para point.signal (SIM-02). side = lado relevante (0 = campo x > 0, a su derecha). */
+  /** Señal oficial del 1r árbitro para point.signal (SIM-02). side = lado relevante (0 = campo x > 0, a su derecha). */
   function refSignalStep(sig, side, e) {
     switch (sig) {
       case 'in': return sideStep(1.25, 10, POSE.inSide, side, F_OPEN);
@@ -1108,7 +1108,7 @@
       case 'double': return sideStep(1.25, 10, POSE.fingers, side, F_TWO);
       case 'net': return sideStep(1.25, 10, POSE.netSide, side, F_OPEN);
       case 'under': return sideStep(1.25, 10, POSE.under, side, F_POINT);
-      case 'antenna': return step(1.25, 10, POSE.outFa, POSE.outFa, F_OPEN, F_OPEN); // FIVB: el 1.er árbitro marca «balón fuera»; señalar la antena es cosa del juez de línea
+      case 'antenna': return step(1.25, 10, POSE.outFa, POSE.outFa, F_OPEN, F_OPEN); // FIVB: el 1r árbitro marca «balón fuera»; señalar la antena es cosa del juez de línea
       case 'attackFault': return e && e.reason === 'block' ? step(1.2, 9, POSE.blockUp, POSE.blockUp, F_OPEN, F_OPEN) : sideStep(1.25, 14, POSE.atkHi, side, F_OPEN, 2);
       case 'delay8': return step(1.3, 10, POSE.fingers, POSE.fingers, F_FOUR, F_FOUR);
       case 'serveFault': return sideStep(1.2, 9, POSE.srvUp, side, F_OPEN);
@@ -1253,7 +1253,7 @@
       for (var cw = par; cw < crew.length; cw += 2) crewStep(crew[cw]);
       OFK[3] = s3; OFK[4] = s4; OFK[7] = s7; OFK[8] = s8;
     }
-    // 2.º árbitro: se coloca hacia el lado del equipo receptor durante el saque
+    // 2º árbitro: se coloca hacia el lado del equipo receptor durante el saque
     if (R2 && g.mode === 'serve') {
       var recv = 1 - (g.serving === 1 ? 1 : 0), want = (recv === 0 ? 1 : -1) * 0.7, dxr = (want - R2.sim.x) * (1 - Math.exp(-2 * k));
       if (dxr > OFF_EPS || dxr < -OFF_EPS) {
@@ -2017,7 +2017,7 @@
         IM.imp.push(rnd(), k < nn ? 1 : 0);
         if (_p.x < minx) minx = _p.x; if (_p.x > maxx) maxx = _p.x; if (_p.y < miny) miny = _p.y; if (_p.y > maxy) maxy = _p.y; if (_p.z < minz) minz = _p.z; if (_p.z > maxz) maxz = _p.z;
         if (k % 23 === 0) crowdHeads.push(_p.x, _p.y + 0.95, _p.z);
-        // banderas: algunos aficionados de equipo, a partir de la 3.ª fila
+        // banderas: algunos aficionados de equipo, a partir de la 3ª fila
         if (team !== 0.5 && !kid && _p.y > 2.0 && rnd() < (m >= 2 ? 0.03 : 0.014)) flagSeats.push({ m: _m.clone(), team: team, a: k * 4, anim: anim });
       }
       var geo = crowdGeos.hi; // los atributos por instancia van en un clon por grada; las dos LOD comparten los mismos buffers
@@ -3212,7 +3212,7 @@
           else if (e.signal === 'touched' && g.lastLand) judgeSignal(g.lastLand.x, g.lastLand.y, false, false, true);
           break;
         case 'land': judgeSignal(e.x, e.y, e.inside, false); break;
-        case 'challenge': { // B6: revisión por vídeo. Señal del 1.er árbitro, rótulos en las pantallas y la grada se calla
+        case 'challenge': { // B6: revisión por vídeo. Señal del 1r árbitro, rótulos en las pantallas y la grada se calla
           var ct = e.team === 1 ? 1 : 0;
           refChallenge();
           ledMessage('VIDEO CHALLENGE', TEAMC[ct], 4.5);
@@ -3280,7 +3280,7 @@
   }
 
   /** Matrices fijas: todo el pabellón es estático salvo las personas de arbitraje (sus huesos se animan y el
-   *  2.º árbitro se desplaza). Sin esto, three recompone ~250 matrices locales por frame para nada.
+   *  2º árbitro se desplaza). Sin esto, three recompone ~250 matrices locales por frame para nada.
    *  (Para que tampoco recalcule las matrices de mundo, main.js puede poner scene.matrixAutoUpdate = false:
    *  ver notes/arena.md.) */
   function freezeStatic() {
@@ -4092,7 +4092,7 @@
       B.geo(BGEO.cone4, cx, hF - 0.16, -yF, cc, Math.PI / 4, Math.PI, 0, segL * 0.5, 0.26, 0.05);
     }
   }
-  /** Silla del 1.er árbitro de playa: torre de madera con tarima a la MISMA altura que la del pabellón (el árbitro es el
+  /** Silla del 1r árbitro de playa: torre de madera con tarima a la MISMA altura que la del pabellón (el árbitro es el
    *  mismo), barandilla, peto de lona con el tajo y escalera detrás. Sin toldo. */
   function beachRefStand(B, hw) {
     var ry = -(hw + 1.62), PZ = 1.25, rd = 0.43, wood = col(BCOL.wood), woodD = col(BCOL.woodD), woodL = col(BCOL.woodL);
@@ -4377,7 +4377,7 @@
       for (var ca = 0; ca < casters.length; ca++) casters[ca].castShadow = q.rank >= 1;
       for (var of = 0; of < officials.length; of++) {
         var ofm = officials[of]; ofm.castShadow = q.rank >= 1;
-        // ARN-14: baja sin 3.er suplente ni cámara de TV; playa: sin suplentes ni cámara (y en baja, sin fotógrafos)
+        // ARN-14: baja sin 3r suplente ni cámara de TV; playa: sin suplentes ni cámara (y en baja, sin fotógrafos)
         if (ofm.userData.lowIdx) ofm.geometry.setDrawRange(0, BEACH.on ? (q.rank >= 1 ? ofm.userData.beachIdx : ofm.userData.beachLowIdx) : q.rank >= 1 ? Infinity : ofm.userData.lowIdx);
       }
       if (keyLight.shadow.mapSize.x !== q.shadowSize) {

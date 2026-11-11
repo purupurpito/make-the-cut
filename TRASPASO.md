@@ -41,7 +41,7 @@ El Final QA 2 no encontró nada roto y no cambió código. Logs y capturas en `t
 - **Simulación y reglas**: `node tools/simtest.js` completo → «TODO OK», sale con 0. Cubre 4 toques, doble contacto, el bloqueo que no
   cuenta como toque, sets a 25 y tie-break a 15 con 2 de diferencia, red, antena (8.4.3/8.4.4), paso por debajo de la red, 8 s, bloqueo
   y ataque del saque, cambio de campo, textos del árbitro (lista cerrada) y los 4 niveles.
-- **Equilibrio** (matriz de simtest: bots con modelo de jugador en 3.ª persona; % de puntos del humano, P(partido) estimada):
+- **Equilibrio** (matriz de simtest: bots con modelo de jugador en 3ª persona; % de puntos del humano, P(partido) estimada):
 
   | jugador \ CPU | Fácil | Normal | Difícil | Experto |
   |---|---|---|---|---|
@@ -175,7 +175,7 @@ Detalle por owner en `notes/<owner>.md` («Pulido ola 3» y el log «Aplicado �
 - **Cámara**: corte punto → saque del móvil sin tirón (candidatos repartidos y precalculados); juez de línea fuera del saque flotante en el móvil; plano final con
   el marcador y las pantallas siempre fuera por arriba; giro acumulado de la red de seguridad de oficiales arreglado.
 - **Jugadores**: `debug=point|ace` muestran la celebración en movimiento (cuadro vivo); empujón visible de la mano en el bote del ritual de la CPU.
-- **Arena**: grada lateral menos saturada en alta (ARN-02); el 1.er árbitro señala «fuera» en la falta de antena.
+- **Arena**: grada lateral menos saturada en alta (ARN-02); el 1r árbitro señala «fuera» en la falta de antena.
 - **Integración**: tallas de letra del videomarcador creadas bajo el telón (el primer punto del partido en el móvil bajaba de 155-163 ms de frame a 89-118 ms) y
   todas las caras de Google Fonts pedidas al cargar (el primer aviso de los 8 s ya no fuerza una maquetación completa: 55-82 → 49-52 ms).
 - Verificado: simtest completo + barrido 50/50 TODO OK; console.sh 19 escenas × 2 tamaños sin errores; drive, touchplay, padplay (estándar y DualSense) y audiotest
@@ -221,7 +221,7 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - Palmarés migrado de v2: conserva el nombre antiguo de la competición («Liga Regional») con el club ya renombrado. ¿Histórico o renombrar?
   - Equipación del rival en la playa: si se parece a la tuya, la CPU sale de azul (con 8 camisetas por liga pasa a menudo); idea: segunda
     equipación del club en `setKit`.
-  - Sin comprobar: partido de Carrera completo a 844×390 y 667×375, cambio de campo cada 5 en un 3.er set jugado, mando y táctil reales.
+  - Sin comprobar: partido de Carrera completo a 844×390 y 667×375, cambio de campo cada 5 en un 3r set jugado, mando y táctil reales.
   - `tools/touchplay.js` y `tools/padplay.js` fallan a veces («al menos 3 toques humanos con GOLPEAR»): intermitente desde antes; repetir.
 - **Pendiente de la integración de menús v2** (10-nov-2026):
   - Recepción y Colocación aún se notan poco en el resultado (bot medio ±1-2 puntos; Defensa y Control ya ±3-6): que la calidad del
@@ -257,7 +257,7 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - **Mapa de playa** (pedido de Ferran, 9-nov-2026): **escenario HECHO el 10-nov-2026** (sede «Platja Llarga», Ajustes · Imagen ·
   Escenario, `?map=beach`; detalle en `notes/arena.md` §Playa). Pendiente:
   - ~~Modo reglas de playa~~ **HECHO 10-nov-2026 en la sim y el menú** (`createGame({venue:'beach'})`, CONTRACT §4.2 «Vóley playa»,
-    `notes/sim.md` §Vóley playa): pista 16×8 (`g.HL/g.HW`, `VB.Sim.court`), sets a 21 / 15, cambio de campo cada 7 (5 en el 3.º, sin
+    `notes/sim.md` §Vóley playa): pista 16×8 (`g.HL/g.HW`, `VB.Sim.court`), sets a 21 / 15, cambio de campo cada 7 (5 en el 3r, sin
     grúa: aviso «Cambio de campo · Cada 7 puntos»), bloqueo = toque, dejada de nudillos («pokey», legal; la de yema no se modela como
     gesto aparte), colocación de dedos más estricta (dobles), IA y cámara a la pista pequeña, tutorial y menú (fila «Escenario» junto a
     los puntos, que en la playa se fijan a «21 · 15»). ~~Cintas a 16×8, antenas, sin línea de ataque, texto y silbato de `'swap'`, Carrera
@@ -306,13 +306,13 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     Líbero (`g.libero`, `g.roster`, `applyLibero` en cada `setupServe`: entra por el central zaguero salvo si saca; eventos `libero`),
     evento `rotation`, formaciones legales del saque (`AI6.placeServe`: el que saca en sus zonas, el que recibe en «W» con OH-OH-L y
     `legalize()` sin solapamientos), falta de posición CONTADA (`overlapCount`, `g.stats.overlap`; aún no se pita: no hay humano en 6v6),
-    faltas de zaguero/líbero pitadas (`backAttack` con el mecanismo de `atkServe`, `backBlock` en `checkBlock`). IA: 1.er toque por
-    tiempo + puesto, 2.º el colocador, 3.º el atacante elegido (`g.setPlan`); recepción al punto de colocación (`passTarget`), colocador
+    faltas de zaguero/líbero pitadas (`backAttack` con el mecanismo de `atkServe`, `backBlock` en `checkBlock`). IA: 1r toque por
+    tiempo + puesto, 2º el colocador, 3r el atacante elegido (`g.setPlan`); recepción al punto de colocación (`passTarget`), colocador
     con bola alta a punta, tensa al opuesto o rápida al central en sistema (`chooseSet`); bloqueo de zona con doble del central, defensa
     perímetro, carrera de batida y cobertura. Afinado solo-6v6: `VB.SIX {stuff 0.6, dig 0.75}`, `FORM.blockErr 1.8`, `sysDig/oosDig`,
-    lectura del 2.º bloqueador en `openSpot` (solo con `g.rot`). simtest «6v6 CPU contra CPU» (16 semillas × 15 min) exige los objetivos
+    lectura del 2º bloqueador en `openSpot` (solo con `g.rot`). simtest «6v6 CPU contra CPU» (16 semillas × 15 min) exige los objetivos
     del diseño: side-out ~60 %, mediana ~7 s, 0 faltas de posición/zaguero, líbero nunca delante ni sacando, colocador ~85 % de 2.os toques.
-  - **Pendiente sim 6v6**: humano en 6v6 (sprint 3: hoy la IA le aparta del 2.º toque y de los remates; si es el colocador y no hace
+  - **Pendiente sim 6v6**: humano en 6v6 (sprint 3: hoy la IA le aparta del 2º toque y de los remates; si es el colocador y no hace
     nada, su equipo pierde casi todo); pitar la falta de posición del humano (Difícil/Experto) e «imán» en Fácil/Normal; regla del
     líbero colocando de dedos delante de 3 m (`g.liberoSet`, hoy la IA solo evita que coloque ahí); «pipe» y ataque de segunda; tiempos
     muertos y cambios; bloqueo de lectura y triple; `serveRisk`/`serveTarget` sin pensar en formaciones (sacan a `openSpot`).
@@ -331,7 +331,7 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     corro, animaciones nuevas (batida de 3 pasos, paso cruzado de bloqueo, rápida del central), fundido al entrar el líbero.
   - **Cámara y arranque 6v6 (sprint 2, hecho)**: `?format=6v6` (sigue SIN estar en el menú) → «Jugar» empieza un partido **de espectador**:
     CPU contra CPU con el HUD y las pausas de partido (`autopilot` + `present`, sin presentación) y `g.watch = true` (main.js). Decidido así
-    porque la IA 6v6 aparta al humano del 2.º y 3.er toque: el humano entra en el sprint 3. Cámara de televisión `tv` (camera.js `tvShot`):
+    porque la IA 6v6 aparta al humano del 2º y 3r toque: el humano entra en el sprint 3. Cámara de televisión `tv` (camera.js `tvShot`):
     alta (7,8 m) tras el fondo del equipo 0 (x 14,2), encuadra a los 12 (abre/cierra con la formación, sigue un poco el balón a lo ancho,
     lente según el aspecto), también en el punto (corte al saque siguiente); cambio de campo y final como en 2v2; sin plano de reacción
     (entre 12 quedaba tapado por la silla del árbitro), cierre de set ni plano del sacador rival en 6v6. ui.js: rótulos LOC / VIS (`WATCH_CR`, también en cintas y lector), sin avisos de mando, hoja final «Gana el
@@ -352,8 +352,8 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     sprint 4 la malla única de los atletas lejanos. La pestaña de Carrera 2v2 que decía «de la CPU» ya está arreglada
     (10-nov-2026: `showBug` pasa siempre por `cpuTxt`).
   - **Qué falta para el sprint 3 (humano en 6v6 + menú «Formato»)**:
-    1. Sim/IA: `AI6.decide` (2.º/3.er toque del humano y «¡Pídela!»; hoy la IA le aparta del 2.º toque y de los remates), responsabilidad
-       («¡mía!») del 1.er toque, posición asistida e imán en Fácil/Normal, falta de posición pitada al humano en Difícil/Experto, sin
+    1. Sim/IA: `AI6.decide` (2º/3r toque del humano y «¡Pídela!»; hoy la IA le aparta del 2º toque y de los remates), responsabilidad
+       («¡mía!») del 1r toque, posición asistida e imán en Fácil/Normal, falta de posición pitada al humano en Difícil/Experto, sin
        `switch` en 6v6 (control Uno por rol `ctrlRole6`, receptor por defecto), medir toques del humano por rally (objetivo ≥ 0,7).
     2. Cámara: plano detrás del humano (`gameplayShot` con más FOV, §1.6), oclusión con los 2 compañeros más cercanos al eje
        cámara-jugador, planos de reacción, cierre de set y sacador rival en 6v6.
@@ -377,7 +377,7 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   y similares» (casi nulo, con challenge) cuando haya esas competiciones (Carrera 6v6) y cualquier modo nuevo fuera de la Carrera.
 - **Más modos de juego**: el selector de puntos por set es la base de «Partido rápido»; los modos nuevos irán al lado.
 - **Textos**: Ferran revisará el resto de textos y botones (lista numerada A–D que se le pasó el 9-nov-2026).
-  Pregunta abierta: ¿«3.er» → «3r» y «2.º» → «2º»? (10-nov: «1r» pasó a «1.er» en set y toque, que era la abreviatura catalana.)
+  Pregunta abierta: ¿«3r» → «3r» y «2º» → «2º»? (10-nov: «1r» pasó a «1r» en set y toque, que era la abreviatura catalana.)
 - **Pulido profundo pausado**: el flujo de pulido se paró a mitad (oleadas 1-2 subidas en 94ba33d); falta la oleada 3,
   su verificación y el QA final. Solo si Ferran lo pide.
 - **Pendiente del sprint cartoon** (9-nov-2026, menores, nada roto):
@@ -442,13 +442,13 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   líbero, formaciones, reglas de zaguero e IA 5-1 (`js/ai6.js`), 12 atletas, cámara de televisión y partido espectador con `?format=6v6`
   (NO en el menú). Detalle, arreglos de la revisión y lo que falta para el sprint 3 en «Modo 6v6» (To-do).
 - **Colocación en salto** (10-nov-2026, pedido de Ferran: «colocar saltando, incluyendo móvil y mando siempre»): en el aire GOLPEAR remata y
-  **COLOCAR** coloca en salto hacia la zona de ataque del compañero (2.º toque, o 1.º con el balón alto en la red: el compañero ataca en el 2.º).
+  **COLOCAR** coloca en salto hacia la zona de ataque del compañero (2º toque, o 1r con el balón alto en la red: el compañero ataca en el 2º).
   Teclado **K**, ratón **clic central**, mando **X** (□), táctil botón **COLOCAR** que solo sale en el aire; en el suelo COLOCAR salta. Más rápida
   y con menos margen; con mal timing sale pegada a la red o larga. El compañero IA la remata; Manos de seda y asistencias la cuentan. Aviso
   «Rematar / Colocar», Controles, tutorial y consejos en los 3 dispositivos. La IA no la usa (CPU contra CPU idéntico). Ver notes/sim.md.
   - **Arreglos tras la revisión** (10-nov-2026): el bloqueador CPU lee la colocación en salto y llega a la red (antes 0 bloqueos y 76 % de
     puntos en «controlar a los dos»; ahora 54 % frente al 51,5 % de la de suelo, y con mal timing 42-43 %); el bonus de defensa solo vale tras
-    la del 2.º toque (en el 1.º, rematar el balón regalado vuelve a ser igual o mejor); el botón y el aviso COLOCAR solo salen si la
+    la del 2º toque (en el 1r, rematar el balón regalado vuelve a ser igual o mejor); el botón y el aviso COLOCAR solo salen si la
     colocación va a salir de verdad; COLOCAR ya no «coloca» el remate rival desde el bloqueo; la doble pulsación rápida funciona (búfer de
     0,2 s); aviso 2×2 más limpio (glifos sin estirar, K verde, sin palabras repetidas en táctil); X/□ ya no hace «volver» en menús.
     CPU contra CPU idéntico. Pendiente: GOLPEAR en el bloqueo devuelve el remate CPU (anterior), la IA no coloca en salto, móvil y mando reales.
@@ -463,7 +463,7 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - **Separadores con diseño**: rombo en antetítulos, raya fina en ayudas, barra inclinada en pares, pastillas en datos (`VB.UI.sep`); frases sin «·».
   - **Pantallas grandes**: menú, Carrera, presentación del partido, HUD y paneles crecen con `--vs` (1,34 a 1920×1080, 1,71 a 2560×1440).
   - Arreglos de la revisión: hoja final a 667×375 sin desvanecido sobre los botones, tutorial que cabe a 667×375, LED sin «PUNTO DE SETPUNTO DE SET»,
-    «1.er set», textos táctiles del panel Controles.
+    «1r set», textos táctiles del panel Controles.
 - **Carrera 2v2** (sprint del 9/10-nov-2026; botón «02 Carrera»): creas tu jugador (nombre, dorsal, rol atacante / universal /
   colocador-receptor, puntos por set, control «uno» o «Los dos»; media 35) y empiezas en un club modesto de la Liga Regional con un
   compañero que pone el club. 5 ligas de 8 clubes inventados (Regional, Nacional, Superliga, Continental, Circuito Mundial), liga a doble

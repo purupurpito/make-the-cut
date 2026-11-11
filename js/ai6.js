@@ -5,11 +5,11 @@
  * así que el 2v2 sigue idéntico.
  *
  * Reutiliza AI.update (movimiento, salto, timing aleatorio, plancha, toque desviado); aquí solo se decide:
- *   computeJob(g, t)        quién va al balón (1.er toque con penalización por puesto, 2.º el colocador, 3.º el atacante elegido)
+ *   computeJob(g, t)        quién va al balón (1r toque con penalización por puesto, 2º el colocador, 3r el atacante elegido)
  *   pos(g, p)               dónde estar (recepción, saque propio, ataque propio con cobertura, bloqueo de zona y defensa perímetro)
  *   placeServe(g, t, sv)    formaciones del saque: el equipo que saca en sus zonas, el que recibe en «W» con 3 receptores (OH, OH, L)
- *   passTarget(g, p, hard)  destino de la recepción/defensa (sim.hit, 1.er toque)
- *   chooseSet(g, p)         el colocador elige atacante y tempo (sim.hit, 2.º toque): bola alta a punta, tensa al opuesto, rápida al central
+ *   passTarget(g, p, hard)  destino de la recepción/defensa (sim.hit, 1r toque)
+ *   chooseSet(g, p)         el colocador elige atacante y tempo (sim.hit, 2º toque): bola alta a punta, tensa al opuesto, rápida al central
  * Coordenadas locales de equipo: d = metros desde la red hacia el propio fondo, yl = lateral (+ = derecha del equipo).
  * x = side(t)·d, y = side(t)·yl (CONTRACT §3). Sin asignaciones por frame en pos/computeJob.
  * ===================================================================== */
@@ -41,7 +41,7 @@
     digSys: 0.6,                      // calidad de la defensa para el colocador (× q): en transición casi siempre bola alta
     // formación de recepción en «W»: línea de 3 receptores
     recvD: 6.0, recvY: [-2.8, 0, 2.8],
-    // penalización por puesto en quién va al balón (s): 1.er toque, 2.º toque
+    // penalización por puesto en quién va al balón (s): 1r toque, 2º toque
     pen1: { S: 0.35, L: -0.10, OH: -0.05, MB: 0.25, OPP: 0.15 },
     pen2: { S: -0.8, L: 0, OH: 0.15, MB: 0.2, OPP: 0.1 }
   };
@@ -62,7 +62,7 @@
     if (p.z > 0.3) { var tl = (p.vz + Math.sqrt(p.vz * p.vz + 2 * C.G * Math.max(0, p.z))) / C.G; if (pr.t < tl + 0.15) c += 10; }
     return c;
   }
-  /** Penalización (s) del puesto para el toque n (0 = 1.er toque del equipo, 1 = 2.º, 2 = 3.º). */
+  /** Penalización (s) del puesto para el toque n (0 = 1r toque del equipo, 1 = 2º, 2 = 3r). */
   function rolePen(g, t, q, n, pr) {
     // humano (control Uno en 6v6, aún sin ayudas: sprint 3): solo va si nadie llega claramente antes
     if (S.isHuman(g, q)) return 0.4;
@@ -84,7 +84,7 @@
     if (g.touchTeam === t && g.touches >= 3) return null;
     var mineN = g.touchTeam === t && g.lastKind !== 'serve' ? g.touches : 0;
     var tm = g.teams[t], excl = g.touchTeam === t && g.touches >= 1 ? g.lastPlayer : null;
-    // 3.er toque: el atacante elegido por el colocador, fijo como «el compañero» del 2v2 (en el aire el coste de jobCost
+    // 3r toque: el atacante elegido por el colocador, fijo como «el compañero» del 2v2 (en el aire el coste de jobCost
     // le daría por perdido justo al saltar a rematar)
     var pl = mineN === 2 && g.lastKind === 'set' ? g.setPlan[t] : null;
     if (pl && pl.to && pl.t === g.lastTouchT && pl.to !== excl && !pl.to.bench) return pl.to;
@@ -140,7 +140,7 @@
     if (!set) {
       if (p.role === 'S' && g.lastPlayer !== p) return loc(t, FORM.setSpot.d, FORM.setSpot.yl);
       if (canAttack(p) && FORM.approach[p.role]) { var A = FORM.approach[p.role]; return loc(t, A.d, A.yl); }
-      if (p.front) return loc(t, 1.8, 1.5); // el colocador que hizo el 1.er toque
+      if (p.front) return loc(t, 1.8, 1.5); // el colocador que hizo el 1r toque
       var lb = p.role === 'OH' ? 0 : (p.role === 'S' || p.role === 'OPP') ? 2.2 : -2.2;
       return loc(t, 5.6, lb);
     }
@@ -245,7 +245,7 @@
 
   /* ---------- Decisiones del toque (las llama sim.hit) ---------- */
   var _pt = { d: 0, yl: 0, apex: 4 };
-  /** Destino del 1.er toque (recepción/defensa) en coordenadas locales. Anota la calidad para el colocador. */
+  /** Destino del 1r toque (recepción/defensa) en coordenadas locales. Anota la calidad para el colocador. */
   function passTarget(g, p, hard, q) {
     var T = hard ? FORM.digTo : FORM.passTo;
     _pt.d = T.d; _pt.yl = T.yl; _pt.apex = T.apex;
@@ -255,7 +255,7 @@
     return _pt;
   }
   var _sp = { d: 0, yl: 0, apex: 5 }, _cand = [], _w = [];
-  /** El colocador elige atacante y tempo (2.º toque). Delanteros que pueden atacar (sin el líbero ni quien coloca); el central
+  /** El colocador elige atacante y tempo (2º toque). Delanteros que pueden atacar (sin el líbero ni quien coloca); el central
    *  solo con recepción buena y el colocador cerca de la red (rápida). Peso del puesto, menos si el bloqueo rival ya está
    *  enfrente, y azar (g.rng: solo 6v6). Deja g.setPlan[t] = {to, tempo, d, yl, apex, t} para computeJob y el bloqueo rival. */
   function chooseSet(g, p) {

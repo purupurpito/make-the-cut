@@ -113,7 +113,7 @@ js/camera.js:
 - **Plano del punto rehecho** (`planPoint`/`pointShot`): 0,45 s mirando caer el balón y CORTE (o deslizamiento si el plano
   está en el mismo campo y cerca) a un plano bajo (1,65-1,9 m) y cerrado (FOV 32-35°) del bote + el que falló (infractor,
   el último que tocó del que pierde o el más cercano) + el que ganó si está cerca y en el mismo campo. Se elige entre 48
-  posiciones puntuando: zona libre, >= 2 m de postes/silla/2.º árbitro/mesa/jueces y de los jugadores, sin la red delante,
+  posiciones puntuando: zona libre, >= 2 m de postes/silla/2º árbitro/mesa/jueces y de los jugadores, sin la red delante,
   nadie tapando, nada grande en primer plano (oficiales, jugadores ajenos, balón suelto), protagonistas enteros y a >= 4,3 m,
   y el que ganó al fondo. El borde superior nunca corta el marcador colgado. Ace con recepción desviada lejos: el foco es el
   receptor. Vuelta al saque: corte si el plano nuevo está al otro lado de la red o a > 11 m; si no, deslizamiento.
@@ -148,21 +148,21 @@ Aplicada la atenuación de `#touchbar` (ver log). El fundido negro de 80 ms en e
 ## Petición de arena (7-nov-2026): plano del cambio de campo
 Arena ya marca el momento de `courtChange` (marcadores "CAMBIO DE CAMPO" con flechas, vallas doradas, público aplaudiendo).
 Para el plano de transición (opcional): `VB.Arena && VB.Arena.courtChangeT && VB.Arena.courtChangeT() > 0` mientras dura
-(≈3,2 s tras un set, ≈3,8 s a los 8 del 3.er set), y `VB.Arena.landmarks.scoreHung = {x:0, y:0, z:11.4}` (sim) para mirar
+(≈3,2 s tras un set, ≈3,8 s a los 8 del 3r set), y `VB.Arena.landmarks.scoreHung = {x:0, y:0, z:11.4}` (sim) para mirar
 al marcador colgado. Ver notes/arena.md §8.
 
 ## Cierre para publicar (7-nov-2026, PC de casa, RTX 3060 Ti): cambio de campo, táctil y mando robustos, coste
 
 ### js/camera.js
 - **Plano `court` (cambio de campo)**: al llegar `courtChange` (solo partido, no demo), el plano de reacción del punto se ve
-  1,45 s (1,25 s a los 8 del 3.er set) y CORTE a una grúa alta por la banda de la mesa (y > 0; la silla del 1.er árbitro no
+  1,45 s (1,25 s a los 8 del 3r set) y CORTE a una grúa alta por la banda de la mesa (y > 0; la silla del 1r árbitro no
   tapa la red): de encima del campo rival a detrás de nuestro equipo, 7,2 → 6,3 m de alto, ~85° de giro, mira casi fija cerca
   del centro (se ven los dos campos, los jugadores yendo a su sitio, el aviso "CAMBIO DE CAMPO" y el videomarcador). La duración
   se ajusta a la pausa real de sim (2,4 s tras un set con su cámara lenta; 2,0 s a los 8). Al empezar el saque, la grúa BAJA
   deslizando 1,4 s al plano del saque: sin corte. Base de control congelada durante la grúa; después, la de siempre (el humano
   sigue en x > 0). Modo confort: arco más corto.
   Medido (`tools/out/ci/courttest.js`, juego en vivo con autopilot hasta el evento): tras un set, 1280x720: 2,46 s de grúa, giro
-  máx. 43-44°/s, cabeceo 6-7°/s, un único corte (reacción → grúa), base tras el cambio (-1, 0). A los 8 del 3.er set: 2,06 s,
+  máx. 43-44°/s, cabeceo 6-7°/s, un único corte (reacción → grúa), base tras el cambio (-1, 0). A los 8 del 3r set: 2,06 s,
   56°/s. 844x390 táctil: 2,47 s, 43°/s. Capturas miradas en `tools/out/ci/shots/court-*`.
 - `getShot()` puede devolver `'court'`; `getDebug().ccU` = avance de la grúa 0..1 (-1 fuera del plano).
 - **Coste por frame**: `fitServe` creaba un objeto por frame (`fitLow = {…}`) → ahora reutiliza el suyo. El estado escalar del rig
@@ -181,7 +181,7 @@ al marcador colgado. Ver notes/arena.md §8.
   - Botones con margen de 16 px (GOLPEAR/SALTAR) y 8 px (⇄, pausa) para dedos gordos; gana el botón más "hondo".
   - **Deslizar** de SALTAR a GOLPEAR (o desde zona vacía de la derecha) pulsa el botón al que se llega: salto + remate de un
     gesto. Salir de un botón a zona vacía lo mantiene pulsado.
-  - 2.º dedo en la mitad izquierda: si se levanta el del joystick, lo hereda desde donde está.
+  - 2º dedo en la mitad izquierda: si se levanta el del joystick, lo hereda desde donde está.
   - pointercancel / lostpointercapture sueltan. **Dedos perdidos** (el SO se come el pointerup): si los touch events dicen 0 dedos
     y quedan punteros táctiles vivos > 0,12 s, se sueltan (`sweepLost`).
   - **Giro** con el dedo puesto (orientationchange, screen.orientation change, o resize que cambia la orientación o > 30 %): se
@@ -212,7 +212,7 @@ al marcador colgado. Ver notes/arena.md §8.
   herencia del joystick, blur + adopción, barra del navegador, giro a vertical y vuelta, zonas seguras
   (`Emulation.setSafeAreaInsetsOverride` 44/44/0/21) y pausa. **TODO OK** a 844x390, a 667x375 y a 844x390 con CPU ×4 y DPR 2.
 - `node tools/out/ci/padtest.js`: 25 comprobaciones con un `getGamepads()` falso: conexión a mitad de partido, zona muerta,
-  flancos, 2.º mando, desconexión con y sin evento → pausa, mando olvidado que no pausa, DirectInput con hat, XInput no estándar.
+  flancos, 2º mando, desconexión con y sin evento → pausa, mando olvidado que no pausa, DirectInput con hat, XInput no estándar.
   **TODO OK**.
 - `node tools/out/ci/courttest.js set|eight [WxH] [touch]`: **TODO OK** (números arriba).
 - Herramientas de ui_main con estos cambios: `tools/padplay.js 1280 720 25` TODO OK (incluye "desconectar el mando en pleno
@@ -259,7 +259,7 @@ js/input.js:
   touchverify T2: ox 523/414/567 = límite exacto a 844/667/915 (antes 716/542/784, encima de SALTAR/GOLPEAR).
 - `preventDefault` solo si `e.cancelable` (touchmove, pointerdown/move, contextmenu, dblclick, gesturestart): touchverify2 a
   915x412 sin "[Intervention] Ignored attempt to cancel".
-- **1.er toque tras jugar con mando** (overlay oculto): `pointerdown` en captura sobre `window` → si es táctil, en partido, y no
+- **1r toque tras jugar con mando** (overlay oculto): `pointerdown` en captura sobre `window` → si es táctil, en partido, y no
   cae en un control de la UI (`button,a,input,select,textarea,[role=button],[data-ui]`), muestra el overlay al instante y le pasa
   el dedo (`onPtrDown(e, true)`, sin stopPropagation; el overlay lo captura). padverify: toque en GOLPEAR → press.hit +1, out.hit +1;
   dedo a la izquierda → joystick (mx 1).
@@ -790,7 +790,7 @@ que el bloqueador ruja hacia `c.hyaw` cuando `c.hs`.
   de la lente (se aleja si hace falta). Lanzamiento en salto: grúa +1,4 m / +0,8 m y lente con el balón <= 76 px a 1080p; flotante: la lente respira
   hasta ~44° (balón <= ~122 px). El sitio lateral, el sesgo del sacador y un factor de lente se eligen entre 84 candidatos (también con la pose de la
   grúa del salto, para que ningún oficial cambie de dentro a fuera por el camino) con histéresis. Oficiales = `VB.Arena._dbg()` refs + judges
-  (releídos cada 8 frames; el 2.º árbitro se mueve). Red de seguridad en `apply()` sobre la pose REAL: si un oficial cruza un borde, cambio mínimo de
+  (releídos cada 8 frames; el 2º árbitro se mueve). Red de seguridad en `apply()` sobre la pose REAL: si un oficial cruza un borde, cambio mínimo de
   lente (±24 %) y/o giro (±6°). En el saque propio no hay encuadre fino (`framing` lo salta). Prueba: `VB.CameraRig._serveDbg()`.
 - **CAM-16 menú**: realización de 6 tipos de plano (`wide, side, net, server, setter, board`; `getDebug().menu`/`.menuT`) de 6,6-9,4 s con cortes
   secos (`lastCut.kind` **`'attract'`**, nuevo) nunca a ±0,3 s de un golpe (predicción de alcance 0,6 s), todas las cámaras del lado de la mesa
@@ -924,7 +924,7 @@ Spike (escena `spike` 1280×720 low): en el árbol actual el aviso de toques va 
   con las flechas, junto a C cambiar y V challenge). K sigue saltando como alias mudo (no se anuncia). Resto igual.
 - Ratón (solo `ctx.state === 'playing'`, overlay táctil oculto, y nunca si el clic cae en `button,a,input,…,[data-ui],[data-opt],
   [data-nav],.screen,.sheet,#touch`): **clic izquierdo = golpear, derecho = saltar**. Entra en el mismo mapa que las teclas
-  (ids `Mouse0`/`Mouse2`), así que mantener pulsado da `hitHeld`/`jumpHeld`. Lee `e.buttons` en pointerdown/move/up (el 2.º botón
+  (ids `Mouse0`/`Mouse2`), así que mantener pulsado da `hitHeld`/`jumpHeld`. Lee `e.buttons` en pointerdown/move/up (el 2º botón
   con otro ya pulsado llega como pointermove acordado). Solo `pointerType 'mouse'`: dedo y lápiz siguen en el overlay, que además
   para la propagación (sin golpe doble). Sin menú contextual sobre el canvas. `_debug().stats.mouse = {hit, jump}`.
 - Textos: `GLYPH.keyboard` de ui.js (hit/serve «J», jump «Espacio»; `hitT 'J'`, `jumpT 'ESPACIO'`) y filas de teclado del panel
@@ -936,7 +936,7 @@ Spike (escena `spike` 1280×720 low): en el árbol actual el aviso de toques va 
   **X** (botón 2; PS □) en los tres mapas (`PB`, `PB_X`, `PB_D`: `jump` pasa a `[1]` y `jset: [2]`; `pad.prev[i][6]`).
 - `poll()` → `it.jset` (flanco). Con `jset`, `jump` también es true: en el suelo salta igual que antes (K y X saltaban), y menús, presentación y
   pausa del punto lo tratan como SALTAR. La sim mira `jset` solo en el aire. `jumpHeld` incluye K/X/rueda.
-- Táctil: rol nuevo `'set'` (5.º de `ROLES`; los bucles usan `ROLES.length`), botón `.vt-set` «COLOCAR» verde con icono de arco, 64 px encima de
+- Táctil: rol nuevo `'set'` (5º de `ROLES`; los bucles usan `ROLES.length`), botón `.vt-set` «COLOCAR» verde con icono de arco, 64 px encima de
   SALTAR (`right 157`, `bottom 110`; 56 px a ≤ 420 px de alto, 52 a ≤ 340: 844×390 y 667×375 usan los dos 56), a 12 px de SALTAR (márgenes de
   toque de 12 y 16 px que se tocan, para deslizar de SALTAR a COLOCAR) y lejos de GOLPEAR y del joystick (≤ 62 % del ancho).
   Oculto con `visibility` (la geometría medida sigue valiendo; `hitTest` lo salta si `!T.setOn`). `touchContext` lo enciende con

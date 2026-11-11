@@ -162,7 +162,7 @@
     if (g.size !== 2 && VB.AI6 && VB.AI6.pos) return VB.AI6.pos(g, p); // 6v6 con su IA propia (sprint 2)
     var t = p.team, sd = side(t), mate = other(g, p), job = g.jobs[t], idx = p.idx, mine = g.touchTeam === t, cs = g.cs || 1;
     if (job === p) {
-      // a atacar: tras el 2.º toque propio o tras una colocación en salto en el 1.º (S.atkPhase)
+      // a atacar: tras el 2º toque propio o tras una colocación en salto en el 1r (S.atkPhase)
       if (S.atkPhase(g, t) && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) return setTg(g.pr3.x + sd * 0.35, g.pr3.y, true, false);
       return setTg(g.pr1.x + sd * 0.2, g.pr1.y);
     }
@@ -189,7 +189,7 @@
     // lectura de la colocación en salto: el humano rival salta junto a la red en un toque donde puede colocar en salto
     // (S.jsetReady; nunca en CPU contra CPU). El bloqueador no espera a la colocación: se va ya a la red frente a su atacante
     // (sin saltar mientras no se vea el gesto) y el otro a defender. Si el humano arma un ataque (GOLPEAR o dejada en el aire)
-    // salta a bloquearle a él: si no, quedaba plantado en la red sin bloquear ni defender y el ataque en 2.º toque ganaba
+    // salta a bloquearle a él: si no, quedaba plantado en la red sin bloquear ni defender y el ataque en 2º toque ganaba
     // más (35 → 51 % en Normal). Sin esta lectura, tras una colocación en salto (0,8 s hasta el remate) el bloqueo no
     // llegaba nunca. Tras el toque sigue con este objetivo (reacción) y luego pasa al bloqueo normal de abajo.
     if (opp === 0 && !S.atkPhase(g, opp) && S.jsetReady(g)) {

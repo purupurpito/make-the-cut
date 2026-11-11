@@ -263,8 +263,8 @@ Difficulty strings `'easy' | 'normal' | 'hard'` (as main.js already passes) work
   entre sets → fuera; subtítulo del punto de bloqueo "Bloqueo directo al suelo".
 - Verificado: `node tools/simtest.js` completo → TODO OK; `console.sh all` 1280×720 y 844×390 táctil → sin errores JS (19 escenas,
   capturas miradas) + `live=1` en rally y mobile low; `drive.js` 1280×720 30 s y 844×390 25 s → TODO OK;
-  `tools/out/int2/flow3.js` (1280×720 y 844×390 táctil): menú (4 niveles) → partido → SET + "Cambio de campo / Fin del 1.er set"
-  → 3.er set a los 8 "Cambio de campo / Set decisivo · 8 puntos" → celebración (endHold) → final → Revancha → pausa → menú, TODO OK;
+  `tools/out/int2/flow3.js` (1280×720 y 844×390 táctil): menú (4 niveles) → partido → SET + "Cambio de campo / Fin del 1r set"
+  → 3r set a los 8 "Cambio de campo / Set decisivo · 8 puntos" → celebración (endHold) → final → Revancha → pausa → menú, TODO OK;
   consejo de defensa en vivo (`coach.js`). Red: solo cdnjs three 0.149.0 y Google Fonts; index.html empieza por `<title>`.
 - Pendiente (sim, opcional): `Sim.aimPoint`, antena tocada sin cruzar, texto de sim para 'out'; cámara/arena opcional en
   `courtChange` (plano de transición, cambiar atrezo de fondo).

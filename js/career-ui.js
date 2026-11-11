@@ -12,6 +12,8 @@
  */
 (function () {
   'use strict';
+  /** Ordinal corto: 1r, 2º, 3r, 4º… Nunca «1.er». */
+  function ordn(n) { return n + (n === 1 || n === 3 ? 'r' : 'º'); }
   var VB = window.VB = window.VB || {};
   var root = null, body = null, head = null, tabsEl = null, subEl = null, styleEl = null;
   var view = 'hub', tab = 'match', open = false, lastFocus = null, tblLvl = -1, armT = 0, armTo = 0, confirmStep = 0, freshLast = false;
@@ -445,13 +447,13 @@
     if (c.phase === 'off') return renderSeasonEnd(c);
     var n = C().next(c);
     if (n) {
-      // posiciones solo con la liga empezada (en la jornada 1 la tabla vacía daba «6.º» contra «3.º»)
+      // posiciones solo con la liga empezada (en la jornada 1 la tabla vacía daba «6º» contra «3r»)
       var pm = C().posOf(c, n.me.id), pr = C().posOf(c, n.rival.id), lg = c.phase === 'league' && c.week > 0;
       h += '<div class="card"><h3>' + sp(esc(n.label).split(' · '), 'v') + '</h3><div class="vs">' +
         // («Pareja»: la fuerza de los dos —teamOvr— y la del rival; la media de la cabecera es solo la tuya)
-        teamBlock(c, n.me, false, sp([lg ? pm + '.º' : '', 'Pareja ' + n.ovrMe, n.atHome ? 'En casa' : 'Fuera'], 'c')) +
+        teamBlock(c, n.me, false, sp([lg ? ordn(pm) : '', 'Pareja ' + n.ovrMe, n.atHome ? 'En casa' : 'Fuera'], 'c')) +
         '<div class="vs-mid">VS</div>' +
-        teamBlock(c, n.rival, true, sp([lg ? pr + '.º' : '', 'Pareja ' + n.ovrRival, 'IA ' + esc(diffName(n.diff))], 'c')) + '</div>' +
+        teamBlock(c, n.rival, true, sp([lg ? ordn(pr) : '', 'Pareja ' + n.ovrRival, 'IA ' + esc(diffName(n.diff))], 'c')) + '</div>' +
         '<p class="muted" style="margin-top:8px">Vóley playa en la arena de Platja Llarga: al mejor de 3 sets a ' + C().PTS + ', el tercero a ' + C().PTS3 + '. Tú llevas a ' + esc(c.player.name) + ' (dorsal ' + c.player.num + ') y a tu pareja la lleva la IA.</p>' +
         // (la pareja, en pastillas: antes era una lista metida en un paréntesis)
         '<p class="muted" style="margin-top:4px">' + (function () {
@@ -473,7 +475,7 @@
   function renderSeasonEnd(c) {
     var r = c.review || {}, k = C().myClub(c), L = C().league(r.lvl != null ? r.lvl : k.lvl);
     var h = '<div class="card new"><h3>Fin de la temporada ' + r.season + '</h3>' +
-      '<p style="font:900 24px var(--display);text-transform:uppercase;letter-spacing:.04em;margin:0">' + r.pos + '.º ' + esc(deL(L)) + '</p><p>' +
+      '<p style="font:900 24px var(--display);text-transform:uppercase;letter-spacing:.04em;margin:0">' + ordn(r.pos) + ' ' + esc(deL(L)) + '</p><p>' +
       (r.champion ? '<span class="tag y">Campeón ' + esc(deL(L)) + '</span>' : '') + (r.cup ? '<span class="tag y">Campeón del ' + esc(L.cup) + '</span>' : '') +
       (r.move > 0 ? '<span class="tag g">Ascenso</span>' : r.move < 0 ? '<span class="tag r">Descenso</span>' : '') +
       '<span class="tag ' + (r.objOk ? 'g' : 'r') + '">Objetivo ' + (r.objOk ? 'cumplido' : 'no cumplido') + '</span></p>' +
@@ -638,7 +640,7 @@
     var ref = C().REF[L.ref];
     var h = '<div class="card"><div class="row">' + kitSw(k.kit, true) + '<div class="grow" style="min-width:0"><p class="bigname">' + esc(k.name) + '</p>' +
       '<p class="muted" style="margin:2px 0 0">' + sp([stars(f.stars), esc(L.name), esc(k.city)], 'v') + '</p></div></div>' +
-      '<div class="fact">' + fact('Media del club', C().clubOvr(k)) + fact('Posición', c.phase === 'league' && c.week === 0 ? '—' : C().posOf(c, k.id) + '.º') + fact('Sede', esc(f.beach || k.city)) + fact('Estilo', esc(f.style) + styleTrain(f.style)) +
+      '<div class="fact">' + fact('Media del club', C().clubOvr(k)) + fact('Posición', c.phase === 'league' && c.week === 0 ? '—' : ordn(C().posOf(c, k.id))) + fact('Sede', esc(f.beach || k.city)) + fact('Estilo', esc(f.style) + styleTrain(f.style)) +
       fact('Compañero', esc(c.mate.name) + ' <span class="muted">(' + esc(c.mate.role).toLowerCase() + ', media ' + C().mateOvr(c) + ', ' + esc(vsClub(C().mateOvr(c) - C().clubOvr(k))) + ')</span>') +
       fact('Objetivo', esc(c.objective.text)) + fact('Arbitraje', esc(ref.name)) + '</div>' +
       '<h3 style="margin-top:10px">' + sp(['Entrenador', esc(C().coachText(coach))], 'd') + '</h3>' + meter(coach, 'Confianza del entrenador', cc) +
@@ -692,7 +694,7 @@
     }
     if (s === 'seasons') {
       return '<div class="card"><h3>Temporadas</h3>' + (c.history.length ? '<table><thead><tr><th class="l">T</th><th class="l">Club</th><th>Pos.</th><th class="hide-s">Open</th><th>Nota</th><th>Media</th></tr></thead><tbody>' + c.history.map(function (r) {
-        return '<tr><td class="l">' + r.season + '</td><td class="club">' + esc(r.clubName) + ' <span class="muted">(' + esc(C().league(r.lvl).short) + ')</span></td><td>' + r.pos + '.º' + (r.move > 0 ? ' ↑' : r.move < 0 ? ' ↓' : '') + '</td><td class="hide-s">' + esc(r.cup) + '</td><td>' + dec(r.nota) + '</td><td>' + r.ovr + '</td></tr>';
+        return '<tr><td class="l">' + r.season + '</td><td class="club">' + esc(r.clubName) + ' <span class="muted">(' + esc(C().league(r.lvl).short) + ')</span></td><td>' + ordn(r.pos) + (r.move > 0 ? ' ↑' : r.move < 0 ? ' ↓' : '') + '</td><td class="hide-s">' + esc(r.cup) + '</td><td>' + dec(r.nota) + '</td><td>' + r.ovr + '</td></tr>';
       }).join('') + '</tbody></table>' : '<p class="muted">Tu primera temporada está en marcha.</p>') + '</div>';
     }
     // abandonar (doble confirmación, sin confirm())
@@ -750,7 +752,7 @@
       '<div><label>Rol</label><div class="roles" role="group" aria-label="Rol">' + ['atk', 'uni', 'cr'].map(function (k) {
         return '<button data-act="role" data-r="' + k + '" aria-pressed="' + (form.role === k) + '">' + esc(R[k].name) + '<small>' + esc(R[k].hint) + '</small></button>';
       }).join('') + '</div><div class="prev" style="margin-top:8px">' + C().KEYS.map(function (k) { return '<span>' + esc(P && P.LABEL ? P.LABEL[k] : k) + ' <b>' + st[k] + '</b></span>'; }).join('') + '</div></div></div>' +
-      '<div class="cf-col"><div><label>Reglas de playa</label><p class="muted" style="margin:0">' + sp(['Sets a ' + C().PTS, 'el 3.º a ' + C().PTS3], 'v') + '. Pista de 16 × 8, cambio de campo cada 7 puntos (5 en el tercero), el bloqueo cuenta como toque y la dejada va de nudillos. ' + C().WEEKS + ' jornadas a doble vuelta y el open de los 4 primeros.</p></div>' +
+      '<div class="cf-col"><div><label>Reglas de playa</label><p class="muted" style="margin:0">' + sp(['Sets a ' + C().PTS, 'el 3r a ' + C().PTS3], 'v') + '. Pista de 16 × 8, cambio de campo cada 7 puntos (5 en el tercero), el bloqueo cuenta como toque y la dejada va de nudillos. ' + C().WEEKS + ' jornadas a doble vuelta y el open de los 4 primeros.</p></div>' +
       (c ? '<div class="card confirm"><p>Ya tienes una carrera guardada. Para empezar otra, abandónala antes en Palmarés › Opciones.</p></div>' :
         '<div class="acts"><button class="pri" data-act="create">Crear y ver ofertas</button></div>') +
       '</div></div>';
