@@ -373,7 +373,7 @@
       'btnPlay', 'optDiff', 'optVenue', 'venueVal', 'optPts', 'ptsVal', 'optCtrl', 'ctrlVal', 'btnTut', 'btnControls', 'btnSettings', 'btnSquad', 'squadSub', 'sqBody', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
       'btnAgain', 'btnMenu', 'btnPanelBack', 'btnTutPrev', 'btnTutNext', 'btnHudPause', 'btnHudMute', 'icoSound',
       'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord',
-      'btnQuick', 'btnGo', 'btnPlayBack', 'btnQuickBack', 'mpPlay', 'mpQuick', 'venueHelp', 'ptsHelp', 'ctrlHelp', 'diffHelp', 'sqPick', 'ctlTabs', 'sqTabs', 'setTabs', 'optList',
+      'btnQuick', 'btnGo', 'btnPlayBack', 'btnQuickBack', 'mpPlay', 'mpQuick', 'venueHelp', 'ptsHelp', 'ctrlHelp', 'diffHelp', 'optFmt', 'fmtVal', 'fmtHelp', 'btn6v6', 'sqPick', 'ctlTabs', 'sqTabs', 'setTabs', 'optList',
       'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack', 'btnEndOpts'].forEach(function (k) { el[k] = $(k); });
     el.bn1 = $('bn1'); el.bn2 = $('bn2'); el.bn3 = $('bn3'); el.pbug = $('pbug'); el.pbT = $('pbT'); el.pbS = $('pbS'); el.pbX = $('pbX'); el.sbBody = document.querySelector('.sb-body'); el.sb = $('sb'); el.sbSet = $('sbSet'); el.tag = $('sbTag'); el.hist = $('sbHist');
     el.row0 = $('sbRow0'); el.row1 = $('sbRow1'); el.name0 = $('sbName0'); el.name1 = $('sbName1');
@@ -711,6 +711,8 @@
           break;
         case 'switch':
           clearPrompt(); break;
+        case 'ask':   // 6v6: «¡Pídela!» (CAMBIAR / ⇄ / RB)
+          if (e.player === g.ctrl) { stampAsk(e, g); if (e.ok) srSay('Pides el balón'); } break;
         case 'miss':
           // UI-17: respuesta personal (no del equipo rival): blanco con filo rojo-naranja; con pronto/tarde, el medidor dice hacia dónde
           // corregir (t2 = s que faltaban para el instante bueno: > 0 pronto, < 0 tarde). Marca a ±(0,27…1) de la pista según el desfase.
@@ -812,8 +814,12 @@
     introUI.on = true; introUI.hudT = 0; introUI.quiet = true;   // sin avisos ni consejos hasta el primer silbato
     var di = optIndex('difficulty'), nm = g && VB.DIFF && VB.DIFF[g.difficulty] && VB.DIFF[g.difficulty].name;
     el.introDiff.textContent = 'Nivel ' + (nm || OPT.difficulty.labels[di]);
-    el.introSrv.textContent = cpuTxt(g && g.serving === 1 ? 'Saca la CPU' : 'Sacas tú');
-    if (el.introFmt) el.introFmt.textContent = 'Al mejor de 3 sets a ' + ((g && g.points) || 25);
+    var six = !!(g && g.size === 6);
+    el.introSrv.textContent = cpuTxt(g && g.serving === 1 ? 'Saca la CPU' : six ? 'Saca tu equipo' : 'Sacas tú');
+    if (el.introFmt) el.introFmt.textContent = 'Al mejor de 3 sets a ' + ((g && g.points) || 25) + '';
+    // antetítulo «Palau del Mar ◆ 2 contra 2» (texto fijo del HTML): el formato del partido (6v6, sprint 3)
+    var ik = el.intro.querySelector('.in-k > span'), it = ik && ik.lastChild;
+    if (it && it.nodeType === 3) it.nodeValue = six ? '6 contra 6' : '2 contra 2';
     var d = device();
     el.introHint.innerHTML = d === 'touch' ? 'Toca para empezar ya' : d === 'gamepad' ? padKey('a') + 'para empezar ya' : 'Pulsa cualquier tecla para empezar ya';
     el.intro.className = ''; void el.intro.offsetWidth; el.intro.className = 'show';
@@ -1060,8 +1066,16 @@
   // (se proyecta su vuelo), ni del que golpea, ni del marcador; sube ~30 px y se funde en 0,6 s.
   // «PERFECTO» dorado o «BIEN» blanco con la pista de tiempo («un pelín pronto» / «un pelín tarde») si el desfase la explica.
   // Nada en un golpe flojo. Capa de nivel «aviso corto» del árbitro (UI-02). &stamp=1: también con el autopilot (pruebas).
-  var stp = { t: 0, wx: 0, wy: 0, wz: 0, ox: 0, oy: 0, x: 0, y: 0, born: 0, cost: 0, dir: 0 }, _sv = null, _sp = { x: 0, y: 0, ok: false }, _sq = { x: 0, y: 0, ok: false };
+  var stp = { pl: null, t: 0, wx: 0, wy: 0, wz: 0, ox: 0, oy: 0, x: 0, y: 0, born: 0, cost: 0, dir: 0 }, _sv = null, _sp = { x: 0, y: 0, ok: false }, _sq = { x: 0, y: 0, ok: false };
   var STAMP_R = 72, STAMP_DIRS = [[-0.71, -0.71], [0.71, -0.71], [0, -1], [-1, 0], [1, 0], [-0.71, 0.71], [0.71, 0.71], [0, 1]];
+  function stampKF() {
+    if (!STAMP_KF) STAMP_KF = [
+      { opacity: 0, transform: 'translate(-50%,-50%) translateY(6px) scale(.8)' },
+      { opacity: 1, transform: 'translate(-50%,-50%) translateY(-7px) scale(1.07)', offset: 0.14 },
+      { opacity: 1, transform: 'translate(-50%,-50%) translateY(-14px) scale(1)', offset: 0.3 },
+      { opacity: 1, transform: 'translate(-50%,-50%) translateY(-23px) scale(1)', offset: 0.62 },
+      { opacity: 0, transform: 'translate(-50%,-50%) translateY(-30px) scale(.97)' }];
+  }
   var STAMP_KF = null, STAMP_KF_RM = [{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }];
   function stampDbg(g) { return ctx.params.stamp === '1' && g && g.autopilot; }
   function sproj(x, y, z, out) {
@@ -1110,22 +1124,34 @@
       if (c < bc - 0.01) { bc = c; best = d; }
     }
     stp.ox = STAMP_DIRS[best][0] * STAMP_R; stp.oy = STAMP_DIRS[best][1] * STAMP_R * 0.8;
-    stp.wx = e.x; stp.wy = e.y; stp.wz = e.z; stp.t = 0.62; stp.born = performance.now(); stp.cost = bc; stp.dir = best;
+    stp.pl = null; stp.wx = e.x; stp.wy = e.y; stp.wz = e.z; stp.t = 0.62; stp.born = performance.now(); stp.cost = bc; stp.dir = best;
     el.stampT.textContent = pf ? 'Perfecto' : 'Bien';
     el.stampS.textContent = hint; el.stampS.hidden = !hint;
     el.stamp.className = 'on ' + (pf ? 'pf' : 'gd');
     stampPlace();
-    if (!STAMP_KF) STAMP_KF = [
-      { opacity: 0, transform: 'translate(-50%,-50%) translateY(6px) scale(.8)' },
-      { opacity: 1, transform: 'translate(-50%,-50%) translateY(-7px) scale(1.07)', offset: 0.14 },
-      { opacity: 1, transform: 'translate(-50%,-50%) translateY(-14px) scale(1)', offset: 0.3 },
-      { opacity: 1, transform: 'translate(-50%,-50%) translateY(-23px) scale(1)', offset: 0.62 },
-      { opacity: 0, transform: 'translate(-50%,-50%) translateY(-30px) scale(.97)' }];
+    stampKF();
     try { if (el.stampIn.animate) el.stampIn.animate(reduceMotion ? STAMP_KF_RM : STAMP_KF, { duration: 600, easing: 'linear', fill: 'both' }); } catch (er) { }
+  }
+  /** 6v6 «¡Pídela!» (sim evento 'ask'): el mismo sello, sobre la cabeza del humano. Aceptado: «¡Aquí!» (el colocador te busca);
+   *  fuera de su ventana (sim askOk): «Ahora no» y por qué (zaguero, colocación ya hecha o saque). */
+  function stampAsk(e, g) {
+    var p = e.player || g.ctrl;
+    if (!p || !ctx.camera || !VB.toThree || !ctx.THREE || !el.stamp) return;
+    if (!_sv) _sv = new ctx.THREE.Vector3();
+    ctx.camera.updateMatrixWorld();
+    var hint = e.ok ? '' : g.mode === 'serve' ? 'tras el saque' : !p.front ? 'en el fondo no rematas' : 'ya han colocado';
+    stp.pl = p; stp.ox = 0; stp.oy = 0; stp.wx = p.x; stp.wy = p.y; stp.wz = (p.z || 0) + 2.5; stp.t = e.ok ? 0.62 : 0.8; stp.born = performance.now(); stp.cost = 0; stp.dir = 0;
+    el.stampT.textContent = e.ok ? '¡Aquí!' : 'Ahora no';
+    el.stampS.textContent = hint; el.stampS.hidden = !hint;
+    el.stamp.className = 'on gd';
+    stampPlace();
+    stampKF();
+    try { if (el.stampIn.animate) el.stampIn.animate(reduceMotion ? STAMP_KF_RM : STAMP_KF, { duration: e.ok ? 600 : 780, easing: 'linear', fill: 'both' }); } catch (er) { }
   }
   var _bp3 = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   /** Cada frame mientras vive: sigue al punto del mundo (la cámara se mueve) con su desplazamiento. */
   function stampPlace() {
+    if (stp.pl) { stp.wx = stp.pl.x; stp.wy = stp.pl.y; stp.wz = (stp.pl.z || 0) + 2.5; }   // «¡Aquí!» (6v6): sigue al jugador
     var C = sproj(stp.wx, stp.wy, stp.wz, _sp);
     if (!C.ok) { el.stamp.className = ''; stp.t = 0; return; }
     stp.x = C.x + stp.ox; stp.y = C.y + stp.oy;
@@ -1486,10 +1512,22 @@
     return 0;
   }
 
+  /** 6v6: un compañero por su puesto (los dorsales no se leen con la cámara de televisión): «el colocador», «el otro receptor»… */
+  var MATE6 = { S: 'el colocador', OPP: 'el opuesto', MB: 'el central', L: 'el líbero', OH: 'el otro receptor' };
+  function mate6(q) { return (q && MATE6[q.role]) || 'tu compañero'; }
+  /** 6v6, consejo cuando el siguiente toque es de un compañero IA (nt: 1 recepción/defensa, 2 colocación, 3 ataque). */
+  function coach6(g, p, nt, gl, touchDev) {
+    var q = g.jobs[0];
+    if (nt === 2) return (q.role === 'S' ? 'Coloca tu colocador' : 'Coloca ' + mate6(q)) + (p.front ? ': prepárate para atacar' + (touchDev ? '' : ' o pide el balón con ' + gl.sw) : ': <b>cubre</b> el ataque');
+    if (nt === 3) return 'Ataca ' + mate6(q) + ': <b>cubre</b> el ataque';
+    return 'Juega ' + mate6(q) + ': a tu sitio';
+  }
   /** Nombres de los equipos en la presentación, la pausa y la hoja final: TÚ / CPU, o los clubes en un partido de Carrera
    *  (g.career de main.js: me/rival = abreviaturas, meName/rivalName = nombres). Solo reescribe al cambiar. */
   function teamNames(cr) {
-    var a = (cr && cr.me) || 'TÚ', b = (cr && cr.rival) || 'CPU', key = a + '|' + b + '|' + (cr ? cr.rivalName : '');
+    // (6v6 con humano, sprint 3: la tarjeta de presentación dice a quién llevas y «Equipo rival» en vez de la pareja)
+    var g6 = ctx && ctx.game && !ctx.game.demo && ctx.game.size === 6 && !cr ? ctx.game : null;
+    var a = (cr && cr.me) || 'TÚ', b = (cr && cr.rival) || 'CPU', key = a + '|' + b + '|' + (cr ? cr.rivalName : '') + '|' + (g6 && g6.ctrl ? g6.ctrl.num : '');
     if (last.tnames === key) return; last.tnames = key;
     var q = function (sel) { return document.querySelector(sel); };
     var txt = function (node, first, v) { // primer/último nodo de texto del elemento (el resto son <b>/<i> con cifras)
@@ -1499,8 +1537,8 @@
     var e;
     if ((e = q('.in-t.t0 b'))) e.textContent = a;
     if ((e = q('.in-t.t1 b'))) e.textContent = b;
-    if ((e = q('.in-t.t0 small'))) e.textContent = cr && cr.meName ? cr.meName : '+ compañero';
-    if ((e = q('.in-t.t1 small'))) e.textContent = cr && cr.rivalName ? cr.rivalName : 'Pareja rival';
+    if ((e = q('.in-t.t0 small'))) e.textContent = cr && cr.meName ? cr.meName : g6 && g6.ctrl ? 'N.º ' + g6.ctrl.num + ', receptor' : '+ compañero';
+    if ((e = q('.in-t.t1 small'))) e.textContent = cr && cr.rivalName ? cr.rivalName : g6 ? 'Equipo rival' : 'Pareja rival';
     txt(q('.p-team.t0'), true, a + ' '); txt(q('.p-team.t1'), false, ' ' + b);
     txt(q('.es-t.t0'), true, a + ' '); txt(q('.es-t.t1'), false, ' ' + b);
   }
@@ -1663,7 +1701,8 @@
         // para la diana (se quita al bajar, antes de golpear)
         coach = tips && svAim(g) && b.vz > 0 && !(down && wp < HINT_ON) ? (touchDev ? 'Apunta la diana con ' + gl.aim : '<b>Apunta la diana</b> con ' + gl.aim + ': con buen timing el saque va exacto') : '';
       } else if (g.mode === 'serve') {
-        coach = !tips ? '' : sv && sv.team === 0 ? 'Saca tu compañero' // modo uno: saca la IA de tu equipo
+        coach = !tips ? '' : g.size === 6 && g.serveNo <= 3 ? (touchDev ? 'Llevas al <b>n.º ' + p.num + '</b>, el receptor' : 'Llevas al <b>n.º ' + p.num + '</b>, el receptor: la IA mueve al resto') // 6v6: a quién llevas (primeros saques)
+          : sv && sv.team === 0 ? (g.size === 6 ? 'Saca ' + mate6(sv) : 'Saca tu compañero') // modo uno: saca la IA de tu equipo (6v6: por su puesto)
           : (touchDev ? 'Saca la CPU · A recibir' : 'Saca la CPU · Prepárate para la <b>recepción</b>');
       } else if (g.mode === 'rally') {
         var w = VB.Sim && VB.Sim.hitWindow ? hw(g, p) : null;
@@ -1689,21 +1728,27 @@
           if (nt === 1) coach = 'Al círculo y ' + gl.hit;
           else if (nt === 2) coach = 'Bajo el balón y ' + gl.hit + ', o salta y ' + gl.jset;
           else if (nt === 3) coach = aim3(g, p) ? 'Apunta con ' + gl.aim : gl.jump + ' y ' + gl.hit + ' arriba';
-          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump : '<b>Defiende</b> el círculo' + (one ? '' : ' (' + gl.sw + ' bloqueas tú)');
+          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? '<b>Bloqueo</b>: a la red y ' + gl.jump
+            : g.size === 6 ? (p.front ? '<b>Retírate</b> a defender' : '<b>Defiende</b> tu zona')
+            : '<b>Defiende</b> el círculo' + (one ? '' : ' (' + gl.sw + ' bloqueas tú)');
         } else if (tips) {
           if (nt === 1) coach = '1r toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al círculo y pulsa ' + gl.hit;
           else if (nt === 2) coach = '2º toque · <b>Colocación</b>: ponte debajo del balón y pulsa ' + gl.hit + '. Si saltas y pulsas ' + gl.jset + ', colocas en el aire';
           else if (nt === 3) coach = aim3(g, p) ? '3r toque · <b>Apunta con ' + gl.aim + '</b> y golpea con ' + gl.hit + ' en lo alto'
             : '3r toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
           else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? 'La CPU va a atacar: frente al atacante, ' + gl.jump + ' para <b>bloquear</b>'
+            : g.size === 6 ? (p.front ? 'La CPU va a atacar: <b>retírate</b> a defender, bloquean tus compañeros' : 'La CPU va a atacar: <b>defiende</b> tu zona del fondo')
             : 'La CPU va a atacar: <b>defiende</b> el círculo, tu compañero bloquea' + (one ? '' : ' (' + gl.sw + ' para bloquear tú)');
         }
         // (táctil con ayudas: el aviso de dos opciones ya lo dice; la línea de arriba repetía lo mismo a la vez)
         if (tips && jr) coach = touchDev ? (help ? '' : gl.hit + ' remata, ' + gl.jset + ' coloca') : 'En el aire, ' + gl.hit + ' <b>remata</b> y ' + gl.jset + ' <b>coloca en salto</b> a tu compañero';
         // modo uno: el siguiente toque es del compañero IA (no del humano): solo prepararse
-        if (tips && one && nt > 0 && g.jobs && g.jobs[0] && g.jobs[0] !== p) coach = nt === 2 ? 'Coloca tu compañero: prepárate para atacar' : 'Juega tu compañero: colócate';
+        if (tips && one && nt > 0 && g.jobs && g.jobs[0] && g.jobs[0] !== p) coach = g.size === 6 ? coach6(g, p, nt, gl, touchDev)
+          : nt === 2 ? 'Coloca tu compañero: prepárate para atacar' : 'Juega tu compañero: colócate';
         if (bodyTipT > 0 && tips && !touchDev) coach = 'Pulsa ' + gl.hit + ' antes de que llegue el balón';
         if (guideOn(g) && !(one && g.jobs && g.jobs[0] && g.jobs[0] !== p)) guideCheck(g, p, w, nt, gl);
+        // 6v6: si el balón pasa a un compañero (o es el rival quien ataca), la tarjeta guiada del humano se va ya
+        if (g.size === 6 && guideT > 0.3 && el.guide.className === 'show' && !(g.jobs && g.jobs[0] === p)) guideHide();
       }
     }
     if (!help && pcls.indexOf('go') >= 0) { pk = ''; } // sin ayudas: solo el aviso de saque
@@ -2188,7 +2233,10 @@
     var win = e.team === 0, T = stats.t;
     var isNew = false, career = !!(ctx.game && ctx.game.career && !ctx.game.demo);
     var watch = !!(ctx.game && ctx.game.watch && !ctx.game.demo);   // 6v6 espectador: tampoco cuenta
-    if (!ctx.debug && !career && !watch) {   // los partidos de Carrera no cuentan para el récord de Partido rápido
+    // 6v6 con humano (sprint 3): tampoco. El récord (y con él el fin de los consejos a la 1ª victoria, el novato de main.js
+    // isRookie y la guía del primer partido) es del 2 contra 2; el 6v6 lo arrastra su equipo IA
+    var six = !!(ctx.game && ctx.game.size === 6 && !ctx.game.demo);
+    if (!ctx.debug && !career && !watch && !six) {   // los partidos de Carrera no cuentan para el récord de Partido rápido
       record.played++; if (win) { record.wins++; record.winRun++; } else record.winRun = 0;
       // los consejos del partido acompañan hasta la primera victoria; luego se apagan (se reactivan en Ajustes · Juego · Consejos)
       if (win && record.wins === 1 && ctx.settings.coachTips !== false) ctx.actions.setSetting('coachTips', false);
@@ -2215,7 +2263,7 @@
     });
     el.endStats.innerHTML = html;
     var rec = '<span>Jugada más larga: <b>' + stats.longest + ' toques</b></span>';
-    if (!ctx.debug && !career) rec += '<span>Partidos ganados: <b>' + record.wins + ' de ' + record.played + '</b></span>';
+    if (!ctx.debug && !career && !six) rec += '<span>Partidos ganados: <b>' + record.wins + ' de ' + record.played + '</b></span>';
     var bs = record.bestStreak;
     if (isNew) rec += '<span class="new">¡Nueva mejor racha: ' + (bs === 1 ? '1 punto seguido' : bs + ' puntos seguidos') + '!</span>';
     else if (record.winRun > 1 && !career) rec += '<span class="new">' + record.winRun + ' victorias seguidas</span>';
@@ -2225,8 +2273,8 @@
     el.btnAgainAlt.hidden = alt < 0;
     if (alt >= 0) { el.btnAgainAlt.textContent = 'Revancha en ' + OPT.difficulty.labels[alt]; el.btnAgainAlt.setAttribute('data-d', OPT.difficulty.vals[alt]); }
     // «Cambiar opciones»: al menú, directo a la preparación del Partido rápido (dificultad, puntos, control, escenario). En la
-    // Carrera no (main.js careerEndSheet esconde además «Revancha en…»); en el 6v6 de pruebas tampoco (no tiene preparación)
-    var noOpts = !!career || !!(ctx.game && ctx.game.size === 6);
+    // Carrera no (main.js careerEndSheet esconde además «Revancha en…»); en el 6v6 espectador de pruebas (?format=6v6) tampoco
+    var noOpts = !!career || !!(ctx.game && ctx.game.watch);   // (6v6 humano, sprint 3: sí, vuelve a la preparación con Formato 6 contra 6)
     if (el.btnEndOpts) { el.btnEndOpts.hidden = noOpts; el.btnEndOpts.parentNode.setAttribute('data-n', String((alt >= 0 && !career ? 1 : 0) + (noOpts ? 0 : 1) + 1)); }
     // (partido de Carrera, g.career: la experiencia y las insignias de su atleta las reparte VB.Career.matchDone, no el escuadrón)
     // (6v6 de pruebas, ?format=6v6: tampoco reparte al escuadrón de 2v2)
@@ -2506,9 +2554,16 @@
     uiSound('start'); goMatch();
   }
   /** Al partido (menú, revancha, tutorial): bajo la cortinilla de marca (UI-13). */
-  function goMatch(diff) {
-    if (!wipeRun(2, function () { if (diff) ctx.actions.setSetting('difficulty', diff); ctx.actions.startMatch(); }) && !wp.cb) ctx.actions.startMatch();
+  //  fmt ('2v2' | '6v6', sin guardarlo en el ajuste): desde un partido (revancha, reiniciar) repite el formato del que acaba; desde
+  //  el menú manda el ajuste «Formato» (salvo el tutorial, que enseña el 2 contra 2). El 6v6 espectador (?format=6v6) y la Carrera
+  //  siguen sin formato: main.js startMatch los resuelve como siempre
+  function goMatch(diff, fmt) {
+    if (fmt === undefined && ctx.state !== 'menu') fmt = curFmt();
+    var o = fmt ? { format: fmt } : undefined;
+    if (!wipeRun(2, function () { if (diff) ctx.actions.setSetting('difficulty', diff); ctx.actions.startMatch(o); }) && !wp.cb) ctx.actions.startMatch(o);
   }
+  /** Formato del partido en curso (para repetirlo), o undefined (sin partido humano de Partido rápido). */
+  function curFmt() { var g = ctx.game; return g && !g.demo && !g.watch && !g.career ? (g.size === 6 ? '6v6' : '2v2') : undefined; }
   function goMenu() { if (!wipeRun(2, function () { ctx.actions.toMenu(); }) && !wp.cb) ctx.actions.toMenu(); }
   /** Hoja final → «Cambiar opciones»: al menú y directo a la preparación del Partido rápido (Volver lleva a Jugar y luego a la portada). */
   function goOptions() {
@@ -2570,7 +2625,9 @@
   function ctlRows(dv) {
     var R = ctlRowsAll(dv);
     // modo «Control: Uno»: no hay cambio de jugador (ni tecla, ni botón ⇄)
-    if (oneMode()) R = R.filter(function (r) { return r[1] !== 'Cambiar jugador'; });
+    // 6v6 (sprint 3): el mismo botón pide el balón al colocador («¡Pídela!»)
+    if (fmt6()) R = R.map(function (r) { return r[1] === 'Cambiar jugador' ? [r[0], 'Pedir el balón <small>(antes de la colocación)</small>'] : r; });
+    else if (oneMode()) R = R.filter(function (r) { return r[1] !== 'Cambiar jugador'; });
     return R;
   }
   function ctlRowsAll(dv) {
@@ -2596,7 +2653,8 @@
     for (var j = 0; j < R.length; j++) h += '<div><dt>' + R[j][0] + '</dt><dd>' + R[j][1] + '</dd></div>';
     el.ctlGrid.innerHTML = h;
     var note = el.pnCtl.querySelector('.ctl-note');
-    if (note) note.innerHTML = oneMode() ? '<b>Arriba</b> es siempre hacia la red. Llevas siempre al <b>n.º ' + oneNum() + '</b> y la IA a tu compañero. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.'
+    if (note) note.innerHTML = fmt6() ? '<b>Arriba</b> es siempre hacia la red. En el 6 contra 6 llevas al <b>receptor</b> (n.º ' + sixNum() + ') y la IA al resto. Si sueltas la dirección, vuelve solo a su sitio. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.'
+      : oneMode() ? '<b>Arriba</b> es siempre hacia la red. Llevas siempre al <b>n.º ' + oneNum() + '</b> y la IA a tu compañero. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.'
       : '<b>Arriba</b> es siempre hacia la red. El control pasa solo a quien da el siguiente toque. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.';
     if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
   }
@@ -2634,6 +2692,8 @@
     // estrechas «jugadores» (.cv-x) se oculta por CSS y queda «Controlar ‹ a los dos ›»
     ctrlMode: { vals: ['both', 'one'], labels: ['A los dos<span class="cv-x"> jugadores</span>', 'Un jugador'], desc: ['Controlar a los dos jugadores', 'Controlar un jugador'] },
     coachTips: { vals: [true, false], labels: ['Sí', 'No'] },
+    // formato del Partido rápido (sprint 3 del 6v6; main.js ctx.settings.format): 2 contra 2 o 6 contra 6 (llevas al receptor, en el pabellón)
+    format: { vals: ['2v2', '6v6'], labels: ['2 contra 2', '6 contra 6'] },
     // Equipación (Ajustes · Equipación): muestras de color; players.js setKit deriva el resto de tonos
     kitShirt: { vals: [0xff5a2c, 0xd8262e, 0xf2c230, 0x1f9a4a, 0x32b5e8, 0x7b3fd1, 0x22252c, 0xf2f4f8], labels: ['<i class="sw" style="background:#ff5a2c" title="Naranja"></i>', '<i class="sw" style="background:#d8262e" title="Rojo"></i>', '<i class="sw" style="background:#f2c230" title="Amarillo"></i>', '<i class="sw" style="background:#1f9a4a" title="Verde"></i>', '<i class="sw" style="background:#32b5e8" title="Celeste"></i>', '<i class="sw" style="background:#7b3fd1" title="Morado"></i>', '<i class="sw" style="background:#22252c" title="Negro"></i>', '<i class="sw" style="background:#f2f4f8" title="Blanco"></i>'] },
     kitAccent: { vals: [0xffb238, 0xffffff, 0x1a1c22, 0xd9a520, 0x8fd3ff, 0xff4040], labels: ['<i class="sw" style="background:#ffb238" title="Ámbar"></i>', '<i class="sw" style="background:#ffffff" title="Blanco"></i>', '<i class="sw" style="background:#1a1c22" title="Negro"></i>', '<i class="sw" style="background:#d9a520" title="Dorado"></i>', '<i class="sw" style="background:#8fd3ff" title="Celeste"></i>', '<i class="sw" style="background:#ff4040" title="Rojo"></i>'] },
@@ -2682,12 +2742,27 @@
     if (g && !g.demo && g.ctrl && g.ctrlMode === 'one' && ctx.state !== 'menu') return g.ctrl.num;
     return teamNums()[0];
   }
+  /** ¿6 contra 6? En partido manda el partido (g.size); en el menú, el ajuste «Formato». */
+  function fmt6() {
+    var g = ctx && ctx.game;
+    if (g && !g.demo && (ctx.state === 'playing' || ctx.state === 'paused' || ctx.state === 'over')) return g.size === 6;
+    return ctx.settings.format === '6v6';
+  }
+  /** Puesto del humano en 6v6 (sim g.ctrlRole; v1 siempre el receptor). */
+  var ROLE_NAME = { OH: 'Receptor', S: 'Colocador', OPP: 'Opuesto', MB: 'Central', L: 'Líbero' };
+  /** Dorsal del humano en 6v6: el de su jugador en partido; en el menú, el del receptor (n.º 2, sim ROLES6 + ctrlRole 'OH'). */
+  function sixNum() { var g = ctx && ctx.game; return g && !g.demo && g.size === 6 && g.ctrl && ctx.state !== 'menu' ? g.ctrl.num : 2; }
+  function roleName() { var g = ctx && ctx.game; return ROLE_NAME[(g && !g.demo && g.ctrlRole) || 'OH'] || 'Receptor'; }
   function optIndex(k) {
     var o = OPT[k], v = ctx.settings[k]; for (var i = 0; i < o.vals.length; i++) if (o.vals[i] === v) return i; return k === 'difficulty' ? 1 : 0; }
   var SLIDERS = { camSens: { min: 0.5, max: 1.5, def: 1 }, sfxVol: { min: 0, max: 1, def: 1 }, musicVol: { min: 0, max: 1, def: 0.75 } };
   function slVal(k) { var c = SLIDERS[k], v = +ctx.settings[k]; return isFinite(v) ? Math.max(c.min, Math.min(c.max, v)) : c.def; }
   function changeOpt(k, d, absIdx, arrowDir) {
-    if (k === 'setPoints' && menuVenue() === 'beach') { // playa: 21 / 15 fijos (el aviso lo da el rebote del valor)
+    if ((k === 'arena' || k === 'ctrlMode') && fmt6()) { // 6v6: siempre pabellón y siempre el receptor (el rebote avisa)
+      var lv = k === 'arena' ? el.venueVal : el.ctrlVal; if (lv) restartAnim(lv.parentNode, (arrowDir || d) < 0 ? 'sl-r' : 'sl-l'); uiSound2('arrowEdge', arrowDir || d || 1);
+      return;
+    }
+    if (k === 'setPoints' && menuVenue() === 'beach' && !fmt6()) { // playa: 21 / 15 fijos (el aviso lo da el rebote del valor)
       if (el.ptsVal) restartAnim(el.ptsVal.parentNode, (arrowDir || d) < 0 ? 'sl-r' : 'sl-l'); uiSound2('arrowEdge', arrowDir || d || 1);
       return;
     }
@@ -2731,6 +2806,7 @@
   /** Escenario que se verá al jugar: el montado en arena (manda ?map= al arrancar) o, sin arena, el ajuste. */
   function menuVenue() { var v = VB.Arena && VB.Arena.venue ? VB.Arena.venue() : ctx.settings.arena; return v === 'beach' ? 'beach' : 'hall'; }
   var lastCtrlI = -1;
+  var lastFmtI = -1;
   var lastDiffI = -1;
   function renderOpts() {
     var segs = document.querySelectorAll('[data-seg]');
@@ -2762,17 +2838,28 @@
     for (var n = 0; n < el.diffLvl.children.length; n++) el.diffLvl.children[n].classList.toggle('on', n <= di);
     // menú: puntos por set (misma fila que la dificultad, sin barras de nivel)
     // menú: escenario (04, Pabellón / Playa; el mismo ajuste `arena` que Ajustes · Imagen · Escenario)
-    var vi = OPT.arena.vals.indexOf(menuVenue()), vb = vi === 1;
+    // menú: formato (2 contra 2 / 6 contra 6). En 6v6, Escenario (siempre el pabellón) y Controlar (el receptor) quedan fijos
+    var fi = optIndex('format'), six = fi === 1;
+    if (el.fmtVal && el.fmtVal.textContent !== OPT.format.labels[fi]) {
+      el.fmtVal.textContent = OPT.format.labels[fi];
+      if (lastFmtI >= 0) { var fv = el.fmtVal.parentNode; fv.classList.remove('sl-l', 'sl-r'); void fv.offsetWidth; fv.classList.add(fi > lastFmtI ? 'sl-r' : 'sl-l'); }
+      el.optFmt.setAttribute('aria-label', 'Formato: ' + OPT.format.labels[fi]);
+    }
+    lastFmtI = fi;
+    var fas = el.optFmt ? el.optFmt.querySelectorAll('.arr') : [];
+    if (fas.length === 2) { fas[0].classList.toggle('end', fi === 0); fas[1].classList.toggle('end', fi === OPT.format.vals.length - 1); }
+    var vi = six ? 0 : OPT.arena.vals.indexOf(menuVenue()), vb = vi === 1;
     if (vi < 0) vi = 0;
+    if (el.optVenue) el.optVenue.classList.toggle('lock', six);
     if (el.venueVal && el.venueVal.textContent !== OPT.arena.labels[vi]) {
       el.venueVal.textContent = OPT.arena.labels[vi];
       if (lastVenueI >= 0) { var vv = el.venueVal.parentNode; vv.classList.remove('sl-l', 'sl-r'); void vv.offsetWidth; vv.classList.add(vi > lastVenueI ? 'sl-r' : 'sl-l'); }
-      el.optVenue.setAttribute('aria-label', 'Escenario: ' + OPT.arena.labels[vi] + ' (' + venueName(OPT.arena.vals[vi]) + (vb ? ', reglas de vóley playa' : '') + ')');
+      el.optVenue.setAttribute('aria-label', 'Escenario: ' + OPT.arena.labels[vi] + ' (' + venueName(OPT.arena.vals[vi]) + (vb ? ', reglas de vóley playa' : six ? ', el 6 contra 6 es de pabellón' : '') + ')');
       el.optVenue.title = vb ? 'Platja Llarga, vóley playa: pista de 16 × 8, sets a 21 (el 3r a 15) y cambio de campo cada 7 puntos' : 'Palau del Mar, pista cubierta de 18 × 9';
     }
     lastVenueI = vi;
     var vas = el.optVenue ? el.optVenue.querySelectorAll('.arr') : [];
-    if (vas.length === 2) { vas[0].classList.toggle('end', vi === 0); vas[1].classList.toggle('end', vi === OPT.arena.vals.length - 1); }
+    if (vas.length === 2) { vas[0].classList.toggle('end', six || vi === 0); vas[1].classList.toggle('end', six || vi === OPT.arena.vals.length - 1); }
     var pi = optIndex('setPoints'), ptxt = vb ? BEACH_PTS : OPT.setPoints.labels[pi];
     el.optPts.classList.toggle('lock', vb);
     var ptl = vb ? 'Puntos por set: 21, y el tercer set a 15 (reglas de vóley playa; se elige en Pabellón)' : 'Puntos por set: ' + OPT.setPoints.labels[pi];
@@ -2786,23 +2873,27 @@
     if (pas.length === 2) { pas[0].classList.toggle('end', vb || pi === 0); pas[1].classList.toggle('end', vb || pi === OPT.setPoints.vals.length - 1); }
     // menú: control (los dos / uno), misma fila que los puntos
     var ci = optIndex('ctrlMode'), tn = teamNums();
-    var cd = OPT.ctrlMode.desc[ci] + (ci > 0 ? ' (el n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] + ')' : '');
+    var cd = six ? 'Controlar al receptor (la IA lleva al resto del equipo)' : OPT.ctrlMode.desc[ci] + (ci > 0 ? ' (el n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] + ')' : '');
+    var cl = six ? roleName() : OPT.ctrlMode.labels[ci];
+    el.optCtrl.classList.toggle('lock', six);
     if (el.optCtrl.title !== cd) { el.optCtrl.title = cd; el.optCtrl.setAttribute('aria-label', 'Control: ' + cd); }
-    if (el.ctrlVal.innerHTML !== OPT.ctrlMode.labels[ci]) {
-      el.ctrlVal.innerHTML = OPT.ctrlMode.labels[ci];
+    if (el.ctrlVal.innerHTML !== cl) {
+      el.ctrlVal.innerHTML = cl;
       if (lastCtrlI >= 0) { var cv = el.ctrlVal.parentNode; cv.classList.remove('sl-l', 'sl-r'); void cv.offsetWidth; cv.classList.add(ci > lastCtrlI ? 'sl-r' : 'sl-l'); }
     }
     lastCtrlI = ci;
     var cas = el.optCtrl.querySelectorAll('.arr');
-    if (cas.length === 2) { cas[0].classList.toggle('end', ci === 0); cas[1].classList.toggle('end', ci === OPT.ctrlMode.vals.length - 1); }
+    if (cas.length === 2) { cas[0].classList.toggle('end', six || ci === 0); cas[1].classList.toggle('end', six || ci === OPT.ctrlMode.vals.length - 1); }
     // pastillas (CSS .mi.primary .mi-s .chip; el nivel en amarillo); el lector lee «Partido rápido, Normal, Sets a 25»
-    setSep(el.playSub, [vb ? 'Playa' : 'Pabellón', { t: OPT.difficulty.labels[di], c: 'hi' }, vb ? 'Sets a 21' : 'Sets a ' + OPT.setPoints.vals[pi], ci > 0 ? 'Solo el n.º ' + tn[0] : 'A los dos'], 'c');
-    el.optCtrl.classList.toggle('one', ci > 0);
+    setSep(el.playSub, six ? ['6 contra 6', { t: OPT.difficulty.labels[di], c: 'hi' }, 'Sets a ' + OPT.setPoints.vals[pi], roleName()]
+      : [vb ? 'Playa' : 'Pabellón', { t: OPT.difficulty.labels[di], c: 'hi' }, vb ? 'Sets a 21' : 'Sets a ' + OPT.setPoints.vals[pi], ci > 0 ? 'Solo el n.º ' + tn[0] : 'A los dos'], 'c');
+    el.optCtrl.classList.toggle('one', ci > 0 && !six);
     // Partido rápido: una línea de ayuda bajo cada fila (con Playa, Puntos explica las reglas de playa)
-    setText(el.venueHelp, 'vh', vb ? 'Platja Llarga, vóley playa en pista de 16 × 8' : 'Palau del Mar, pista cubierta de 18 × 9');
+    setText(el.fmtHelp, 'fh', six ? 'Equipos completos: llevas al receptor' : 'Tú y tu compañero contra la CPU');
+    setText(el.venueHelp, 'vh', six ? 'El 6 contra 6 se juega en el pabellón' : vb ? 'Platja Llarga, vóley playa en pista de 16 × 8' : 'Palau del Mar, pista cubierta de 18 × 9');
     setText(el.diffHelp, 'dh', DIFF_HELP[di] || 'Nivel de la CPU');
     setText(el.ptsHelp, 'ph', vb ? 'Reglas de playa: sets a 21 y el 3r a 15' : 'Al mejor de 3 sets; el 3r, a ' + Math.min(15, OPT.setPoints.vals[pi]));
-    setText(el.ctrlHelp, 'ch', ci > 0 ? 'Llevas al n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] : 'El control pasa a quien va a tocar');
+    setText(el.ctrlHelp, 'ch', six ? 'Llevas al receptor (n.º ' + sixNum() + '); la IA mueve al resto' : ci > 0 ? 'Llevas al n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] : 'El control pasa a quien va a tocar');
   }
   /** Una línea por nivel de dificultad (fila Dificultad de Partido rápido). */
   var DIFF_HELP = ['Para empezar: la CPU saca suave y falla más', 'Un rival equilibrado', 'Ataca fuerte y defiende casi todo', 'Casi no falla: solo para expertos'];
@@ -3047,7 +3138,7 @@
   function tutNext() {
     if (tut.i < TUT.length - 1) { tutGo(tut.i + 1); click(); return; }
     var from = panelFrom; uiSound(from === 'menu' ? 'start' : 'back'); closePanel();
-    if (from === 'menu') goMatch();
+    if (from === 'menu') goMatch(null, '2v2');   // el tutorial enseña el 2 contra 2: su partido también lo es
   }
 
   // =====================================================================
@@ -3067,7 +3158,7 @@
     if (panel === 'squad' && a && a.getAttribute && a.getAttribute('data-bd')) { navMove(d > 0 ? 1 : -1); return true; } // rejilla de insignias: ←/→ = vecina
     return false;
   }
-  /** ←/→ entre las tarjetas de Jugar: la vecina activa (la 6v6 «Próximamente» está deshabilitada); en el borde, se queda. */
+  /** ←/→ entre las tarjetas de Jugar: la vecina activa (las deshabilitadas se saltan); en el borde, se queda. */
   function modeStep(a, d) {
     var L = Array.prototype.filter.call(el.mpPlay ? el.mpPlay.querySelectorAll('.mode') : [], function (m) { return !m.disabled && !m.closest('[hidden]'); });
     var i = L.indexOf(a), j = Math.max(0, Math.min(L.length - 1, i + (d > 0 ? 1 : -1)));
@@ -3176,7 +3267,9 @@
       });
       // menús v2: JUGAR → modos; Partido rápido → preparación; ¡A JUGAR! → partido (la Carrera la abre career-ui.js en #btnCareer)
       el.btnPlay.addEventListener('click', function () { menuGo('play'); });
-      if (el.btnQuick) el.btnQuick.addEventListener('click', function () { menuGo('quick'); });
+      // tarjeta Partido rápido: la preparación SIEMPRE en 2 contra 2 (la tarjeta 6 contra 6 deja el formato en 6v6; sin esto, mirar
+      // esa tarjeta y volver dejaba el Partido rápido en 6v6). Dentro, la fila Formato se puede cambiar igual
+      if (el.btnQuick) el.btnQuick.addEventListener('click', function () { if (ctx.settings.format !== '2v2') ctx.actions.setSetting('format', '2v2'); menuGo('quick'); });
       if (el.btnGo) el.btnGo.addEventListener('click', play);
       [el.btnPlayBack, el.btnQuickBack].forEach(function (b) { if (b) b.addEventListener('click', function () { menuBack(); }); });
       if (el.sqPick) el.sqPick.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-pick]') : null; if (b) sqPick(+b.getAttribute('data-pick'), b.classList.contains('kf') ? true : null); });
@@ -3199,12 +3292,19 @@
         if (a) { stepOpt('arena', +a.getAttribute('data-d'), el.venueVal); restartAnim(a, 'hit'); }
         else changeOpt('arena', 1);
       });
+      if (el.optFmt) el.optFmt.addEventListener('click', function (ev) {
+        var a = ev.target && ev.target.closest ? ev.target.closest('[data-d]') : null;
+        if (a) { stepOpt('format', +a.getAttribute('data-d'), el.fmtVal); restartAnim(a, 'hit'); }
+        else changeOpt('format', 1);
+      });
+      // tarjeta 6 contra 6 de Jugar: la preparación del Partido rápido con el formato ya en 6 contra 6
+      if (el.btn6v6) el.btn6v6.addEventListener('click', function () { ctx.actions.setSetting('format', '6v6'); menuGo('quick'); });
       el.optCtrl.addEventListener('click', function (ev) {
         var a = ev.target && ev.target.closest ? ev.target.closest('[data-d]') : null;
         if (a) { stepOpt('ctrlMode', +a.getAttribute('data-d'), el.ctrlVal); restartAnim(a, 'hit'); }
         else changeOpt('ctrlMode', 1);
       });
-      var arrs = document.querySelectorAll('#optDiff .arr, #optVenue .arr, #optPts .arr, #optCtrl .arr');
+      var arrs = document.querySelectorAll('#optFmt .arr, #optDiff .arr, #optVenue .arr, #optPts .arr, #optCtrl .arr');
       for (var ai = 0; ai < arrs.length; ai++) arrs[ai].addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') uiSound2('arrowHover', +this.getAttribute('data-d') || 1); });
       on(el.btnTut, function () { openPanel('tut', 'menu'); });
       on(el.btnControls, function () { openPanel('ctl', 'menu'); });

@@ -46,6 +46,11 @@
     pen2: { S: -0.8, L: 0, OH: 0.15, MB: 0.2, OPP: 0.1 }
   };
 
+  // humano en 6v6 (control Uno, sprint 3): área de responsabilidad del 1r toque (m) y su sesgo (s); sesgo general del 1r toque;
+  // «¡mía!» (pulsa GOLPEAR con el balón a menos de mine m del punto de toque: se lo queda); «¡Pídela!» (CAMBIAR: peso ×ask en
+  // chooseSet durante askT s); peso extra del humano como atacante (más toques por rally: objetivo ≥ 0,7, diseño §1.5)
+  var HUM = { area: 1.5, resp: 0.25, bias: 0.12, mine: 1.6, ask: 2.5, askT: 3, atkW: 1.3 };
+
   var _tg = { x: 0, y: 0, attack: false, block: false };
   function setTg(x, y, attack, block) { _tg.x = x; _tg.y = y; _tg.attack = !!attack; _tg.block = !!block; return _tg; }
   /** Objetivo en coordenadas locales del equipo t. */
@@ -64,8 +69,12 @@
   }
   /** Penalización (s) del puesto para el toque n (0 = 1r toque del equipo, 1 = 2º, 2 = 3r). */
   function rolePen(g, t, q, n, pr) {
-    // humano (control Uno en 6v6, aún sin ayudas: sprint 3): solo va si nadie llega claramente antes
-    if (S.isHuman(g, q)) return 0.4;
+    // humano (control Uno, sprint 3, §1.5 «quién toca»): un candidato más con su puesto, y en el 1r toque su «área de
+    // responsabilidad»: con el balón a menos de HUM.area m de él es suyo aunque un compañero llegue algo antes (HUM.resp s)
+    if (S.isHuman(g, q)) return rolePenAI(g, t, q, n, pr) - (n === 0 ? (Math.hypot(pr.x - q.x, pr.y - q.y) < HUM.area ? HUM.resp : HUM.bias) : 0);
+    return rolePenAI(g, t, q, n, pr);
+  }
+  function rolePenAI(g, t, q, n, pr) {
     if (n === 0) { var a = FORM.pen1[q.role] || 0; return q.role === 'MB' || q.role === 'OPP' ? (q.front ? a : 0) : a; }
     if (n === 1) {
       if (q.role === 'L') return Math.abs(pr.x) < C.ATTACK + 0.3 ? 0.6 : 0; // el líbero de dedos delante de 3 m anula el ataque por arriba
@@ -90,6 +99,13 @@
     if (pl && pl.to && pl.t === g.lastTouchT && pl.to !== excl && !pl.to.bench) return pl.to;
     var mem = g.jobMem && g.jobMemT[t] === g.lastTouchT ? g.jobMem[t] : null;
     if (mem === excl || (mem && mem.bench)) mem = null;
+    // «¡mía!» (§1.5): el humano pulsa GOLPEAR cerca del punto de toque y le da tiempo a llegar: el balón es suyo
+    var hu = t === 0 ? g.ctrl : null;
+    if (hu && hu !== excl && g.swingLive && S.isHuman(g, hu) && Math.hypot(pr.x - hu.x, pr.y - hu.y) < HUM.mine && jobCost(g, hu, pr) < pr.t + 0.2) {
+      if (mem !== hu) g.jobSwT[t] = g.time;
+      g.jobMem[t] = hu; g.jobMemT[t] = g.lastTouchT;
+      return hu;
+    }
     var best = null, bc = 1e9, cm = 1e9;
     for (var i = 0; i < tm.length; i++) {
       var q = tm[i]; if (q === excl) continue;
@@ -265,10 +281,12 @@
     _cand.length = 0; _w.length = 0;
     var sum = 0;
     for (var i = 0; i < tm.length; i++) {
-      var q = tm[i]; if (q === p || !canAttack(q) || q.role === 'S' || S.isHuman(g, q)) continue; // (humano: sprint 3, «¡Pídela!»)
+      var q = tm[i]; if (q === p || !canAttack(q) || q.role === 'S') continue;
       var tempo = q.role === 'MB' ? 'quick' : q.role === 'OPP' ? 'shoot' : 'high';
       if (tempo === 'quick' && !inSys) continue;
       var T = FORM.set[tempo], ty = tempo === 'quick' ? clamp(ylOf(p) - 1.0, -2.5, 2.5) : T.yl, Y = sd * ty, w = FORM.setW[q.role] || 0.5;
+      // humano delantero (sprint 3): un atacante más, algo preferido; con «¡Pídela!» reciente, mucho más
+      if (S.isHuman(g, q)) w *= HUM.atkW * (g.time - g.ask6 < HUM.askT ? HUM.ask : 1);
       for (var k = 0; k < opp.length; k++) { var o = opp[k]; if (o.front && Math.abs(o.x) < 2 && Math.abs(o.y - Y) < 1.3) w *= 0.7; }
       _cand.push(q); _w.push(w); sum += w;
     }
@@ -292,5 +310,5 @@
   }
 
   VB.AI6 = { computeJob: computeJob, pos: pos, placeServe: placeServe, passTarget: passTarget, chooseSet: chooseSet,
-    blockPlan: blockPlan, digK: digK, canAttack: canAttack, setterOf: setterOf, FORM: FORM };
+    blockPlan: blockPlan, digK: digK, canAttack: canAttack, setterOf: setterOf, FORM: FORM, HUM: HUM };
 })();

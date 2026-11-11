@@ -1194,3 +1194,37 @@ Solo 2v2 (todo con `!g.rot`; 6v6 y `ai6.js` sin tocar). Huella 2v2 regenerada a 
 - **simtest falla en 3 comprobaciones** (no es mío el fichero; ver informe al integrador): «(f) CPU contra CPU sin colocación en salto»
   (ya no es cierto, a propósito) y «Cañón» / «Manos de seda» con 8 semillas (estadística frágil: con 32 semillas el código anterior
   daba seda +0,82 y con 8 a veces menos de 0,7; la escena fija da +1,2 m/s exactos con y sin el cambio).
+
+## 6v6, sprint 3: humano (11-nov-2026) — sim
+Diseño: notes/diseno-6v6-carrera.md §1.5. Todo va detrás de `g.rot` / `g.size === 6`: la huella 2v2 sigue idéntica (150 partidas,
+572 632 llamadas a `g.rng`) y el 6v6 CPU contra CPU da exactamente lo mismo que antes (1289 puntos, side-out 63,2 %).
+- **sim.js `createGame`**: `opts.ctrlRole` ('OH'; `CTRL_ROLES6` = ['OH'], lo que no esté ahí cae a 'OH') → `g.ctrlRole`; `g.ctrl` = el primer
+  jugador del equipo 0 con ese puesto (OH1, dorsal 2: está siempre en pista, el líbero solo sustituye al central). En 6v6 sin `demo`,
+  `g.ctrlMode` es siempre 'one' (el diseño: en 6v6 el control es Uno; NO pasa al que va al balón). `g.assist6` (Fácil/Normal), `g.ask6`.
+- **sim.js `step`**: con control 'one' en 6v6, CAMBIAR (`input.switchPlayer`) guarda `g.ask6 = g.time` («¡Pídela!»). El humano en el suelo se
+  mueve con `assist6(g, p, ml)` antes que con `assistMove`: sin stick (|move| ≤ 0,15) va a `VB.AI6.pos(g, p)` (recepción, cobertura,
+  carrera de batida, bloqueo de zona, defensa perímetro) a la velocidad de la IA; al balón que es suyo (`g.jobs[0] === p`) solo si
+  `g.assist6` (en Difícil/Experto lo persigue él, queda la ayuda corta de `assistMove`). Con stick, manda el jugador.
+- **sim.js `updateDefense`**: en 6v6 `g.defRole` = 'block' si el humano es uno de los bloqueadores de `VB.AI6.blockPlan(g, 0)`, si no 'dig'
+  (sin cambios de control). Solo lo leen la UI (consejos) y el bot de simtest.
+- **sim.js `hit`** (colocación en salto): en 6v6 y 2º toque, el destino lateral sale de `VB.AI6.chooseSet` (deja `g.setPlan`: el atacante
+  elegido va a por el 3r toque y el bloqueo rival lo lee); antes iba al «compañero más cercano».
+- **ai6.js**: `HUM = {area 1.5, resp 0.25, bias 0.12, mine 1.6, ask 2.5, askT 3, atkW 1.3}` (exportado en `VB.AI6.HUM`).
+  `rolePen` del humano = la del puesto − `resp` en el 1r toque si el balón cae a menos de `area` m de él (− `bias` si no). `computeJob`:
+  «¡mía!» = el humano con el gesto en curso (`g.swingLive`) a menos de `mine` m del punto de toque y con tiempo de llegar se queda el balón
+  (no roba el 3r toque que el colocador ya dio a otro). `chooseSet`: el humano delantero entra como atacante (peso ×`atkW`, y ×`ask` con
+  «¡Pídela!» en los últimos `askT` s).
+- **Medido** (simtest «6v6 con humano», bot de la matriz que suelta el stick sin balón): novato en Fácil 74 puntos, gana el 44,6 %, 0,62
+  toques por rally; medio en Normal 70 puntos, 58,6 %, 0,76 toques por rally (objetivo del diseño 0,7 como OH); el colocador le da 21-23
+  balones por 3 partidas de 6 min; saca 5-8 veces con la rotación; 0 eventos `switch`. «¡Pídela!»: 300 colocaciones de prueba, 211 → 247
+  al humano.
+- **Pendiente**: falta de posición del humano (hoy no puede solaparse: durante el saque rival nadie se mueve) e «imán»; otros puestos
+  (colocador humano v2: la dirección del stick elige destino); pocos remates del humano zaguero (sin «pipe»); equilibrio (el equipo 0 juega
+  con `DIFF.mate`, gana mucho al medio en Fácil: 72 % el bueno).
+
+### Correcciones de la revisión del sprint 3 (11-nov-2026) — sim
+- **`askOk(g)`** (nuevo, exportado en `VB.Sim`): «¡Pídela!» solo vale en el peloteo, con el humano delantero (no líbero) y antes de que su
+  equipo coloque (`!(touchTeam 0 y touches ≥ 2)` y `!atkPhase(g, 0)`). `step`: CAMBIAR en 6v6 guarda `g.ask6` solo si `askOk`, y emite
+  siempre `{type:'ask', player, ok}` (también durante el saque, con ok false). Sin azar: el 6v6 CPU y la huella 2v2 no cambian.
+- simtest «6v6 con humano» (d) prueba ahora las dos ramas: guarda `g.ask6` y emite 'ask' ok en su ventana; fuera (saque, zaguero) no
+  guarda nada y emite 'ask' sin ok (153 «Ahora no» en la prueba).

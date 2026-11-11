@@ -1698,6 +1698,8 @@
   var CALL_T = 0.42;
   function callGesture(g, r, P, hw, job, air, tm) {
     var p = r.p, ca = tm - r.callT;
+    // 6v6: «¡Pídela!» aceptado (sim g.ask6, askOk): el humano levanta el brazo como en el «¡Mía!» (ui.js pone el «¡Aquí!»)
+    if (g.rot && p === g.ctrl && g.ask6 > r.callT) { r.callT = g.ask6; ca = tm - r.callT; }
     if (job && hw && !air && !(p.down > 0) && g.mode === 'rally' && (g.touchTeam !== p.team || g.touches === 0) && r.callKey !== g.lastTouchT) {
       var ht = hw.t;
       if (ht > 0.8 && ht <= 1.15) {
@@ -3411,9 +3413,12 @@
         var hx = c.x + (rc0 ? rc0.offX : 0), hy = c.y + (rc0 ? rc0.offY : 0);
         marker.position.x = hx; marker.position.z = -hy;
         // con el aro amarillo de FX (focusPoint) cerca de los pies, el halo se encoge y se atenúa: no compite con él
-        var fp = g.mode === 'rally' && g.jobs && g.jobs[0] && VB.Sim.focusPoint ? VB.Sim.focusPoint(g) : null, nearF = 0;
+        // (6v6: el aro solo sale con tu balón, fx.js)
+        var fp = g.mode === 'rally' && g.jobs && g.jobs[0] && !(g.size === 6 && g.jobs[0] !== c) && VB.Sim.focusPoint ? VB.Sim.focusPoint(g) : null, nearF = 0;
         if (fp && fp.x === fp.x) { var fdx = fp.x - hx, fdy = fp.y - hy; nearF = 1 - sstep(0.9, 2.4, Math.sqrt(fdx * fdx + fdy * fdy)); }
-        var pulse = (reach ? 1.08 + Math.sin(ctx.time * 16) * 0.07 : 1) * (1 - 0.38 * nearF);
+        // 6v6 (sprint 3): entre 12 y con la cámara de televisión lejos, halo y galón más grandes (k6) para saber siempre a quién llevas
+        var k6 = g.size === 6 ? 1.3 : 1;
+        var pulse = (reach ? 1.08 + Math.sin(ctx.time * 16) * 0.07 : 1) * (1 - 0.38 * nearF) * k6;
         marker.scale.set(pulse, pulse, pulse);
         // balón muerto (punto / final): el halo se funde al 25 % como los controles táctiles (CAM-07): el plano de héroe queda limpio
         var hdW = (g.mode === 'point' || g.mode === 'over') ? 0.25 : 1;
@@ -3426,12 +3431,16 @@
         // justo encima de la cabeza REAL (agachado, en carrera o tumbado la cabeza no está a la altura de pie)
         if (rc) { rc.head.getWorldPosition(markerCone.position); markerCone.position.y += 0.3 * HEAD_HK * rc.scale + Math.sin(ctx.time * 3.2) * 0.015; }   // PRESET: por encima de la cabeza grande
         else markerCone.position.set(c.x, c.z + topY, -c.y);
+        // 6v6: en el aire (bloqueo, remate) el galón NO se apaga: con tres saltando en la red es lo único que dice quién eres.
+        // Sube por encima de los brazos estirados (~0,9 m) para no tapar la mano que golpea
+        var air6 = k6 > 1 && c.z > 0.05;
+        if (air6) markerCone.position.y += 0.9 * Math.min(1, c.z / 0.3);
         var cd = cam ? cam.position.distanceTo(markerCone.position) : 10;
-        var want = sstep(4.8, 6.6, cd) * (c.z > 0.05 || (g.mode === 'serve' && g.server === c) || g.mode === 'point' || g.mode === 'over' ? 0 : 1); // balón muerto: sin galón (plano de héroe limpio)
+        var want = sstep(4.8, 6.6, cd) * ((c.z > 0.05 && !air6) || (g.mode === 'serve' && g.server === c) || g.mode === 'point' || g.mode === 'over' ? 0 : 1); // balón muerto: sin galón (plano de héroe limpio)
         coneMat.opacity += (want - coneMat.opacity) * (dt > 0 ? kf(10, dt) : 1);
         markerCone.visible = coneMat.opacity > 0.02;
         if (cam) markerCone.quaternion.copy(cam.quaternion);
-        markerCone.scale.setScalar(clamp(cd / 12.5, 0.5, 2.2));
+        markerCone.scale.setScalar(clamp(cd / 12.5, 0.5, 2.2) * (k6 > 1 ? 1.5 : 1));
       }
     }
   };

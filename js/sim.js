@@ -177,7 +177,10 @@
    *          ctrl:'both'|'one' (controlar a los dos jugadores o solo a uno; g.ctrlMode, por defecto 'both'),
    *          ctrlIdx:0|1 (modo 'one': a quién lleva el humano, 0 = teams[0][0] dorsal 1, 1 = teams[0][1] dorsal 2; g.ctrlIdx;
    *          el juego ya solo usa 0, el 1 queda para pruebas y &ctrlidx=),
+   *          ctrlRole:'OH' (6v6, sprint 3: puesto del jugador del humano; v1 solo el receptor, OH1 = dorsal 2; g.ctrlRole),
    *          stats:bool } */
+  /** 6v6: puestos que puede llevar el humano (v1: solo el receptor; el central y el líbero salen de pista, el colocador es v2). */
+  var CTRL_ROLES6 = ['OH'];
   /** Puntos por set que se pueden elegir (Partido rápido). */
   var SET_POINTS = [11, 15, 21, 25];
   /** Puntos para ganar el set en curso: g.points, y el set decisivo (3r) a min(15, g.points). */
@@ -217,7 +220,13 @@
       autopilot: !!opts.autopilot,
       // control del humano: 'both' = el control pasa a quien da el siguiente toque; 'one' = siempre el mismo jugador
       // (teams[0][ctrlIdx]) y la IA lleva al compañero en todo, saque incluido
-      ctrlMode: opts.ctrl === 'one' ? 'one' : 'both',
+      // (6v6 con humano: siempre 'one', notes/diseno-6v6-carrera.md §1.5; la demo 6v6 sigue como estaba)
+      ctrlMode: opts.ctrl === 'one' || (six && !opts.demo) ? 'one' : 'both',
+      // 6v6: puesto del jugador del humano (CTRL_ROLES6; '' en 2v2) y ayuda «posición asistida» al balón en Fácil/Normal
+      // (sin stick, el humano va solo a su sitio en todos los niveles; al balón que es suyo, solo en Fácil/Normal)
+      ctrlRole: six ? (CTRL_ROLES6.indexOf(opts.ctrlRole) >= 0 ? opts.ctrlRole : 'OH') : '',
+      assist6: six && (diff === 'easy' || diff === 'normal'),
+      ask6: -9,                // 6v6: g.time del último «¡Pídela!» del humano (CAMBIAR durante la jugada propia)
       // modo 'one': jugador del humano (0 = dorsal 1, 1 = dorsal 2); en 'both' siempre 0 (el control empieza en teams[0][0])
       ctrlIdx: opts.ctrl === 'one' && +opts.ctrlIdx === 1 ? 1 : 0,
       difficulty: diff,
@@ -307,6 +316,7 @@
     refreshTeams(g);
     applyAttrs(g, opts.attrs);
     applyBadges(g, opts.badges);
+    if (six) for (var ci = 0; ci < teams[0].length; ci++) if (teams[0][ci].role === g.ctrlRole) { g.ctrl = teams[0][ci]; break; } // 6v6: el 1r de ese puesto (OH1)
     g.server = g.ctrl;
     newGame(g);
     return g;
@@ -936,6 +946,9 @@
       // colocación en salto: hacia la zona de ataque del compañero, tensa (cima baja); con mal timing, pegada o larga
       er = (JSET.err0 + JSET.err1 * (1 - q)) * mul;
       var jx = JSET.tx, jy = clamp(mate.y, -JSET.mate, JSET.mate), jap = Math.max(JSET.minApex, b.z + (count === 1 ? JSET.rise1 : JSET.rise));
+      // 6v6 (humano colocando en salto de 2º toque): al carril del atacante que elige VB.AI6.chooseSet (deja g.setPlan: ese atacante
+      // va a por el 3r toque y el bloqueo rival lo lee), no al compañero más cercano
+      if (g.rot && VB.AI6 && count === 2) { var js6 = VB.AI6.chooseSet(g, p); jy = clamp(sd * js6.yl, -JSET.mate, JSET.mate); }
       if (q < JSET.badQ && g.rng() < (JSET.badQ + 0.05 - q) * JSET.badP) {
         if (g.rng() < 0.5) jx = 0.25 + g.rng() * 0.35;          // pegada a la red: toque de red o bloqueo fácil
         else { jx = 3.6 + g.rng() * 1.8; jap -= 0.35; }        // larga y baja: el atacante no llega a rematar
@@ -1902,6 +1915,19 @@
     _mv[0] = mx; _mv[1] = my; return _mv;
   }
 
+  /** 6v6 (sprint 3, «posición asistida» de notes/diseno-6v6-carrera.md §1.5): sin stick, el humano se desliza a su sitio de la
+   *  formación (VB.AI6.pos: recepción, cobertura, bloqueo de zona, defensa perímetro), como haría la IA, para que su equipo no
+   *  quede con un hueco mientras él no juega. Al balón que es suyo solo le lleva en Fácil/Normal (g.assist6); en Difícil/Experto
+   *  lo persigue él (queda la ayuda corta de assistMove). Con stick, manda el jugador. null = sin ayuda (sigue assistMove). */
+  function assist6(g, p, ml) {
+    if (ml > 0.15 || p.z > 0 || p.down > 0 || !VB.AI6 || g.mode !== 'rally') return null;
+    if (g.jobs[0] === p && !g.assist6) return null;
+    var tg = VB.AI6.pos(g, p), dx = tg.x - p.x, dy = tg.y - p.y, dl = Math.hypot(dx, dy);
+    if (dl < 0.05) { _mv[0] = 0; _mv[1] = 0; return _mv; }
+    var f = Math.min(1, dl / 0.35) * 0.95;
+    _mv[0] = dx / dl * f; _mv[1] = dy / dl * f; return _mv;
+  }
+
   // ---------- Flujo del partido ----------
   var _zp = { x: 0, y: 0 };
   /** 6v6: todos a su zona base (ZONE) y el sacador detrás de la línea de fondo, en su lado derecho. */
@@ -2246,7 +2272,11 @@
       }
       return;
     }
-    if (g.mode === 'serve') { stepServe(g, dt, input, mx, my, aim, human); if (g.mode !== 'serve') endRitual(g); refreshPred(g); return; }
+    if (g.mode === 'serve') {
+      // 6v6: «¡Pídela!» durante el saque no vale (aún no hay jugada): se avisa igual (evento 'ask' sin ok)
+      if (g.rot && human && input && input.switchPlayer) emit(g, { type: 'ask', player: g.ctrl, ok: false });
+      stepServe(g, dt, input, mx, my, aim, human); if (g.mode !== 'serve') endRitual(g); refreshPred(g); return;
+    }
     // ---- Peloteo ----
     g.rally.t += dt;
     // (g.pr1/g.pr3 ya están al día: se recalculan al final de cada paso, ver refreshPred)
@@ -2261,6 +2291,9 @@
       var fastLate = Math.hypot(b.vx, b.vy, b.vz) > 12 && g.pr1.t < 0.6;
       if (g.ctrlMode === 'one') {
         // modo 'one': nunca cambia el control; el compañero IA juega sus toques (AI.update)
+        // 6v6: CAMBIAR es «¡Pídela!» (con el balón en nuestro campo antes de la colocación: el colocador te elige más; VB.AI6.chooseSet)
+        // (solo vale con askOk: delantero y antes de nuestra colocación; si no, «Ahora no». El evento 'ask' lo pinta ui.js)
+        if (g.rot && human && input.switchPlayer) { var ak = askOk(g); if (ak) g.ask6 = g.time; emit(g, { type: 'ask', player: g.ctrl, ok: ak }); }
       } else if (g.jobs[0] && g.jobs[0] !== g.ctrl) {
         if (!(g.defRole === 'block' && g.touchTeam === 1) && !fastLate) { emit(g, { type: 'switch', from: g.ctrl, to: g.jobs[0], auto: true }); g.ctrl = g.jobs[0]; endSwing(g); }
       } else if (!g.jobs[0] && input.switchPlayer && human) {
@@ -2278,7 +2311,7 @@
       }
       if (g.jsetQ > 0 && hp.z > 0.2 && hp.actionT > 0.12 && Math.hypot(b.x - hp.x, b.y - hp.y) < 3 && !jsetVoid(g, hp)) { g.jsetQ = 0; startSwing(g, hp, 'jset'); }
       if (hp.z > 0) stepPlayer(g, hp, dt, 0, 0);
-      else { var am = assistMove(g, hp, mx, my); stepPlayer(g, hp, dt, am[0], am[1]); }
+      else { var am = (g.rot && assist6(g, hp, ml)) || assistMove(g, hp, mx, my); stepPlayer(g, hp, dt, am[0], am[1]); }
       updateAim3(g, hp, dt, mx, my);
       if (input.hit && g.mode === 'rally') startSwing(g, hp, '');
       if (g.mode === 'rally') processSwing(g, hp, aim);
@@ -2336,7 +2369,11 @@
   function updateDefense(g) {
     if (g.mode !== 'rally' || g.touchTeam !== 1 || g.lastKind === 'serve') { g.defRole = ''; return false; }
     var setPhase = atkPhase(g, 1) && g.ball.x < 0 && g.pr3.x < -0.2 && g.pr3.x > -4.2;
-    if (setPhase && g.ctrlMode === 'one') {
+    if (setPhase && g.rot) {
+      // 6v6: el reparto lo hace la formación (VB.AI6.blockPlan / defensa perímetro): el humano delantero bloquea, el zaguero defiende
+      var bp6 = g.ctrl.front && VB.AI6 ? VB.AI6.blockPlan(g, 0) : null;
+      g.defRole = bp6 && (bp6.a === g.ctrl || bp6.b === g.ctrl) ? 'block' : 'dig';
+    } else if (setPhase && g.ctrlMode === 'one') {
       // modo 'one': sin cambio de control; bloquea el que esté más cerca de la red (el humano o su compañero IA).
       // El reparto se REVISA durante la colocación de la CPU: si el humano sube a la red (o salta cerca de ella), el
       // compañero IA se echa atrás a defender; si el humano se va al fondo, el compañero sube a bloquear. Con histéresis
@@ -2450,13 +2487,19 @@
   function court(g) { return (g && typeof g === 'object' ? g.beach : g === 'beach') ? _courtB : _courtH; }
 
   /** Objetivo útil para el HUD/aro: dónde jugará el balón el equipo humano. */
+  /** 6v6: ¿vale ahora «¡Pídela!»? En el peloteo, con el humano delantero (atacante posible, VB.AI6.canAttack) y antes de que
+   *  su equipo coloque (el balón llega del rival o aún vamos por el 1r toque). Fuera de ahí la pulsación no hace nada. */
+  function askOk(g) {
+    var p = g.ctrl;
+    return !!(g.rot && p && g.mode === 'rally' && p.front && p.role !== 'L' && !p.bench && !(g.touchTeam === 0 && g.touches >= 2) && !atkPhase(g, 0));
+  }
   function focusPoint(g) {
     return atkPhase(g, 0) ? g.pr3 : g.pr1;
   }
 
   VB.Sim = {
     createGame: createGame, step: step, drainEvents: drainEvents, setTarget: setTarget, SET_POINTS: SET_POINTS, court: court,
-    predict: predict, predictLanding: predictLanding, focusPoint: focusPoint,
+    predict: predict, predictLanding: predictLanding, focusPoint: focusPoint, askOk: askOk,
     canReach: canReach, other: other, isHuman: isHuman, side: side, clamp: clamp,
     // equipos de N jugadores (sprint 1 del 6v6): compañeros, zonas y rotación
     mates: mates, nearestMate: nearestMate, mateBadge: mateBadge, zoneOf: zoneOf, zonePos: zonePos, isFront: isFront, ZONE: ZONE,

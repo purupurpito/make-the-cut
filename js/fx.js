@@ -1342,7 +1342,10 @@
         dropLine.material.opacity = Math.min(0.22, (b.z - 1.4) * 0.12);
       }
       // ---- aro amarillo (dónde jugará el balón tu equipo): el objetivo principal ----
-      var showFocus = inPlay && !g.demo && !g.watch && g.jobs && g.jobs[0] && Sim.focusPoint;
+      // 6v6 con humano (control Uno por puesto): el aro solo marca TU balón; si lo juega un compañero, no hay aro (seguirlo
+      // llevaba a robarle el balón con «¡mía!»). En 2v2 sigue como siempre (también con el compañero IA en modo Uno)
+      var six = g.size === 6 && g.ctrlMode === 'one';
+      var showFocus = inPlay && !g.demo && !g.watch && g.jobs && g.jobs[0] && (!six || g.jobs[0] === g.ctrl) && Sim.focusPoint;
       var fpt = showFocus ? Sim.focusPoint(g) : null; // (no «fp»: taparía el pool de huellas del módulo)
       focusVis = !!fpt;
       focusRing.visible = focusVis;
@@ -1376,7 +1379,7 @@
         var out = Math.abs(land.x) > courtHL(g) + tol || Math.abs(land.y) > courtHW(g) + tol; // pista de la partida (playa 16×8)
         var mo;
         if (g.demo) { markerMat.color.setRGB(0.9, 0.95, 1); mo = 0.55; }
-        else if (mine && !focusVis) { markerMat.color.setRGB(YEL[0], YEL[1], YEL[2]); mo = 0.95; } // nadie tuyo va: el bote es lo que importa
+        else if (mine && !focusVis && !(six && g.jobs && g.jobs[0])) { markerMat.color.setRGB(YEL[0], YEL[1], YEL[2]); mo = 0.95; } // nadie tuyo va: el bote es lo que importa (6v6: si va un compañero, blanco)
         else if (mine) { markerMat.color.setRGB(1, 1, 1); mo = 0.6; }                             // blanco: no compite con el aro amarillo
         else { markerMat.color.setRGB(0.55, 0.8, 1); mo = 0.6; }
         markerMat.opacity = mo * (out ? 0.55 : 1);

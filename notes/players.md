@@ -948,3 +948,10 @@ point,dive,over,jumpserve,menu}.png`, `six-{1280,844t}/{serve6,rally6,point6}.pn
 - **Plancha**: tumbado, la cabeza giraba hacia el balón hasta ±1,9 rad levantándose solo 0,12 (cara de lado contra el suelo). Ahora tira
   un poco hacia la cámara (`LIE_CAM` 0,35), gira como mucho `LIE_YAW` 0,55 y se levanta al menos `LIE_LIFT` 0,75: se ve la cara.
 - Capturas (antes `scratchpad/b`, después `scratchpad/a`): `ace-1.8.png` 2560×1440 playa, `over*.png`, `face*-*.png` (cámara junto a la cara).
+
+## 6v6, sprint 3: humano (11-nov-2026)
+- `update`, marcador del jugador controlado: en 6v6 (`g.size === 6`, sin `g.watch`) el halo del suelo crece ×1,3 y el galón de encima de la
+  cabeza ×1,5 (`k6`): entre 12 y con la cámara de televisión lejos se perdía. En 2v2 nada cambia (k6 = 1).
+- Revisión del sprint 3: en 6v6 el galón **no se apaga en el aire** (bloqueo, remate): sube ~0,9 m por encima de la cabeza para no tapar
+  la mano y sigue marcando quién eres entre los tres que saltan en la red. El halo ya no se encoge por el aro amarillo de un compañero (en
+  6v6 el aro solo sale con tu balón). «¡Pídela!» aceptado (sim `g.ask6`): el humano levanta el brazo del «¡Mía!» (`callGesture`).

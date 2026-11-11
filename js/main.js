@@ -66,7 +66,7 @@
     // móvil; input.js), hudScale (1 | 1,15 | 1,3: tamaño del HUD y de las hojas; ui.js), softFlash (destellos suaves; arena/fx/ui)
     // coachTips: consejos del partido (franja de arriba). Se ven hasta la primera victoria: ui.js los apaga al ganar el 1r partido
     // y se pueden volver a encender en Ajustes · Juego.
-    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, camSens: 1, sfxVol: 1, musicVol: 0.75,
+    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, format: '2v2', camSens: 1, sfxVol: 1, musicVol: 0.75,
       camStable: false, rumble: true, hudScale: 1, softFlash: false, arena: Q.debug ? 'hall' : 'beach', arenaV: 2, beachLight: 'dia' };
     // beachLight: luz de la playa ('dia' mediodía | 'tarde' sol bajo y cálido; arena.js la lee en onSettings y al montar, ?luz= manda)
     // arena: sede ('hall' Palau del Mar | 'beach' Platja Llarga; ?map=beach en pruebas). Desde el 10-nov-2026 la Playa es el
@@ -98,6 +98,7 @@
     // equipación: solo colores de las paletas de ui.js (OPT.kit*) y diseños conocidos
     if (['diag', 'liso', 'franjas', 'rayas'].indexOf(s.kitPattern) < 0) s.kitPattern = 'diag';   // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS)
     if (s.ctrlMode !== 'one') s.ctrlMode = 'both';                      // control: los dos jugadores o solo uno (sim: g.ctrlMode)
+    if (s.format !== '6v6') s.format = '2v2';                           // Partido rápido: 2 contra 2 o 6 contra 6 (sprint 3 del 6v6; fila «Formato»)
     s.ctrlPlayer = 0;                                                    // modo Uno: llevas siempre al n.º 1 (teams[0][0]); el ajuste antiguo (1 = el otro) se ignora
     if (Q.diff && DIFFS.indexOf(Q.diff) >= 0) s.difficulty = Q.diff;
     return s;
@@ -341,11 +342,14 @@
     ctx.frozen = false;
     // present (SIM-03): en los partidos de verdad la pausa del punto se alarga en los momentos grandes (y se puede recortar)
     var cs = opts.career || null, own = !opts.autopilot && !Q.debug;
-    // 6v6 (NO está en el menú): solo con ?format=6v6, sin atributos ni insignias del escuadrón. Sprint 2: MODO ESPECTADOR, CPU contra
-    // CPU con el HUD y las pausas de un partido de verdad (autopilot + present) y la cámara de televisión (camera.js 'tv'); el humano
-    // (control Uno por rol) llega en el sprint 3. g.watch lo marca para ui.js (rótulos de los equipos).
-    var fmt = !cs && Q.format === '6v6' ? '6v6' : undefined; if (fmt) own = false;
-    var auto = !!opts.autopilot || !!fmt;
+    // 6v6 (sprint 3): con la fila «Formato» de Partido rápido (ctx.settings.format) o opts.format, partido HUMANO: llevas al
+    // receptor (control Uno por puesto, sim ctrlRole 'OH') y la IA al resto; sin atributos ni insignias del escuadrón de 2v2.
+    // ?format=6v6 sigue siendo el MODO ESPECTADOR del sprint 2 (CPU contra CPU con HUD y pausas de partido: autopilot + present,
+    // g.watch para ui.js; tv6test y perf lo usan); ?format=6v6&human=1 = partido humano desde la URL (pruebas).
+    var qWatch = Q.format === '6v6' && Q.human !== '1';
+    var fmt = !cs && (opts.format === '6v6' || (opts.format == null && (Q.format === '6v6' || ctx.settings.format === '6v6'))) ? '6v6' : undefined; if (fmt) own = false;
+    var watch6 = !!fmt && qWatch && opts.format == null;
+    var auto = !!opts.autopilot || watch6;
     applyVenuePend();
     // Carrera: VÓLEY PLAYA (sprint playa, 10-nov-2026): el partido se juega en Platja Llarga con sus reglas (sets a 21 y el 3r a
     // 15, pista 16×8, cambio de campo cada 7) aunque el ajuste «Escenario» sea el pabellón; el hub y quickSim cuentan con ellas
@@ -353,7 +357,7 @@
     var cv = cs ? (opts.venue === 'hall' ? 'hall' : 'beach') : fmt ? 'hall' : null;
     if (cv) forceVenue(cv);
     var g = Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: auto, rookie: cs ? !!opts.rookie : isRookie(), present: !opts.autopilot,
-      points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: fmt ? 'one' : (opts.ctrl || Q.ctrl || ctx.settings.ctrlMode), // (6v6 espectador: 'one', sin eventos switch)
+      points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: fmt ? 'one' : (opts.ctrl || Q.ctrl || ctx.settings.ctrlMode), ctrlRole: fmt ? 'OH' : undefined, // (6v6: siempre 'one', el receptor; espectador sin eventos switch)
       ctrlIdx: ctrlIdxOf(opts),
       attrs: opts.attrs || (own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null),
       badges: cs ? (opts.badges || null) : (own && !Q.nobadges ? squadBadges() : null),
@@ -362,7 +366,7 @@
     // partido de Carrera: marca para ui.js/badges.js (no reparten experiencia ni insignias al escuadrón de Partido rápido) y
     // para el hub (VB.Career.matchDone al llegar gameOver)
     if (cs) g.career = cs;
-    if (fmt && !opts.autopilot) g.watch = true;
+    if (watch6 && !opts.autopilot) g.watch = true;
     endTweaked = false; careerEnd = null;
     if (!cs) restoreEndButtons();
     setGame(g, opts.kit || null);
@@ -937,6 +941,15 @@
           keep = advanceUntil(g, function (e) { return e && e.type === 'point'; }, 0.5, 900, uiIngest);
           if (preLand) keep.unshift(preLand);
         }
+        break;
+      // 6v6 con HUMANO (sprint 3): llevas al receptor (n.º 2) y la IA al resto. serve6h: tu saque, con el balón en la mano tras el
+      // silbato (&t= s tras el serveReady); rally6h: la colocación de tu equipo tras la recepción. Mientras avanza la escena el
+      // humano no pulsa nada (la posición asistida le lleva a su sitio)
+      case 'serve6h': case 'rally6h':
+        forceVenue('hall');
+        g = Sim.createGame({ demo: false, seed: sd, difficulty: diff, format: '6v6', ctrl: 'one', ctrlRole: 'OH', present: true });
+        if (name === 'serve6h') keep = advanceUntil(g, function (e, gg) { return e && e.type === 'serveReady' && e.player === gg.ctrl; }, Q.t ? +Q.t : 1.2, 900, uiIngest);
+        else keep = advanceUntil(g, function (e) { return e && e.type === 'hit' && e.team === 0 && e.touch === 2; }, 0.35, 900);
         break;
       case 'over': case 'end':
         g = mk(true);

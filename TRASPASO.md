@@ -243,7 +243,7 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     y paga el fisio, confirmación al fichar a mitad de temporada. Sigue: química de suplentes que se pierde en verano.
   - ~~Escuadrón a media 50: cada mejora cuesta ya 2 puntos (antes 1 hasta 50); valorar abaratar `cost()`.~~ HECHO 11-nov (integración: `cost()` 1/2/3/4 con cortes en 60/70/85; careertest y simtest OK).
   - ~~Hoja final: «Menú principal» vuelve al principal (cambiar dificultad/puntos son 2 pasos más); ¿botón «Cambiar opciones»?~~ HECHO 11-nov
-    (ui.js `goOptions`: botón «Cambiar opciones» que lleva a la preparación del Partido rápido; no en Carrera ni 6v6).
+    (ui.js `goOptions`: botón «Cambiar opciones» que lleva a la preparación del Partido rápido; no en Carrera ni en el 6v6 espectador).
   - ~~Primera visita en móvil: aviso de instalar (`js/install.js`) + panel «Primer partido» seguidos: decidir.~~ HECHO 11-nov: el aviso
     espera a la portada del menú libre 1,5 s (`VB.UI.menuIdle`); si se va a jugar antes, sale al volver del partido. Nunca a la vez.
   - Siguen los dorsales «N.º 1 / N.º 2» en Jugadores (son dorsales, no ordinales de menú): decidir con Ferran.
@@ -366,16 +366,40 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     llamadas de dibujo en baja (2v2 sigue en 35; el diseño §1.8 contaba con ~60). **Decisión para Ferran**: aceptar ese tope o hacer en el
     sprint 4 la malla única de los atletas lejanos. La pestaña de Carrera 2v2 que decía «de la CPU» ya está arreglada
     (10-nov-2026: `showBug` pasa siempre por `cpuTxt`).
-  - **Qué falta para el sprint 3 (humano en 6v6 + menú «Formato»)**:
-    1. Sim/IA: `AI6.decide` (2º/3r toque del humano y «¡Pídela!»; hoy la IA le aparta del 2º toque y de los remates), responsabilidad
-       («¡mía!») del 1r toque, posición asistida e imán en Fácil/Normal, falta de posición pitada al humano en Difícil/Experto, sin
-       `switch` en 6v6 (control Uno por rol `ctrlRole6`, receptor por defecto), medir toques del humano por rally (objetivo ≥ 0,7).
+  - **Sprint 3 HECHO (11-nov-2026, «humano en 6v6 + Formato»)**: control Uno por puesto (siempre el **receptor**, OH1 = n.º 2, como
+    pide el diseño §1.5: no pasa al que va al balón; indicador = halo y galón del jugador, más grandes en 6v6), «¡mía!» y área de
+    responsabilidad del 1r toque, el colocador le coloca (y más con «¡Pídela!» = CAMBIAR / ⇄ / Y), saque humano con la rotación,
+    recepción, colocación (también en salto, al atacante que elige `chooseSet`), remate y bloqueo con teclado/ratón, táctil y mando;
+    posición asistida (sin stick vuelve a su sitio; al balón suyo, solo en Fácil/Normal); sin eventos `switch`. Fila **«Formato» 2 contra
+    2 / 6 contra 6** en la preparación del Partido rápido (`ctx.settings.format`; Escenario fijo en Pabellón y Controlar fijo en Receptor,
+    con el aspecto «fijo» de los Puntos en la playa) y tarjeta «6 contra 6» de Jugar activa (abre la preparación en 6 contra 6). Ayuda
+    mínima: consejos «Llevas al n.º 2, el receptor» en los primeros saques (compañeros por su puesto: «Coloca tu colocador»), Controles («Pedir el balón») y la tarjeta de
+    presentación («N.º 2, receptor» / «Equipo rival»). Pruebas: simtest «6v6 con humano» y `tools/drive6.js` (teclado y TOUCH=1).
+    `?format=6v6` sigue siendo el espectador (tv6test, perf); `?format=6v6&human=1` = humano desde la URL; escenas `serve6h`/`rally6h`.
+    Detalle en notes/sim.md, notes/ui_main.md, notes/camera_input.md y notes/players.md «6v6 sprint 3». Capturas `tools/out/arte/6v6s3/`.
+    **Revisión del sprint 3 (corregido)**: el Formato ya no se queda pegado (la tarjeta Partido rápido abre en 2v2; revancha/reiniciar
+    repiten el formato del partido; tutorial → 2v2); «¡Pídela!» con respuesta (sello «¡Aquí!» / «Ahora no» sobre el humano, sonido, brazo
+    arriba; `VB.Sim.askOk` y evento 'ask'; botón ⇄ con mano, «Pedir el balón», apagado cuando no vale); aro amarillo solo con TU balón en
+    6v6; galón visible en el aire en 6v6; consejos sin «aro» y con puestos en vez de dorsales («retírate a defender» fuera del bloqueo,
+    «cubre el ataque»); tarjeta guiada que se va si el balón no es tuyo; el 6v6 no cuenta en el récord (ni apaga consejos ni quita el
+    novato); «PANTALLA COMPLETA» en icono en la preparación a ≤ 420 px de alto (no tapa la fila Formato); `js/sim.js` y `TRASPASO.md` en LF.
+  - **Pendiente tras el sprint 3**: cámara detrás del humano (sigue la de televisión; ver punto 2), falta de posición pitada al humano en
+    Difícil/Experto e «imán» (hoy no puede solaparse: nadie se mueve durante el saque rival), elegir otro puesto (colocador v2: `CTRL_ROLES6`
+    solo admite 'OH'), marcador con sacador por dorsal e indicador de rotación, hoja final del 6v6 (MVP y estadísticas aún de 2v2; ya no
+    cuenta en el récord), fondo del menú con Formato 6 contra 6 (sigue la demo de playa), el colocador coloca al humano delantero aunque
+    esté quieto (×1,3: en Fácil/Normal un humano quieto recibe ~26 colocaciones que acaban en balón de cuerpo), equilibrio (bot novato en Fácil
+    gana el 45 % de los puntos, medio en Normal el 59 %; la IA del equipo 0 juega con el perfil `DIFF.mate`), pocos remates del humano
+    zaguero (no hay «pipe»), «Avanzar» en espectador. Toques del humano por rally (bot): novato 0,62, medio 0,76 (objetivo 0,7).
+  - **Qué faltaba para el sprint 3 (humano en 6v6 + menú «Formato»)** (lo hecho, tachado):
+    1. ~~Sim/IA: `AI6.decide` (2º/3r toque del humano y «¡Pídela!»; hoy la IA le aparta del 2º toque y de los remates), responsabilidad
+       («¡mía!») del 1r toque, posición asistida~~ e imán en Fácil/Normal, falta de posición pitada al humano en Difícil/Experto, ~~sin
+       `switch` en 6v6 (control Uno por rol, receptor por defecto), medir toques del humano por rally (objetivo ≥ 0,7)~~.
     2. Cámara: plano detrás del humano (`gameplayShot` con más FOV, §1.6), oclusión con los 2 compañeros más cercanos al eje
        cámara-jugador, planos de reacción, cierre de set y sacador rival en 6v6.
-    3. ui_main: fila **«Formato» 2v2 / 6v6** en el menú (`ctx.settings.format`; hoy solo `?format=6v6`), elección de rol, tutorial y
-       Controles en 6v6, marcador con sacador por dorsal e indicador de rotación (ojo: el líbero queda con la zona de su central durante la
+    3. ui_main: ~~fila **«Formato» 2v2 / 6v6** en el menú (`ctx.settings.format`)~~, elección de rol, ~~tutorial (mínimo) y
+       Controles en 6v6~~, marcador con sacador por dorsal e indicador de rotación (ojo: el líbero queda con la zona de su central durante la
        pausa del punto, hasta `setupServe`), panel «Primer partido» que no salga en 6v6, hoja final sin textos de 2v2 (nivel, «Revancha en
-       Normal», «Partidos ganados»), `teamNums()` con 2 dorsales, «Avanzar» o partido más corto en espectador (un 2-0 dura 18-27 min).
+       Normal», «Partidos ganados»; ~~«Cambiar opciones»~~ ya sale en el 6v6 humano), `teamNums()` con 2 dorsales, «Avanzar» o partido más corto en espectador (un 2-0 dura 18-27 min).
     4. Atletas/arena (sprint 4): baja 6v6 ≤ 35 llamadas (malla única de lejanos) o ratificar 45; equipo del fondo diminuto a 844×390
        (dorsales ilegibles); celebración en corro; animaciones nuevas.
     5. Menores de la revisión: recepción de la rotación 1 (colocador en zona 1 muy al fondo, 4 en línea), cruces entre compañeros (la sim
@@ -454,6 +478,10 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   fuga de la textura de huesos al cambiar de escenario/equipación arreglada, revisión del challenge y marcador de caída con la pista de la
   partida, «CAMBIO DE CAMPO · CADA 7 PUNTOS» y silbato corto, consejo que ya no tapa TOQUES a 2560×1440. Huella 2v2 idéntica; perf
   «objetivos cumplidos» en pabellón, playa y 6v6. Capturas `tools/out/arte/final/`; detalle en CONTRACT «TAJO y playa completa» y notes.
+- **6v6, sprint 3: humano y fila «Formato»** (11-nov-2026): llevas al receptor (n.º 2) con teclado/ratón, táctil y mando; la IA mueve
+  al resto (saque con la rotación, recepción, colocación y en salto, remate, bloqueo, «¡mía!», «¡Pídela!», posición asistida). Fila
+  «Formato» en Partido rápido y tarjeta «6 contra 6» activa; el 6v6 fuerza el pabellón. simtest «6v6 con humano», `tools/drive6.js`,
+  escenas `serve6h`/`rally6h`. Huella 2v2 idéntica; perf 6v6 «objetivos cumplidos». Detalle y pendientes en «Modo 6v6» (To-do).
 - **6v6, sprints 1 y 2 + revisión** (10-nov-2026): sim a N jugadores (2v2 idéntico, huella en simtest), 6v6 CPU contra CPU con rotaciones,
   líbero, formaciones, reglas de zaguero e IA 5-1 (`js/ai6.js`), 12 atletas, cámara de televisión y partido espectador con `?format=6v6`
   (NO en el menú). Detalle, arreglos de la revisión y lo que falta para el sprint 3 en «Modo 6v6» (To-do).
@@ -586,6 +614,9 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   (`node tools/fingerprint6.js`, 15 s: compara con `tools/fp-2v2.json`; `--write` la regenera, SOLO si se cambia el 2v2 a propósito).
 - 6v6: `EXTRA=format=6v6 node tools/perf.js 844x390 20 high,medium,low 4 2.75` (tope provisional de 45 llamadas en baja) y
   `node tools/tv6test.js [WxH] [s] [semilla]` (partido espectador: 12 en cuadro, sin ayudas del humano).
+- 6v6 con humano: `node tools/drive6.js [W=1280] [H=720] [s=70]` (menú → tarjeta 6 contra 6 → Formato → partido con teclado, saque
+  humano, «¡Pídela!»; `TOUCH=1` con toques de dedo, p. ej. `TOUCH=1 node tools/drive6.js 844 390 50`); touchplay/padplay admiten
+  `EXTRA='format=6v6&human=1'` (en 6v6 fallan a propósito «SACAR en tu saque» —saca primero el colocador— y «⇄/RB cambia de jugador»).
 - `node tools/perf.js`, `touchplay.js`, `padplay.js`, `touchtest.js`, `padtest.js`, `courttest.js`, `audiotest.js`, `drive.js` — ver CONTRACT.md §6.
 - `tools/shot.sh <escena> <ancho> <alto> <salida.png>` — captura. Escenas: `?debug=menu|serve|rally|spike|block|point|switch|mobile|end` (ver `CONTRACT.md`).
 - `tools/console.sh` — errores de consola.

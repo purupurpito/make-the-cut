@@ -336,6 +336,8 @@
   var ICON_JUMP = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>';
   var ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="#fff"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>';
   var ICON_SET = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18c1.5-8 11-11 16-6"/><path d="M15.5 8.5l4.5 3.5-4 3"/></svg>';
+  // 6v6 (⇄ = «¡Pídela!»): una mano levantada en vez de las flechas de cambiar jugador
+  var ICON_ASK = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10.5V4a1.5 1.5 0 0 1 3 0v6.5M14 10.5V5.5a1.5 1.5 0 0 1 3 0V14c0 4-2.5 6.5-6 6.5-2.6 0-4-1.4-5.3-3.6L4 13.6a1.4 1.4 0 0 1 2.3-1.5L8 14"/></svg>';
   var ICON_SW = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>';
 
   function buildTouch() {
@@ -614,9 +616,12 @@
     // nuestro saque: sacador humano, tanto con el balón en la mano ('ready') como lanzado ('toss')
     var sv = g.server || (g.ball && g.ball.held) || null;
     var myServe = g.mode === 'serve' && !!sv && sv.team === 0 && !g.demo && !g.autopilot && (g.ctrlMode !== 'one' || sv === g.ctrl);
-    // modo «controlar 1 jugador» (sim g.ctrlMode 'one'): no hay cambio de jugador, fuera el botón ⇄
-    var swHide = g.ctrlMode === 'one';
+    // modo «controlar 1 jugador» (sim g.ctrlMode 'one'): no hay cambio de jugador, fuera el botón ⇄. En 6v6 (sprint 3) se queda:
+    // es «¡Pídela!» (sim g.ask6: el colocador te elige más)
+    var swHide = g.ctrlMode === 'one' && g.size !== 6;
     if (swHide !== T.swHide) { T.swHide = swHide; el.sw.style.display = swHide ? 'none' : ''; }
+    var sw6 = g.size === 6 && g.ctrlMode === 'one';   // icono y etiqueta: «Pedir el balón» (mano) o «Cambiar de jugador» (flechas)
+    if (sw6 !== T.sw6) { T.sw6 = sw6; el.sw.innerHTML = sw6 ? ICON_ASK : ICON_SW; el.sw.setAttribute('aria-label', sw6 ? 'Pedir el balón' : 'Cambiar de jugador'); }
     var tossing = myServe && g.serveState === 'toss';
     var label = myServe ? 'SACAR' : 'GOLPEAR';
     if (label !== T.lastLabel) { T.lastLabel = label; el.hitLabel.textContent = label; el.hit.setAttribute('aria-label', label === 'SACAR' ? 'Sacar' : 'Golpear'); }
@@ -654,7 +659,8 @@
     if (ready !== T.lastReady) { T.lastReady = ready; el.hit.classList.toggle('ready', ready); }
     // SALTAR: en nuestro saque (antes de lanzar) es el saque en salto; en el resto del saque, apagado
     var jumpOff = g.mode === 'serve' && !(myServe && !tossing);
-    var swOff = g.mode === 'serve';
+    // (6v6: apagado también cuando pedir el balón no vale: zaguero, o nuestra colocación ya hecha; sim askOk)
+    var swOff = g.mode === 'serve' || (sw6 && !!S && !!S.askOk && !S.askOk(g));
     var key = (jumpOff ? 1 : 0) + (swOff ? 2 : 0);
     if (key !== T.lastServe) { T.lastServe = key; el.jump.classList.toggle('off', jumpOff); el.sw.classList.toggle('off', swOff); }
     // COLOCAR: solo en el aire con el balón jugable para una colocación en salto (sim jsetReady); al caer, fuera

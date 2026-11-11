@@ -2374,6 +2374,8 @@
         }
         break;
       case 'switch': if (e.auto === false && !demo) play('hover', 0.27, null, null, 1.2, 0); break; // AUD-09: 0,3 → 0,27 al subir 1 dB el hover
+      // 6v6 «¡Pídela!» (sim evento 'ask'): aceptado, el mismo toque del cambio de jugador, más agudo; «Ahora no», grave y flojo
+      case 'ask': if (!demo) play('hover', e.ok ? 0.3 : 0.16, null, null, e.ok ? 1.45 : 0.8, 0); break;
       // 'sideout': ya lo cuentan el silbato y la grada; sin sonido propio
     }
   }

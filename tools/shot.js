@@ -2,7 +2,7 @@
 /* VOLEY 3D — tools/shot.js (owner: ui_main)
  * Capturas y errores de consola con el VIEWPORT EXACTO (DevTools: Emulation.setDeviceMetricsOverride) y la GPU real.
  * Uso: node tools/shot.js <escena[,escena...]> [W=1280] [H=720] [salida] [params extra]
- *   (6v6, espectador: serve6, rally6, point6 = ?debug=…&format implícito; ver debugScene en js/main.js)
+ *   (6v6, espectador: serve6, rally6, point6; 6v6 con humano: serve6h, rally6h = ?debug=…; ver debugScene en js/main.js)
  *   - una escena: salida = fichero .png (por defecto tools/out/<escena>-WxH.png)
  *   - varias escenas (separadas por comas, o "all"): salida = carpeta (por defecto tools/out/shots-WxH/)
  *   - escena "-" o "none": solo consola, sin captura
@@ -13,7 +13,7 @@
 'use strict';
 const path = require('path'), fs = require('fs');
 const CDP = require('./cdp.js');
-const ALL = 'menu,serve,hud,rally,spike,block,point,ace,setpoint,switch,over,mobile,pause,tutorial,controls,settings,toss,jumpserve,dive,serve6,rally6,point6,doll';
+const ALL = 'menu,serve,hud,rally,spike,block,point,ace,setpoint,switch,over,mobile,pause,tutorial,controls,settings,toss,jumpserve,dive,serve6,rally6,point6,serve6h,rally6h,doll';
 let scenes = (process.argv[2] || 'menu'); if (scenes === 'all') scenes = ALL;
 scenes = scenes.split(',').filter(Boolean);
 const W = +(process.argv[3] || 1280), H = +(process.argv[4] || 720);

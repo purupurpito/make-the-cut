@@ -1363,3 +1363,57 @@ Lo que cantaba no era abreviar, sino pegar TODO con el mismo « · ». Reglas pa
 - js/career-ui.js: hoja final de Carrera a ≤ 420 px con alto mínimo (334 px) para que «Ver celebración» no pise «Mejor racha»; a 2560
   la cabecera baja 26 px del borde; la fila de atributos `.prev` en auto-fill de 128 px (ya no «Colocación25» pegado).
 - Capturas de control en tools/out/arte/backlog2/.
+
+## 6v6, sprint 3: humano y fila «Formato» (11-nov-2026)
+- **Preparación del Partido rápido**: fila nueva **«Formato»** arriba (`#optFmt`, `data-opt="format"`, `OPT.format` '2v2' | '6v6',
+  «2 contra 2» / «6 contra 6», ayuda «Tú y tu compañero contra la CPU» / «Equipos completos: llevas al receptor»); ajuste
+  `ctx.settings.format` (main.js `loadSettings` lo valida). En 6v6 **Escenario** queda fijo en «Pabellón» («El 6 contra 6 se juega en el
+  pabellón») y **Controlar** en «Receptor» («Llevas al receptor (n.º 2); la IA mueve al resto»), con el aspecto de fila fija de los
+  Puntos en la playa (`.lock`: sin flechas, valor en crema); ←/→ en ellas rebota (`changeOpt` con `fmt6()`). Puntos sí se elige (en 6v6
+  aunque el ajuste de escenario sea la playa). Pastillas de ¡A JUGAR!: «6 contra 6 | Nivel | Sets a 25 | Receptor». Cabe a 844×390
+  (6 filas: ¡A JUGAR! acaba en y 377).
+- **Jugar**: la tarjeta «6 contra 6» ya no está deshabilitada («Equipos completos: llevas al receptor», flecha `.md-go` verde azulado):
+  pone el formato en 6 contra 6 y abre la preparación.
+- **main.js `startMatch`**: 6v6 humano con `ctx.settings.format === '6v6'`, `opts.format` o `?format=6v6&human=1` (`ctrl:'one'`,
+  `ctrlRole:'OH'`, pabellón forzado, sin atributos/insignias del escuadrón, con presentación). `?format=6v6` a secas sigue siendo el
+  espectador (`g.watch`). «Revancha» y «Reiniciar» repiten el formato del partido que acaba (ui.js `goMatch` → `curFmt()`, sin tocar el ajuste). Escenas `?debug=serve6h` (tu saque, tras el silbato; `&t=`) y
+  `?debug=rally6h` (la colocación de tu equipo); también en `shot.js all`.
+- **ui.js, ayuda mínima del 6v6** (backlog «tutorial y Controles en 6v6»): consejo de arriba en los 3 primeros saques «Llevas al **n.º 2**,
+  el receptor: la IA mueve al resto» (táctil: «Llevas al n.º 2, el receptor»); los compañeros por su puesto, no por dorsal (ver
+  «Correcciones de la revisión» abajo). Controles: «Cambiar jugador» pasa a «Pedir el balón (antes de la colocación)» y la nota dice
+  a quién llevas (`sixNum()`). Tarjeta de presentación: «Palau del Mar ◆ 6 contra 6», «N.º 2, receptor» / «Equipo rival», «Saca tu
+  equipo». Hoja final: «Cambiar opciones» sale también en el 6v6 humano (no en el espectador).
+- **tools/drive6.js** (nuevo): menú → tarjeta 6 contra 6 → Formato (← a 2 contra 2 y → de vuelta; Escenario fijo) → partido con teclado
+  (flechas al balón, J en la ventana, Espacio remate/bloqueo, C «¡Pídela!») hasta jugar puntos y sacar él; pausa. `TOUCH=1` usa toques de
+  dedo sobre el overlay (sin joystick: le lleva la posición asistida). Capturas `tools/out/arte/6v6s3/drive6-<W>x<H>-{menu,saque,peloteo}.png`.
+  padplay.js admite ahora `EXTRA` como touchplay.
+- **Capturas** `tools/out/arte/6v6s3/`: `menu-formato-1280x720`, `menu-formato-844x390` (táctil), `menu-formato2v2-844x390`,
+  `menu-jugar-844x390`, `controles-6v6-1280x720`, `intro-6v6-844x390`, `pc/` y `touch/` (`serve6h`, `rally6h`), `drive6-*`.
+- **Pendiente**: el marcador sigue con «TÚ / CPU» y sin sacador por dorsal ni rotación; hoja final con MVP y estadísticas de 2v2; el
+  panel «Primer partido» puede salir antes de un 6v6; con Formato en 6 contra 6 el fondo del menú sigue siendo la demo de playa.
+
+### Correcciones de la revisión del sprint 3 (11-nov-2026)
+- **El Formato ya no se queda pegado**: la tarjeta «Partido rápido» pone siempre el formato en 2 contra 2 al abrir la preparación (antes,
+  mirar la tarjeta 6 contra 6 y volver dejaba el Partido rápido en 6v6); la tarjeta «6 contra 6» lo pone en 6v6. Dentro, la fila Formato
+  se cambia igual. `goMatch(diff, fmt)`: desde un partido (revancha, «Revancha en…», reiniciar) repite el formato del partido que acaba
+  (`curFmt()`, `startMatch({format})` sin guardar el ajuste); el partido que sale del tutorial es siempre 2v2 (el tutorial lo enseña).
+- **Récord**: el 6v6 humano no cuenta (`showEnd`: ni jugados/ganados/rachas, ni «Partidos ganados» en la hoja, ni apaga los consejos a la
+  1ª victoria, ni quita el «novato» de main.js `isRookie` ni la guía del primer partido). El récord es del 2 contra 2.
+- **«¡Pídela!» responde**: sim emite `{type:'ask', player, ok}` en cada pulsación (ok = `VB.Sim.askOk(g)`: delantero y antes de la
+  colocación de su equipo). ui.js `stampAsk` reutiliza el sello de golpe (#stamp) **sobre la cabeza del humano, siguiéndole**: «¡Aquí!»
+  si vale, «Ahora no» + motivo («en el fondo no rematas», «ya han colocado», «tras el saque») si no; el lector dice «Pides el balón».
+  audio.js: el «hover» del cambio de jugador, más agudo (aceptado) o grave y flojo (Ahora no). players.js: el humano levanta el brazo del
+  «¡Mía!». input.js: en 6v6 el botón ⇄ lleva una **mano levantada** y `aria-label="Pedir el balón"`, y sale apagado (estilo `.off`)
+  cuando no vale (saque, zaguero, colocación ya hecha).
+- **Aro amarillo solo con TU balón (fx.js)**: en 6v6 (control Uno por puesto) el aro sale únicamente con `g.jobs[0] === g.ctrl`; con el
+  balón de un compañero no hay aro y el marcador de caída va en blanco (antes el aro seguía al compañero el 78 % del tiempo y seguirlo
+  llevaba a robarle el balón con «¡mía!»). En 2v2 no cambia nada (tampoco en modo Uno). Sonda: 0 fotogramas con aro bajo un compañero.
+- **Textos sin «aro» ni dorsales de compañeros** (no se leen con la cámara de televisión): «Llevas al **n.º 2**, el receptor: la IA mueve al
+  resto»; compañeros por su puesto (`mate6`): «Saca el opuesto», «Coloca tu colocador: prepárate para atacar o pide el balón con C»,
+  zaguero «…: cubre el ataque», «Ataca el central: cubre el ataque», «Juega el colocador: a tu sitio» (`coach6`). Ataque rival con el
+  humano delante pero fuera del `blockPlan`: «retírate a defender, bloquean tus compañeros» (táctil «Retírate a defender»); zaguero
+  «defiende tu zona del fondo». Controles: «llevas al receptor (n.º 2) y la IA al resto»; ayuda de Controlar «Llevas al receptor (n.º 2);
+  la IA mueve al resto».
+- **Tarjeta guiada**: en 6v6 se va en cuanto el balón deja de ser del humano (antes se quedaba desvaneciéndose mientras bloqueaba).
+- **Botón «PANTALLA COMPLETA» a 360-420 px de alto**: en la preparación del Partido rápido (`#menu[data-page="quick"]`) se queda en el
+  icono (38 × 38) en el margen derecho; ya no tapa el valor ni las flechas de la fila Formato a 667×375, 740×360 ni 844×390.

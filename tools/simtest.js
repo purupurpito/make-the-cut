@@ -2072,6 +2072,69 @@ if (ONLY !== 'matrix') {
       '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  ') + '\n  tempos ' + JSON.stringify(tempos) + ' remates por puesto ' + JSON.stringify(atkRole));
   }
 
+  // 6v6 con HUMANO (sprint 3, notes/diseno-6v6-carrera.md §1.5): control Uno por puesto (receptor, OH1 = n.º 2), la IA mueve al
+  // resto. Bot «humano» de la matriz (solo entrada real); sin balón suyo suelta el stick (posición asistida) salvo para bloquear.
+  // Exige: sin excepciones ni NaN, el humano saca con la rotación, sin eventos switch, el colocador le coloca, toques del humano por
+  // rally >= 0,5 (novato en Fácil) y >= 0,6 (medio en Normal; objetivo del diseño 0,7 como OH), «¡Pídela!» (CAMBIAR) guarda g.ask6
+  // y sube su peso en VB.AI6.chooseSet.
+  if (ONLY !== 'matrix') {
+    const f0 = failures, res = [], t0 = Date.now(), NS = 3, MINH = 6;
+    const wrap6 = bot => { const Z = [0, 0]; return g => { const o = bot(g), p = g.ctrl; if (g.mode === 'rally' && g.jobs[0] !== p && !(p.front && g.defRole === 'block')) { o.move = Z; o.jump = false; } return o; }; };
+    for (const [bn, df, minT] of [['novato', 'easy', 0.5], ['medio', 'normal', 0.6]]) {
+      let pts = 0, won = 0, ht = 0, hsrv = 0, hsrvOk = 0, sw = 0, setTo = 0, nan = 0, ex = null, role = true;
+      try {
+        for (let s = 0; s < NS; s++) {
+          const g = S.createGame({ format: '6v6', seed: 900 + s, difficulty: df, ctrl: 'one', stats: true }), bot = wrap6(makeBot(BOTS[bn], 77 + s)), ev = [];
+          role = role && g.ctrl.role === 'OH' && g.ctrl.num === 2 && g.ctrlMode === 'one' && g.ctrlRole === 'OH';
+          for (let i = 0; i < MINH * 60 * 120; i++) {
+            S.step(g, DT, bot(g)); ev.length = 0; S.drainEvents(g, ev);
+            for (const e of ev) {
+              if (e.type === 'point') { pts++; if (e.team === 0) won++; }
+              else if (e.type === 'hit' && e.human) { ht++; if (e.kind === 'serve') hsrvOk++; }
+              else if (e.type === 'hit' && e.kind === 'set' && e.team === 0 && g.setPlan[0] && g.setPlan[0].to === g.ctrl) setTo++;
+              else if (e.type === 'serveReady' && e.player === g.ctrl) hsrv++;
+              else if (e.type === 'switch') sw++;
+            }
+            if (i % 120 === 0) for (const p of g.players) if (!Number.isFinite(p.x + p.y + p.z)) nan++;
+          }
+        }
+      } catch (e) { ex = e && e.stack || String(e); }
+      const tpr = pts ? ht / pts : 0;
+      res.push(['(a) ' + bn + ' en ' + df + ': sin excepciones ni NaN, receptor n.º 2', !ex && !nan && pts > 40 && role, { puntos: pts, ganados: pct(won, pts), nan, ex }]);
+      res.push(['(b) ' + bn + ': saca con la rotación y sin eventos switch', hsrv > 0 && hsrvOk > 0 && sw === 0, { turnos: hsrv, sacados: hsrvOk, switch: sw }]);
+      res.push(['(c) ' + bn + ': toques del humano por rally >= ' + minT + ' y el colocador le coloca', tpr >= minT && setTo > 0, { toquesPorRally: +tpr.toFixed(2), coloca: setTo }]);
+    }
+    { // «¡Pídela!»: CAMBIAR en el peloteo, con el humano delantero y antes de la colocación (S.askOk), guarda g.ask6 y emite
+      // 'ask' ok; fuera de esa ventana (zaguero, saque) no guarda nada y emite 'ask' sin ok (ui.js: «Ahora no»). Con g.ask6, el
+      // colocador le elige mucho más (mismo azar, mismas condiciones)
+      const ASK = { move: [0, 0], hit: false, jump: false, switchPlayer: true };
+      let asked = false, noOk = 0, noKept = true;
+      for (let sd = 31; sd < 31 + 40 && !asked; sd++) {
+        const g = S.createGame({ format: '6v6', seed: sd, ctrl: 'one' });
+        stepUntil(g, 'whistle', 2000);
+        if (g.mode === 'serve') { const a0 = g.ask6; S.step(g, DT, ASK); if (S.drainEvents(g).some(e => e.type === 'ask' && e.ok === false)) noOk++; if (g.ask6 !== a0) noKept = false; }
+        for (let i = 0; i < 400 && g.mode === 'serve'; i++) S.step(g, DT, null);
+        for (let i = 0; i < 200 && g.mode === 'rally' && !asked; i++) {
+          const ok = S.askOk(g), a0 = g.ask6; S.step(g, DT, ASK);
+          const ev = S.drainEvents(g).filter(e => e.type === 'ask');
+          if (ok && ev.length && ev[0].ok) asked = g.ask6 === g.time;
+          else if (!ok && ev.length) { if (ev[0].ok === false) noOk++; if (g.ask6 !== a0) noKept = false; }
+        }
+      }
+      asked = asked && noOk > 0 && noKept;
+      const VB6 = VB.AI6, cnt = [0, 0];
+      for (let k = 0; k < 2; k++) for (let n = 0; n < 300; n++) {
+        const h = S.createGame({ format: '6v6', seed: 500 + n, ctrl: 'one' }), st = VB6.setterOf(h, 0);
+        h.ask6 = k ? h.time : -9; h._pq6 = [{ q: 0.9, t: h.time }, { q: 0, t: -9 }]; h.ctrl.front = true;
+        VB6.chooseSet(h, st); if (h.setPlan[0].to === h.ctrl) cnt[k]++;
+      }
+      res.push(['(d) «¡Pídela!»: CAMBIAR guarda g.ask6 solo en su ventana (askOk) y el colocador elige más al humano', asked && cnt[1] - cnt[0] >= 30, { ask6: asked, ahoraNo: noOk, sinPedir: cnt[0], pidiendo: cnt[1] }]);
+    }
+    const bad = res.filter(r => !r[1]);
+    if (bad.length) fail('6v6 con humano: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+    console.log('\n6v6 con humano (sprint 3, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)' + (failures === f0 ? ' OK' : '') + '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));
+  }
+
   // VÓLEY PLAYA (createGame({venue:'beach'}), 10-nov-2026): pista 16×8, sets a 21 / 15, cambio de campo cada 7 (5 en el 3.º),
   // bloqueo que cuenta como toque, pokey, dobles de dedos; y que la IA juegue creíble en la pista pequeña
   if (ONLY !== 'matrix') {

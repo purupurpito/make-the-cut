@@ -991,3 +991,15 @@ dispersión bueno/malo medía < 1 px frente a ~6 px y la diana cerca de la red l
   `H` de `serveUsComp`/`svcPrewarm`/`PRED.z` y `SVP.nBot`/`fMax0`, y pasar `tools/camtest.js` (SERVE, 844x390t).
 - Capturas: antes `…/scratchpad/b/toss-*.png`, después `…/scratchpad/a/toss-*.png` (844×390 táctil, pabellón y playa, diana en
   x −7 / y 0 y x −1,6 / y 3,2).
+
+## 6v6, sprint 3: humano (11-nov-2026)
+- **input.js `touchContext`**: el botón ⇄ ya no se oculta en 6v6 aunque el control sea 'one' (`swHide = g.ctrlMode === 'one' && g.size !== 6`):
+  en 6v6 es «¡Pídela!» (sim `g.ask6`); teclado C y mando Y/LB/RB igual (mismo `switchPlayer`). Sin `g.watch` (partido humano) los mandos
+  táctiles salen como en el 2v2. Probado con `tools/drive6.js` (teclado y TOUCH=1: saque con SACAR, toques con GOLPEAR, ⇄),
+  `EXTRA='format=6v6&human=1' node tools/touchplay.js 844x390 25` y `... padplay.js 1280 720 30` (joystick y stick hacia el balón, GOLPEAR,
+  SALTAR, COLOCAR en el aire; fallan solo «SACAR en tu saque» —saca primero el colocador— y «⇄/RB cambia de jugador», a propósito).
+- **Cámara**: sin cambios. El 6v6 humano usa el plano de televisión `tv` del sprint 2 (encuadra a los 12; adelante = (−1, 0), así que el
+  mapeo de la entrada es el mismo que con la cámara detrás del equipo). **Pendiente** (diseño §1.6): plano detrás del humano
+  (`gameplayShot` con más FOV), oclusión con los 2 compañeros más cercanos al eje, reacción, cierre de set y sacador rival en 6v6.
+- Revisión del sprint 3: en 6v6 el botón ⇄ cambia de icono (mano levantada, `ICON_ASK`) y de etiqueta («Pedir el balón»), y sale
+  apagado (`.off`) cuando pedir no vale (`VB.Sim.askOk`: saque, zaguero, colocación ya hecha). En 2v2 sigue con las flechas.

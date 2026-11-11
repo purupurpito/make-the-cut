@@ -8,7 +8,7 @@
  *   vibración pedida en los toques propios (vibrationActuator.playEffect) · colocación en salto (B salta, X coloca en el
  *   aire; tools/jsetdrill.js) · desconexión sin errores.
  * Capturas en tools/out/padplay/. Sale con 1 si falla algo.
- * Uso: node tools/padplay.js [W=1280] [H=720] [segundos de juego=30] [toques mínimos=3]
+ * Uso: node tools/padplay.js [W=1280] [H=720] [segundos de juego=30] [toques mínimos=3]   (EXTRA=query extra, p. ej. EXTRA='format=6v6&human=1')
  * PADID="<id del mando>" cambia el id del mando falso (UI-22: con un id de la familia PlayStation, p. ej.
  *   "DualSense Wireless Controller (Vendor: 054c Product: 0ce6)", los glifos esperados son ✕ ○ □ △ en vez de A B X Y).
  * GL=swiftshader para software (añade quality=low&maxdt=0.25).
@@ -17,7 +17,7 @@
 const fs = require('fs'), path = require('path');
 const CDP = require('./cdp.js');
 const W = +(process.argv[2] || 1280), H = +(process.argv[3] || 720), SECS = +(process.argv[4] || 30), MIN_TOUCHES = +(process.argv[5] || 3);
-const SOFT = process.env.GL === 'swiftshader', EXTRA = SOFT ? 'quality=low&maxdt=0.25' : '';
+const SOFT = process.env.GL === 'swiftshader', EXTRA = process.env.EXTRA != null ? process.env.EXTRA : (SOFT ? 'quality=low&maxdt=0.25' : ''); // EXTRA=query extra (p. ej. format=6v6&human=1)
 const PADID = process.env.PADID || 'Mando virtual de pruebas (STANDARD GAMEPAD)';
 const PS = !/xbox|045e/i.test(PADID) && /054c|dualsense|dualshock|wireless controller|playstation/i.test(PADID);
 const GL_HIT = PS ? '✕' : 'A', GL_JUMP = PS ? '○' : 'B';
