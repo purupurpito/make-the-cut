@@ -1003,3 +1003,82 @@ dispersión bueno/malo medía < 1 px frente a ~6 px y la diana cerca de la red l
   (`gameplayShot` con más FOV), oclusión con los 2 compañeros más cercanos al eje, reacción, cierre de set y sacador rival en 6v6.
 - Revisión del sprint 3: en 6v6 el botón ⇄ cambia de icono (mano levantada, `ICON_ASK`) y de etiqueta («Pedir el balón»), y sale
   apagado (`.off`) cuando pedir no vale (`VB.Sim.askOk`: saque, zaguero, colocación ya hecha). En 2v2 sigue con las flechas.
+
+## 6v6: cámara en 3ª persona (11-nov-2026, camera_input; pedido de Ferran: «es más dinámico con la de 3a persona»)
+Ajuste `ctx.settings.cam6`: `'3p'` (por defecto) o `'tv'` (la de televisión del sprint 2, tal cual). `?cam6=tv|3p` manda (pruebas; se lee
+UNA vez al cargar). Solo con `g.size === 6`, sin `g.watch` y con `g.ctrl` (`tp6(g)` en pickShot): el espectador (`?format=6v6`, tv6test,
+escenas serve6/rally6/point6) sigue con `tv`. El 2v2 no pasa por nada nuevo (comprobado abajo).
+- **Planos** (camera.js): `tp` (juego) y `tpPoint` (punto; `getShot()` lo da como `'point'` para ui.js: rótulos, cortinilla, flecha de
+  fuera de cuadro). `court` y `over` como en el 6v6 de televisión.
+- **`tpShot`**: detrás y por encima del jugador que llevas, mirando a la red con algo del balón. Fases (`tpPhase`, parámetros `TPK`
+  suavizados 0,6-0,7 s, sin saltos): `def` (el balón es del rival: 7,4 m detrás, 5,5 m de alto), `bld` (construimos: 6,8 / 5,5, 0,4 m de
+  hombro), `atk` (tu remate o te toca el 3r toque: 5,8 / 4,9, 1 m por encima del hombro hacia el centro y mirando a tu zona de ataque),
+  `srv` (tu saque: 4 m detrás, 5 m de alto, sobre el hombro derecho; abajo las RODILLAS del sacador a −0,9 NDC y arriba el fondo rival a
+  0,46 —0,62 en pantalla baja— y el lanzamiento previsto de 3,9 m: el sacador grande y la diana del campo rival por encima de tus
+  compañeros, como el saque del 2v2), `tsrv` (saca un compañero) y `rsrv` (saque rival: la mira tira hacia el sacador y el ajuste
+  mete su cabeza y su lanzamiento de 4,75 m). Cámara a x ≤ 14,4 (lo que sobra, en altura).
+  - **Encuadre por ajuste** (`fit2`, como la tele): pies del sujeto a nB (−0,6; táctil −0,74) y arriba lo que pida más lente: el fondo
+    rival (0,3; pantalla baja 0,48), el balón adelantado 0,25 s con la cumbre prevista (0,8; táctil 0,64) y, en el saque rival, el sacador.
+    A lo ancho, la red entera (postes en ±0,95 NDC) y el jugador en ±0,7. Lente 40-66° de vertical (28 en tu saque), que cambia a ritmo
+    limitado (abre ≤ 14°/s, cierra ≤ 4°/s; confort 9 y 3): sin bombeo. El cabeceo sale de la lente REAL del frame (con lente de sobra, la
+    holgura a medias; si falta, manda el balón hasta que los pies bajen 0,18 NDC más).
+  - **Rumbo**: hacia la red ±20° (los mandos van con la cámara: `basis` se actualiza en `tp` como en los planos de juego del 2v2, ±26°);
+    si el balón se sale de ±0,8 NDC a lo ancho, gira lo justo (hasta ±30°).
+  - **Oclusión** (diseño §1.6): de los compañeros, los 2 más cercanos al eje cámara-jugador; tapa si está a < 0,8 m del eje y cubre > 20 %
+    del alto del jugador en pantalla (desde 5 m, uno pegado a la cámara queda por debajo del cuadro y no cuenta). La cámara se aparta de
+    lado (palanca hasta 2,2 m, entra en 0,35 s, sale en 0,7) y sube hasta 0,9 m. **Primer plano**: un compañero cortado por el borde de
+    abajo a la altura del pecho o la cabeza → la cámara sube despacio hasta 0,8 m (`TP.fg`, integrador: sube 0,9 m/s, baja 0,3).
+  - **El balón también abajo**: entre la cámara y el jugador (defiende o recibe un compañero de atrás), segundo ancla inferior a −0,84 NDC.
+    Los pies del jugador se adelantan con su carrera hacia la cámara (0,35 s): la cámara va por detrás y se salían por abajo.
+  - **Saca un compañero** (`tsrv`; integración 11-nov): el SUJETO pasa a ser el sacador (`TP.sox/soy`, desplazamiento suavizado 0,6 s
+    desde tu jugador; `TPK.tsrv` = [4,6, 5,1, −0,9, 1,1]) y se encuadra como tu saque (`srvL`: entero y abajo, con su lanzamiento y el
+    campo rival; sin oclusión), con tu jugador dentro de ±0,85 NDC a lo ancho. Al sacar, la cámara se desliza hasta detrás de tu jugador.
+    Antes (3 m detrás del sacador mirando solo el punto del golpe) el sacador salía cortado (o bajo el joystick MOVER) y el balón cruzaba
+    el centro enorme. Captura `tools/out/arte/cam6/final/c6-*/3p-saque-companero*.png`.
+- **`tpPointShot` / `tpPlan`** (reacción tras el punto y cierre de set): la cámara de juego sigue 0,55 s (se ve el bote) y CORTA
+  (`markCut('point','point','point')`, anunciado en `nextCutIn`) a un plano bajo (2,7 m; cierre de set 3,2 m y abierto al equipo, con
+  órbita lenta de 3°/s salvo en confort) del autor del punto (si fue error del rival y ganas tú, tu jugador) con los compañeros que tenga
+  cerca. Busca entre 72 sitios (24 rumbos × 3 distancias: 5,4 m ×0,8/1/1,3; cierre 6,8 m) el que no cruza la red ni se pega a ella, no se
+  sale del pabellón, no tiene a nadie ni nada (postes, silla, mesa, jueces) entre la cámara y el héroe ni pegado a la cámara dentro del
+  cuadro, le ve de frente y mete más compañeros. Si durante la celebración alguien se acerca a < 3 m dentro del cuadro, la cámara se aleja
+  (hasta 2,5 m). Pausa corta (< 1,45 s reales) → sin corte. Vuelta al saque SIEMPRE por corte (`markCut('point','tp','serve')`: la
+  cortinilla de ui.js la tapa). Entre `tp` y `tv` (cambio del ajuste a mitad de partido) también por corte (`'cam'`).
+- **Escenas nuevas** (main.js `debugScene`, autopilot: la IA juega también al humano): `tserve6` (saque rival lanzado), `recv6`
+  (recepción), `spike6` (tu remate), `block6` (bloqueo de tu equipo), `point6h` (punto con el plano de reacción; `&won=1`), `setend6`
+  (punto que cierra el 1r set; ojo: a los 1,45 s entra la grúa del cambio de campo, también congelado). Todas con `&n=N`, `&t=s` y
+  `&cam6=tv`. `serve6h` / `rally6h` siguen (humano sin pulsar nada).
+- **Prueba nueva `tools/cam6test.js`** `[WxH] [s] [semilla] [puntos]` (`TOUCH=1`, `CAM6=tv`, `SHOTS=dir`): partido 6v6 en vivo con autopilot y,
+  frame a frame, jugador en cuadro (≥ 99 %), balón en cuadro en el peloteo (≥ 95 %), suavidad sin cortes (p99 ≤ 14 m/s, 75°/s, 16°/s
+  de lente), límites y cortes de reacción/vuelta. Con `SHOTS` congela tras cada momento y captura (saque propio, saque rival, recepción,
+  colocación, remate propio, bloqueo, punto ganado/perdido, fin de set).
+- **Medido** (11-nov-2026, RTX 3060 Ti; `cam6test` 120 s, semilla 11): 3ª persona 1280×720 jugador fuera 0,00 %, balón fuera 0,00 %, p99
+  5,6 m/s / 49°/s / 11,9°/s de lente; 844×390 táctil 0 % / 0 %, 5,8 m/s / 49°/s / 11,2°/s; 667×375 táctil (semilla 5) 0 % / 4,4 % (balones
+  desviados que se van por la banda o detrás de la cámara), 5,9 m/s / 53°/s; semilla 3 a 1280×720 0 % / 0 %. 7-10 cortes al plano de
+  reacción y otros tantos de vuelta. Televisión (sin cambios): 0 % / 0 %, lente p99 14,6°/s.
+  **perf** 844×390 dpr 2,75 CPU ×4, `EXTRA=format=6v6` (perf juega con autopilot sin `g.watch`, así que ahora mide la 3ª persona; con
+  `&cam6=tv`, la tele): media 89,5 fps (p5 55) / baja 97,6 (81); dibujos media 58-64, baja 36-39; triángulos media 342 k de media y **369 k
+  de pico** (> 350 k), baja 120-124 k. Con la tele: media 331-341 k, baja 121 k (objetivos cumplidos). El pico es del **plano de
+  reacción** (cámara baja a 2,7 m con 6-8 atletas cerca: no lejanos → malla media en vez de baja; players.js `FAR_D`/`FAR_RIV`) y de
+  algún saque; en el peloteo, 331-348 k (justo como con la tele). Ver «Para el integrador».
+  **2v2 sin cambios**: estado exacto de la cámara (posición, giro, lente) en 10 escenas a 1280×720 y 8 a 844×390 táctil igual al de
+  antes salvo el ruido de tiempo real que ya da la misma copia dos veces (≤ 1e-4); capturas antes/después en `tools/out/arte/cam6/antes2v2/`
+  y `despues2v2/`. Huella 2v2 de simtest idéntica.
+- **Capturas** `tools/out/arte/cam6/`: `live-d/` y `live-m/` (`3p-*` y `tv-*`: saque propio, saque rival, recepción, colocación, remate
+  propio, bloqueo, punto ganado y perdido; 1280×720 y 844×390 táctil), `live-667/` (3ª persona a 667×375 táctil), `3p-d/` y `3p-m/`
+  (escenas de depuración), `prep-6v6-*` y
+  `ajustes-imagen-*` (las filas nuevas).
+- **Integración (11-nov)**: (1) pico de triángulos resuelto en players.js `screenLod` (solo 6v6): fuera de cuadro = lejano siempre; en el
+  punto, solo los `PT6_N` = 4 atletas en cuadro más cercanos llevan malla media/completa y trazo, y < 15 % del alto = lejano; en el punto
+  y el saque solo dan sombra los `PT6_SH` = 3 más cercanos (media). perf 844×390 dpr 2,75 CPU ×4 `EXTRA=format=6v6`: media 329 k de media,
+  **348 k de pico**, 56-62 dibujos, 88-92 fps (p5 55); baja 119-120 k, 36-40 dibujos: «objetivos cumplidos». Por fase (sonda por frame, 120 s):
+  peloteo ≤ 348 k, punto ≤ 338 k, saques ≤ 347 k (algún frame suelto de corte a 352-359 k). (2) Temblor ×0,4 en `tp`/`tpPoint` (cámara
+  cerca: los remates daban picos de 260-345°/s). (3) Cortinilla de vuelta al saque cuando el punto no corta al plano de reacción
+  (`TPP.willCut` falso): `nextCutIn` da ya el tiempo del corte de vuelta y `getDebug().pf` = `{cut: false}` en `tpPoint`, así ui.js la arma.
+  (4) `tsrv` (arriba). (5) cam6test captura también el saque de un compañero (`saque-companero-0` al lanzar, `saque-companero`).
+  Medido tras la integración (cam6test 100 s): 1280×720 s11 0 % / 0 %, p99 7,1 m/s / 39°/s / 11,9°/s; 844×390 táctil s11 0 % / 0 %;
+  667×375 táctil s5 0 % / 4,4 %; tele 1280 y 844 táctil 0 % / 0 %. Capturas finales en `tools/out/arte/cam6/final/` (`c6-d`, `c6-m`, `c6-667`,
+  `tv-d`, `tv-m`).
+- **Pendiente / ideas**: con el humano zaguero el campo rival ocupa ~15-18 % del alto a 844×390 (la tele ~20 %; geometría: ~1/3 del
+  tramo pies-fondo rival); el plano de reacción no conoce la coreografía de players (no hay `heroShot` en 6v6: el héroe puede estar de
+  espaldas si mira a sus compañeros); `bench` (tiempo muerto / líbero) y «Avanzar» siguen sin plano; sin seguimiento del remate (CAM-08)
+  ni momento de red (CAM-17) en 6v6.

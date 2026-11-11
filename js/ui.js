@@ -373,7 +373,7 @@
       'btnPlay', 'optDiff', 'optVenue', 'venueVal', 'optPts', 'ptsVal', 'optCtrl', 'ctrlVal', 'btnTut', 'btnControls', 'btnSettings', 'btnSquad', 'squadSub', 'sqBody', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
       'btnAgain', 'btnMenu', 'btnPanelBack', 'btnTutPrev', 'btnTutNext', 'btnHudPause', 'btnHudMute', 'icoSound',
       'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord',
-      'btnQuick', 'btnGo', 'btnPlayBack', 'btnQuickBack', 'mpPlay', 'mpQuick', 'venueHelp', 'ptsHelp', 'ctrlHelp', 'diffHelp', 'optFmt', 'fmtVal', 'fmtHelp', 'btn6v6', 'sqPick', 'ctlTabs', 'sqTabs', 'setTabs', 'optList',
+      'btnQuick', 'btnGo', 'btnPlayBack', 'btnQuickBack', 'mpPlay', 'mpQuick', 'venueHelp', 'ptsHelp', 'ctrlHelp', 'diffHelp', 'optFmt', 'fmtVal', 'fmtHelp', 'optCam6', 'cam6Val', 'cam6Help', 'btn6v6', 'sqPick', 'ctlTabs', 'sqTabs', 'setTabs', 'optList',
       'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack', 'btnEndOpts'].forEach(function (k) { el[k] = $(k); });
     el.bn1 = $('bn1'); el.bn2 = $('bn2'); el.bn3 = $('bn3'); el.pbug = $('pbug'); el.pbT = $('pbT'); el.pbS = $('pbS'); el.pbX = $('pbX'); el.sbBody = document.querySelector('.sb-body'); el.sb = $('sb'); el.sbSet = $('sbSet'); el.tag = $('sbTag'); el.hist = $('sbHist');
     el.row0 = $('sbRow0'); el.row1 = $('sbRow1'); el.name0 = $('sbName0'); el.name1 = $('sbName1');
@@ -1520,7 +1520,7 @@
     var q = g.jobs[0];
     if (nt === 2) return (q.role === 'S' ? 'Coloca tu colocador' : 'Coloca ' + mate6(q)) + (p.front ? ': prepárate para atacar' + (touchDev ? '' : ' o pide el balón con ' + gl.sw) : ': <b>cubre</b> el ataque');
     if (nt === 3) return 'Ataca ' + mate6(q) + ': <b>cubre</b> el ataque';
-    return 'Juega ' + mate6(q) + ': a tu sitio';
+    return 'Juega ' + mate6(q) + ': ve al aro celeste';   // (fx posMark: tu sitio sin balón; el personaje ya no va solo)
   }
   /** Nombres de los equipos en la presentación, la pausa y la hoja final: TÚ / CPU, o los clubes en un partido de Carrera
    *  (g.career de main.js: me/rival = abreviaturas, meName/rivalName = nombres). Solo reescribe al cambiar. */
@@ -2626,7 +2626,8 @@
     var R = ctlRowsAll(dv);
     // modo «Control: Uno»: no hay cambio de jugador (ni tecla, ni botón ⇄)
     // 6v6 (sprint 3): el mismo botón pide el balón al colocador («¡Pídela!»)
-    if (fmt6()) R = R.map(function (r) { return r[1] === 'Cambiar jugador' ? [r[0], 'Pedir el balón <small>(antes de la colocación)</small>'] : r; });
+    // (y moverse: el personaje ya no va solo a su sitio; sin balón, su sitio es el aro celeste del suelo, fx posMark)
+    if (fmt6()) R = R.map(function (r) { return r[1] === 'Cambiar jugador' ? [r[0], 'Pedir el balón <small>(antes de la colocación)</small>'] : r[1] === 'Moverse' ? [r[0], 'Moverse <small>(sin balón, al aro celeste)</small>'] : r; });
     else if (oneMode()) R = R.filter(function (r) { return r[1] !== 'Cambiar jugador'; });
     return R;
   }
@@ -2694,6 +2695,9 @@
     coachTips: { vals: [true, false], labels: ['Sí', 'No'] },
     // formato del Partido rápido (sprint 3 del 6v6; main.js ctx.settings.format): 2 contra 2 o 6 contra 6 (llevas al receptor, en el pabellón)
     format: { vals: ['2v2', '6v6'], labels: ['2 contra 2', '6 contra 6'] },
+    // cámara del 6v6 (camera_input, camera.js; main.js ctx.settings.cam6): detrás de tu jugador (por defecto) o la de televisión. En Ajustes ·
+    // Imagen y, en la preparación del 6 contra 6, en el sitio de Escenario (que ahí es fijo)
+    cam6: { vals: ['3p', 'tv'], labels: ['3ª persona', 'Televisión'], help: ['Detrás de tu jugador, siguiendo la jugada', 'Alta, desde el fondo: ves a los 12'] },
     // Equipación (Ajustes · Equipación): muestras de color; players.js setKit deriva el resto de tonos
     kitShirt: { vals: [0xff5a2c, 0xd8262e, 0xf2c230, 0x1f9a4a, 0x32b5e8, 0x7b3fd1, 0x22252c, 0xf2f4f8], labels: ['<i class="sw" style="background:#ff5a2c" title="Naranja"></i>', '<i class="sw" style="background:#d8262e" title="Rojo"></i>', '<i class="sw" style="background:#f2c230" title="Amarillo"></i>', '<i class="sw" style="background:#1f9a4a" title="Verde"></i>', '<i class="sw" style="background:#32b5e8" title="Celeste"></i>', '<i class="sw" style="background:#7b3fd1" title="Morado"></i>', '<i class="sw" style="background:#22252c" title="Negro"></i>', '<i class="sw" style="background:#f2f4f8" title="Blanco"></i>'] },
     kitAccent: { vals: [0xffb238, 0xffffff, 0x1a1c22, 0xd9a520, 0x8fd3ff, 0xff4040], labels: ['<i class="sw" style="background:#ffb238" title="Ámbar"></i>', '<i class="sw" style="background:#ffffff" title="Blanco"></i>', '<i class="sw" style="background:#1a1c22" title="Negro"></i>', '<i class="sw" style="background:#d9a520" title="Dorado"></i>', '<i class="sw" style="background:#8fd3ff" title="Celeste"></i>', '<i class="sw" style="background:#ff4040" title="Rojo"></i>'] },
@@ -2807,6 +2811,7 @@
   function menuVenue() { var v = VB.Arena && VB.Arena.venue ? VB.Arena.venue() : ctx.settings.arena; return v === 'beach' ? 'beach' : 'hall'; }
   var lastCtrlI = -1;
   var lastFmtI = -1;
+  var lastCam6I = -1;
   var lastDiffI = -1;
   function renderOpts() {
     var segs = document.querySelectorAll('[data-seg]');
@@ -2860,6 +2865,21 @@
     lastVenueI = vi;
     var vas = el.optVenue ? el.optVenue.querySelectorAll('.arr') : [];
     if (vas.length === 2) { vas[0].classList.toggle('end', six || vi === 0); vas[1].classList.toggle('end', six || vi === OPT.arena.vals.length - 1); }
+    // 6 contra 6: en el sitio de Escenario (fijo en el pabellón), la cámara: 3ª persona o Televisión (cabe a 844×390 sin una fila más)
+    if (el.optCam6) {
+      if (el.optVenue && el.optVenue.hidden !== six) el.optVenue.hidden = six;
+      if (el.optCam6.hidden !== !six) el.optCam6.hidden = !six;
+      var c6 = optIndex('cam6');
+      if (el.cam6Val && el.cam6Val.textContent !== OPT.cam6.labels[c6]) {
+        el.cam6Val.textContent = OPT.cam6.labels[c6];
+        if (lastCam6I >= 0) { var c6v = el.cam6Val.parentNode; c6v.classList.remove('sl-l', 'sl-r'); void c6v.offsetWidth; c6v.classList.add(c6 > lastCam6I ? 'sl-r' : 'sl-l'); }
+        el.optCam6.setAttribute('aria-label', 'Cámara: ' + OPT.cam6.labels[c6]);
+      }
+      lastCam6I = c6;
+      var c6a = el.optCam6.querySelectorAll('.arr');
+      if (c6a.length === 2) { c6a[0].classList.toggle('end', c6 === 0); c6a[1].classList.toggle('end', c6 === OPT.cam6.vals.length - 1); }
+      setText(el.cam6Help, 'c6h', OPT.cam6.help[c6]);
+    }
     var pi = optIndex('setPoints'), ptxt = vb ? BEACH_PTS : OPT.setPoints.labels[pi];
     el.optPts.classList.toggle('lock', vb);
     var ptl = vb ? 'Puntos por set: 21, y el tercer set a 15 (reglas de vóley playa; se elige en Pabellón)' : 'Puntos por set: ' + OPT.setPoints.labels[pi];
@@ -3297,6 +3317,11 @@
         if (a) { stepOpt('format', +a.getAttribute('data-d'), el.fmtVal); restartAnim(a, 'hit'); }
         else changeOpt('format', 1);
       });
+      if (el.optCam6) el.optCam6.addEventListener('click', function (ev) {
+        var a = ev.target && ev.target.closest ? ev.target.closest('[data-d]') : null;
+        if (a) { stepOpt('cam6', +a.getAttribute('data-d'), el.cam6Val); restartAnim(a, 'hit'); }
+        else changeOpt('cam6', 1);
+      });
       // tarjeta 6 contra 6 de Jugar: la preparación del Partido rápido con el formato ya en 6 contra 6
       if (el.btn6v6) el.btn6v6.addEventListener('click', function () { ctx.actions.setSetting('format', '6v6'); menuGo('quick'); });
       el.optCtrl.addEventListener('click', function (ev) {
@@ -3304,7 +3329,7 @@
         if (a) { stepOpt('ctrlMode', +a.getAttribute('data-d'), el.ctrlVal); restartAnim(a, 'hit'); }
         else changeOpt('ctrlMode', 1);
       });
-      var arrs = document.querySelectorAll('#optFmt .arr, #optDiff .arr, #optVenue .arr, #optPts .arr, #optCtrl .arr');
+      var arrs = document.querySelectorAll('#optFmt .arr, #optCam6 .arr, #optDiff .arr, #optVenue .arr, #optPts .arr, #optCtrl .arr');
       for (var ai = 0; ai < arrs.length; ai++) arrs[ai].addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') uiSound2('arrowHover', +this.getAttribute('data-d') || 1); });
       on(el.btnTut, function () { openPanel('tut', 'menu'); });
       on(el.btnControls, function () { openPanel('ctl', 'menu'); });

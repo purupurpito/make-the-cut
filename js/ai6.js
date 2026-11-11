@@ -7,6 +7,8 @@
  * Reutiliza AI.update (movimiento, salto, timing aleatorio, plancha, toque desviado); aquí solo se decide:
  *   computeJob(g, t)        quién va al balón (1r toque con penalización por puesto, 2º el colocador, 3r el atacante elegido)
  *   pos(g, p)               dónde estar (recepción, saque propio, ataque propio con cobertura, bloqueo de zona y defensa perímetro)
+ *   spot(g, p)              el sitio de la formación sin mirar quién va al balón (marca de posición del humano, su celda, el bot)
+ *   humanOwns / setReady    humano sin movimientos solos: ¿el balón es suyo? ¿se le puede colocar? (HUM)
  *   placeServe(g, t, sv)    formaciones del saque: el equipo que saca en sus zonas, el que recibe en «W» con 3 receptores (OH, OH, L)
  *   passTarget(g, p, hard)  destino de la recepción/defensa (sim.hit, 1r toque)
  *   chooseSet(g, p)         el colocador elige atacante y tempo (sim.hit, 2º toque): bola alta a punta, tensa al opuesto, rápida al central
@@ -46,10 +48,18 @@
     pen2: { S: -0.8, L: 0, OH: 0.15, MB: 0.2, OPP: 0.1 }
   };
 
-  // humano en 6v6 (control Uno, sprint 3): área de responsabilidad del 1r toque (m) y su sesgo (s); sesgo general del 1r toque;
-  // «¡mía!» (pulsa GOLPEAR con el balón a menos de mine m del punto de toque: se lo queda); «¡Pídela!» (CAMBIAR: peso ×ask en
-  // chooseSet durante askT s); peso extra del humano como atacante (más toques por rally: objetivo ≥ 0,7, diseño §1.5)
-  var HUM = { area: 1.5, resp: 0.25, bias: 0.12, mine: 1.6, ask: 2.5, askT: 3, atkW: 1.3 };
+  // humano en 6v6 (control Uno). Desde el 11-nov (Ferran: «deja que el jugador decida») el humano NO se mueve solo: ni a su
+  // sitio ni al balón. Por eso el reparto de balones ya no puede dárselo «porque llegará»:
+  //  area: balón a menos de area m del humano = suyo (está ahí); en el 1r toque también lo es el que cae en SU celda de la
+  //        formación (el punto de toque está más cerca de su sitio, spot(), que del de cualquier compañero);
+  //  cede: s que se suman los compañeros con un balón suyo (no le quitan el balón ni ocupan su sitio: si no va, cae);
+  //  yield: s que se suma el humano con un balón que no es suyo (el compañero juega lo suyo aunque el humano esté algo más cerca;
+  //        el humano se lo queda pulsando GOLPEAR, «¡mía!»);
+  //  mine: «¡mía!» (pulsa GOLPEAR con el balón a menos de mine m del punto de toque: se lo queda);
+  //  ask/askT: «¡Pídela!» (CAMBIAR: peso ×ask en chooseSet durante askT s); atkW: peso del humano como atacante;
+  //  setD/setR/idleT: el colocador solo le da el balón si está a ≤ setD m de la red, a ≤ setR m del destino de la colocación y ha
+  //        tocado el mando (stick o botón) en los últimos idleT s (no regala colocaciones al que está quieto o lejos)
+  var HUM = { area: 1.5, cede: 0.45, yield: 0.25, mine: 1.6, ask: 2.5, askT: 3, atkW: 1.3, setD: 4.6, setR: 4.2, idleT: 3.5 };
 
   var _tg = { x: 0, y: 0, attack: false, block: false };
   function setTg(x, y, attack, block) { _tg.x = x; _tg.y = y; _tg.attack = !!attack; _tg.block = !!block; return _tg; }
@@ -69,12 +79,6 @@
   }
   /** Penalización (s) del puesto para el toque n (0 = 1r toque del equipo, 1 = 2º, 2 = 3r). */
   function rolePen(g, t, q, n, pr) {
-    // humano (control Uno, sprint 3, §1.5 «quién toca»): un candidato más con su puesto, y en el 1r toque su «área de
-    // responsabilidad»: con el balón a menos de HUM.area m de él es suyo aunque un compañero llegue algo antes (HUM.resp s)
-    if (S.isHuman(g, q)) return rolePenAI(g, t, q, n, pr) - (n === 0 ? (Math.hypot(pr.x - q.x, pr.y - q.y) < HUM.area ? HUM.resp : HUM.bias) : 0);
-    return rolePenAI(g, t, q, n, pr);
-  }
-  function rolePenAI(g, t, q, n, pr) {
     if (n === 0) { var a = FORM.pen1[q.role] || 0; return q.role === 'MB' || q.role === 'OPP' ? (q.front ? a : 0) : a; }
     if (n === 1) {
       if (q.role === 'L') return Math.abs(pr.x) < C.ATTACK + 0.3 ? 0.6 : 0; // el líbero de dedos delante de 3 m anula el ataque por arriba
@@ -83,6 +87,18 @@
     var pl = g.setPlan[t];
     if (pl && pl.to === q && pl.t === g.lastTouchT) return -0.8;
     return q.role === 'L' ? 0.6 : canAttack(q) ? 0 : 0.3;
+  }
+  /** ¿El balón (punto de toque pr) es claramente del humano hu? Si está a menos de HUM.area m de él (ha ido) o, en el 1r toque,
+   *  si cae en su celda de la formación (más cerca de su sitio, spot(), que del sitio de cualquier compañero). Sin azar. */
+  function humanOwns(g, t, hu, pr, n, excl) {
+    if (Math.hypot(pr.x - hu.x, pr.y - hu.y) < HUM.area) return true;
+    if (n !== 0) return false;
+    var s = spot(g, hu), d0 = Math.hypot(pr.x - s.x, pr.y - s.y), tm = g.teams[t];
+    for (var i = 0; i < tm.length; i++) {
+      var q = tm[i]; if (q === hu || q === excl || q.bench) continue;
+      s = spot(g, q); if (Math.hypot(pr.x - s.x, pr.y - s.y) < d0) return false;
+    }
+    return true;
   }
   /** Mejor candidato del equipo t para el balón (tiempo hasta el balón + puesto), con la memoria por trayectoria de ai.js:
    *  solo cambia si otro llega claramente antes o el elegido no llega de ninguna manera. */
@@ -106,17 +122,21 @@
       g.jobMem[t] = hu; g.jobMemT[t] = g.lastTouchT;
       return hu;
     }
+    // humano (sin movimientos automáticos): ¿el balón es claramente suyo? (HUM; solo su equipo y con humano de verdad)
+    var hum = hu && hu !== excl && S.isHuman(g, hu) ? hu : null, own = hum ? humanOwns(g, t, hum, pr, mineN, excl) : false;
     var best = null, bc = 1e9, cm = 1e9;
     for (var i = 0; i < tm.length; i++) {
       var q = tm[i]; if (q === excl) continue;
       var c = jobCost(g, q, pr) + rolePen(g, t, q, mineN, pr);
+      if (hum) c += q === hum ? (own ? 0 : HUM.yield) : (own ? HUM.cede : 0);
       if (q === mem) cm = c;
       else if (c < bc) { bc = c; best = q; }
     }
     var pick;
     if (mem) {
       var clearly = best && bc < cm - 0.3 && g.time - g.jobSwT[t] > 0.5 && pr.t > 0.4;
-      var hopeless = best && pr.t > 0.15 && cm > pr.t + 0.35 && bc < pr.t + 0.1 && bc < cm - 0.2 && g.time - g.jobSwT[t] > 0.25 && g.jobHop[t] !== g.lastTouchT;
+      // (un balón claramente del humano no se le quita porque «no llega»: ya no va solo; si no va, cae)
+      var hopeless = best && !(own && mem === hum) && pr.t > 0.15 && cm > pr.t + 0.35 && bc < pr.t + 0.1 && bc < cm - 0.2 && g.time - g.jobSwT[t] > 0.25 && g.jobHop[t] !== g.lastTouchT;
       if (hopeless) g.jobHop[t] = g.lastTouchT;
       pick = (clearly || hopeless) ? best : mem;
     } else pick = best;
@@ -134,7 +154,13 @@
       if (S.atkPhase(g, t) && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5) return setTg(g.pr3.x + sd * 0.35, g.pr3.y, canAttack(p), false);
       return setTg(g.pr1.x + sd * 0.2, g.pr1.y);
     }
-    var lk = g.lastKind, tt = g.touchTeam;
+    return spot(g, p);
+  }
+  /** Sitio de p en la formación de esta fase SIN mirar quién va al balón (recepción, saque propio, ataque propio con cobertura,
+   *  bloqueo de zona, defensa perímetro). Es pos() para el que no juega el balón; para el humano, la marca de posición (fx.js) y
+   *  su celda de responsabilidad (humanOwns). Devuelve el objeto compartido de setTg (copiar x/y antes de otra llamada). */
+  function spot(g, p) {
+    var t = p.team, lk = g.lastKind, tt = g.touchTeam;
     if (lk === 'serve') return tt === t ? basePos(g, p) : recvPos(g, p);
     if (tt === t && g.touches < 3) return offPos(g, p);
     return defPos(g, p);
@@ -270,6 +296,11 @@
     pq[p.team].q = (q == null ? 0.6 : q) * (hard ? FORM.digSys : 1); pq[p.team].t = g.time;
     return _pt;
   }
+  /** ¿Puede el colocador darle el balón al humano q con destino (x, y) en el mundo? A ≤ HUM.setD m de la red, a ≤ HUM.setR m del
+   *  destino y con el mando tocado en los últimos HUM.idleT s (g.hAct, sim.step). Quieto o lejos: el colocador busca a otro. */
+  function setReady(g, q, x, y) {
+    return dOf(q) <= HUM.setD && Math.hypot(q.x - x, q.y - y) <= HUM.setR && g.time - g.hAct <= HUM.idleT;
+  }
   var _sp = { d: 0, yl: 0, apex: 5 }, _cand = [], _w = [];
   /** El colocador elige atacante y tempo (2º toque). Delanteros que pueden atacar (sin el líbero ni quien coloca); el central
    *  solo con recepción buena y el colocador cerca de la red (rápida). Peso del puesto, menos si el bloqueo rival ya está
@@ -285,8 +316,9 @@
       var tempo = q.role === 'MB' ? 'quick' : q.role === 'OPP' ? 'shoot' : 'high';
       if (tempo === 'quick' && !inSys) continue;
       var T = FORM.set[tempo], ty = tempo === 'quick' ? clamp(ylOf(p) - 1.0, -2.5, 2.5) : T.yl, Y = sd * ty, w = FORM.setW[q.role] || 0.5;
-      // humano delantero (sprint 3): un atacante más, algo preferido; con «¡Pídela!» reciente, mucho más
-      if (S.isHuman(g, q)) w *= HUM.atkW * (g.time - g.ask6 < HUM.askT ? HUM.ask : 1);
+      // humano delantero (sprint 3): un atacante más, algo preferido; con «¡Pídela!» reciente, mucho más. Solo si está para
+      // atacar (setReady: cerca de la red y del destino, y jugando): ya no corre solo a la batida, no se le regala el balón
+      if (S.isHuman(g, q)) { if (!setReady(g, q, sd * T.d, Y)) continue; w *= HUM.atkW * (g.time - g.ask6 < HUM.askT ? HUM.ask : 1); }
       for (var k = 0; k < opp.length; k++) { var o = opp[k]; if (o.front && Math.abs(o.x) < 2 && Math.abs(o.y - Y) < 1.3) w *= 0.7; }
       _cand.push(q); _w.push(w); sum += w;
     }
@@ -309,6 +341,6 @@
     return P.sys ? FORM.sysDig : FORM.oosDig;
   }
 
-  VB.AI6 = { computeJob: computeJob, pos: pos, placeServe: placeServe, passTarget: passTarget, chooseSet: chooseSet,
+  VB.AI6 = { computeJob: computeJob, pos: pos, spot: spot, humanOwns: humanOwns, setReady: setReady, placeServe: placeServe, passTarget: passTarget, chooseSet: chooseSet,
     blockPlan: blockPlan, digK: digK, canAttack: canAttack, setterOf: setterOf, FORM: FORM, HUM: HUM };
 })();

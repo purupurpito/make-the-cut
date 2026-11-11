@@ -525,34 +525,48 @@
   //    usan la malla baja y sin contorno de tinta (un dibujo menos cada uno). En baja ya van con la malla baja y sin contorno.
   //  - Sombras parciales: en media/baja solo proyectan sombra los SHADOW_N más cercanos a la cámara; el resto se queda con la
   //    mancha de contacto de FX (InstancedMesh, un dibujo para todos).
-  var FAR_D = 14, FAR_RIV = 10, FAR_HYS = 1, SHADOW_N = [2, 6], LODA = null;   // sombras: [baja, media]
+  // (PT6_FAR: 6v6 en el punto —plano de reacción bajo de la 3ª persona, con ~8 atletas cerca—: el que está fuera de
+  //  cuadro u ocupa < 15 % del alto también va como lejano —malla baja y sin trazo— y solo dan sombra los PT6_SH más cercanos (en media; también
+  //  en el saque);
+  //  si no, el pico pasaba de 350 k triángulos en calidad media)
+  var FAR_D = 14, FAR_RIV = 10, FAR_HYS = 1, SHADOW_N = [2, 6], LODA = null, LODB = null, PT6_FAR = 0.15, PT6_SH = 3, PT6_N = 4;   // sombras: [baja, media]
   function screenLod(g) {
     var cam = ctx && ctx.camera;
     if (!cam || !cam.isPerspectiveCamera) return;
     if (!LODW) LODW = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-    var six = !!(g && g.size > 2), myTeam = g && g.ctrl ? g.ctrl.team : 0;
-    if (six && (!LODA || LODA.length < rigs.length)) LODA = new Float32Array(Math.max(16, rigs.length));
+    var six = !!(g && g.size > 2), myTeam = g && g.ctrl ? g.ctrl.team : 0, pt6 = six && g.mode === 'point', sh6 = pt6 || (six && g.mode === 'serve');
+    if (six && (!LODA || LODA.length < rigs.length)) { LODA = new Float32Array(Math.max(16, rigs.length)); LODB = new Float32Array(LODA.length); }
     var cp = LODW[0], dir = LODW[1]; cp.setFromMatrixPosition(cam.matrixWorld); cam.getWorldDirection(dir);
     var tanH = 2 * Math.tan(cam.fov * PI / 360) / (cam.zoom || 1);
+    // (6v6, punto: solo los PT6_N atletas en cuadro más cercanos a la cámara llevan malla media/completa y trazo; LODA = distancia² o 1e9
+    //  fuera de cuadro, en LODB, para el rango)
+    if (pt6 && LODR < 2) for (var k0 = 0; k0 < rigs.length; k0++) {
+      var r0 = rigs[k0], p0 = r0.root.position, ex = p0.x - cp.x, ey = p0.y + 1.0 * r0.scale - cp.y, ez = p0.z - cp.z;
+      LODW[2].set(p0.x, p0.y + 1.0 * r0.scale, p0.z).project(cam);
+      LODB[k0] = ex * dir.x + ey * dir.y + ez * dir.z > 0.05 && Math.abs(LODW[2].x) <= 1.15 && Math.abs(LODW[2].y) <= 1.3 ? ex * ex + ey * ey + ez * ez : 1e9;
+    }
     for (var k = 0; k < rigs.length; k++) {
       var r = rigs[k], rp = r.root.position, want = LODR;
       if (LODR < 2 || six) {
         var dx = rp.x - cp.x, dy = rp.y + 1.0 * r.scale - cp.y, dz = rp.z - cp.z;
         var ahead = dx * dir.x + dy * dir.y + dz * dir.z;             // profundidad (la altura en pantalla va con ella)
+        var rk = 0;
+        if (pt6 && LODR < 2) { for (var j0 = 0; j0 < rigs.length; j0++) if (LODB[j0] < LODB[k] || (LODB[j0] === LODB[k] && j0 < k)) rk++; }
         if (six) LODA[k] = dx * dx + dy * dy + dz * dz;
       }
       if (LODR < 2) {
         var frac = ahead > 0.05 ? (BODY_TOP + 0.2) * r.scale / (ahead * tanH) : 0;   // alto del muñeco (con los brazos algo arriba)
-        if (frac > LOD_DOWN) { // solo si está en el encuadre (no uno pegado a la cámara pero fuera de plano)
+        var off = !(ahead > 0.05);
+        if (frac > LOD_DOWN || (six && !off)) { // solo si está en el encuadre (no uno pegado a la cámara pero fuera de plano)
           LODW[2].set(rp.x, rp.y + 1.0 * r.scale, rp.z).project(cam);
-          if (Math.abs(LODW[2].x) > 1.15 || Math.abs(LODW[2].y) > 1.3) frac = 0;
+          if (Math.abs(LODW[2].x) > 1.15 || Math.abs(LODW[2].y) > 1.3) { frac = 0; off = true; }
         }
         r.lodFrac = frac;
         var big = frac > (r.lodBig ? LOD_DOWN : LOD_UP);
         r.lodBig = big; if (big) want = 2;
         if (six) {
           var hy = r.far ? -FAR_HYS : 0;
-          r.far = !big && (ahead > FAR_D + hy || (r.team !== myTeam && ahead > FAR_RIV + hy));
+          r.far = !big && (ahead > FAR_D + hy || (r.team !== myTeam && ahead > FAR_RIV + hy) || (six && off) || (pt6 && (frac < PT6_FAR + (r.far ? 0.03 : 0) || rk >= PT6_N)));   // (6v6: fuera de cuadro, siempre lejano: no se ve)
           if (r.far && LODR === 1) want = 0;
         }
       } else { r.lodBig = false; r.far = false; }
@@ -563,10 +577,11 @@
     if (six) {
       for (k = 0; k < rigs.length; k++) {
         var cast = true;
-        if (QRANK < 2 && rigs.length > SHADOW_N[QRANK]) {
+        var shN = sh6 ? Math.min(PT6_SH, SHADOW_N[QRANK]) : SHADOW_N[QRANK];
+        if (QRANK < 2 && rigs.length > shN) {
           var nb = 0, dk = LODA[k];
           for (var j = 0; j < rigs.length; j++) if (LODA[j] < dk || (LODA[j] === dk && j < k)) nb++;
-          cast = nb < SHADOW_N[QRANK];
+          cast = nb < shN;
         }
         if (rigs[k].skin.castShadow !== cast) rigs[k].skin.castShadow = cast;
       }

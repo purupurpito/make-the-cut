@@ -629,6 +629,10 @@ de caché, LOOKS, sombras y LOD). players.js no usa `g.rng` (solo `Math.random` 
 - **Rendimiento (§1.8)** en `screenLod(g)` (solo 6v6): en media, los lejanos (> 14 m de profundidad, o rivales a > 10 m; histéresis
   1 m; nunca en primer plano) usan la malla baja y sin contorno; sombras parciales en media/baja (`SHADOW_N = [2, 6]`: proyectan solo
   los más cercanos a la cámara; el resto, la mancha de contacto de FX, que ya admite 13). Alta sin cambios.
+  **11-nov-2026 (integrador, cámara 3ª persona del 6v6)**: fuera de cuadro (o detrás de la cámara) = lejano siempre (no se ve); con
+  `g.mode === 'point'`, solo los `PT6_N` = 4 atletas en cuadro más cercanos a la cámara llevan malla media/completa y trazo, y el que
+  ocupa < `PT6_FAR` = 15 % del alto es lejano (histéresis 0,03); en el punto y en el saque solo dan sombra los `PT6_SH` = 3 más cercanos
+  (media). El plano de reacción bajo (2,7 m, 8 atletas cerca) daba picos de 369-386 k triángulos en media; ahora ≤ 338 k (perf: pico 348 k).
 - `cvYaw`: el compañero del choque es `c.pA/c.pB` (en 2v2 = `teams[t][0/1]`, igual que antes); `sepOffset` usa `mateOf`.
 - Medido (`node tools/perf.js 844x390 15 auto,high,medium,low 4`, con otros dos agentes usando el PC): **2v2 igual que antes**
   (media 45-48 dibujos / 269-273 k, baja 29-33 / 112-113 k). **6v6** con `EXTRA=format=6v6`: alta 70-74 / 1,54-1,57 M; media 58-60 /

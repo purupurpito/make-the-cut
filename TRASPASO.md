@@ -383,19 +383,24 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     6v6; galón visible en el aire en 6v6; consejos sin «aro» y con puestos en vez de dorsales («retírate a defender» fuera del bloqueo,
     «cubre el ataque»); tarjeta guiada que se va si el balón no es tuyo; el 6v6 no cuenta en el récord (ni apaga consejos ni quita el
     novato); «PANTALLA COMPLETA» en icono en la preparación a ≤ 420 px de alto (no tapa la fila Formato); `js/sim.js` y `TRASPASO.md` en LF.
-  - **Pendiente tras el sprint 3**: cámara detrás del humano (sigue la de televisión; ver punto 2), falta de posición pitada al humano en
+  - **Pendiente tras el sprint 3**: ~~cámara detrás del humano (sigue la de televisión; ver punto 2)~~ HECHO 11-nov (camera_input: 3ª persona por
+    defecto y Televisión como opción, en Ajustes · Imagen y en la preparación del 6 contra 6; notes/camera_input.md «6v6: cámara en 3ª persona»), falta de posición pitada al humano en
     Difícil/Experto e «imán» (hoy no puede solaparse: nadie se mueve durante el saque rival), elegir otro puesto (colocador v2: `CTRL_ROLES6`
     solo admite 'OH'), marcador con sacador por dorsal e indicador de rotación, hoja final del 6v6 (MVP y estadísticas aún de 2v2; ya no
-    cuenta en el récord), fondo del menú con Formato 6 contra 6 (sigue la demo de playa), el colocador coloca al humano delantero aunque
-    esté quieto (×1,3: en Fácil/Normal un humano quieto recibe ~26 colocaciones que acaban en balón de cuerpo), equilibrio (bot novato en Fácil
-    gana el 45 % de los puntos, medio en Normal el 59 %; la IA del equipo 0 juega con el perfil `DIFF.mate`), pocos remates del humano
+    cuenta en el récord), fondo del menú con Formato 6 contra 6 (sigue la demo de playa), ~~el colocador coloca al humano delantero aunque
+    esté quieto~~ (HECHO 11-nov: `VB.AI6.setReady`, solo si está cerca de la red y jugando), **equilibrio: DECISIÓN DE FERRAN** (11-nov: sin movimientos solos el 6v6
+    en Fácil queda MÁS fácil: novato 61-71 % de los puntos —antes 45 %—, y un humano que no toca nada gana ~48 %; tabla en notes/sim.md), pocos remates del humano
     zaguero (no hay «pipe»), «Avanzar» en espectador. Toques del humano por rally (bot): novato 0,62, medio 0,76 (objetivo 0,7).
+  - **Sin movimientos solos (11-nov, petición de Ferran, HECHO en la sim)**: fuera la «posición asistida» (`assist6`); el humano solo se
+    mueve, salta y golpea con el mando (el imán corto de `assistMove` solo si ya empuja el stick; queda la colocación antes del saque); los compañeros no le quitan
+    los balones de su zona (si no va, cae); aro celeste en el suelo con su sitio (fx `posMark`). Detalle e inventario en notes/sim.md.
   - **Qué faltaba para el sprint 3 (humano en 6v6 + menú «Formato»)** (lo hecho, tachado):
     1. ~~Sim/IA: `AI6.decide` (2º/3r toque del humano y «¡Pídela!»; hoy la IA le aparta del 2º toque y de los remates), responsabilidad
        («¡mía!») del 1r toque, posición asistida~~ e imán en Fácil/Normal, falta de posición pitada al humano en Difícil/Experto, ~~sin
        `switch` en 6v6 (control Uno por rol, receptor por defecto), medir toques del humano por rally (objetivo ≥ 0,7)~~.
-    2. Cámara: plano detrás del humano (`gameplayShot` con más FOV, §1.6), oclusión con los 2 compañeros más cercanos al eje
-       cámara-jugador, planos de reacción, cierre de set y sacador rival en 6v6.
+    2. ~~Cámara: plano detrás del humano (`gameplayShot` con más FOV, §1.6), oclusión con los 2 compañeros más cercanos al eje
+       cámara-jugador, planos de reacción, cierre de set y sacador rival en 6v6.~~ HECHO 11-nov (camera.js `tpShot`/`tpPointShot`, `tools/cam6test.js`;
+       falta `bench` y «Avanzar»).
     3. ui_main: ~~fila **«Formato» 2v2 / 6v6** en el menú (`ctx.settings.format`)~~, elección de rol, ~~tutorial (mínimo) y
        Controles en 6v6~~, marcador con sacador por dorsal e indicador de rotación (ojo: el líbero queda con la zona de su central durante la
        pausa del punto, hasta `setupServe`), panel «Primer partido» que no salga en 6v6, hoja final sin textos de 2v2 (nivel, «Revancha en

@@ -66,7 +66,7 @@
     // móvil; input.js), hudScale (1 | 1,15 | 1,3: tamaño del HUD y de las hojas; ui.js), softFlash (destellos suaves; arena/fx/ui)
     // coachTips: consejos del partido (franja de arriba). Se ven hasta la primera victoria: ui.js los apaga al ganar el 1r partido
     // y se pueden volver a encender en Ajustes · Juego.
-    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, format: '2v2', camSens: 1, sfxVol: 1, musicVol: 0.75,
+    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, format: '2v2', cam6: '3p', camSens: 1, sfxVol: 1, musicVol: 0.75,
       camStable: false, rumble: true, hudScale: 1, softFlash: false, arena: Q.debug ? 'hall' : 'beach', arenaV: 2, beachLight: 'dia' };
     // beachLight: luz de la playa ('dia' mediodía | 'tarde' sol bajo y cálido; arena.js la lee en onSettings y al montar, ?luz= manda)
     // arena: sede ('hall' Palau del Mar | 'beach' Platja Llarga; ?map=beach en pruebas). Desde el 10-nov-2026 la Playa es el
@@ -99,6 +99,7 @@
     if (['diag', 'liso', 'franjas', 'rayas'].indexOf(s.kitPattern) < 0) s.kitPattern = 'diag';   // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS)
     if (s.ctrlMode !== 'one') s.ctrlMode = 'both';                      // control: los dos jugadores o solo uno (sim: g.ctrlMode)
     if (s.format !== '6v6') s.format = '2v2';                           // Partido rápido: 2 contra 2 o 6 contra 6 (sprint 3 del 6v6; fila «Formato»)
+    if (s.cam6 !== 'tv') s.cam6 = '3p';                                 // cámara del 6v6: en 3ª persona (por defecto) o de televisión (camera.js; ?cam6= manda)
     s.ctrlPlayer = 0;                                                    // modo Uno: llevas siempre al n.º 1 (teams[0][0]); el ajuste antiguo (1 = el otro) se ignora
     if (Q.diff && DIFFS.indexOf(Q.diff) >= 0) s.difficulty = Q.diff;
     return s;
@@ -944,12 +945,32 @@
         break;
       // 6v6 con HUMANO (sprint 3): llevas al receptor (n.º 2) y la IA al resto. serve6h: tu saque, con el balón en la mano tras el
       // silbato (&t= s tras el serveReady); rally6h: la colocación de tu equipo tras la recepción. Mientras avanza la escena el
-      // humano no pulsa nada (la posición asistida le lleva a su sitio)
+      // humano no pulsa nada: se queda donde se le colocó en el saque (desde el 11-nov el personaje no se mueve solo)
       case 'serve6h': case 'rally6h':
         forceVenue('hall');
         g = Sim.createGame({ demo: false, seed: sd, difficulty: diff, format: '6v6', ctrl: 'one', ctrlRole: 'OH', present: true });
         if (name === 'serve6h') keep = advanceUntil(g, function (e, gg) { return e && e.type === 'serveReady' && e.player === gg.ctrl; }, Q.t ? +Q.t : 1.2, 900, uiIngest);
         else keep = advanceUntil(g, function (e) { return e && e.type === 'hit' && e.team === 0 && e.touch === 2; }, 0.35, 900);
+        break;
+      // 6v6 con humano para la CÁMARA (camera_input, 3ª persona; &cam6=tv para la de televisión). La IA juega también al humano
+      // (autopilot) para que haga de todo; la cámara le sigue igual. tserve6: saque rival con el balón lanzado (&n=N el N-ésimo);
+      // recv6: tu equipo recibe el saque (0,3 s tras el 1r toque); spike6: TU remate (&n=N); block6: bloqueo de tu equipo (&n=N);
+      // point6h: el punto con su plano de reacción (&n=N; &won=1 solo los que gana tu equipo); setend6: el punto que cierra el 1r set
+      case 'tserve6': case 'recv6': case 'spike6': case 'block6': case 'point6h': case 'setend6':
+        forceVenue('hall');
+        g = Sim.createGame({ demo: false, autopilot: true, seed: sd, difficulty: diff, format: '6v6', ctrl: 'one', ctrlRole: 'OH', present: true });
+        var n6h = Q.n ? +Q.n : 1, c6h = 0, srv6 = false;
+        if (name === 'tserve6') keep = advanceUntil(g, function (e) { return e && e.type === 'toss' && e.team === 1 && ++c6h >= n6h; }, Q.t ? +Q.t : 0.3, 900, uiIngest);
+        else if (name === 'recv6') keep = advanceUntil(g, function (e) {
+          if (!e || e.type !== 'hit') return false;
+          if (e.kind === 'serve') { srv6 = e.team === 1; return false; }
+          var ok = srv6 && e.team === 0 && e.touch === 1 && ++c6h >= n6h; srv6 = false; return ok;
+        }, Q.t ? +Q.t : 0.3, 900, uiIngest);
+        else if (name === 'spike6') keep = advanceUntil(g, function (e, gg) { return e && e.type === 'hit' && e.kind === 'spike' && e.player === gg.ctrl && ++c6h >= n6h; }, Q.t ? +Q.t : 0.07, 1800, uiIngest);
+        else if (name === 'block6') keep = advanceUntil(g, function (e) { return e && e.type === 'block' && e.team === 0 && ++c6h >= n6h; }, Q.t ? +Q.t : 0.06, 1800, uiIngest);
+        else if (name === 'setend6') keep = advanceUntil(g, function (e) { return e && e.type === 'point' && (e.setWon || e.matchWon); }, Q.t ? +Q.t : 1.0, 5400, uiIngest);
+        else keep = advanceUntil(g, function (e) { return e && e.type === 'point' && (Q.won !== '1' || e.team === 0) && ++c6h >= n6h; }, Q.t ? +Q.t : 1.0, 1800, uiIngest);
+        if (name === 'point6h' || name === 'setend6') { if (preLand) keep.unshift(preLand); }
         break;
       case 'over': case 'end':
         g = mk(true);

@@ -143,7 +143,7 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     // ---- saque: A lanza, A golpea cuando el balón llega a la mano
     async function serve() {
       if (!(await waitFor("(function(g){return g.mode!=='serve'||g.serveAuth})(VB.ctx.game)", 5000))) return 'sinsilbato';
-      if (!(await evalJs("(function(g){return g.mode==='serve'&&g.server&&g.server.team===0&&g.serveState==='ready'})(VB.ctx.game)"))) return 'nosaque';
+      if (!(await evalJs("(function(g){return g.mode==='serve'&&g.server&&g.server.team===0&&(!g.ctrl||g.size!==6||g.server===g.ctrl)&&g.serveState==='ready'})(VB.ctx.game)"))) return 'nosaque';
       await press('A', 60);
       const t0 = Date.now();
       while (Date.now() - t0 < 2600) {
@@ -158,7 +158,10 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     for (let i = 0; i < 3 && sv === 'nosaque'; i++) { sv = await serve(); if (sv === 'nosaque') await sleep(400); }
     await sleep(400);
     let pp = JSON.parse(await evalJs('JSON.stringify(__pp)'));
-    check(pp.tosses >= 1 && pp.serves >= 1, 'saque con A: lanza y golpea (' + sv + ', toss ' + pp.tosses + ', saques ' + pp.serves + ')');
+    // (6v6: el saque va por rotación —en el primer punto saca el n.º 1, no tu receptor: «nosaque»— y RB es «¡Pídela!», no cambio de jugador)
+    const SIX = !!(await evalJs('VB.ctx.game&&VB.ctx.game.size===6'));
+    if (SIX && sv === 'nosaque') console.log('6v6: no saca el humano en este punto (rotación): se salta «saque con A»');
+    else check(pp.tosses >= 1 && pp.serves >= 1, 'saque con A: lanza y golpea (' + sv + ', toss ' + pp.tosses + ', saques ' + pp.serves + ')');
     const pk = await evalJs("(document.getElementById('promptKey')||{}).textContent||''");
     await shot('saque');
     // ---- juego: stick hacia el balón, A en el momento, RB para cambiar
@@ -194,7 +197,7 @@ const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, SELECT: 8, START: 9, UP: 12,
     check(pp.hits - pp.serves >= MIN_TOUCHES, 'al menos ' + MIN_TOUCHES + ' toques humanos con A (' + (pp.hits - pp.serves) + ')');
     // un peloteo vivo muy largo (bot preciso contra la CPU) también demuestra que se juega: cuenta si lleva >= 20 toques
     check(pp.points >= 1 || pp.rally >= 20, 'se juegan puntos (' + pp.points + (pp.points ? '' : ', peloteo en curso de ' + pp.rally + ' toques') + ')');
-    check(rbTried === 0 || pp.swManual >= 1, 'RB cambia de jugador');
+    if (!SIX) check(rbTried === 0 || pp.swManual >= 1, 'RB cambia de jugador');
     check(rum > 0, 'el mando vibra en los toques propios (' + rum + ' efectos)');
     const gk = Object.keys(glyphs);
     check(gk.length > 0 && gk.every(k => k === GL_HIT || k === GL_JUMP || k === ''), 'los avisos del HUD usan los glifos del mando ' + (PS ? 'PlayStation ✕ ○' : 'A B') + ' (' + (gk.join(',') || pk) + ')');

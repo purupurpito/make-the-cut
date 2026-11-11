@@ -247,6 +247,7 @@
     // (sin presentación, cierre ni plano del sacador rival: entran con el humano, sprint 3)
     if (g.size === 6) {
       if (g.mode === 'over' || g.finished || ctx.state === 'over') return 'over';
+      if (tp6(g)) return g.mode === 'point' ? ((CC.on && CC.t >= CC.start) ? 'court' : 'tpPoint') : 'tp';   // (3ª persona)
       if (g.mode === 'point') return (CC.on && CC.t >= CC.start) ? 'court' : 'tv';   // (el plano de reacción entre 12 quedaba tapado: sprint 3)
       return 'tv';
     }
@@ -336,7 +337,12 @@
     // (UI-16: el ajuste explícito «Cámara estable» quita el temblor del todo; prefers-reduced-motion lo deja al 30 %)
     stableNow = !!(st && Object.prototype.hasOwnProperty.call(st, 'camStable') && st.camStable);
     calmNow = reduceMotion || stableNow;
+    // 6v6: cámara en 3ª persona ('3p', por defecto) o de televisión ('tv'); ?cam6=tv|3p manda (pruebas)
+    cam6Tv = Q6 ? Q6 === 'tv' : !!(st && Object.prototype.hasOwnProperty.call(st, 'cam6') && st.cam6 === 'tv');
   }
+  var cam6Tv = false, Q6 = ''; try { var m6 = root.location && /[?&]cam6=(tv|3p)/.exec(root.location.search || ''); Q6 = m6 ? m6[1] : ''; } catch (e) { Q6 = ''; }
+  /** ¿6v6 con humano y cámara en 3ª persona? (el espectador, g.watch, y el ajuste «Televisión» van con el plano tv) */
+  function tp6(g) { return g.size === 6 && !g.watch && !cam6Tv && !!g.ctrl; }
   function comfort() { return calmNow; }
 
   /* DEFENSA QUE SE ACERCA (CAM-13). Mientras el rival construye (recepción o colocación suya, balón en su campo) la cámara de
@@ -2461,9 +2467,281 @@
     A.x = D.x - cp * 10; A.y = D.y + (TVS.ay - D.y) * 0.5; A.z = D.z + Math.sin(p) * 10;
   }
 
+  /* ================= 6v6 — CÁMARA EN 3ª PERSONA (ajuste ctx.settings.cam6: '3p' por defecto, 'tv' = la de televisión) =================
+   * notes/diseno-6v6-carrera.md §1.6: detrás y por encima del jugador que llevas, mirando a la red y al balón, con más campo que la del 2v2
+   * (entre 12 hay que leer la formación) y la red entera. Encuadre por AJUSTE (fit2): los pies del sujeto abajo (nB) y, arriba, lo que pida
+   * más lente: la línea de fondo rival (nTop), el balón (adelantado y con la cumbre prevista, nBall) o, en el saque rival, el sacador y su
+   * lanzamiento. La lente cambia a ritmo limitado (abre <= 14°/s, cierra <= 4°/s: sin bombeo) y el cabeceo sale de la lente REAL de este
+   * frame. Fases (parámetros suavizados, sin saltos): def (el balón es del rival), bld (construimos), atk (tu remate: más cerca, por encima
+   * del hombro), srv (tu saque, sobre tu hombro derecho), tsrv (saca un compañero), rsrv (saque rival). Oclusión: de los compañeros, los 2
+   * más cercanos al eje cámara-jugador; si tapan al jugador, la cámara se aparta de lado (hasta 2,2 m) y sube (hasta 0,9 m).
+   * Solo con g.size === 6 y sin g.watch (pickShot): el 2v2 y el espectador no pasan por aquí. */
+  var TP = { ph: '', back: 7.5, h: 5.5, side: 0.5, occ: 0.5, up: 0.5, fg: 0.5, ex: 0.5, ly: 0.5, fov: 50.5, v: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5], nB: -0.5, nX: 0.5, nY: 0.5, sox: 0.5, soy: 0.5 };
+  (function () { TP.side = TP.occ = TP.up = TP.fg = TP.ex = TP.ly = TP.sox = TP.soy = 0; for (var i = 0; i < TP.v.length; i++) TP.v[i] = 0; })();
+  // por fase: [back (m detrás del sujeto), h (altura), nB (NDC de los pies), side (m por encima del hombro, hacia el centro de la pista)]
+  var TPK = { def: [7.4, 5.5, -0.6, 0], bld: [6.8, 5.5, -0.62, 0.4], atk: [5.8, 4.9, -0.56, 1.0], srv: [4.0, 5.0, -0.9, 1.1], tsrv: [4.6, 5.1, -0.9, 1.1], rsrv: [7.2, 5.3, -0.6, 0] };
+  var TPD = { ph: '', occ: 0, up: 0, fov: 0, t: 0, nb: 0 };
+  var TPC = { x: 0.5, y: 0.5, z: 0.5, c: 1.5, s: 0.5 };   // (pose de la cámara para tpEl: sin cierres ni dobles en caja por llamada)
+  /** Elevación (rad) de un punto visto desde TPC con el rumbo de TPC (NaN si está detrás o encima de la cámara). */
+  function tpEl(x, y, z) { var fd = (x - TPC.x) * TPC.c + (y - TPC.y) * TPC.s; return fd > 0.6 ? at2(z - TPC.z, fd) : NaN; }
+  function tpPhase(g, p) {
+    if (g.mode === 'serve') return g.serving === 0 ? (g.server === p ? 'srv' : 'tsrv') : 'rsrv';
+    if (g.mode !== 'rally') return TP.ph || 'def';
+    if (p.lastAction === 'spike' && p.actionT < 0.8) return 'atk';
+    if (g.touchTeam === 0 && g.lastKind !== 'serve' && g.ball.x > -0.6) return (g.touches >= 2 && g.jobs && g.jobs[0] === p) ? 'atk' : 'bld';
+    return 'def';
+  }
+  function tpShot(g) {
+    var p = g.ctrl; if (!p) { tvShot(g); return; }
+    var dt = K.dt, b = g.ball, tch = touchUI(), small = tch || !!ctx.isMobile || (ctx.height || 720) < 480, calm = comfort(), asp = aspect();
+    var ph = tpPhase(g, p), kp = TPK[ph], sv = g.mode === 'serve' ? g.server : null;
+    TP.ph = ph;
+    // SUJETO: tu jugador; si saca un compañero (tsrv), el sacador, encuadrado como tu saque (entero y abajo, con su lanzamiento y el campo
+    // rival), y al sacar la cámara se desliza (0,6 s) hasta detrás de tu jugador: antes se quedaba 3 m detrás del sacador mirando solo el
+    // punto del golpe y el sacador salía cortado (o bajo el joystick en móvil) y el balón enorme en el centro
+    var tsv = ph === 'tsrv' && sv, srvL = ph === 'srv' || !!tsv, soxT = tsv ? sv.x - p.x : 0, soyT = tsv ? sv.y - p.y : 0;
+    if (dt > 0) { TP.sox = sd1(TP.sox, soxT, TP.v, 7, 0.6, dt); TP.soy = sd1(TP.soy, soyT, TP.v, 8, 0.6, dt); } else { TP.sox = soxT; TP.soy = soyT; TP.v[7] = TP.v[8] = 0; }
+    var sx = p.x + TP.sox, sy = p.y + TP.soy, sz = tsv ? 0 : mx(0, p.z);
+    var bT = kp[0] * (small ? 0.95 : 1), hT = kp[1] + (small ? (srvL ? 0.15 : 0.25) : 0);
+    // hombro: hacia el centro de la pista (en tu saque, el derecho: +y); con el jugador centrado se queda el lado que había
+    var sg = srvL ? 1 : sy > 0.4 ? -1 : sy < -0.4 ? 1 : (TP.side >= 0 ? 1 : -1), sideT = kp[3] * sg * (calm ? 0.6 : 1);
+    if (dt > 0) { TP.back = sd1(TP.back, bT, TP.v, 0, 0.6, dt); TP.h = sd1(TP.h, hT, TP.v, 1, 0.6, dt); TP.side = sd1(TP.side, sideT, TP.v, 2, 0.7, dt); }
+    else { TP.back = bT; TP.h = hT; TP.side = sideT; TP.v[0] = TP.v[1] = TP.v[2] = 0; }
+    // (antes: con un compañero sacando, la cámara se retrasaba detrás de él; ahora el sujeto es el sacador y no hace falta)
+    var exT = 0;
+    if (dt > 0) TP.ex = sd1(TP.ex, exT, TP.v, 6, exT > TP.ex ? 0.5 : 0.7, dt); else { TP.ex = exT; TP.v[6] = 0; }
+    var cx = sx + TP.back + TP.ex, over = 0;
+    if (cx > 14.4) { over = cx - 14.4; cx = 14.4; }
+    var by = clamp(b.y, -4.5, 4.5), ballAhead = b.x < cx - 1.5;
+    var cy = sy * (srvL ? 1 : 0.72) + (srvL || !ballAhead ? 0 : by * 0.12) + TP.side;
+    var H0 = TP.h + over * 0.3;
+    // OCLUSIÓN: los 2 compañeros más cercanos al eje cámara-jugador (en planta). Tapa si está a < 0,8 m del eje y su cuerpo cubre en
+    // vertical > 20 % del del jugador (desde 5 m de altura, uno que está cerca de la cámara queda por debajo del cuadro y no tapa).
+    var lx = sx - cx, ly = sy - cy, ll = hyp(lx, ly), occT = 0, upT = 0;
+    TP.nX = ll > 0.5 ? ly / ll : 0; TP.nY = ll > 0.5 ? -lx / ll : 1;   // (normal al eje: desplazamiento lateral de la cámara)
+    if (ll > 1 && !srvL) {
+      var tm = g.teams[0], d1 = 9, d2 = 9, q1 = null, q2 = null, t1 = 0, t2 = 0, s1 = 0, s2 = 0;
+      for (var i = 0; i < tm.length; i++) {
+        var q = tm[i]; if (q === p) continue;
+        var tq = ((q.x - cx) * lx + (q.y - cy) * ly) / (ll * ll); if (tq < 0.05 || tq > 0.97) continue;
+        var dq = ((q.x - cx) * ly - (q.y - cy) * lx) / ll, ad = Math.abs(dq);
+        if (ad < d1) { d2 = d1; q2 = q1; t2 = t1; s2 = s1; d1 = ad; q1 = q; t1 = tq; s1 = dq; } else if (ad < d2) { d2 = ad; q2 = q; t2 = tq; s2 = dq; }
+      }
+      for (var k = 0; k < 2; k++) {
+        var qq = k ? q2 : q1, ad2 = k ? d2 : d1, tt = k ? t2 : t1, sd = k ? s2 : s1;
+        if (!qq || ad2 >= 0.8) continue;
+        var dO = tt * ll, hb = at2(-H0, ll), ht = at2(1.9 + sz - H0, ll), ob = at2(-H0, dO), ot = at2(1.9 + mx(0, qq.z) - H0, dO);
+        var fr = (mn(ht, ot) - mx(hb, ob)) / mx(0.01, ht - hb);
+        if (fr <= 0.2) continue;
+        var lat = mn(2.2, (0.8 - ad2) / mx(0.2, 1 - tt)) * (sd >= 0 ? -1 : 1);
+        if (Math.abs(lat) > Math.abs(occT)) occT = lat;
+        upT = mx(upT, 0.9 * mn(1, fr));
+      }
+    }
+    if (dt > 0) {
+      TP.occ = sd1(TP.occ, occT, TP.v, 3, Math.abs(occT) > Math.abs(TP.occ) ? 0.35 : 0.7, dt);
+      TP.up = sd1(TP.up, upT, TP.v, 4, upT > TP.up ? 0.4 : 0.8, dt);
+    } else { TP.occ = occT; TP.up = upT; TP.v[3] = TP.v[4] = 0; }
+    // PRIMER PLANO: un compañero entre la cámara y el jugador cortado por el borde de abajo a la altura del pecho o la cabeza (una
+    // mancha grande en una esquina): la cámara sube poco a poco (hasta 0,8 m) mientras pase y baja despacio cuando ya no
+    if (dt > 0) {
+      var fgW = 0;
+      if (!srvL && g.mode === 'rally') {
+        var tq0 = Math.tan(K.fovCur * DEG / 2), cw0 = Math.cos(K.outYaw), sw0 = Math.sin(K.outYaw), fdp0 = (sx - P.x) * cw0 + (sy - P.y) * sw0, tm0 = g.teams[0];
+        for (var fi = 0; fi < tm0.length; fi++) {
+          var fq = tm0[fi]; if (fq === p) continue;
+          var ffd = (fq.x - P.x) * cw0 + (fq.y - P.y) * sw0; if (ffd < 0.8 || ffd > fdp0 - 1) continue;
+          if (Math.abs((fq.x - P.x) * sw0 - (fq.y - P.y) * cw0) / ffd > tq0 * asp * 1.02) continue;
+          var nhd = Math.tan(at2(1.85 + mx(0, fq.z) - P.z, ffd) - K.outPitch) / tq0, nhp = Math.tan(at2(0.95 + mx(0, fq.z) - P.z, ffd) - K.outPitch) / tq0;
+          if (nhd > -1.12 && nhd < -0.55 && nhp < -1) fgW = 1;
+        }
+      }
+      TP.fg = clamp(TP.fg + (fgW ? 0.9 : -0.3) * dt, 0, 0.8);
+    }
+    D.x = cx + TP.nX * TP.occ; D.y = clamp(cy + TP.nY * TP.occ, -8.5, 8.5); D.z = H0 + TP.up + TP.fg + sz * 0.3;
+    // RUMBO: hacia la red, con algo del lado del balón (o del sacador rival); ±20° de «hacia la red» (los mandos van con la cámara)
+    var lyT = srvL ? sy * 0.2 : ph === 'rsrv' && sv ? sy * 0.25 + clamp(sv.y, -5, 5) * 0.45 : ph === 'atk' ? sy * 0.75 + by * 0.25 : sy * 0.3 + (ballAhead ? by * 0.4 : 0);
+    TP.ly = dt > 0 ? sd1(TP.ly, lyT, TP.v, 5, 0.5, dt) : lyT; if (!(dt > 0)) TP.v[5] = 0;
+    var aimX = srvL ? -5 : ph === 'rsrv' ? -6 : ph === 'atk' ? -2.5 : -4.5;
+    var yaw = PI + clamp(wrap(at2(TP.ly - D.y, aimX - D.x) - PI), -20 * DEG, 20 * DEG);
+    // el balón dentro de ±0,8 NDC a lo ancho (lo que falte, girando: como mucho hasta ±30°)
+    var tanC = Math.tan((dt > 0 ? K.fovCur : TP.fov) * DEG / 2), tanW = tanC * asp;
+    if (ballAhead && g.mode !== 'serve') {
+      var rel = wrap(at2(b.y - D.y, b.x - D.x) - yaw), lim = Math.atan(0.8 * tanW);
+      if (rel > lim) yaw += rel - lim; else if (rel < -lim) yaw += rel + lim;
+      yaw = PI + clamp(wrap(yaw - PI), -30 * DEG, 30 * DEG);
+    }
+    TPC.x = D.x; TPC.y = D.y; TPC.z = D.z; TPC.c = Math.cos(yaw); TPC.s = Math.sin(yaw);
+    // VERTICAL: pies del sujeto a nB; arriba la línea de fondo rival, el balón y (saque rival) el sacador con su lanzamiento
+    // (tu saque: sacador entero y grande abajo —pies a -0,88— con el fondo rival, el objetivo, por encima de tus compañeros, y el
+    // lanzamiento previsto, 3,9 m, encuadrado desde el principio: la lente no respira)
+    var srvP = srvL, zB = 0;
+    var nB = srvP ? (tch ? -0.84 : -0.88) : kp[2] + (tch ? -0.14 : small ? -0.1 : 0), nTop = srvP ? (small ? 0.62 : 0.46) : small ? 0.48 : 0.3;
+    var nBall = srvP ? 0.93 : tch ? 0.64 : small ? 0.7 : 0.8;
+    TP.nB = nB;
+    // (pies adelantados si corre hacia la cámara: la cámara va ~0,3 s por detrás y los pies se salían por abajo)
+    var aB = tpEl(sx + mx(0, p.vx || 0) * 0.35, sy + (p.vy || 0) * 0.1, zB), tNeed = 0, f;
+    if (!(aB === aB)) aB = -0.9;
+    var aT = tpEl(-9.6, clamp(TP.ly, -4, 4), 0);
+    if (aT === aT && aT - aB > 0.02) { f = fit2(aT, nTop, aB, nB); tNeed = f.t; }
+    if (ph === 'rsrv' && sv) {
+      aT = tpEl(sv.x, sv.y, 2.1); if (aT === aT && aT - aB > 0.02) { f = fit2(aT, small ? 0.55 : 0.5, aB, nB); tNeed = mx(tNeed, f.t); }
+      aT = tpEl(sv.x + 0.9, sv.y, (sv.z || 0) + 4.75); if (aT === aT && aT - aB > 0.02) { f = fit2(aT, nBall, aB, nB); tNeed = mx(tNeed, f.t); }
+    } else if (srvL) {
+      aT = tpEl(sx - 0.7, sy, 3.9); if (aT === aT && aT - aB > 0.02) { f = fit2(aT, nBall, aB, nB); tNeed = mx(tNeed, f.t); }
+    }
+    var bx = b.x + b.vx * 0.25, byy = b.y + b.vy * 0.25, bz = b.z + mx(0, b.vz) * 0.25;
+    if (g.mode === 'rally' && b.vz > 0.5) {   // (cumbre prevista: la lente llega a tiempo en vez de ir detrás de un balón que sube)
+      var Gc = (VB.C && VB.C.G) || 9.81, tUp = mn(1.0, b.vz / Gc), apz = b.z + b.vz * tUp * 0.5;
+      if (apz > bz) { bz = apz; bx = b.x + b.vx * tUp * 0.6; byy = b.y + b.vy * tUp * 0.6; }
+    }
+    var aBall = (g.mode === 'rally' || g.mode === 'point' || (srvP && !b.held)) ? tpEl(bx, byy, bz + 0.2) : NaN;
+    if (aBall === aBall && aBall - aB > 0.02) { f = fit2(aBall, nBall, aB, nB); tNeed = mx(tNeed, f.t); }
+    // EL BALÓN TAMBIÉN ABAJO: entre la cámara y el jugador (un compañero de atrás que defiende o recibe), el balón no sale por el borde de
+    // abajo (>= -0,84 NDC). Segundo ancla inferior, solo si está a > 2 m delante y no más de 20° por debajo de los pies
+    var aBl = g.mode === 'rally' ? tpEl(b.x + b.vx * 0.15, b.y + b.vy * 0.15, b.z + b.vz * 0.15 - 0.3) : NaN, nBl = -0.84;
+    if (aBl === aBl && ((b.x - D.x) * TPC.c + (b.y - D.y) * TPC.s < 2 || aBl < aB - 0.35)) aBl = NaN;
+    // (saca un compañero: el punto del golpe de saque dentro del cuadro desde el principio; el balón ya no entra por el borde de abajo)
+    if (aBl === aBl && aBl < aB + 0.1) {
+      aT = tpEl(-9.6, clamp(TP.ly, -4, 4), 0); if (aT === aT && aT - aBl > 0.02) { f = fit2(aT, nTop, aBl, nBl); tNeed = mx(tNeed, f.t); }
+      if (aBall === aBall && aBall - aBl > 0.02) { f = fit2(aBall, nBall, aBl, nBl); tNeed = mx(tNeed, f.t); }
+    } else aBl = NaN;
+    // horizontal: la red entera (postes a ±4,6 m) dentro de ±0,95 NDC y el jugador de ±0,7
+    var fdN = (0 - D.x) * TPC.c + (0 - D.y) * TPC.s;
+    if (fdN > 2) for (var sgp = -1; sgp <= 1; sgp += 2) { var lN = Math.abs((0 - D.x) * TPC.s - (sgp * 4.6 - D.y) * TPC.c); tNeed = mx(tNeed, lN / fdN / 0.95 / asp); }
+    var fdP = (sx - D.x) * TPC.c + (sy - D.y) * TPC.s;
+    if (fdP > 1) tNeed = mx(tNeed, Math.abs((sx - D.x) * TPC.s - (sy - D.y) * TPC.c) / fdP / 0.7 / asp);
+    if (tsv) { var fdC = (p.x - D.x) * TPC.c + (p.y - D.y) * TPC.s; if (fdC > 1) tNeed = mx(tNeed, Math.abs((p.x - D.x) * TPC.s - (p.y - D.y) * TPC.c) / fdC / 0.85 / asp); }
+    var fMax = mn(66, 2 * Math.atan(Math.tan(50 * DEG) / asp) / DEG), fMin = mn(srvP ? 28 : 40, fMax);
+    var fWant = clamp(2 * Math.atan(tNeed) / DEG, fMin, fMax);
+    if (dt > 0) TP.fov = mn(mx(fWant, TP.fov - (calm ? 3 : 4) * dt), TP.fov + (calm ? 9 : 14) * dt); else TP.fov = fWant;
+    K.fovWant = TP.fov;
+    // cabeceo con la lente que hay AHORA: pies por encima de nB (cabeceo máximo) y lo de arriba por debajo de su límite (mínimo)
+    var t = Math.tan((dt > 0 ? K.fovCur : TP.fov) * DEG / 2), pBot = aB + Math.atan(-nB * t), pTop = -9;
+    if (aBl === aBl) pBot = mn(pBot, aBl + Math.atan(-nBl * t));
+    aT = tpEl(-9.6, clamp(TP.ly, -4, 4), 0); if (aT === aT) pTop = mx(pTop, aT - Math.atan(nTop * t));
+    if (aBall === aBall) pTop = mx(pTop, aBall - Math.atan(nBall * t));
+    if (ph === 'rsrv' && sv) { aT = tpEl(sv.x + 0.9, sv.y, (sv.z || 0) + 4.75); if (aT === aT) pTop = mx(pTop, aT - Math.atan(nBall * t)); }
+    else if (srvP) { aT = tpEl(sx - 0.7, sy, 3.9); if (aT === aT) pTop = mx(pTop, aT - Math.atan(nBall * t)); }
+    // (con lente de sobra, a medias; en tu saque, arriba manda el campo rival: el sacador sube en el cuadro)
+    var pitch = pTop <= pBot ? (pTop < -8 ? pBot : pBot - (srvP ? 1 : 0.5) * (pBot - pTop)) : mn(pTop, pBot + Math.atan(0.18 * t));
+    pitch = clamp(pitch, -0.8, 0.3);
+    var cpt = Math.cos(pitch);
+    A.x = D.x + TPC.c * cpt * 10; A.y = D.y + TPC.s * cpt * 10; A.z = D.z + Math.sin(pitch) * 10;
+    TPD.ph = ph; TPD.occ = TP.occ; TPD.up = TP.up; TPD.fg = TP.fg; TPD.fov = TP.fov; TPD.nb = nB; dbg.tp = TPD;
+  }
+
+  /* 6v6 en 3ª persona — PLANO DE REACCIÓN tras el punto (y de CIERRE DE SET): la cámara de juego sigue ~0,55 s (se ve el bote) y CORTA a
+   * un plano bajo (2,7 m; en el cierre, 3,2 m y abierto al equipo) del autor del punto con los compañeros que tenga cerca: de los 72
+   * sitios a su alrededor (R 5,4 m; cierre 6,8 m) gana el que no cruza la red, no se mete en la red ni fuera del pabellón, no tiene a
+   * nadie (ni postes, silla o mesa) entre la cámara y él, le ve de frente y mete a más compañeros. Sigue al héroe con suavidad (en el
+   * cierre, órbita lenta de 3°/s) hasta el corte de vuelta al saque. getShot() lo da como 'point' (rótulos, cortinilla). */
+  var TPP = { t: 0.5, hold: 0.55, cutDone: false, cutNow: false, willCut: false, backCut: false, swCut: false, replan: false, rAdd: 0.5, hero: null, team: 0, set: false,
+              ang: 0.5, R: 5.4, z: 1.9, gx: 0.5, gy: 0.5, v: [0.5, 0.5, 0.5, 0.5], m: [null, null, null, null, null], nm: 0, orb: 1.5 };
+  var TPPD = { hero: 0, team: 0, ang: 0, face: 0, pen: 0, set: false }, TPPF = { cut: false };   // (TPPF: getDebug().pf sin corte de reacción: ui.js arma la cortinilla de vuelta al saque)
+  function tpPlan(g) {
+    var e = pointEv, w = e && (e.team === 0 || e.team === 1) ? e.team : (g.lastPoint && (g.lastPoint.team === 0 || g.lastPoint.team === 1) ? g.lastPoint.team : 0);
+    var hero = e && e.player && e.player.team === w ? e.player : null;
+    if (!hero) hero = w === 0 && g.ctrl ? g.ctrl : pickHero(g, w, pointHow || inferHow(g));
+    if (!hero || hero.team !== w) hero = nearestOf(g.teams[w], g.ball.x, g.ball.y, null) || g.teams[w][0];
+    TPP.hero = hero; TPP.team = w; TPP.set = !!(e && (e.setWon || e.matchWon));
+    TPP.R = TPP.set ? 6.8 : 5.4; TPP.z = TPP.set ? 3.2 : 2.7;
+    // compañeros cercanos (los 3 más cercanos a < 5 m; en el cierre, 5 a < 9 m)
+    var tm = g.teams[w], nMax = TPP.set ? 5 : 3, rMax = TPP.set ? 9 : 5;
+    TPP.nm = 0;
+    for (var n = 0; n < nMax; n++) {
+      var best = null, bd = rMax;
+      for (var i = 0; i < tm.length; i++) {
+        var q = tm[i]; if (q === hero) continue;
+        var used = false; for (var j = 0; j < TPP.nm; j++) if (TPP.m[j] === q) used = true;
+        if (used) continue;
+        var d = hyp(q.x - hero.x, q.y - hero.y); if (d < bd) { bd = d; best = q; }
+      }
+      if (!best) break;
+      TPP.m[TPP.nm++] = best;
+    }
+    visPos(hero, VP);
+    var hfP = Math.atan(Math.tan(20 * DEG) * aspect()) + 0.15;   // (medio ángulo horizontal de un plano de ~40° de lente, con margen)
+    var hx = VP.x, hy = VP.y, fy = faceOf(hero), bestA = hero.team === 0 ? PI : 0, bestS = 1e9, R0 = TPP.R, bestR = R0;
+    for (var kk = 0; kk < 72; kk++) {
+      var k = kk % 24, ri = (kk / 24) | 0, Rk = R0 * (ri === 0 ? 1 : ri === 1 ? 0.8 : 1.3);
+      var a = k * PI / 12, cx = hx + Rk * Math.cos(a), cy = hy + Rk * Math.sin(a), pen = ri ? 1.5 : 0;
+      if (Math.abs(cx) > 14.4 || Math.abs(cy) > 8.6) continue;
+      if ((cx > 0) !== (hx > 0) && Math.abs(hx) > 0.6) pen += 30;          // (al otro lado de la red: la malla delante)
+      if (Math.abs(cx) < 1.2 && Math.abs(cy) < 6.3) pen += 40;             // (dentro de la red o de los postes)
+      else if (Math.abs(cx) < 2.8 && Math.abs(cy) < 6.3) pen += 7 * (1 - (Math.abs(cx) - 1.2) / 1.6);   // (pegada a la red: la malla cruza el cuadro)
+      var vx = hx - cx, vy = hy - cy, l2 = vx * vx + vy * vy;
+      for (var pi2 = 0; pi2 < g.players.length; pi2++) {
+        var o = g.players[pi2]; if (o === hero) continue;
+        var to = ((o.x - cx) * vx + (o.y - cy) * vy) / l2; if (to < 0.04 || to > 0.96) continue;
+        var dd = Math.abs((o.x - cx) * vy - (o.y - cy) * vx) / sq(l2);
+        if (dd < 0.7) pen += (o.team === hero.team ? 14 : 18) * (1 - dd / 0.7) + 4;
+      }
+      for (var ob = 0; ob < OBST.length; ob++) {
+        var oo = OBST[ob], tb = mn(mx(((oo[0] - cx) * vx + (oo[1] - cy) * vy) / l2, 0), 1);
+        if (hyp(cx + vx * tb - oo[0], cy + vy * tb - oo[1]) < oo[2] + 0.4) pen += 25;
+      }
+      // (nadie ni nada pegado a la cámara dentro del cuadro: salía enorme y cortado en una esquina)
+      var va = at2(vy, vx);
+      for (var pj = 0; pj < g.players.length; pj++) {
+        var oq = g.players[pj]; if (oq === hero) continue;
+        var dqc = hyp(oq.x - cx, oq.y - cy), rN = mx(3.6, 0.85 * Rk); if (dqc > rN) continue;
+        if (Math.abs(wrap(at2(oq.y - cy, oq.x - cx) - va)) < hfP) pen += 14 * (1 - dqc / rN) + 3;
+      }
+      for (var oc = 0; oc < 2; oc++) { var py = oc ? -5.5 : 5.5, dpc = hyp(cx, cy - py); if (dpc < 3.5 && Math.abs(wrap(at2(py - cy, -cx) - va)) < 0.8) pen += 12 * (1 - dpc / 3.5) + 4; }
+      pen += 16 * (1 - Math.cos(wrap(a - fy))) / 2;                         // (de frente al héroe, mejor que de espaldas)
+      for (var mi = 0; mi < TPP.nm; mi++) {                                 // (compañeros en el cuadro, más allá del héroe o a su lado)
+        var mq = TPP.m[mi], mvx = mq.x - cx, mvy = mq.y - cy, md = hyp(mvx, mvy);
+        if (md > 1.5 && Math.abs(wrap(at2(mvy, mvx) - at2(vy, vx))) < 0.45) pen -= 2.5;
+      }
+      if (pen < bestS) { bestS = pen; bestA = a; bestR = Rk; }
+    }
+    TPP.R = bestR;
+    TPPD.hero = hero.num; TPPD.team = w; TPPD.ang = +(bestA / DEG).toFixed(0); TPPD.face = +(fy / DEG).toFixed(0); TPPD.pen = +bestS.toFixed(1); TPPD.set = TPP.set; dbg.tpp = TPPD;
+    TPP.rAdd = 0; TPP.ang = bestA; TPP.orb = Math.sin(wrap(fy - bestA)) >= 0 ? 1 : -1;
+    TPP.gx = hx; TPP.gy = hy; TPP.v[0] = TPP.v[1] = TPP.v[2] = TPP.v[3] = 0;
+  }
+  function tpPointShot(g) {
+    if (!TPP.cutDone || !TPP.hero) { tpShot(g); return; }
+    var dt = K.dt, h = TPP.hero, asp = aspect();
+    if (dt > 0 && TPP.set && !comfort()) TPP.ang += TPP.orb * 3 * DEG * dt;
+    visPos(h, VP);
+    var gx = VP.x, gy = VP.y, ws = 1;
+    for (var i = 0; i < TPP.nm; i++) { var q = TPP.m[i]; if (hyp(q.x - VP.x, q.y - VP.y) < (TPP.set ? 9 : 5.5)) { gx += q.x * 0.4; gy += q.y * 0.4; ws += 0.4; } }
+    gx /= ws; gy /= ws;
+    if (dt > 0) { TPP.gx = sd1(TPP.gx, gx, TPP.v, 0, 0.6, dt); TPP.gy = sd1(TPP.gy, gy, TPP.v, 1, 0.6, dt); } else { TPP.gx = gx; TPP.gy = gy; }
+    // (alguien que se acerca a la cámara durante la celebración y entraría enorme por un lado: la cámara se aleja, hasta 2,5 m más)
+    var pushW = 0, hf = Math.atan(Math.tan(K.fovCur * DEG / 2) * asp) + 0.12, cx0 = VP.x + TPP.R * Math.cos(TPP.ang), cy0 = VP.y + TPP.R * Math.sin(TPP.ang), va0 = TPP.ang + PI;
+    for (var pk = 0; pk < g.players.length; pk++) {
+      var pq = g.players[pk]; if (pq === h) continue;
+      var dpq = hyp(pq.x - cx0, pq.y - cy0); if (dpq > 3.0) continue;
+      if (Math.abs(wrap(at2(pq.y - cy0, pq.x - cx0) - va0)) < hf) pushW = 1;
+    }
+    if (dt > 0) TPP.rAdd = clamp(TPP.rAdd + (pushW ? 3.5 : -0.6) * dt, 0, 2.5);
+    var Rn = TPP.R + TPP.rAdd, cx = VP.x + Rn * Math.cos(TPP.ang), cy = VP.y + Rn * Math.sin(TPP.ang);
+    D.x = clamp(cx, -14.4, 14.4); D.y = clamp(cy, -8.6, 8.6); D.z = TPP.z;
+    var yaw = at2(TPP.gy - D.y, TPP.gx - D.x);
+    TPC.x = D.x; TPC.y = D.y; TPC.z = D.z; TPC.c = Math.cos(yaw); TPC.s = Math.sin(yaw);
+    // héroe: cabeza a +0,42 NDC, pies a -0,72 (cierre: el equipo, con la lente que pidan los compañeros a lo ancho)
+    var hh = heightOf(h), aH = tpEl(VP.x, VP.y, mx(0, h.z) + hh + 0.15), aF = tpEl(VP.x, VP.y, 0), t = 0.33, pitch = -0.1;
+    if (aH === aH && aF === aF && aH - aF > 0.02) { var f = fit2(aH, 0.42, aF, -0.72); t = f.t; pitch = f.p; }
+    for (var j = 0; j < TPP.nm; j++) {
+      var m = TPP.m[j], fdm = (m.x - D.x) * TPC.c + (m.y - D.y) * TPC.s;
+      if (fdm > 1.5 && hyp(m.x - VP.x, m.y - VP.y) < (TPP.set ? 9 : 5.5)) t = mx(t, Math.abs((m.x - D.x) * TPC.s - (m.y - D.y) * TPC.c) / fdm / 0.85 / asp);
+    }
+    var fv = clamp(2 * Math.atan(t) / DEG, 26, TPP.set ? 60 : 52);
+    K.fovWant = fv;
+    if (aF === aF) pitch = aF + Math.atan(0.72 * Math.tan(fv * DEG / 2));   // (pies a -0,72 con la lente final)
+    pitch = clamp(pitch, -0.7, 0.3);
+    var cpt = Math.cos(pitch);
+    A.x = D.x + TPC.c * cpt * 10; A.y = D.y + TPC.s * cpt * 10; A.z = D.z + Math.sin(pitch) * 10;
+  }
+
   function computeDesired(g) {
     var s = shot, dt = K.dt;
     if (s === 'tv') tvShot(g);
+    else if (s === 'tp') tpShot(g);
+    else if (s === 'tpPoint') tpPointShot(g);
     else if (s === 'menu') menuShot(g);
     else if (s === 'point') pointShot(g);
     else if (s === 'court') courtShot(g);
@@ -2491,6 +2769,15 @@
 
   function onShotChange(g, from, to) {
     FB.on = false;
+    // 6v6 en 3ª persona: al punto se sigue con la cámara de juego (el corte al plano de reacción lo hace update); del punto al saque,
+    // siempre por corte (los jugadores aparecen en su sitio de golpe); entre 3ª persona y televisión (cambio del ajuste), corte
+    if (to === 'tpPoint') {
+      TPP.t = 0; TPP.cutDone = false; TPP.cutNow = false; TPP.hold = 0.55;
+      TPP.willCut = !(typeof g.timer === 'number') || gameToReal(g.timer) > TPP.hold + 0.9;
+      return;
+    }
+    if (from === 'tpPoint' && to === 'tp') { TPP.backCut = true; K.blendT = 0; return; }
+    if (((from === 'tp' || from === 'tpPoint') && to === 'tv') || (from === 'tv' && to === 'tp')) { TPP.swCut = true; K.blendT = 0; return; }
     // de un plano cinemático (punto, grúa, final, menú) a uno de juego: los suavizados de juego (empujón del
     // compañero, oclusión, red, salto, lado del remate, subida táctil…) arrancan YA en su objetivo (semántica dt = 0):
     // sus valores eran del peloteo anterior y desviaban el plano nuevo durante ~1 s
@@ -2979,7 +3266,7 @@
     var ox = 0, oy = 0, oz = 0, roll = 0;
     if (K.shakeT > 0) {
       if (dt > 0) K.shakeT = mx(0, K.shakeT - dt);
-      var k = K.shakeA * Math.pow(K.shakeT / K.shakeDur, 2) * (stableNow ? 0 : comfort() ? 0.3 : 1), t = K.timeAcc;
+      var k = K.shakeA * Math.pow(K.shakeT / K.shakeDur, 2) * (stableNow ? 0 : comfort() ? 0.3 : 1) * (shot === 'tp' || shot === 'tpPoint' ? 0.4 : 1), t = K.timeAcc;   // (3ª persona del 6v6: cámara cerca del jugador, temblor a 0,4)
       ox = k * (Math.sin(t * 47.0) * 0.6 + Math.sin(t * 83.0 + 1.3) * 0.4);
       oy = k * (Math.sin(t * 53.0 + 2.1) * 0.6 + Math.sin(t * 71.0 + 0.4) * 0.4);
       oz = k * (Math.sin(t * 61.0 + 4.2) * 0.6 + Math.sin(t * 97.0 + 2.7) * 0.4);
@@ -3091,12 +3378,12 @@
     if (K.pbNar > 0.002) { cam.fov = 2 * Math.atan(Math.tan(cam.fov * DEG / 2) * (1 - K.pbNar)) / DEG; cam.updateProjectionMatrix(); }
 
     // base de control: solo en planos de juego, limitada a ±26° de "hacia la red"
-    if (GAMEPLAY[shot] && !(K.ftW > 0.01)) {   // (congelada durante el seguimiento del remate, CAM-08)
+    if ((GAMEPLAY[shot] || shot === 'tp') && !(K.ftW > 0.01)) {   // (congelada durante el seguimiento del remate, CAM-08; 6v6 en 3ª persona: igual)
       var byw = FB.on ? at2(FB.L1.y - FB.P1.y, FB.L1.x - FB.P1.x) : yaw0;   // (en la transición fija: la del destino)
       K.basisYaw = Math.PI + mn(mx(wrap(byw - Math.PI), -26 * DEG), 26 * DEG);
       basis.fx = Math.cos(K.basisYaw); basis.fy = Math.sin(K.basisYaw);
       basis.rx = basis.fy; basis.ry = -basis.fx;   // derecha de pantalla en el suelo
-    }
+    } else if (shot === 'tv') { K.basisYaw = Math.PI; basis.fx = -1; basis.fy = 0; basis.rx = 0; basis.ry = 1; }   // (televisión del 6v6: a lo largo de la pista)
     dbg.antX = ant.x; dbg.sx = S.x;
     dbg.ccU = CC.on ? CC.u : -1;
     dbg.x = DBGX;
@@ -3232,6 +3519,12 @@
       if (CL.phase === 'hero' && !CL.match) return CL.heroDur < 50 ? mx(0, CL.heroDur - CL.t) : (typeof g.timer === 'number' && g.mode === 'point' ? gameToReal(mx(0, g.timer)) + mn(0.05, K.dt || 0.016) : -1);
       return -1;
     }
+    if (shot === 'tpPoint' && g && g.mode === 'point' && !ctx.frozen) {   // (6v6 en 3ª persona: corte al plano de reacción y vuelta al saque)
+      if (!TPP.cutDone && TPP.willCut) return mx(0, TPP.hold - TPP.t);   // (sin corte de reacción: el próximo es el de vuelta al saque, con cortinilla)
+      if (CC.on) return mx(0, CC.start - CC.t);
+      if (!g.pendingSet && typeof g.timer === 'number') return g.timer > 0 ? gameToReal(g.timer) + mn(0.05, K.dt || 0.016) : 0;
+      return -1;
+    }
     if (shot !== 'point' || !g || g.mode !== 'point' || ctx.frozen) return -1;
     var best = -1;
     if (!PF.cutDone && PF.cut) best = mx(0, PF.hold - K.pointT);
@@ -3256,6 +3549,7 @@
       slow.t = 0; if (ctx) ctx.timeScale = 1; readBounds();
       sw.active = false; K.shakeT = 0; K.shakeA = 0; K.kick = 0; ant.x = ant.y = antV.x = antV.y = 0; CC.on = false; CC.cut = false; RV.cutIn = RV.cutOut = false;
       K.hsT = 0; K.hsE = 0; K.punchA = 0; FB.on = false; HS.on = false; FT.on = false; K.ftU = 0; K.ftW = 0; CL.on = false; CL.phase = ''; CL.cutNow = false; CL.abortCut = false; CW.on = false; CW.cutIn = false; CW.cutOut = false; INTRO.on = false; INTRO.cut = false; backPending = false; cutCheck = false; settleSmoothers = false; spikeTeam = -1; pointEv = null;
+      TPP.cutDone = false; TPP.cutNow = false; TPP.backCut = false; TPP.swCut = false; TPP.hero = null; TP.ph = '';
       if (!g) return;
       // del menú (o de una partida anterior) a un partido nuevo: transición larga y suave
       if (!g.demo && P.z > 0) { shot = ''; return; }
@@ -3275,6 +3569,7 @@
       if (g.ctrl) updateAnticipation(g); else ant.x = ant.y = 0;
       if (shot === 'point') { P.x = g.ctrl.x + 5.5; P.y = g.ctrl.y * 0.78; P.z = 3.2; pointHow = ''; pointPlayer = null; onShotChange(g, '', 'point'); K.blendT = 0; PF.cutDone = true; PF.cutNow = false; K.pointT = 1.2 + (PF.cut ? PF.hold : 0); }  // escena congelada: el plano ya asentado
       if (shot === 'over') { P.x = 10; P.y = 0; P.z = 3; onShotChange(g, '', 'over'); K.blendT = 0; }
+      if (shot === 'tpPoint') { tpPlan(g); TPP.cutDone = true; TPP.cutNow = false; TPP.willCut = true; TPP.replan = true; }   // (escena congelada: el plano de reacción ya puesto; se rehace en el 1r frame, con el frente de los atletas ya puesto)
       subject(g);
       computeDesired(g);
       P.x = D.x; P.y = D.y; P.z = D.z; L.x = A.x; L.y = A.y; L.z = A.z;
@@ -3338,9 +3633,9 @@
     /** OPCIONAL (depuración / tests): plano actual y datos de encuadre. */
     getDebug: function () { var clH = shot === 'clinch' && CL.phase === 'hero';
       CLD.phase = CL.on ? CL.phase : ''; CLD.left = clinchLeftS(ctx && ctx.game); CLD.team = CL.on ? CL.team : -1; CLD.why = CLW.why; CLD.x = CLX; dbg.clinch = CLD;
-      dbg.pf = (shot === 'point' || clH) ? { lx: PF.lx, ly: PF.ly, c0x: PF.c0x, c0y: PF.c0y, R: PF.R, ang: PF.ang, fov: PF.fov, cut: PF.cut, vic: PF.vic && PF.vic.num, hero: PF.hero && PF.hero.num, heroIn: PF.heroIn,
+      dbg.pf = shot === 'tpPoint' && !TPP.willCut ? TPPF : (shot === 'point' || clH) ? { lx: PF.lx, ly: PF.ly, c0x: PF.c0x, c0y: PF.c0y, R: PF.R, ang: PF.ang, fov: PF.fov, cut: PF.cut, vic: PF.vic && PF.vic.num, hero: PF.hero && PF.hero.num, heroIn: PF.heroIn,
         mode: PF.mode, how: PF.how, both: PF.both, team: PF.w, score: PF.score, backCut: PF.backCut, heroX: clH ? CL.hx : PF.mode === 'hero' ? PF.side * PF.hxo : 0, parts: PF.mode === 'hero' ? JSON.parse(JSON.stringify(HPB)) : null } : null; return dbg; },
-    getShot: function () { return shot === 'clinch' ? (CL.phase === 'hero' || CL.phase === 'hold' ? (CL.match ? 'over' : 'point') : 'clinch') : shot; },
+    getShot: function () { return shot === 'tpPoint' ? 'point' : shot === 'clinch' ? (CL.phase === 'hero' || CL.phase === 'hold' ? (CL.match ? 'over' : 'point') : 'clinch') : shot; },
     /** OPCIONAL (pruebas): arranca la transición fija al plano actual desde la cámara desplazada (dx, dy, dz) m y con el FOV +dfov°.
      *  Devuelve true si la transición arranca (false = las reglas piden corte). */
     _testFixedBlend: function (dx, dy, dz, dfov) {
@@ -3494,6 +3789,10 @@
       // plano
       var ns = pickShot(g);
       if (ns !== shot) { onShotChange(g, shot, ns); prevShot = shot; shot = ns; }
+      // (6v6 en 3ª persona: el corte al plano de reacción, pasados TPP.hold s reales del punto)
+      if (shot === 'tpPoint' && g.mode === 'point' && !TPP.cutDone && TPP.willCut && ctx.state !== 'paused' && !ctx.frozen) {
+        TPP.t += dt; if (TPP.t >= TPP.hold) { tpPlan(g); TPP.cutDone = true; TPP.cutNow = true; }
+      }
       if (settleSmoothers) {
         settleSmoothers = false;
         K.dt = 0; if (g.ctrl) { updateAnticipation(g); subject(g); updateLead(g); } computeDesired(g); K.dt = dt;
@@ -3513,6 +3812,10 @@
       // que llega tras la tarjeta no la mueven de golpe—: el plano del saque sigue desde ahí con su suavizado)
       if (INTRO.cut) { INTRO.cut = false; if (GAMEPLAY[shot] && !INTRO.handoff) { settle(g); markCut('intro', shot, 'serve'); } else if (INTRO.handoff) { resetVel(); outInit = true; K.outYaw = at2(L.y - P.y, L.x - P.x); K.outPitch = at2(L.z - P.z, hyp(L.x - P.x, L.y - P.y)); K.exPitch = K.exYaw = 0; } INTRO.handoff = false; }
       if (TVS.cut) { TVS.cut = false; if (shot === 'tv') { settle(g); markCut('tv', 'tv', 'serve'); } }
+      if (TPP.replan) { TPP.replan = false; if (shot === 'tpPoint' && TPP.cutDone) { tpPlan(g); settle(g); } }
+      if (TPP.cutNow) { TPP.cutNow = false; if (shot === 'tpPoint') { settle(g); markCut('point', 'point', 'point'); } }
+      if (TPP.backCut) { TPP.backCut = false; if (shot === 'tp') { settle(g); markCut('point', 'tp', 'serve'); } }
+      if (TPP.swCut) { TPP.swCut = false; settle(g); markCut(prevShot, shot, 'cam'); }
       if (MN.cut) { MN.cut = false; if (shot === 'menu') { settle(g); markCut('menu', 'menu', 'attract'); } }
       if (CW.cutIn) { CW.cutIn = false; settle(g); markCut(prevShot, 'cutaway', 'serve'); }
       if (CW.cutOut) { CW.cutOut = false; settle(g); markCut('cutaway', shot, 'cutaway'); }
@@ -3549,9 +3852,9 @@
           resetVel(); outInit = true; K.outYaw = K.fbYaw1; K.outPitch = K.fbPitch1; K.blendT = 0;
         }
       } else {
-        var c = SHOTS[shot], baseSmooth = c ? c.smooth : (shot === 'menu' ? 1.0 : shot === 'over' ? 0.9 : shot === 'court' ? 0.14 : shot === 'review' ? (calm ? 0.3 : 0.2) : shot === 'clinch' ? 0.12 : shot === 'cutaway' ? 0.2 : shot === 'intro' ? 0.35 : shot === 'tv' ? 0.4 : 0.6);
+        var c = SHOTS[shot], baseSmooth = c ? c.smooth : (shot === 'menu' ? 1.0 : shot === 'over' ? 0.9 : shot === 'court' ? 0.14 : shot === 'review' ? (calm ? 0.3 : 0.2) : shot === 'clinch' ? 0.12 : shot === 'cutaway' ? 0.2 : shot === 'intro' ? 0.35 : shot === 'tv' ? 0.4 : shot === 'tp' || shot === 'tpPoint' ? 0.3 : 0.6);
         // ajuste del jugador (Ajustes > cámara): 0,5 lenta … 1,5 rápida
-        if (c) { var sens = mn(mx(+(ctx.settings && ctx.settings.camSens) || 1, 0.5), 1.5); baseSmooth /= sens; }
+        if (c || shot === 'tp') { var sens = mn(mx(+(ctx.settings && ctx.settings.camSens) || 1, 0.5), 1.5); baseSmooth /= sens; }
         if (c && calm) baseSmooth *= 1.6;
         var smoothT = baseSmooth, maxSpeed = 40;
         if (K.blendT > 0) {

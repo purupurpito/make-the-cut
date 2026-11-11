@@ -222,10 +222,10 @@
       // (teams[0][ctrlIdx]) y la IA lleva al compañero en todo, saque incluido
       // (6v6 con humano: siempre 'one', notes/diseno-6v6-carrera.md §1.5; la demo 6v6 sigue como estaba)
       ctrlMode: opts.ctrl === 'one' || (six && !opts.demo) ? 'one' : 'both',
-      // 6v6: puesto del jugador del humano (CTRL_ROLES6; '' en 2v2) y ayuda «posición asistida» al balón en Fácil/Normal
-      // (sin stick, el humano va solo a su sitio en todos los niveles; al balón que es suyo, solo en Fácil/Normal)
+      // 6v6: puesto del jugador del humano (CTRL_ROLES6; '' en 2v2). (La «posición asistida», g.assist6, se quitó el 11-nov-2026:
+      // el humano solo se mueve con el stick, como en el 2v2.)
       ctrlRole: six ? (CTRL_ROLES6.indexOf(opts.ctrlRole) >= 0 ? opts.ctrlRole : 'OH') : '',
-      assist6: six && (diff === 'easy' || diff === 'normal'),
+      hAct: -9,                // 6v6: g.time de la última entrada del humano (stick o botón); el colocador no coloca al que está quieto
       ask6: -9,                // 6v6: g.time del último «¡Pídela!» del humano (CAMBIAR durante la jugada propia)
       // modo 'one': jugador del humano (0 = dorsal 1, 1 = dorsal 2); en 'both' siempre 0 (el control empieza en teams[0][0])
       ctrlIdx: opts.ctrl === 'one' && +opts.ctrlIdx === 1 ? 1 : 0,
@@ -1906,6 +1906,9 @@
     else { tx = g.pr1.x + sd * 0.15; ty = g.pr1.y; }
     var dx = tx - p.x, dy = ty - p.y, dl = Math.hypot(dx, dy), il = Math.hypot(mx, my);
     if (dl > 1.8 || dl < 0.03) return _mv;
+    // (6v6: el imán solo ayuda si el jugador ya empuja el stick —Ferran, 11-nov-2026: sin entrada el personaje no se mueve solo—; en el
+    //  2v2 g.rot es null y sigue igual)
+    if (g.rot && il < 0.2) return _mv;
     var dot = il > 0.05 ? (mx * dx + my * dy) / (il * dl) : 1;
     if (dot < -0.3) return _mv; // el jugador quiere ir a otro sitio: no se le lleva
     var s = 0.5 * Math.min(1, dl / 0.6);
@@ -1915,18 +1918,9 @@
     _mv[0] = mx; _mv[1] = my; return _mv;
   }
 
-  /** 6v6 (sprint 3, «posición asistida» de notes/diseno-6v6-carrera.md §1.5): sin stick, el humano se desliza a su sitio de la
-   *  formación (VB.AI6.pos: recepción, cobertura, bloqueo de zona, defensa perímetro), como haría la IA, para que su equipo no
-   *  quede con un hueco mientras él no juega. Al balón que es suyo solo le lleva en Fácil/Normal (g.assist6); en Difícil/Experto
-   *  lo persigue él (queda la ayuda corta de assistMove). Con stick, manda el jugador. null = sin ayuda (sigue assistMove). */
-  function assist6(g, p, ml) {
-    if (ml > 0.15 || p.z > 0 || p.down > 0 || !VB.AI6 || g.mode !== 'rally') return null;
-    if (g.jobs[0] === p && !g.assist6) return null;
-    var tg = VB.AI6.pos(g, p), dx = tg.x - p.x, dy = tg.y - p.y, dl = Math.hypot(dx, dy);
-    if (dl < 0.05) { _mv[0] = 0; _mv[1] = 0; return _mv; }
-    var f = Math.min(1, dl / 0.35) * 0.95;
-    _mv[0] = dx / dl * f; _mv[1] = dy / dl * f; return _mv;
-  }
+  /* (6v6: la «posición asistida» del sprint 3, assist6, se quitó el 11-nov-2026: Ferran no quiere que el personaje se mueva solo.
+   * El humano del 6v6 se mueve solo con el stick: la ayuda corta de assistMove cerca del balón que es suyo solo actúa si ya empuja (il >= 0,2).
+   * Su sitio lo marca fx.js con la marca de posición, VB.AI6.spot.) */
 
   // ---------- Flujo del partido ----------
   var _zp = { x: 0, y: 0 };
@@ -2311,7 +2305,8 @@
       }
       if (g.jsetQ > 0 && hp.z > 0.2 && hp.actionT > 0.12 && Math.hypot(b.x - hp.x, b.y - hp.y) < 3 && !jsetVoid(g, hp)) { g.jsetQ = 0; startSwing(g, hp, 'jset'); }
       if (hp.z > 0) stepPlayer(g, hp, dt, 0, 0);
-      else { var am = (g.rot && assist6(g, hp, ml)) || assistMove(g, hp, mx, my); stepPlayer(g, hp, dt, am[0], am[1]); }
+      else { var am = assistMove(g, hp, mx, my); stepPlayer(g, hp, dt, am[0], am[1]); }
+      if (g.rot && (ml > 0.15 || input.hit || input.jump || input.jset || input.switchPlayer)) g.hAct = g.time; // 6v6: el humano juega (VB.AI6.setReady)
       updateAim3(g, hp, dt, mx, my);
       if (input.hit && g.mode === 'rally') startSwing(g, hp, '');
       if (g.mode === 'rally') processSwing(g, hp, aim);

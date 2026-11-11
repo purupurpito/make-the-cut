@@ -1228,3 +1228,67 @@ Diseño: notes/diseno-6v6-carrera.md §1.5. Todo va detrás de `g.rot` / `g.size
   siempre `{type:'ask', player, ok}` (también durante el saque, con ok false). Sin azar: el 6v6 CPU y la huella 2v2 no cambian.
 - simtest «6v6 con humano» (d) prueba ahora las dos ramas: guarda `g.ask6` y emite 'ask' ok en su ventana; fuera (saque, zaguero) no
   guarda nada y emite 'ask' sin ok (153 «Ahora no» en la prueba).
+
+## 6v6: el personaje ya no se mueve solo (11-nov-2026) — sim
+Ferran: «No me gusta que en el 6v6 el personaje haga tantos movimientos solos. Deja que el jugador decida». Todo detrás de `g.rot` /
+del humano: la huella 2v2 sigue idéntica (150 partidas, 572 632 llamadas a `g.rng`) y el 6v6 CPU contra CPU da lo mismo (1289 puntos,
+side-out 63,2 %).
+
+**Inventario de lo que el humano hacía solo en el 6v6** (y qué queda):
+
+| automatismo | dónde | ahora |
+|---|---|---|
+| ir a su sitio de la formación sin stick (recepción, batida, cobertura, bloqueo de zona, defensa), todos los niveles | sim.js `assist6` | **quitado** |
+| ir al balón que es suyo sin stick (Fácil/Normal, `g.assist6`) | sim.js `assist6` | **quitado** (y `g.assist6`) |
+| recolocarse tras su saque o el de su equipo (al puesto de especialidad) | `assist6` → `AI6.pos` (`basePos`) | **quitado**: va él |
+| sesgo del reparto a su favor (`HUM.resp`/`bias`: balones que «llegaría» gracias a la ayuda) | ai6.js `rolePen` | **quitado** (ver reparto) |
+| imán corto al punto de toque (≤ 1,8 m, solo con su balón, se anula si tira a otro lado) | sim.js `assistMove` | **solo si ya empuja el stick** (`il >= 0,2`, integración 11-nov: sin entrada caminaba hasta 2,3 m y el balón le daba en el cuerpo); en 2v2 igual que antes |
+| ayuda de timing (el gesto espera al balón `g.tm.assist`) | sim.js `processSwing` | **queda**: igual que el 2v2 |
+| destino del pase (al colocador) y de su colocación en salto (`chooseSet`) | sim.js `hit` | **queda**: en el 2v2 el pase y la colocación van solos al compañero |
+| colocación en su sitio ANTES del saque (formación legal, `placeServe`) | ai6.js | **queda**: el 2v2 también coloca a todos en el saque (`setupServe`) y así no hay falta de posición involuntaria |
+| contacto con el cuerpo (el balón le da) | sim.js | **queda**: es regla (también en 2v2) |
+| salto, bloqueo, golpe | — | nunca fueron automáticos (`humanJump`/`startSwing` solo con botón; `AI.update` no mueve a `g.ctrl`) |
+
+**Reparto de balones** (ai6.js `computeJob`, `HUM = {area 1.5, cede 0.45, yield 0.25, mine 1.6, …, setD 4.6, setR 4.2, idleT 3.5}`):
+- `humanOwns(g, t, hu, pr, n, excl)`: el balón es claramente del humano si el punto de toque está a < `area` m de él o, en el 1r toque,
+  si cae en SU celda de la formación (más cerca de su sitio `spot()` que del de cualquier compañero). Sin azar.
+- Balón suyo: los compañeros suman `cede` s (no se lo quitan ni van a su sitio) y la regla «hopeless» (cambiar al que llega si el
+  elegido no llega) NO se aplica con el humano: si no va, cae; es su decisión. Balón que no es suyo: el humano suma `yield` s (el
+  compañero juega lo suyo aunque el humano esté algo más cerca). «¡mía!» (GOLPEAR cerca del punto de toque) sigue mandando.
+- `spot(g, p)` (nuevo, exportado): el sitio de la formación sin mirar `g.jobs` (lo que antes era el final de `pos`). Lo usan
+  `humanOwns`, la marca de posición (fx.js) y el bot de simtest.
+
+**Colocaciones regaladas** (TRASPASO): `chooseSet` solo cuenta al humano si `setReady(g, q, x, y)`: a ≤ `setD` m de la red, a ≤ `setR` m
+del destino de la colocación y con entrada en los últimos `idleT` s (`g.hAct`, nuevo en `createGame`; sim.js `step` lo pone a `g.time`
+con stick > 0,15 o cualquier botón, solo con `g.rot`). Quieto o lejos de la red → el colocador busca a otro.
+
+**fx.js, marca de posición** (diseño §1.5): sin balón suyo y a más de ~1,2 m de su sitio, un aro celeste suave (`posMark`, la textura
+de las ondas) en `VB.AI6.spot(g, g.ctrl)`; entra y sale con fundido y sigue el sitio suavizado. Va en el lote de calcomanías: 0 dibujos
+nuevos (perf 6v6 humano 844×390: baja 36/37, media 56/63, «objetivos cumplidos»). Solo 6v6 con humano (no espectador ni 2v2).
+
+**Medido** (bots de la matriz, 6 semillas × 10 min por casilla, % de puntos del equipo humano; «antes» = bot que suelta el stick y
+deja hacer a `assist6`; «después» = bot que se mueve solo, `makeBot(bp, seed, {six: true})`):
+
+| bot \ nivel | Fácil antes → después | Normal | Difícil | Experto |
+|---|---|---|---|---|
+| novato | 52,7 → 66,8 | 45,4 → 51,9 | 36,7 → 42,5 | 22,6 → 29,4 |
+| medio | 72,1 → 73,9 | 59,8 → 60,8 | 50,8 → 54,5 | 30,7 → 38,6 |
+| bueno | 76,3 → 76,8 | 67,0 → 64,4 | 53,9 → 55,7 | 46,4 → 33,8 |
+
+El equipo no gana menos: el humano juega menos balones que no son suyos (los juega la IA, mejor que el novato) y no recibe colocaciones
+sin estar en la batida. Toques del humano por rally: novato 0,69-0,87, medio 0,80-1,07 (objetivo 0,7). Casos extremos en Fácil:
+humano que solo va a su balón y no a su sitio («perezoso») 68,6 %; humano que no toca nada 49,2 % (los compañeros no le quitan los
+balones de su zona: 1 de 158 primeros toques junto a él). Fácil sigue siendo jugable: **no se ha tocado el equilibrio**.
+
+**simtest «6v6 con humano»**: el bot se mueve él mismo (`makeBot(…, {six: true})`: a `AI6.spot` con su reacción, su error y la inercia
+del stick; solo bloquea si su sitio es de bloqueo); (a) añade «novato en Fácil gana ≥ 45 % de los puntos»; nuevas (e) humano quieto: no
+se mueve fuera de su balón (0 m por rally), no salta ni golpea solo; (f) los compañeros no le quitan los balones junto a él y el colocador
+no se la da; (g) `setReady`: en la batida y jugando sí (135/200), lejos de la red o quieto nunca. (d) «¡Pídela!» pone al humano en la
+batida y jugando. **tools/drive6.js**: mueve él al personaje (flechas mantenidas; con TOUCH=1 el joystick con varios dedos, como
+touchplay) al balón suyo o a su sitio; comprueba que sin tocar nada no se mueve (0,00 m) y que sale la marca de posición.
+- **Integración (11-nov)**: `assistMove` devuelve el stick tal cual en 6v6 si `il < 0,2` (`g.rot`: el 2v2 no cambia, huella idéntica);
+  simtest (e) mide ahora TODO el movimiento del humano quieto, también hacia su balón (0 m por rally); con el bot de la matriz el novato
+  en Fácil baja de ~70 % a ~61 % de los puntos (sigue ≥ 45 %). drive6: la fila Cámara de la preparación (Escenario oculto en 6v6).
+  Escenas `serve6h`/`rally6h`: comentario corregido (el humano se queda donde se le colocó). ui.js: consejo «Juega …: ve al aro
+  celeste» y Controles «Moverse (sin balón, al aro celeste)» en 6v6.
+- **Pendiente**: equilibrio de Fácil (decisión de Ferran: queda más fácil que antes); colocador humano (v2); falta de posición del humano (sigue sin poder solaparse: se le coloca antes del saque).

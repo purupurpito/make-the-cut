@@ -20,6 +20,7 @@
   var VB = window.VB = window.VB || {};
   var THREE, ctx, C, Sim, root;
   var ballPivot, ball, ballMat, dropLine, marker, markerMat, focusRing, focusMat, focusU, focusD = 0, ballOutline;
+  var posMark = null, posA = 0, posX = 0, posY = 0; // 6v6: marca de posición del humano (su sitio de la formación, VB.AI6.spot)
   // Aro de aproximación (ARN-05): diámetros (m) de la diana y del aro móvil al nacer, y segundos de cierre hasta PULSAR.
   // Los planos miden 1 m: el aro de outlinedRingTex(104) mide 0,8125 m de diámetro y la diana de targetTex 0,875 m.
   var FR_D0 = 0.8, FR_D1 = 2.6, FR_T = 0.9, FR_RING = 0.8125, FR_TGT = 0.875, FR_ON = 0.24, FR_OFF = -0.15;
@@ -328,7 +329,7 @@
     g.fillStyle = '#ffffff'; g.fillRect(2 * DEC_CELL, DEC_CELL, DEC_CELL, DEC_CELL); // celda 6: blanco liso (línea de altura)
     footAtlas(g); // celdas 9-11: huellas de la playa
     var at = tex(cv);
-    var N = MARK_N * 2 + RIP_N + 7 + FOOT_N, geo = new THREE.PlaneGeometry(1, 1);
+    var N = MARK_N * 2 + RIP_N + 8 + FOOT_N, geo = new THREE.PlaneGeometry(1, 1);
     for (var fI = 0; fI < FOOT_N; fI++) fp.push(dblFields({ x: 0.5, y: 0.5, yaw: 0.5, k: 0, sx: 0.5, sy: 0.5, op: 0.5, t: 0.5 })); for (var fJ = 0; fJ < FOOT_N; fJ++) fp[fJ].t = 0;
     var inst = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({
       uniforms: { map: { value: at } }, transparent: true, depthWrite: false, toneMapped: false,
@@ -342,6 +343,7 @@
     inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     inst.count = 0; inst.visible = false; inst.frustumCulled = false; inst.renderOrder = 3; inst.name = 'floorDecals';
     root.add(inst); decals = inst;
+    if (posMark) decOrder.push(posMark); // (debajo de todo lo demás)
     for (var m = 0; m < MARK_N; m++) decOrder.push(markPool[m].m);
     for (var r = 0; r < MARK_N; r++) decOrder.push(markPool[r].r);
     for (var p = 0; p < RIP_N; p++) decOrder.push(ripPool[p].m);
@@ -1208,6 +1210,11 @@
       aimSpMap = aimMat.map; aimSvMap = aimSvTex();
       aimXray = new THREE.Mesh(aimRet.geometry, new THREE.MeshBasicMaterial({ map: aimSvMap, transparent: true, opacity: 0, depthTest: false, depthWrite: false, toneMapped: false }));
       aimXray.rotation.x = -Math.PI / 2; aimXray.renderOrder = 12; aimXray.visible = false; aimXray.frustumCulled = false; aimXray.name = 'aimXray'; root.add(aimXray);
+      // 6v6 (11-nov-2026): marca de posición del humano. Desde que el personaje no se mueve solo, un aro suave (celeste) en el
+      // suelo dice dónde le toca estar (su sitio de la formación) cuando está lejos de él. Mismo atlas (aro de las ondas): 0 dibujos
+      posMark = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: ripTex, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }));
+      posMark.rotation.x = -Math.PI / 2; posMark.position.y = 0.0145; posMark.visible = false; posMark.renderOrder = 2; posMark.name = 'posMark'; // (decals)
+      posMark.material.color.setRGB(0.3, 0.85, 1);
       buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map, whiteTex, revFill.material.map, aimSvMap]);
       // polvo de parquet (plancha, aterrizajes): Points con alfa por vértice y mezcla normal
       var dPos = new Float32Array(DUST_N * 3), dCol = new Float32Array(DUST_N * 4);
@@ -1366,6 +1373,19 @@
         var now = press > 0 ? clampN(1 - press / FR_ON, 0, 1) : clampN(1 + press / -FR_OFF, 0, 1);
         focusU.uOp.value.set(0.95 * fIn * (1 - 0.75 * fLate), 0.62 + 0.36 * now, now > 0.01 ? 0.55 * now * now : 0);
         focusMat.opacity = focusU.uOp.value.x; // (solo lectura para herramientas: opacidad del aro móvil)
+      }
+      // ---- 6v6: marca de posición (dónde te toca estar sin balón tuyo; aparece si estás a más de ~1,2 m) ----
+      if (posMark) {
+        var pc = g.ctrl, A6 = VB.AI6, pdt = ctx.realDt || 0, pTo = 0;
+        if (six && inPlay && !g.demo && !g.watch && pc && A6 && A6.spot && !(g.jobs && g.jobs[0] === pc)) {
+          var psp = A6.spot(g, pc), ptx = psp.x, pty = psp.y, pd = Math.sqrt((ptx - pc.x) * (ptx - pc.x) + (pty - pc.y) * (pty - pc.y));
+          if (posA < 0.01) { posX = ptx; posY = pty; }
+          var pk = 1 - Math.exp(-12 * pdt); posX += (ptx - posX) * pk; posY += (pty - posY) * pk;
+          pTo = clampN((pd - 1.0) / 0.6, 0, 1) * 0.75;
+        }
+        posA += (pTo - posA) * (1 - Math.exp(-10 * pdt)); if (pTo === 0 && posA < 0.01) posA = 0;
+        posMark.visible = posA > 0.01; posMark.material.opacity = posA;
+        if (posMark.visible) { var psc = 1.25 + Math.sin(ctx.time * 4) * 0.06; posMark.position.x = posX; posMark.position.z = -posY; posMark.scale.set(psc, psc, psc); }
       }
       // ---- marcador de caída (secundario si el aro amarillo está activo) ----
       marker.visible = inPlay && b.vz < 6 && b.z > 0.5;

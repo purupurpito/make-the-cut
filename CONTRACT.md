@@ -453,6 +453,17 @@ El cambio de campo (`courtChange`, plano `'court'`) usa un corte deliberado (rea
   sin plano de reacción, cierre de set ni plano del sacador rival. `node tools/tv6test.js [WxH] [s] [semilla]` lo comprueba (12 en cuadro).
   Rendimiento 6v6: `EXTRA=format=6v6 node tools/perf.js …` (tope provisional de 45 llamadas de dibujo en baja, frente a 35 en 2v2, hasta
   fundir los atletas lejanos en el sprint 4).
+- **6v6 con humano: cámara en 3ª persona (11-nov-2026, camera_input)**: `ctx.settings.cam6` = `'3p'` (por defecto) | `'tv'` (main.js `loadSettings`; ui.js: Ajustes · Imagen
+  «Cámara en 6 contra 6» y, en la preparación del 6 contra 6, la fila «Cámara» en el sitio de Escenario, que se oculta). `?cam6=tv|3p` manda en pruebas (se lee al cargar).
+  camera.js: planos `tp` (juego, detrás y por encima del jugador que llevas; si saca un compañero, detrás del sacador) y `tpPoint` (reacción tras el punto y cierre
+  de set; `getShot()` lo da como `'point'`). Solo con `g.size === 6`, sin `g.watch` y con `g.ctrl`; espectador, tv6test y las escenas serve6/rally6/point6 siguen en `tv`.
+  Escenas nuevas (`?debug=`): `tserve6 recv6 spike6 block6 point6h` (`&won=1`) `setend6`. `node tools/cam6test.js [WxH] [s] [semilla] [puntos]` (camera_input;
+  `TOUCH=1`, `CAM6=tv`, `SHOTS=dir`) juega en vivo y comprueba jugador y balón en cuadro, suavidad, límites y cortes. `perf.js` con `EXTRA=format=6v6` mide ahora la
+  3ª persona (autopilot sin `g.watch`); players.js `screenLod` (6v6): fuera de cuadro = lejano siempre; en el punto solo los 4 atletas en cuadro más cercanos llevan
+  malla media y trazo (y < 15 % del alto = lejano); en el punto y el saque solo dan sombra los 3 más cercanos (calidad media).
+- **6v6 con humano: sin movimientos solos (11-nov-2026, sim)**: el humano solo se mueve, salta y golpea con su entrada (se quitó `assist6`/`g.assist6`); el imán corto
+  de `assistMove` solo actúa en 6v6 si el stick ya empuja (`il >= 0,2`; el 2v2 no cambia). `VB.AI6.spot(g, p)` = su sitio en la formación (fx.js lo marca con el aro
+  celeste `posMark`); `g.hAct` = momento de su última entrada (`VB.AI6.setReady`: el colocador no le coloca si está quieto o lejos de la red).
   (detalle en notes/ui_main.md). Avanzan la sim (autopilot, semilla fija `&seed=N`)
   hasta el momento y congelan (`ctx.frozen`); `&live=1` sigue jugando. `&guide=1` fuerza los toques guiados del primer partido,
   `&hold=1` la celebración de victoria en depuración, `&prewarm=0|t|c|r` el modo de precalentado, `&diff=` el nivel. `&quality=low|medium|high` fuerza calidad.

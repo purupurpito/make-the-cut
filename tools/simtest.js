@@ -362,7 +362,11 @@ function gapAim(g, p, out) {
   }
   return out;
 }
-function makeBot(bp, seed) {
+/** opt.six (6v6 con humano, 11-nov-2026): el personaje ya no se mueve solo, así que sin balón suyo el bot va él mismo a su sitio
+ *  de la formación (VB.AI6.spot: recepción, batida, cobertura, bloqueo de zona, defensa perímetro) con su reacción, su error de
+ *  lectura y la inercia del stick, y solo sube a bloquear si su sitio es de bloqueo. Sin opt, el bot de siempre (matriz 2v2). */
+function makeBot(bp, seed, opt) {
+  const six = !!(opt && opt.six);
   const rng = S._makeRng(seed), gauss = () => (rng() + rng() + rng() + rng() - 2) * 1.732;
   const mv = [0, 0], want = [0, 0], aimv = [0, 0], out = { move: mv, hit: false, jump: false, switchPlayer: false };
   let stamp = -9, lead = 0, jlead = 0, eu = 0, ev = 0, presses = 0, useAim = false, useGap = false, serveWait = 0;
@@ -411,9 +415,10 @@ function makeBot(bp, seed) {
       naive = !bp.block && g.touchTeam === 1 && g.touches === 2 && rng() < (bp.netJump || 0); // "bloqueo" de novato
       if (bp.misSwitch && rng() < bp.misSwitch) out.switchPlayer = true;
     }
-    const blocks = bp.block || naive || g.defRole === 'block'; // con CAMBIAR en la colocación rival el juego le pide bloquear
-    if (g.swingLive && p.z > 0 && (useGap || useAim)) out.move = aimv; // en el aire mantiene la dirección mientras dura el gesto
     const since = g.time - g.lastTouchT, job = g.jobs[0] === p;
+    const sp6 = six && !job ? VB.AI6.spot(g, p) : null, sp6x = sp6 ? sp6.x : 0, sp6y = sp6 ? sp6.y : 0, sp6b = !!(sp6 && sp6.block);
+    const blocks = six ? sp6b : bp.block || naive || g.defRole === 'block'; // con CAMBIAR en la colocación rival el juego le pide bloquear
+    if (g.swingLive && p.z > 0 && (useGap || useAim)) out.move = aimv; // en el aire mantiene la dirección mientras dura el gesto
     let tx = p.x, ty = p.y;
     const attack = job && g.touchTeam === 0 && g.touches === 2 && Math.abs(g.pr3.x) < 3.8 && g.pr3.z > 2.5;
     if (job) {
@@ -424,7 +429,8 @@ function makeBot(bp, seed) {
       const s = bp.posErr * (0.22 + 0.55 * Math.min(1.6, tr / 1.1) + 0.06 * Math.min(8, dist));
       tx += eu * s * 0.5 * bp.depth; ty += ev * s * 0.5;
       if (wrongD && since < wrongT) tx += wrongD;
-    } else if (g.defRole === 'dig' && g.touchTeam === 1 && !naive) { tx = 5.4; ty = Math.max(-2, Math.min(2, -g.pr3.y * 0.3)); } // el juego le da la defensa
+    } else if (six) { tx = sp6x + eu * bp.posErr * 0.25; ty = sp6y + ev * bp.posErr * 0.25; if (sp6b) tx = sp6x; } // 6v6: a su sitio (lee el bloqueo sin error de profundidad)
+    else if (g.defRole === 'dig' && g.touchTeam === 1 && !naive) { tx = 5.4; ty = Math.max(-2, Math.min(2, -g.pr3.y * 0.3)); } // el juego le da la defensa
     else if (blocks && g.touchTeam === 1 && g.touches === 2 && g.pr3.x < 0) { tx = 0.6; ty = g.pr3.y + ev * bp.posErr * 0.4; } // lee el ataque con error
     else if (!job) { tx = 6; ty = -g.teams[0][g.ctrl.idx ? 0 : 1].y * 0.5; }
     // hasta reaccionar sigue con lo que hacía (no se para en seco); luego va al punto leído con inercia del stick
@@ -2073,18 +2079,19 @@ if (ONLY !== 'matrix') {
   }
 
   // 6v6 con HUMANO (sprint 3, notes/diseno-6v6-carrera.md §1.5): control Uno por puesto (receptor, OH1 = n.º 2), la IA mueve al
-  // resto. Bot «humano» de la matriz (solo entrada real); sin balón suyo suelta el stick (posición asistida) salvo para bloquear.
-  // Exige: sin excepciones ni NaN, el humano saca con la rotación, sin eventos switch, el colocador le coloca, toques del humano por
-  // rally >= 0,5 (novato en Fácil) y >= 0,6 (medio en Normal; objetivo del diseño 0,7 como OH), «¡Pídela!» (CAMBIAR) guarda g.ask6
-  // y sube su peso en VB.AI6.chooseSet.
+  // resto. Desde el 11-nov-2026 el personaje NO se mueve solo (Ferran: «deja que el jugador decida»): el bot de la matriz va él
+  // mismo a su sitio (makeBot con {six: true}, VB.AI6.spot). Exige: sin excepciones ni NaN, el humano saca con la rotación, sin
+  // eventos switch, el colocador le coloca, toques del humano por rally >= 0,5 (novato en Fácil) y >= 0,6 (medio en Normal; objetivo
+  // del diseño 0,7 como OH), jugable en Fácil (novato >= 45 % de puntos); con el humano quieto: no se mueve ni salta ni golpea solo,
+  // los compañeros no le quitan los balones de su zona y el colocador no se la da; «¡Pídela!» (CAMBIAR) guarda g.ask6 y sube su peso
+  // en VB.AI6.chooseSet.
   if (ONLY !== 'matrix') {
     const f0 = failures, res = [], t0 = Date.now(), NS = 3, MINH = 6;
-    const wrap6 = bot => { const Z = [0, 0]; return g => { const o = bot(g), p = g.ctrl; if (g.mode === 'rally' && g.jobs[0] !== p && !(p.front && g.defRole === 'block')) { o.move = Z; o.jump = false; } return o; }; };
     for (const [bn, df, minT] of [['novato', 'easy', 0.5], ['medio', 'normal', 0.6]]) {
       let pts = 0, won = 0, ht = 0, hsrv = 0, hsrvOk = 0, sw = 0, setTo = 0, nan = 0, ex = null, role = true;
       try {
         for (let s = 0; s < NS; s++) {
-          const g = S.createGame({ format: '6v6', seed: 900 + s, difficulty: df, ctrl: 'one', stats: true }), bot = wrap6(makeBot(BOTS[bn], 77 + s)), ev = [];
+          const g = S.createGame({ format: '6v6', seed: 900 + s, difficulty: df, ctrl: 'one', stats: true }), bot = makeBot(BOTS[bn], 77 + s, { six: true }), ev = [];
           role = role && g.ctrl.role === 'OH' && g.ctrl.num === 2 && g.ctrlMode === 'one' && g.ctrlRole === 'OH';
           for (let i = 0; i < MINH * 60 * 120; i++) {
             S.step(g, DT, bot(g)); ev.length = 0; S.drainEvents(g, ev);
@@ -2100,9 +2107,49 @@ if (ONLY !== 'matrix') {
         }
       } catch (e) { ex = e && e.stack || String(e); }
       const tpr = pts ? ht / pts : 0;
-      res.push(['(a) ' + bn + ' en ' + df + ': sin excepciones ni NaN, receptor n.º 2', !ex && !nan && pts > 40 && role, { puntos: pts, ganados: pct(won, pts), nan, ex }]);
+      res.push(['(a) ' + bn + ' en ' + df + ': sin excepciones ni NaN, receptor n.º 2' + (df === 'easy' ? ', gana >= 45 % de los puntos' : ''),
+        !ex && !nan && pts > 40 && role && (df !== 'easy' || won >= 0.45 * pts), { puntos: pts, ganados: pct(won, pts), nan, ex }]);
       res.push(['(b) ' + bn + ': saca con la rotación y sin eventos switch', hsrv > 0 && hsrvOk > 0 && sw === 0, { turnos: hsrv, sacados: hsrvOk, switch: sw }]);
       res.push(['(c) ' + bn + ': toques del humano por rally >= ' + minT + ' y el colocador le coloca', tpr >= minT && setTo > 0, { toquesPorRally: +tpr.toFixed(2), coloca: setTo }]);
+    }
+    { // (e)-(f) humano QUIETO (sin entrada en todo el partido): no se mueve nunca (tampoco en su balón: desde el 11-nov el imán corto
+      // de assistMove solo actúa en 6v6 si el jugador ya empuja el stick), no salta ni golpea (solo contactos de cuerpo, regla); los compañeros
+      // no le quitan los 1os toques que caen junto a él (< 1 m) y el colocador no se la da (quieto). En Fácil, su equipo sigue jugando
+      let mvOff = 0, mvAll = 0, rallies = 0, jumps = 0, swings = 0, pass0 = 0, steal = 0, setIdle = 0, ex = null;
+      try {
+        for (let s = 0; s < 2; s++) {
+          const g = S.createGame({ format: '6v6', seed: 940 + s, difficulty: 'easy', ctrl: 'one' }), ev = [];
+          let px = g.ctrl.x, py = g.ctrl.y;
+          for (let i = 0; i < 5 * 60 * 120; i++) {
+            const h = g.ctrl, was = g.mode === 'rally' && g.jobs[0] !== h && h.z === 0, wasR = g.mode === 'rally' && h.z === 0;
+            S.step(g, DT, null); ev.length = 0; S.drainEvents(g, ev);
+            if (was && g.mode === 'rally' && g.jobs[0] !== h && g.ctrl === h) mvOff += Math.hypot(h.x - px, h.y - py);
+            if (wasR && g.mode === 'rally' && g.ctrl === h) mvAll += Math.hypot(h.x - px, h.y - py);
+            px = g.ctrl.x; py = g.ctrl.y;
+            for (const e of ev) {
+              if (e.type === 'serveReady') rallies++;
+              else if (e.type === 'jump' && e.player === g.ctrl) jumps++;
+              else if (e.type === 'hit' && e.human && e.shot !== 'body') swings++;
+              else if (e.type === 'hit' && e.team === 0 && e.kind === 'pass' && !e.human) { pass0++; if (Math.hypot(e.x - g.ctrl.x, e.y - g.ctrl.y) < 1.0 && g.ctrl.z === 0) steal++; }
+              else if (e.type === 'hit' && e.kind === 'set' && e.team === 0 && g.setPlan[0] && g.setPlan[0].to === g.ctrl) setIdle++;
+            }
+          }
+        }
+      } catch (e) { ex = e && e.stack || String(e); }
+      res.push(['(e) humano quieto: no se mueve (ni hacia su balón), no salta ni golpea solo', !ex && rallies > 20 && mvAll / Math.max(1, rallies) < 0.05 && jumps === 0 && swings === 0,
+        { saques: rallies, mPorRally: +(mvAll / Math.max(1, rallies)).toFixed(3), mFueraDeSuBalon: +(mvOff / Math.max(1, rallies)).toFixed(3), saltos: jumps, golpes: swings, ex }]);
+      res.push(['(f) humano quieto: los compañeros no le quitan los balones de su zona y el colocador no se la da', steal <= Math.max(2, 0.02 * pass0) && setIdle === 0,
+        { primerosToquesCompañeros: pass0, junto: steal, colocaciones: setIdle }]);
+      // (g) colocaciones regaladas (VB.AI6.setReady): delantero a 3,8 m de la red en la batida y jugando → puede recibirla; lejos de la
+      // red (6 m) o quieto (sin entrada en HUM.idleT s) → nunca
+      const VB6 = VB.AI6, sd0 = S.side(0), n6 = [0, 0, 0];
+      for (let k = 0; k < 3; k++) for (let n = 0; n < 200; n++) {
+        const h = S.createGame({ format: '6v6', seed: 700 + n, ctrl: 'one' }), st = VB6.setterOf(h, 0), c = h.ctrl;
+        h._pq6 = [{ q: 0.9, t: h.time }, { q: 0, t: -9 }]; c.front = true;
+        c.x = sd0 * (k === 1 ? 6 : 3.8); c.y = sd0 * -3.3; h.hAct = k === 2 ? h.time - VB6.HUM.idleT - 0.5 : h.time;
+        VB6.chooseSet(h, st); if (h.setPlan[0].to === c) n6[k]++;
+      }
+      res.push(['(g) el colocador no coloca al humano lejos de la red ni quieto (sí en la batida y jugando)', n6[0] >= 40 && n6[1] === 0 && n6[2] === 0, { batida: n6[0], lejos: n6[1], quieto: n6[2] }]);
     }
     { // «¡Pídela!»: CAMBIAR en el peloteo, con el humano delantero y antes de la colocación (S.askOk), guarda g.ask6 y emite
       // 'ask' ok; fuera de esa ventana (zaguero, saque) no guarda nada y emite 'ask' sin ok (ui.js: «Ahora no»). Con g.ask6, el
@@ -2126,13 +2173,14 @@ if (ONLY !== 'matrix') {
       for (let k = 0; k < 2; k++) for (let n = 0; n < 300; n++) {
         const h = S.createGame({ format: '6v6', seed: 500 + n, ctrl: 'one' }), st = VB6.setterOf(h, 0);
         h.ask6 = k ? h.time : -9; h._pq6 = [{ q: 0.9, t: h.time }, { q: 0, t: -9 }]; h.ctrl.front = true;
+        h.ctrl.x = S.side(0) * 3.8; h.ctrl.y = S.side(0) * -3.3; h.hAct = h.time; // en la batida y jugando (VB.AI6.setReady)
         VB6.chooseSet(h, st); if (h.setPlan[0].to === h.ctrl) cnt[k]++;
       }
       res.push(['(d) «¡Pídela!»: CAMBIAR guarda g.ask6 solo en su ventana (askOk) y el colocador elige más al humano', asked && cnt[1] - cnt[0] >= 30, { ask6: asked, ahoraNo: noOk, sinPedir: cnt[0], pidiendo: cnt[1] }]);
     }
     const bad = res.filter(r => !r[1]);
     if (bad.length) fail('6v6 con humano: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
-    console.log('\n6v6 con humano (sprint 3, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)' + (failures === f0 ? ' OK' : '') + '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));
+    console.log('\n6v6 con humano (sin movimientos solos, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)' + (failures === f0 ? ' OK' : '') + '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));
   }
 
   // VÓLEY PLAYA (createGame({venue:'beach'}), 10-nov-2026): pista 16×8, sets a 21 / 15, cambio de campo cada 7 (5 en el 3.º),

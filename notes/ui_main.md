@@ -1385,7 +1385,7 @@ Lo que cantaba no era abreviar, sino pegar TODO con el mismo « · ». Reglas pa
   equipo». Hoja final: «Cambiar opciones» sale también en el 6v6 humano (no en el espectador).
 - **tools/drive6.js** (nuevo): menú → tarjeta 6 contra 6 → Formato (← a 2 contra 2 y → de vuelta; Escenario fijo) → partido con teclado
   (flechas al balón, J en la ventana, Espacio remate/bloqueo, C «¡Pídela!») hasta jugar puntos y sacar él; pausa. `TOUCH=1` usa toques de
-  dedo sobre el overlay (sin joystick: le lleva la posición asistida). Capturas `tools/out/arte/6v6s3/drive6-<W>x<H>-{menu,saque,peloteo}.png`.
+  dedo sobre el overlay (joystick con varios dedos; el driver mueve al personaje al balón o a su sitio). Capturas `tools/out/arte/6v6s3/drive6-<W>x<H>-{menu,saque,peloteo}.png`.
   padplay.js admite ahora `EXTRA` como touchplay.
 - **Capturas** `tools/out/arte/6v6s3/`: `menu-formato-1280x720`, `menu-formato-844x390` (táctil), `menu-formato2v2-844x390`,
   `menu-jugar-844x390`, `controles-6v6-1280x720`, `intro-6v6-844x390`, `pc/` y `touch/` (`serve6h`, `rally6h`), `drive6-*`.
@@ -1417,3 +1417,19 @@ Lo que cantaba no era abreviar, sino pegar TODO con el mismo « · ». Reglas pa
 - **Tarjeta guiada**: en 6v6 se va en cuanto el balón deja de ser del humano (antes se quedaba desvaneciéndose mientras bloqueaba).
 - **Botón «PANTALLA COMPLETA» a 360-420 px de alto**: en la preparación del Partido rápido (`#menu[data-page="quick"]`) se queda en el
   icono (38 × 38) en el margen derecho; ya no tapa el valor ni las flechas de la fila Formato a 667×375, 740×360 ni 844×390.
+
+### Cámara del 6v6: ajuste «3ª persona / Televisión» (11-nov-2026, camera_input)
+- main.js `loadSettings`: `cam6: '3p'` por defecto (`'tv'` o `'3p'`; cualquier otro valor → `'3p'`). camera.js lo lee en `onSettings`
+  (cambia a mitad de partido con un corte). `?cam6=tv|3p` manda en pruebas.
+- ui.js `OPT.cam6` (`['3p', 'tv']`, «3ª persona» / «Televisión», con su línea de ayuda «Detrás de tu jugador, siguiendo la jugada» /
+  «Alta, desde el fondo: ves a los 12»).
+- **Ajustes · Imagen**: fila «Cámara en 6 contra 6» («Detrás de tu jugador o alta, como en la tele»), con segmentos como Calidad o Luz.
+- **Preparación del Partido rápido en 6 contra 6**: la fila Escenario (que en 6v6 era fija en Pabellón) se oculta y en su sitio sale la fila
+  **Cámara** (`#optCam6`, con flechas como las demás; ← / → y clic en la fila la cambian). Así cabe a 844×390 sin una fila más (la lista ya
+  llenaba el alto). En 2 contra 2 vuelve Escenario. Las pastillas de ¡A JUGAR! no cambian.
+- drive6.js (integración 11-nov) comprueba la fila: en 6v6 `#optVenue` oculto y `#optCam6` visible; ← en «3ª persona» da la vuelta a
+  «Televisión» (las flechas ciclan) y → vuelve a «3ª persona».
+- **Textos del control sin movimientos solos** (integración 11-nov): consejo del 6v6 cuando juega un compañero «Juega el colocador: ve al
+  aro celeste» (antes «: a tu sitio»; el aro es fx `posMark`) y, en Controles del 6v6, «Moverse (sin balón, al aro celeste)».
+- padplay.js con `EXTRA='format=6v6&human=1'`: «saque con A» solo si saca tu jugador (`g.server === g.ctrl`; en el 1r punto saca el n.º 1:
+  se salta con un aviso) y sin «RB cambia de jugador» (en 6v6 RB es «¡Pídela!»).
