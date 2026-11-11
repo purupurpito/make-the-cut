@@ -86,6 +86,14 @@ function optsFor(variant, seed) {
   return o;
 }
 
+// Posiciones y tiempo: Linux (CI) y Windows redondean distinto en la cifra 13-15 (Math.sin/cos/pow de V8 por plataforma).
+// Se comparan con tolerancia 1e-7; el resto (puntos, eventos, llamadas a g.rng, marcador) sigue exacto.
+function near(a, b, f) {
+  if (f !== 'end' && f !== 'time') return false;
+  const eq = (x, y) => typeof x === 'number' && typeof y === 'number' ? Math.abs(x - y) <= 1e-7 * Math.max(1, Math.abs(x)) :
+    Array.isArray(x) && Array.isArray(y) ? x.length === y.length && x.every((v, i) => eq(v, y[i])) : x === y;
+  try { return f === 'end' ? eq(JSON.parse(a), JSON.parse(b)) : eq(a, b); } catch (e) { return false; }
+}
 const fx = v => typeof v === 'number' ? +v.toPrecision(15) : v;
 function runOne(VB, variant, seed) {
   const S = VB.Sim, C = VB.C, DT = 1 / C.SIM_HZ;
@@ -130,7 +138,7 @@ function main() {
   for (let i = 0; i < Math.max(ref.length, res.length); i++) {
     const a = ref[i], b = res[i];
     if (!a || !b) { bad++; console.error('FALLO huella: partida', i, 'falta'); continue; }
-    for (const f of ['k', 'pts', 'ev', 'end', 'rng', 'time', 'score']) if (a[f] !== b[f]) {
+    for (const f of ['k', 'pts', 'ev', 'end', 'rng', 'time', 'score']) if (a[f] !== b[f] && !near(a[f], b[f], f)) {
       if (bad++ < 8) console.error('FALLO huella', a.k, f + ':', '\n  ref', String(a[f]).slice(0, 300), '\n  ahora', String(b[f]).slice(0, 300));
       break;
     }
