@@ -148,8 +148,8 @@ const DECIDE = `(function(){var g=VB.ctx.game,p=g.ctrl,S=VB.Sim,o={m:g.mode,mv:n
     for (let i = 0; i < 8 && !(await evalJs("document.activeElement.id==='btnGo'")); i++) { await press('ArrowDown'); await sleep(110); }
     check(await evalJs("document.activeElement.id==='btnGo'"), '↓ vuelve a ¡A JUGAR!');
     // contador de eventos del humano, instalado ANTES de empezar el partido (la demo del menú no cuenta): el colocador saca de salida
-    // y su 1r serveReady sale en los primeros pasos, antes de que el estado sea playing
-    await evalJs(`window.__s6={hits:0,pts:0,serves:0,sok:0,sw:0,blk:0,spk:0,ask:0,lastAsk:-9};(function(){var o=VB.Sim.step;VB.Sim.step=function(g,dt,i){var n=g.events.length;o(g,dt,i);if(g.demo)return;
+    // y su 1r serveReady ya está en la cola al crear el partido (antes del primer paso): se cuenta al ver el partido por primera vez
+    await evalJs(`window.__s6={hits:0,pts:0,serves:0,sok:0,sw:0,blk:0,spk:0,ask:0,lastAsk:-9};(function(){var o=VB.Sim.step;VB.Sim.step=function(g,dt,i){var n=g.events.length;o(g,dt,i);if(g.demo)return;if(window.__s6g!==g){window.__s6g=g;if(g.mode==='serve'&&g.server===g.ctrl)window.__s6.serves++;}
       for(var k=n;k<g.events.length;k++){var e=g.events[k],s=window.__s6;if(e.type==='hit'&&e.human){s.hits++;if(e.kind==='serve')s.sok++;if(e.kind==='spike')s.spk++;}
       if(e.type==='point')s.pts++;if(e.type==='serveReady'&&e.player===g.ctrl)s.serves++;if(e.type==='switch')s.sw++;if(e.type==='block'&&e.human)s.blk++;}
       if(g.ask6!==window.__s6.lastAsk){window.__s6.lastAsk=g.ask6;if(g.ask6>0)window.__s6.ask++;}};})()`);

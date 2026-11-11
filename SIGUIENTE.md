@@ -43,6 +43,10 @@ por sistema) y notes/ui_main.md (guía de estilo de textos).
 ---
 
 ## Lote A: 6v6 con todas las posiciones, rotaciones de verdad y pistas dibujadas en el campo
+**Estado (11-nov-2026): HECHO y publicado** (ver notes/sim.md «6v6, lote A»). Queda: la petición a main.js de abajo (hasta entonces
+ui.js aplica el puesto con `VB.Sim.setCtrlRole` al empezar), el texto de CONTRACT §4.3, la IA no coloca pipe en salto, los aros tenues y
+el chevrón se leen justos a 844×390, y el equilibrio de Fácil (novato 65,8 %: decisión de Ferran). Decisión tomada sin Ferran: cuando el
+líbero entra por el central del humano, el humano lleva al líbero hasta que su central vuelve (así «sale por el líbero» y sigue jugando).
 **Ficheros:** js/sim.js (solo 6v6: `g.rot`), js/ai6.js, js/fx.js, js/players.js, la parte 6v6 de js/ui.js (coach6, fila
 Controlar, roleName), tools/simtest.js (sección 6v6), tools/drive6.js, notes/sim.md.
 
@@ -171,3 +175,20 @@ Ferran lo revise. Usa búsqueda web.
   sitio de bloqueo en 6v6) y la CPU va a rematar: «Salta y pulsa GOLPEAR justo cuando remata: muro. Antes de tiempo: toque de red».
   Y en el aviso del contacto, `e.pressed` → «¡Muro!» en el sello del bloqueo directo.
 - **Bloqueo activo → js/audio.js (audio)**, opcional: `blockPress ok:true` = golpe seco de manos sobre la cinta; `ok:false` nada.
+- **Lote A → js/main.js (ui_main)**: `loadSettings`: añadir `ctrlRole6: 'OH'` al ajuste por defecto y validarlo
+  (`VB.Sim.CTRL_ROLES6.indexOf(s.ctrlRole6) >= 0`, si no 'OH'); `startMatch` (createGame, ~línea 361):
+  `ctrlRole: fmt ? (opts.ctrlRole || ctx.settings.ctrlRole6 || 'OH') : undefined` en vez de `ctrlRole: fmt ? 'OH' : undefined`.
+  Hoy ui.js guarda la elección en `localStorage 'voley3d.role6'` y la aplica con `VB.Sim.setCtrlRole(ctx.game, role)` justo después
+  de `startMatch` (puente que puede quedarse); con el cambio, la Carrera de pista (lote C) podrá pasar `opts.ctrlRole`.
+- **Lote A → CONTRACT.md §4.3 (lead)**, texto a añadir tras «6v6 con humano (sprint 3…)»: «**Lote A (11-nov-2026)**:
+  `VB.Sim.CTRL_ROLES6 = ['OH','S','OPP','MB']`; `createGame({ctrlRole})` y `VB.Sim.setCtrlRole(g, role)` → `g.ctrl` (primer jugador del
+  equipo 0 con ese puesto: OH n.º 2, S n.º 1, OPP n.º 4, MB n.º 3); `g.ctrlBase` = su atleta: cuando el líbero entra por el central del
+  humano, `g.ctrl = g.libero[0]` hasta que vuelve (evento `libero` con `human: true`, sin `switch`). Colocador humano: 2º toque suyo
+  (`VB.AI6.humanOwns`) y carril por la dirección del stick (`VB.AI6.laneOf` → `chooseSet(g, p, lane)`); `askOk` también para el zaguero
+  no líbero. Falta de posición: en Difícil/Experto (`g.posRule6`) el humano se mueve durante el saque y, solapado al golpe (`overlapOf`),
+  `point` con `reason 'position'` («Falta de posición», `SIGNAL.position = 'attackFault'`). `VB.AI6`: `FORM.RECV[1..6]`, tempo `'pipe'`
+  (`canPipe`), `spot(g, p).phase`. fx.js: pistas por fase (`posMark`, `posMark2`, `posArrow`; 0 dibujos) con densidad por nivel.
+  players.js: postura de cobertura. ui.js: fila Controlar con 4 puestos, `localStorage 'voley3d.role6'`.»
+- **Lote A → tools/console.sh (ui_main)**: la línea 9 `EXTRA="${4:-}"` pisa la variable de entorno `EXTRA`, así que
+  `EXTRA=format=6v6 bash tools/console.sh all` prueba el 2v2 normal. Cambio: `EXTRA="${4:-${EXTRA:-}}"`. Mientras tanto, pásalo como
+  4º argumento: `bash tools/console.sh all 1280 720 format=6v6`.
