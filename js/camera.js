@@ -37,6 +37,10 @@
  * Jugo: temblor suave por ruido (no aleatorio por frame), "punch" de FOV
  * en los remates propios, micro‑pausa (hit‑stop) y cámara lenta en la
  * bola de partido (ctx.timeScale).
+ * CÁMARA LENTA ANTES DE GOLPEAR (11-nov-2026, pedido de Ferran: «hace el juego demasiado fácil»): toda cámara lenta
+ * que ayude al humano ANTES de su golpe pasa por slowmo(…, aid) y solo entra en Fácil o en los primeros partidos
+ * (aidOk). Lo que viene DESPUÉS del golpe (hit-stop del remate/saque/defensa/bloqueo ya hechos, cámara lenta del punto
+ * de set o de partido, cierre) no es ayuda y queda en todos los niveles. Inventario en notes/camera_input.md.
  * getBasis(): ejes adelante/derecha EN EL SUELO de la cámara de juego
  * (coords de sim). Se limita a ±26° de "hacia la red" y se congela en los
  * planos cinemáticos para que los controles nunca den bandazos.
@@ -3586,13 +3590,25 @@
       if (shot === 'review' && comfort()) return;   // (revisión del challenge con Cámara estable: sin sacudidas)
       if (amount >= K.shakeA * Math.pow(K.shakeT / (K.shakeDur || 1), 2)) { K.shakeA = amount; K.shakeDur = mx(0.05, dur || 0.3); K.shakeT = K.shakeDur; K.shakeRoll = 0.35; }
     },
-    /** Cámara lenta: escala `scale` durante `realSeconds` reales; vuelve a 1 con suavidad en `easeOut` s (opcional). */
-    slowmo: function (scale, realSeconds, easeOut) {
+    /** Cámara lenta: escala `scale` durante `realSeconds` reales; vuelve a 1 con suavidad en `easeOut` s (opcional).
+     *  `aid` (opcional): la cámara lenta es una AYUDA ANTES DE QUE EL HUMANO GOLPEE (p. ej. la tarjeta guiada de ui.js). Solo
+     *  entra si aidOk() lo permite: en Fácil siempre; a partir de Normal, solo si `aid === 'novice'` (el que llama certifica con
+     *  el récord que son los primeros partidos del jugador). Devuelve false si no ha entrado. */
+    slowmo: function (scale, realSeconds, easeOut, aid) {
+      if (aid && !this.aidOk(aid === 'novice')) return false;
       scale = mn(mx(+scale || 1, 0.05), 1);
-      if (slow.t > 0 && slow.scale < scale && slow.t > slow.out) return; // no pisar una más intensa en curso
+      if (slow.t > 0 && slow.scale < scale && slow.t > slow.out) return false; // no pisar una más intensa en curso
       slow.scale = scale; slow.total = slow.t = mx(0.01, +realSeconds || 0.5);
       slow.out = easeOut != null ? mn(mx(easeOut, 0), slow.t) : mn(0.4, slow.t * 0.5);
       if (ctx && !(K.hsT > 0)) ctx.timeScale = scale;   // (un hit-stop en curso manda)
+      return true;
+    },
+    /** ¿Puede entrar una ayuda de presentación ANTES del golpe del humano (cámara lenta guiada)? Fácil: sí. Normal o más: solo
+     *  si `novice` (primeros partidos del jugador, según el récord de ui.js). Nunca en la demo ni sin partido. Lo que pasa
+     *  DESPUÉS del golpe (hit-stop, cámara lenta del punto de set/partido) no pregunta aquí. (11-nov-2026, pedido de Ferran.) */
+    aidOk: function (novice) {
+      var g = ctx && ctx.game; if (!g || g.demo) return false;
+      return g.difficulty === 'easy' || !!novice;
     },
     /** OPCIONAL: punch de FOV (grados) — p. ej. en un remate propio. (Ahora es el impulso de punch(): entra en 1 frame.) */
     kick: function (deg) { this.punch(deg || 2.5); },

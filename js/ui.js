@@ -1443,10 +1443,20 @@
   // ---- Primeros toques guiados (primer partido, o &guide=1) ----
   // La primera recepción, la primera colocación y el primer remate del jugador nuevo llegan a cámara lenta
   // con una tarjeta grande que dice exactamente qué pulsar. Una sola vez por tipo.
-  var guideT = 0, guideDone = {};
+  // SOLO EN FÁCIL O EN LOS PRIMEROS PARTIDOS (11-nov-2026, pedido de Ferran: «hace el juego demasiado fácil»). El récord
+  // (voley3d.record) no cuenta el 6v6 ni la Carrera (showEnd), así que quien solo juega esos modos era «novato» para siempre
+  // y veía la cámara lenta en TODOS los partidos, también en Normal. Ahora el novato sigue siendo el que no tiene partidos en
+  // el récord, pero a partir de Normal la guía dura como mucho GUIDE_MAX partidos (contador local voley3d.guided: partidos en
+  // los que ha salido alguna tarjeta; solo en este dispositivo, no se sincroniza). En Fácil, como antes. La cámara lenta pasa
+  // por CameraRig.slowmo(…, 'novice'), que a partir de Normal solo la deja entrar con esa certificación (camera.js aidOk).
+  var guideT = 0, guideDone = {}, GUIDE_MAX = 3, guidedN = -1;
+  function guidedLoad() { if (guidedN < 0) { guidedN = 0; try { guidedN = Math.max(0, +localStorage.getItem('voley3d.guided') | 0); } catch (e) { } } return guidedN; }
+  function guidedBump() { guidedLoad(); guidedN++; try { localStorage.setItem('voley3d.guided', String(guidedN)); } catch (e) { } }
   function guideOn(g) {
     if (g.demo || (g.autopilot && ctx.params.guide !== '1') || ctx.settings.showHelp === false) return false;
-    return ctx.params.guide === '1' || (!ctx.debug && record.played === 0);
+    if (ctx.params.guide === '1') return true;                 // (pruebas y capturas: siempre)
+    if (ctx.debug || record.played !== 0) return false;        // novato = sin partidos en el récord
+    return g.difficulty === 'easy' || guidedLoad() < GUIDE_MAX; // Fácil: siempre; Normal o más: solo los primeros partidos
   }
   function guideCheck(g, p, w, nt, gl) {
     if (guideT > 0 || nt === 0 || banT > 0 || bugT > 0) return; // UI-02: la tarjeta espera a que no haya banner
@@ -1454,6 +1464,7 @@
     var key = nt === 1 ? 'r' : nt === 2 ? 's' : 'a';
     if (guideDone[key] || !(t > 0.05 && t < 0.85)) return;
     if (nt === 3 && !(w && w.attack)) return;
+    if (!guideDone.r && !guideDone.s && !guideDone.a && ctx.params.guide !== '1') guidedBump();   // primera tarjeta del partido: cuenta
     guideDone[key] = 1;
     // en mayúsculas, sin abreviaturas ordinales ("1.ER" queda mal)
     // (UI-18: el nombre del toque ya lo dice el contador de toques, justo encima: aquí solo el ordinal)
@@ -1464,7 +1475,7 @@
     el.guideK.textContent = k.toUpperCase(); el.guideT.innerHTML = txt;
     el.guide.className = ''; void el.guide.offsetWidth; el.guide.className = 'show';
     guideT = 2.4;
-    try { if (VB.CameraRig && VB.CameraRig.slowmo) VB.CameraRig.slowmo(0.4, 1.3, 0.35); } catch (e) { }
+    try { if (VB.CameraRig && VB.CameraRig.slowmo) VB.CameraRig.slowmo(0.4, 1.3, 0.35, 'novice'); } catch (e) { }   // (ayuda antes del golpe: camera.js aidOk)
   }
   function guideHide() { guideT = 0.3; el.guide.className = 'out'; }
   // sin cierres por frame: llamadas a la sim protegidas

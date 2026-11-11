@@ -1082,3 +1082,29 @@ escenas serve6/rally6/point6) sigue con `tv`. El 2v2 no pasa por nada nuevo (com
   tramo pies-fondo rival); el plano de reacción no conoce la coreografía de players (no hay `heroShot` en 6v6: el héroe puede estar de
   espaldas si mira a sus compañeros); `bench` (tiempo muerto / líbero) y «Avanzar» siguen sin plano; sin seguimiento del remate (CAM-08)
   ni momento de red (CAM-17) en 6v6.
+
+## Cámara lenta ANTES de golpear: solo en Fácil o en los primeros partidos (11-nov-2026, lote B; pedido de Ferran)
+Ferran: «el modo este que mete como una cámara lenta antes de darle a la pelota solo exista en niveles bajos o las primeras
+partidas. Hace el juego demasiado fácil». Vale para el 2v2 y el 6v6. Solo presentación: la sim no cambia (huella 2v2 idéntica).
+- **Inventario de bajadas de `ctx.timeScale`** (todas las de camera.js y ui.js; main.js solo la aplica, audio.js solo la lee):
+  | Dónde | Qué | ¿Antes del golpe del humano? | Decisión |
+  |---|---|---|---|
+  | ui.js `guideCheck` → `slowmo(0.4, 1.3, 0.35, 'novice')` | tarjeta guiada «Primer/Segundo/Tercer toque» a cámara lenta | **SÍ** (0,05-0,85 s antes de su ventana) | **Solo Fácil o primeros partidos** (abajo) |
+  | camera.js `clinchDetect` → `slowmo(0.28/0.5, …)` | balón de set/partido cayendo sin que nadie llegue (CAM-09) | No: solo arranca si ningún jugador del lado donde cae puede llegar (alcance + plancha + carrera); si alguien lo toca se deshace con `timeScale = 1` | Se queda |
+  | camera.js `point` → `slowmo(0.28, 1.9)` / `(0.5, 0.8)` | punto de partido / de set ya anotado | No (el punto ya está) | Se queda |
+  | camera.js `hitStop` remate humano (60/35 ms), saque en salto perfecto (35), bloqueo directo (70), defensa perfecta de un remate (40) | congelación de impacto | No: todas suenan en el evento `hit`/`block` del humano, el golpe ya está dado (la de la defensa, 40 ms + 80 de vuelta, es el sello del toque, no ayuda al siguiente) | Se quedan (CAM-04 «feel»; confort las quita) |
+  | camera.js `onGameStart`/`onState('menu')`/aborto del cierre | `timeScale = 1` | — | Son vueltas a 1 |
+  La única cámara lenta previa al golpe era la **guía del novato**. Y su disparador (`record.played === 0`) tenía un agujero: el récord
+  `voley3d.record` no cuenta el 6v6 ni la Carrera (ui.js `showEnd`), así que quien solo juega esos modos era «novato» para siempre y
+  veía la cámara lenta en TODOS los partidos, también en Normal, Difícil y Experto. Eso es lo que Ferran veía en el 6v6.
+- **Regla nueva** (ui.js `guideOn`, bloque «Primeros toques guiados»): novato = sin partidos en el récord (como antes). En **Fácil**, la
+  guía sigue como antes (mientras el récord esté a 0). **A partir de Normal**, la guía solo sale en los **`GUIDE_MAX` = 3 primeros
+  partidos con guía** de este dispositivo (contador local `voley3d.guided`: partidos en los que ha salido alguna tarjeta; `account.js` no
+  lo sincroniza, es de presentación). `&guide=1` la fuerza siempre y no cuenta (pruebas y capturas). `ctx.debug` y la demo, nunca.
+- **Gate en camera.js**: `slowmo(scale, realSeconds, easeOut, aid)` — con `aid` la cámara lenta es una ayuda ANTES del golpe y solo entra
+  si `aidOk(aid === 'novice')`: Fácil siempre; Normal o más, solo con la certificación `'novice'` del que llama. Devuelve `true/false`.
+  Cualquier ayuda previa al golpe que se añada (p. ej. pistas del lote A) debe pasar por ahí. Lo de después del golpe no pregunta.
+- **Comprobado** con el juego real en Chrome (script de sesión, 5 escenarios × 22 s, 2v2 Partido rápido, 1280×720, récord y ajustes
+  sembrados en localStorage): Normal con `guided = 3` → ni tarjeta ni `slowmo`, `timeScale` nunca < 0,9 antes del 1r toque humano;
+  Normal con `guided = 0` → tarjeta y cámara lenta, `guided` pasa a 1; Fácil con `guided = 99` → tarjeta y cámara lenta; Normal con 5
+  partidos en el récord → nada; Difícil sin guiar → primeros partidos, entra (y cuenta). Sin errores de página.

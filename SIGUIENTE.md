@@ -157,4 +157,9 @@ Ferran lo revise. Usa búsqueda web.
 7. **Su revisión de textos**, lista A–D del 9-nov-2026.
 
 ## Peticiones entre lotes
-(Vacío. Escribe aquí: lote que pide → fichero, función y cambio exacto.)
+(Escribe aquí: lote que pide → fichero, función y cambio exacto.)
+- **Lote B → js/ui.js `showEnd` (ui_main, fuera del bloque de la guía)**, opcional: el récord `voley3d.record` no cuenta el 6v6 ni la
+  Carrera, así que quien solo juega esos modos es «novato» (`record.played === 0`) para siempre. El lote B lo tapa con un contador
+  local `voley3d.guided` (partidos con guía, tope 3 a partir de Normal). Mejor de raíz: un campo nuevo `record.anyPlayed` que suba en
+  TODOS los partidos humanos (2v2, 6v6, Carrera) sin tocar `played/wins` (que siguen siendo del 2v2), y que `guideOn` e `isRookie`
+  (main.js) miren `anyPlayed`. account.js ya sincroniza el documento entero (`recPlayed` compara `played`: revisar).
