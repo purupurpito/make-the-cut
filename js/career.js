@@ -1487,7 +1487,8 @@
           d.clubs.forEach(function (k) {
             if (!k || !k.name) return;
             var col = k.colors || {}, sh = hexN(col.shirt, 0xd8262e), s2 = hexN(col.shirt2, 0xffffff), lb = hexN(col.libero, mix6(sh, 0xffffff, 0.5)), o = clampI(k.ovr, 20, 99);
-            clubs.push({ id: id++, lid: lid, cc: String(co.code), name: String(k.name), short: String(k.short || abbr(String(k.name))).slice(0, 4).toUpperCase(), city: String(k.city || ''),
+            // Patrocinador inventado (Ferran, 11-nov-2026): como en la realidad, el club se llama «patrocinador + nombre»; nameBase sin él.
+            clubs.push({ id: id++, lid: lid, cc: String(co.code), name: (k.sponsor ? String(k.sponsor) + ' ' : '') + String(k.name), nameBase: String(k.name), sponsor: k.sponsor ? String(k.sponsor) : '', short: String(k.short || abbr(String(k.name))).slice(0, 4).toUpperCase(), city: String(k.city || ''),
               base: o, ovr: o, kit: kit6(String(k.name), sh, s2, lb), libEst: !!k.liberoEstimated });
           });
         });

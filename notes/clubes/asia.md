@@ -14,7 +14,7 @@ Liga real: SV.League Men + SV.League Women 2025-26 (mezcla)
 
 | Nuestro nombre | Corto | Ciudad | Fuente | OVR | Camiseta | 2º color | Líbero | Club real (nombre oficial) | Comprobación | Dudas |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **Sunwings Osaka** | SWO | Osaka | M | 86 | <span style="display:inline-block;width:12px;height:12px;background:#C8102E;border:1px solid #888"></span> `#C8102E` | <span style="display:inline-block;width:12px;height:12px;background:#87CEFA;border:1px solid #888"></span> `#87CEFA` | <span style="display:inline-block;width:12px;height:12px;background:#1B365D;border:1px solid #888"></span> `#1B365D` (est.) | Suntory Sunbirds Osaka (サントリーサンバーズ大阪) | Búsqueda web del nombre exacto entre comillas (+ "volleyball"): sin ningún club real con ese nombre; se quita el patrocinador Suntory; guiño a «Sunbirds». | Rojo de casa y celeste de fuera (en.wikipedia, equipaciones); el líbero es propuesto. |
+| **Naniwa Skybirds** | NSB | Osaka | M | 86 | <span style="display:inline-block;width:12px;height:12px;background:#C8102E;border:1px solid #888"></span> `#C8102E` | <span style="display:inline-block;width:12px;height:12px;background:#87CEFA;border:1px solid #888"></span> `#87CEFA` | <span style="display:inline-block;width:12px;height:12px;background:#1B365D;border:1px solid #888"></span> `#1B365D` (est.) | Suntory Sunbirds Osaka (サントリーサンバーズ大阪) | Búsqueda web del nombre exacto entre comillas (+ "volleyball"): sin ningún club real con ese nombre; se quita el patrocinador Suntory; guiño a «Sunbirds». | Rojo de casa y celeste de fuera (en.wikipedia, equipaciones); el líbero es propuesto. |
 | **Bluzeon Osaka** | BLZ | Osaka | M | 86 | <span style="display:inline-block;width:12px;height:12px;background:#0057B8;border:1px solid #888"></span> `#0057B8` | <span style="display:inline-block;width:12px;height:12px;background:#FFFFFF;border:1px solid #888"></span> `#FFFFFF` | <span style="display:inline-block;width:12px;height:12px;background:#FFC72C;border:1px solid #888"></span> `#FFC72C` (est.) | Osaka Bluteon (大阪ブルテオン; antes Panasonic Panthers) | Búsqueda web del nombre exacto entre comillas (+ "volleyball"): sin ningún club real con ese nombre; campeón 2025-26; guiño a «Bluteon». | Color de club azul (ja.wikipedia); el líbero es propuesto. |
 | **Stingz Aichi** | STZ | Kariya (Aichi) | M | 82 | <span style="display:inline-block;width:12px;height:12px;background:#D7001E;border:1px solid #888"></span> `#D7001E` | <span style="display:inline-block;width:12px;height:12px;background:#1A1A1A;border:1px solid #888"></span> `#1A1A1A` | <span style="display:inline-block;width:12px;height:12px;background:#FFFFFF;border:1px solid #888"></span> `#FFFFFF` (est.) | JTEKT STINGS Aichi (ジェイテクトSTINGS愛知) | Búsqueda web del nombre exacto entre comillas (+ "volleyball"): sin ningún club real con ese nombre; se quita el patrocinador JTEKT; guiño a «Stings». | No encontré su color oficial: rojo y negro ESTIMADOS, revisar. |
 | **Wolfhounds Nagoya** | WHN | Inazawa (Aichi) | M | 81 | <span style="display:inline-block;width:12px;height:12px;background:#111111;border:1px solid #888"></span> `#111111` | <span style="display:inline-block;width:12px;height:12px;background:#D7001E;border:1px solid #888"></span> `#D7001E` | <span style="display:inline-block;width:12px;height:12px;background:#FFFFFF;border:1px solid #888"></span> `#FFFFFF` (est.) | Wolfdogs Nagoya (ウルフドッグス名古屋; club de Toyoda Gosei) | Búsqueda web del nombre exacto entre comillas (+ "volleyball"): sin ningún club real con ese nombre; guiño a «Wolfdogs». | Negro y rojo oficiales (ja.wikipedia); el líbero es propuesto. |
@@ -58,7 +58,7 @@ Liga real: V-League (KOVO) 2025-26, las dos ligas (mezcla)
 
 | Nuestro nombre | Corto | Ciudad | Fuente | OVR | Camiseta | 2º color | Líbero | Club real (nombre oficial) | Comprobación | Dudas |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **Incheon Jumbo Jets** | IJJ | Incheon | M | 70 | <span style="display:inline-block;width:12px;height:12px;background:#0078C1;border:1px solid #888"></span> `#0078C1` | <span style="display:inline-block;width:12px;height:12px;background:#0B2D6B;border:1px solid #888"></span> `#0B2D6B` | <span style="display:inline-block;width:12px;height:12px;background:#E4002B;border:1px solid #888"></span> `#E4002B` (est.) | Incheon Korean Air Jumbos (인천 대한항공 점보스) | Búsqueda web del nombre exacto entre comillas (+ "volleyball"): sin ningún club real con ese nombre; campeón 2025-26; se quita el patrocinador Korean Air; guiño a «Jumbos». | Azul cielo de la marca; ESTIMADOS, revisar. «Jumbos» alude a los aviones de Korean Air: es el apodo del club, pero roza el guiño al patrocinador (Ferran decide). |
+| **Incheon Cranes** | ICR | Incheon | M | 70 | <span style="display:inline-block;width:12px;height:12px;background:#0078C1;border:1px solid #888"></span> `#0078C1` | <span style="display:inline-block;width:12px;height:12px;background:#0B2D6B;border:1px solid #888"></span> `#0B2D6B` | <span style="display:inline-block;width:12px;height:12px;background:#E4002B;border:1px solid #888"></span> `#E4002B` (est.) | Incheon Korean Air Jumbos (인천 대한항공 점보스) | Búsqueda web del nombre exacto entre comillas (+ "volleyball"): sin ningún club real con ese nombre; campeón 2025-26; se quita el patrocinador Korean Air; guiño a «Jumbos». | Azul cielo de la marca; ESTIMADOS, revisar. «Jumbos» alude a los aviones de Korean Air: es el apodo del club, pero roza el guiño al patrocinador (Ferran decide). |
 | **Cheonan Skyrunners** | CSR | Cheonan | M | 69 | <span style="display:inline-block;width:12px;height:12px;background:#FFFFFF;border:1px solid #888"></span> `#FFFFFF` | <span style="display:inline-block;width:12px;height:12px;background:#007BC1;border:1px solid #888"></span> `#007BC1` | <span style="display:inline-block;width:12px;height:12px;background:#111111;border:1px solid #888"></span> `#111111` (est.) | Cheonan Hyundai Capital Skywalkers (천안 현대캐피탈 스카이워커스) | Búsqueda web del nombre exacto entre comillas (+ "volleyball"): sin ningún club real con ese nombre; se quita el patrocinador Hyundai Capital; guiño a «Skywalkers». | Blanco de casa, azul de fuera y detalles negros (en.wikipedia, equipaciones); el negro del líbero es propuesto. |
 | **Uijeongbu Starlights** | USL | Uijeongbu | M | 66 | <span style="display:inline-block;width:12px;height:12px;background:#F8B500;border:1px solid #888"></span> `#F8B500` | <span style="display:inline-block;width:12px;height:12px;background:#7C7366;border:1px solid #888"></span> `#7C7366` | <span style="display:inline-block;width:12px;height:12px;background:#1F4E9C;border:1px solid #888"></span> `#1F4E9C` (est.) | Uijeongbu KB Insurance Stars (의정부 KB손해보험 스타즈) | Búsqueda web del nombre exacto entre comillas (+ "volleyball"): sin ningún club real con ese nombre; se quita el patrocinador KB Insurance; guiño a «Stars». | Amarillo y gris (en.wikipedia, equipaciones); el líbero es propuesto. |
 | **Baegu Seoul** | BSE | Seúl | M | 66 | <span style="display:inline-block;width:12px;height:12px;background:#0000FF;border:1px solid #888"></span> `#0000FF` | <span style="display:inline-block;width:12px;height:12px;background:#FFFFFF;border:1px solid #888"></span> `#FFFFFF` | <span style="display:inline-block;width:12px;height:12px;background:#FFB300;border:1px solid #888"></span> `#FFB300` (est.) | Seoul Woori Card WooriWON (서울 우리카드 우리WON) | Búsqueda web del nombre exacto entre comillas (+ "volleyball"): sin ningún club real con ese nombre; «baegu» es «voleibol» en coreano (forma local de «Voley Seúl»); se quita Woori Card y también «WON», que es la marca de banca de Woori. | Blanco de casa y azul de fuera (en.wikipedia, equipaciones); el líbero es propuesto. |
@@ -226,3 +226,49 @@ Revisión adversarial del primer borrador. **Límite:** el cupo de búsquedas we
 - **Colores todavía estimados:** JTEKT, Korean Air, GS Caltex, los 10 de China, casi todo Irán y Catar, y en Filipinas Cignal, Akari, Criss Cross, Savouge y Navy. El líbero sigue con `liberoEstimated: true` en los 71.
 - **Ovr:** comparado con los ficheros de las otras regiones. Japón (máximo 86, fuerza 80) queda a la altura de Francia, Alemania y Rusia (86, 80-82). Catar (74) e Irán (76) quedan por encima de las ligas medias de Europa (63-70), porque sus mejores clubes ganan en Asia con fichajes extranjeros. Ferran puede bajarlos si prefiere que «liga pequeña» pese más.
 - **Mundial de clubes:** aquí pone «World Club Cup»; en elite-europa, «Mundial de Clubes VBF», y en america, «Mundial VBC de Clubes». Hay que dejar un solo nombre al juntar los ficheros. Lo mismo con «Champions Cup Asia» frente a «Champions Cup VEC».
+
+## Patrocinadores inventados (gag, 11-nov-2026)
+
+En el juego se muestra «sponsor + name». Todas las marcas son inventadas (búsqueda web exacta sin coincidencias reales); detalle en sponsorCheck del JSON. Nombres base cambiados: «Sunwings Osaka» → «Naniwa Skybirds» (NSB) y «Incheon Jumbo Jets» → «Incheon Cranes» (ICR), porque guiñaban a Suntory y a Korean Air.
+
+| País | Club real | Patrocinador inventado + nombre |
+|---|---|---|
+| JP | Suntory Sunbirds Osaka | **Ramen Receive-ya** Naniwa Skybirds |
+| JP | JTEKT Stings Aichi | **Tatami Toss** Stingz Aichi |
+| JP | SAGA Hisamitsu Springs | **Onigiri Ace Mart** Sprinx Saga |
+| JP | NEC Red Rockets Kawasaki | **Takoyaki Spike** Red Comets Kawasaki |
+| JP | PFU BlueCats Ishikawa Kahoku | **Udon Libero Honpo** Blue Lynx Kahoku |
+| JP | Kubota Spears Osaka | **Sushi Saabu** Spearz Osaka |
+| JP | Fujitsu Kawasaki Red Spirits | **Seguros Tie-Break** Red Spirals Kawasaki |
+| JP | JA Gifu Rioreina | **Sento Blocking-yu** Riorena Gifu |
+| JP | KANOA Laulea's Fukuoka | **Gyoza Pipe Kitchen** Laulani Fukuoka |
+| KR | Incheon Korean Air Jumbos | **Kimchi Block** Incheon Cranes |
+| KR | Cheonan Hyundai Capital Skywalkers | **Tteokbokki Spike** Cheonan Skyrunners |
+| KR | Uijeongbu KB Insurance Stars | **Bibimbap Libero** Uijeongbu Starlights |
+| KR | Seoul Woori Card WooriWON | **Hotteok Ace** Baegu Seoul |
+| KR | Suwon KEPCO Vixtorm | **Jjimjil Net Spa** Suwon Vortex |
+| KR | Gimcheon Korea Expressway Hi-pass | **Mandu Serve** Baegu Gimcheon |
+| KR | GS Caltex Seoul KIXX | **Dakgalbi Receive** Hangang Seoul |
+| KR | Suwon Hyundai E&C Hillstate | **Bingsu Dig Café** Paldal Suwon |
+| KR | Incheon Heungkuk Life Pink Spiders | **Gimbap Pipe Shop** Incheon Pink Tarantulas |
+| KR | Hwaseong IBK Altos | **Rodilleras Rodríguez** Hwaseong Altissimo |
+| CN | Shanghai Bright Ubest | **Kouqiu Baozi** Paiqiu Shanghai |
+| CN | Jiangsu Zenith Steel | **Lanwang Jiaozi** Paiqiu Jiangsu |
+| CN | Tianjin Food Group / Tianjin Bohai Bank | **Faqiu Mahua** Paiqiu Tianjin |
+| CN | Beijing BAIC | **Chanclas Supersónicas** Paiqiu Beijing |
+| CN | Liaoning Donggang Strawberry | **Erchuan Huoguo** Paiqiu Liaoning |
+| IR | Foolad Sirjan Iranian | **Kebab Sirjan Smash** Valibal Sirjan |
+| IR | Shahdab Yazd | **Yazd Baklava Block** Valibal Yazd |
+| IR | Chadormalu Ardakan | **Pesteh Pass** Valibal Ardakan |
+| IR | Saipa Tehran | **Sangak Spike** Narenji Tehran |
+| IR | Paykan Tehran | **Ash Reshteh Ace** Tochal Tehran |
+| PH | Creamline Cool Smashers | **Adobo Ace** Kool Smashers Manila |
+| PH | Cignal HD Spikers | **Halo-Halo Block** Metro Spikers |
+| PH | PLDT High Speed Hitters | **Lechon Libero** Heavy Hitters Manila |
+| PH | Petro Gazz Angels | **Pandesal Pass Bakery** Manila Angelz |
+| PH | Farm Fresh Foxies | **Sari-Sari Serve** Swift Foxes Manila |
+| PH | Choco Mucho Flying Titans | **Turon Toss** Flying Giants |
+| PH | Akari Chargers | **Chanclas Supersónicas** Power Chargers |
+| PH | Criss Cross King Crunchers | **Videoke Block** Crown Crushers |
+| PH | Savouge Spin Doctors | **Barberya Spike** Spin Medics |
+| PH | PGJC-Navy Sea Lions | **Bangus Net Fishery** Bay Sealions |

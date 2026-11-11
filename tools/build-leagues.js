@@ -46,7 +46,6 @@ const DOUBT = {
   'Voley Tamarán': 'Club real probable: J.A.V. Olímpico (Emalsa Gran Canaria), por confirmar.',
   'Aiacciu Volley': 'Ajaccio no jugó la Ligue A 2025-26 (sería Ligue B); Royan, que sube, podría sustituirlo.',
   'Rennsteig Volley Suhl': 'Colores de Brandfetch: pueden ser los del patrocinador (Lotto Thüringen).',
-  'Borkener Kuriosen': '«Skurios»: si es un patrocinador y no la marca del club, hay que cambiar el nombre.',
   'Rei en Jaume Vòlei': 'Empató 10-12 con Teruel (Voley Turia): Conqueridor (6º) está en la 2ª y Teruel (7º) en la 1ª; se pueden cambiar.',
   'Menen Vauban': 'Tectum Achel jugó la Copa VEC 2025-26 y no está: podría sustituir a Menen.',
   'Voley Sliedrecht': 'Sin confirmar que tuviera equipo en la Eredivisie de hombres 2025-26.',
@@ -55,11 +54,9 @@ const DOUBT = {
   'Vôlei Cidade Canção': 'Colores (magenta y negro) sin fuente.',
   'Vôlei Montesclarense': 'Sin confirmar que jugara la Superliga B 2025-26.', 'Vôlei Alencarino': 'Sin confirmar que jugara la Superliga B 2025-26.',
   'Araucárias SP': 'Sin confirmar que jugara la Superliga B 2025-26.',
-  'Incheon Jumbo Jets': '«Jumbos» es el apodo del club, pero alude a los aviones del patrocinador (Korean Air).',
   'Metro Spikers': 'Nombre genérico; además Cignal se dio de baja temporal en enero de 2026.',
   'Heavy Hitters Manila': 'Nombre genérico.', 'Manila Angelz': 'Petro Gazz se dio de baja temporal en 2026.',
   'Bay Sealions': 'Navy ya no figura en la Spikers’ Turf.',
-  'Sunwings Osaka': '«Sun» de Sunbirds, que a su vez viene de Suntory (el patrocinador): guiño indirecto.',
   'Vòlei Manacor': 'Casi igual que el real (CV Manacor; voleimanacor.club puede ser su marca). Es el ejemplo de Ferran.',
   'Capodistria Volley': 'Muy cerca del nombre registrado del club real («Club di pallavolo Koper-Capodistria»).',
   'Voley Rayyan': 'ovr 74, por encima de las ligas medias de Europa (63-70); campeón de Asia 2025. Ferran puede bajarlo.',
@@ -83,7 +80,6 @@ const DOUBT = {
   'Voley Zalău': 'La prensa llama «Volei Zalău» al real (Volei Municipal Zalău). Alternativa sin buscar: «Sălaj Zalău».',
   'Montpelhièr Volley': 'Es «Montpellier Volley» (el real) en occitano. Alternativa sin buscar: «Clapas Volley».',
   'Volaro Le Cannet': 'A una letra del real, Volero Le Cannet. Alternativas sin buscar: «Volantes Le Cannet», «Riviera Le Cannet Volley».',
-  'Heidelgrán Voley': '«Heidel-» guiña a Heidelberg (Heidelberg Materials), patrocinador del club real: guiño a un patrocinador.'
 };
 const COMP_DOUBT = {
   'Champions Cup VEC': 'Ferran pidió «Champions Cup», pero ese nombre a secas es oficial en rugby (EPCR) y en fútbol (CONCACAF), y fue el de la propia CEV hasta 2000. Se usa «Champions Cup VEC» en todos los ficheros.',
@@ -139,8 +135,9 @@ for (const { f, j } of src) {
         if (!(k.ovr >= 0 && k.ovr <= 100)) err(id + ': ovr ' + k.ovr);
         if (n === String(k.real || '').toLowerCase() || n === String(k.official || '').toLowerCase()) err(id + ': igual que el nombre real u oficial');
         const m = SPONSOR_RE.exec(k.name); if (m) err(id + ': lleva «' + m[2] + '» (patrocinador)');
+        if (k.sponsor) { const ms = SPONSOR_RE.exec(k.sponsor); if (ms) err(id + ': el patrocinador inventado «' + k.sponsor + '» lleva «' + ms[2] + '» (marca real)'); if (k.sponsor.length > 28) err(id + ': patrocinador demasiado largo'); }
         if (!/^(M|W|MW)$/.test(k.gender)) err(id + ': gender ' + k.gender);
-        dd.clubs.push({ name: k.name, short: k.short, city: k.city, gender: k.gender,
+        dd.clubs.push({ name: k.name, sponsor: k.sponsor || undefined, short: k.short, city: k.city, gender: k.gender,
           colors: { shirt: k.colors.shirt.toLowerCase(), shirt2: k.colors.shirt2.toLowerCase(), libero: k.colors.libero.toLowerCase() }, liberoEstimated: !!k.liberoEstimated, ovr: k.ovr });
       }
       out.divisions.push(dd);
@@ -150,6 +147,7 @@ for (const { f, j } of src) {
   for (const x of j.competitions) {
     if (!x.kind) err(f + ': competición sin kind: ' + x.name);
     if (SPONSOR_RE.test(x.name)) err(f + ': patrocinador en la competición «' + x.name + '»');
+    // (patrocinadores inventados de los clubes: se comprueban abajo, en el bucle de clubes)
     const regs = [...new Set(j.countries.map(co => contOf(co.code)))];
     const reg = x.country ? contOf(x.country) : regs[0];
     const key = reg + '|' + x.name;
@@ -189,7 +187,7 @@ let js = `/* MAKE THE CUT — js/leagues.js (owner: ui_main, lote C: Carrera de 
  *
  * Esquema (una región por continente; el campo gender es solo un dato interno de la fuente: ningún texto del juego lo enseña):
  *   {region, countries:[{country, code, tier, divisions:[{lvl, name, short, strength,
- *     clubs:[{name, short, city, gender, colors:{shirt, shirt2, libero}, liberoEstimated, ovr}]}]}],
+ *     clubs:[{name, sponsor?, short, city, gender, colors:{shirt, shirt2, libero}, liberoEstimated, ovr}]}]}],
  *    competitions:[{name, short, kind, rank?, zone?, country?}]}
  *   - lvl 1 = 1ª división, 2 = 2ª. strength 0-100 (nivel de la división); ovr 0-100 (nivel del club).
  *   - competitions: kind 'intl' (copa de clubes del continente; rank 1 la grande, 2 la segunda, 3 no se juega; zone 'sur'/'norte' en
@@ -333,7 +331,7 @@ for (const r of order) for (const co of regions[r].countries) {
     lvl: sd.lvl, name: sd.name, short: sd.short, strength: sd.strength,
     clubs: sd.clubs.slice().sort((a, b) => b.ovr - a.ovr).map(k => ({ real: k.real || '', official: k.official || '', name: k.name, short: k.short, city: k.city || '',
       colors: { shirt: k.colors.shirt.toLowerCase(), shirt2: k.colors.shirt2.toLowerCase(), libero: k.colors.libero.toLowerCase() },
-      liberoEstimated: !!k.liberoEstimated, ovr: k.ovr, searched: searched(k.check || ''), doubt: DOUBT[k.name] || null, note: shortNote(k.check) })) })) });
+      liberoEstimated: !!k.liberoEstimated, ovr: k.ovr, sponsor: k.sponsor || null, searched: searched(k.check || ''), doubt: DOUBT[k.name] || null, note: shortNote(k.check) })) })) });
 }
 fs.writeFileSync(path.join(ROOT, 'notes', 'clubes-revision.json'), JSON.stringify(rev, null, 1) + '\n');
 console.log('notes/clubes-revision.json: ' + rev.competitions.length + ' competiciones, ' + rev.countries.length + ' países');

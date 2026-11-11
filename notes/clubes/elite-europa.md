@@ -1,6 +1,6 @@
 # Clubes de la élite europea: Italia, Polonia, Turquía y Rusia (lote C, Carrera de pista)
 
-Propuesta para que Ferran la revise **antes** de meter nada en el juego. Temporada 2025-26 (la última terminada). Un solo género: cada liga mezcla clubes de la liga de hombres y de la de mujeres; la columna «Fuente» es solo un dato interno (M, W, o MW si el club tiene equipo en las dos ligas y cuenta una sola vez). Sin patrocinadores, sin escudos y sin jugadores reales.
+Propuesta para que Ferran la revise **antes** de meter nada en el juego. Temporada 2025-26 (la última terminada). Un solo género: cada liga mezcla clubes de la liga de hombres y de la de mujeres; la columna «Fuente» es solo un dato interno (M, W, o MW si el club tiene equipo en las dos ligas y cuenta una sola vez). Sin patrocinadores reales (los que lo llevan tienen uno inventado: ver «Patrocinadores inventados»), sin escudos y sin jugadores reales.
 
 **Cómo he comprobado los nombres:** he buscado en la web cada nombre nuestro entre comillas (en italiano, polaco, turco o ruso, según el país). Ninguno sale como club real con ese nombre exacto. Cuatro choques reales me obligaron a cambiar: «Volley Modena» (existe, A2 de mujeres) → Mutina Volley; «Volley Piacenza» (existió hasta 2018) → Placentia Volley; «Volley Prata» (es el oficial) → Volley Prata Friuli; «#VolleyWrocław» (es el oficial) → Siatkówka Wrocław. También descarté «Ege Voleybol» e «İstanbul Voleybol» (existen). Algunas búsquedas juntaban varios nombres con OR y no siempre se aplicaron como OR: esa comprobación es algo más débil.
 
@@ -185,6 +185,102 @@ Liga real: Parte baja de las dos Superligas 2025-26 (mezcla)
 | **Sudoverf Piter** | SUD | San Petersburgo | W | 72 | <span style="display:inline-block;width:12px;height:12px;background:#0A2463;border:1px solid #888"></span> `#0A2463` | <span style="display:inline-block;width:12px;height:12px;background:#FFFFFF;border:1px solid #888"></span> `#FFFFFF` | <span style="display:inline-block;width:12px;height:12px;background:#FFD100;border:1px solid #888"></span> `#FFD100` (est.) | VK Korabelka (club de la universidad naval SPbGMTU) | Sustituye a Murom, que NO jugó la Superliga 2025-26 (perdió la promoción 0-3 con Minchanka). Guiño: «Korabelka» (constructora de barcos, nombre con género gramatical) → «Sudoverf» (astillero). SIN COMPROBAR por búsqueda: el cupo de búsquedas web de la sesión se agotó; buscar el nombre entre comillas antes de darlo por bueno. | Colores ESTIMADOS (wikipedia no los da), revisar. 7ª de 14 en la Superliga de mujeres 2025-26. |
 
 Reparto: 5 de la liga de hombres, 6 de la de mujeres y 1 con equipo en las dos.
+
+## Patrocinadores inventados (gag, 11-nov-2026)
+
+Pedido de Ferran: cada club que en la realidad lleva patrocinador en el nombre de 2025-26 pierde el real y lleva uno inventado, con juego de palabras de vóley en el idioma del país (negocios de barrio: embutidos, colchones, fontanería...). En el juego se muestra «patrocinador + nombre». Tres marcas recurrentes del gag, repartidas por niveles: Rodilleras Rodríguez, Chanclas Supersónicas y Seguros Tie-Break. Campos nuevos en el JSON: sponsor, realSponsor (auditoría) y sponsorCheck. Ningún nombre base ha cambiado: ninguno guiñaba a un patrocinador real.
+
+Total: 62 de 96 clubes llevan patrocinador inventado.
+
+### Italia
+
+| Liga | Club real | Nuestro nombre | Patrocinador inventado | Juego de palabras / comprobación |
+|---|---|---|---|---|
+| IPL | Sir Safety Perugia | Volley Perugia | **Salumificio Il Bagher** | Juego de palabras: bagher (toque de antebrazos); embutido umbro. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IPL | Itas Trentino | Volley Trento | **Speck Primo Tempo** | Juego de palabras: primo tempo (ataque rápido); speck del Trentino. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IPL | Cucine Lube Civitanova | Volley Civitanova | **Materassi Pallonetto** | Juego de palabras: pallonetto (finta); colchones. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IPL | Rana Verona | Volley Verona | **Pandoro Ace** | Juego de palabras: ace; el pandoro es de Verona. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IPL | Gas Sales Bluenergy Piacenza | Placentia Volley | **Idraulica La Rete** | Juego de palabras: la rete (la red); fontanería. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IPL | Valsa Group Modena | Mutina Volley | **Acetaia Diagonale** | Juego de palabras: diagonale (ataque cruzado); vinagre balsámico de Módena. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IPL | Prosecco Doc Imoco Conegliano | Volley Conegliano | **Chanclas Supersónicas** | Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida. |
+| IPL | Vero Volley (Numia Vero Volley Milano, equipos en SuperLega y Serie A1) | Volley Brianza | **Mobilificio Muro Alto** | Juego de palabras: muro (bloqueo); muebles de la Brianza. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IPL | Savino Del Bene Scandicci | Volley Scandicci | **Pelletteria Alzata** | Juego de palabras: alzata (colocación); marroquinería florentina. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IPL | Igor Gorgonzola Novara | Volley Novara | **Riseria Ricezione** | Juego de palabras: ricezione (recepción); arroz de Novara (evita el queso del patrocinador real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IPL | Reale Mutua Fenera Chieri '76 | Volley Chieri | **Grissini Fuori Tutto** | Juego de palabras: fuori tutto (balón fuera tras bloqueo); grissini piamonteses (evita seguros, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IPL | Megabox Ondulati del Savio Vallefoglia | Volley Vallefoglia | **Rodilleras Rodríguez** | Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida. |
+| IP2 | Allianz Milano | Milano Power | **Panettoneria Set Point** | Juego de palabras: set point; panettone milanés (evita seguros, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IP2 | Sonepar Padova | Volley Padova | **Ferramenta Doppio Tocco** | Juego de palabras: doppio tocco (dobles); ferretería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IP2 | MA Acqua San Bernardo Cuneo | Volley Cuneo | **Marroni Invasione** | Juego de palabras: invasione (invasión); castañas de Cuneo (evita agua, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IP2 | Yuasa Battery Grottazzolina | Volley Grottazzolina | **Olive all'Ace** | Juego de palabras: ace; aceitunas ascolanas de las Marcas. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IP2 | Tinet Prata di Pordenone | Volley Prata Friuli | **Gelateria Fallo di Rete** | Juego de palabras: fallo di rete (toque de red); heladería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IP2 | Il Bisonte Firenze | Volley Firenze | **Trippaio La Schiacciata** | Juego de palabras: schiacciata (remate) y pan florentino; puesto de lampredotto. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IP2 | Eurotek UYBA Busto Arsizio | Farfalle Busto | **Tintoria Rotazione** | Juego de palabras: rotazione (rotación); tintorería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IP2 | CBF Balducci HR Macerata | Volley Macerata | **Ciauscolo Cambio Palla** | Juego de palabras: cambio palla (cambio de saque); embutido de las Marcas. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IP2 | Consolini Volley (San Giovanni in Marignano) | Volley Marignano | **Piadineria La Veloce** | Juego de palabras: veloce (ataque rápido); piadina romañola. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| IP2 | Valsabbina Millenium Brescia | Volley Brescia | **Casoncelli Seconda Linea** | Juego de palabras: seconda linea (zaguero); pasta rellena bresciana. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+
+Sin patrocinador en el nombre real (no llevan): Cisterna Volley, Volley Bergamo 1991.
+
+### Polonia
+
+| Liga | Club real | Nuestro nombre | Patrocinador inventado | Juego de palabras / comprobación |
+|---|---|---|---|---|
+| PPL | Aluron CMC Warta Zawiercie | Volley Zawiercie | **Kiełbaski Blok** | Juego de palabras: blok (bloqueo); salchichas. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PPL | PGE Projekt Warszawa | Volley Warszawa | **Pączki Zagrywka** | Juego de palabras: zagrywka (saque); buñuelos. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PPL | Bogdanka LUK Lublin | Volley Lublin | **Seguros Tie-Break** | Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida. |
+| PPL | Asseco Resovia | Rezovia | **Pierogarnia Kiwka** | Juego de palabras: kiwka (finta); pierogi. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PPL | Jastrzębski Węgiel | Volley Jastrzębie | **Hydraulika Pod Siatką** | Juego de palabras: pod siatką (bajo la red); fontanería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PPL | Indykpol AZS Olsztyn | Volley Olsztyn | **Materace Obrona** | Juego de palabras: obrona (defensa); colchones (evita aves, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PPL | PGE GiEK Skra Bełchatów | Volley Bełchatów | **Bigosownia Przyjęcie** | Juego de palabras: przyjęcie (recepción y también «fiesta»); bigos. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PPL | PGE Budowlani Łódź | Murarze Łódź | **Szewc Aut** | Juego de palabras: aut (fuera); zapatero. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PPL | Developres Rzeszów | Volley Rzeszów | **Ogórki Rozegranie** | Juego de palabras: rozegranie (colocación); pepinillos. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PPL | ŁKS Łódź | Volley Łódź | **Cukiernia Libero** | Juego de palabras: líbero; pastelería. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PPL | BKS Bielsko-Biała | Volley Bielsko | **Warsztat Plasowanie** | Juego de palabras: plasowanie (colocar el balón); taller mecánico. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PP2 | ZAKSA Kędzierzyn-Koźle | Volley Kędzierzyn | **Twarożek Dwa Odbicia** | Juego de palabras: dwa odbicia (dobles); requesón. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PP2 | Energa Trefl Gdańsk | Volley Gdańsk | **Śledzie Wystawa** | Juego de palabras: wystawa (colocación); arenques del Báltico. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PP2 | Ślepsk Malow Suwałki | Volley Suwałki | **Rodilleras Rodríguez** | Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida. |
+| PP2 | Cuprum Stilon Gorzów | Volley Gorzów | **Pralnia Pipe** | Juego de palabras: pipe; lavandería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PP2 | InPost ChKS Chełm | Volley Chełm | **Kapusta Kontra** | Juego de palabras: kontra (contraataque); col (evita mensajería, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PP2 | Politechnika Częstochowa (antes Norwid) | Volley Częstochowa | **Obwarzanki Krótka** | Juego de palabras: krótka (ataque corto); rosquillas. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PP2 | Chemik Police | Alchemik Police | **Wędzarnia Czapa** | Juego de palabras: czapa (bloqueo «gorro»); ahumadero. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PP2 | Radomka Radom | Volley Radom | **Lody Ścięcie** | Juego de palabras: ścięcie (remate); helados. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PP2 | #VolleyWrocław | Siatkówka Wrocław | **Kwiaciarnia Rotacja** | Juego de palabras: rotacja (rotación); floristería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PP2 | ITA Tools Stal Mielec | Volley Mielec | **Pizzeria Pod Antenką** | Juego de palabras: pod antenką (junto a la varilla); pizzería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| PP2 | Sokół & Hagric Mogilno | Volley Mogilno | **Chanclas Supersónicas** | Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida. |
+
+Sin patrocinador en el nombre real (no llevan): UNI Opole, Pałac Bydgoszcz.
+
+### Turquía
+
+| Liga | Club real | Nuestro nombre | Patrocinador inventado | Juego de palabras / comprobación |
+|---|---|---|---|---|
+| EFS | VakıfBank | Üsküdar Arıları | **Simitçi Ace** | Juego de palabras: ace; simit (rosca de sésamo). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EFS | Eczacıbaşı Dynavit | Turuncu Voleybol | **Baklavacı Manşet** | Juego de palabras: manşet (toque de antebrazos); baklava. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EFS | Fenerbahçe Medicana | Kanarya Kadıköy | **Lokumcu Servis Atışı** | Juego de palabras: servis atışı (saque); delicias turcas. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EFS | Galatasaray | Galata Voleybol | **Balıkçı File** | Juego de palabras: file (red de vóley y de pesca); pescadería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EFS | Nilüfer Belediyespor | Nilüfer Voleybol | **İskender Pas** | Juego de palabras: pas (colocación); iskender de Bursa. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EFS | Zeren Spor | Ankara Voleybol | **Halıcı Sayı** | Juego de palabras: sayı (punto); alfombras. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EFS | Aras Kargo | Kordon İzmir | **Boyoz Smaç** | Juego de palabras: smaç (remate); boyoz, bollo de Esmirna. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EFS | Ziraat Bankkart | Başkent Voleybol | **Tesisat Blok Out** | Juego de palabras: blok out (bloqueo fuera); fontanería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EFS | Halkbank | Çankaya Voleybol | **Seguros Tie-Break** | Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida. |
+| EFS | Spor Toto | Ulus Voleybol | **Dönerci Altın Set** | Juego de palabras: altın set (set de oro); döner. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EF1 | Kuzeyboru | Aksaray Voleybol | **Pide Çift Vuruş** | Juego de palabras: çift vuruş (dobles); pide. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EF1 | Türk Hava Yolları | Yeşilköy Voleybol | **Çaycı Libero** | Juego de palabras: líbero; casa de té (evita viajes, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EF1 | İlbank | Angora Voleybol | **Kokoreç Plonjon** | Juego de palabras: plonjon (plancha); kokoreç. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EF1 | Altekma | Bornova Voleybol | **Tamirhane Çapraz** | Juego de palabras: çapraz (ataque cruzado); taller. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+| EF1 | ON Hotels Alanya Belediyespor | Alanya Voleybol | **Chanclas Supersónicas** | Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida. |
+| EF1 | Kuşgöz İzmir Vinç Akkuş Belediyespor | Akkuş Voleybol | **Rodilleras Rodríguez** | Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida. |
+
+Sin patrocinador en el nombre real (no llevan): İstanbul Gençlikspor, Bursa Büyükşehir Belediyespor, Beşiktaş, Göztepe, Aydın Büyükşehir Belediyespor, Gebze Belediyespor, Gaziantep Gençlikspor, İstanbul Büyükşehir Belediyespor.
+
+### Rusia
+
+| Liga | Club real | Nuestro nombre | Patrocinador inventado | Juego de palabras / comprobación |
+|---|---|---|---|---|
+| MGL | Dinamo-Ak Bars Kazan | Dinamika Kazan | **Seguros Tie-Break** | Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida. |
+| MGL | Uralochka-NTMK | Volei Yekaterinburg | **Pirozhkovaya Setka** | Juego de palabras: setka (red); pirozhki (en ruso «Пирожковая Сетка»). WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real. |
+
+Sin patrocinador en el nombre real (no llevan): Dinamo Moskva, Zenit Kazan, Lokomotiv Novosibirsk, Zenit Sankt-Peterburg, Dinamo-LO, Belogorie Belgorod, Fakel Novy Urengoy, Lokomotiv Kaliningrad, Zarechye Odintsovo, Leningradka, Kuzbass Kemerovo, Gorky Nizhny Novgorod, Yaroslavich, Dinamo-Ural Ufa, Orenburzhye Orenburg (antes Neftyanik), Yenisey Krasnoyarsk, Proton Saratov, Tulitsa, Metar Chelyabinsk, Omichka Omsk, Dinamo Krasnodar, Korabelka.
 
 ## Competiciones internacionales
 

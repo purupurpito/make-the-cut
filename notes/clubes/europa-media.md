@@ -246,3 +246,39 @@ Repaso adversarial hecho el 11-nov-2026. **Aviso:** el cupo de búsquedas web de
 - **Tectum Achel** (hombres, Copa VEC 2025-26) no está en la lista. Se podría poner en lugar de Menen.
 - **Colores:** siguen estimados los de la lista de «Datos dudosos», y el color del líbero lo es en todos los clubes (liberoEstimated: true).
 - **Sliedrecht Sport** como MW: no he podido confirmar que tuviera equipo de hombres en la Eredivisie 2025-26.
+
+## Patrocinadores inventados (11-nov-2026)
+
+Los clubes cuyo nombre real 2025-26 lleva patrocinador (realSponsor: true) llevan ahora un patrocinador inventado (campo sponsor); en el juego se muestra «sponsor + name». Los demás no llevan sponsor. Comprobación: WebSearch con frase exacta, sin coincidencias con empresas reales.
+
+- BE · Greenyard Maaseik → **Bakkerij Den Ace Voley Maaseik**
+- BE · Knack Roeselare → **Rodilleras Rodríguez Voley Roeselare**
+- BE · Decospan Menen → **Mosselhuis De Muur Menen Vauban**
+- BE · Lindemans Aalst → **Frituur De Smash Ajuin Aalst**
+- BE · Tchalou Volley → **Fromagerie Le Contre Voley Chapelle**
+- NL · Lycurgus (Groningen) → **Bakkerij Bovenhands Lykurgos Groningen**
+- NL · Dynamo Apeldoorn → **Matrassen Duikbal Magneto Apeldoorn**
+- NL · Advisie SSS (Barneveld) → **Eierhandel De Opslag Voley Barneveld**
+- NL · VC Sneek → **Haringkar Het Blok Voley Sneek**
+- NL · Peelpush (Meijel) → **Seguros Tie-Break Peelpower Meijel**
+- CH · Volley Amriswil → **Käserei Blockstark Thurgovia Amriswil**
+- CH · Viteos NUC → **Fondue Le Bloc Voley Neuchâtel**
+- CH · Genève Volley → **Fromagerie La Manchette Voley Ginebra**
+- AT · SK Aich/Dob → **Bäckerei Aufschlag Voley Aich-Dob**
+- AT · Union Volleyball Waldviertel → **Erdäpfel Netzroller Voley Waldviertel**
+- AT · UVC Ried → **Wirtshaus Zum Ass Voley Ried**
+- AT · UVC Graz → **Chanclas Supersónicas Voley Graz**
+- CZ · ČEZ Karlovarsko → **Oplatky Smeč Voley Carlsbad**
+- CZ · Jihostroj České Budějovice → **Knedlíkárna Blok Voley Budějovice**
+- RS · OK Vojvodina → **Pekara Smeč Panonia Novi Sad**
+- RS · ŽOK TENT → **Ćevapi Kod Bloka Voley Obrenovac**
+- SI · ACH Volley Ljubljana → **Mesnica Bloker Zmaji Ljubljana**
+- SI · Calcit Volley → **Mlekarna Sprejem Voley Kamnik**
+- SI · Alpacem Kanal → **Vodoinštalater Servis Voley Kanal**
+- SI · OK i-Vent Maribor → **Vinoteka Visoka Žoga Voley Maribor**
+- SI · Panvita Pomgrad → **Chanclas Supersónicas Voley Mura**
+- SI · OTP banka Branik → **Pekarna Pri Mreži Branič Maribor**
+- SI · GEN-I Volley → **Pršutarna Pri Bloku Voley Nova Gorica**
+- SI · Luka Koper Volley → **Ribarnica Blok Capodistria Volley**
+
+Dudosos: VC Sneek (Friso, 2024-25), Lycurgus, UVC Ried y Waldviertel (patrocinador no confirmado para 2025-26) llevan sponsor; CSM Arcada Galați y Orion Stars quedan sin él.

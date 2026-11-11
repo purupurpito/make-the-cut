@@ -871,7 +871,7 @@ section('Carrera de pista con los datos reales (js/leagues.js, generado de notes
       'la 1ª italiana casi toda en Experto, la Hiperliga en Normal, Filipinas entre Fácil y Normal suave; la 2ª italiana no es toda Difícil');
     const c6 = C.create({ mode: 'hall', name: 'Real', num: 7, pos: 'OH', seed: 4242, autoClub: true });
     ok(c6 && C.myClub(c6).lid === 'ES2' && c6.clubs.length === 390 && c6.leagues.length === 37 && !c6.provisional, 'Carrera de España con los datos reales: empiezas en la 2ª (' + C.myClub(c6).name + ')');
-    ok(c6.clubs.every(k => regs.some(rg => rg.countries.some(co => co.divisions.some(d => d.clubs.some(x => x.short === k.short && x.name === k.name))))), 'abreviaturas del juego = las de los datos (no hace falta renombrar ninguna)');
+    ok(c6.clubs.every(k => regs.some(rg => rg.countries.some(co => co.divisions.some(d => d.clubs.some(x => x.short === k.short && x.name === (k.nameBase || k.name)))))), 'abreviaturas del juego = las de los datos (no hace falta renombrar ninguna)');
     const cupOf = cc => c6.cups[cc] && c6.cups[cc].name;
     const cupCC = 'ES FR DE IT PL TR RU BE NL GR PT CH AT CZ RS SI RO BR AR JP KR'.split(' ');
     ok(cupCC.every(cc => cupOf(cc)), 'copa nacional propia en ' + cupCC.length + ' países: ' + cupCC.map(cc => cc + ' ' + cupOf(cc)).join(', '));
