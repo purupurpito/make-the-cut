@@ -2,7 +2,8 @@
 /* MAKE THE CUT — tools/careertest.js (owner: ui_main)
  * Prueba headless del modo Carrera (js/career.js) con localStorage falso: crear carrera, calendario, simular temporadas enteras,
  * clasificación coherente, copa, ofertas, cambio de club, ascensos/descensos, guardar/cargar, partido jugado (eventos falsos →
- * estadísticas y nota) y curva de progresión de varias temporadas.
+ * estadísticas y nota) y curva de progresión de varias temporadas. Al final, la dificultad de la Carrera (12-nov-2026: Normal idéntico
+ * al de antes, IA rival por nivel, atributos, XP, entreno, entrenador, objetivo, ofertas, cambio entre partidos, sellos y migración).
  * Uso: node tools/careertest.js [temporadas=8]   Sale con 1 si algo falla; acaba en «TODO OK».
  */
 'use strict';
@@ -911,6 +912,267 @@ else {
     C.abandon(); if (keep6 != null) mem['voley3d.career6'] = keep6; C.setMode('beach'); C._reset();
   }
 }
+
+// ------------------------------------------------------------------ dificultad de la Carrera (12-nov-2026; notes/carrera.md §Dificultad)
+section('Dificultad de la Carrera: niveles, IA, atributos, XP, entrenador, ofertas, sellos y migración');
+{
+  const DK = C.CDIFF_KEYS, CD = C.CDIFF, KEY = 'voley3d.career';
+  const G = () => ({ career: { season: 1 }, teams: [[{}, {}], [{}, {}]], demo: false, autopilot: false });
+  const fresh = o => { C.abandon(); C._reset(); return C.create(Object.assign({ name: 'Dif', num: 7, role: 'atk', seed: 4242, autoClub: true }, o || {})); };
+  const snap = () => mem[KEY];
+  const restore = (s, d) => { mem[KEY] = s; C._reset(); const x = C.load(); if (d) { x.diff = d; C.save(x); } return x; };
+  const sumUse = x => DK.reduce((s, k) => s + (x.dUse[k] | 0), 0);
+  const toOff = () => { for (let i = 0; i < 40 && C.load().phase !== 'off'; i++) C.simulateNext(); return C.load(); };
+  const STATS = { kills: 9, aces: 1, blocks: 2, digs: 6, assists: 3, errors: 2 }, RES = { sets: [2, 1], setScores: [[21, 18], [15, 21], [15, 12]], win: true };
+
+  // 1. crear
+  ok(DK.join() === 'easy,normal,hard,expert' && DK.every(k => CD[k] && CD[k].name === VB.DIFF[k].name && CD[k].hint), 'CDIFF: 4 niveles con el nombre de VB.DIFF (' + DK.map(k => CD[k].name).join(', ') + ')');
+  c = fresh(); ok(c.diff === 'normal' && sumUse(c) === 0 && DK.every(k => c.dUse[k] === 0), 'crear sin dificultad: Normal y dUse a ceros');
+  c = fresh({ diff: 'hard' }); ok(c.diff === 'hard' && C.diffOf(c) === 'hard', 'crear en Difícil');
+  c = fresh({ diff: 'xx' }); ok(c.diff === 'normal', 'clave mala: Normal');
+  ok(CD.normal.shift === 0 && CD.normal.attr === 0 && CD.normal.xp === 1 && CD.normal.train === 1 && CD.normal.coachPivot === 6.2 && CD.normal.objWin === 15 && CD.normal.objLose === -15 &&
+    CD.normal.coach0 === 0 && CD.normal.objE === 0 && CD.normal.offer === 0 && CD.normal.midNota === 0 && !CD.normal.regEasy && !CD.normal.noSoft, 'CDIFF.normal = la Carrera de siempre (palancas neutras)');
+
+  // 2. Normal idéntico (D2)
+  {
+    const strip = x => { const h = JSON.parse(JSON.stringify(x.history)); h.forEach(r => { delete r.d; delete r.dm; }); return JSON.stringify([x.res, x.player.st, x.player.lvl, x.coach, h, x.trophies.map(t => t.name + t.season)]); };
+    c = fresh({ seed: 777 }); delete c.diff; delete c.dUse; C.save(c); C._reset(); c = toOff(); const a = strip(c);
+    ok(c.diff === 'normal', 'guardado sin campo: Normal al cargar');
+    c = fresh({ seed: 777, diff: 'normal' }); c = toOff(); const b = strip(c);
+    ok(a === b, 'Normal: una temporada entera sin el campo y con diff Normal da lo mismo (resultados, atributos, nivel, entrenador, historial)');
+    c = fresh({ seed: 778 }); const n = C.next(c), riv = n.rival;
+    ok(n.ovrRival === C.clubOvr(riv) && n.ovrClub === C.clubOvr(riv) && n.cdiff === 'normal', 'Normal: next().ovrRival = media del club (' + n.ovrRival + ')');
+    ok(n.diff === C.difficultyFor(riv) && n.soft === C.softFor(riv) && n.diffName === C.diffLabel(riv), 'Normal: IA de next() = la de siempre (' + n.diffName + ')');
+    const c0 = c.coach, L = C.league(C.myClub(c).lvl), s = C.simulateNext();
+    const mp = Math.min(s.me.kills + s.me.aces + s.me.blocks, 10);
+    const xpOld = Math.round((40 + 22 * s.nota + (s.win ? 40 : 0) + 6 * mp) * L.xp * 0.5);
+    const coOld = Math.max(0, Math.min(100, Math.round(c0 + (s.nota - 6.2) * 2.5 + (s.win ? 1 : -1))));
+    ok(s.xp === xpOld && s.coach === coOld, 'Normal: XP (' + s.xp + ' = ' + xpOld + ') y entrenador (' + s.coach + ' = ' + coOld + ') con la fórmula de antes');
+    ok(c.coach >= 0 && C.load().dUse.normal === 1, 'el partido simulado cuenta en dUse.normal');
+  }
+
+  // 3-5. IA rival: Normal = base, escalera de cada nivel y monotonía
+  {
+    c = fresh({ seed: 31337 });
+    let bad3 = 0, bad4 = { easy: 0, hard: 0, expert: 0 }, bad5 = 0;
+    c.clubs.forEach(k => {
+      const a = C.rivalAI({ diff: 'normal' }, k);
+      if (a.diff !== C.difficultyFor(k) || a.soft !== C.softFor(k) || a.name !== C.diffLabel(k) || a.base !== C.baseStep(k) || a.step !== a.base) bad3++;
+      const e = C.rivalAI({ diff: 'easy' }, k), h = C.rivalAI({ diff: 'hard' }, k), x = C.rivalAI({ diff: 'expert' }, k), o = C.clubOvr(k), b = C.baseStep(k);
+      if (k.lvl === 0 ? !(e.diff === 'easy' && !e.soft && e.step === 0) : e.step !== Math.max(0, b - (k.lvl === 4 ? 2 : 1))) bad4.easy++;   // (shiftTop: en el Mundial, dos peldaños)
+      if (h.soft || h.step < b || (h.diff === 'expert' && !(b === 4 || o >= CD.hard.gate.expert))) bad4.hard++;
+      if (x.soft || x.step < 2 || x.step < b || (x.diff === 'expert' && !(b === 4 || o >= CD.expert.gate.expert))) bad4.expert++;
+      if (!(e.step <= a.step && a.step <= h.step && h.step <= x.step)) bad5++;
+    });
+    ok(bad3 === 0, 'IA Normal = difficultyFor / softFor / diffLabel en los 40 clubes (' + bad3 + ' distintos)');
+    ok(bad4.easy === 0, 'Fácil: Regional en Fácil puro, el resto un peldaño abajo y el Mundial dos (' + bad4.easy + ' mal)');
+    ok(bad4.hard === 0, 'Difícil: sin suave, nunca bajo la base, Experto solo con media ≥ ' + CD.hard.gate.expert + ' (' + bad4.hard + ' mal)');
+    ok(bad4.expert === 0, 'Experto: sin suave, al menos Normal, Experto solo con media ≥ ' + CD.expert.gate.expert + ' (' + bad4.expert + ' mal)');
+    ok(bad5 === 0, 'monotonía: Fácil ≤ Normal ≤ Difícil ≤ Experto en cada club (' + bad5 + ' mal)');
+    for (let L = 0; L < C.LEAGUES.length; L++) {
+      const ks = C.clubsOf(c, L).sort((p, q) => C.clubOvr(p) - C.clubOvr(q));
+      console.log('  ' + C.LEAGUES[L].short.padEnd(11) + ' medias ' + ks.map(C.clubOvr).join(' ') + '\n' + DK.map(d => '      ' + CD[d].name.padEnd(8) + ks.map(k => C.rivalAI({ diff: d }, k).name).join(' · ')).join('\n'));
+    }
+  }
+
+  // 6. matchSetup en Fácil y en Experto (misma semilla, jornada 1)
+  DK.forEach(d => {
+    c = fresh({ seed: 606, diff: d });
+    const n = C.next(c), ms = C.matchSetup(c), ai = C.rivalAI(c, n.rival), want = C.clubOvr(n.rival) + CD[d].attr;
+    ok(ms && ms.difficulty === ai.diff && ms.rookie === ai.soft && ms.diffName === ai.name && (ms.rookie === (ai.soft && ms.difficulty === 'normal')), CD[d].name + ': matchSetup lleva la IA de rivalAI (' + ms.diffName + ')');
+    ok(n.ovrRival === want && n.ovrClub === C.clubOvr(n.rival) && Math.abs(C.ovrOf(ms.attrs[1][0]) - (want + 1)) <= 1 && Math.abs(C.ovrOf(ms.attrs[1][1]) - (want - 1)) <= 1,
+      CD[d].name + ': rivales con media efectiva ' + want + ' (club ' + C.clubOvr(n.rival) + ', ' + (CD[d].attr >= 0 ? '+' : '') + CD[d].attr + '): ' + C.ovrOf(ms.attrs[1][0]) + ' y ' + C.ovrOf(ms.attrs[1][1]));
+    ok(ms.cdiff === d && ms.career.cdiff === d && n.cdiff === d, CD[d].name + ': matchSetup.cdiff');
+  });
+
+  // 7-8. experiencia, entreno y entrenador con el mismo partido en los 4 niveles
+  {
+    c = fresh({ seed: 808 }); c.train = 'phys'; c.tp = { phys: 0, def: 0, atk: 0 }; c.coach = 50; C.save(c);
+    const s0 = snap(), xp = {}, dco = {}, tp = {};
+    DK.forEach(d => {
+      let x = restore(s0, d); const co = x.coach;
+      const s = C.matchDone(RES, STATS, G()); x = C.load();
+      xp[d] = s.xp; dco[d] = s.coach - co;
+      tp[d] = x.tp.phys + 100 * s.train.gains.filter(k => C.TGROUP.phys.indexOf(k) >= 0).length;
+    });
+    ok(Math.abs(xp.easy - xp.normal * CD.easy.xp) <= 1 && Math.abs(xp.hard - xp.normal * CD.hard.xp) <= 1 && Math.abs(xp.expert - xp.normal * CD.expert.xp) <= 1, 'XP del mismo partido × ' + DK.map(d => CD[d].xp).join(' / ') + ': ' + DK.map(d => xp[d]).join(' / '));
+    ok(tp.easy > tp.normal && tp.normal > tp.hard && tp.hard > tp.expert, 'progreso del entreno Físico en una semana: ' + DK.map(d => tp[d]).join(' / '));
+    ok(dco.easy >= dco.normal && dco.normal >= dco.hard && dco.hard >= dco.expert && dco.easy > dco.expert, 'confianza del entrenador tras la misma nota: ' + DK.map(d => (dco[d] >= 0 ? '+' : '') + dco[d]).join(' / '));
+    // simulado: la XP también se escala y el rival efectivo cambia el resultado esperado
+    const xs = {}; DK.forEach(d => { restore(s0, d); xs[d] = C.simulateNext().xp; });
+    ok(xs.easy >= xs.normal * 1.1 && xs.expert <= xs.normal, 'XP simulada: ' + DK.map(d => xs[d]).join(' / '));
+    // confianza inicial al fichar
+    const co0 = {}; DK.forEach(d => { co0[d] = fresh({ seed: 808, diff: d }).coach; });
+    ok(co0.easy - co0.normal === CD.easy.coach0 && co0.hard - co0.normal === CD.hard.coach0 && co0.expert - co0.normal === CD.expert.coach0, 'confianza al fichar: ' + DK.map(d => co0[d]).join(' / '));
+  }
+
+  // 9. objetivo del club: Fácil más blando, Experto más exigente (todos los clubes)
+  {
+    c = fresh({ seed: 909 }); let bad = 0, softer = 0, harder = 0;
+    c.clubs.forEach(k => {
+      const p = {}; DK.forEach(d => { p[d] = C.objectiveFor(Object.assign({}, c, { diff: d }), k).pos; });
+      if (!(p.easy >= p.normal && p.normal >= p.hard && p.hard >= p.expert)) bad++;
+      if (p.easy > p.normal) softer++; if (p.expert < p.normal) harder++;
+    });
+    ok(bad === 0 && softer > 0 && harder > 0, 'objetivo: Fácil pide igual o menos y Experto igual o más (' + softer + ' clubes más blandos en Fácil, ' + harder + ' más exigentes en Experto)');
+  }
+
+  // 10. ofertas de fin de temporada: mismas tiradas, solo cambia el umbral
+  {
+    const tot = { easy: 0, normal: 0, hard: 0, expert: 0 }; let bad = 0;
+    for (const sd of [11, 12, 13, 14, 15, 16]) {
+      fresh({ seed: sd }); const x = toOff(); const n = {};
+      DK.forEach(d => { x.diff = d; n[d] = C._genOffers(x, false).length; tot[d] += n[d]; });
+      x.diff = 'normal'; C.save(x);
+      if (!(n.easy >= n.normal && n.normal >= n.hard && n.hard >= n.expert)) bad++;
+    }
+    ok(bad === 0 && tot.easy >= tot.expert, 'ofertas de fin de temporada (6 semillas): ' + DK.map(d => CD[d].name + ' ' + tot[d]).join(', '));
+    c = fresh({ seed: 10 }); ok(C.midNota(c) === 7, 'nota mínima de mitad de temporada en Normal: 7');
+    c.listed = true; ok(C.midNota(c) === 6.5, 'transferible: 6,5'); c.listed = false;
+    c.diff = 'easy'; ok(C.midNota(c) === 6.7, 'Fácil: 6,7'); c.diff = 'expert'; ok(C.midNota(c) === 7, 'Experto: 7');
+  }
+
+  // 11. cambiar la dificultad entre partidos
+  {
+    c = fresh({ seed: 1111 }); const n0 = C.next(c); const coA = c.coach;   // (create devuelve la carrera en uso: c cambia con setDifficulty)
+    ok(C.setDifficulty('xx') === 'bad' && C.setDifficulty('normal') === 'same', 'setDifficulty: clave mala → bad; la misma → same');
+    const m0 = c.inbox.length;
+    ok(C.setDifficulty('expert') === 'ok' && C.load().diff === 'expert', 'setDifficulty(expert) → ok');
+    const mm = C.load().inbox[C.load().inbox.length - 1];
+    ok(C.load().inbox.length === m0 + 1 && mm.k === 'club' && mm.t === 'Dificultad: Experto' && mm.x.indexOf('Aún no has jugado esta temporada') > 0 && mm.x.indexOf('contarán como') < 0, 'mensaje «Dificultad: Experto» (aún sin partidos: objetivo rehecho, sin sufijo de títulos)');
+    C._reset(); ok(C.load().diff === 'expert', 'persiste al guardar y cargar');
+    const n1 = C.next(); ok(n1.diffName !== n0.diffName && n1.ovrRival === n0.ovrRival + CD.expert.attr, 'el próximo partido cambia: IA ' + n0.diffName + ' → ' + n1.diffName + ', media ' + n0.ovrRival + ' → ' + n1.ovrRival);
+    {
+      // aún sin partidos: objetivo y confianza inicial como si la carrera se hubiera creado en Experto
+      const x = C.load(), xe = fresh({ seed: 1111, diff: 'expert' }); mem[KEY] = JSON.stringify(x); C._reset();
+      ok(x.objective.d === 'expert' && x.objective.text === xe.objective.text && x.coach === xe.coach && x.coach - coA === CD.expert.coach0 && x.coachD === 'expert',
+        'antes del primer partido: objetivo (' + x.objective.text + ') y confianza (' + coA + ' → ' + x.coach + ') como en Experto');
+    }
+    const ob1 = C.load().objective.text;
+    C.ingest([{ type: 'newMatch' }], G());
+    ok(C.setDifficulty('easy') === 'match' && C.load().diff === 'expert', 'con un partido a medias → match (no cambia)');
+    C.abortMatch(); ok(C.setDifficulty('easy') === 'ok' && C.load().diff === 'easy', 'tras abandonar el partido → ok');
+    C.setDifficulty('expert'); C.simulateNext(); const co1 = C.load().coach;
+    ok(C.setDifficulty('easy') === 'ok' && C.load().objective.text === ob1 && C.load().objective.d === 'expert' && C.load().coach === co1 && C.load().inbox.slice(-1)[0].x.indexOf('El objetivo del club no cambia hasta la temporada que viene.') > 0, 'con partidos ya jugados: el objetivo y la confianza no cambian');
+    c = fresh({ seed: 1112, autoClub: false }); ok(c.phase === 'pick' && C.setDifficulty('hard') === 'ok' && C.load().inbox.slice(-1)[0].x.indexOf('objetivo') < 0, 'se puede cambiar eligiendo club (sin sufijo de objetivo)');
+    C.abandon(); C._reset(); ok(C.setDifficulty('hard') === '', 'sin carrera → ""');
+  }
+
+  // 12. sellos: temporada mixta (3 en Fácil, el resto en Difícil) y temporada entera en Experto
+  {
+    c = fresh({ seed: 1212, diff: 'easy' });
+    for (let i = 0; i < 3; i++) C.simulateNext();
+    ok(C.load().dUse.easy === 3 && C.seasonDiff().d === 'easy' && !C.seasonDiff().dm, '3 partidos en Fácil');
+    ok(C.setDifficulty('hard') === 'ok' && /Esta temporada ya has jugado en Fácil: sus títulos contarán como Fácil\.$/.test(C.load().inbox.slice(-1)[0].x), 'mensaje con el sufijo «sus títulos contarán como Fácil»');
+    ok(C.seasonDiff().d === 'easy' && !C.seasonDiff().dm, 'antes de jugar en Difícil sigue sin ser mixta');
+    // una temporada descomunal para que career-life meta premios en el palmarés y comprobar su sello
+    for (let i = 0; i < 40 && C.load().phase === 'league' && C.load().week < 12; i++) C.simulateNext();
+    c = C.load(); c.stats = Object.assign(c.stats, { won: 13, sim: 0, pts: 340, kills: 220, aces: 75, blocks: 45, digs: 280, errors: 20 });
+    c.notes.forEach(n => { n.nota = 8.4; n.sim = 0; }); C.save(c);
+    c = toOff(); const h = c.history[c.history.length - 1], tr = c.trophies.filter(t => t.season === h.season);
+    ok(h.d === 'easy' && h.dm === true && c.review.d === 'easy' && c.review.dm === true, 'temporada mixta: historial y resumen con d = Fácil y mixta (Fácil ' + c.dUse.easy + ', Difícil ' + c.dUse.hard + ')');
+    ok(tr.length > 0 && tr.every(t => t.d === 'easy'), 'sus títulos y premios guardan Fácil (' + tr.map(t => t.kind + ' ' + t.name).join(', ') + ')');
+    ok(sumUse(c) === h.played + (c.stats.bench | 0), 'dUse cuenta tus partidos y banquillos (' + sumUse(c) + ' = ' + h.played + ' + ' + (c.stats.bench | 0) + ')');
+    // en verano la temporada ya está sellada: el cambio no habla de sus títulos
+    ok(C.setDifficulty('normal') === 'ok' && C.load().inbox.slice(-1)[0].x.indexOf('contarán como') < 0 && C.seasonDiff().d === 'easy', 'cambio en fin de temporada: sin sufijo de títulos (temporada ya sellada)');
+    C.stay(); c = C.load(); ok(sumUse(c) === 0, 'temporada nueva: dUse a ceros');
+    ok(C.setDifficulty('expert') === 'ok' && C.load().objective.d === 'expert', 'a Experto en verano (antes del primer partido: objetivo en Experto)');
+    c = C.load(); c.contract.role = C.ROLE_LV[0]; c.coach = 15; C.save(c);   // de la rotación y sin confianza: algún banquillo
+    c = toOff();
+    const h2 = c.history[c.history.length - 1];
+    ok(h2.d === 'expert' && h2.dm === false && c.review.d === 'expert' && c.trophies.filter(t => t.season === h2.season).every(t => t.d === 'expert'), 'temporada entera en Experto: d = Experto, no mixta');
+    ok((c.stats.bench | 0) > 0 && sumUse(c) === c.stats.played + (c.stats.bench | 0) && c.dUse.expert === sumUse(c) && h2.played + (c.stats.bench | 0) >= 14, 'los banquillos cuentan en dUse (banquillos ' + (c.stats.bench | 0) + ', partidos ' + c.stats.played + ', dUse ' + sumUse(c) + ')');
+  }
+
+  // 12b. trampas: cambiar de nivel solo para fijar objetivo y confianza, o solo para las jornadas de banquillo
+  {
+    const keep = snap();
+    // verano: Experto → Fácil → seguir → Experto antes de jugar = seguir en Experto
+    c = fresh({ seed: 777, diff: 'expert' }); c = toOff(); const s0 = snap();
+    C.stay(); const ref = C.load();
+    restore(s0); C.setDifficulty('easy'); C.stay(); C.setDifficulty('expert'); let x = C.load();
+    ok(x.objective.text === ref.objective.text && x.objective.d === 'expert' && x.coach === ref.coach && C.seasonDiff().d === 'expert' && !C.seasonDiff().dm, 'verano en Fácil y vuelta a Experto antes de jugar: objetivo (' + x.objective.text + ') y sello como en Experto');
+    // fichar en Fácil (confianza y objetivo) y volver a Experto antes de jugar: confianza corregida
+    restore(s0); const i0 = C.load().offers.length ? 0 : -1;
+    if (i0 >= 0) {
+      C.acceptOffer(0); const a = C.load(); restore(s0); C.setDifficulty('easy'); C.acceptOffer(0); C.setDifficulty('expert'); x = C.load();
+      ok(x.coach === a.coach && x.objective.text === a.objective.text && x.objective.d === 'expert', 'fichar en Fácil y volver a Experto antes de jugar: confianza ' + x.coach + ' = ' + a.coach);
+    }
+    // a mitad de temporada (ya con partidos): el objetivo fijado en Fácil cuenta en el sello aunque se juegue el resto en Experto
+    restore(s0); C.stay(); for (let i = 0; i < 3; i++) C.simulateNext();
+    x = C.load(); x.objective.d = 'easy'; C.save(x);   // como si hubieras fichado en la ventana con Fácil
+    ok(C.seasonDiff().d === 'easy' && C.seasonDiff().dm, 'objetivo fijado en Fácil + partidos en Experto: sello Fácil, mixta');
+    ok(C.setDifficulty('hard') === 'ok' && /El objetivo de esta temporada se fijó en Fácil: sus títulos contarán como Fácil\.$/.test(C.load().inbox.slice(-1)[0].x), 'mensaje: el objetivo se fijó en Fácil');
+    // banquillo en Fácil: cuenta en dUse.easy y marca la temporada
+    c = fresh({ seed: 1212, diff: 'expert' }); C.simulateNext(); x = C.load(); x.contract.role = C.ROLE_LV[0]; x.coach = 5; C.save(x);
+    let benched = false;
+    for (let i = 0; i < 12 && !benched; i++) { if (C.next().bench) { C.setDifficulty('easy'); C.simulateNext(); C.setDifficulty('expert'); benched = true; } else C.simulateNext(); }
+    ok(benched && C.load().dUse.easy === 1 && C.seasonDiff().d === 'easy' && C.seasonDiff().dm, 'jornada de banquillo en Fácil: cuenta en dUse.easy y la temporada queda en Fácil');
+    // simular en Fácil no regala el attr del jugado: ovrSim = media del club + simAttr
+    c = fresh({ seed: 606 }); const nn = DK.map(d => { c.diff = d; return C.next(c); });
+    ok(nn.every((n, i) => n.ovrSim === n.ovrClub + CD[DK[i]].simAttr) && nn[1].ovrSim === nn[1].ovrRival, 'ovrSim: ' + nn.map(n => n.ovrSim).join(' / ') + ' (Normal = ovrRival)');
+    // Mundial: en Difícil y Experto solo juegan en Experto los clubes que ya lo son en Normal (topX) y el desvío es attrTop
+    c = fresh({ seed: 31337 }); const top = C.clubsOf(c, C.LEAGUES.length - 1);
+    ok(top.every(k => ['hard', 'expert'].every(d => (C.rivalAI({ diff: d }, k).diff === 'expert') === (C.baseStep(k) === 4) && C.attrOf({ diff: d }, k) === CD[d].attrTop)) && C.attrOf({ diff: 'expert' }, C.clubsOf(c, 3)[0]) === CD.expert.attr,
+      'Mundial: IA Experto solo en la élite (' + top.filter(k => C.baseStep(k) === 4).length + ' clubes) y desvío ' + CD.hard.attrTop + ' / ' + CD.expert.attrTop);
+    restore(keep);
+  }
+
+  // 13. migración (D3): guardado de antes, a media temporada, sin ningún campo de dificultad
+  {
+    C.stay(); for (let i = 0; i < 5; i++) C.simulateNext();
+    c = C.load(); const old = JSON.parse(JSON.stringify(c));
+    delete old.diff; delete old.dUse; delete old.objective.d; delete old.coachD; old.history.forEach(h => { delete h.d; delete h.dm; }); old.trophies.forEach(t => { delete t.d; });
+    mem[KEY] = JSON.stringify(old); C._reset(); c = C.load();
+    ok(c && c.objective.d === 'normal' && !('coachD' in c), 'guardado viejo: objetivo sellado en Normal');
+    ok(c && c.diff === 'normal' && c.dUse.normal === c.stats.played + (c.stats.bench | 0) && c.stats.played > 0 && c.dUse.easy + c.dUse.hard + c.dUse.expert === 0, 'guardado viejo: Normal y dUse.normal = partidos de la temporada (' + c.dUse.normal + ')');
+    ok(c.history.length >= 2 && c.history.every(h => h.d === 'normal' && h.dm === false) && c.trophies.every(t => t.d === 'normal'), 'historial y palmarés de antes: Normal');
+    const j1 = JSON.stringify(c); C._reset(); const j2 = JSON.stringify(C.load()); C._reset(); const j3 = JSON.stringify(C.load());
+    ok(j1 === j2 && j2 === j3, 'migración idempotente (cargar dos veces da lo mismo)');
+    c = C.load(); c.dUse = { easy: 2, normal: 1, hard: 0, expert: 0 }; C.save(c); C._reset();
+    ok(JSON.stringify(C.load().dUse) === '{"easy":2,"normal":1,"hard":0,"expert":0}', 'un dUse ya guardado no se pisa con los partidos jugados');
+    c = C.load(); c.dUse = { easy: -3, normal: 'x' }; C.save(c); C._reset();
+    ok(JSON.stringify(C.load().dUse) === '{"easy":0,"normal":0,"hard":0,"expert":0}', 'dUse dañado: se repara a enteros ≥ 0');
+    // en fin de temporada: el resumen también
+    c = toOff(); const o2 = JSON.parse(JSON.stringify(c)); delete o2.diff; delete o2.dUse; delete o2.review.d; delete o2.review.dm;
+    mem[KEY] = JSON.stringify(o2); C._reset(); c = C.load();
+    ok(c.phase === 'off' && c.review.d === 'normal' && c.review.dm === false, 'guardado de fin de temporada: resumen en Normal');
+    // resumen perdido (saneDeep lo rehace): el sello sale del historial, no «Normal» a ciegas
+    const o4 = JSON.parse(JSON.stringify(c)); o4.history[o4.history.length - 1].d = 'expert'; o4.history[o4.history.length - 1].dm = false; delete o4.review;
+    mem[KEY] = JSON.stringify(o4); C._reset(); c = C.load();
+    ok(c.phase === 'off' && c.review && c.review.d === 'expert' && c.review.dm === false, 'resumen rehecho: sello del historial (Experto)');
+    const o5 = JSON.parse(JSON.stringify(c)); o5.history = o5.history.slice(0, -1); delete o5.review; o5.dUse = { easy: 0, normal: 0, hard: 9, expert: 5 }; o5.objective.d = 'hard';
+    mem[KEY] = JSON.stringify(o5); C._reset(); c = C.load();
+    ok(c.review.d === 'hard' && c.review.dm === true, 'resumen rehecho sin historial: sello de dUse (Difícil, mixta)');
+    // eligiendo club
+    c = fresh({ seed: 1313, autoClub: false }); const o3 = JSON.parse(JSON.stringify(c)); delete o3.diff; delete o3.dUse;
+    mem[KEY] = JSON.stringify(o3); C._reset(); c = C.load();
+    ok(c.phase === 'pick' && c.diff === 'normal' && sumUse(c) === 0, 'guardado eligiendo club: Normal');
+    // otro nivel: diff mala → Normal
+    o3.diff = 'imposible'; mem[KEY] = JSON.stringify(o3); C._reset(); ok(C.load().diff === 'normal', 'diff desconocida → Normal');
+  }
+
+  // 14. curva por nivel (todo simulado, 6 temporadas, misma semilla)
+  {
+    const fin = {}, lvl = {};
+    DK.forEach(d => {
+      c = fresh({ seed: 999, role: 'atk', diff: d }); const row = [];
+      for (let s = 0; s < 6; s++) {
+        c = toOff();
+        let spent = true; while (spent) { spent = false; const ks = C.KEYS.slice().sort((a, b) => c.player.st[a] - c.player.st[b]); for (const k of ks) if (C.bump(k)) { spent = true; break; } }
+        row.push(C.league(C.myClub(c).lvl).short.slice(0, 3) + ' ' + ordnT(c.review.pos) + ' ' + C.playerOvr(c));
+        if (c.offers.length) C.acceptOffer(0); else C.stay();
+        c = C.load();
+      }
+      fin[d] = C.playerOvr(c); lvl[d] = C.myClub(c).lvl;
+      console.log('  ' + CD[d].name.padEnd(8) + row.join(' · ') + ' → media ' + fin[d]);
+    });
+    ok(fin.easy >= fin.normal && fin.normal >= fin.hard && fin.hard >= fin.expert, 'media tras 6 temporadas: ' + DK.map(d => fin[d]).join(' ≥ '));
+    ok(lvl.easy >= lvl.normal, 'circuito alcanzado en Fácil ≥ Normal (' + lvl.easy + ' ≥ ' + lvl.normal + ')');
+  }
+  C.abandon(); C._reset();
+}
+function ordnT(n) { return n + (n === 1 || n === 3 ? 'r' : 'º'); }
 
 console.log('\n' + passes + ' comprobaciones bien');
 console.log(fails ? '\n' + fails + ' FALLOS' : '\nTODO OK');
