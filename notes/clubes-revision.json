@@ -464,14 +464,14 @@
        "colors": {
         "shirt": "#1f3c88",
         "shirt2": "#ffd100",
-        "libero": "#e5007e"
+        "libero": "#1d4fa6"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 95,
        "sponsor": "Chanclas Supersónicas",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Imoco Volley y ATL-Etico Volley Conegliano (escuela). Campeón de Serie A1 2025-26."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Imoco Volley y ATL-Etico Volley Conegliano (escuela). Campeón de Serie A1 2025-26…"
       },
       {
        "real": "Sir Safety Perugia",
@@ -500,14 +500,14 @@
        "colors": {
         "shirt": "#ffffff",
         "shirt2": "#13294b",
-        "libero": "#c8102e"
+        "libero": "#d21f2b"
        },
        "liberoEstimated": false,
        "ovr": 91,
        "sponsor": "Speck Primo Tempo",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Trentino Volley y Trentino Rosa."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Trentino Volley y Trentino Rosa. Líbero: rojo (2025-26 y 2026-27, buscado 12-nov-2026…"
       },
       {
        "real": "Vero Volley (Numia Vero Volley Milano, equipos en SuperLega y Serie A1)",
@@ -518,9 +518,9 @@
        "colors": {
         "shirt": "#d6177a",
         "shirt2": "#14213d",
-        "libero": "#00a3e0"
+        "libero": "#e6337b"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 90,
        "sponsor": "Mobilificio Muro Alto",
        "searched": true,
@@ -536,9 +536,9 @@
        "colors": {
         "shirt": "#1b3f8b",
         "shirt2": "#ffffff",
-        "libero": "#9b1b30"
+        "libero": "#f4f4f8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 90,
        "sponsor": "Pelletteria Alzata",
        "searched": true,
@@ -554,14 +554,14 @@
        "colors": {
         "shirt": "#d50032",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#c6d93a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 89,
        "sponsor": "Materassi Pallonetto",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale A.S. Volley Lube. Lube es la empresa patrocinadora: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale A.S. Volley Lube. Lube es la empresa patrocinadora: fuera. Líbero: lima (2025-26; en…"
       },
       {
        "real": "Rana Verona",
@@ -572,9 +572,9 @@
        "colors": {
         "shirt": "#003da5",
         "shirt2": "#ffd100",
-        "libero": "#e4002b"
+        "libero": "#5ec4e6"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 88,
        "sponsor": "Pandoro Ace",
        "searched": true,
@@ -590,7 +590,7 @@
        "colors": {
         "shirt": "#1e3a8a",
         "shirt2": "#ffffff",
-        "libero": "#9aa0a6"
+        "libero": "#4a4f55"
        },
        "liberoEstimated": false,
        "ovr": 87,
@@ -608,14 +608,14 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#ffffff",
-        "libero": "#0b1f4b"
+        "libero": "#1f5fb0"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 86,
        "sponsor": "Idraulica La Rete",
        "searched": true,
        "doubt": null,
-       "note": "«Volley Piacenza» SÍ existió (club cerrado en 2018), por eso uso el nombre latino. Búsqueda web del nombre exacto entre comillas «Placentia Volley»: nada."
+       "note": "«Volley Piacenza» SÍ existió (club cerrado en 2018), por eso uso el nombre latino. Búsqueda web del nombre exacto entre comillas «Placentia Volley»: nada…"
       },
       {
        "real": "Valsa Group Modena",
@@ -626,14 +626,14 @@
        "colors": {
         "shirt": "#ffd100",
         "shirt2": "#002855",
-        "libero": "#e4002b"
+        "libero": "#92c6e6"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 84,
        "sponsor": "Acetaia Diagonale",
        "searched": true,
        "doubt": null,
-       "note": "«Volley Modena» SÍ existe (club de la A2 de mujeres), por eso uso el nombre latino. Búsqueda web del nombre exacto entre comillas «Mutina Volley»: nada."
+       "note": "«Volley Modena» SÍ existe (club de la A2 de mujeres), por eso uso el nombre latino. Búsqueda web del nombre exacto entre comillas «Mutina Volley»: nada…"
       },
       {
        "real": "Reale Mutua Fenera Chieri '76",
@@ -644,9 +644,9 @@
        "colors": {
         "shirt": "#0057b8",
         "shirt2": "#ffffff",
-        "libero": "#f28c28"
+        "libero": "#f5f5f5"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 84,
        "sponsor": "Grissini Fuori Tutto",
        "searched": false,
@@ -662,14 +662,14 @@
        "colors": {
         "shirt": "#f28c28",
         "shirt2": "#1d1d1b",
-        "libero": "#00a3e0"
+        "libero": "#9a2fa6"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 81,
        "sponsor": "Rodilleras Rodríguez",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; el club real se llama Megavolley."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; el club real se llama Megavolley. Líbero: morado (2025-26; en 2026-27 granate, buscado 12-nov-2026…"
       }
      ]
     },
@@ -688,9 +688,9 @@
        "colors": {
         "shirt": "#0b3d91",
         "shirt2": "#ffffff",
-        "libero": "#ff6a13"
+        "libero": "#f07a1e"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 82,
        "sponsor": "Panettoneria Set Point",
        "searched": true,
@@ -706,9 +706,9 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#002d72",
-        "libero": "#ffd100"
+        "libero": "#d7263d"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 78,
        "sponsor": null,
        "searched": true,
@@ -724,14 +724,14 @@
        "colors": {
         "shirt": "#ffffff",
         "shirt2": "#c8102e",
-        "libero": "#b39ddb"
+        "libero": "#a98be0"
        },
        "liberoEstimated": false,
        "ovr": 77,
        "sponsor": "Ferramenta Doppio Tocco",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Pallavolo Padova."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Pallavolo Padova. Líbero: lila (2025-26; en 2026-27 verde, buscado 12-nov-2026: fotos Lega…"
       },
       {
        "real": "Eurotek UYBA Busto Arsizio",
@@ -742,7 +742,7 @@
        "colors": {
         "shirt": "#e2001a",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#e99a2c"
        },
        "liberoEstimated": false,
        "ovr": 77,
@@ -760,7 +760,7 @@
        "colors": {
         "shirt": "#1f3f9a",
         "shirt2": "#6ec1e4",
-        "libero": "#f28c28"
+        "libero": "#f0782a"
        },
        "liberoEstimated": false,
        "ovr": 76,
@@ -778,14 +778,14 @@
        "colors": {
         "shirt": "#4fa3e0",
         "shirt2": "#ffffff",
-        "libero": "#f28c28"
+        "libero": "#f2f3f8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 76,
        "sponsor": "Trippaio La Schiacciata",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe como club; el real es «Azzurra Volley Firenze». Il Bisonte es patrocinador: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe como club; el real es «Azzurra Volley Firenze». Il Bisonte es patrocinador: fuera. Líbero: blanco…"
       },
       {
        "real": "Cisterna Volley",
@@ -796,9 +796,9 @@
        "colors": {
         "shirt": "#00205b",
         "shirt2": "#f6eb14",
-        "libero": "#ffffff"
+        "libero": "#8e1f33"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 75,
        "sponsor": null,
        "searched": false,
@@ -814,14 +814,14 @@
        "colors": {
         "shirt": "#ffd100",
         "shirt2": "#111111",
-        "libero": "#e4002b"
+        "libero": "#7db4da"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 75,
        "sponsor": "Ciauscolo Cambio Palla",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe como club; en la ciudad están CBF Balducci y Pallavolo Macerata."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe como club; en la ciudad están CBF Balducci y Pallavolo Macerata. Líbero: celeste (2025-26; en 2026-27…"
       },
       {
        "real": "Yuasa Battery Grottazzolina",
@@ -832,14 +832,14 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#ffffff",
-        "libero": "#111111"
+        "libero": "#f27a22"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 73,
        "sponsor": "Olive all'Ace",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen M&G Scuola Pallavolo y la antigua Wild Volley Grottazzolina."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen M&G Scuola Pallavolo y la antigua Wild Volley Grottazzolina. Líbero: naranja (2025-26; en…"
       },
       {
        "real": "Tinet Prata di Pordenone",
@@ -850,9 +850,9 @@
        "colors": {
         "shirt": "#ffd100",
         "shirt2": "#003da5",
-        "libero": "#e4002b"
+        "libero": "#f5d21e"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 73,
        "sponsor": "Gelateria Fallo di Rete",
        "searched": true,
@@ -868,14 +868,14 @@
        "colors": {
         "shirt": "#003da5",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#2a2a2d"
        },
        "liberoEstimated": true,
        "ovr": 72,
        "sponsor": "Piadineria La Veloce",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; el club real es Polisportiva Adolfo Consolini."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; el club real es Polisportiva Adolfo Consolini. Líbero probable: negro (2025-26, foto LVF Pandolfi…"
       },
       {
        "real": "Valsabbina Millenium Brescia",
@@ -886,14 +886,14 @@
        "colors": {
         "shirt": "#00539f",
         "shirt2": "#ffffff",
-        "libero": "#e4002b"
+        "libero": "#a61e36"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 72,
        "sponsor": "Casoncelli Seconda Linea",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no sale como club; el real es «Volley Millenium Brescia» (nombre distinto). Campeón de A2 2025-26."
+       "note": "Búsqueda web del nombre exacto entre comillas: no sale como club; el real es «Volley Millenium Brescia» (nombre distinto). Campeón de A2 2025-26. Líbero…"
       }
      ]
     }
@@ -920,14 +920,14 @@
        "colors": {
         "shirt": "#ffd100",
         "shirt2": "#00843d",
-        "libero": "#1d1d1b"
+        "libero": "#ffd100"
        },
        "liberoEstimated": true,
        "ovr": 92,
        "sponsor": "Kiełbaski Blok",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Warta Zawiercie. Campeón de PlusLiga 2025-26."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Warta Zawiercie. Campeón de PlusLiga 2025-26. Líbero probable: amarillo (~2024-25, réplica…"
       },
       {
        "real": "PGE Projekt Warszawa",
@@ -945,7 +945,7 @@
        "sponsor": "Pączki Zagrywka",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Projekt, Legia y AZS AWF."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Projekt, Legia y AZS AWF. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Bogdanka LUK Lublin",
@@ -963,7 +963,7 @@
        "sponsor": "Seguros Tie-Break",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale LKPS/LUK Lublin."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale LKPS/LUK Lublin. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Asseco Resovia",
@@ -981,7 +981,7 @@
        "sponsor": "Pierogarnia Kiwka",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: nada. Guiño a «Resovia» (nombre latino de Rzeszów). Asseco es patrocinador: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: nada. Guiño a «Resovia» (nombre latino de Rzeszów). Asseco es patrocinador: fuera. Líbero: no encontrado en…"
       },
       {
        "real": "Jastrzębski Węgiel",
@@ -992,7 +992,7 @@
        "colors": {
         "shirt": "#f47b20",
         "shirt2": "#111111",
-        "libero": "#00a3e0"
+        "libero": "#1f2a44"
        },
        "liberoEstimated": true,
        "ovr": 85,
@@ -1017,7 +1017,7 @@
        "sponsor": "Materace Obrona",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen AZS Olsztyn y clubes de Iława."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen AZS Olsztyn y clubes de Iława. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "PGE Budowlani Łódź",
@@ -1035,7 +1035,7 @@
        "sponsor": "Szewc Aut",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: nada. Guiño: «budowlani» (constructores) → «murarze» (albañiles). Campeón de Tauron Liga 2025-26."
+       "note": "Búsqueda web del nombre exacto entre comillas: nada. Guiño: «budowlani» (constructores) → «murarze» (albañiles). Campeón de Tauron Liga 2025-26. Líbero: no…"
       },
       {
        "real": "PGE GiEK Skra Bełchatów",
@@ -1053,7 +1053,7 @@
        "sponsor": "Bigosownia Przyjęcie",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Skra."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Skra. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Developres Rzeszów",
@@ -1071,7 +1071,7 @@
        "sponsor": "Ogórki Rozegranie",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Resovia y Developres. Developres es la empresa patrocinadora: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Resovia y Developres. Developres es la empresa patrocinadora: fuera. Líbero: no…"
       },
       {
        "real": "UNI Opole",
@@ -1089,7 +1089,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen UNI Opole y un torneo de minivoley."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen UNI Opole y un torneo de minivoley. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "ŁKS Łódź",
@@ -1107,7 +1107,7 @@
        "sponsor": "Cukiernia Libero",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen ŁKS y Budowlani (y «Volley Radomsko», otra ciudad)."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen ŁKS y Budowlani (y «Volley Radomsko», otra ciudad). Líbero: no encontrado en internet…"
       },
       {
        "real": "BKS Bielsko-Biała",
@@ -1125,7 +1125,7 @@
        "sponsor": "Warsztat Plasowanie",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen BKS Stal y BBTS Bielsko-Biała."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen BKS Stal y BBTS Bielsko-Biała. Líbero: no encontrado en internet (12-nov-2026)."
       }
      ]
     },
@@ -1151,7 +1151,7 @@
        "sponsor": "Twarożek Dwa Odbicia",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale ZAKSA. ZAKSA son las siglas de la planta química: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale ZAKSA. ZAKSA son las siglas de la planta química: fuera. Líbero: no encontrado en internet…"
       },
       {
        "real": "Energa Trefl Gdańsk",
@@ -1169,7 +1169,7 @@
        "sponsor": "Śledzie Wystawa",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Trefl, Gedania y AZS UG. Trefl es la empresa propietaria/patrocinadora: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Trefl, Gedania y AZS UG. Trefl es la empresa propietaria/patrocinadora: fuera. Líbero: no…"
       },
       {
        "real": "Chemik Police",
@@ -1187,7 +1187,7 @@
        "sponsor": "Wędzarnia Czapa",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: nada. Guiño: Chemik (químico) → Alchemik (alquimista)."
+       "note": "Búsqueda web del nombre exacto entre comillas: nada. Guiño: Chemik (químico) → Alchemik (alquimista). Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Radomka Radom",
@@ -1205,7 +1205,7 @@
        "sponsor": "Lody Ścięcie",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Czarni, Jadar y Radomka (y «METPRIM Volley Radomsko», otra ciudad)."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Czarni, Jadar y Radomka (y «METPRIM Volley Radomsko», otra ciudad). Líbero: no encontrado…"
       },
       {
        "real": "#VolleyWrocław",
@@ -1223,7 +1223,7 @@
        "sponsor": "Kwiaciarnia Rotacja",
        "searched": true,
        "doubt": null,
-       "note": "«Volley Wrocław» ES el nombre oficial del club, así que uso la palabra polaca. Búsqueda web del nombre exacto entre comillas «Siatkówka Wrocław»: nada."
+       "note": "«Volley Wrocław» ES el nombre oficial del club, así que uso la palabra polaca. Búsqueda web del nombre exacto entre comillas «Siatkówka Wrocław»: nada…"
       },
       {
        "real": "Ślepsk Malow Suwałki",
@@ -1241,7 +1241,7 @@
        "sponsor": "Rodilleras Rodríguez",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Ślepsk."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Ślepsk. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Cuprum Stilon Gorzów",
@@ -1259,7 +1259,7 @@
        "sponsor": "Pralnia Pipe",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Cuprum."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Cuprum. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "InPost ChKS Chełm",
@@ -1277,7 +1277,7 @@
        "sponsor": "Kapusta Kontra",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale ChKS (Arka) Chełm."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale ChKS (Arka) Chełm. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Pałac Bydgoszcz",
@@ -1295,7 +1295,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no sale ningún club con ese nombre."
+       "note": "Búsqueda web del nombre exacto entre comillas: no sale ningún club con ese nombre. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "ITA Tools Stal Mielec",
@@ -1313,7 +1313,7 @@
        "sponsor": "Pizzeria Pod Antenką",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no sale ningún club con ese nombre."
+       "note": "Búsqueda web del nombre exacto entre comillas: no sale ningún club con ese nombre. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Politechnika Częstochowa (antes Norwid)",
@@ -1331,7 +1331,7 @@
        "sponsor": "Obwarzanki Krótka",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Norwid y la desaparecida AZS Częstochowa."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Norwid y la desaparecida AZS Częstochowa. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Sokół & Hagric Mogilno",
@@ -1349,7 +1349,7 @@
        "sponsor": "Chanclas Supersónicas",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no sale ningún club con ese nombre."
+       "note": "Búsqueda web del nombre exacto entre comillas: no sale ningún club con ese nombre. Líbero: no encontrado en internet (12-nov-2026)."
       }
      ]
     }
@@ -1376,7 +1376,7 @@
        "colors": {
         "shirt": "#ffd100",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#111111"
        },
        "liberoEstimated": true,
        "ovr": 95,
@@ -1396,7 +1396,7 @@
         "shirt2": "#002d72",
         "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 93,
        "sponsor": "Lokumcu Servis Atışı",
        "searched": true,
@@ -1412,14 +1412,14 @@
        "colors": {
         "shirt": "#f47b20",
         "shirt2": "#ffffff",
-        "libero": "#1d3c78"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 91,
        "sponsor": "Baklavacı Manşet",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: nada. Eczacıbaşı es el grupo empresarial dueño: fuera. Guiño a su naranja («turuncu»)."
+       "note": "Búsqueda web del nombre exacto entre comillas: nada. Eczacıbaşı es el grupo empresarial dueño: fuera. Guiño a su naranja («turuncu»). Líbero probable: blanco…"
       },
       {
        "real": "Ziraat Bankkart",
@@ -1437,7 +1437,7 @@
        "sponsor": "Tesisat Blok Out",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe como club (es el nombre de un pabellón). El banco es el dueño: fuera. Campeón de Efeler Ligi 2025-26."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe como club (es el nombre de un pabellón). El banco es el dueño: fuera. Campeón de Efeler Ligi 2025-26…"
       },
       {
        "real": "Galatasaray",
@@ -1466,14 +1466,14 @@
        "colors": {
         "shirt": "#0a2463",
         "shirt2": "#ffffff",
-        "libero": "#f2a900"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 88,
        "sponsor": "Halıcı Sayı",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Zeren, Ziraat, Halkbank y SGK VİK. Zeren es el grupo dueño: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Zeren, Ziraat, Halkbank y SGK VİK. Zeren es el grupo dueño: fuera. Líbero probable…"
       },
       {
        "real": "Halkbank",
@@ -1484,14 +1484,14 @@
        "colors": {
         "shirt": "#005bac",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 86,
        "sponsor": "Seguros Tie-Break",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo actos del ayuntamiento de Çankaya. El banco es el dueño: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo actos del ayuntamiento de Çankaya. El banco es el dueño: fuera. Líbero: blanco (2025-26…"
       },
       {
        "real": "Spor Toto",
@@ -1502,14 +1502,14 @@
        "colors": {
         "shirt": "#009a44",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 82,
        "sponsor": "Dönerci Altın Set",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe. Spor Toto (lotería) es el dueño: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe. Spor Toto (lotería) es el dueño: fuera. Líbero probable: blanco con detalles rojos y azules (sin…"
       },
       {
        "real": "Nilüfer Belediyespor",
@@ -1520,14 +1520,14 @@
        "colors": {
         "shirt": "#6a1b9a",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#1e9e4a"
        },
        "liberoEstimated": true,
        "ovr": 80,
        "sponsor": "İskender Pas",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Nilüfer Belediyespor."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Nilüfer Belediyespor. Líbero probable: verde (2024-25/2025-26, foto de sporbursa)."
       },
       {
        "real": "İstanbul Gençlikspor",
@@ -1538,14 +1538,14 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#e30613"
        },
        "liberoEstimated": true,
        "ovr": 80,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale İstanbul Gençlik Spor."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale İstanbul Gençlik Spor. Líbero probable: rojo con blanco (sin fecha, foto de…"
       },
       {
        "real": "Aras Kargo",
@@ -1574,14 +1574,14 @@
        "colors": {
         "shirt": "#00843d",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#1e9e4a"
        },
        "liberoEstimated": true,
        "ovr": 79,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Bursa BB."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Bursa BB. Líbero probable: verde (sin fecha, foto de presentación en voleybolmagazin)…"
       }
      ]
     },
@@ -1600,7 +1600,7 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#ffffff",
-        "libero": "#1d1d1b"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 76,
@@ -1618,14 +1618,14 @@
        "colors": {
         "shirt": "#003da5",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 75,
        "sponsor": "Tamirhane Çapraz",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: nada. Altekma es la empresa dueña: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: nada. Altekma es la empresa dueña: fuera. Líbero: blanco (2025-26, buscado 12-nov-2026: fotos de tvf.org.tr e…"
       },
       {
        "real": "Kuzeyboru",
@@ -1636,14 +1636,14 @@
        "colors": {
         "shirt": "#0057b8",
         "shirt2": "#ffffff",
-        "libero": "#f28c28"
+        "libero": "#111111"
        },
        "liberoEstimated": true,
        "ovr": 74,
        "sponsor": "Pide Çift Vuruş",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Kuzeyboru. Kuzeyboru es la empresa dueña: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Kuzeyboru. Kuzeyboru es la empresa dueña: fuera. Líbero probable: negro (2025-26, foto de…"
       },
       {
        "real": "Beşiktaş",
@@ -1654,14 +1654,14 @@
        "colors": {
         "shirt": "#111111",
         "shirt2": "#ffffff",
-        "libero": "#e30613"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 73,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: nada. Guiño al palacio de su barrio."
+       "note": "Búsqueda web del nombre exacto entre comillas: nada. Guiño al palacio de su barrio. Líbero probable: blanco (2024-25/2025-26, fotos de duhuliye y cnnturk)…"
       },
       {
        "real": "Göztepe",
@@ -1679,7 +1679,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: nada (el único «Körfez» es un club de Kocaeli con nombre distinto)."
+       "note": "Búsqueda web del nombre exacto entre comillas: nada (el único «Körfez» es un club de Kocaeli con nombre distinto). Líbero probable: blanco (2025-26, fotos de…"
       },
       {
        "real": "Gebze Belediyespor",
@@ -1690,14 +1690,14 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#ffffff",
-        "libero": "#111111"
+        "libero": "#1a1a2e"
        },
        "liberoEstimated": true,
        "ovr": 70,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Gebze Belediyespor."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Gebze Belediyespor. Líbero probable: negro o azul muy oscuro (2024-25, fotos de instagram…"
       },
       {
        "real": "ON Hotels Alanya Belediyespor",
@@ -1715,7 +1715,7 @@
        "sponsor": "Chanclas Supersónicas",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Alanya Belediyespor. ON Hotels es patrocinador: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Alanya Belediyespor. ON Hotels es patrocinador: fuera. Líbero: no encontrado en internet…"
       },
       {
        "real": "Gaziantep Gençlikspor",
@@ -1726,14 +1726,14 @@
        "colors": {
         "shirt": "#d50032",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#111111"
        },
        "liberoEstimated": true,
        "ovr": 69,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Merinos y Adam Voleybol (Gaziantep)."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Merinos y Adam Voleybol (Gaziantep). Líbero probable: negro (sin fecha, foto de…"
       },
       {
        "real": "İstanbul Büyükşehir Belediyespor",
@@ -1751,7 +1751,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: nada. («İstanbul Voleybol» se descartó: existe el İstanbul Voleybol Kulübü)."
+       "note": "Búsqueda web del nombre exacto entre comillas: nada. («İstanbul Voleybol» se descartó: existe el İstanbul Voleybol Kulübü). Líbero: no encontrado en internet…"
       },
       {
        "real": "İlbank",
@@ -1780,14 +1780,14 @@
        "colors": {
         "shirt": "#003da5",
         "shirt2": "#ffffff",
-        "libero": "#f28c28"
+        "libero": "#2b4fa8"
        },
        "liberoEstimated": true,
        "ovr": 67,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Aydın BB."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Aydın BB. Líbero probable: azul (sin fecha, foto de la Challenge Cup). Ojo: casi igual que…"
       },
       {
        "real": "Kuşgöz İzmir Vinç Akkuş Belediyespor",
@@ -1805,7 +1805,7 @@
        "sponsor": "Rodilleras Rodríguez",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Akkuş Belediyespor."
+       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Akkuş Belediyespor. Líbero: no encontrado en internet (12-nov-2026)."
       }
      ]
     }
@@ -1832,14 +1832,14 @@
        "colors": {
         "shirt": "#0039a6",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#9be36b"
        },
        "liberoEstimated": true,
        "ovr": 86,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso): nada. Equipo en las dos ligas: cuenta una vez. Campeón de la Superliga de hombres 2025-26."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso): nada. Equipo en las dos ligas: cuenta una vez. Campeón de la Superliga de hombres 2025-26. Líbero…"
       },
       {
        "real": "Zenit Kazan",
@@ -1857,7 +1857,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Апогей»): nada. Guiño: cénit → apogeo."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Апогей»): nada. Guiño: cénit → apogeo. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Dinamo-Ak Bars Kazan",
@@ -1875,7 +1875,7 @@
        "sponsor": "Seguros Tie-Break",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Динамика Казань»): nada. Ak Bars es patrocinador: fuera. Campeón de la Superliga de mujeres 2025-26."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Динамика Казань»): nada. Ak Bars es patrocinador: fuera. Campeón de la Superliga de mujeres 2025-26…"
       },
       {
        "real": "Lokomotiv Novosibirsk",
@@ -1893,7 +1893,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Паровоз»): nada. Guiño: locomotora → máquina de vapor."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Паровоз»): nada. Guiño: locomotora → máquina de vapor. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Zenit Sankt-Peterburg",
@@ -1911,7 +1911,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Перигей»): nada. Guiño astronómico, pareja del de Kazán."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Перигей»): nada. Guiño astronómico, pareja del de Kazán. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Zarechye Odintsovo",
@@ -1929,7 +1929,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Одинцово»): nada. Finalista de la Superliga de mujeres 2025-26."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Одинцово»): nada. Finalista de la Superliga de mujeres 2025-26. Líbero: no encontrado en internet…"
       },
       {
        "real": "Uralochka-NTMK",
@@ -1958,14 +1958,14 @@
        "colors": {
         "shirt": "#0039a6",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#1f3fa8"
        },
        "liberoEstimated": true,
        "ovr": 79,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso): nada."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso): nada. Líbero probable: azul (2023-24, reportaje de Championat 2023-24 (vczenit.ru)). Ojo: casi igual que…"
       },
       {
        "real": "Belogorie Belgorod",
@@ -1983,7 +1983,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Белогор»): solo sale el real «Белогорье»."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Белогор»): solo sale el real «Белогорье». Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Fakel Novy Urengoy",
@@ -1994,14 +1994,14 @@
        "colors": {
         "shirt": "#0057b8",
         "shirt2": "#f47b20",
-        "libero": "#ffffff"
+        "libero": "#98e2c6"
        },
        "liberoEstimated": true,
        "ovr": 79,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Пламя»): nada en voleibol. Guiño: antorcha → llama. Gazprom (dueño): fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Пламя»): nada en voleibol. Guiño: antorcha → llama. Gazprom (dueño): fuera. Líbero probable: menta…"
       },
       {
        "real": "Lokomotiv Kaliningrad",
@@ -2019,7 +2019,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Тепловоз»): nada. Guiño: locomotora → locomotora diésel."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Тепловоз»): nada. Guiño: locomotora → locomotora diésel. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Leningradka",
@@ -2037,7 +2037,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Нева»): nada. «Leningradka» es un nombre con género gramatical, por eso no se usa."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Нева»): nada. «Leningradka» es un nombre con género gramatical, por eso no se usa. Líbero: no…"
       }
      ]
     },
@@ -2063,7 +2063,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Кузнецк Кемерово»): nada."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Кузнецк Кемерово»): nada. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Yenisey Krasnoyarsk",
@@ -2074,14 +2074,14 @@
        "colors": {
         "shirt": "#0057b8",
         "shirt2": "#ffffff",
-        "libero": "#f28c28"
+        "libero": "#9be36b"
        },
        "liberoEstimated": true,
        "ovr": 73,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Красноярск»): nada. Equipo en las dos ligas: cuenta una vez."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Красноярск»): nada. Equipo en las dos ligas: cuenta una vez. Líbero probable: verde claro (2023-24…"
       },
       {
        "real": "Yaroslavich",
@@ -2099,7 +2099,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Ярославль»): nada; solo sale el NP «Ярославич»."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Ярославль»): nada; solo sale el NP «Ярославич». Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Dinamo-Ural Ufa",
@@ -2117,7 +2117,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Уфа»): nada."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Уфа»): nada. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Tulitsa",
@@ -2135,7 +2135,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Тула»): nada. «Tulitsa» es un nombre con género gramatical, por eso no se usa."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Тула»): nada. «Tulitsa» es un nombre con género gramatical, por eso no se usa. Líbero: no…"
       },
       {
        "real": "Korabelka",
@@ -2164,14 +2164,14 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#ffffff",
-        "libero": "#111111"
+        "libero": "#b5e61d"
        },
        "liberoEstimated": true,
        "ovr": 71,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso): nada."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso): nada. Líbero probable: verde ácido (2023-24 (como ASK), reportaje de Championat 2023-24 (vczenit.ru))."
       },
       {
        "real": "Proton Saratov",
@@ -2189,7 +2189,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Нейтрон»): nada. Guiño: protón → neutrón."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Нейтрон»): nada. Guiño: protón → neutrón. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Orenburzhye Orenburg (antes Neftyanik)",
@@ -2200,14 +2200,14 @@
        "colors": {
         "shirt": "#ffd100",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#ffe600"
        },
        "liberoEstimated": true,
        "ovr": 70,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Оренбург»): nada."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Оренбург»): nada. Líbero probable: amarillo vivo (2023-24 (como Neftyanik), reportaje de Championat…"
       },
       {
        "real": "Omichka Omsk",
@@ -2225,7 +2225,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Омск»): nada. «Omichka» es un nombre con género gramatical, por eso no se usa."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Омск»): nada. «Omichka» es un nombre con género gramatical, por eso no se usa. Líbero: no…"
       },
       {
        "real": "Dinamo Krasnodar",
@@ -2243,7 +2243,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Краснодар»): nada."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Краснодар»): nada. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "Metar Chelyabinsk",
@@ -2261,7 +2261,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Челябинск»): nada. Metar es la empresa: fuera."
+       "note": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Челябинск»): nada. Metar es la empresa: fuera. Líbero: no encontrado en internet (12-nov-2026)."
       }
      ]
     }
@@ -2288,9 +2288,9 @@
        "colors": {
         "shirt": "#003c82",
         "shirt2": "#f58220",
-        "libero": "#ffffff"
+        "libero": "#f4f4f4"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 86,
        "sponsor": null,
        "searched": true,
@@ -2306,9 +2306,9 @@
        "colors": {
         "shirt": "#1d4e9e",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#6e2338"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 85,
        "sponsor": null,
        "searched": true,
@@ -2324,9 +2324,9 @@
        "colors": {
         "shirt": "#111111",
         "shirt2": "#ffffff",
-        "libero": "#e31e24"
+        "libero": "#f2f2f2"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 84,
        "sponsor": "Fromagerie Le Contre",
        "searched": true,
@@ -2342,9 +2342,9 @@
        "colors": {
         "shirt": "#00843d",
         "shirt2": "#ffffff",
-        "libero": "#f7d417"
+        "libero": "#d7192a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 82,
        "sponsor": null,
        "searched": true,
@@ -2360,9 +2360,9 @@
        "colors": {
         "shirt": "#111111",
         "shirt2": "#d71920",
-        "libero": "#ffffff"
+        "libero": "#5e5e5e"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 82,
        "sponsor": null,
        "searched": true,
@@ -2378,9 +2378,9 @@
        "colors": {
         "shirt": "#0055a4",
         "shirt2": "#ffffff",
-        "libero": "#e4007c"
+        "libero": "#9cc8e8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 80,
        "sponsor": null,
        "searched": true,
@@ -2396,7 +2396,7 @@
        "colors": {
         "shirt": "#1b4f9c",
         "shirt2": "#ffffff",
-        "libero": "#e75480"
+        "libero": "#e5559a"
        },
        "liberoEstimated": true,
        "ovr": 80,
@@ -2414,9 +2414,9 @@
        "colors": {
         "shirt": "#e5007e",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#f5f5f5"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 80,
        "sponsor": null,
        "searched": true,
@@ -2432,9 +2432,9 @@
        "colors": {
         "shirt": "#1f3a93",
         "shirt2": "#e8559a",
-        "libero": "#ffffff"
+        "libero": "#e6336f"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 80,
        "sponsor": null,
        "searched": true,
@@ -2450,9 +2450,9 @@
        "colors": {
         "shirt": "#f7c600",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#f2c21b"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 78,
        "sponsor": null,
        "searched": true,
@@ -2486,9 +2486,9 @@
        "colors": {
         "shirt": "#5b2c83",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#eed9b8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 77,
        "sponsor": null,
        "searched": false,
@@ -2512,9 +2512,9 @@
        "colors": {
         "shirt": "#0057b8",
         "shirt2": "#ffd200",
-        "libero": "#ffffff"
+        "libero": "#d22b2b"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 74,
        "sponsor": null,
        "searched": true,
@@ -2548,9 +2548,9 @@
        "colors": {
         "shirt": "#1c2d5a",
         "shirt2": "#c9a227",
-        "libero": "#6a2c91"
+        "libero": "#e8dcb0"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 73,
        "sponsor": null,
        "searched": true,
@@ -2566,7 +2566,7 @@
        "colors": {
         "shirt": "#0b1f4b",
         "shirt2": "#2f80ed",
-        "libero": "#f2994a"
+        "libero": "#2a62d0"
        },
        "liberoEstimated": true,
        "ovr": 73,
@@ -2584,9 +2584,9 @@
        "colors": {
         "shirt": "#e6007e",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#e1251b"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 72,
        "sponsor": null,
        "searched": true,
@@ -2602,9 +2602,9 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#f2efd8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 72,
        "sponsor": null,
        "searched": true,
@@ -2620,9 +2620,9 @@
        "colors": {
         "shirt": "#7a1f3d",
         "shirt2": "#1b2a4a",
-        "libero": "#f2c94c"
+        "libero": "#e9a83c"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 71,
        "sponsor": null,
        "searched": true,
@@ -2638,7 +2638,7 @@
        "colors": {
         "shirt": "#00539f",
         "shirt2": "#ffffff",
-        "libero": "#f39200"
+        "libero": "#f5d90a"
        },
        "liberoEstimated": true,
        "ovr": 70,
@@ -2656,7 +2656,7 @@
        "colors": {
         "shirt": "#e2001a",
         "shirt2": "#002f87",
-        "libero": "#ffffff"
+        "libero": "#f5f5f5"
        },
        "liberoEstimated": true,
        "ovr": 69,
@@ -2674,9 +2674,9 @@
        "colors": {
         "shirt": "#0050a0",
         "shirt2": "#ffffff",
-        "libero": "#f7d417"
+        "libero": "#f4f4f4"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 69,
        "sponsor": null,
        "searched": true,
@@ -2694,7 +2694,7 @@
         "shirt2": "#ffffff",
         "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 69,
        "sponsor": null,
        "searched": true,
@@ -2728,7 +2728,7 @@
         "shirt2": "#231f20",
         "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 86,
        "sponsor": "Currywurst Schmetterball",
        "searched": true,
@@ -2744,9 +2744,9 @@
        "colors": {
         "shirt": "#003b7a",
         "shirt2": "#ffffff",
-        "libero": "#f39200"
+        "libero": "#f2c230"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 84,
        "sponsor": null,
        "searched": true,
@@ -2762,9 +2762,9 @@
        "colors": {
         "shirt": "#004a59",
         "shirt2": "#8ed1fc",
-        "libero": "#111111"
+        "libero": "#1e2a4a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 84,
        "sponsor": "Rostbratwurst Block",
        "searched": true,
@@ -2780,9 +2780,9 @@
        "colors": {
         "shirt": "#1352a5",
         "shirt2": "#ffffff",
-        "libero": "#ff0000"
+        "libero": "#f04e23"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 83,
        "sponsor": "Spätzle Bagger",
        "searched": true,
@@ -2798,9 +2798,9 @@
        "colors": {
         "shirt": "#0058b0",
         "shirt2": "#ffffff",
-        "libero": "#ffd100"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 82,
        "sponsor": null,
        "searched": true,
@@ -2816,9 +2816,9 @@
        "colors": {
         "shirt": "#099dad",
         "shirt2": "#000000",
-        "libero": "#f5a623"
+        "libero": "#1aa3a8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 82,
        "sponsor": "Rodilleras Rodríguez",
        "searched": true,
@@ -2834,9 +2834,9 @@
        "colors": {
         "shirt": "#f5e100",
         "shirt2": "#1e3fa8",
-        "libero": "#ffffff"
+        "libero": "#1f5fc0"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 81,
        "sponsor": "Fischbrötchen Netzkante",
        "searched": true,
@@ -2852,9 +2852,9 @@
        "colors": {
         "shirt": "#111111",
         "shirt2": "#c8102e",
-        "libero": "#ffffff"
+        "libero": "#1c2a4a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 80,
        "sponsor": null,
        "searched": true,
@@ -2870,7 +2870,7 @@
        "colors": {
         "shirt": "#00843d",
         "shirt2": "#ffffff",
-        "libero": "#fdb913"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 78,
@@ -2906,9 +2906,9 @@
        "colors": {
         "shirt": "#111111",
         "shirt2": "#ffffff",
-        "libero": "#e4007c"
+        "libero": "#f39a4a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 76,
        "sponsor": null,
        "searched": true,
@@ -2924,9 +2924,9 @@
        "colors": {
         "shirt": "#d2001e",
         "shirt2": "#ffffff",
-        "libero": "#1a1a1a"
+        "libero": "#3dae3b"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 75,
        "sponsor": null,
        "searched": true,
@@ -2950,9 +2950,9 @@
        "colors": {
         "shirt": "#1b365d",
         "shirt2": "#ffffff",
-        "libero": "#f39200"
+        "libero": "#1f3a7a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 72,
        "sponsor": "Seguros Tie-Break",
        "searched": true,
@@ -2986,9 +2986,9 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#ffffff",
-        "libero": "#111111"
+        "libero": "#f0306e"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 71,
        "sponsor": null,
        "searched": true,
@@ -3022,9 +3022,9 @@
        "colors": {
         "shirt": "#ffd500",
         "shirt2": "#e2001a",
-        "libero": "#1a1a1a"
+        "libero": "#e8eaee"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 69,
        "sponsor": null,
        "searched": true,
@@ -3040,9 +3040,9 @@
        "colors": {
         "shirt": "#111111",
         "shirt2": "#ffffff",
-        "libero": "#e4002b"
+        "libero": "#2e9e5b"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 69,
        "sponsor": null,
        "searched": true,
@@ -3094,9 +3094,9 @@
        "colors": {
         "shirt": "#1d4fa0",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 65,
        "sponsor": "Klempnerei Aufschlag",
        "searched": true,
@@ -3114,7 +3114,7 @@
         "shirt2": "#1a1a1a",
         "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 64,
        "sponsor": "Senferei Pritsche",
        "searched": true,
@@ -3164,9 +3164,9 @@
        "colors": {
         "shirt": "#ffe900",
         "shirt2": "#002fa7",
-        "libero": "#e4002b"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 75,
        "sponsor": "Gofio La Plancha",
        "searched": true,
@@ -3182,9 +3182,9 @@
        "colors": {
         "shirt": "#7a1e48",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 73,
        "sponsor": "Torreznos El Remate",
        "searched": true,
@@ -3200,9 +3200,9 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#ffffff",
-        "libero": "#1a1a1a"
+        "libero": "#1b2a4a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 73,
        "sponsor": "Formatges Es Mur",
        "searched": true,
@@ -3218,9 +3218,9 @@
        "colors": {
         "shirt": "#00843d",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#e0409a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 72,
        "sponsor": "Churrería El Saque",
        "searched": true,
@@ -3236,7 +3236,7 @@
        "colors": {
         "shirt": "#2e64fe",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 71,
@@ -3254,7 +3254,7 @@
        "colors": {
         "shirt": "#e60026",
         "shirt2": "#000000",
-        "libero": "#9b59b6"
+        "libero": "#8e5cc8"
        },
        "liberoEstimated": false,
        "ovr": 70,
@@ -3272,9 +3272,9 @@
        "colors": {
         "shirt": "#ffd100",
         "shirt2": "#005bac",
-        "libero": "#ffffff"
+        "libero": "#c9b3e6"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 70,
        "sponsor": "Mojo Picón La Red",
        "searched": true,
@@ -3290,9 +3290,9 @@
        "colors": {
         "shirt": "#005bac",
         "shirt2": "#ffffff",
-        "libero": "#f39200"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 69,
        "sponsor": "Talleres La Colocación",
        "searched": true,
@@ -3308,7 +3308,7 @@
        "colors": {
         "shirt": "#7b1e3a",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#e86a92"
        },
        "liberoEstimated": true,
        "ovr": 68,
@@ -3326,7 +3326,7 @@
        "colors": {
         "shirt": "#1f4e9e",
         "shirt2": "#ffffff",
-        "libero": "#f39200"
+        "libero": "#4fa8e0"
        },
        "liberoEstimated": true,
        "ovr": 67,
@@ -3346,7 +3346,7 @@
         "shirt2": "#1a1a1a",
         "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 67,
        "sponsor": "Chanclas Supersónicas",
        "searched": true,
@@ -3388,9 +3388,9 @@
        "colors": {
         "shirt": "#f28c00",
         "shirt2": "#1a1a1a",
-        "libero": "#ffffff"
+        "libero": "#f4b6c4"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 64,
        "sponsor": null,
        "searched": true,
@@ -3478,7 +3478,7 @@
        "colors": {
         "shirt": "#0033cc",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#e8708a"
        },
        "liberoEstimated": true,
        "ovr": 62,
@@ -3496,9 +3496,9 @@
        "colors": {
         "shirt": "#0072bc",
         "shirt2": "#ffd100",
-        "libero": "#ffffff"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 61,
        "sponsor": "Hamacas El Ace",
        "searched": true,
@@ -3514,7 +3514,7 @@
        "colors": {
         "shirt": "#003da5",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#e53935"
        },
        "liberoEstimated": true,
        "ovr": 60,
@@ -3550,9 +3550,9 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#ffffff",
-        "libero": "#111111"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 58,
        "sponsor": "Romesco La Dejada",
        "searched": true,
@@ -3586,9 +3586,9 @@
        "colors": {
         "shirt": "#00843d",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#2456c8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 57,
        "sponsor": "Colchones La Zambullida",
        "searched": true,
@@ -3620,9 +3620,9 @@
        "colors": {
         "shirt": "#e2001a",
         "shirt2": "#ffffff",
-        "libero": "#007a33"
+        "libero": "#1e8b4c"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 68,
        "sponsor": "Bakkerij Den Ace",
        "searched": true,
@@ -3638,9 +3638,9 @@
        "colors": {
         "shirt": "#151b54",
         "shirt2": "#ffffff",
-        "libero": "#e30613"
+        "libero": "#f2f6fa"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 68,
        "sponsor": "Rodilleras Rodríguez",
        "searched": true,
@@ -3656,9 +3656,9 @@
        "colors": {
         "shirt": "#1d4e9e",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 66,
        "sponsor": null,
        "searched": true,
@@ -3676,7 +3676,7 @@
         "shirt2": "#000000",
         "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 64,
        "sponsor": "Mosselhuis De Muur",
        "searched": true,
@@ -3692,9 +3692,9 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#000000",
-        "libero": "#ffd200"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 64,
        "sponsor": null,
        "searched": true,
@@ -3710,7 +3710,7 @@
        "colors": {
         "shirt": "#ffffff",
         "shirt2": "#000000",
-        "libero": "#e30613"
+        "libero": "#1a1a1a"
        },
        "liberoEstimated": true,
        "ovr": 62,
@@ -3728,9 +3728,9 @@
        "colors": {
         "shirt": "#1c0060",
         "shirt2": "#ff0fbb",
-        "libero": "#ffd200"
+        "libero": "#1f2547"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 58,
        "sponsor": null,
        "searched": true,
@@ -3746,7 +3746,7 @@
        "colors": {
         "shirt": "#000000",
         "shirt2": "#ffffff",
-        "libero": "#e30613"
+        "libero": "#f2603a"
        },
        "liberoEstimated": true,
        "ovr": 57,
@@ -3764,9 +3764,9 @@
        "colors": {
         "shirt": "#1e3a8a",
         "shirt2": "#ffffff",
-        "libero": "#f59e0b"
+        "libero": "#f2c230"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 56,
        "sponsor": "Fromagerie Le Contre",
        "searched": true,
@@ -3798,7 +3798,7 @@
        "colors": {
         "shirt": "#00843d",
         "shirt2": "#ffffff",
-        "libero": "#ffd200"
+        "libero": "#1a1a1a"
        },
        "liberoEstimated": true,
        "ovr": 63,
@@ -3816,9 +3816,9 @@
        "colors": {
         "shirt": "#ffffff",
         "shirt2": "#000040",
-        "libero": "#e30613"
+        "libero": "#2e9e4f"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 63,
        "sponsor": null,
        "searched": true,
@@ -3834,7 +3834,7 @@
        "colors": {
         "shirt": "#1e3a8a",
         "shirt2": "#ffffff",
-        "libero": "#f59e0b"
+        "libero": "#f0559a"
        },
        "liberoEstimated": true,
        "ovr": 63,
@@ -3852,7 +3852,7 @@
        "colors": {
         "shirt": "#0d57ff",
         "shirt2": "#ffffff",
-        "libero": "#f97316"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 62,
@@ -3870,9 +3870,9 @@
        "colors": {
         "shirt": "#f5c400",
         "shirt2": "#000000",
-        "libero": "#1e40af"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 60,
        "sponsor": "Matrassen Duikbal",
        "searched": true,
@@ -3888,7 +3888,7 @@
        "colors": {
         "shirt": "#0057b8",
         "shirt2": "#ffffff",
-        "libero": "#e30613"
+        "libero": "#f2f4f8"
        },
        "liberoEstimated": true,
        "ovr": 58,
@@ -3924,9 +3924,9 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#ffffff",
-        "libero": "#1e3a8a"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 56,
        "sponsor": "Eierhandel De Opslag",
        "searched": true,
@@ -3958,9 +3958,9 @@
        "colors": {
         "shirt": "#134a29",
         "shirt2": "#ffffff",
-        "libero": "#ffd200"
+        "libero": "#6a3fa0"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 70,
        "sponsor": null,
        "searched": true,
@@ -3976,9 +3976,9 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#ffffff",
-        "libero": "#1a1a1a"
+        "libero": "#1f2d5a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 70,
        "sponsor": null,
        "searched": true,
@@ -3994,7 +3994,7 @@
        "colors": {
         "shirt": "#000000",
         "shirt2": "#ffffff",
-        "libero": "#d4af37"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 68,
@@ -4012,9 +4012,9 @@
        "colors": {
         "shirt": "#ffd200",
         "shirt2": "#000000",
-        "libero": "#6b21a8"
+        "libero": "#6b3fa0"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 64,
        "sponsor": null,
        "searched": true,
@@ -4030,9 +4030,9 @@
        "colors": {
         "shirt": "#0057b8",
         "shirt2": "#ffffff",
-        "libero": "#f59e0b"
+        "libero": "#f06ca8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 63,
        "sponsor": null,
        "searched": true,
@@ -4048,9 +4048,9 @@
        "colors": {
         "shirt": "#ff0000",
         "shirt2": "#000080",
-        "libero": "#ffd200"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 62,
        "sponsor": null,
        "searched": true,
@@ -4066,7 +4066,7 @@
        "colors": {
         "shirt": "#0b3d91",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 60,
@@ -4084,7 +4084,7 @@
        "colors": {
         "shirt": "#0ea5e9",
         "shirt2": "#ffffff",
-        "libero": "#f97316"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 60,
@@ -4102,9 +4102,9 @@
        "colors": {
         "shirt": "#1e3a8a",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#f06ba8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 58,
        "sponsor": null,
        "searched": true,
@@ -4120,7 +4120,7 @@
        "colors": {
         "shirt": "#ffd200",
         "shirt2": "#000000",
-        "libero": "#ffffff"
+        "libero": "#f26b21"
        },
        "liberoEstimated": true,
        "ovr": 58,
@@ -4156,7 +4156,7 @@
         "shirt2": "#ffffff",
         "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 66,
        "sponsor": null,
        "searched": true,
@@ -4172,9 +4172,9 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#ffffff",
-        "libero": "#1a1a1a"
+        "libero": "#d8c9b0"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 66,
        "sponsor": null,
        "searched": true,
@@ -4190,9 +4190,9 @@
        "colors": {
         "shirt": "#0122eb",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#6e2c45"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 63,
        "sponsor": null,
        "searched": true,
@@ -4208,9 +4208,9 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#ffffff",
-        "libero": "#1a1a1a"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 60,
        "sponsor": null,
        "searched": true,
@@ -4332,9 +4332,9 @@
        "colors": {
         "shirt": "#0057b8",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#f5d000"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 62,
        "sponsor": "Käserei Blockstark",
        "searched": true,
@@ -4350,9 +4350,9 @@
        "colors": {
         "shirt": "#f07d00",
         "shirt2": "#000000",
-        "libero": "#ffffff"
+        "libero": "#a8ddd5"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 62,
        "sponsor": "Fondue Le Bloc",
        "searched": true,
@@ -4368,9 +4368,9 @@
        "colors": {
         "shirt": "#00843d",
         "shirt2": "#ffd200",
-        "libero": "#ffffff"
+        "libero": "#f26a2e"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 60,
        "sponsor": null,
        "searched": true,
@@ -4404,9 +4404,9 @@
        "colors": {
         "shirt": "#000000",
         "shirt2": "#ffd200",
-        "libero": "#e30613"
+        "libero": "#f5d80f"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 58,
        "sponsor": null,
        "searched": true,
@@ -4422,9 +4422,9 @@
        "colors": {
         "shirt": "#1a1a1a",
         "shirt2": "#e5007d",
-        "libero": "#ffffff"
+        "libero": "#d6336c"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 58,
        "sponsor": null,
        "searched": true,
@@ -4440,9 +4440,9 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#ffffff",
-        "libero": "#1a1a1a"
+        "libero": "#8ed1c6"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 57,
        "sponsor": null,
        "searched": true,
@@ -4458,9 +4458,9 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#ffffff",
-        "libero": "#1e3a8a"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 56,
        "sponsor": null,
        "searched": true,
@@ -4476,7 +4476,7 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#f2c200",
-        "libero": "#1e3a8a"
+        "libero": "#e5487f"
        },
        "liberoEstimated": true,
        "ovr": 56,
@@ -4494,9 +4494,9 @@
        "colors": {
         "shirt": "#7a1f2b",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 55,
        "sponsor": null,
        "searched": true,
@@ -4528,9 +4528,9 @@
        "colors": {
         "shirt": "#0033a0",
         "shirt2": "#ff6600",
-        "libero": "#ffffff"
+        "libero": "#f0f0f0"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 61,
        "sponsor": null,
        "searched": true,
@@ -4546,9 +4546,9 @@
        "colors": {
         "shirt": "#0057b8",
         "shirt2": "#ffd200",
-        "libero": "#e30613"
+        "libero": "#e2231a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 58,
        "sponsor": "Bäckerei Aufschlag",
        "searched": true,
@@ -4564,9 +4564,9 @@
        "colors": {
         "shirt": "#ffd200",
         "shirt2": "#000000",
-        "libero": "#1e40af"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 57,
        "sponsor": null,
        "searched": true,
@@ -4582,9 +4582,9 @@
        "colors": {
         "shirt": "#e30613",
         "shirt2": "#000000",
-        "libero": "#ffd200"
+        "libero": "#e32b2b"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 56,
        "sponsor": "Erdäpfel Netzroller",
        "searched": true,
@@ -4600,7 +4600,7 @@
        "colors": {
         "shirt": "#0033a0",
         "shirt2": "#ffd200",
-        "libero": "#ffffff"
+        "libero": "#f5c800"
        },
        "liberoEstimated": true,
        "ovr": 56,
@@ -4618,7 +4618,7 @@
        "colors": {
         "shirt": "#00843d",
         "shirt2": "#000000",
-        "libero": "#ffd200"
+        "libero": "#e6e6e6"
        },
        "liberoEstimated": true,
        "ovr": 55,
@@ -4636,9 +4636,9 @@
        "colors": {
         "shirt": "#7a1f2b",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#1e2a4a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 55,
        "sponsor": null,
        "searched": true,
@@ -4654,9 +4654,9 @@
        "colors": {
         "shirt": "#000000",
         "shirt2": "#ffffff",
-        "libero": "#22c55e"
+        "libero": "#3ddc3d"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 54,
        "sponsor": "Chanclas Supersónicas",
        "searched": true,
@@ -5301,7 +5301,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Libre (solo Wikipedia): 0 resultados. No se ha consultado volleybox."
+       "note": "Libre (solo Wikipedia): 0 resultados. No se ha consultado volleybox. Líbero: no encontrado en internet (12-nov-2026)."
       },
       {
        "real": "SCM Zalău",
@@ -5382,7 +5382,7 @@
        "colors": {
         "shirt": "#0b3d91",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#1f5bc6"
        },
        "liberoEstimated": true,
        "ovr": 93,
@@ -5400,9 +5400,9 @@
        "colors": {
         "shirt": "#f2de1b",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#111111"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 91,
        "sponsor": "Açaí Bloqueio",
        "searched": true,
@@ -5418,9 +5418,9 @@
        "colors": {
         "shirt": "#0c2a6b",
         "shirt2": "#ffffff",
-        "libero": "#e4002b"
+        "libero": "#1f4fb8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 91,
        "sponsor": "Colchões Recepção Macia",
        "searched": true,
@@ -5436,7 +5436,7 @@
        "colors": {
         "shirt": "#1e4fa3",
         "shirt2": "#ffffff",
-        "libero": "#7fff00"
+        "libero": "#c9d531"
        },
        "liberoEstimated": false,
        "ovr": 89,
@@ -5454,9 +5454,9 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#6ca8dc"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 88,
        "sponsor": "Biscoito Largadinha",
        "searched": true,
@@ -5472,7 +5472,7 @@
        "colors": {
         "shirt": "#a53b57",
         "shirt2": "#111111",
-        "libero": "#fbfbfb"
+        "libero": "#f26b1d"
        },
        "liberoEstimated": false,
        "ovr": 87,
@@ -5490,9 +5490,9 @@
        "colors": {
         "shirt": "#1a1a1a",
         "shirt2": "#ffffff",
-        "libero": "#d2232a"
+        "libero": "#d7262b"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 86,
        "sponsor": "Coxinha do Levantador",
        "searched": true,
@@ -5508,9 +5508,9 @@
        "colors": {
         "shirt": "#8a1538",
         "shirt2": "#ffffff",
-        "libero": "#00613c"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 83,
        "sponsor": null,
        "searched": true,
@@ -5606,9 +5606,9 @@
        "colors": {
         "shirt": "#00563b",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#e2f21e"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 78,
        "sponsor": "Pamonharia Bloqueio Duplo",
        "searched": true,
@@ -5624,9 +5624,9 @@
        "colors": {
         "shirt": "#1d3a8f",
         "shirt2": "#74b843",
-        "libero": "#f0731c"
+        "libero": "#e6007e"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 76,
        "sponsor": "Sardinhas do Rodízio",
        "searched": true,
@@ -5642,9 +5642,9 @@
        "colors": {
         "shirt": "#fefdfa",
         "shirt2": "#000000",
-        "libero": "#c8102e"
+        "libero": "#ddb92f"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 76,
        "sponsor": "Chanclas Supersónicas",
        "searched": true,
@@ -5840,7 +5840,7 @@
         "shirt2": "#ffd100",
         "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 70,
        "sponsor": "Seguros Tie-Break",
        "searched": true,
@@ -5856,7 +5856,7 @@
        "colors": {
         "shirt": "#6cace4",
         "shirt2": "#ffd100",
-        "libero": "#1b1b1b"
+        "libero": "#1e2a4a"
        },
        "liberoEstimated": true,
        "ovr": 68,
@@ -5874,9 +5874,9 @@
        "colors": {
         "shirt": "#003c82",
         "shirt2": "#fdb913",
-        "libero": "#ffffff"
+        "libero": "#fdb913"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 67,
        "sponsor": null,
        "searched": true,
@@ -5892,7 +5892,7 @@
        "colors": {
         "shirt": "#ffffff",
         "shirt2": "#e1001a",
-        "libero": "#111111"
+        "libero": "#e1001a"
        },
        "liberoEstimated": true,
        "ovr": 66,
@@ -5910,9 +5910,9 @@
        "colors": {
         "shirt": "#f47b20",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#e8e8e8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 65,
        "sponsor": null,
        "searched": true,
@@ -5928,7 +5928,7 @@
        "colors": {
         "shirt": "#ffffff",
         "shirt2": "#001f5b",
-        "libero": "#9ec9e2"
+        "libero": "#1b1f4b"
        },
        "liberoEstimated": true,
        "ovr": 65,
@@ -6000,9 +6000,9 @@
        "colors": {
         "shirt": "#f58220",
         "shirt2": "#ffffff",
-        "libero": "#1b3a6b"
+        "libero": "#2e9e48"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 62,
        "sponsor": null,
        "searched": true,
@@ -6034,9 +6034,9 @@
        "colors": {
         "shirt": "#5b2c83",
         "shirt2": "#1b2240",
-        "libero": "#ffffff"
+        "libero": "#f4f1ea"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 74,
        "sponsor": null,
        "searched": true,
@@ -6052,14 +6052,14 @@
        "colors": {
         "shirt": "#8dc8e8",
         "shirt2": "#13294b",
-        "libero": "#ffffff"
+        "libero": "#4cc38a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 73,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Verificación (11-nov-2026): búsqueda entre comillas sin ningún club con ese nombre (solo Houston Juniors, Houston Skyline, Houston Volleyball Academy…)."
+       "note": "Verificación (11-nov-2026): búsqueda entre comillas sin ningún club con ese nombre (solo Houston Juniors, Houston Skyline, Houston Volleyball Academy…)…"
       },
       {
        "real": "LOVB Salt Lake",
@@ -6090,7 +6090,7 @@
         "shirt2": "#00b5e2",
         "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 72,
        "sponsor": null,
        "searched": true,
@@ -6106,7 +6106,7 @@
        "colors": {
         "shirt": "#1b2a55",
         "shirt2": "#ffffff",
-        "libero": "#e8457c"
+        "libero": "#f2f2f2"
        },
        "liberoEstimated": true,
        "ovr": 71,
@@ -6124,7 +6124,7 @@
        "colors": {
         "shirt": "#1f3a70",
         "shirt2": "#c9b48a",
-        "libero": "#8cc8ea"
+        "libero": "#2bb3b1"
        },
        "liberoEstimated": false,
        "ovr": 71,
@@ -6142,7 +6142,7 @@
        "colors": {
         "shirt": "#024731",
         "shirt2": "#ffffff",
-        "libero": "#111111"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 68,
@@ -6178,14 +6178,14 @@
        "colors": {
         "shirt": "#111111",
         "shirt2": "#ffc72c",
-        "libero": "#ffffff"
+        "libero": "#111111"
        },
        "liberoEstimated": true,
        "ovr": 67,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Verificación (11-nov-2026): búsqueda entre comillas sin ningún club con ese nombre (solo Long Beach Volleyball Club, Mizuno Long Beach…)."
+       "note": "Verificación (11-nov-2026): búsqueda entre comillas sin ningún club con ese nombre (solo Long Beach Volleyball Club, Mizuno Long Beach…). Líbero probable…"
       },
       {
        "real": "UCLA Bruins",
@@ -6284,9 +6284,9 @@
        "colors": {
         "shirt": "#00573f",
         "shirt2": "#ffc72c",
-        "libero": "#ffffff"
+        "libero": "#f5c518"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 58,
        "sponsor": null,
        "searched": true,
@@ -6302,9 +6302,9 @@
        "colors": {
         "shirt": "#4a2c2a",
         "shirt2": "#f2c200",
-        "libero": "#ffffff"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 57,
        "sponsor": null,
        "searched": true,
@@ -6320,7 +6320,7 @@
        "colors": {
         "shirt": "#d6001c",
         "shirt2": "#ffcd00",
-        "libero": "#ffffff"
+        "libero": "#1a1a1a"
        },
        "liberoEstimated": true,
        "ovr": 56,
@@ -6338,9 +6338,9 @@
        "colors": {
         "shirt": "#0b2c6b",
         "shirt2": "#ffffff",
-        "libero": "#5bc2e7"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 55,
        "sponsor": null,
        "searched": true,
@@ -6374,9 +6374,9 @@
        "colors": {
         "shirt": "#7a003c",
         "shirt2": "#fdbf57",
-        "libero": "#ffffff"
+        "libero": "#cfcfcf"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 55,
        "sponsor": null,
        "searched": true,
@@ -6392,7 +6392,7 @@
        "colors": {
         "shirt": "#006341",
         "shirt2": "#ffffff",
-        "libero": "#f2c200"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 54,
@@ -6462,9 +6462,9 @@
        "colors": {
         "shirt": "#f2e6c9",
         "shirt2": "#8b1e2d",
-        "libero": "#111111"
+        "libero": "#f26b1f"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 63,
        "sponsor": null,
        "searched": true,
@@ -6622,7 +6622,7 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#87cefa",
-        "libero": "#1b365d"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 86,
@@ -6647,7 +6647,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón 2025-26; guiño a «Bluteon»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón 2025-26; guiño a «Bluteon». Líbero: no encontrado…"
       },
       {
        "real": "SAGA Hisamitsu Springs",
@@ -6676,14 +6676,14 @@
        "colors": {
         "shirt": "#d7001e",
         "shirt2": "#1a1a1a",
-        "libero": "#ffffff"
+        "libero": "#1a1a1a"
        },
        "liberoEstimated": true,
        "ovr": 82,
        "sponsor": "Tatami Toss",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador JTEKT; guiño a «Stings»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador JTEKT; guiño a «Stings». Líbero…"
       },
       {
        "real": "NEC Red Rockets Kawasaki",
@@ -6701,7 +6701,7 @@
        "sponsor": "Takoyaki Spike",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador NEC; guiño a «Red Rockets»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador NEC; guiño a «Red Rockets»…"
       },
       {
        "real": "Wolfdogs Nagoya",
@@ -6714,12 +6714,12 @@
         "shirt2": "#d7001e",
         "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 81,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Wolfdogs»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Wolfdogs». Líbero: blanco (2025-26, buscado…"
       },
       {
        "real": "Osaka Marvelous",
@@ -6730,7 +6730,7 @@
        "colors": {
         "shirt": "#202020",
         "shirt2": "#00873c",
-        "libero": "#f5d000"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 81,
@@ -6748,9 +6748,9 @@
        "colors": {
         "shirt": "#00398f",
         "shirt2": "#db0069",
-        "libero": "#ffffff"
+        "libero": "#e4007f"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 79,
        "sponsor": "Udon Libero Honpo",
        "searched": true,
@@ -6773,7 +6773,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Thunders»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Thunders». Líbero: no encontrado en internet…"
       },
       {
        "real": "Tokyo Great Bears",
@@ -6791,7 +6791,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Great Bears»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Great Bears». Líbero: no encontrado en internet…"
       },
       {
        "real": "Victorina Himeji",
@@ -6802,14 +6802,14 @@
        "colors": {
         "shirt": "#ff1493",
         "shirt2": "#111111",
-        "libero": "#2b2b6e"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 77,
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; la búsqueda solo devuelve «Victorina Himeji», el real."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; la búsqueda solo devuelve «Victorina Himeji», el real…"
       },
       {
        "real": "Queenseis Kariya",
@@ -6827,7 +6827,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; tampoco coincide con su nombre nuevo «Aleeza Aichi»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; tampoco coincide con su nombre nuevo «Aleeza Aichi»…"
       }
      ]
     },
@@ -6871,7 +6871,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Yellow Stars»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Yellow Stars». Líbero: no encontrado en internet…"
       },
       {
        "real": "Veertien Mie",
@@ -6907,7 +6907,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Reve» (sueño, en francés)."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Reve» (sueño, en francés). Líbero: no encontrado…"
       },
       {
        "real": "Fragolad Kagoshima",
@@ -6925,7 +6925,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Fragolad» (de fragola, fresa)."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Fragolad» (de fragola, fresa). Líbero: no…"
       },
       {
        "real": "Shinshu Brilliant Aries",
@@ -6943,7 +6943,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón de la V.League 2025-26; Aries = carnero (ram)."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón de la V.League 2025-26; Aries = carnero (ram)…"
       },
       {
        "real": "Fujitsu Kawasaki Red Spirits",
@@ -6961,7 +6961,7 @@
        "sponsor": "Seguros Tie-Break",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador Fujitsu; guiño a «Red Spirits»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador Fujitsu; guiño a «Red Spirits»…"
       },
       {
        "real": "JA Gifu Rioreina",
@@ -6979,7 +6979,7 @@
        "sponsor": "Sento Blocking-yu",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador JA; guiño a «Rioreina»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador JA; guiño a «Rioreina». Líbero…"
       },
       {
        "real": "KANOA Laulea's Fukuoka",
@@ -6990,14 +6990,14 @@
        "colors": {
         "shirt": "#111111",
         "shirt2": "#00a48e",
-        "libero": "#ffffff"
+        "libero": "#30d5c8"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 61,
        "sponsor": "Gyoza Pipe Kitchen",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita KANOA (empresa propietaria); guiño a «Laulea»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita KANOA (empresa propietaria); guiño a «Laulea»…"
       },
       {
        "real": "Forest Leaves Kumamoto",
@@ -7015,7 +7015,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Leaves»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Leaves». Líbero: no encontrado en internet…"
       },
       {
        "real": "Breath Hamamatsu",
@@ -7033,7 +7033,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; la búsqueda solo devuelve «Breath Hamamatsu», el real."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; la búsqueda solo devuelve «Breath Hamamatsu», el real…"
       },
       {
        "real": "Kurashiki Ablaze",
@@ -7051,7 +7051,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Ablaze» (en llamas → llamarada)."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Ablaze» (en llamas → llamarada). Líbero: no…"
       }
      ]
     }
@@ -7078,9 +7078,9 @@
        "colors": {
         "shirt": "#0078c1",
         "shirt2": "#0b2d6b",
-        "libero": "#e4002b"
+        "libero": "#c8102e"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 70,
        "sponsor": "Kimchi Block",
        "searched": true,
@@ -7096,9 +7096,9 @@
        "colors": {
         "shirt": "#ffffff",
         "shirt2": "#007bc1",
-        "libero": "#111111"
+        "libero": "#0067b1"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 69,
        "sponsor": "Tteokbokki Spike",
        "searched": true,
@@ -7114,9 +7114,9 @@
        "colors": {
         "shirt": "#44427f",
         "shirt2": "#ffffff",
-        "libero": "#ffc425"
+        "libero": "#7ec8e3"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 68,
        "sponsor": "Mandu Serve",
        "searched": true,
@@ -7132,9 +7132,9 @@
        "colors": {
         "shirt": "#003e7e",
         "shirt2": "#00a9e0",
-        "libero": "#f58220"
+        "libero": "#7b8fd4"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 68,
        "sponsor": "Dakgalbi Receive",
        "searched": true,
@@ -7150,7 +7150,7 @@
        "colors": {
         "shirt": "#1f255e",
         "shirt2": "#ffffff",
-        "libero": "#f9a825"
+        "libero": "#1e6b52"
        },
        "liberoEstimated": true,
        "ovr": 67,
@@ -7168,14 +7168,14 @@
        "colors": {
         "shirt": "#f8b500",
         "shirt2": "#7c7366",
-        "libero": "#1f4e9c"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 66,
        "sponsor": "Bibimbap Libero",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador KB Insurance; guiño a «Stars»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador KB Insurance; guiño a «Stars»…"
       },
       {
        "real": "Seoul Woori Card WooriWON",
@@ -7186,9 +7186,9 @@
        "colors": {
         "shirt": "#0000ff",
         "shirt2": "#ffffff",
-        "libero": "#ffb300"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 66,
        "sponsor": "Hotteok Ace",
        "searched": true,
@@ -7204,7 +7204,7 @@
        "colors": {
         "shirt": "#ff66b3",
         "shirt2": "#151b54",
-        "libero": "#4a3e8e"
+        "libero": "#a79bd9"
        },
        "liberoEstimated": true,
        "ovr": 66,
@@ -7222,9 +7222,9 @@
        "colors": {
         "shirt": "#ff0000",
         "shirt2": "#ffffff",
-        "libero": "#1f4e9c"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 65,
        "sponsor": "Jjimjil Net Spa",
        "searched": true,
@@ -7240,14 +7240,14 @@
        "colors": {
         "shirt": "#00abeb",
         "shirt2": "#ffffff",
-        "libero": "#f7a600"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 65,
        "sponsor": "Rodilleras Rodríguez",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador IBK; guiño a «Altos»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita el patrocinador IBK; guiño a «Altos». Líbero…"
       }
      ]
     }
@@ -7274,9 +7274,9 @@
        "colors": {
         "shirt": "#0050b5",
         "shirt2": "#ffffff",
-        "libero": "#f2c300"
+        "libero": "#1a1a1a"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 74,
        "sponsor": "Kouqiu Baozi",
        "searched": true,
@@ -7292,14 +7292,14 @@
        "colors": {
         "shirt": "#c8102e",
         "shirt2": "#ffffff",
-        "libero": "#1e3a8a"
+        "libero": "#f2c400"
        },
        "liberoEstimated": true,
        "ovr": 73,
        "sponsor": "Lanwang Jiaozi",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Jiangsu»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Jiangsu». Líbero probable: amarillo…"
       },
       {
        "real": "Tianjin Food Group / Tianjin Bohai Bank",
@@ -7317,7 +7317,7 @@
        "sponsor": "Faqiu Mahua",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Tianjin»; campeón M 2025-26."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Tianjin»; campeón M 2025-26…"
       },
       {
        "real": "Beijing BAIC",
@@ -7335,7 +7335,7 @@
        "sponsor": "Chanclas Supersónicas",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Pekín»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Pekín». Líbero: no encontrado en…"
       },
       {
        "real": "Hubei Baoding",
@@ -7353,7 +7353,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Hubei»; se quita «Baoding»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Hubei»; se quita «Baoding». Líbero…"
       },
       {
        "real": "Liaoning Donggang Strawberry",
@@ -7389,7 +7389,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Shandong»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Shandong». Líbero: no encontrado en…"
       },
       {
        "real": "Guangdong Taishan",
@@ -7407,7 +7407,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Cantón»; queda la provincia."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Cantón»; queda la provincia…"
       },
       {
        "real": "Fujian",
@@ -7425,7 +7425,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Fujian»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Fujian». Líbero: no encontrado en…"
       },
       {
        "real": "Zhejiang",
@@ -7443,7 +7443,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Zhejiang»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Zhejiang». Líbero: no encontrado en…"
       }
      ]
     }
@@ -7470,14 +7470,14 @@
        "colors": {
         "shirt": "#00796b",
         "shirt2": "#ffffff",
-        "libero": "#fbc02d"
+        "libero": "#1a1a1a"
        },
        "liberoEstimated": true,
        "ovr": 73,
        "sponsor": "Yazd Baklava Block",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Yazd»; se quita Shahdab (empresa)."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Yazd»; se quita Shahdab (empresa)…"
       },
       {
        "real": "Foolad Sirjan Iranian",
@@ -7488,9 +7488,9 @@
        "colors": {
         "shirt": "#0d47a1",
         "shirt2": "#ffffff",
-        "libero": "#ffb300"
+        "libero": "#1f2a44"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 71,
        "sponsor": "Kebab Sirjan Smash",
        "searched": true,
@@ -7524,7 +7524,7 @@
        "colors": {
         "shirt": "#c62828",
         "shirt2": "#ffffff",
-        "libero": "#0b2d6b"
+        "libero": "#8db6d6"
        },
        "liberoEstimated": true,
        "ovr": 66,
@@ -7603,7 +7603,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Omid»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Omid». Líbero: no encontrado en internet…"
       },
       {
        "real": "Paykan Tehran",
@@ -7648,7 +7648,7 @@
        "colors": {
         "shirt": "#e2001a",
         "shirt2": "#ffffff",
-        "libero": "#111111"
+        "libero": "#1b2a4a"
        },
        "liberoEstimated": true,
        "ovr": 72,
@@ -7666,9 +7666,9 @@
        "colors": {
         "shirt": "#d50032",
         "shirt2": "#111111",
-        "libero": "#ffffff"
+        "libero": "#111111"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 71,
        "sponsor": null,
        "searched": true,
@@ -7684,7 +7684,7 @@
        "colors": {
         "shirt": "#0b2d6b",
         "shirt2": "#ffffff",
-        "libero": "#f2c300"
+        "libero": "#4fc3e8"
        },
        "liberoEstimated": true,
        "ovr": 68,
@@ -7709,7 +7709,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; subcampeón 2024-25 (el de 2025-26, sin confirmar)."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; subcampeón 2024-25 (el de 2025-26, sin confirmar)…"
       },
       {
        "real": "Al Sadd SC",
@@ -7727,7 +7727,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño al barrio de Al Sadd."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño al barrio de Al Sadd. Líbero: no encontrado en…"
       },
       {
        "real": "Qatar SC",
@@ -7745,7 +7745,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño al apodo «Al-Qatari»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño al apodo «Al-Qatari». Líbero: no encontrado en…"
       },
       {
        "real": "Al Gharafa SC",
@@ -7763,7 +7763,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma «Voley [Barrio]»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma «Voley [Barrio]». Líbero: no encontrado en internet…"
       },
       {
        "real": "Al Ahli SC",
@@ -7781,7 +7781,7 @@
        "sponsor": null,
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Al Ahli»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; guiño a «Al Ahli». Líbero: no encontrado en internet…"
       }
      ]
     }
@@ -7810,7 +7810,7 @@
         "shirt2": "#2e5090",
         "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 58,
        "sponsor": "Adobo Ace",
        "searched": true,
@@ -7826,9 +7826,9 @@
        "colors": {
         "shirt": "#d11f37",
         "shirt2": "#111111",
-        "libero": "#ffd100"
+        "libero": "#111111"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 57,
        "sponsor": "Lechon Libero",
        "searched": true,
@@ -7844,9 +7844,9 @@
        "colors": {
         "shirt": "#e31b23",
         "shirt2": "#ffffff",
-        "libero": "#1a1a1a"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 56,
        "sponsor": "Halo-Halo Block",
        "searched": true,
@@ -7862,9 +7862,9 @@
        "colors": {
         "shirt": "#ff0000",
         "shirt2": "#111111",
-        "libero": "#00a651"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 56,
        "sponsor": "Pandesal Pass Bakery",
        "searched": true,
@@ -7880,7 +7880,7 @@
        "colors": {
         "shirt": "#ffd100",
         "shirt2": "#111111",
-        "libero": "#e53935"
+        "libero": "#ffffff"
        },
        "liberoEstimated": true,
        "ovr": 56,
@@ -7900,7 +7900,7 @@
         "shirt2": "#111111",
         "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 54,
        "sponsor": "Sari-Sari Serve",
        "searched": true,
@@ -7916,14 +7916,14 @@
        "colors": {
         "shirt": "#550000",
         "shirt2": "#6d14c4",
-        "libero": "#ffd100"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 54,
        "sponsor": "Turon Toss",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Choco Mucho; guiño a «Flying Titans»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Choco Mucho; guiño a «Flying Titans»…"
       },
       {
        "real": "Akari Chargers",
@@ -7934,14 +7934,14 @@
        "colors": {
         "shirt": "#0057b8",
         "shirt2": "#ffd100",
-        "libero": "#e53935"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 52,
        "sponsor": "Chanclas Supersónicas",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Akari; guiño a «Chargers»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Akari; guiño a «Chargers». Líbero…"
       },
       {
        "real": "Savouge Spin Doctors",
@@ -7952,14 +7952,14 @@
        "colors": {
         "shirt": "#6a1b9a",
         "shirt2": "#ffffff",
-        "libero": "#00bcd4"
+        "libero": "#1f3d2b"
        },
        "liberoEstimated": true,
        "ovr": 52,
        "sponsor": "Barberya Spike",
        "searched": true,
        "doubt": null,
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Savouge; guiño a «Spin Doctors»."
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Savouge; guiño a «Spin Doctors». Líbero…"
       },
       {
        "real": "PGJC-Navy Sea Lions",
@@ -7970,9 +7970,9 @@
        "colors": {
         "shirt": "#0a2240",
         "shirt2": "#ffffff",
-        "libero": "#f2c300"
+        "libero": "#ffffff"
        },
-       "liberoEstimated": true,
+       "liberoEstimated": false,
        "ovr": 50,
        "sponsor": "Bangus Net Fishery",
        "searched": true,

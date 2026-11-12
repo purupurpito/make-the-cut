@@ -24,11 +24,11 @@
               "colors": {
                 "shirt": "#1D4E9E",
                 "shirt2": "#FFFFFF",
-                "libero": "#F2C200"
+                "libero": "#6E2338"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 85,
-              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Turones Volley\". Resultado: Ningún resultado con ese nombre; solo sale Tours Volley-Ball. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a los túronos, el pueblo galo que dio nombre a Tours. Verificación: 3º en 2025-26 (fr.wikipedia); OVR 86→85. Colores «blanc et bleu» confirmados en fr.wikipedia. [Integrador: abreviatura TUR → TRN, para que no se repita con otro club del juego.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Turones Volley\". Resultado: Ningún resultado con ese nombre; solo sale Tours Volley-Ball. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a los túronos, el pueblo galo que dio nombre a Tours. Verificación: 3º en 2025-26 (fr.wikipedia); OVR 86→85. Colores «blanc et bleu» confirmados en fr.wikipedia. [Integrador: abreviatura TUR → TRN, para que no se repita con otro club del juego.] Líbero: granate (2026-27, buscado 12-nov-2026: fotos de plantilla CEV Champions League 2027)."
             },
             {
               "real": "Montpellier HSC VB",
@@ -41,11 +41,11 @@
               "colors": {
                 "shirt": "#003C82",
                 "shirt2": "#F58220",
-                "libero": "#FFFFFF"
+                "libero": "#F4F4F4"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 86,
-              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Clapàs Volley» no existe como club ni competición oficial. Método: WebSearch \"Clapàs Volley\" OR \"Volley Clapas\": no sale ningún club (Lo Clapàs es el apodo occitano de Montpellier). Se cambió porque el nombre anterior, «Montpelhièr Volley», chocaba: El buscador lo lleva directo a «Montpellier Volley» (título del artículo de Wikipedia EN del Montpellier HSC VB). «Montpelhièr» es solo la grafía occitana de Montpellier, así que es una traducción del nombre real. (WebSearch \"Montpelhièr Volley\".) Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Montpelhièr Volley\" OR \"Montpelhier Volley\". Resultado: No hay nada con la grafía occitana, pero el club real se llama comúnmente «Montpellier Volley» (así se titula su artículo en Wikipedia). Montpelhièr es el mismo nombre de ciudad en occitano, así que el nombre queda casi idéntico al real (cambian «lh» y la tilde). Propuesta: «Clapas Volley» (Lo Clapàs es el apodo occitano de Montpellier; sin buscar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Montpellier en occitano. Verificación: campeón de Francia 2025-26 (fr.wikipedia); OVR 85→86. [Abreviatura MPL → CLP.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Clapàs Volley» no existe como club ni competición oficial. Método: WebSearch \"Clapàs Volley\" OR \"Volley Clapas\": no sale ningún club (Lo Clapàs es el apodo occitano de Montpellier). Se cambió porque el nombre anterior, «Montpelhièr Volley», chocaba: El buscador lo lleva directo a «Montpellier Volley» (título del artículo de Wikipedia EN del Montpellier HSC VB). «Montpelhièr» es solo la grafía occitana de Montpellier, así que es una traducción del nombre real. (WebSearch \"Montpelhièr Volley\".) Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Montpelhièr Volley\" OR \"Montpelhier Volley\". Resultado: No hay nada con la grafía occitana, pero el club real se llama comúnmente «Montpellier Volley» (así se titula su artículo en Wikipedia). Montpelhièr es el mismo nombre de ciudad en occitano, así que el nombre queda casi idéntico al real (cambian «lh» y la tilde). Propuesta: «Clapas Volley» (Lo Clapàs es el apodo occitano de Montpellier; sin buscar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Montpellier en occitano. Verificación: campeón de Francia 2025-26 (fr.wikipedia); OVR 85→86. [Abreviatura MPL → CLP.] Líbero: blanco con franjas negras y doradas (2026-27, buscado 12-nov-2026: foto de plantilla CEV Champions League 2027)."
             },
             {
               "real": "Tourcoing LM",
@@ -58,11 +58,11 @@
               "colors": {
                 "shirt": "#00843D",
                 "shirt2": "#FFFFFF",
-                "libero": "#F7D417"
+                "libero": "#D7192A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 82,
-              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Tourquennois\". Resultado: No hay ningún club con ese nombre. Salen Tourcoing Lille Métropole VB y US Tourquennoise (club de fútbol, nombre distinto). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Gentilicio de Tourcoing. Verificación: OVR 83→82 para dejar por delante al podio real."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Tourquennois\". Resultado: No hay ningún club con ese nombre. Salen Tourcoing Lille Métropole VB y US Tourquennoise (club de fútbol, nombre distinto). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Gentilicio de Tourcoing. Verificación: OVR 83→82 para dejar por delante al podio real. Líbero: rojo (2025-26, buscado 12-nov-2026: fotos de plantilla CEV Cup 2026)."
             },
             {
               "real": "Alterna Stade Poitevin",
@@ -77,11 +77,11 @@
               "colors": {
                 "shirt": "#111111",
                 "shirt2": "#FFFFFF",
-                "libero": "#E31E24"
+                "libero": "#F2F2F2"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 84,
-              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Pictaves Volley\". Resultado: No hay ningún club con ese nombre. «Pictaves» solo aparece como apodo de los vecinos de Poitiers en un programa de Tours VB. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Se quita el patrocinador Alterna. Guiño a los pictavos (Poitiers); el club se apoda «les Blacks». Verificación: subcampeón 2025-26 (fr.wikipedia); OVR 81→84."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Pictaves Volley\". Resultado: No hay ningún club con ese nombre. «Pictaves» solo aparece como apodo de los vecinos de Poitiers en un programa de Tours VB. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Se quita el patrocinador Alterna. Guiño a los pictavos (Poitiers); el club se apoda «les Blacks». Verificación: subcampeón 2025-26 (fr.wikipedia); OVR 81→84. Líbero: blanco con hombros negros (2025-26, buscado 12-nov-2026: fotos de plantilla CEV Cup 2026). Ojo: casi igual que la 2ª camiseta (#FFFFFF); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "Spacer's Toulouse",
@@ -94,11 +94,11 @@
               "colors": {
                 "shirt": "#0055A4",
                 "shirt2": "#FFFFFF",
-                "libero": "#E4007C"
+                "libero": "#9CC8E8"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 80,
-              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Orbiters Toulouse\". Resultado: No hay ningún club deportivo con ese nombre; solo salen empresas espaciales (Infinite Orbits, Loft Orbital). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a «Spacer's» (del espacio a la órbita)."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Orbiters Toulouse\". Resultado: No hay ningún club deportivo con ese nombre; solo salen empresas espaciales (Infinite Orbits, Loft Orbital). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a «Spacer's» (del espacio a la órbita). Líbero: azul cielo (2026-27, buscado 12-nov-2026: foto del equipo en spacerstoulouse.fr)."
             },
             {
               "real": "Arago de Sète",
@@ -111,11 +111,11 @@
               "colors": {
                 "shirt": "#1B4F9C",
                 "shirt2": "#FFFFFF",
-                "libero": "#E75480"
+                "libero": "#E5559A"
               },
               "liberoEstimated": true,
               "ovr": 80,
-              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Singulière Sète Volley\". Resultado: No hay ningún club con ese nombre. «La Singulière» es un hotel de Sète, y «Île Singulière», el apodo de la ciudad. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño al apodo de Sète, «l'île singulière»; se evita «Arago»."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Singulière Sète Volley\". Resultado: No hay ningún club con ese nombre. «La Singulière» es un hotel de Sète, y «Île Singulière», el apodo de la ciudad. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño al apodo de Sète, «l'île singulière»; se evita «Arago». Líbero probable: rosa (hacia 2022-23, ficha CEV 12769)."
             },
             {
               "real": "Plessis-Robinson VB",
@@ -128,11 +128,11 @@
               "colors": {
                 "shirt": "#F7C600",
                 "shirt2": "#111111",
-                "libero": "#FFFFFF"
+                "libero": "#F2C21B"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 78,
-              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Crusoé Robinson\". Resultado: No sale ningún club deportivo; solo resultados sobre la novela, la ópera y la isla. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a Robinson Crusoe."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Crusoé Robinson\". Resultado: No sale ningún club deportivo; solo resultados sobre la novela, la ópera y la isla. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a Robinson Crusoe. Líbero: amarillo (2025-26, buscado 12-nov-2026: plessisrobinsonvolleyball.fr/effectif). Ojo: casi igual que la 1ª camiseta (#F7C600); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "Volley Mulhouse Alsace",
@@ -145,11 +145,11 @@
               "colors": {
                 "shirt": "#111111",
                 "shirt2": "#D71920",
-                "libero": "#FFFFFF"
+                "libero": "#5E5E5E"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 82,
-              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Mìlhüsa Volley\" OR \"Milhusa Volley\". Resultado: Sin resultados con ese nombre; solo sale Volley Mulhouse Alsace. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Mulhouse en alsaciano. Campeón 2025-26."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Mìlhüsa Volley\" OR \"Milhusa Volley\". Resultado: Sin resultados con ese nombre; solo sale Volley Mulhouse Alsace. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Mulhouse en alsaciano. Campeón 2025-26. Líbero: gris oscuro camuflaje (2026-27, buscado 12-nov-2026: fotos de plantilla CEV Champions League 2027)."
             },
             {
               "real": "Vandœuvre Nancy VB",
@@ -162,11 +162,11 @@
               "colors": {
                 "shirt": "#E5007E",
                 "shirt2": "#111111",
-                "libero": "#FFFFFF"
+                "libero": "#F5F5F5"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 80,
-              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Stanislas Volley Nancy\" OR \"Stanislas Volley\". Resultado: No hay ningún club con ese nombre; en Nancy salen GNVB y VNVB. Solo aparece la asociación deportiva del lycée Stanislas de París, que tiene sección de vóley pero no se llama así. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a la plaza Stanislas de Nancy."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Stanislas Volley Nancy\" OR \"Stanislas Volley\". Resultado: No hay ningún club con ese nombre; en Nancy salen GNVB y VNVB. Solo aparece la asociación deportiva del lycée Stanislas de París, que tiene sección de vóley pero no se llama así. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a la plaza Stanislas de Nancy. Líbero: blanco (2025-26, buscado 12-nov-2026: fotos de plantilla CEV Cup 2026)."
             },
             {
               "real": "Levallois Paris Saint-Cloud",
@@ -179,11 +179,11 @@
               "colors": {
                 "shirt": "#1F3A93",
                 "shirt2": "#E8559A",
-                "libero": "#FFFFFF"
+                "libero": "#E6336F"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 80,
-              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Mariannes de Seine\". Resultado: No sale ninguna entidad deportiva; solo resultados sobre el símbolo de Marianne y el río Sena. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a su apodo, les Mariannes."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Mariannes de Seine\". Resultado: No sale ninguna entidad deportiva; solo resultados sobre el símbolo de Marianne y el río Sena. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a su apodo, les Mariannes. Líbero: rosa frambuesa (2025-26, buscado 12-nov-2026: fotos de plantilla CEV Champions League 2026). Ojo: casi igual que la 2ª camiseta (#E8559A); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "RC Cannes",
@@ -200,7 +200,7 @@
               },
               "liberoEstimated": true,
               "ovr": 78,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia. Resultado: La Wikipedia francesa no devuelve ningún resultado. Confianza menor que con una búsqueda web completa. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a la Croisette de Cannes y al «Racing»."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia. Resultado: La Wikipedia francesa no devuelve ningún resultado. Confianza menor que con una búsqueda web completa. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a la Croisette de Cannes y al «Racing». Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "Volero Le Cannet",
@@ -213,11 +213,11 @@
               "colors": {
                 "shirt": "#5B2C83",
                 "shirt2": "#FFFFFF",
-                "libero": "#F2C200"
+                "libero": "#EED9B8"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 77,
-              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volaro Le Cannet». Nota anterior: […] entre comillas (oleada final 12-nov): «Volaro Le Cannet» no existe como club oficial. Método: WebSearch \"Volaro Le Cannet\". Resultado: Cero resultados con «Volaro». El club real es Volero Le Cannet: cambia una sola letra de una palabra inventada y se lee como guiño, no como el mismo nombre. Nota anterior: Oleadas 11-nov: dudoso. Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia (volleybox dio 403). Resultado: No hay ningún resultado para «Volaro». Pero solo cambia una letra respecto al nombre real, Volero Le Cannet: no es solo una tilde, aunque queda casi igual. Propuesta: «Volantes Le Cannet» o «Riviera Le Cannet Volley» (sin buscar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Una letra cambiada de «Volero»."
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volaro Le Cannet». Nota anterior: […] entre comillas (oleada final 12-nov): «Volaro Le Cannet» no existe como club oficial. Método: WebSearch \"Volaro Le Cannet\". Resultado: Cero resultados con «Volaro». El club real es Volero Le Cannet: cambia una sola letra de una palabra inventada y se lee como guiño, no como el mismo nombre. Nota anterior: Oleadas 11-nov: dudoso. Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia (volleybox dio 403). Resultado: No hay ningún resultado para «Volaro». Pero solo cambia una letra respecto al nombre real, Volero Le Cannet: no es solo una tilde, aunque queda casi igual. Propuesta: «Volantes Le Cannet» o «Riviera Le Cannet Volley» (sin buscar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Una letra cambiada de «Volero». Líbero: beige (2025-26, buscado 12-nov-2026: fotos de plantilla CEV Champions League 2026)."
             }
           ]
         },
@@ -239,11 +239,11 @@
               "colors": {
                 "shirt": "#0057B8",
                 "shirt2": "#FFD200",
-                "libero": "#FFFFFF"
+                "libero": "#D22B2B"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 74,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia. Resultado: Ningún club deportivo usa ese nombre. «Baie des Anges» solo aparece como marina, residencia, premio literario y palco del Allianz Riviera. Confianza menor. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a la Baie des Anges de Niza."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia. Resultado: Ningún club deportivo usa ese nombre. «Baie des Anges» solo aparece como marina, residencia, premio literario y palco del Allianz Riviera. Confianza menor. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a la Baie des Anges de Niza. Líbero: rojo con negro (2026-27, buscado 12-nov-2026: foto de plantilla en nicevolleyball.fr)."
             },
             {
               "real": "AS Cannes VB",
@@ -260,7 +260,7 @@
               },
               "liberoEstimated": true,
               "ovr": 74,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia. Resultado: No hay ningún club que combine Estérel, Cannes y volley; solo salen Saint-Raphaël Var VB y Toulon. Confianza menor. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño al macizo del Estérel, junto a Cannes."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia. Resultado: No hay ningún club que combine Estérel, Cannes y volley; solo salen Saint-Raphaël Var VB y Toulon. Confianza menor. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño al macizo del Estérel, junto a Cannes. Líbero probable: negro con rojo (hacia 2022-23, ficha CEV 12384)."
             },
             {
               "real": "Paris Volley",
@@ -273,11 +273,11 @@
               "colors": {
                 "shirt": "#1C2D5A",
                 "shirt2": "#C9A227",
-                "libero": "#6A2C91"
+                "libero": "#E8DCB0"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 73,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia. Resultado: La Wikipedia francesa no devuelve ningún resultado. Confianza menor. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a la «Ville Lumière»."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia. Resultado: La Wikipedia francesa no devuelve ningún resultado. Confianza menor. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a la «Ville Lumière». Líbero: crema dorado (2026-27, buscado 12-nov-2026: fotos de plantilla CEV Cup 2027)."
             },
             {
               "real": "Narbonne Volley",
@@ -290,11 +290,11 @@
               "colors": {
                 "shirt": "#E6007E",
                 "shirt2": "#111111",
-                "libero": "#FFFFFF"
+                "libero": "#E1251B"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 72,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia. Resultado: Solo salen artículos de historia romana; ningún club ni apodo de equipo. Confianza menor. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a «Centurions» (de centuriones a pretorianos)."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia. Resultado: Solo salen artículos de historia romana; ningún club ni apodo de equipo. Confianza menor. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a «Centurions» (de centuriones a pretorianos). Líbero: rojo con negro (2026-27, buscado 12-nov-2026: camiseta de líbero de la tienda oficial)."
             },
             {
               "real": "Chaumont VB 52",
@@ -307,11 +307,11 @@
               "colors": {
                 "shirt": "#C8102E",
                 "shirt2": "#111111",
-                "libero": "#FFFFFF"
+                "libero": "#F2EFD8"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 72,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Calvimont Volley\" (sin el 52, búsqueda más amplia). Resultado: ningún resultado con ese nombre (solo sale Calcit Volley, Eslovenia). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño al nombre latino de Chaumont (Calvus Mons) y al 52 del departamento."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Calvimont Volley\" (sin el 52, búsqueda más amplia). Resultado: ningún resultado con ese nombre (solo sale Calcit Volley, Eslovenia). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño al nombre latino de Chaumont (Calvus Mons) y al 52 del departamento. Líbero: blanco con manchas amarillas y verdes (2025-26, buscado 12-nov-2026: fotos de plantilla CEV Challenge Cup 2026)."
             },
             {
               "real": "Saint-Nazaire VB",
@@ -324,11 +324,11 @@
               "colors": {
                 "shirt": "#00539F",
                 "shirt2": "#FFFFFF",
-                "libero": "#F39200"
+                "libero": "#F5D90A"
               },
               "liberoEstimated": true,
               "ovr": 70,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Volley Nazairien\". Resultado: ningún club con ese nombre exacto; solo sale Saint-Nazaire Volley-Ball Atlantique. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Gentilicio de Saint-Nazaire."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Volley Nazairien\". Resultado: ningún club con ese nombre exacto; solo sale Saint-Nazaire Volley-Ball Atlantique. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Gentilicio de Saint-Nazaire. Líbero probable: amarillo (2024-25, foto de plantilla CEV Champions League 2025)."
             },
             {
               "real": "GFC Ajaccio Volley",
@@ -341,11 +341,11 @@
               "colors": {
                 "shirt": "#E2001A",
                 "shirt2": "#002F87",
-                "libero": "#FFFFFF"
+                "libero": "#F5F5F5"
               },
               "liberoEstimated": true,
               "ovr": 69,
-              "check": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Aiacciu Volley». Nota anterior: […] como libre (oleada final 12-nov): DUDOSO. Método: WebSearch \"Aiacciu Volley\". Resultado: No existe ningún club oficial con ese nombre, pero «Aiacciu» es Ajaccio en corso y la prensa corsa (Corse Net Infos, crónicas en corso) llama así al GFC Ajaccio Volley. El oficial es «GFC Ajaccio Volley-Ball»: no es igual (falta GFC), aunque es casi una traducción. Alternativa sin buscar: «Aiacciu Isula Volley». Nota anterior: Patrocinadores 11-nov: dudoso. Método: WebSearch \"Aiacciu Volley\". Resultado: no hay club con esa grafía, pero «Aiacciu» es Ajaccio en corso y el club real figura en el registro SIRENE como «Ajaccio Volley Ball»: queda casi idéntico al real (igual que pasa con Montpelhièr). Propuesta: «Cità Imperiale Volley» (Ajaccio, ciudad imperial de Napoleón; sin buscar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Ajaccio en corso. Bajó de la 1ª en 2025-26."
+              "check": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Aiacciu Volley». Nota anterior: […] como libre (oleada final 12-nov): DUDOSO. Método: WebSearch \"Aiacciu Volley\". Resultado: No existe ningún club oficial con ese nombre, pero «Aiacciu» es Ajaccio en corso y la prensa corsa (Corse Net Infos, crónicas en corso) llama así al GFC Ajaccio Volley. El oficial es «GFC Ajaccio Volley-Ball»: no es igual (falta GFC), aunque es casi una traducción. Alternativa sin buscar: «Aiacciu Isula Volley». Nota anterior: Patrocinadores 11-nov: dudoso. Método: WebSearch \"Aiacciu Volley\". Resultado: no hay club con esa grafía, pero «Aiacciu» es Ajaccio en corso y el club real figura en el registro SIRENE como «Ajaccio Volley Ball»: queda casi idéntico al real (igual que pasa con Montpelhièr). Propuesta: «Cità Imperiale Volley» (Ajaccio, ciudad imperial de Napoleón; sin buscar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Ajaccio en corso. Bajó de la 1ª en 2025-26. Líbero probable: blanco (2025-26, fotos de partidos en corsenetinfos.corsica)."
             },
             {
               "real": "Béziers VB",
@@ -358,11 +358,11 @@
               "colors": {
                 "shirt": "#0B1F4B",
                 "shirt2": "#2F80ED",
-                "libero": "#F2994A"
+                "libero": "#2A62D0"
               },
               "liberoEstimated": true,
               "ovr": 73,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Anges Biterrois\". Resultado: ningún club; solo sale un grupo de business angels de Béziers (no deportivo). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a su apodo «Angels» y gentilicio de Béziers."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Anges Biterrois\". Resultado: ningún club; solo sale un grupo de business angels de Béziers (no deportivo). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a su apodo «Angels» y gentilicio de Béziers. Líbero probable: azul royal (2023-24, ficha CEV 13187). Ojo: casi igual que la 2ª camiseta (#2F80ED); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "Bordeaux-Mérignac Volley",
@@ -375,11 +375,11 @@
               "colors": {
                 "shirt": "#7A1F3D",
                 "shirt2": "#1B2A4A",
-                "libero": "#F2C94C"
+                "libero": "#E9A83C"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 71,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Burdigala Volley\". Resultado: ningún club con ese nombre; ojo: el apodo real «Burdis» viene de Burdigala, así que el guiño es cercano pero no coincide. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Burdigala, nombre latino de Burdeos (y guiño a «Burdis»)."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Burdigala Volley\". Resultado: ningún club con ese nombre; ojo: el apodo real «Burdis» viene de Burdigala, así que el guiño es cercano pero no coincide. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Burdigala, nombre latino de Burdeos (y guiño a «Burdis»). Líbero: mostaza (2026-27, buscado 12-nov-2026: foto del equipo en burdis-volley.fr)."
             },
             {
               "real": "Terville Florange OC",
@@ -392,11 +392,11 @@
               "colors": {
                 "shirt": "#0050A0",
                 "shirt2": "#FFFFFF",
-                "libero": "#F7D417"
+                "libero": "#F4F4F4"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 69,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Fensch Volley\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño al valle de la Fensch, donde están Terville y Florange."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Fensch Volley\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño al valle de la Fensch, donde están Terville y Florange. Líbero: blanco (2026-27, buscado 12-nov-2026: foto oficial en tfoc.fr). Ojo: casi igual que la 2ª camiseta (#FFFFFF); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "VBC Chamalières",
@@ -411,9 +411,9 @@
                 "shirt2": "#FFFFFF",
                 "libero": "#1A1A1A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 69,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Arvernes Chamalières\". Resultado: ningún club; solo resultados de historia y turismo. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a los arvernos (Auvernia)."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Arvernes Chamalières\". Resultado: ningún club; solo resultados de historia y turismo. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Guiño a los arvernos (Auvernia). Líbero: negro con naranja (2026-27, buscado 12-nov-2026: foto oficial en volley-ball-chamalieres.fr)."
             }
           ]
         }
@@ -442,11 +442,11 @@
               "colors": {
                 "shirt": "#003B7A",
                 "shirt2": "#FFFFFF",
-                "libero": "#F39200"
+                "libero": "#F2C230"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 84,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Lüne Giganten\". Resultado: ningún club; solo Kloster Lüne y Lüneburger Heide. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a su apodo «LüneHünen» (Hünen = gigantes). 1º de la liga regular 2025-26. Verificación: OVR 85→84 (el campeón fue Berlín)."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Lüne Giganten\". Resultado: ningún club; solo Kloster Lüne y Lüneburger Heide. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a su apodo «LüneHünen» (Hünen = gigantes). 1º de la liga regular 2025-26. Verificación: OVR 85→84 (el campeón fue Berlín). Líbero: amarillo oro (2025-26; en 2026-27 rojo, buscado 12-nov-2026: nota del club svg-lueneburg.de (15-ago-2025))."
             },
             {
               "real": "Berlin Recycling Volleys",
@@ -463,9 +463,9 @@
                 "shirt2": "#231F20",
                 "libero": "#FFFFFF"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 86,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Spreeathen Volley\". Resultado: ningún club ni equipo con ese nombre. Antes «Berliner Orangen» (BRO), cambiado porque guiñaba al naranja de Berlin Recycling. Guiño a «Spree-Athen», apodo clásico de Berlín. Contrastado con las listas oficiales 2025-26 (VBL vía the-sports.org y Sportschau): no coincide. Verificación: campeón de Alemania 2026 (de.wikipedia); OVR 85→86. [Abreviatura BRO → SPR; comprobado que SPR no la usa otro club de notes/clubes.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Spreeathen Volley\". Resultado: ningún club ni equipo con ese nombre. Antes «Berliner Orangen» (BRO), cambiado porque guiñaba al naranja de Berlin Recycling. Guiño a «Spree-Athen», apodo clásico de Berlín. Contrastado con las listas oficiales 2025-26 (VBL vía the-sports.org y Sportschau): no coincide. Verificación: campeón de Alemania 2026 (de.wikipedia); OVR 85→86. [Abreviatura BRO → SPR; comprobado que SPR no la usa otro club de notes/clubes.] Líbero: blanco con naranja (2025-26 y 2026-27, buscado 12-nov-2026: tienda oficial (Trikot 2025-26 Libero) y foto de equipo)."
             },
             {
               "real": "VfB Friedrichshafen",
@@ -478,11 +478,11 @@
               "colors": {
                 "shirt": "#0058B0",
                 "shirt2": "#FFFFFF",
-                "libero": "#FFD100"
+                "libero": "#1A1A1A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 82,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Zeppeliner Volley\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a los zepelines, nacidos en Friedrichshafen."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Zeppeliner Volley\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a los zepelines, nacidos en Friedrichshafen. Líbero: negro con naranja (2026-27, buscado 12-nov-2026: nota del club (9-oct-2026) y foto del equipo)."
             },
             {
               "real": "SWD Powervolleys Düren",
@@ -497,11 +497,11 @@
               "colors": {
                 "shirt": "#099DAD",
                 "shirt2": "#000000",
-                "libero": "#F5A623"
+                "libero": "#1AA3A8"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 82,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Rur Power Düren\". Resultado: ningún club; solo RWE Power (empresa energética de la zona, nombre distinto). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador SWD. Guiño a «Power» y al río Rur."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Rur Power Düren\". Resultado: ningún club; solo RWE Power (empresa energética de la zona, nombre distinto). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador SWD. Guiño a «Power» y al río Rur. Líbero: turquesa (2026-27, buscado 12-nov-2026: foto de equipo en swd-powervolleys.de). Ojo: casi igual que la 1ª camiseta (#099DAD); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "Helios Grizzlys Giesen",
@@ -516,11 +516,11 @@
               "colors": {
                 "shirt": "#00843D",
                 "shirt2": "#FFFFFF",
-                "libero": "#FDB913"
+                "libero": "#FFFFFF"
               },
               "liberoEstimated": true,
               "ovr": 78,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Giesen Kodiaks\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador Helios. Guiño a «Grizzlys» (otro oso)."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Giesen Kodiaks\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador Helios. Guiño a «Grizzlys» (otro oso). Líbero probable: blanco (2023-24, foto de equipo en giesengrizzlys.de). Ojo: casi igual que la 2ª camiseta (#FFFFFF); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "Barock Volleys MTV Ludwigsburg",
@@ -533,11 +533,11 @@
               "colors": {
                 "shirt": "#D2001E",
                 "shirt2": "#FFFFFF",
-                "libero": "#1A1A1A"
+                "libero": "#3DAE3B"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 75,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Rokoko Volleys\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a «Barock» (barroco → rococó)."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Rokoko Volleys\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a «Barock» (barroco → rococó). Líbero: verde (2025-26, buscado 12-nov-2026: página de pedido de camisetas del club)."
             },
             {
               "real": "Allianz MTV Stuttgart",
@@ -552,11 +552,11 @@
               "colors": {
                 "shirt": "#1352A5",
                 "shirt2": "#FFFFFF",
-                "libero": "#FF0000"
+                "libero": "#F04E23"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 83,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Kessel Volley Stuttgart\". Resultado: ningún club con ese nombre (solo sale Allianz MTV Stuttgart, antes «Allianz Volley Stuttgart»). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador Allianz. Guiño al «Kessel» (el valle-caldera de Stuttgart). Verificación: OVR 84→83 (la campeona fue Suhl)."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Kessel Volley Stuttgart\". Resultado: ningún club con ese nombre (solo sale Allianz MTV Stuttgart, antes «Allianz Volley Stuttgart»). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador Allianz. Guiño al «Kessel» (el valle-caldera de Stuttgart). Verificación: OVR 84→83 (la campeona fue Suhl). Líbero: naranja rojizo (2025-26, buscado 12-nov-2026: tienda del club (Libera-Version Home))."
             },
             {
               "real": "VfB Suhl Lotto Thüringen",
@@ -571,11 +571,11 @@
               "colors": {
                 "shirt": "#004A59",
                 "shirt2": "#8ED1FC",
-                "libero": "#111111"
+                "libero": "#1E2A4A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 84,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Rennsteig Volley Suhl\". Resultado: ningún club con ese nombre (solo VfB Suhl y un club de MTB «Rennsteig»). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador (Lotto Thüringen). Guiño al Rennsteig, la ruta del bosque de Turingia. Verificación: campeón de Alemania 2025-26 (de.wikipedia); OVR 81→84. Colores siguen sin fuente fiable (Brandfetch puede ser la marca del patrocinador)."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Rennsteig Volley Suhl\". Resultado: ningún club con ese nombre (solo VfB Suhl y un club de MTB «Rennsteig»). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador (Lotto Thüringen). Guiño al Rennsteig, la ruta del bosque de Turingia. Verificación: campeón de Alemania 2025-26 (de.wikipedia); OVR 81→84. Colores siguen sin fuente fiable (Brandfetch puede ser la marca del patrocinador). Líbero: azul marino (2026-27, buscado 12-nov-2026: retratos en volleyball-suhl.de). Ojo: casi igual que la 1ª camiseta (#004A59); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "SSC Palmberg Schwerin",
@@ -590,11 +590,11 @@
               "colors": {
                 "shirt": "#F5E100",
                 "shirt2": "#1E3FA8",
-                "libero": "#FFFFFF"
+                "libero": "#1F5FC0"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 81,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Schloss Volley Schwerin\". Resultado: ningún club con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador Palmberg. Guiño al castillo de Schwerin."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Schloss Volley Schwerin\". Resultado: ningún club con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador Palmberg. Guiño al castillo de Schwerin. Líbero: azul (2025-26, buscado 12-nov-2026: retratos en schweriner-sc.com). Ojo: casi igual que la 2ª camiseta (#1E3FA8); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "Dresdner SC",
@@ -607,11 +607,11 @@
               "colors": {
                 "shirt": "#111111",
                 "shirt2": "#C8102E",
-                "libero": "#FFFFFF"
+                "libero": "#1C2A4A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 80,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Elbflorenz Volley\". Resultado: ningún club de vóley; existe HC Elbflorenz (balonmano), nombre distinto. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño al apodo de Dresde, «Elbflorenz». Verificación: colores del club «Schwarz-Rot» confirmados en de.wikipedia (ya no son estimados)."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Elbflorenz Volley\". Resultado: ningún club de vóley; existe HC Elbflorenz (balonmano), nombre distinto. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño al apodo de Dresde, «Elbflorenz». Verificación: colores del club «Schwarz-Rot» confirmados en de.wikipedia (ya no son estimados). Líbero: azul marino (2026-27, buscado 12-nov-2026: foto de equipo en dscvolley.de). Ojo: casi igual que la 1ª camiseta (#111111); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "USC Münster",
@@ -628,7 +628,7 @@
               },
               "liberoEstimated": true,
               "ovr": 76,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Volley Monasterium\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Monasterium, nombre latino de Münster."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Volley Monasterium\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Monasterium, nombre latino de Münster. Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "Ladies in Black Aachen",
@@ -641,11 +641,11 @@
               "colors": {
                 "shirt": "#111111",
                 "shirt2": "#FFFFFF",
-                "libero": "#E4007C"
+                "libero": "#F39A4A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 76,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Aquis Schwarz\". Resultado: ningún club; solo Aquis Exchange, Oris Aquis y Aquis Plaza (Aquisgrán), nada de vóley. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a «in Black» y a Aquisgrán (Aquis Granum)."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Aquis Schwarz\". Resultado: ningún club; solo Aquis Exchange, Oris Aquis y Aquis Plaza (Aquisgrán), nada de vóley. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a «in Black» y a Aquisgrán (Aquis Granum). Líbero: naranja (2026-27, buscado 12-nov-2026: foto de equipo en ladies-in-black.de)."
             }
           ]
         },
@@ -669,11 +669,11 @@
               "colors": {
                 "shirt": "#1B365D",
                 "shirt2": "#FFFFFF",
-                "libero": "#F39200"
+                "libero": "#1F3A7A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 72,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Ammersee Wellenbrecher\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador WWK. Guiño al lago Ammersee. En 2026-27 se fusiona con Unterhaching."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Ammersee Wellenbrecher\". Resultado: ningún resultado con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador WWK. Guiño al lago Ammersee. En 2026-27 se fusiona con Unterhaching. Líbero: azul marino (2026-27, buscado 12-nov-2026: foto de equipo del club). Ojo: casi igual que la 1ª camiseta (#1B365D); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "FT 1844 Freiburg",
@@ -690,7 +690,7 @@
               },
               "liberoEstimated": true,
               "ovr": 71,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Schwarzwald Volley Freiburg\". Resultado: ningún club con ese nombre (solo FT 1844 Freiburg). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a la Selva Negra."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Schwarzwald Volley Freiburg\". Resultado: ningún club con ese nombre (solo FT 1844 Freiburg). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a la Selva Negra. Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "Netzhoppers KW",
@@ -707,7 +707,7 @@
               },
               "liberoEstimated": true,
               "ovr": 70,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Netzspringer KW\" OR \"Netzspringer Königs Wusterhausen\". Resultado: ningún resultado con ese nombre. Ojo: es casi traducción literal de «Netzhoppers»; dudoso por parecido, no por coincidencia. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a «Netzhoppers» (hopper → springer)."
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Netzspringer KW\" OR \"Netzspringer Königs Wusterhausen\". Resultado: ningún resultado con ese nombre. Ojo: es casi traducción literal de «Netzhoppers»; dudoso por parecido, no por coincidencia. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a «Netzhoppers» (hopper → springer). Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "Baden Volleys SSC Karlsruhe",
@@ -720,11 +720,11 @@
               "colors": {
                 "shirt": "#FFD500",
                 "shirt2": "#E2001A",
-                "libero": "#1A1A1A"
+                "libero": "#E8EAEE"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 69,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebSearch agotado (cupo de sesión); WebFetch búsqueda Wikipedia de (volleybox devuelve 403). Resultado: de.wikipedia: 0 resultados para \"Fächerstadt Volleys\". Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a Karlsruhe, la «Fächerstadt» (ciudad abanico)."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebSearch agotado (cupo de sesión); WebFetch búsqueda Wikipedia de (volleybox devuelve 403). Resultado: de.wikipedia: 0 resultados para \"Fächerstadt Volleys\". Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a Karlsruhe, la «Fächerstadt» (ciudad abanico). Líbero: blanco o gris muy claro (2026-27, buscado 12-nov-2026: retratos en volleyball-karlsruhe.de)."
             },
             {
               "real": "TSV Unterhaching",
@@ -741,7 +741,7 @@
               },
               "liberoEstimated": true,
               "ovr": 68,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para \"Isar Volleys\". Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño al río Isar, de Múnich."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para \"Isar Volleys\". Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño al río Isar, de Múnich. Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "SV Warnemünde",
@@ -758,7 +758,7 @@
               },
               "liberoEstimated": true,
               "ovr": 66,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para \"Leuchtturm Volley\". Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño al faro de Warnemünde."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para \"Leuchtturm Volley\". Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño al faro de Warnemünde. Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "1. VC Wiesbaden",
@@ -771,11 +771,11 @@
               "colors": {
                 "shirt": "#C8102E",
                 "shirt2": "#FFFFFF",
-                "libero": "#111111"
+                "libero": "#F0306E"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 71,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para \"Kurstadt Volley\". Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a Wiesbaden como ciudad balneario (Kurstadt)."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para \"Kurstadt Volley\". Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a Wiesbaden como ciudad balneario (Kurstadt). Líbero: rosa fucsia (2026-27, buscado 12-nov-2026: foto de equipo en vc-wiesbaden.de)."
             },
             {
               "real": "Schwarz-Weiß Erfurt",
@@ -788,11 +788,11 @@
               "colors": {
                 "shirt": "#111111",
                 "shirt2": "#FFFFFF",
-                "libero": "#E4002B"
+                "libero": "#2E9E5B"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 69,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para Domvolleys. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a la catedral (Dom) de Erfurt."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para Domvolleys. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño a la catedral (Dom) de Erfurt. Líbero: verde (2026-27, buscado 12-nov-2026: galería 2026-27 del club)."
             },
             {
               "real": "Binder Blaubären TSV Flacht",
@@ -807,11 +807,11 @@
               "colors": {
                 "shirt": "#1D4FA0",
                 "shirt2": "#FFFFFF",
-                "libero": "#F2C200"
+                "libero": "#FFFFFF"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 65,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para \"Blaufüchse\" Volleyball; no guiña al patrocinador Binder. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador Binder. Guiño a «Blaubären» (de oso azul a zorro azul)."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para \"Blaufüchse\" Volleyball; no guiña al patrocinador Binder. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Se quita el patrocinador Binder. Guiño a «Blaubären» (de oso azul a zorro azul). Líbero: blanco (2025-26, buscado 12-nov-2026: foto de equipo en binderblaubaeren.de). Ojo: casi igual que la 2ª camiseta (#FFFFFF); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "Skurios Volleys Borken",
@@ -828,9 +828,9 @@
                 "shirt2": "#1A1A1A",
                 "libero": "#FFFFFF"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 64,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Aa-Volleys Borken\" OR \"Aa Volleys Borken\". Resultado: ningún club con ese nombre (solo sale Skurios Volleys Borken y el río Bocholter Aa). Antes «Borkener Kuriosen» (BKK), cambiado porque guiñaba al patrocinador Skurios. Guiño al río Bocholter Aa, que cruza Borken. Contrastado con las listas oficiales 2025-26 (VBL vía the-sports.org y Sportschau): no coincide. [Abreviatura BKK → AAV; comprobado que AAV no la usa otro club de notes/clubes.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Aa-Volleys Borken\" OR \"Aa Volleys Borken\". Resultado: ningún club con ese nombre (solo sale Skurios Volleys Borken y el río Bocholter Aa). Antes «Borkener Kuriosen» (BKK), cambiado porque guiñaba al patrocinador Skurios. Guiño al río Bocholter Aa, que cruza Borken. Contrastado con las listas oficiales 2025-26 (VBL vía the-sports.org y Sportschau): no coincide. [Abreviatura BKK → AAV; comprobado que AAV no la usa otro club de notes/clubes.] Líbero: blanco con hombros azules (2025-26, buscado 12-nov-2026: foto de equipo del club)."
             },
             {
               "real": "ETV Hamburg",
@@ -847,7 +847,7 @@
               },
               "liberoEstimated": true,
               "ovr": 62,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para \"Elbhafen Volley\". Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño al puerto del Elba."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia de (WebSearch agotado, volleybox 403). Resultado: de.wikipedia: 0 resultados para \"Elbhafen Volley\". Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (tablas de la VBL vía the-sports.org y Sportschau): no coincide con ninguno. Guiño al puerto del Elba. Líbero: no encontrado en internet (12-nov-2026)."
             }
           ]
         }
@@ -878,11 +878,11 @@
               "colors": {
                 "shirt": "#FFE900",
                 "shirt2": "#002FA7",
-                "libero": "#E4002B"
+                "libero": "#FFFFFF"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 75,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Voley Roque Nublo\". Resultado: ningún club con ese nombre; solo sale el monolito. Antes «Guagüeros Las Palmas» (GUA), cambiado porque guiñaba a Guaguas Municipales, patrocinador principal del club (WebSearch confirma el acuerdo de patrocinio renovado en 2025). Guiño al Roque Nublo, símbolo de Gran Canaria. Contrastado con las listas oficiales 2025-26 (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide. Campeón de la Superliga 2025-26. Verificación: camiseta amarilla con pantalón azul confirmada en es.wikipedia. [Abreviatura GUA → RNB; comprobado que RNB no la usa otro club de notes/clubes.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Voley Roque Nublo\". Resultado: ningún club con ese nombre; solo sale el monolito. Antes «Guagüeros Las Palmas» (GUA), cambiado porque guiñaba a Guaguas Municipales, patrocinador principal del club (WebSearch confirma el acuerdo de patrocinio renovado en 2025). Guiño al Roque Nublo, símbolo de Gran Canaria. Contrastado con las listas oficiales 2025-26 (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide. Campeón de la Superliga 2025-26. Verificación: camiseta amarilla con pantalón azul confirmada en es.wikipedia. [Abreviatura GUA → RNB; comprobado que RNB no la usa otro club de notes/clubes.] Líbero: blanco con ribetes amarillos (2025-26, buscado 12-nov-2026: fotos de rtvc.es y clubvoleibolguaguas.com)."
             },
             {
               "real": "Grupo Herce Soria",
@@ -897,11 +897,11 @@
               "colors": {
                 "shirt": "#7A1E48",
                 "shirt2": "#FFFFFF",
-                "libero": "#F2C200"
+                "libero": "#1A1A1A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 73,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Grupo Herce. Guiño a Numancia. [Integrador, búsqueda web 11-nov-2026: «\"Voley Numantia\"»: sin club con ese nombre.]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Grupo Herce. Guiño a Numancia. [Integrador, búsqueda web 11-nov-2026: «\"Voley Numantia\"»: sin club con ese nombre.] Líbero: negro con naranja (2024-25, buscado 12-nov-2026: foto de elmirondesoria.es (feb-2025))."
             },
             {
               "real": "CV Melilla",
@@ -914,11 +914,11 @@
               "colors": {
                 "shirt": "#2E64FE",
                 "shirt2": "#FFFFFF",
-                "libero": "#F2C200"
+                "libero": "#FFFFFF"
               },
               "liberoEstimated": true,
               "ovr": 71,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: único resultado «Cultura de Melilla» (Vía Rusadir, Camino de Santiago); ningún club Rusadir. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Rusadir, nombre antiguo de Melilla. Tiene equipo en las dos ligas: cuenta una vez."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: único resultado «Cultura de Melilla» (Vía Rusadir, Camino de Santiago); ningún club Rusadir. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Rusadir, nombre antiguo de Melilla. Tiene equipo en las dos ligas: cuenta una vez. Líbero probable: blanco (2025-26, foto de rtvc.es (final de mayo de 2026)). Ojo: casi igual que la 2ª camiseta (#FFFFFF); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "Conectabalear CV Manacor",
@@ -933,11 +933,11 @@
               "colors": {
                 "shirt": "#E60026",
                 "shirt2": "#000000",
-                "libero": "#9B59B6"
+                "libero": "#8E5CC8"
               },
               "liberoEstimated": false,
               "ovr": 70,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Conectabalear. Es el ejemplo de Ferran. Ojo: su web es voleimanacor.club, así que el club usa «Volei Manacor» de forma informal. [Integrador, búsqueda web 11-nov-2026: «\"Vòlei Manacor\"»: solo sale el club real, CV Manacor (Club Voleibol Manacor). No es su nombre oficial, pero es casi igual: ⚠ decide Ferran (es su ejemplo).]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Conectabalear. Es el ejemplo de Ferran. Ojo: su web es voleimanacor.club, así que el club usa «Volei Manacor» de forma informal. [Integrador, búsqueda web 11-nov-2026: «\"Vòlei Manacor\"»: solo sale el club real, CV Manacor (Club Voleibol Manacor). No es su nombre oficial, pero es casi igual: ⚠ decide Ferran (es su ejemplo).] Líbero: morado con rayas blancas (2025-26, buscado 12-nov-2026: foto de campeones de Copa en rtvc.es)."
             },
             {
               "real": "Cisneros La Laguna",
@@ -950,11 +950,11 @@
               "colors": {
                 "shirt": "#1F4E9E",
                 "shirt2": "#FFFFFF",
-                "libero": "#F39200"
+                "libero": "#4FA8E0"
               },
               "liberoEstimated": true,
               "ovr": 67,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Aguere, nombre guanche de La Laguna. [Integrador, búsqueda web 11-nov-2026: «Voley Aguere» chocaba con un club real de La Laguna, el CV Aguere (Club Voleibol Aguere, campeón de la Superliga Femenina 2009-10). Pasa a «Voley Lagunero» (gentilicio de La Laguna); búsqueda «\"Voley Lagunero\"»: sin club con ese nombre.]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Aguere, nombre guanche de La Laguna. [Integrador, búsqueda web 11-nov-2026: «Voley Aguere» chocaba con un club real de La Laguna, el CV Aguere (Club Voleibol Aguere, campeón de la Superliga Femenina 2009-10). Pasa a «Voley Lagunero» (gentilicio de La Laguna); búsqueda «\"Voley Lagunero\"»: sin club con ese nombre.] Líbero probable: celeste (2026-27, foto de rtvc.es (oct-2026))."
             },
             {
               "real": "Pamesa Teruel Voleibol",
@@ -971,9 +971,9 @@
                 "shirt2": "#1A1A1A",
                 "libero": "#FFFFFF"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 67,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: 0 resultados para \"Voley Turia\"/\"Voleibol Turia\". Aviso: Wikipedia no cubre clubes modestos; no se pudo descartar un «CV Turia» local de base en Valencia/Teruel. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Pamesa. Variante que propone Ferran (el Turia nace en Teruel). Verificación: buscado «\"Voley Turia\" club voleibol» (1 búsqueda, la única que permitió el cupo): ningún club con ese nombre exacto; el más parecido es el CV Camp de Turia (Valencia, regional). OK."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: 0 resultados para \"Voley Turia\"/\"Voleibol Turia\". Aviso: Wikipedia no cubre clubes modestos; no se pudo descartar un «CV Turia» local de base en Valencia/Teruel. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Pamesa. Variante que propone Ferran (el Turia nace en Teruel). Verificación: buscado «\"Voley Turia\" club voleibol» (1 búsqueda, la única que permitió el cupo): ningún club con ese nombre exacto; el más parecido es el CV Camp de Turia (Valencia, regional). OK. Líbero: blanco (2024-25, buscado 12-nov-2026: foto de sportaragon.com (feb-2025))."
             },
             {
               "real": "Avarca de Menorca",
@@ -988,11 +988,11 @@
               "colors": {
                 "shirt": "#C8102E",
                 "shirt2": "#FFFFFF",
-                "libero": "#1A1A1A"
+                "libero": "#1B2A4A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 73,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia ca (WebSearch agotado, volleybox 403). Resultado: ca.wikipedia: ningún club con ese nombre (único resultado irrelevante «2019»). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador (Avarca de Menorca). Gentilicio de Ciutadella. 1º de la liga regular 2025-26. Verificación: 1º de la liga regular 2025-26 (RFEVB/dataproject); OVR 72→73."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia ca (WebSearch agotado, volleybox 403). Resultado: ca.wikipedia: ningún club con ese nombre (único resultado irrelevante «2019»). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador (Avarca de Menorca). Gentilicio de Ciutadella. 1º de la liga regular 2025-26. Verificación: 1º de la liga regular 2025-26 (RFEVB/dataproject); OVR 72→73. Líbero: azul marino (2025-26, buscado 12-nov-2026: fotos de menorca.info)."
             },
             {
               "real": "Fundación Cajasol Andalucía",
@@ -1007,11 +1007,11 @@
               "colors": {
                 "shirt": "#00843D",
                 "shirt2": "#FFFFFF",
-                "libero": "#F2C200"
+                "libero": "#E0409A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 72,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Cajasol. Hispalis, nombre romano de Sevilla. Verificación: 2º de la liga regular y campeón 2025-26 según es.wikipedia (que lo llama «F. Unicaja Andalucía VB», Dos Hermanas; dataproject lo llama «Fundación Cajasol Andalucía»: nombre y ciudad por confirmar); OVR 70→72. [Integrador, búsqueda web 11-nov-2026: «\"Voley Hispalis\"»: sin club con ese nombre.]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Cajasol. Hispalis, nombre romano de Sevilla. Verificación: 2º de la liga regular y campeón 2025-26 según es.wikipedia (que lo llama «F. Unicaja Andalucía VB», Dos Hermanas; dataproject lo llama «Fundación Cajasol Andalucía»: nombre y ciudad por confirmar); OVR 70→72. [Integrador, búsqueda web 11-nov-2026: «\"Voley Hispalis\"»: sin club con ese nombre.] Líbero: rosa fucsia (2025-26, buscado 12-nov-2026: fotos de cev.eu (mayo de 2026))."
             },
             {
               "real": "Emalsa Gran Canaria",
@@ -1026,11 +1026,11 @@
               "colors": {
                 "shirt": "#FFD100",
                 "shirt2": "#005BAC",
-                "libero": "#FFFFFF"
+                "libero": "#C9B3E6"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 70,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Emalsa. Tamarán, nombre aborigen de Gran Canaria. [Integrador, búsqueda web 11-nov-2026: sin club con ese nombre.]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Emalsa. Tamarán, nombre aborigen de Gran Canaria. [Integrador, búsqueda web 11-nov-2026: sin club con ese nombre.] Líbero: lila (2026-27, buscado 12-nov-2026: foto de rtvc.es (oct-2026))."
             },
             {
               "real": "Heidelberg Volkswagen",
@@ -1045,11 +1045,11 @@
               "colors": {
                 "shirt": "#005BAC",
                 "shirt2": "#FFFFFF",
-                "libero": "#F39200"
+                "libero": "#1A1A1A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 69,
-              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Voley Vegueta\". Resultado: ningún club con ese nombre (solo sale La Vegueta, pueblo de Lanzarote). Antes «Heidelgrán Voley» (HDG), cambiado por indicación de Ferran (guiñaba al nombre comercial Heidelberg). Guiño a Vegueta, el barrio fundacional de Las Palmas de Gran Canaria, ciudad del club. Contrastado con las listas oficiales 2025-26 (RFEVB dataproject): no coincide. [Abreviatura HDG → VEG; comprobado que VEG no la usa otro club de notes/clubes.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (patrocinadores 11-nov): no existe. Método: WebSearch \"Voley Vegueta\". Resultado: ningún club con ese nombre (solo sale La Vegueta, pueblo de Lanzarote). Antes «Heidelgrán Voley» (HDG), cambiado por indicación de Ferran (guiñaba al nombre comercial Heidelberg). Guiño a Vegueta, el barrio fundacional de Las Palmas de Gran Canaria, ciudad del club. Contrastado con las listas oficiales 2025-26 (RFEVB dataproject): no coincide. [Abreviatura HDG → VEG; comprobado que VEG no la usa otro club de notes/clubes.] Líbero: negro (2025-26, buscado 12-nov-2026: fotos de rtvc.es (marzo de 2026))."
             },
             {
               "real": "OCISA Haro Rioja Voley",
@@ -1064,11 +1064,11 @@
               "colors": {
                 "shirt": "#7B1E3A",
                 "shirt2": "#FFFFFF",
-                "libero": "#F2C200"
+                "libero": "#E86A92"
               },
               "liberoEstimated": true,
               "ovr": 68,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: solo aparece Club Voleibol Haro (Haro Rioja Vóley); ninguno con «Jarrero». Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador OCISA. «Jarrero», gentilicio de Haro."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: solo aparece Club Voleibol Haro (Haro Rioja Vóley); ninguno con «Jarrero». Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador OCISA. «Jarrero», gentilicio de Haro. Líbero probable: rosa (2025-26, foto de menorca.info (oct-2025))."
             },
             {
               "real": "DSV CV Sant Cugat",
@@ -1087,7 +1087,7 @@
               },
               "liberoEstimated": true,
               "ovr": 67,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia ca (WebSearch agotado, volleybox 403). Resultado: ca.wikipedia: «Santcugatenc» solo redirige a Sant Cugat del Vallès como gentilicio; ningún club con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador DSV. Gentilicio de Sant Cugat."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia ca (WebSearch agotado, volleybox 403). Resultado: ca.wikipedia: «Santcugatenc» solo redirige a Sant Cugat del Vallès como gentilicio; ningún club con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador DSV. Gentilicio de Sant Cugat. Líbero: no encontrado en internet (12-nov-2026)."
             }
           ]
         },
@@ -1109,11 +1109,11 @@
               "colors": {
                 "shirt": "#F28C00",
                 "shirt2": "#1A1A1A",
-                "libero": "#FFFFFF"
+                "libero": "#F4B6C4"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 64,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia ca (WebSearch agotado, volleybox 403). Resultado: ca.wikipedia: solo menciones históricas (Palma, Poblet); ningún club. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Guiño a Jaume I «el Conqueridor»."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia ca (WebSearch agotado, volleybox 403). Resultado: ca.wikipedia: solo menciones históricas (Palma, Poblet); ningún club. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Guiño a Jaume I «el Conqueridor». Líbero: rosa claro (2025-26, buscado 12-nov-2026: foto de elperiodic.com (dic-2025))."
             },
             {
               "real": "Unicaja Costa de Almería",
@@ -1132,7 +1132,7 @@
               },
               "liberoEstimated": true,
               "ovr": 63,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Unicaja. El indalo es el símbolo de Almería. [Integrador, búsqueda web 11-nov-2026: «\"Voley Indalo\"»: sin club con ese nombre.]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Unicaja. El indalo es el símbolo de Almería. [Integrador, búsqueda web 11-nov-2026: «\"Voley Indalo\"»: sin club con ese nombre.] Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "UC3M Voleibol Leganés",
@@ -1151,7 +1151,7 @@
               },
               "liberoEstimated": true,
               "ovr": 62,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: Club Voleibol Leganés y Leganés (gentilicio «pepinero»); ningún club con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita la universidad patrocinadora. «Pepineros», apodo de Leganés. Tiene equipo en las dos ligas: cuenta una vez."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: Club Voleibol Leganés y Leganés (gentilicio «pepinero»); ningún club con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita la universidad patrocinadora. «Pepineros», apodo de Leganés. Tiene equipo en las dos ligas: cuenta una vez. Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "Servigroup Playas de Benidorm",
@@ -1166,11 +1166,11 @@
               "colors": {
                 "shirt": "#0072BC",
                 "shirt2": "#FFD100",
-                "libero": "#FFFFFF"
+                "libero": "#1A1A1A"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 61,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: 0 resultados relevantes. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Servigroup. Gentilicio de Benidorm."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: 0 resultados relevantes. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Servigroup. Gentilicio de Benidorm. Líbero: negro con dorado (2025-26, buscado 12-nov-2026: foto de equipo en elperiodic.com (oct-2025))."
             },
             {
               "real": "Bus Leader San Roque",
@@ -1185,11 +1185,11 @@
               "colors": {
                 "shirt": "#003DA5",
                 "shirt2": "#FFFFFF",
-                "libero": "#F2C200"
+                "libero": "#E53935"
               },
               "liberoEstimated": true,
               "ovr": 60,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: ningún club; lo más cercano es UD Sanroqueña (otro nombre y otra forma). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Bus Leader. Gentilicio de San Roque."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: ningún club; lo más cercano es UD Sanroqueña (otro nombre y otra forma). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Bus Leader. Gentilicio de San Roque. Líbero probable: rojo (2026-27, foto de fcbarcelona.es (nov-2026))."
             },
             {
               "real": "Instercap Asisa Tarragona SPiSP",
@@ -1204,11 +1204,11 @@
               "colors": {
                 "shirt": "#C8102E",
                 "shirt2": "#FFFFFF",
-                "libero": "#111111"
+                "libero": "#FFFFFF"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 58,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quitan los patrocinadores (Instercap, Asisa). Tàrraco, nombre romano de Tarragona. Bajó en 2025-26. [Integrador, búsqueda web 11-nov-2026: sin club con ese nombre.]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quitan los patrocinadores (Instercap, Asisa). Tàrraco, nombre romano de Tarragona. Bajó en 2025-26. [Integrador, búsqueda web 11-nov-2026: sin club con ese nombre.] Líbero: blanco (2026-27, buscado 12-nov-2026: fotos de diaridetarragona.com). Ojo: casi igual que la 2ª camiseta (#FFFFFF); se deja porque es el real (el juego tiene plan B si choca)."
             },
             {
               "real": "CV Tenerife Libby's La Laguna",
@@ -1227,7 +1227,7 @@
               },
               "liberoEstimated": true,
               "ovr": 64,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Libby's. Nivaria, nombre latino de Tenerife. [Integrador, búsqueda web 11-nov-2026: «\"Voley Nivaria\"»: sin club con ese nombre.]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Libby's. Nivaria, nombre latino de Tenerife. [Integrador, búsqueda web 11-nov-2026: «\"Voley Nivaria\"»: sin club con ese nombre.] Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "CV Sayre CC La Ballena",
@@ -1246,7 +1246,7 @@
               },
               "liberoEstimated": true,
               "ovr": 63,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador (CC La Ballena). Guiño a La Isleta, barrio de Las Palmas. [Integrador, búsqueda web 11-nov-2026: «\"Voley Isleta\"»: sin club con ese nombre.]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador (CC La Ballena). Guiño a La Isleta, barrio de Las Palmas. [Integrador, búsqueda web 11-nov-2026: «\"Voley Isleta\"»: sin club con ese nombre.] Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "Arenal Emevé",
@@ -1261,11 +1261,11 @@
               "colors": {
                 "shirt": "#0033CC",
                 "shirt2": "#FFFFFF",
-                "libero": "#F2C200"
+                "libero": "#E8708A"
               },
               "liberoEstimated": true,
               "ovr": 62,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Arenal. Lucus Augusti, la Lugo romana. [Integrador, búsqueda web 11-nov-2026: «\"Voley Lucus\"»: sin club con ese nombre (en Lugo está Xabaríns Volei Lugo).]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Arenal. Lucus Augusti, la Lugo romana. [Integrador, búsqueda web 11-nov-2026: «\"Voley Lucus\"»: sin club con ese nombre (en Lugo está Xabaríns Volei Lugo).] Líbero probable: rosa (2025-26, foto de menorca.info (feb-2026))."
             },
             {
               "real": "Kiele Socuéllamos",
@@ -1284,7 +1284,7 @@
               },
               "liberoEstimated": true,
               "ovr": 60,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: ningún club con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Kiele. Gentilicio de Socuéllamos."
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: ningún club con ese nombre. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Kiele. Gentilicio de Socuéllamos. Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "Santa Cruz Cuesta Piedra",
@@ -1303,7 +1303,7 @@
               },
               "liberoEstimated": true,
               "ovr": 58,
-              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Cuesta Piedra. «Chicharreros», apodo de Santa Cruz. 1º del grupo A de Superliga 2. [Integrador: abreviatura CHI → CHT, para que no se repita con otro club del juego.] [Integrador, búsqueda web 11-nov-2026: sin club con ese nombre.]"
+              "check": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Cuesta Piedra. «Chicharreros», apodo de Santa Cruz. 1º del grupo A de Superliga 2. [Integrador: abreviatura CHI → CHT, para que no se repita con otro club del juego.] [Integrador, búsqueda web 11-nov-2026: sin club con ese nombre.] Líbero: no encontrado en internet (12-nov-2026)."
             },
             {
               "real": "Feel Alcobendas",
@@ -1318,11 +1318,11 @@
               "colors": {
                 "shirt": "#00843D",
                 "shirt2": "#FFFFFF",
-                "libero": "#F2C200"
+                "libero": "#2456C8"
               },
-              "liberoEstimated": true,
+              "liberoEstimated": false,
               "ovr": 57,
-              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: 0 resultados. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Feel. Gentilicio de Alcobendas. Bajó en 2025-26. [Integrador: abreviatura ALC → ALB, para que no se repita con otro club del juego.]"
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch búsqueda Wikipedia es (WebSearch agotado, volleybox 403). Resultado: es.wikipedia: 0 resultados. Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB dataproject: Superliga, Liga Iberdrola, Superliga 2 M y F): no coincide con ninguno. Se quita el patrocinador Feel. Gentilicio de Alcobendas. Bajó en 2025-26. [Integrador: abreviatura ALC → ALB, para que no se repita con otro club del juego.] Líbero: azul con negro (2026-27, buscado 12-nov-2026: foto de fcbarcelona.es (oct-2026))."
             }
           ]
         }
