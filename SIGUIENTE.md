@@ -198,7 +198,8 @@ Ferran lo revise. Usa búsqueda web.
   12-nov. Un overpass o un balón que cruza sin atacar (`!spiked && toward`) con el balón aún a más de 0,6 m en el campo rival hace que
   GOLPEAR en el aire sea pulsación de bloqueo con `lead = ∞`, y eso acaba en toque de red (prob. NET_PRESS) en vez de golpe. En 6v6 ya va
   arreglado (`g.rot ||`); en 2v2 basta quitar `(g.rot || Math.abs(b.x) < 0.6)` y dejar `if (!spiked && toward) return false;`. Cambia 7 de 150
-  partidas de la huella (variantes human/attrs del bot).
+  partidas de la huella (variantes human/attrs del bot). **Hecho (12-nov-2026, pedido de Ferran)**: en 2v2 también, huella regenerada. El overpass sigue existiendo como
+  error de recepción; solo cambia que GOLPEAR en el aire ante él es un golpe.
 - **Lote A → tools/console.sh (ui_main)**: la línea 9 `EXTRA="${4:-}"` pisa la variable de entorno `EXTRA`, así que
   `EXTRA=format=6v6 bash tools/console.sh all` prueba el 2v2 normal. Cambio: `EXTRA="${4:-${EXTRA:-}}"`. Mientras tanto, pásalo como
   4º argumento: `bash tools/console.sh all 1280 720 format=6v6`.

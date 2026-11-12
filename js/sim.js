@@ -911,10 +911,10 @@
     var spiked = g.lastKind === 'spike' || g.lastKind === 'free', toward = !b.held && b.vx * sd > 0.5;
     // balón ya en nuestro campo: golpe normal (un ataque en vuelo sigue siendo bloqueable mientras esté en la zona de checkBlock, |x| <= 0,6)
     if (b.x * sd > (spiked && toward ? 0.6 : 0.3)) return false;
-    // overpass, balón que cruza sin atacar o saque que viene: golpe normal. En 6v6 esté donde esté (revisión del 12-nov: con
-    // |b.x| >= 0,6 el humano en la red que anticipaba el remate del overpass se comía un toque de red con lead = ∞); en 2v2 solo
-    // cerca de la red, como lo dejó «Bloqueo activo» (cambiarlo mueve la huella 2v2: petición en SIGUIENTE.md)
-    if (!spiked && toward && (g.rot || Math.abs(b.x) < 0.6)) return false;
+    // overpass, balón que cruza sin atacar o saque que viene: golpe normal, esté donde esté, en 2v2 y 6v6 (revisión del 12-nov: con
+    // |b.x| >= 0,6 el humano en la red que anticipaba el remate del overpass se comía un toque de red con lead = ∞). El overpass sigue
+    // existiendo como error de recepción; solo cambia que GOLPEAR en el aire ante él es un golpe (Ferran, 12-nov)
+    if (!spiked && toward) return false;
     return true;
   }
   function blockPress(g, p) {

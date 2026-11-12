@@ -128,7 +128,7 @@ function main() {
   const t0 = Date.now(), write = process.argv.includes('--write');
   const res = runAll();
   if (write) {
-    fs.writeFileSync(REF, JSON.stringify({ note: 'Huella 2v2 (tools/fingerprint6.js). cpu/human: código ANTERIOR al refactor del sprint 1 del 6v6 (sin cambios desde entonces). attrs: regenerada el 10-nov-2026 con «atributos que se notan» y otra vez en la integración del mismo día (precisión del toque ATTR_K.err y frenada al momento; cpu/human comprobadas idénticas antes, 100 de 100). No regenerar salvo cambio intencionado del 2v2.', n: res.length, runs: res }, null, 0).replace(/\},\{/g, '},\n{') + '\n');
+    fs.writeFileSync(REF, JSON.stringify({ note: 'Huella 2v2 (tools/fingerprint6.js). cpu/human: código ANTERIOR al refactor del sprint 1 del 6v6 (sin cambios desde entonces). attrs: regenerada el 10-nov-2026 con «atributos que se notan» y otra vez en la integración del mismo día (precisión del toque ATTR_K.err y frenada al momento; cpu/human comprobadas idénticas antes, 100 de 100). human/attrs: regenerada el 11-nov-2026 (bloqueo activo) y el 12-nov-2026 (overpass que cruza = golpe normal en el aire, no pulsación de bloqueo; cpu idéntica). No regenerar salvo cambio intencionado del 2v2.', n: res.length, runs: res }, null, 0).replace(/\},\{/g, '},\n{') + '\n');
     console.log('huella 2v2 escrita:', res.length, 'partidas,', res.reduce((a, r) => a + r.pts.split(' ').filter(Boolean).length, 0), 'puntos,', (Date.now() - t0) + ' ms');
     return 0;
   }
