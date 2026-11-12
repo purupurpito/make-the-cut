@@ -220,6 +220,20 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - **Repo de redirección**: la URL antigua de Pages (/voley-3d/) da 404. ¿Se crea la redirección en el repo `purupurpito.github.io`?
 
 ### To-do
+- **«Que no parezca un Doodle»: plan de juego completo** (12-nov-2026; informe entero con propuestas A1-E7, referencias y fuentes en
+  notes/juego-completo.md). Ferran aprobó **los sprints 2, 3 y 4** («son muy buenos») y abrió **el 5** a continuación. El sprint 1
+  («Los primeros 60 segundos»: A1-A8) queda apuntado, sin decisión de Ferran.
+  - **Sprint 2 «Tu carrera»:** B1 creador de personaje (choca con «personalización más adelante» del lote C: confirmar), B2 retrato
+    del muñeco a render target + escudo paródico + vitrina con huecos, B3 Carrera como puerta principal (solo tras B1 y B2), B4
+    lenguaje visual de retransmisión, B5 previa corta (4-5 s; larga en finales y jefes), B6 cierre como resumen de jornada.
+  - **Sprint 3 «Partidos que se recuerdan»:** revisar contactos mano-balón, C1 grabador y repetición mínima (no existe; búfer
+    circular sin basura por frame), C2 celebraciones y rabia con personalidad, C3 rivales «jefe» con estilo por `attrs` sin tocar
+    ai.js (el rival personal de Vida de la Carrera ya existe: construir encima), C4 rótulos cinéticos, C5 niveles de química,
+    «Mejores jugadas» en el cierre.
+  - **Sprint 4 «Volver mañana»:** D1 retos bronce/plata/oro + diario y semanal por fecha-semilla (los 28 logros de Vida de la
+    Carrera son solo de Carrera), D2 perfil y álbum con huecos (nivel de cuenta nuevo), D3 cosméticos que lucen, D4 sincronizar
+    cada guardado nuevo en account.js con migraciones, D5 playa nocturna.
+  - Preguntas para Ferran: música en ogg dentro de index.html o procedural; moneda única o ninguna; ¿6v6 visible en JUGAR?
 - **Pendiente del muñeco y la Carrera de playa** (11-nov-2026, tras las revisiones; nada roto). Fusionado en main y publicado
   el 11-nov-2026 (9a4f10c).
   - ~~Oficiales y público sin muñeco~~ HECHO 11-nov (arena; notes/arena.md «Muñeco oficial») (~~cabezas que se cruzan en el ace~~ HECHO 11-nov): ver «Mapa de playa» abajo.
