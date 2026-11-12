@@ -3983,7 +3983,9 @@
       marker.rotation.x = -PI / 2; marker.position.y = 0.018; marker.renderOrder = 3; ctx.scene.add(marker);
       // indicador flotante: galón naranja del equipo con filo oscuro, plano y siempre de cara a la cámara, de tamaño
       // constante en pantalla; color lineal por debajo del umbral del bloom (nunca se quema en blanco). 1 dibujo.
-      coneMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, toneMapped: true });
+      // forceSinglePass: en r149 un transparente DoubleSide se pinta en 2 pasadas con needsUpdate=true en cada una (getProgram ×2 por frame);
+      // el galón es plano y siempre de cara a la cámara: una pasada da la misma imagen
+      coneMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, toneMapped: true, forceSinglePass: true });
       markerCone = new THREE.Mesh(chevronGeometry(), coneMat);
       markerCone.renderOrder = 4; markerCone.visible = false; ctx.scene.add(markerCone);
     },

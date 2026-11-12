@@ -414,8 +414,7 @@
     g.fillStyle = '#ff6b3d'; g.fillRect(0, H - 52, W, 20); g.fillStyle = '#ffd23f'; g.fillRect(0, 26, W, 8);
     g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 12, W, 3); g.fillRect(0, H - 15, W, 3);
     var y0 = 44, y1 = H - 62, avail = (y1 - y0) * 0.86, text = VENUE.pad[VENUE.id] || 'PALAU DEL MAR', fs = 62;
-    g.font = '900 ' + fs + 'px ' + FONT;
-    while (g.measureText(text).width > avail && fs > 20) { fs -= 2; g.font = '900 ' + fs + 'px ' + FONT; }
+    fs = fitDown(g, text, '900 ', fs, avail, 20);
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffffff';
     for (var k = 0; k < 2; k++) {
       g.save(); g.translate(W * (0.25 + k * 0.5), (y0 + y1) / 2); g.rotate(-Math.PI / 2); g.fillText(text, 0, 0); g.restore();
@@ -2159,8 +2158,7 @@
       g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(x0, 0, seg, H * 0.12);
       drawDeco(g, b.deco, x0 + H * 0.62, H * 0.5, H, b.fg);
       g.fillStyle = b.fg; g.textAlign = 'left'; g.textBaseline = 'middle';
-      var fs = Math.round(H * 0.6); g.font = 'italic 900 ' + fs + 'px ' + FONT;
-      while (g.measureText(b.name).width > seg - H * 1.6 && fs > 10) { fs -= 2; g.font = 'italic 900 ' + fs + 'px ' + FONT; }
+      fitDown(g, b.name, 'italic 900 ', Math.round(H * 0.6), seg - H * 1.6, 10);
       g.fillText(b.name, x0 + H * 1.15, H * 0.54);
       g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x0 + seg - 2, 0, 2, H);
     }
@@ -2394,6 +2392,22 @@
     var w = g.measureText(text).width;
     if (w > maxW) { size = size * maxW / w; g.font = weight + ' ' + Math.round(size) + 'px ' + FONT; }
     return size;
+  }
+  /** Mismo resultado (talla y g.font final) que `g.font = pre + fs + 'px ' + FONT; while (g.measureText(text).width > maxW && fs > minFs)
+   *  { fs -= 2; g.font = pre + fs + 'px ' + FONT; }`, pero salta a la talla estimada (la anchura crece con la talla) y solo afina
+   *  de 2 en 2 alrededor: cada talla nueva cuesta ~3 ms la primera vez (×4 en el móvil) y las vallas probaban hasta 13 por marca
+   *  bajo el telón (measureText: ~0,4 s de CPU ×4 al arrancar). Comprobado igual al bucle en 63 936 casos. */
+  function fitDown(g, text, pre, fs, maxW, minFs) {
+    g.font = pre + fs + 'px ' + FONT;
+    var w = g.measureText(text).width;
+    if (!(w > maxW) || fs <= minFs) return fs;
+    var lo = fs - 2 * Math.ceil((fs - minFs) / 2), j = fs - 2 * Math.max(1, Math.floor((fs - fs * maxW / w) / 2)); // lo: donde paraba el bucle
+    if (j < lo) j = lo;
+    g.font = pre + j + 'px ' + FONT;
+    if (g.measureText(text).width <= maxW) { while (j + 2 < fs) { g.font = pre + (j + 2) + 'px ' + FONT; if (g.measureText(text).width > maxW) break; j += 2; } }
+    else { while (j > minFs) { j -= 2; g.font = pre + j + 'px ' + FONT; if (g.measureText(text).width <= maxW) break; } }
+    g.font = pre + j + 'px ' + FONT;
+    return j;
   }
   function drawSetDots(g, cx, cy, r, gap, t) {
     for (var k = 0; k < 2; k++) {
@@ -3530,7 +3544,7 @@
       for (var j = 0; j < 6; j++) { P.push(c.x + r.x * q[j][0] * w / 2, c.y + q[j][1] * h / 2, c.z + r.z * q[j][0] * w / 2); UV.push(q[j][2], q[j][3]); }
     }
     var cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); cg.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
-    var cl = new THREE.Mesh(cg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+    var cl = new THREE.Mesh(cg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide, forceSinglePass: true /* r149: sin esto, 2 pasadas y getProgram ×2 por frame; la cámara siempre las ve de frente */ }));
     cl.name = 'beachClouds'; cl.renderOrder = -9; cl.frustumCulled = false; G.add(cl); BEACH.clouds = cl;
   }
 
@@ -3700,8 +3714,7 @@
       g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(tx, H); g.lineTo(tx + H * 0.36, 0); g.lineTo(tx + H * 0.58, 0); g.lineTo(tx + H * 0.22, H); g.fill();
       drawDeco(g, b.deco, x0 + H * 0.62, H * 0.5, H * 0.86, b.fg);
       g.fillStyle = b.fg; g.textAlign = 'left'; g.textBaseline = 'middle';
-      var fs = Math.round(H * 0.56); g.font = 'italic 900 ' + fs + 'px ' + FONT;
-      while (g.measureText(b.name).width > seg - H * 2.3 && fs > 10) { fs -= 2; g.font = 'italic 900 ' + fs + 'px ' + FONT; }
+      fitDown(g, b.name, 'italic 900 ', Math.round(H * 0.56), seg - H * 2.3, 10);
       g.fillText(b.name, x0 + H * 1.12, H * 0.53);
       g.fillStyle = '#1d1530'; g.fillRect(x0 + seg - 3, 0, 3, H);
     }
@@ -4430,7 +4443,7 @@
       emissiveMesh = new THREE.Mesh(E.build(), emissiveScreens(topFade(new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, fog: false }), 'vb-emis-top-scr')));
       emissiveScreensAttr(emissiveMesh.geometry);
       emissiveMesh.name = 'emissive'; root.add(emissiveMesh);
-      buildEnvironment();
+      // sin buildEnvironment(): scene.environment solo lo usa MeshStandardMaterial (three r149) y aquí no hay ninguno
       redrawScreens(); warmMsgFonts();
       freezeStatic();
       // la fuente de la UI puede llegar tarde: repintar textos

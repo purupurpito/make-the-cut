@@ -770,3 +770,14 @@ y azul con `Path2D` de los mismos trazados que ICON_HIT de input.js, tres costur
 - Medido: `STRICT=1 perf.js 844x390 20 low` 29/31 draw calls (media/pico), igual con cbColors + contraste (copia de perf.js que los
   inyecta) y con `EXTRA=drill=atk&gymauto=1` (main.js aún no monta el ejercicio: partido normal). Capturas de la diana con
   un `g.drill` falso en pabellón y playa.
+## Revisión de rendimiento (12-nov-2026, ultracode)
+Cinco frentes revisados con datos de `tools/perf.js` (PROFILE/ALLOC) y del perfil de arranque, cada propuesta verificada por un revisor escéptico. Aplicado:
+- `forceSinglePass: true` en los dos únicos materiales transparent+DoubleSide (galón del jugador controlado, players.js; nubes de playa, arena.js).
+  En r149 un transparente DoubleSide se pinta en 2 pasadas con `needsUpdate=true` en cada una: recalculaba el programa (getParameters,
+  getProgramCacheKey, join) 2-4 veces por frame. Ahora 0; 3-4 programas menos; misma imagen (son MeshBasic y se ven siempre de frente).
+- Arranque: `fitDown()` en arena.js salta a la talla estimada en los rótulos de vallas, lonas y protección del poste (antes de 2 en 2 px;
+  igual resultado comprobado en 200 000 casos aleatorios); sin `buildEnvironment()` (PMREM): `scene.environment` solo lo lee
+  MeshStandard/Physical y no hay ninguno (si algún día se añade uno, volver a llamarla). Estimado: ~0,4-0,5 s menos de CPU ×4 al arrancar.
+- Sin cambios (medido, por debajo de 0,1 ms/frame o con cambio visible): players.js (Players.update 3,6-4,3 ms/frame en 6v6 ×4, repartido),
+  grafo de escena (lo estático ya está congelado; el coste son los huesos de los atletas y Skeleton.update), CanvasTexture (ya se suben solo
+  al cambiar; las subidas por frame son las boneTexture). Lo único grande que queda: animar menos a los atletas lejanos (cambia lo que se ve).
