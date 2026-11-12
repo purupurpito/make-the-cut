@@ -26,8 +26,12 @@
   function rngOf() { var a = Array.prototype.slice.call(arguments); return K()._rng(K()._hash.apply(null, a)); }
   function pick(r, a) { return a[Math.floor(r() * a.length) % a.length]; }
   function hall(c) { return !!(c && c.mode === 'hall'); }
-  /** Nivel 0-4 de la liga de tu club (en la pista, si existe, su nivel; si no, 0). */
-  function lvlOf(c) { var k = c && c.myClub >= 0 && K().myClub(c); return k ? clamp(k.lvl | 0, 0, 4) : 0; }
+  /** Nivel 0-4 de la liga de tu club. En la pista k.lvl es la división (1 = 1ª), no un nivel: se saca de la fuerza de la liga (54-90). */
+  function lvlOf(c) {
+    var k = c && c.myClub >= 0 && K().myClub(c); if (!k) return 0;
+    if (hall(c)) { var Lg = K().league(k.lid); return clamp(Math.round((((Lg && Lg.strength) || 50) - 50) / 10), 0, 4); }
+    return clamp(k.lvl | 0, 0, 4);
+  }
   function leagueOf(c) { var k = K().myClub(c); return k ? K().league(k.lid != null ? k.lid : k.lvl) : K().league(0); }
 
   var LV_MULT = [1, 2, 4, 8, 15];   // seguidores por liga: jugar en el Circuito Mundial se ve mucho más
@@ -106,9 +110,9 @@
     var id = duel ? (r() < 0.5 ? 'win' : pick(r, ks)) : pick(r, ks);
     var d = CH[id], n = d.n ? d.n[L] : 0;
     var mult = (duel ? 2 : 1) * (phase === 'cup' ? 1.5 : 1);
-    var Lg = K().league(L);
+    var Lg = hall(c) ? leagueOf(c) : K().league(L);   // (en la pista league() busca por id, no por nivel)
     return { key: key, id: id, n: n, duel: duel, txt: d.txt.replace('{n}', String(n).replace('.', ',')),
-      fans: Math.round(60 * LV_MULT[L] * mult), xp: Math.round(45 * (Lg.xp || 1) * mult), money: Math.round(SALARY[L] * 0.4 * mult / 10) * 10 };
+      fans: Math.round(60 * LV_MULT[L] * mult), xp: Math.round(45 * ((Lg && Lg.xp) || 1) * mult), money: Math.round(SALARY[L] * 0.4 * mult / 10) * 10 };
   }
   /** Reto del próximo partido (para la UI). null si no hay partido o te toca banquillo. */
   function challenge(c) {

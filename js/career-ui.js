@@ -393,15 +393,16 @@
     head.innerHTML = '<button data-act="close" aria-label="Volver a Jugar">‹ Jugar</button><div class="cr-title"><small>Carrera</small><b>Guardado dañado</b></div>';
     tabsEl.hidden = true; tabsEl.innerHTML = ''; subEl.hidden = true; subEl.innerHTML = '';
     body.innerHTML = '<div class="card"><h3>No se puede abrir la carrera</h3><p>La carrera guardada en este navegador está dañada y no se ha podido reparar.</p>' +
+      (view === 'create' ? '<div class="acts">' :   // (fallo al pintar la ficha de crear: la Carrera activa puede estar sana, no ofrecer borrarla)
       '<p class="muted">Puedes borrarla y empezar otra.</p><div class="acts"><button class="warn" data-act="broken">' +
-      (confirmStep === 2 ? (device() === 'touch' ? 'Toca otra vez para borrar' : 'Pulsa otra vez para borrar') : 'Borrar la carrera dañada') + '</button><button data-act="close">Volver al menú</button></div></div>';
+      (confirmStep === 2 ? (device() === 'touch' ? 'Toca otra vez para borrar' : 'Pulsa otra vez para borrar') : 'Borrar la carrera dañada') + '</button>') + '<button data-act="close">Volver al menú</button></div></div>';
   }
   function renderInner() {
     var c = C() && C().get();
     if (view === 'create' || !c) { renderCreate(c); return; }
     if (c.phase === 'pick') { renderPick(c); return; }
     var k = C().myClub(c), L = isHall(c) ? C().league(k.lid) : C().league(k.lvl);
-    if (!TABS.some(function (t) { return t[0] === tab; })) tab = 'match';
+    if (!TABS.some(function (t) { return t[0] === tab; }) || (tab === 'life' && isHall(c))) tab = 'match';
     head.innerHTML = '<button data-act="close" aria-label="Volver a Jugar">‹ Jugar</button>' +
       '<div class="cr-title"><small>' + sp(['Carrera', 'Temporada ' + c.season, esc(L.name)], 'd') + '</small><b>' + sp([esc(c.player.name), esc(k.name)], 's') + '</b></div>' +
       '<div class="cr-ovr">' + C().playerOvr(c) + '<small>TU MEDIA</small></div>';
@@ -411,7 +412,7 @@
     if (tab === 'inbox' && C().readAll) { (c.inbox || []).forEach(function (m) { if (!m.r) freshIds[m.id] = 1; }); if (C().unread(c)) C().readAll(); }
     var un = C().unread ? C().unread(c) : 0, offN = c.offers && c.offers.length;
     tabsEl.hidden = false;
-    drawBar('tab', TABS.filter(function (t) { return t[0] !== 'life' || LUI(); }).map(function (t) {
+    drawBar('tab', TABS.filter(function (t) { return t[0] !== 'life' || (LUI() && !isHall(c)); }).map(function (t) {
       var dot = (t[0] === 'player' && c.player.pts > 0) || (t[0] === 'club' && (c.window === 'mid' || c.phase === 'off') && offN) || (t[0] === 'match' && c.phase === 'off') ||
         (t[0] === 'life' && !!(c.life && c.life.spOffers && c.life.spOffers.length));
       return [t[0], t[1] + (t[0] === 'inbox' && un ? ' (' + un + ')' : ''), dot];
@@ -1043,17 +1044,18 @@
   function renderCreate(c) {
     if (!form.mode) form.mode = C().mode ? C().mode() : 'beach';
     if (form.mode === 'hall' && C().hall) { renderCreate6(c); return; }
-    var R = C().ROLES, st = C().genSt(C().START_OVR, form.role, null), P = VB.Prog;
+    var B = C().beach || C();   // la ficha es de playa aunque la Carrera activa sea la de pista (la fachada mandaría league(0), START_OVR y WEEKS a la pista)
+    var R = B.ROLES, st = B.genSt(B.START_OVR, form.role, null), P = VB.Prog;
     head.innerHTML = '<button data-act="' + (c ? 'hub' : 'close') + '" aria-label="Volver">‹ Volver</button><div class="cr-title"><small>' + sp(['Carrera', 'Vóley playa 2 contra 2'], 'd') + '</small><b>Crea tu jugador</b></div>';
     tabsEl.hidden = true; tabsEl.innerHTML = ''; subEl.hidden = true; subEl.innerHTML = '';
     var h = '<div class="cf">' + modeSeg() + (!c && C().beach && C().beach.lost() ? '<div class="card confirm"><p><b>Tu carrera guardada estaba dañada</b> y no se ha podido recuperar. Hay una copia aparte en este navegador (voley3d.career.bak).</p></div>' : '') +
-      '<div class="card"><p>Empiezas con media ' + C().START_OVR + ' y sin club. Los clubes del <b>' + esc(C().league(0).name) + '</b> te harán ofertas: cada uno te da un compañero distinto.</p></div>' +
+      '<div class="card"><p>Empiezas con media ' + B.START_OVR + ' y sin club. Los clubes del <b>' + esc(B.league(0).name) + '</b> te harán ofertas: cada uno te da un compañero distinto.</p></div>' +
       '<div class="cf-col"><div><label for="crName">Nombre</label><input id="crName" maxlength="18" autocomplete="off" spellcheck="false" placeholder="Tu nombre" value="' + esc(form.name) + '"></div>' +
       '<div><label>Dorsal</label><div class="stp"><button data-act="num" data-d="-1" aria-label="Dorsal anterior">−</button><b aria-live="polite">' + form.num + '</b><button data-act="num" data-d="1" aria-label="Dorsal siguiente">+</button></div></div>' +
       '<div><label>Rol</label><div class="roles" role="group" aria-label="Rol">' + ['atk', 'uni', 'cr'].map(function (k) {
         return '<button data-act="role" data-r="' + k + '" aria-pressed="' + (form.role === k) + '">' + esc(R[k].name) + '<small>' + esc(R[k].hint) + '</small></button>';
       }).join('') + '</div><div class="card prev-box" style="margin:8px 0 0"><h3>' + sp(['Tus atributos', esc(R[form.role].name)], 'v') + '</h3><div class="prev">' + C().KEYS.map(function (k) { return '<span>' + esc(P && P.LABEL ? P.LABEL[k] : k) + ' <b>' + st[k] + '</b></span>'; }).join('') + '</div></div></div></div>' +
-      '<div class="cf-col"><div><label>Reglas de playa</label><p class="muted" style="margin:0">' + 'Sets a ' + C().PTS + ' y el tercero a ' + C().PTS3 + '. Pista de 16 × 8, cambio de campo cada 7 puntos (5 en el tercero), el bloqueo cuenta como toque y la dejada va de nudillos. ' + C().WEEKS + ' jornadas a doble vuelta y el Open de los 4 primeros.</p></div>' +
+      '<div class="cf-col"><div><label>Reglas de playa</label><p class="muted" style="margin:0">' + 'Sets a ' + B.PTS + ' y el tercero a ' + B.PTS3 + '. Pista de 16 × 8, cambio de campo cada 7 puntos (5 en el tercero), el bloqueo cuenta como toque y la dejada va de nudillos. ' + B.WEEKS + ' jornadas a doble vuelta y el Open de los 4 primeros.</p></div>' +
       (C().has('beach') ? '<div class="card confirm"><p>Ya tienes una Carrera de playa. Para empezar otra, abandónala antes en Palmarés › Opciones.</p><div class="acts"><button class="pri" data-act="openmode" data-m="beach">Abrir la Carrera de playa</button></div></div>' :
         '<div class="acts"><button class="pri" data-act="create">Crear y ver ofertas</button></div>') +
       '</div></div>';
@@ -1084,6 +1086,7 @@
         if (!String(form.name).trim()) { if (inp) { inp.focus(); inp.placeholder = 'Escribe un nombre'; } snd('back'); return; }
         if (form.mode === 'hall') C().create({ mode: 'hall', name: form.name, num: form.num, pos: form.pos, country: form.country, points: form.pts6 });   // Carrera de pista (6v6)
         else C().create({ mode: 'beach', name: form.name, num: form.num, role: form.role });   // (playa: siempre a 21)
+        form.name = '';   // (si luego creas la otra Carrera, el nombre no viene ya puesto)
         tblLid = '';
         yrs = {}; sub.pick = 0; note = '';
         snd('start'); view = 'hub'; tab = 'match'; render(); focusFirst(); syncMenu(); return;
