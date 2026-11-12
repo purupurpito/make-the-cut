@@ -4,6 +4,55 @@ Ficheros: `js/career.js` (VB.Career, datos y reglas, sin DOM; se carga en node),
 DOM `#career` y su `<style id="careerCss">`), `js/main.js` (arranque de los partidos de Carrera), `index.html` (fila «02 Carrera»
 del menú y los dos `<script>`), `tools/careertest.js` (prueba en node). Guardado: `localStorage['voley3d.career']` (una sola carrera).
 
+## Vida de la Carrera (12-nov-2026; pedido de Ferran: «que el modo carrera sea más extenso y mejor, más entretenido y "enticing"»)
+
+Ficheros nuevos: `js/career-life.js` (`VB.CareerLife`, datos y reglas, sin DOM, se carga en node) y `js/career-life-ui.js`
+(`VB.CareerLifeUI`, HTML de la pestaña «Fama» y de las tarjetas de Partido). index.html los carga entre career.js y career-ui.js.
+Estado en `c.life` dentro del mismo guardado (sin subir `VER`: `ensure()` lo crea al vuelo con valores por defecto; un guardado
+viejo funciona). career.js solo llama a `life(c, tipo, …)` en 5 puntos (create, matchSetup 'setup', closeMine y benchNext 'match',
+endSeason 'season', newSeason 'newSeason') más un sumando en `offerScore`; si career-life.js no está, todo sigue como antes.
+**Pensado para la rama `carrera-pista`:** al rebasarla, basta conservar esas llamadas (los textos usan `c.mode === 'hall'` para la pista).
+
+- **Reto de la jornada** (`challengeAt`, determinista por semilla y jornada; se ve en Partido antes de jugar y en `g.career.goal`):
+  remates, aces, bloqueos (bloqueador/universal), defensas (defensor/universal), asistencias (defensor), nota, ganar sin ceder set
+  (no en la Regional) o ganar con pocos errores. Premio: seguidores, XP y dinero (×2 en el duelo, ×1,5 en el open). Solo jugando.
+  Umbrales medidos con el autopiloto (≈ jugador bueno, partidos de Carrera reales en node): cumple ~45-55 % (antes de endurecer, 75 %).
+- **Fama** (`c.life.fame`, seguidores): por partido `max(0, nota − 5,5) × 22 + 18 si ganas (+30 en el open)`, × liga (1/2/4/8/15),
+  × racha (+5 % por victoria seguida, hasta 6), simulado ×⅓; nota < 5 jugando: −2 %. Títulos, ascensos, premios y logros suman más.
+  Escalones: Desconocido, Promesa local (500), Conocido en el circuito (2.000), Figura (7.000), Estrella (20.000), Ídolo (50.000),
+  Leyenda viva (120.000). Interés de los clubes `offerBonus` = 0,5 × escalón (máx. 3) + 2 con el agente estrella + 2 con ojeador.
+  Medido jugando con el autopiloto: ~3.500 seguidores la 1ª temporada, ~12.000 la 2ª, ~16.000 la 3ª.
+- **Patrocinadores INVENTADOS** (`SPONSORS`, gags de vóley: «Horchatería El Bloqueo», «Colchones El Banquillo»…; ninguno guiña a
+  una marca real): 2 ofertas al subir de escalón y cada verano desde «Promesa local». Pagan por jornada según el escalón y un
+  bonus por un objetivo de temporada (aces, remates, victorias, bloqueos o defensas). Duran una temporada.
+- **Decisiones** (`EVENTS`, 40 % tras cada jornada si no hay otra pendiente): rueda de prensa (derrota / victoria), fiesta,
+  clínic benéfico, reto viral, pique del rival, pareja de bajón, tele, molestias en el tobillo (jugar tocado: −2 en el siguiente
+  partido), ojeador, pancarta, rodaje del anuncio. Cada opción enseña sus efectos con ▲/▼ (entrenador, química, fama, fatiga,
+  dinero, entreno, forma de la pareja). Si se juega sin contestar, caduca sin efecto.
+- **Rival personal**: un jugador inventado de otro club de tu liga; los partidos contra su club son duelo (cara a cara guardado).
+  Al cambiar de liga, la mitad de las veces te sigue (ficha por un club de tu liga nueva) y si no, rival nuevo.
+- **Tienda** (Fama › Tienda): material de 3 niveles (1.500 / 6.000 / 24.000 €) que suma +1/+2/+3 en el partido a dos atributos
+  (gafas o rodilleras: recepción y defensa; calcetines de arena o zapatillas: salto y velocidad; muñequeras: colocación y control;
+  banda elástica: remate y saque), como la química (no toca tu atleta). Servicios por jornada: entrenador personal (+50 % de
+  progreso), nutricionista (−5 de fatiga), agente estrella (+2 de interés). Sin dinero se cancelan solos.
+- **Premios de la temporada** (`AWARDS`): MVP (nota media y top 2), máximo anotador, mejor sacador, muro del año, mejor defensa
+  (por partido, contra rivales simulados) y revelación (una vez, ≤ 23 años, liga nueva). Con más de media temporada simulada no
+  hay premios. Medido con el autopiloto: 0-2 por temporada. Van al palmarés (`kind: 'premio'`).
+- **Logros** (`ACH`, 28): partidos, victorias, puntos, aces, bloqueos, rachas, retos, duelos, títulos, premios, fama, nivel,
+  patrocinio y material; premio una sola vez (puntos de mejora, seguidores o dinero). Con todo simulado la media sube ~+3 en 8
+  temporadas por los puntos de los logros (careertest: 64 → 67).
+- **Legado**: puntuación por títulos (más en categorías altas), premios, fama, victorias y logros; escalones Jugador de club,
+  Referente (60), Ídolo del circuito (150), Leyenda (300), Mito del vóley (500). Desde los 32 años baja el físico cada verano;
+  desde los 30 te puedes retirar (doble pulsación): la carrera pasa al **Salón de la Fama** del dispositivo
+  (`localStorage['voley3d.legends']`, 20 mejores) y se cierra; la siguiente carrera empieza con 150 seguidores por escalón de legado
+  de la mejor leyenda.
+- **UI**: pestaña «Fama» (Fama · Tienda · Logros · Legado) entre Club y Liga, con punto si hay ofertas de patrocinio; en Partido,
+  la decisión pendiente y la tarjeta del reto (o del duelo); en el último partido, reto cumplido o no, seguidores, dinero, duelo y
+  logros; en la hoja final del partido (main.js `careerEndSheet`), una línea con el reto. Mensajes de tipo `fans` («Fama»).
+
+**Sin hacer (ideas para otro sprint)**: enseñar el reto durante el partido (HUD de ui.js, que no es de este lote; el dato ya
+está en `g.career.goal`); objetivos de patrocinio para la pista 6v6; selección nacional y torneos de verano.
+
 ## Escalón, rol y sueldo, cierre del muñeco (11-nov-2026)
 
 Sin cambiar el formato del guardado (v3; los campos nuevos tienen valor por defecto: `money` 0, `stats.bench` 0).

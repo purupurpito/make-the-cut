@@ -588,6 +588,7 @@
     msg(c, 'agent', 'Tienes ' + c.offers.length + ' ofertas', 'Soy tu agente. Varios clubes de vóley playa quieren ' + (c.offers.some(function (x) { return x.trial; }) ? 'ficharte o probarte' : 'ficharte') +
       ' para la temporada 1. Compara las fichas (circuito, prestigio, compañero, objetivo, rol y sueldo) y fíjate en la pareja que te ofrecen: un buen compañero es medio partido. Si rechazas todas, llegarán otras de clubes más modestos (y se pierde la prueba, si la hay).');
     cur = c; M = null; lost = false;
+    life(c, 'create');
     if (o.autoClub) { var i = 0, best = -1; c.offers.forEach(function (x, j) { if (!x.trial && (best < 0 || x.ovr < best)) { best = x.ovr; i = j; } }); joinClub(c, c.offers[i], c.offers[i].years); }
     save(c);
     return c;
@@ -647,6 +648,9 @@
       ' (' + c.mate.role.toLowerCase() + ', ' + c.mate.style.toLowerCase() + ', media ' + mateOvr(c) + (d >= 3 ? ', por encima del nivel del club' : d <= -3 ? ', por debajo del nivel del club: tendrás que tirar tú del equipo' : '') + '). Objetivo del club: ' + c.objective.text.toLowerCase() + '. Cuanto más juguéis juntos, mejor os entenderéis.');
   }
   function plural(n, a, b) { return n + ' ' + (n === 1 ? a : b); }
+  /** «Vida» de la Carrera (js/career-life.js: retos, fama, patrocinios, decisiones, rival, tienda, premios, logros, legado). Sin el
+   *  fichero, nada cambia. */
+  function life(c, kind, a, b) { var Lf = VB.CareerLife; if (!Lf || !Lf.hook) return; try { Lf.hook(c, kind, a, b); } catch (e) { try { console.error('CareerLife.' + kind, e); } catch (e2) { } } }
   /** Inicio: rechazar todas → nuevas ofertas, peores (de los clubes más flojos de la Regional y sin prueba). */
   function rejectAll() {
     var c = load(); if (!c || c.phase !== 'pick') return false;
@@ -737,7 +741,7 @@
     // recorta; la química es de los dos y no cuenta). Puede ser mejor que el club, pero no llevarte en volandas
     mf = mateFormCap(c, n.me, mf);
     KEYS.forEach(function (key) { stMe[key] = clampI(stMe[key] - fm + (CHEM_KEYS.indexOf(key) >= 0 ? ch : 0), 1, 99); stMate[key] = clampI(stMate[key] + mf + (CHEM_KEYS.indexOf(key) >= 0 ? ch : 0), 1, 99); });
-    return {
+    var out = {
       attrs: [[stMe, stMate], [rivA, rivB]],
       badges: bd ? [[bd, null], null] : null,
       points: PTS, venue: VENUE, difficulty: n.diff, ctrl: 'one', ctrlIdx: 0,   // vóley playa (sets a 21, el 3r a 15); en la Carrera solo tu jugador
@@ -749,6 +753,8 @@
       career: { season: c.season, phase: c.phase, week: n.week, round: n.round, label: n.label, me: n.me.short, rival: n.rival.short, venue: VENUE,
         meName: n.me.name, rivalName: n.rival.name, player: c.player.name, num: c.player.num, mate: c.mate.name, mateNum: c.mate.num }
     };
+    life(c, 'setup', out);   // material de la tienda, molestias y reto de la jornada (career-life.js)
+    return out;
   }
 
   // ------------------------------------------------------------------ estadísticas del partido jugado
@@ -909,6 +915,7 @@
     var sum = { season: season0, phase: phase0, label: label, rival: rival.id, rivalName: rival.name, win: win, sets: res.sets.slice(), setScores: res.setScores.map(function (x) { return x.slice(); }),
       sim: !!sim, nota: nota, me: me, xp: xp, lvlUp: lv.lvlUp, lvl: lv.lvl, ptsGained: lv.pts, badges: badges, coach: c.coach, train: tr, chem: c.mate ? c.mate.chem : 0, mateForm: mf, mateForm0: mf0,
       round: round.map(function (m) { return { a: m.a, b: m.b, s: m.s }; }), offers: c.window === 'mid' ? c.offers.length : 0, review: phase0 !== c.phase && c.phase === 'off' };
+    life(c, 'match', sum, f);
     c.last = sum;
     save(c);
     return sum;
@@ -988,7 +995,8 @@
   // ------------------------------------------------------------------ ofertas
   function offerScore(c) {
     var an = avgNota(c);
-    return playerOvr(c) + (an == null ? 0 : (an - 6) * 6) + (c.coach - 50) / 10 + 0.5 * badgePower(c.player) + (c.listed ? LISTED_BONUS : 0) + (c.broken === c.season ? BROKEN_BONUS : 0);
+    return playerOvr(c) + (an == null ? 0 : (an - 6) * 6) + (c.coach - 50) / 10 + 0.5 * badgePower(c.player) + (c.listed ? LISTED_BONUS : 0) + (c.broken === c.season ? BROKEN_BONUS : 0) +
+      (VB.CareerLife && VB.CareerLife.offerBonus ? VB.CareerLife.offerBonus(c) + (c.life && c.life.scout === c.season ? 2 : 0) : 0);   // fama, agente estrella y ojeador
   }
   var LISTED_BONUS = 5, LISTED_COACH = 8;   // transferible: más interés de los clubes, menos confianza del entrenador
   /** Liga de un club la temporada que viene (fin de temporada: con los ascensos y descensos ya decididos en c.pendingMoves). */
@@ -1089,6 +1097,7 @@
     msg(c, 'club', 'Fin de la temporada ' + c.season + ': ' + ordn(pos), 'Objetivo ' + (objOk ? 'cumplido' : 'no cumplido') + ' (' + c.objective.text.toLowerCase() + ').' +
       (myMove > 0 ? ' ¡El club asciende!' : myMove < 0 ? ' El club desciende.' : '') + ' ' + (c.offers.length ? 'Tienes ' + plural(c.offers.length, 'oferta', 'ofertas') + ' de otros clubes.' : 'No han llegado ofertas de otros clubes.') +
       (c.review.renew ? ' Se te acaba el contrato: el club te ofrece renovar como ' + c.review.renew.role.toLowerCase() + '.' : ''));
+    life(c, 'season');
   }
   function applyMoves(c) {
     var qs = c.pendingQ || nextQs(c, c.pendingMoves);   // guardados de antes de pendingQ: se calcula igual
@@ -1125,6 +1134,7 @@
     if (moved) welcome(c);
     else msg(c, 'obj', 'Objetivo de la temporada ' + c.season, 'El club quiere: ' + c.objective.text.toLowerCase() + '.');
     c.last = null;
+    life(c, 'newSeason');
   }
   /** Acepta la oferta i (inicio: firmas por el club —o haces la prueba—; fin de temporada: empieza la siguiente en el club nuevo;
    *  mitad: cambias de club ya). years = duración del contrato que eliges (1-3; por defecto la de la oferta). Devuelve true si has
@@ -1248,6 +1258,7 @@
       sim: true, bench: true, why: why, sub: alt ? alt.name : '', nota: null, me: { kills: 0, aces: 0, blocks: 0, assists: 0, digs: 0, errors: 0 }, xp: 0, lvlUp: 0, lvl: c.player.lvl, ptsGained: 0, badges: [],
       coach: c.coach, train: tr, chem: c.mate.chem | 0, mateForm: mf, mateForm0: mf0, round: round.map(function (m) { return { a: m.a, b: m.b, s: m.s }; }),
       offers: c.window === 'mid' ? c.offers.length : 0, review: phase0 !== c.phase && c.phase === 'off' };
+    life(c, 'match', sum, f);
     c.last = sum;
     save(c);
     return sum;
@@ -1331,6 +1342,8 @@
     // escalón Normal suave, rol prometido y sueldo (11-nov-2026)
     SOFT: SOFT, softFor: softFor, diffLabel: diffLabel, MATE_CAP: MATE_CAP, mateFormCap: mateFormCap, BENCH: BENCH, PROMOTE_AT: PROMOTE_AT, ROLE_FLOOR: ROLE_FLOOR, ROLE_HINT: ROLE_HINT,
     BROKEN_BONUS: BROKEN_BONUS, PAY_WEEK: PAY_WEEK, PHYSIO_FAT: PHYSIO_FAT, benchNext: benchNext, benchWhy: benchWhy, BENCH_REST: BENCH_REST, physio: physio, physioCost: physioCost, roleIdx: roleIdx, _beachTrophies: beachTrophies,
+    // vida de la Carrera (career-life.js)
+    _msg: msg, _addXP: addXP, _wkKey: wkKey,
     _M: function () { return M; }, _reset: function () { cur = null; M = null; }, _genOffers: genOffers, _rng: rng, _hash: hash
   };
 })();

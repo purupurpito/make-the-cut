@@ -162,6 +162,11 @@ Ferran lo revise. Usa búsqueda web.
 
 ## Peticiones entre lotes
 (Escribe aquí: lote que pide → fichero, función y cambio exacto.)
+- **Vida de la Carrera (12-nov-2026) → lote C (rama `carrera-pista`)**: main ya tiene js/career-life.js y js/career-life-ui.js y 5 llamadas
+  `life(c, tipo, …)` en career.js (create, `matchSetup` → `var out = {…}; life(c, 'setup', out); return out;`, closeMine y benchNext antes de
+  `c.last = sum`, final de endSeason y de newSeason) + un sumando en `offerScore` + exports `_msg/_addXP/_wkKey`; en career-ui.js la pestaña
+  `life` y los ganchos `LUI()`. Al rebasar, consérvalos también en `renderMatch6`/`lastCard` de la pista. Ver notes/carrera.md §Vida.
+- **Vida de la Carrera → ui.js (HUD)**, opcional: enseñar `g.career.goal` (reto de la jornada) en la tarjeta de presentación o en el marcador.
 - **Lote B → js/ui.js `showEnd` (ui_main, fuera del bloque de la guía)**, opcional: el récord `voley3d.record` no cuenta el 6v6 ni la
   Carrera, así que quien solo juega esos modos es «novato» (`record.played === 0`) para siempre. El lote B lo tapa con un contador
   local `voley3d.guided` (partidos con guía, tope 3 a partir de Normal). Mejor de raíz: un campo nuevo `record.anyPlayed` que suba en

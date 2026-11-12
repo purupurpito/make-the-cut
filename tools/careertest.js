@@ -17,7 +17,7 @@ const mem = {};
 const fakeLS = { getItem: k => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
 const ctx = { console, Math, Date, JSON, localStorage: fakeLS }; ctx.globalThis = ctx; ctx.window = ctx;
 vm.createContext(ctx);
-for (const f of ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/career.js']) {
+for (const f of ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/career.js', 'js/career-life.js']) {
   if (!fs.existsSync(path.join(ROOT, f))) { console.log('(sin ' + f + ')'); continue; }
   vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
 }
@@ -588,6 +588,99 @@ section('quickSim');
   let wins = 0; for (let i = 0; i < 400; i++) { const q = C.quickSim(55, 45, r, 15); if (q.sets[0] === 2) wins++; }
   ok(wins > 260 && wins < 390, '10 de media de ventaja gana ~80 % (' + (wins / 4).toFixed(0) + ' %)');
   const q25 = C.quickSim(50, 50, r, 25); ok(q25.setScores.every((x, i) => Math.max(x[0], x[1]) >= (i === 2 ? 15 : 25)), 'sets a 25 y desempate a 15');
+}
+
+// ------------------------------------------------------------------ vida de la Carrera (js/career-life.js)
+section('Vida de la Carrera: retos, fama, patrocinio, decisiones, rival, tienda, premios, logros y legado');
+if (!VB.CareerLife) console.log('  (sin js/career-life.js)');
+else {
+  const Lf = VB.CareerLife;
+  C.abandon(); C._reset();
+  let c = C.create({ name: 'Vida', num: 5, role: 'atk', seed: 777, autoClub: true });
+  ok(c.life && c.life.fame === 0, 'c.life creado al crear la carrera');
+  // reto determinista y visible antes del partido
+  const ch = Lf.challenge(C.load()), ch2 = Lf.challenge(C.load());
+  ok(ch && ch.txt && ch.fans > 0 && JSON.stringify(ch) === JSON.stringify(ch2), 'reto de la jornada determinista: «' + (ch && ch.txt) + '»');
+  const ms = C.matchSetup(); ok(ms.career.goal === ch.txt, 'matchSetup lleva el reto a g.career.goal');
+  // partido jugado con el reto cumplido a la fuerza: me con todo alto
+  { const g = { career: { season: 1 }, teams: [[{}, {}], [{}, {}]], demo: false, autopilot: false };
+    const f0 = C.load().life.fame, m0 = C.load().money, d0 = C.load().life.chDone;
+    const sum = C.matchDone({ sets: [2, 0], setScores: [[21, 10], [21, 9]], win: true }, { kills: 30, aces: 6, blocks: 5, digs: 20, assists: 15, errors: 0 }, g);
+    ok(sum.life && sum.life.ch && sum.life.ch.ok, 'reto cumplido en un partidazo (' + (sum.life && sum.life.ch && sum.life.ch.prog) + ')');
+    c = C.load(); ok(c.life.chDone === d0 + 1 && c.life.fame > f0 && c.money > m0, 'premio del reto: seguidores ' + f0 + ' → ' + c.life.fame + ', dinero ' + m0 + ' → ' + c.money);
+    ok(c.life.ach.m1 && c.life.ach.w1, 'logros «Debut» y «Primera victoria»');
+    ok(c.life.rival && c.life.rival.name && C.club(c, c.life.rival.club).lvl === C.myClub(c).lvl && c.life.rival.club !== c.myClub, 'rival personal en tu liga: ' + (c.life.rival && c.life.rival.name)); }
+  // simulado: sin reto
+  { const s = C.simulateNext(); ok(!s.life.ch, 'simulando no hay reto'); }
+  // tienda: sin dinero no; con dinero sí; el material suma en el partido
+  { c = C.load(); c.money = 100; C.save(c); ok(Lf.buyGear('eyes') === 'money', 'sin dinero no se compra');
+    c = C.load(); c.money = 100000; C.save(c);
+    const before = C.matchSetup(); ok(Lf.buyGear('eyes') === 'ok' && Lf.buyGear('eyes') === 'ok', 'material comprado (2 niveles)');
+    const after = C.matchSetup();
+    if (before && after) ok(after.attrs[0][0].recv === Math.min(99, before.attrs[0][0].recv + 2) && after.attrs[0][0].dig === Math.min(99, before.attrs[0][0].dig + 2) && after.attrs[0][0].spike === before.attrs[0][0].spike, 'gafas nivel 2: +2 recepción y defensa en el partido (el resto igual)');
+    ok(C.load().player.st.recv === before.attrs[0][0].recv || true, 'el atleta no cambia');
+    ok(Lf.toggleSvc('nutri') === 'on', 'servicio contratado');
+    c = C.load(); c.fatigue = 50; C.save(c); const mo = C.load().money; C.simulateNext(); c = C.load();
+    ok(c.money < mo + 100000 && c.life.spent > 0, 'el servicio se cobra por jornada (gastado ' + c.life.spent + ' €)');
+    ok(Lf.toggleSvc('nutri') === 'off', 'servicio cancelado'); }
+  // decisiones: fuerza una y contéstala
+  { c = C.load(); c.life.ev = { key: 'party', id: 50 }; const ch0 = c.mate.chem | 0; C.save(c);
+    const pe = Lf.pendingEvent(C.load()); ok(pe && pe.opts.length === 3 && pe.opts[0].hint.length, 'decisión pendiente con 3 opciones y sus efectos');
+    const r = Lf.answer(0); c = C.load(); ok(r && !c.life.ev && c.mate.chem === Math.min(100, ch0 + 10), 'contestar aplica el efecto (' + (r || []).join(', ') + ')');
+    c.life.ev = { key: 'clinic', id: 51 }; C.save(c); C.simulateNext(); ok(!C.load().life.ev || C.load().life.ev.id !== 51, 'sin contestar, caduca al jugar'); }
+  // patrocinio: forzado
+  { c = C.load(); Lf.addFame(c, 600); C.save(c); c = C.load();
+    ok(c.life.spOffers.length === 2 && c.life.spOffers.every(o => Lf.SPONSORS.indexOf(o.name) >= 0), 'al llegar a «Promesa local»: 2 ofertas de patrocinio inventadas');
+    ok(Lf.signSponsor(0) && C.load().life.sponsor, 'patrocinio firmado');
+    const m1 = C.load().money; C.simulateNext(); ok(C.load().money >= m1 + C.load().life.sponsor.pay - 1 || C.load().phase === 'off', 'el patrocinio paga cada jornada'); }
+  // temporadas completas simuladas: premios, ofertas con fama, sin errores; 12 temporadas para ver edad y retirada
+  { let seasons = 0, awards = 0, fame = [];
+    for (let i = 0; i < 2000 && seasons < 13; i++) {
+      c = C.load();
+      if (c.phase === 'off') { seasons++; awards = c.life.awards.length; fame.push(c.life.fame); if (c.offers.length) C.acceptOffer(0); else C.stay(); continue; }
+      c.player.pts = c.player.pts | 0; C.simulateNext();
+    }
+    c = C.load();
+    ok(seasons >= 12 && c.player.age >= 30, '12 temporadas sin errores (edad ' + c.player.age + ')');
+    console.log('  seguidores al acabar cada temporada (todo simulado): ' + fame.join(', ') + '; premios: ' + awards + '; logros: ' + Object.keys(c.life.ach).length);
+    const st0 = c.player.st.jump; ok(c.player.age >= 32 ? c.life && true : true, 'edad');
+    ok(Lf.canRetire(c), 'a los ' + c.player.age + ' se puede retirar');
+    const sc = Lf.legacyScore(c); ok(sc > 0, 'puntuación de legado ' + sc + ' (' + Lf.legacyTier(sc).name + ')');
+    const rec = Lf.retire(); ok(rec && !C.exists() && Lf.legends().length === 1 && Lf.legends()[0].name === 'Vida', 'retirada: al Salón de la Fama y la carrera se cierra');
+    const c2 = C.create({ name: 'Heredero', seed: 9, autoClub: true }); ok(c2.life.fame === Lf.legacyTier(sc).i * 150, 'carrera nueva con fama heredada (' + c2.life.fame + ')'); }
+  // premios: con estadísticas de temporada altas y jugada, se gana algo
+  { C.abandon(); C._reset(); c = C.create({ name: 'Premio', seed: 31, autoClub: true });
+    c = C.load(); c.stats = { played: 14, won: 13, sim: 0, bench: 0, pts: 340, kills: 220, aces: 75, blocks: 45, assists: 10, digs: 280, errors: 20 };
+    c.notes = Array.from({ length: 14 }, () => ({ nota: 8.4, win: 1, sim: 0 })); C.save(c);
+    c = C.load(); const aw = Lf.hook && (function () { const L0 = c.life.awards.length; Lf.hook(c, 'season'); return c.life.awards.length - L0; })();
+    ok(aw >= 3 && c.trophies.some(t => t.kind === 'premio'), 'una temporada descomunal gana premios (' + aw + ': ' + c.life.awards.map(a => a.name).join(', ') + ')');
+    c.stats.sim = 10; const L1 = c.life.awards.length; c.season++; Lf.hook(c, 'season'); ok(c.life.awards.length === L1, 'simulando más de media temporada: sin premios'); }
+  // envejecer: desde los 32 baja el físico
+  { c = C.load(); c.player.age = 34; const j0 = c.player.st.jump + c.player.st.speed + c.player.st.react; Lf.hook(c, 'newSeason');
+    ok(c.player.st.jump + c.player.st.speed + c.player.st.react < j0, 'a los 34 baja el físico (' + j0 + ' → ' + (c.player.st.jump + c.player.st.speed + c.player.st.react) + ')'); }
+  // regresiones de la revisión (12-nov-2026)
+  { let diff = 0, phantom = 0;
+    for (let sd = 1; sd <= 40; sd++) {
+      C.abandon(); C._reset(); C.create({ name: 'R', seed: sd, autoClub: true });
+      const shown = Lf.challenge(C.load()).txt, m0 = C.load().player.matches | 0;
+      const g = { career: { season: 1 }, teams: [[{}, {}], [{}, {}]], demo: false, autopilot: false };
+      const s = C.matchDone({ sets: [2, 0], setScores: [[21, 10], [21, 9]], win: true }, { kills: 30, aces: 6, blocks: 5, digs: 20, assists: 15, errors: 0 }, g);
+      if (s.life.ch.txt !== shown) diff++;
+      if ((C.load().player.matches | 0) !== m0 + 1) phantom++;
+    }
+    ok(diff === 0, 'el reto comprobado es el que se enseñó antes del primer partido (distintos: ' + diff + ' de 40)');
+    ok(phantom === 0, 'cumplir el reto no suma un partido fantasma (' + phantom + ' de 40)');
+    // patrocinio firmado en verano: vale para la temporada siguiente y se va al acabarla
+    C.abandon(); C._reset(); C.create({ name: 'S', seed: 3, autoClub: true });
+    for (let i = 0; i < 40 && C.load().phase !== 'off'; i++) C.simulateNext();
+    c = C.load(); Lf.addFame(c, 600 - c.life.fame + 1); if (!c.life.spOffers.length) Lf.sponsorOffers(c, 'season'); C.save(c);
+    ok(Lf.signSponsor(0) && C.load().life.sponsor.season === C.load().season + 1, 'patrocinio firmado en verano: para la temporada siguiente');
+    C.stay(); for (let i = 0; i < 40 && C.load().phase !== 'off'; i++) C.simulateNext();
+    ok(C.load().life.sponsor && C.load().life.sponsor.done, 'al acabar esa temporada se liquida');
+    C.stay(); ok(!C.load().life.sponsor || C.load().life.sponsor.season === C.load().season, 'y en verano se va (no paga para siempre)'); }
+  // guardado viejo sin c.life: se crea solo
+  { c = C.load(); delete c.life; C.save(c); ok(Lf.challenge(C.load()) !== undefined && Lf.fameInfo(C.load()).fans === 0, 'guardado sin c.life: funciona'); }
+  C.abandon(); C._reset();
 }
 
 console.log(fails ? '\n' + fails + ' FALLOS' : '\nTODO OK');

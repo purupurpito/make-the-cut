@@ -437,6 +437,11 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **Vida de la Carrera** (12-nov-2026, pedido de Ferran: Carrera «más extensa, mejor y más enticing»): reto de cada jornada, fama y
+  seguidores, patrocinadores inventados, decisiones (prensa, fiestas, rival…), rival personal con duelos, tienda de material y servicios,
+  premios de temporada, 28 logros, legado con declive desde los 32, retirada desde los 30 y Salón de la Fama. Pestaña «Fama». Ver
+  notes/carrera.md §Vida de la Carrera. js/career-life.js y js/career-life-ui.js; la rama `carrera-pista` tendrá que conservar las 5
+  llamadas `life(c, …)` de career.js al rebasar.
 - **Logotipo «Make the Cut» (11-nov-2026; Ferran: «Vale, bien. Súbelos»)**: el rótulo partido en dos por la trayectoria del
   remate (un *cut* es el remate en diagonal cerrada). Es el SVG `#mtcLogo`, definido una vez en index.html (antes del telón)
   y usado en el menú y en el telón con `<use>`; mide 4,3 em de ancho, así que escala con el font-size de `.logo` y el FLIP

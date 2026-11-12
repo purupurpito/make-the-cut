@@ -446,6 +446,13 @@
         });
         bd.innerHTML = bh; rec.appendChild(bd);
       }
+      // reto de la jornada (career-life.js): una sola línea corta para no empujar «Menú principal» fuera a 844×390
+      var lch = s.life && s.life.ch;
+      if (lch) {
+        var ld = document.createElement('div'); ld.className = 'end-xp';
+        ld.innerHTML = '<span>' + (lch.ok ? '✓ Reto' : '✗ Reto') + ': <b>' + escHtml(lch.txt) + '</b> (' + escHtml(lch.prog) + ')</span>';
+        rec.appendChild(ld);
+      }
     }
   }
   // ---------- Presentación del partido (UI-14) ----------

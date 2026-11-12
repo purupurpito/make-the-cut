@@ -22,14 +22,18 @@
   // Pestañas (móvil primero): 6 apartados y, dentro, sub-pestañas. Las dos barras son el componente común de ui.js
   // (VB.UI.tabs, como Jugadores y Ajustes; drawBar): Q/E y LB/RB cambian de apartado, RePág/AvPág y LT/RT de sub-pestaña, ←/→
   // con el foco en una pestaña, tocar y deslizar el dedo sobre el contenido. Sin ui.js (pruebas): botones sueltos (tabsBar).
-  var TABS = [['match', 'Partido'], ['inbox', 'Mensajes'], ['player', 'Jugador'], ['club', 'Club'], ['league', 'Liga'], ['honors', 'Palmarés']];
+  // «Fama» (career-life-ui.js): seguidores, patrocinio, rival, tienda, logros y legado
+  var TABS = [['match', 'Partido'], ['inbox', 'Mensajes'], ['player', 'Jugador'], ['club', 'Club'], ['life', 'Fama'], ['league', 'Liga'], ['honors', 'Palmarés']];
   var SUBS = {   // (Jugador: el mismo orden que Jugadores del menú, Físico · Defensa · Ataque, que sale de VB.Prog.GROUPS)
     player: [['phys', 'Físico'], ['def', 'Defensa'], ['atk', 'Ataque'], ['badges', 'Insignias'], ['train', 'Entreno']],
     club: [['info', 'Ficha'], ['mate', 'Compañero'], ['contract', 'Contrato'], ['offers', 'Ofertas']],
     league: [['table', 'Clasificación'], ['cal', 'Calendario']],
-    honors: [['titles', 'Palmarés'], ['seasons', 'Temporadas'], ['opts', 'Opciones']]
+    honors: [['titles', 'Palmarés'], ['seasons', 'Temporadas'], ['opts', 'Opciones']],
+    life: [['fame', 'Fama'], ['shop', 'Tienda'], ['goals', 'Logros'], ['legacy', 'Legado']]
   };
-  var sub = { player: 'phys', club: 'info', league: 'table', honors: 'titles', pick: 0 };
+  var sub = { player: 'phys', club: 'info', league: 'table', honors: 'titles', life: 'fame', pick: 0 };
+  function LUI() { return VB.CareerLife && VB.CareerLifeUI || null; }
+  var HLP = { esc: function (s) { return esc(s); }, sp: function (a, k) { return sp(a, k); } };
   var tabsApi = null, subApi = null, rejArm = 0, stayArm = 0, offArm = -1;   // offArm: oferta de mitad de temporada pendiente de confirmar
   var GROUP_OF = { atk: 'Ataque', def: 'Defensa', phys: 'Físico' };
   var TIER_C = ['#6b6390', '#d58a4a', '#c9d3de', '#ffd23f'];
@@ -387,8 +391,9 @@
     if (tab === 'inbox' && C().readAll) { (c.inbox || []).forEach(function (m) { if (!m.r) freshIds[m.id] = 1; }); if (C().unread(c)) C().readAll(); }
     var un = C().unread ? C().unread(c) : 0, offN = c.offers && c.offers.length;
     tabsEl.hidden = false;
-    drawBar('tab', TABS.map(function (t) {
-      var dot = (t[0] === 'player' && c.player.pts > 0) || (t[0] === 'club' && (c.window === 'mid' || c.phase === 'off') && offN) || (t[0] === 'match' && c.phase === 'off');
+    drawBar('tab', TABS.filter(function (t) { return t[0] !== 'life' || LUI(); }).map(function (t) {
+      var dot = (t[0] === 'player' && c.player.pts > 0) || (t[0] === 'club' && (c.window === 'mid' || c.phase === 'off') && offN) || (t[0] === 'match' && c.phase === 'off') ||
+        (t[0] === 'life' && !!(c.life && c.life.spOffers && c.life.spOffers.length));
       return [t[0], t[1] + (t[0] === 'inbox' && un ? ' (' + un + ')' : ''), dot];
     }), tab);
     var sl = SUBS[tab];
@@ -405,6 +410,7 @@
     else if (tab === 'player') h = renderPlayer(c);
     else if (tab === 'club') h = renderClub(c);
     else if (tab === 'league') h = sub.league === 'cal' ? renderCal(c) : renderTable(c);
+    else if (tab === 'life') h = LUI() ? LUI().render(c, sub.life, HLP) : '';
     else h = renderHonors(c);
     body.innerHTML = h;
   }
@@ -458,6 +464,7 @@
       sp([plural(s.me.assists, 'asistencia', 'asistencias'), plural(s.me.errors, 'error', 'errores')], 'v') + '</p></div></div>' +
       '<p><span class="tag y">+' + s.xp + ' XP</span>' + (s.lvlUp ? '<span class="tag g">¡Nivel ' + s.lvl + '! +' + s.ptsGained + ' puntos de mejora</span>' : '') + '</p>';
     if (s.badges && s.badges.length && VB.Badges) h += '<p>' + s.badges.map(function (u) { return '<span class="tag y">' + esc(VB.Badges.label(u)) + '</span>'; }).join('') + '</p>';
+    if (LUI()) h += LUI().lastExtra(c, s, HLP);   // reto, seguidores, dinero, duelo y logros
     if (s.train && s.train.gains && s.train.gains.length) {   // mejoras gratis del entrenamiento de la semana
       var LB = VB.Prog && VB.Prog.LABEL || {};
       h += '<p>' + s.train.gains.map(function (k) { return '<span class="tag g">Entreno: +1 ' + esc(LB[k] || k) + '</span>'; }).join('') + '</p>';
@@ -495,6 +502,7 @@
             '<div class="acts"><button class="pri" data-act="bench">Ver la jornada</button></div></div>'
           : '<div class="acts"><button class="pri" data-act="play">Jugar partido</button><button data-act="sim">Simular <small style="font:600 12px var(--ui);text-transform:none;letter-spacing:0">(mitad de XP)</small></button></div></div>');
     }
+    if (LUI()) h += LUI().matchCards(c, HLP);   // reto de la jornada y decisión pendiente
     var lastUn = (c.inbox || []).filter(function (m) { return !m.r; }).slice(-1)[0];
     if (lastUn) h += '<div class="card"><h3>Mensajes <span class="muted">(' + plural(C().unread(c), 'sin leer', 'sin leer') + ')</span></h3>' + msgHTML(lastUn) + '<div class="acts"><button data-tab="inbox">Ver mensajes</button></div></div>';
     if (c.window === 'mid' && c.offers && c.offers.length) h += '<div class="card new"><h3>Ventana de fichajes</h3><p>' + plural(c.offers.length, 'club quiere', 'clubes quieren') + ' ficharte ya. Las ofertas caducan al jugar o simular el siguiente partido.</p><div class="acts"><button data-tab="club" data-s="offers">Ver ofertas</button></div></div>';
@@ -727,7 +735,7 @@
     return h;
   }
   /** Mensajes: entrenador, agente, ofertas, objetivos. Lo nuevo resaltado (se marca como leído al verlo). */
-  var MSG_K = { coach: 'Entrenador', agent: 'Agente', offer: 'Ofertas', obj: 'Objetivo', club: 'Club', train: 'Preparador físico' };
+  var MSG_K = { coach: 'Entrenador', agent: 'Agente', offer: 'Ofertas', obj: 'Objetivo', club: 'Club', train: 'Preparador físico', fans: 'Fama' };
   function msgHTML(m, fresh) {
     return '<div class="msg' + (m.r && !(fresh && fresh[m.id]) ? '' : ' unread') + '"><small>' + sp([esc(MSG_K[m.k] || 'Club'), 'T' + m.s + (m.ph === 'pick' ? '' : ' J' + Math.min(m.w, C().WEEKS))], 'v') + '</small><b>' + esc(m.t) + '</b><p>' + esc(m.x) + '</p></div>';
   }
@@ -739,7 +747,7 @@
     var T = c.career, s = sub.honors, h = '';
     if (s === 'titles') {
       h = '<div class="card"><h3>Palmarés</h3>';
-      h += c.trophies.length ? c.trophies.map(function (t) { return '<p><span class="tag ' + (t.kind === 'ascenso' ? 'g' : 'y') + '">' + (t.kind === 'liga' ? 'Campeón' : t.kind === 'copa' ? 'Open' : 'Ascenso') + '</span> ' + sp([esc(t.name), 'T' + t.season, esc(t.club)], 'v') + '</p>'; }).join('') : '<p class="muted">Aún sin títulos.</p>';
+      h += c.trophies.length ? c.trophies.map(function (t) { return '<p><span class="tag ' + (t.kind === 'ascenso' ? 'g' : 'y') + '">' + (t.kind === 'liga' ? 'Campeón' : t.kind === 'copa' ? 'Open' : t.kind === 'premio' ? 'Premio' : 'Ascenso') + '</span> ' + sp([esc(t.name), 'T' + t.season, esc(t.club)], 'v') + '</p>'; }).join('') : '<p class="muted">Aún sin títulos.</p>';
       h += '<h3 style="margin-top:10px">Totales de la carrera</h3><p>' + sp([plural(T.played, 'partido', 'partidos') + ' (' + plural(T.won, 'ganado', 'ganados') + ', ' + plural(T.sim, 'simulado', 'simulados') + ((T.bench | 0) ? ', ' + (T.bench | 0) + ' en el banquillo' : '') + ')', plural(T.pts, 'punto', 'puntos'), T.kills + ' remates punto', plural(T.aces, 'ace', 'aces'), T.blocks + ' bloqueos', plural(T.assists, 'asistencia', 'asistencias')], 'v') + '</p></div>';
       return h;
     }
@@ -818,6 +826,12 @@
     var act = b.getAttribute('data-act'), t = b.getAttribute('data-tab'), sv = b.getAttribute('data-sub'), c = C() && C().get();
     if (t) { setTab(t, b.getAttribute('data-s')); snd('click'); return; }
     if (sv != null) { setSub(sv); snd('click'); return; }
+    if (act && act.indexOf('lf-') === 0 && LUI()) {   // vida de la Carrera (career-life-ui.js)
+      var lr = LUI().act(act, b);
+      if (lr === 'retired') { snd('start'); form.name = ''; view = 'create'; tab = 'match'; render(); focusFirst(); syncMenu(); return; }
+      if (lr) { snd('click'); keepFocus(b, render); syncMenu(); }
+      return;
+    }
     switch (act) {
       case 'close': snd('back'); close(); return;
       case 'hub': snd('back'); view = 'hub'; render(); focusFirst(); return;
