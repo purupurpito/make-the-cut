@@ -1677,6 +1677,8 @@
     }
     o.player.roleKey = POS6[o.player.roleKey] ? o.player.roleKey : 'OH'; o.player.role = POS6[o.player.roleKey].name;
     o.mode = 'hall'; o.ctrl = 'one'; o.mate = null;
+    // vida de la Carrera (career-life.js): un guardado de pista de antes de la vida (sin c.life) la crea aquí, vacía (fama 0)
+    if (VB.CareerLife && VB.CareerLife.ensure) { try { VB.CareerLife.ensure(o); } catch (e) { o.life = null; } }
     o.points = POINTS6.indexOf(o.points) >= 0 ? o.points : 15;
     o.seed = num(o.seed) ? o.seed >>> 0 : hash('reparado6', o.created || 0);
     o.season = clampI(o.season, 1, 999);
@@ -1862,6 +1864,7 @@
     msg(c, 'agent', 'Tienes ' + c.offers.length + ' ofertas', 'Soy tu agente. Varios clubes ' + (L0 ? 'de la ' + L0.name + ' (' + L0.country + ')' : '') + ' quieren ' + (c.offers.some(function (x) { return x.trial; }) ? 'ficharte o probarte' : 'ficharte') +
       ' para la temporada 1 como ' + POS6[pos].name.toLowerCase() + '. Compara las fichas (liga, prestigio, objetivo, rol y sueldo). Juega bien y los ojeadores de las ligas fuertes, también de fuera, vendrán a verte.');
     cur6 = c; M = null; lost6 = false;
+    life(c, 'create');   // vida de la Carrera (career-life.js): c.life, con la fama heredada del Salón de la Fama
     if (o.autoClub) { var i = 0, best = -1; c.offers.forEach(function (x, j) { if (!x.trial && (best < 0 || x.ovr < best)) { best = x.ovr; i = j; } }); joinClub6(c, c.offers[i], c.offers[i].years); }
     save6(c);
     return c;
@@ -1949,7 +1952,7 @@
     var bd = B() && B().forPlayer ? B().forPlayer(c.player) : null; if (bd && !Object.keys(bd).length) bd = null;
     var nums = teamNums6(c, n.me); nums[idx] = c.player.num;
     var L = lg6(c, n.me.lid), k = n.me.kit, rk = n.rival.kit;
-    return {
+    var out = {
       format: '6v6', venue: 'hall', ctrlRole: role, ctrlIdx: idx, ctrl: 'one',
       attrs: [a0, a1], badges: bd ? [R.map(function (x, i) { return i === idx ? bd : null; }), null] : null, nums: [nums, null],
       points: c.points, difficulty: n.diff, rookie: !!n.soft, diffName: n.diffName, chem: ch, fatigue: fm,
@@ -1959,6 +1962,8 @@
       career: { mode: 'hall', season: c.season, phase: c.phase, week: n.week, round: n.round, label: n.label, me: n.me.short, rival: n.rival.short, venue: 'hall',
         meName: n.me.name, rivalName: n.rival.name, player: c.player.name, num: c.player.num, pos: role, posName: POS6[role].name, mate: '', mateNum: 0 }
     };
+    life(c, 'setup', out);   // material de la tienda y molestias (en tu hueco, ctrlIdx) y reto de la jornada (career-life.js)
+    return out;
   }
   function simMatch6(c, a, b, sd) {
     var ka = club(c, a), kb = club(c, b), r = rng(sd), q = quickSim(ka.ovr + (r() - 0.5) * 4, kb.ovr + (r() - 0.5) * 4, r, c.points);
@@ -2107,6 +2112,7 @@
       (cw.length ? ' ¡Campeones de la ' + cw.join(' y de la ') + '!' : '') + (myMove > 0 ? ' ¡El club asciende!' : myMove < 0 ? ' El club desciende.' : '') + ' ' +
       (c.offers.length ? 'Tienes ' + plural(c.offers.length, 'oferta', 'ofertas') + ' de otros clubes' + (c.offers.some(function (x) { return x.foreign; }) ? ', también del extranjero' : '') + '.' : 'No han llegado ofertas de otros clubes.') +
       (c.review.renew ? ' Se te acaba el contrato: el club te ofrece renovar como ' + c.review.renew.role.toLowerCase() + '.' : ''));
+    life(c, 'season');   // premios, títulos a fama, objetivo del patrocinador y logros
   }
   function applyMoves6(c) {
     var ov = c.pendingOvr || nextOvrs6(c, c.pendingMoves);
@@ -2138,6 +2144,7 @@
     if (moved) welcome6(c);
     else msg(c, 'obj', 'Objetivo de la temporada ' + c.season, 'El club quiere: ' + c.objective.text.toLowerCase() + '.');
     c.last = null;
+    life(c, 'newSeason');   // edad, patrocinios del verano y rival
     skipBye6(c);
   }
 
@@ -2225,6 +2232,7 @@
     var sum = { mode: 'hall', season: season0, phase: phase0, label: label, rival: rival.id, rivalName: rival.name, win: win, sets: res.sets.slice(), setScores: res.setScores.map(function (x) { return x.slice(); }),
       sim: !!sim, nota: nota, me: me, xp: xp, lvlUp: lv.lvlUp, lvl: lv.lvl, ptsGained: lv.pts, badges: extra && extra.badges || [], coach: c.coach, train: tr, chem: c.chem, scout: scout,
       round: f.kind === 'league' ? round.map(function (m) { return { a: m.a, b: m.b, s: m.s }; }) : [], offers: c.window === 'mid' ? c.offers.length : 0, review: phase0 !== c.phase && c.phase === 'off' };
+    life(c, 'match', sum, f);   // reto, fama, patrocinio, servicios, rival, decisión y logros (sum.life)
     c.last = sum;
     save6(c);
     return sum;
@@ -2295,6 +2303,7 @@
     var sum = { mode: 'hall', season: season0, phase: phase0, label: label, rival: rival.id, rivalName: rival.name, win: win, sets: q.sets.slice(), setScores: q.setScores.map(function (x) { return x.slice(); }),
       sim: true, bench: true, why: why, sub: '', nota: null, me: { kills: 0, aces: 0, blocks: 0, assists: 0, digs: 0, errors: 0 }, xp: 0, lvlUp: 0, lvl: c.player.lvl, ptsGained: 0, badges: [],
       coach: c.coach, train: tr, chem: c.chem | 0, round: round.map(function (m) { return { a: m.a, b: m.b, s: m.s }; }), offers: c.window === 'mid' ? c.offers.length : 0, review: phase0 !== c.phase && c.phase === 'off' };
+    life(c, 'match', sum, f);   // en el banquillo: patrocinio y servicios (sin reto)
     c.last = sum; save6(c);
     return sum;
   }
@@ -2403,7 +2412,8 @@
     difficultyFor: difficultyFor6, diffLabel: diffLabel6, softFor: soft6, chemBonus: chemBonus6, physio: physio6, physioCost: physioCost6,
     acceptOffer: acceptOffer6, stay: stay6, negotiate: negotiate6, rejectAll: rejectAll6, moreTime: moreTime6, changeMate: function () { return ''; },
     setTraining: setTraining6, requestTransfer: requestTransfer6, bump: bump6, toggleBadge: toggleBadge6, unread: unread6, readMsg: readMsg6, readAll: readAll6,
-    _genOffers: genOffers6, _scout: scoutCheck6, _reset: function () { cur6 = null; M = null; }, _buildWorld: buildWorld6, _endLeague: endLeague6
+    _genOffers: genOffers6, _scout: scoutCheck6, _wkKey: wkKey6, _name: function (r) { return pick(r, FIRST) + ' ' + pick(r, LAST); },   // (vida de la Carrera)
+    _reset: function () { cur6 = null; M = null; }, _buildWorld: buildWorld6, _endLeague: endLeague6
   };
 
   var BEACH = {

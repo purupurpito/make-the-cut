@@ -408,7 +408,7 @@
     ctx.actions.startMatch({ career: m.career, attrs: m.attrs, badges: m.badges, points: m.points, difficulty: m.difficulty, rookie: !!m.rookie, ctrl: 'one', ctrlIdx: 0, ref: m.ref, // en la Carrera solo llevas a tu jugador (menús v2: ni las carreras guardadas con «los dos»)
       venue: m.venue || 'beach', // vóley playa: Platja Llarga y sus reglas (VB.Career.matchSetup().venue); la Carrera de pista, 'hall'
       format: m.format === '6v6' ? '6v6' : undefined, ctrlRole: m.ctrlRole || undefined, // Carrera de pista (lote C): 6v6 en tu puesto
-      // equipación del club rival (Players.setKit st.rival); en la pista también kitLibero (color del líbero del club; players.js aún no lo lee)
+      // equipación del club rival (Players.setKit st.rival); en la pista también kitLibero (color del líbero del club, que usa setKit, y con él la 2ª del rival si choca)
       kit: m.kit ? Object.assign({}, m.kit, { rival: m.rivalKit || null }) : null,
       nums: m.nums || (m.career ? [[m.career.num | 0 || null, m.career.mateNum | 0 || null], null] : undefined) }); // tus dorsales (sim: opts.nums)
     return true;

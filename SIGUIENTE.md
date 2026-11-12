@@ -219,11 +219,17 @@ Ferran lo revise. Usa búsqueda web.
 - **Lote A → tools/console.sh (ui_main)**: la línea 9 `EXTRA="${4:-}"` pisa la variable de entorno `EXTRA`, así que
   `EXTRA=format=6v6 bash tools/console.sh all` prueba el 2v2 normal. Cambio: `EXTRA="${4:-${EXTRA:-}}"`. Mientras tanto, pásalo como
   4º argumento: `bash tools/console.sh all 1280 720 format=6v6`.
-- **Lote C → lote A, js/players.js (color del líbero del club):** `matchSetup()` de la Carrera de pista ya pasa `kit.kitLibero` y
+- **HECHO (12-nov-2026) · Lote C → lote A, js/players.js (color del líbero del club):** `matchSetup()` de la Carrera de pista ya pasa `kit.kitLibero` y
   `rivalKit.kitLibero` (main.js los deja en `opts.kit` y `opts.kit.rival`). En `setKit(st)`, guardar `st.kitLibero` (equipo 0) y
   `st.rival.kitLibero` (equipo 1); en `liberoKit(team)`, usarlos como camiseta del líbero si son número y se distinguen de las dos
   camisetas (`kitDist` ≥ 0,8); si no, el cálculo de ahora. Fuera de la Carrera no cambia nada.
-- **Lote C → lote A, js/players.js (choque de equipaciones):** cuando la camiseta del rival se parece a la tuya, `setKit` le pone la
+- **HECHO (12-nov-2026) · Lote C → lote A, js/players.js (choque de equipaciones):** cuando la camiseta del rival se parece a la tuya, `setKit` le pone la
   de la CPU (roja). En la Carrera sería mejor su 2ª equipación: camiseta = `rival.kitAccent` (su segundo color) si se distingue.
+  *Hecho:* `setKit` guarda `kitLibero` (tuyo; el del rival solo si viste de su club) y `liberoKit` lo usa si `kitDist` ≥ 0,8 con las
+  dos camisetas (y el rival, con tu líbero); si la 1ª del rival choca y su setup trae `kitLibero` (solo la pista), 2ª = camiseta
+  `kitAccent`, detalles = su 1ª, pantalón el suyo (o su 1ª si se funde); si también choca, la CPU. Playa, Carrera de playa, 2v2/6v6
+  normales: igual que antes. Prueba: `node tools/kittest.js` (16 comprobaciones + huella de 400 casos sin Carrera); capturas en
+  tools/out/kits/. El comentario viejo de main.js `startCareerMatch` ya está corregido. Revisión: el hub de pista enseña la 2ª del rival («2ª equipación») con `Players.rivalKit`.
+- **Para Ferran (datos, build-leagues):** solo hay 5 colores de líbero en las ligas de pista (#f2c200 el 39 %, blanco, #f39200, #e4002b, #111111); el negro casi nunca pasa el umbral (mkKit lo aclara a pizarra). Variar más los `libero` o no dar negros. Y detrás del hub de pista se ve la playa: es la demo del menú con el escenario de Ajustes (ya pasaba antes); forzar el pabellón con la pista activa sería cosa de main.js/ui.
 - **Lote C (hecho, aviso):** main.js `startMatch`/`startCareerMatch` pasan `format: '6v6'`, `ctrlRole` y `nums` en la Carrera de pista,
   y tools/simtest.js carga js/leagues.js (una línea). No eran ficheros del lote C.

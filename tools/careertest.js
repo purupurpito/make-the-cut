@@ -902,7 +902,7 @@ else {
   // guardado viejo sin c.life: se crea solo
   { c = C.load(); delete c.life; C.save(c); ok(Lf.challenge(C.load()) !== undefined && Lf.fameInfo(C.load()).fans === 0, 'guardado sin c.life: funciona'); }
   C.abandon(); C._reset();
-  // con la Carrera de pista activa (la pestaña Fama no sale en la pista, pero career-life.js no debe romperse si se le pasa una)
+  // con la Carrera de pista activa (desde el 12-nov-2026 la pista también tiene vida: ver «Vida en la Carrera de pista» abajo)
   if (C.hall && C.hall.available()) {
     const keep6 = mem['voley3d.career6']; delete mem['voley3d.career6']; C._reset();
     const h = C.create({ mode: 'hall', name: 'Vida Pista', num: 4, pos: 'OH', seed: 99 }); C.acceptOffer(0, 2);
@@ -1173,6 +1173,131 @@ section('Dificultad de la Carrera: niveles, IA, atributos, XP, entrenador, ofert
   C.abandon(); C._reset();
 }
 function ordnT(n) { return n + (n === 1 || n === 3 ? 'r' : 'º'); }
+// ------------------------------------------------------------------ vida de la Carrera en la PISTA (12-nov-2026)
+section('Vida en la Carrera de pista: retos por puesto, fama, patrocinio de pabellón, tienda, decisiones, temporada y guardados');
+if (!VB.CareerLife || !C.hall || !C.hall.available()) console.log('  (sin js/career-life.js o sin ligas de pista)');
+else {
+  verbose = true;
+  const Lf = VB.CareerLife, H = C.hall;
+  const keep = { c6: mem['voley3d.career6'], md: mem['voley3d.career.mode'], roles: VB.Sim.CTRL_ROLES6 };
+  VB.Sim.CTRL_ROLES6 = ['OH', 'S', 'OPP', 'MB'];   // (los cuatro puestos que deja llevar sim.js)
+  // una Carrera de playa al lado: no debe cambiar nada mientras se juega la de pista
+  C.setMode('beach'); C.abandon(); C._reset(); C.create({ name: 'Playa Al Lado', num: 3, role: 'atk', seed: 4321, autoClub: true });
+  const beachRaw = mem['voley3d.career'];
+  delete mem['voley3d.career6']; C._reset();
+  let c = C.create({ mode: 'hall', name: 'Vida Pista', num: 10, pos: 'OH', seed: 2024 });
+  const inh = Lf.legends().length ? Lf.legacyTier(Lf.legends()[0].score).i * 150 : 0;   // (la retirada de arriba dejó una leyenda: fama heredada)
+  ok(c && c.mode === 'hall' && c.life && c.life.fame === inh && JSON.parse(mem['voley3d.career6']).life, 'crear: c.life dentro de voley3d.career6 (fama heredada ' + inh + ')');
+  ok(C.acceptOffer(c.offers.findIndex(o => !o.trial), 2) && c.phase === 'league', 'firma por un club de la 2ª');
+  // titular indiscutible con el entrenador contento: que juegue todas (sin banquillo)
+  const starter = () => { c = C.get(); c.contract.role = 'Titular indiscutible'; c.coach = 90; C.save(c); };
+  starter();
+  if (!C.next(c)) C.simulateNext();
+  // reto por puesto, con el umbral medido de la pista
+  { const L = Lf.lvlOf(c), Lg = C.league(C.myClub(c).lid), ch = Lf.challenge(c);
+    ok(L === Math.max(0, Math.min(4, Math.round((Lg.strength - 50) / 10))), 'nivel 0-4 desde la fuerza de la liga (' + Lg.name + ' ' + Lg.strength + ' → ' + L + ')');
+    const T = Lf.CH6.OH, okN = ch && (ch.id === 'win' || (T[ch.id] && T[ch.id][L] != null && (ch.id === 'nota' || ch.n === Math.max(1, Math.round(T[ch.id][L] * Lf.ptsF(c))))));
+    ok(okN, 'reto de receptor con el umbral de la pista: «' + (ch && ch.txt) + '»');
+    const ms = C.matchSetup(c); ok(ms && ms.career.goal === ch.txt, 'matchSetup de la pista lleva el reto a g.career.goal');
+    // umbrales por puesto: el colocador no remata (asistencias), el central no defiende ni asiste; a 25 puntos, más
+    const ids = pos => { const s = new Set(); c.player.roleKey = pos; for (let w = 0; w < 60; w++) s.add(Lf.challengeAt(c, 1, 'league', { week: w }, -1).id); c.player.roleKey = 'OH'; return [...s]; };
+    const iS = ids('S'), iM = ids('MB'), iO = ids('OH');
+    ok(iS.indexOf('kills') < 0 && iS.indexOf('assists') >= 0, 'colocador: retos de asistencias, nunca de remates (' + iS.join(', ') + ')');
+    ok(iM.indexOf('digs') < 0 && iM.indexOf('assists') < 0 && iM.indexOf('blocks') >= 0, 'central: bloqueo y remate, sin defensas ni asistencias (' + iM.join(', ') + ')');
+    ok(iO.indexOf('assists') < 0 && iO.indexOf('kills') >= 0 && iO.indexOf('clean') < 0, 'receptor: remates y defensas; «sin ceder un set» solo en L3 (' + iO.join(', ') + ')');
+    c.player.roleKey = 'S'; let chS = null; for (let w = 0; w < 60 && !chS; w++) { const x = Lf.challengeAt(c, 1, 'league', { week: w }, -1); if (x.id === 'assists') chS = x; }
+    ok(chS && chS.n === Lf.CH6.S.assists[L] && chS.n < 30, 'asistencias del colocador a 15: ' + (chS && chS.txt));
+    c.points = 25; let chS25 = null; for (let w = 0; w < 60 && !chS25; w++) { const x = Lf.challengeAt(c, 1, 'league', { week: w }, -1); if (x.id === 'assists') chS25 = x; }
+    ok(chS25 && chS25.n === Math.round(Lf.CH6.S.assists[L] * 25 / 15), 'a 25 puntos el umbral crece (' + (chS25 && chS25.txt) + ')');
+    c.points = 15; c.player.roleKey = 'OH'; C.save(c);
+    const t1 = Lf.challengeAt(c, 1, 'league', { week: 0 }, -1); ok(!/\b1 (aces|bloqueos|errores)\b/.test(t1.txt) && ['Haz un ace', 'Haz un bloqueo punto', 'Gana sin cometer ningún error'].every(s => typeof s === 'string'), 'textos en singular para 1 y «sin ningún error» para 0'); }
+  // tienda: el material se aplica en el partido de pista, en TU hueco (ctrlIdx), y no en los demás
+  { c = C.get(); c.money = 100000; C.save(c);
+    const before = C.matchSetup(c); ok(Lf.buyGear('eyes') === 'ok' && Lf.buyGear('eyes') === 'ok' && C.get().life.gear.eyes === 2, 'material comprado en la pista (2 niveles de ' + Lf.gearName(C.get(), 'eyes') + ')');
+    const after = C.matchSetup(C.get()), i = after.ctrlIdx, o = (i + 1) % 6;
+    ok(after.attrs[0][i].recv === Math.min(99, before.attrs[0][i].recv + 2) && after.attrs[0][i].dig === Math.min(99, before.attrs[0][i].dig + 2) && after.attrs[0][i].spike === before.attrs[0][i].spike, 'setup: +2 recepción y defensa en tu hueco (' + i + ')');
+    ok(after.attrs[0][o].recv === before.attrs[0][o].recv && JSON.stringify(after.attrs[1]) === JSON.stringify(before.attrs[1]), 'los compañeros y el rival, igual');
+    ok(C.get().player.st.recv === C.get().player.st.recv && after.gear && after.gear.recv === 2, 'el atleta no cambia (solo el partido)'); }
+  // partidos jugados: reto cumplido, fama, dinero, logros, rival de tu liga
+  { const big = { kills: 30, aces: 5, blocks: 5, digs: 30, assists: 40, errors: 0 };
+    const play = () => { starter(); const ms = C.matchSetup(C.get()); if (!ms) { C.simulateNext(); return null; } return C.matchDone({ sets: [2, 0], setScores: [[15, 8], [15, 9]], win: true }, big, { career: ms.career }); };
+    c = C.get(); const f0 = c.life.fame, m0 = c.money, d0 = c.life.chDone;
+    const s = play();
+    ok(s && s.mode === 'hall' && s.life && s.life.ch && s.life.ch.ok, 'partido de pista jugado: reto cumplido (' + (s && s.life && s.life.ch && s.life.ch.txt + ', ' + s.life.ch.prog) + ')');
+    c = C.get(); ok(c.life.chDone === d0 + 1 && c.life.fame > f0 && c.money > m0, 'premio: seguidores ' + f0 + ' → ' + c.life.fame + ', dinero ' + m0 + ' → ' + c.money);
+    ok(c.life.ach.m1 && c.life.ach.w1, 'logros «Debut» y «Primera victoria» en la pista');
+    const rk = c.life.rival && C.club(c, c.life.rival.club);
+    ok(rk && rk.lid === C.myClub(c).lid && rk.id !== c.myClub && c.life.rival.num !== 13 && c.life.rival.num !== c.player.num, 'rival personal de tu liga (por id): ' + (c.life.rival && c.life.rival.name + ', ' + rk.name));
+    ok(c.last && c.last.life && c.last.life.ch, 'la tarjeta del último partido lleva el reto (c.last.life)');
+    const fame = [c.life.fame]; for (let i = 0; i < 4; i++) { play(); fame.push(C.get().life.fame); }
+    ok(fame.every((v, i) => !i || v >= fame[i - 1]) && fame[4] > fame[0], 'la fama sube jornada a jornada jugando bien: ' + fame.join(' → '));
+    const ss = C.simulateNext(); ok(ss && ss.life && !ss.life.ch, 'simulando no hay reto'); }
+  // patrocinio de pabellón (inventado) y offerBonus en las ofertas de pista
+  { c = C.get();
+    Lf.addFame(c, Math.max(0, 600 - c.life.fame)); C.save(c); c = C.get();
+    if (!c.life.spOffers.length) { Lf.sponsorOffers(c, 'season'); C.save(c); c = C.get(); }
+    ok(c.life.spOffers.length === 2 && c.life.spOffers.every(o => Lf.SPONSORS6.indexOf(o.name) >= 0 && Lf.SPONSORS.indexOf(o.name) < 0), 'patrocinadores de pabellón inventados: ' + c.life.spOffers.map(o => o.name).join(', '));
+    ok(c.life.spOffers.every(o => Lf.SP_GOALS6.OH.some(g => g.stat === o.goal.stat) && o.goal.n >= 3), 'objetivo de temporada de receptor: ' + c.life.spOffers.map(o => o.goal.txt).join(' / '));
+    const sNo = C.beach.offerScore(Object.assign({}, c, { life: undefined })), sYes = C.beach.offerScore(c), sct = c.life.scout === c.season ? 2 : 0;
+    ok(Lf.offerBonus(c) > 0 && Math.abs(sYes - sNo - Lf.offerBonus(c) - sct) < 1e-9, 'la fama (y el ojeador) suman interés en las ofertas de pista (offerScore, que usa genOffers6): +' + Lf.offerBonus(c));
+    ok(Lf.signSponsor(0) && C.get().life.sponsor && Lf.SPONSORS6.indexOf(C.get().life.sponsor.name) >= 0, 'patrocinio firmado: ' + C.get().life.sponsor.name);
+    const m1 = C.get().money, sp = C.get().life.sponsor.pay; C.simulateNext(); ok(C.get().money >= m1 + sp - 1 || C.get().phase === 'off', 'el patrocinio paga cada jornada (' + sp + ' €)'); }
+  // decisiones: las de pabellón (solo en la pista) y la química del equipo
+  { c = C.get(); c.life.ev = { key: 'speech', id: 900 }; const ch0 = c.chem | 0; C.save(c);
+    const pe = Lf.pendingEvent(C.get()); ok(pe && pe.title === 'Charla en el vestuario' && pe.opts.length === 3, 'decisión de pabellón: «' + (pe && pe.title) + '»');
+    const r = Lf.answer(0); ok(r && C.get().chem === Math.min(100, ch0 + 8), 'la química que se mueve es la del equipo (' + ch0 + ' → ' + C.get().chem + ')');
+    c = C.get(); c.life.ev = { key: 'mateDown', id: 901 }; C.save(c); const md = Lf.pendingEvent(C.get());
+    ok(md && md.title === 'Un compañero está de bajón' && !/\{mate\}|^Un compañero apenas/.test(md.text) && md.opts.every(o => o.hint.every(h => h[0] !== 'Forma del compañero')), 'sin pareja: un compañero de la plantilla con nombre (' + md.text + ')');
+    c = C.get(); c.life.ev = { key: 'rivalTalk', id: 902 }; C.save(c); ok(/pabellón/.test(Lf.pendingEvent(C.get()).text), 'el pique del rival habla del pabellón');
+    c = C.get(); c.life.ev = null; C.save(c);
+    ok(Object.keys(Lf.EVENTS).filter(k => Lf.EVENTS[k].only === 'hall').length >= 2, 'hay decisiones que solo salen en la pista'); }
+  // textos de pabellón
+  { c = C.get();
+    const fi = Lf.fameInfo(Object.assign({}, c, { life: Object.assign({}, c.life, { fame: 2500 }) }));
+    ok(fi.name === 'Conocido en la liga' && Lf.tierName(2) === 'Conocido en el circuito', 'escalón de fama de pabellón: «' + fi.name + '» (playa: «' + Lf.tierName(2) + '»)');
+    ok(Lf.legacyTier(160, c).name === 'Ídolo del pabellón' && Lf.legacyTier(160).name === 'Ídolo del circuito', 'legado de pabellón: «' + Lf.legacyTier(160, c).name + '»');
+    const al = Lf.achList(c), txt = al.map(a => a.name + ' ' + a.d).join(' | ');
+    ok(al.some(a => a.name === 'Veterano del parqué') && al.some(a => a.name === 'Director de orquesta') && !/arena|circuito|\bopen\b/i.test(txt), 'logros de pabellón (sin arena, circuito ni open)');
+    ok(Lf.GEAR_KEYS.every(k => Lf.gearName(c, k)) && Lf.gearName(c, 'eyes') === 'Rodilleras de gel', 'material de pabellón'); }
+  // cierre de temporada y temporada nueva
+  { let g = 0; while (C.get().phase !== 'off' && g++ < 60) C.simulateNext();
+    c = C.get(); const r = c.review || {};
+    ok(c.phase === 'off' && r.fans > 0 && r.legacy > 0 && Array.isArray(r.awards) && c.history.length === 1, 'fin de temporada: fama ' + r.fans + ', legado ' + r.legacy + ', premios ' + (r.awards || []).length + ' (con 6 partidazos forzados)');
+    ok(c.life.sponsor && c.life.sponsor.done && c.inbox.some(m => m.k === 'fans' && (/^Bonus de /.test(m.t) || /objetivo no cumplido/.test(m.t))), 'el patrocinio se liquida al acabar la temporada');
+    const age0 = c.player.age; C.stay(1); c = C.get();
+    ok(c.season === 2 && c.player.age === age0 + 1 && !c.life.sponsor && (Lf.fameInfo(c).i < 1 || c.life.spOffers.length === 2) && c.life.rival, 'temporada nueva: el patrocinio se va, llegan ofertas nuevas y sigue el rival');
+    // premios de pabellón: una temporada de colocador descomunal y jugada → «Mejor colocador»
+    c.player.roleKey = 'S'; c.stats = { played: 12, won: 11, sim: 0, bench: 0, pts: 10, kills: 2, aces: 10, blocks: 14, assists: 330, digs: 30, errors: 4 };
+    c.notes = Array.from({ length: 12 }, () => ({ nota: 8.6, win: 1, sim: 0 }));
+    const a0 = c.life.awards.length; Lf.hook(c, 'season'); const got = c.life.awards.slice(a0).map(a => a.name);
+    ok(got.some(n => /^Mejor colocador /.test(n)) && !got.some(n => /^Máximo anotador/.test(n)), 'premios de pabellón por puesto: ' + got.join(', '));
+    c.player.roleKey = 'OH'; C._reset(); }
+  // guardado de pista viejo, sin c.life: se crea solo al cargar
+  { const raw = JSON.parse(mem['voley3d.career6']); delete raw.life; mem['voley3d.career6'] = JSON.stringify(raw); C._reset();
+    c = C.get(); ok(c && c.mode === 'hall' && c.life && c.life.fame === 0 && Array.isArray(c.life.awards) && Lf.fameInfo(c).fans === 0, 'guardado de pista sin c.life: se crea al cargar (fama 0)');
+    let err = ''; try { Lf.challenge(c); Lf.achList(c); C.simulateNext(); } catch (e) { err = e.message; } ok(!err && C.get().life, 'y la Carrera sigue sin errores' + (err ? ' — ' + err : '')); }
+  // textos de pabellón también en lo que se guarda: historial de decisiones y logros de la tarjeta del partido; jornadas de patrocinio
+  { c = C.get(); c.life.ev = { key: 'mateDown', id: 903 }; C.save(c); const pe = Lf.pendingEvent(C.get()); Lf.answer(0);
+    const lg = C.get().life.log.slice(-1)[0];
+    ok(lg && lg.t === 'Un compañero está de bajón' && lg.o === pe.opts[0].t && !/\{/.test(lg.o), 'historial de decisiones con el título de pabellón: «' + (lg && lg.t) + '» / «' + (lg && lg.o) + '»');
+    c = C.get(); c.career.played = 49; C.save(c); let sm = null, g = 0; while (!sm && g++ < 5) { const x = C.simulateNext(); if (x && x.life && x.life.ach && x.life.ach.length) sm = x; }
+    ok(sm && sm.life.ach.indexOf('Veterano del parqué') >= 0 && sm.life.ach.every(n => !/arena/i.test(n)), 'la tarjeta del partido nombra el logro de pabellón (' + (sm && sm.life.ach.join(', ')) + ')');
+    c = C.get(); const k = C.myClub(c), nC = H.leagueClubs(c, k.lid).length, w = H.weeksOf(c, k.lid);
+    ok(Lf.seasonWeeks(c) === (nC % 2 ? w - w / nC : w), 'objetivo de patrocinio con las jornadas que juegas (' + nC + ' clubes: ' + Lf.seasonWeeks(c) + ' de ' + w + ')');
+    const odd = [3, 5, 7, 9, 11].every(n => { const ww = n <= 8 ? 2 * n : n; return ww - ww / n === (n <= 8 ? 2 * (n - 1) : n - 1); });
+    ok(odd, 'con un nº impar de clubes se quitan los descansos (1 por vuelta)'); }
+  // y la playa, igual
+  ok(mem['voley3d.career'] === beachRaw, 'la Carrera de playa guardada al lado no ha cambiado');
+  { C.setMode('beach'); C._reset(); const cb = C.get(), ch = Lf.challenge(cb);
+    ok(cb && cb.mode !== 'hall' && ch && (ch.id === 'win' || ch.id === 'clean' || Lf.CH[ch.id].n[cb.myClub >= 0 ? C.myClub(cb).lvl : 0] === ch.n), 'playa: el reto sigue con sus umbrales (' + (ch && ch.txt) + ')');
+    ok(Lf.fameInfo(cb).name === 'Desconocido' && Lf.achList(cb).some(a => a.name === 'Veterano de la arena') && !Lf.achList(cb).some(a => a.name === 'Director de orquesta'), 'playa: sus textos y logros'); }
+  // dejar todo como estaba
+  C.abandon(); C._reset();
+  if (keep.c6 != null) mem['voley3d.career6'] = keep.c6; else delete mem['voley3d.career6'];
+  if (keep.md != null) mem['voley3d.career.mode'] = keep.md; else delete mem['voley3d.career.mode'];
+  if (keep.roles) VB.Sim.CTRL_ROLES6 = keep.roles; else delete VB.Sim.CTRL_ROLES6;
+  C._reset(); verbose = false;
+}
 
 console.log('\n' + passes + ' comprobaciones bien');
 console.log(fails ? '\n' + fails + ' FALLOS' : '\nTODO OK');

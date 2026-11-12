@@ -3,7 +3,7 @@
  *  - Partido: tarjeta «Reto de la jornada» (con el duelo contra tu rival) y la decisión pendiente (botones con sus efectos).
  *  - Último partido: reto cumplido o no, seguidores, dinero, duelo y logros.
  *  - Pestaña «Fama»: Fama (seguidores, patrocinio, rival, decisiones) · Tienda (material y servicios) · Logros · Legado (premios,
- *    puntuación de leyenda, retirada y Salón de la Fama).
+ *    puntuación de leyenda, retirada y Salón de la Fama). En las dos Carreras (playa y pista); los textos de pabellón los da career-life.js.
  * Solo devuelve HTML; las acciones (data-act="lf-…") las atiende career-ui.js (onClick → VB.CareerLifeUI.act). Datos: career-life.js.
  */
 (function () {
@@ -16,6 +16,9 @@
   function sp(a, k) { return H.sp(a, k); }
   function eur(v) { return Lf().eur(v); }
   function num(v) { return Lf().num(v); }
+  function isHall(c) { return !!(c && c.mode === 'hall'); }
+  /** Pista: el nombre del puesto que llevas (Receptor, Colocador…), para el reto; '' en la playa. */
+  function posName(c) { var H = C() && C().hall; if (!isHall(c) || !H || !H.ctrlRole || !H.POS) return ''; var p = H.POS[H.ctrlRole(c)]; return p ? p.name : ''; }
   function bar(p, col) { return '<span class="bar"><i style="width:' + Math.round(100 * Math.max(0, Math.min(1, p))) + '%' + (col ? ';background:' + col : '') + '"></i></span>'; }
   var CSS = [
     '#career .lf-big{font:900 30px var(--display);letter-spacing:.02em;margin:0;line-height:1.05;color:#ffd23f;text-shadow:var(--ring1)}',
@@ -54,7 +57,7 @@
     }
     if (ch) {
       var rv = l.rival;
-      h += '<div class="card lf-ch' + (ch.duel ? ' lf-duel' : '') + '"><h3>' + (ch.duel ? sp(['Duelo', 'contra ' + esc(rv.name)], 'd') : 'Reto de la jornada') + '</h3><b class="goal">' + esc(ch.txt) + '</b><p>' +
+      h += '<div class="card lf-ch' + (ch.duel ? ' lf-duel' : '') + '"><h3>' + (ch.duel ? sp(['Duelo', 'contra ' + esc(rv.name)], 'd') : posName(c) ? sp(['Reto de la jornada', esc(posName(c))], 'd') : 'Reto de la jornada') + '</h3><b class="goal">' + esc(ch.txt) + '</b><p>' +
         '<span class="tag y">+' + num(ch.fans) + ' seguidores</span><span class="tag y">+' + ch.xp + ' XP</span><span class="tag y">+' + eur(ch.money) + '</span>' + (ch.duel ? '<span class="tag r">Premio doble</span>' : '') + '</p>' +
         '<p class="muted" style="margin:4px 0 0">' + sp([ch.duel ? 'Cara a cara ' + rv.w + '-' + rv.l : '', 'Solo cuenta si juegas el partido', 'Retos cumplidos: ' + (l.chDone | 0)], 'v') + '</p></div>';
     }
@@ -91,7 +94,7 @@
       var s = l.sponsor, g = Lf().sponsorProgress(c);
       h += '<p class="bigname" style="font-size:20px">' + esc(s.name) + '</p><p>' + sp([eur(s.pay) + ' por jornada', 'bonus ' + eur(s.goal.bonus)], 'v') + '</p>' +
         '<div class="pbar"><span>' + esc(s.goal.txt) + '</span>' + bar(g / s.goal.n) + '<b>' + Math.min(g, s.goal.n) + '/' + s.goal.n + '</b></div><p class="muted">El patrocinio dura hasta final de temporada.</p>';
-    } else if (!l.spOffers.length) h += '<p class="muted">' + (f.i < 1 ? 'Nadie te patrocina todavía. Llega a «' + esc(Lf().tierName(1)) + '» (' + num(Lf().TIERS[1][0]) + ' seguidores) y empezarán a llamar.' : 'Sin patrocinador esta temporada. Al subir de escalón o en verano llegarán ofertas nuevas.') + '</p>';
+    } else if (!l.spOffers.length) h += '<p class="muted">' + (f.i < 1 ? 'Nadie te patrocina todavía. Llega a «' + esc(Lf().tierName(1, c)) + '» (' + num(Lf().TIERS[1][0]) + ' seguidores) y empezarán a llamar.' : 'Sin patrocinador esta temporada. Al subir de escalón o en verano llegarán ofertas nuevas.') + '</p>';
     if (l.spOffers.length) {
       h += l.spOffers.map(function (o, i) {
         return '<div class="lf-item"><div><b>' + esc(o.name) + '</b><small>' + sp([eur(o.pay) + ' por jornada', 'bonus de ' + eur(o.goal.bonus) + ' si consigues ' + esc(o.goal.txt)], 'v') + '</small></div><button class="pri" data-act="lf-sp" data-i="' + i + '">Firmar</button></div>';
@@ -129,16 +132,16 @@
     return '<div class="card"><h3>' + sp(['Logros', done + ' de ' + a.length], 'd') + '</h3><p class="muted">Cada logro da su premio una sola vez: puntos de mejora, seguidores o dinero.</p><div class="lf-ach">' +
       a.map(function (x) {
         var v = x.dec ? String(x.v).replace('.', ',') : num(x.v);
-        return '<div class="lf-a' + (x.done ? ' done' : '') + '"><b>' + (x.done ? '✓ ' : '') + esc(x.name) + '</b><small>' + esc(x.d) + '</small>' + (x.done ? '' : bar(x.v / x.n) + '<small style="margin:3px 0 0">' + v + ' de ' + (x.dec ? String(x.n).replace('.', ',') : num(x.n)) + '</small>') + '<em>' + esc(x.reward) + '</em></div>';
+        return '<div class="lf-a' + (x.done ? ' done' : '') + '"><b>' + (x.done ? '✓ ' : '') + esc(x.name) + '</b><small>' + esc(x.d) + '</small>' + (x.done ? '' : bar(x.v / x.n) + '<small style="margin:3px 0 0">' + (x.pt ? esc(x.pt) : v + ' de ' + (x.dec ? String(x.n).replace('.', ',') : num(x.n))) + '</small>') + '<em>' + esc(x.reward) + '</em></div>';
       }).join('') + '</div></div>';
   }
   function legacy(c) {
-    var l = c.life, sc = Lf().legacyScore(c), t = Lf().legacyTier(sc), age = c.player.age | 0, h = '';
+    var l = c.life, sc = Lf().legacyScore(c), t = Lf().legacyTier(sc, c), age = c.player.age | 0, h = '';
     h += '<div class="card lf-fm"><h3>Legado</h3><p class="lf-big">' + sc + '</p><p class="lf-tier">' + esc(t.name) + '</p>' +
       (t.next ? bar((sc) / t.next[0]) + '<p class="muted" style="margin:0">' + sp(['Siguiente: ' + esc(t.next[1]), 'a ' + t.next[0] + ' puntos'], 'v') + '</p>' : '') +
       '<p class="muted">Suman los títulos (más cuanto más alta la categoría), los premios individuales, la fama, las victorias y los logros.</p></div>';
     h += '<div class="card"><h3>Premios individuales</h3>' + (l.awards.length ? l.awards.slice().reverse().map(function (a) { return '<p><span class="tag y">' + esc(a.name) + '</span> ' + sp(['T' + a.season, esc(a.club)], 'v') + '</p>'; }).join('')
-      : '<p class="muted">Aún ninguno. Al final de cada temporada se entregan: MVP, máximo anotador, mejor sacador, muro del año, mejor defensa y revelación. Hay que jugar los partidos: simulando no te ve nadie.</p>') + '</div>';
+      : '<p class="muted">Aún ninguno. Al final de cada temporada se entregan: MVP, máximo anotador, mejor sacador, muro del año, mejor defensa' + (isHall(c) ? ', mejor colocador' : '') + ' y revelación. Hay que jugar los partidos: simulando no te ve nadie.</p>') + '</div>';
     h += '<div class="card"><h3>' + sp(['Retirada', age + ' años'], 'd') + '</h3>';
     if (Lf().canRetire(c)) {
       var armed = retArm && performance.now() - retArm < 4000;
@@ -148,7 +151,7 @@
     h += '</div>';
     var lg = Lf().legends();
     if (lg.length) h += '<div class="card"><h3>Salón de la Fama</h3><table><thead><tr><th class="l">Jugador</th><th>Legado</th><th class="hide-s">Títulos</th><th class="hide-s">Premios</th><th>Temp.</th></tr></thead><tbody>' +
-      lg.slice(0, 10).map(function (r) { return '<tr><td class="club">' + esc(r.name) + ' <span class="muted">(' + esc(r.tier) + ')</span></td><td>' + r.score + '</td><td class="hide-s">' + r.titles + '</td><td class="hide-s">' + r.awards + '</td><td>' + r.seasons + '</td></tr>'; }).join('') + '</tbody></table></div>';
+      lg.slice(0, 10).map(function (r) { return '<tr><td class="club">' + esc(r.name) + ' <span class="muted">(' + esc(r.tier) + (r.mode === 'hall' ? ', pista' : '') + ')</span></td><td>' + r.score + '</td><td class="hide-s">' + r.titles + '</td><td class="hide-s">' + r.awards + '</td><td>' + r.seasons + '</td></tr>'; }).join('') + '</tbody></table></div>';
     return h;
   }
 

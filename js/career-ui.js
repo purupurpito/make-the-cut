@@ -433,7 +433,7 @@
     if (view === 'create' || !c) { renderCreate(c); return; }
     if (c.phase === 'pick') { renderPick(c); return; }
     var k = C().myClub(c), L = isHall(c) ? C().league(k.lid) : C().league(k.lvl);
-    if (!TABS.some(function (t) { return t[0] === tab; }) || (tab === 'life' && isHall(c))) tab = 'match';
+    if (!TABS.some(function (t) { return t[0] === tab; }) || (tab === 'life' && !LUI())) tab = 'match';   // (Fama: playa y pista, 12-nov-2026)
     head.innerHTML = '<button data-act="close" aria-label="Volver a Jugar">‹ Jugar</button>' +
       '<div class="cr-title"><small>' + sp(['Carrera', 'Temporada ' + c.season, esc(L.name)], 'd') + '</small><b>' + sp([esc(c.player.name), esc(k.name)], 's') + '</b></div>' +
       '<div class="cr-ovr">' + C().playerOvr(c) + '<small>TU MEDIA</small></div>';
@@ -443,7 +443,7 @@
     if (tab === 'inbox' && C().readAll) { (c.inbox || []).forEach(function (m) { if (!m.r) freshIds[m.id] = 1; }); if (C().unread(c)) C().readAll(); }
     var un = C().unread ? C().unread(c) : 0, offN = c.offers && c.offers.length;
     tabsEl.hidden = false;
-    drawBar('tab', TABS.filter(function (t) { return t[0] !== 'life' || (LUI() && !isHall(c)); }).map(function (t) {
+    drawBar('tab', TABS.filter(function (t) { return t[0] !== 'life' || !!LUI(); }).map(function (t) {
       var dot = (t[0] === 'player' && c.player.pts > 0) || (t[0] === 'club' && (c.window === 'mid' || c.phase === 'off') && offN) || (t[0] === 'match' && c.phase === 'off') ||
         (t[0] === 'life' && !!(c.life && c.life.spOffers && c.life.spOffers.length));
       return [t[0], t[1] + (t[0] === 'inbox' && un ? ' (' + un + ')' : ''), dot];
@@ -887,10 +887,15 @@
     var h = '', n = C().next(c);
     if (n) {
       var lg = c.phase === 'league' && c.week > 0, same = n.rival.lid === n.me.lid, RL = n.rivalLeague || C().league(n.rival.lid), role = C().ctrlRole(c);
+      // si su 1ª choca con la tuya, el rival sale con su 2ª (o con la de la CPU): la muestra enseña la que vestirá (Players.rivalKit)
+      var mk = n.me.kit, rvk = n.rival.kit, alt = VB.Players && VB.Players.rivalKit ? VB.Players.rivalKit({ kitShirt: mk.shirt, kitShorts: mk.shorts,
+        rival: { kitShirt: rvk.shirt, kitAccent: rvk.accent, kitShorts: rvk.shorts, kitPattern: rvk.pattern, kitLibero: rvk.libero } }) : null;
+      var rvShow = alt && alt.kind === '2a' ? Object.assign({}, n.rival, { kit: { shirt: alt.shirt, accent: alt.accent, shorts: alt.shorts, pattern: alt.pattern } }) : n.rival;
       h += '<div class="card"><h3>' + sp(esc(n.label).split(' · '), 'v') + '</h3><div class="vs">' +
         teamBlock(c, n.me, false, sp([lg ? ordn(C().posOf(c, n.me.id)) : '', 'Equipo ' + n.ovrMe, n.atHome ? 'En casa' : 'Fuera'], 'c')) +
         '<div class="vs-mid">VS</div>' +
-        teamBlock(c, n.rival, true, sp([same ? (lg ? ordn(C().posOf(c, n.rival.id)) : '') : esc(RL.short + ', ' + RL.country), 'Media ' + n.ovrRival, 'IA ' + esc(n.diffName)], 'c')) + '</div>' +
+        teamBlock(c, rvShow, true, sp([same ? (lg ? ordn(C().posOf(c, n.rival.id)) : '') : esc(RL.short + ', ' + RL.country), 'Media ' + n.ovrRival, 'IA ' + esc(n.diffName),
+          alt && alt.kind === '2a' ? '2ª equipación' : alt && alt.kind === 'cpu' ? 'Equipación neutral' : ''], 'c')) + '</div>' +
         '<p class="muted" style="margin-top:8px">6 contra 6 en el pabellón: al mejor de 3 sets a ' + c.points + (c.points > 15 ? ', el tercero a 15' : '') + '. Tú llevas a ' + esc(c.player.name) + ' (dorsal ' + c.player.num + ', ' + esc(posName(role).toLowerCase()) + ') y al resto del equipo la IA.</p>' +
         (role !== c.player.roleKey ? '<p class="muted">Tu puesto (' + esc(posName(c.player.roleKey).toLowerCase()) + ') aún no se puede llevar en el 6 contra 6: juegas de ' + esc(posName(role).toLowerCase()) + '.</p>' : '') +
         '<p class="muted">' + sp(['Entreno: ' + esc(C().TRAIN[c.train].name), 'Fatiga ' + (c.fatigue | 0) + (C().fatigueMalus(c) ? ' (−' + C().fatigueMalus(c) + ' en tus atributos)' : ''),
@@ -900,6 +905,7 @@
             '<div class="acts"><button class="pri" data-act="bench">Ver la jornada</button></div></div>'
           : '<div class="acts"><button class="pri" data-act="play">Jugar partido</button><button data-act="sim">Simular <small style="font:600 12px var(--ui);text-transform:none;letter-spacing:0">(mitad de XP)</small></button></div></div>');
     }
+    if (LUI()) h += LUI().matchCards(c, HLP);   // reto de la jornada (por puesto) y decisión pendiente, como en la playa
     var lastUn = (c.inbox || []).filter(function (m) { return !m.r; }).slice(-1)[0];
     if (lastUn) h += '<div class="card"><h3>Mensajes <span class="muted">(' + plural(C().unread(c), 'sin leer', 'sin leer') + ')</span></h3>' + msgHTML(lastUn) + '<div class="acts"><button data-tab="inbox">Ver mensajes</button></div></div>';
     if (c.window === 'mid' && c.offers && c.offers.length) h += '<div class="card new"><h3>Ventana de fichajes</h3><p>' + plural(c.offers.length, 'club quiere', 'clubes quieren') + ' ficharte ya' + (c.offers.some(function (o) { return o.foreign; }) ? ', también de fuera' : '') + '. Las ofertas caducan al jugar o simular el siguiente partido.</p><div class="acts"><button data-tab="club" data-s="offers">Ver ofertas</button></div></div>';
