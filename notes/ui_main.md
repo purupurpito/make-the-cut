@@ -1447,9 +1447,12 @@ Revisión con capturas de todas las pantallas a 1280×720 y 844×390 táctil, y 
 - **Carrera:** «Superliga de Playa» → «Hiperliga de Playa» (regla de nombres de Ferran; los guardados viejos migran en beachTrophies),
   escudos con aro claro, sub-pestañas de ancho natural, tabla de ofertas sin cortes, «Pedir ser titular».
 
-**Decisiones de gusto pendientes de Ferran** (no aplicadas): D1 tratamiento cómic solo en la acción principal; D2 mayúsculas
-condensadas solo en títulos y cifras; D3 marcador del HUD recto tipo TV; D4 tarjetas de modo con dorsal grande o recortes del juego;
-D5 intro de partido como cartel de previa de TV; D6 mosca «DIRECTO» sin «DEMO» ni parpadeo; D7 un solo estilo de foco (aro ámbar);
+**D1-D5 HECHAS (12-nov-2026, «Haz las 5»)**, en la zona «DIRECCIÓN TV» al final del <style> de index.html, una región por decisión:
+D1 cómic completo solo en la acción principal (resto plano; Pausa y Ajustes como lista con separadores); D2 display en mayúsculas solo
+en títulos, banners, nombres, cifras y acción principal (secundarios en var(--ui) y minúscula de frase); D3 marcador recto tipo TV con
+el tanteo en caja clara, sets en cifra (.sb-sn) y «CH»; D4 tarjetas de modo planas con «2v2», copa y «6v6»; D5 cartel de previa con
+bloques del color de cada equipo y nombres en blanco. La Carrera se trata desde index.html con #app #career (career-ui.js sin tocar).
+**Pendientes de Ferran:** D6 mosca «DIRECTO» sin «DEMO» ni parpadeo; D7 un solo estilo de foco (aro ámbar);
 D8 seleccionado amarillo también en los segmentados; D9 jerarquía de pestañas en Carrera; D10 unificar atributos e insignias de
 Jugadores y Carrera; D11 cabecera y «Volver» comunes en Carrera, Cuenta e Instalar; D12 «compañero» y «Bloqueador»; D13 previa de
 partido de Carrera en mini-tabla; D14 generador de nombres de club sin redundancias («Dunes … Dunes»); D15 escalas de letra y radios.

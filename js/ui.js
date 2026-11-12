@@ -379,6 +379,7 @@
     el.row0 = $('sbRow0'); el.row1 = $('sbRow1'); el.name0 = $('sbName0'); el.name1 = $('sbName1');
     el.pts0 = $('sbPts0'); el.pts1 = $('sbPts1');
     el.pips0 = $('sbSets0').children; el.pips1 = $('sbSets1').children;
+    el.sn0 = $('sbSets0').querySelector('.sb-sn'); el.sn1 = $('sbSets1').querySelector('.sb-sn'); // sets ganados en cifra (marcador de TV)
     el.tb = [$('tb1'), $('tb2'), $('tb3')];
     el.app = $('app');
     el.veil = $('veil'); el.vp = $('vpulse');
@@ -1600,6 +1601,7 @@
     if (last.sets !== sk) {
       last.sets = sk;
       for (var i = 0; i < 2; i++) { el.pips0[i].classList.toggle('on', i < g.sets[0]); el.pips1[i].classList.toggle('on', i < g.sets[1]); }
+      if (el.sn0) { el.sn0.textContent = g.sets[0]; el.sn1.textContent = g.sets[1]; }
     }
     var hk = (g.setScores || []).length;
     if (last.hist !== hk) {
