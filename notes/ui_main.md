@@ -1452,7 +1452,38 @@ D1 cómic completo solo en la acción principal (resto plano; Pausa y Ajustes co
 en títulos, banners, nombres, cifras y acción principal (secundarios en var(--ui) y minúscula de frase); D3 marcador recto tipo TV con
 el tanteo en caja clara, sets en cifra (.sb-sn) y «CH»; D4 tarjetas de modo planas con «2v2», copa y «6v6»; D5 cartel de previa con
 bloques del color de cada equipo y nombres en blanco. La Carrera se trata desde index.html con #app #career (career-ui.js sin tocar).
-**Pendientes de Ferran:** D6 mosca «DIRECTO» sin «DEMO» ni parpadeo; D7 un solo estilo de foco (aro ámbar);
-D8 seleccionado amarillo también en los segmentados; D9 jerarquía de pestañas en Carrera; D10 unificar atributos e insignias de
-Jugadores y Carrera; D11 cabecera y «Volver» comunes en Carrera, Cuenta e Instalar; D12 «compañero» y «Bloqueador»; D13 previa de
-partido de Carrera en mini-tabla; D14 generador de nombres de club sin redundancias («Dunes … Dunes»); D15 escalas de letra y radios.
+**Pendientes:** D10 unificar atributos e insignias de Jugadores y Carrera; D11 cabecera y «Volver» comunes en Carrera, Cuenta e
+Instalar; D13 previa de partido de Carrera en mini-tabla; D14 generador de nombres de club sin redundancias (D10, D11, D13 y D14 tocan
+el JS de Carrera: esperan a la sesión de Carrera); D15 escalas de letra y radios. D6, D7, D8, D9 y D12 hechas (abajo).
+**D6 HECHA (12-nov-2026):** mosca roja recta «DIRECTO» sin brillo, parpadeo ni «DEMO»; franja .sheet::before solo en la hoja final
+(color del ganador, --k0/--k1; la previa ya los lleva en sus bloques de D5); el lema bajo el logo pasa a dato vivo #menuLast
+(«Última: 2-1 a la CPU | Normal», record.lastA/lastB/lastD en ui.js; sin partidos no sale). Región «TV D6».
+**D7 HECHA:** foco único = aro ámbar interior (--focus, --focus-ring; outline con desfase negativo en todo lo enfocable) y, sobre
+amarillo o naranja, --focus-ring-on (tinta + ámbar + tinta); fuera los contornos blancos y dorados. Región «TV D7».
+**D8 HECHA:** --sel (degradado #ffd23f→#ffc21a, texto en tinta) en pestañas, segmentados de Ajustes, .sq-pk y Carrera;
+el naranja solo en la acción principal. Región «TV D8».
+**D12 HECHA:** «compañero» para el tuyo en textos visibles (career.js, career-life.js, career-ui.js; claves sin tocar), «pareja
+rival» solo para el rival; rol 1 de Partido rápido «Atacante» → «Bloqueador» (prog.js BASE; los guardados lo toman al cargar).
+
+**D9 HECHA (12-nov-2026)**, región «TV D9» de index.html (solo CSS con #app #career; career.js y career-ui.js sin tocar, la otra
+sesión sigue en la Carrera de pista). Jerarquía: apartado en píldora amarilla; sub-pestaña con subrayado dorado de 3 px sobre una
+raya fina (sin píldora); filtro de Clasificación (circuito, país, división) como segmentado pequeño plano y sin sombra (32 px, 44 en
+táctil; el selector de país de «Crea tu jugador» sigue en botones: es una elección, no un filtro). Repaso con capturas a 1280×720,
+844×390 y 390×844 de crear (playa/pista), elegir club y comparar, previa, mensajes, jugador (atributos, insignias, entreno), club
+(ficha, equipo, contrato, ofertas de inicio, de mitad y de final), liga (clasificación, calendario, copas), palmarés, opciones,
+fama/tienda/logros/legado (playa) y hoja final. Arreglado en la Carrera de pista (y la de playa, comparten estilos):
+- etiquetas (+XP, ¡Nivel!, Entreno, Simulado, Ascenso…) en var(--ui) y minúscula de frase; las neutras sin contorno de tinta;
+- insignias bloqueadas legibles (antes todo al 60 %: «Bloqueada» y la ayuda bajo 4,5:1; ahora solo se apagan icono y nombre, la
+  ayuda va en --soft sin negrita y «Bloqueada» en --muted con !important, porque career-ui.js le pone en línea TIER_C[0] #6b6390,
+  ~2,5:1; lo limpio, para la sesión de Carrera: cambiar TIER_C[0] de career-ui.js por var(--muted) y quitar ese !important);
+- filtro de país de Clasificación a ≤900 px (una fila deslizable sin barra): el borde derecho se funde en 32 px y hay 32 px de
+  relleno al final, para que se note que hay más países (con width:fit-content el corte caía justo entre botones);
+- vista previa de atributos al crear con columnas automáticas (se pegaba «Colocación 35Potencia» a 844×390);
+- 390 px: título de cabecera en dos líneas, previa de partido con los clubes apilados (los nombres de pista se partían en 4 líneas
+  con «…»), segmentados de puesto y de duración sin cortes («Recepto», «temporadas» fuera), nombres enteros en «Comparar ofertas»;
+- táctil: «Ver» de «Comparar ofertas» a 44 px de ancho; botones del filtro a 44 px;
+- hoja final de Carrera: «¡Nivel 7! +4 puntos» plano y en minúscula de frase.
+**Queda para la otra sesión (JS de Carrera):** la previa de pista no lleva «Sets a 25» en el antetítulo como la de playa («Sets a
+21») y lo repite en el párrafo (career-ui.js renderMatch6, ~l. 836-840); detrás de la Carrera de pista se ve la playa del menú
+(propuesta: que el fondo del hub siga a VB.Career.mode()). Aparte, no es de Carrera: a 390×844 la hoja final pisa el tanteo del MVP
+con la columna de ataque.

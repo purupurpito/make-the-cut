@@ -520,7 +520,7 @@
         // (la pareja, en pastillas: antes era una lista metida en un paréntesis)
         '<p class="muted" style="margin-top:4px">' + (function () {
           var mo = C().mateOvr(c), dd = mo - C().clubOvr(n.me), tg = dd >= 3 ? 'g' : dd <= -3 ? 'r' : '';
-          return sp(['Pareja: ' + esc(c.mate.name), esc(c.mate.role), 'Media ' + mo, { h: esc(vsClub(dd)), c: tg ? 'dv ' + tg : 'dv' }, 'Forma: ' + esc(C().formText(c.mate.form | 0)).toLowerCase()], 'c');
+          return sp(['Compañero: ' + esc(c.mate.name), esc(c.mate.role), 'Media ' + mo, { h: esc(vsClub(dd)), c: tg ? 'dv ' + tg : 'dv' }, 'Forma: ' + esc(C().formText(c.mate.form | 0)).toLowerCase()], 'c');
         })() + '</p>' +
         '<p class="muted">' + sp(['Entreno: ' + esc(C().TRAIN[c.train].name), 'Fatiga ' + (c.fatigue | 0) + (C().fatigueMalus(c) ? ' (−' + C().fatigueMalus(c) + ' en tus atributos)' : ''),
           'Química ' + (c.mate.chem | 0) + (C().chemBonus(c) ? ' (+' + C().chemBonus(c) + ')' : '')], 'v') + '</p>' +
@@ -594,7 +594,7 @@
     if (offArm === i && c.window === 'mid') {   // fichar a mitad de temporada: confirmación con lo que cambia
       var mk = C().myClub(c), nl = C().league(f.lvl);
       return h + '<div class="confirm" role="alertdialog" aria-label="Confirmar fichaje"><p><b>¿Fichar ya por ' + esc(k.name) + '?</b> Dejas ' + esc(mk.name) + ' a mitad de temporada y juegas lo que queda ' +
-        (f.lvl !== mk.lvl ? (nl.art === 'el' ? 'en el ' : 'en la ') + esc(nl.name) + ' con su calendario' : 'con su calendario') + ', con ' + (mp ? esc(mp.name) : 'otra pareja') + ' (química desde cero). ' +
+        (f.lvl !== mk.lvl ? (nl.art === 'el' ? 'en el ' : 'en la ') + esc(nl.name) + ' con su calendario' : 'con su calendario') + ', con ' + (mp ? esc(mp.name) : 'otro compañero') + ' (química desde cero). ' +
         (early ? 'Sales con contrato en vigor: el entrenador nuevo empieza con ' + C().EARLY_COACH + ' menos de confianza. ' : '') + 'No se puede deshacer.</p>' +
         '<div class="acts"><button class="pri" data-act="offer" data-i="' + i + '">Sí, fichar</button><button data-act="offno">Cancelar</button></div></div></div>';
     }
@@ -741,8 +741,8 @@
   /** Club › Compañero: el actual (química) y la plantilla para pedir cambio. */
   function renderMate(c) {
     var m = c.mate, ch = m.chem | 0, cb = C().chemBonus(c), k = C().myClub(c), co = C().clubOvr(k), mo = C().mateOvr(c), mf = m.form | 0;
-    var h = '<div class="card"><h3>Tu pareja</h3><p class="bigname" style="font-size:20px">' + sp([esc(m.name), 'n.º ' + m.num], 's') + '</p>' + mateLine(m, co, true) +
-      '<p class="muted">' + (mo - co <= -3 ? 'Con una pareja floja tendrás más trabajo y más protagonismo: la IA se la jugará menos y tú llevarás el peso.' : mo - co >= 3 ? 'Con una pareja buena tienes más ayuda: recibe, defiende y remata por encima del nivel del club.' : 'Una pareja al nivel del club: ni carga ni muleta.') +
+    var h = '<div class="card"><h3>Tu compañero</h3><p class="bigname" style="font-size:20px">' + sp([esc(m.name), 'n.º ' + m.num], 's') + '</p>' + mateLine(m, co, true) +
+      '<p class="muted">' + (mo - co <= -3 ? 'Con un compañero flojo tendrás más trabajo y más protagonismo: la IA se la jugará menos y tú llevarás el peso.' : mo - co >= 3 ? 'Con un compañero bueno tienes más ayuda: recibe, defiende y remata por encima del nivel del club.' : 'Un compañero al nivel del club: ni carga ni muleta.') +
       (mf ? ' Su forma (' + esc(C().formText(mf)).toLowerCase() + ') ' + (mf > 0 ? 'suma +' : 'resta −') + Math.abs(mf) + ' a todos sus atributos en el próximo partido; cambia tras cada partido.' : ' Su forma cambia tras cada partido y suma o resta hasta ' + C().FORM_MAX + ' a sus atributos.') + '</p>' +
       '<h3 style="margin-top:10px">' + sp(['Química', ch + ' de 100'], 'd') + '</h3>' + meter(ch, 'Química con el compañero', '#4be0a0') +
       '<p class="muted">Sube cada partido juntos (+5 jugado, +3 simulado). ' + (cb ? 'Ahora suma +' + cb + ' a los dos en reacción, colocación y recepción.' : 'A partir de 30 suma +1 a los dos en reacción, colocación y recepción (hasta +3).') + '</p></div>';

@@ -251,7 +251,7 @@
       o: [{ t: 'Grabar el vídeo', e: { fame: 0.1, coach: -2, fatigue: 3 } }, { t: 'Pasar', e: { coach: 1 } }] },
     rivalTalk: { t: 'Tu rival te pica', x: '{rival} ha dicho en una entrevista que «en la arena hay jugadores y luego hay gente que hace fotos». Todo el mundo sabe por quién lo dice.', when: function (c) { return !!(c.life && c.life.rival); },
       o: [{ t: 'Responder con humor', e: { fame: 0.05, fameMin: 40 } }, { t: 'Contestar duro', e: { fame: 0.08, fameMin: 60, coach: -3 } }, { t: 'Ignorarle', e: { coach: 3 } }] },
-    mateDown: { t: 'Tu pareja está de bajón', th: 'Un compañero está de bajón', x: '{mate} apenas habla en los entrenos desde hace días.', when: function (c) { return !!c.mate && (c.mate.chem | 0) < 50; },
+    mateDown: { t: 'Tu compañero está de bajón', th: 'Un compañero está de bajón', x: '{mate} apenas habla en los entrenos desde hace días.', when: function (c) { return !!c.mate && (c.mate.chem | 0) < 50; },
       o: [{ t: 'Invitar a cenar', e: { chem: 10, money: -0.15 } }, { t: 'Entrenar juntos extra', e: { chem: 6, fatigue: 8 } }, { t: '«Espabila, que nos jugamos mucho»', e: { chem: -6, form: 1 } }] },
     tv: { t: 'Te invitan a la tele', x: 'Un programa de deportes quiere entrevistarte en directo esta noche.', when: function (c) { return tierOf(c) >= 2; },
       o: [{ t: 'Ir al plató', e: { fame: 0.12, fatigue: 6, money: 0.3 } }, { t: 'Mejor descansar', e: { fatigue: -10 } }] },
@@ -295,7 +295,7 @@
     if (e.fatigue) h.push(['Fatiga', e.fatigue < 0]);
     if (e.money) h.push(['Dinero', e.money > 0]);
     if (e.tp) h.push(['Entreno', true]);
-    if (e.form) h.push(['Forma de la pareja', true]);
+    if (e.form) h.push(['Forma del compañero', true]);
     if (e.hurt) h.push(['Riesgo', false]);
     if (e.scout) h.push(['Ofertas', true]);
     return h;

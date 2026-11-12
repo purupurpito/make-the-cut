@@ -63,7 +63,7 @@ button{font:800 18px/1 var(--display);letter-spacing:.08em;text-transform:upperc
 button:hover{filter:brightness(1.08)}
 button:active{transform:translateY(1px) scale(.985)}
 button:focus{outline:none}
-button:focus-visible,button.kf{outline:3px solid var(--fg);outline-offset:3px}
+button:focus-visible,button.kf{outline:3px solid #ffb238;outline-offset:-3px} /* foco único: aro ámbar interior (TV D7) */
 button.ghost{background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px var(--line2);color:var(--fg)}
 button.ghost:hover{background:rgba(255,255,255,.11)}
 kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width:1.55em;height:1.55em;box-sizing:border-box;padding:0 .45em;
@@ -1342,7 +1342,6 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 .sq-r b{text-align:right;font:900 17px var(--display);color:var(--fg);font-variant-numeric:tabular-nums}
 .sq-r button{height:30px;padding:0;border-radius:9px;font:800 16px/1 var(--ui);letter-spacing:0;text-shadow:none;text-transform:uppercase;background:var(--t0);color:#fff;box-shadow:0 0 0 2px var(--tk)}
 .sq-r button:disabled{opacity:.6;filter:none;background:rgba(255,255,255,.08);color:var(--dim-text);box-shadow:inset 0 0 0 1px var(--line2)}
-.sq-r button.kf,.sq-r button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
 .sq-r.up b{animation:sqUp .5s var(--spring)}
 @keyframes sqUp{40%{transform:scale(1.5);color:var(--gold)}}
 .sq-note{margin:12px 0 0;color:var(--dim-text);font-size:12.5px}
@@ -1375,7 +1374,6 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 .bd-t.eq{background:linear-gradient(180deg,rgba(255,210,63,.2),rgba(255,210,63,.06));box-shadow:0 0 0 2px var(--tk),0 0 0 4px var(--gold),0 3px 0 4px var(--tk)}
 .bd-on{position:absolute;top:-9px;right:6px;padding:1px 6px;border-radius:6px;background:var(--gold);color:var(--tk);font:800 10.5px/1.35 var(--display);letter-spacing:.1em;font-style:normal;text-shadow:none;box-shadow:0 0 0 1.5px var(--tk)}
 .bd-t:hover{filter:brightness(1.12)}
-.bd-t.kf,.bd-t:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
 .bd-info{margin:8px 0 0;min-height:2.6em;font:600 12.5px/1.35 var(--ui);color:var(--fg2)}
 .bd-info b{color:var(--fg)}
 .bd-info small{color:var(--muted);font-size:11.5px}
@@ -1605,7 +1603,6 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
 .sh-k .sep-d{margin:-.14em .7em 0 .55em}
 .in-k span span::before{content:none}
 .in-k>span::before{content:"";width:.42em;height:.42em;margin:0 12px 0 2px;display:inline-block;vertical-align:middle;transform:rotate(45deg);background:#ff6a2e;box-shadow:0 0 0 1.5px var(--tk)}
-.live .sep-v{height:.9em;margin:0 .35em;opacity:.55}
 /* pistas de teclas: grupos con raya fina entre ellos */
 .kh{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .kh+.kh::before{content:"";width:2px;height:14px;margin:0 8px 0 7px;border-radius:1px;background:currentColor;opacity:.35}
@@ -1780,7 +1777,6 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .tabs .tab:hover:not(.on){background:rgba(255,255,255,.09);color:#fff;filter:none}
 .tabs .tab:active{transform:none}
 .tabs .tab.on{color:var(--tk);background:linear-gradient(180deg,#ffd23f 0 50%,#ffc21a 50% 100%);box-shadow:inset 0 0 0 2px var(--tk),2px 3px 0 var(--tk)}
-.tabs .tab.kf,.tabs .tab:focus-visible{outline:3px solid #fff;outline-offset:1px}
 .tb-b{font:800 10.5px/1 var(--display);font-style:normal;letter-spacing:.1em;padding:3px 6px;border-radius:6px;background:rgba(75,224,160,.2);color:#8ff0c4}
 .tabs .tab.on .tb-b{background:rgba(29,21,48,.16);color:var(--tk)}
 .tabs .tb-k{flex:0 0 auto;min-width:32px;height:30px;padding:0 7px;border-radius:9px;font:800 13px/1 var(--display);letter-spacing:.04em;color:var(--tk);background:#fff7e8;
@@ -1815,7 +1811,6 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .sq-pk.on .sq-pn small{color:rgba(29,21,48,.8)}
 .sq-pk.on .sq-pp{background:var(--tk);color:#ffd23f}
 .sq-pk.kf,.sq-pk:focus-visible{outline:none;box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffb238,3px 4px 0 var(--tk)}
-.sq-pk.on.kf,.sq-pk.on:focus-visible{box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffb238,inset 0 0 0 6.5px var(--tk),3px 4px 0 var(--tk)} /* sobre el amarillo, el aro con filo de tinta */
 .sq-pp{font:900 14px/1 var(--display);font-style:normal;padding:4px 8px;border-radius:8px;background:#ffd23f;color:var(--tk);box-shadow:0 0 0 2px var(--tk)}
 .sq-attrs{display:flex;flex-direction:column;gap:6px}
 .sq-attrs .sq-r{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 2.2em 46px;min-height:50px;padding:4px 8px 4px 12px;border-radius:12px;background:rgba(29,21,48,.45);box-shadow:inset 0 0 0 2px var(--tk)}
@@ -1908,7 +1903,6 @@ button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi
 .end-sets span{border-radius:6px;box-shadow:none}
 .end-back{border-radius:8px;box-shadow:var(--flat-sh);text-shadow:none;font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
 .fs-btn{border-radius:8px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1),var(--flat-sh);text-shadow:none;font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
-.live{box-shadow:0 0 0 1.5px var(--tk);letter-spacing:.1em}
 /* ---- Pausa: lista con separadores finos (la acción principal, Seguir jugando, sigue de cómic arriba) ---- */
 #pause .vlist{gap:0}
 #pause .vlist>#btnResume{margin-bottom:10px}
@@ -1939,7 +1933,6 @@ button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi
 .tabs .tab{border-radius:6px;font:700 15px/1 var(--ui);letter-spacing:0;text-transform:none}
 .tabs .tab.on{background:#ffd23f;box-shadow:none}
 .tabs .tab.kf,.tabs .tab:focus-visible{outline:none;box-shadow:var(--ring-f)}
-.tabs .tab.on.kf,.tabs .tab.on:focus-visible{box-shadow:inset 0 0 0 3px var(--tk),inset 0 0 0 5px #ffb238}
 .tabs .tb-k{box-shadow:inset 0 0 0 1.5px var(--tk),0 2px 0 var(--tk)}
 .tb-b{font:700 11px var(--ui);letter-spacing:.02em}
 @media (max-height:560px){.tabs .tab{font-size:14px}}
@@ -1948,7 +1941,6 @@ button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi
 .sq-pk:hover{background:var(--flat-hi);filter:none}
 .sq-pk.on{background:#ffd23f}
 .sq-pk.kf,.sq-pk:focus-visible{box-shadow:var(--ring-f),var(--flat-sh)}
-.sq-pk.on.kf,.sq-pk.on:focus-visible{box-shadow:inset 0 0 0 3px #ffb238,inset 0 0 0 4.5px var(--tk),var(--flat-sh)}
 .sq-num,.sq-ovr{text-shadow:none;font-variant-numeric:tabular-nums}
 .sq-attrs .sq-r{border-radius:6px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
 .sq-attrs .sq-r>span:first-child{font:700 16px var(--ui);letter-spacing:0;text-transform:none}
@@ -1979,7 +1971,6 @@ button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi
 #app #career button[aria-pressed="true"]:not(.tab){border-radius:8px;background:#ffd23f;box-shadow:var(--flat-sh);font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
 /* foco con teclado o mando: la regla plana lleva 5 :not() y ganaba a la de arriba; estas copian su cadena y añaden el estado */
 #app #career button:not(.pri):not(.warn):not([aria-pressed="true"]):not(.tab):not(.tb-k):is(:focus-visible,.kf){background:var(--flat-hi);box-shadow:var(--ring-f),var(--flat-sh)}
-#app #career button[aria-pressed="true"]:not(.tab):is(:focus-visible,.kf){box-shadow:inset 0 0 0 3px #ffb238,inset 0 0 0 4.5px var(--tk),var(--flat-sh)}
 #app #career .card:not(.lf-ch):not(.confirm){border-radius:8px;background:var(--flat);box-shadow:0 0 0 1.5px var(--tk),var(--flat-sh)}
 #app #career .card.lf-ch{border-radius:8px;background:linear-gradient(135deg,rgba(255,210,63,.18),rgba(255,128,64,.12)),var(--flat);box-shadow:0 0 0 1.5px var(--tk),inset 0 0 0 2px rgba(255,210,63,.55),var(--flat-sh)}
 #app #career h3{letter-spacing:.1em;text-shadow:none}
@@ -1990,7 +1981,6 @@ button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi
 #app #career .tabs .tab{border-radius:6px;font:700 15px/1 var(--ui);letter-spacing:0;text-transform:none}
 #app #career .tabs .tab.on{background:#ffd23f;box-shadow:none}
 #app #career .tabs .tab.kf,#app #career .tabs .tab:focus-visible{outline:none;box-shadow:var(--ring-f)}
-#app #career .tabs .tab.on.kf,#app #career .tabs .tab.on:focus-visible{box-shadow:inset 0 0 0 3px var(--tk),inset 0 0 0 5px #ffb238}
 #app #career .cr-sub.tabs .tab{font-size:14px}
 /* ---- barra de toques: plana y recta como el marcador (sin inclinación ni contorno de tinta; borde 1px transparente = misma caja) ---- */
 .tb-lbl::before,.tb-seg{transform:none;border-radius:2px;border-color:transparent;background:var(--tk);box-shadow:0 4px 12px rgba(0,0,0,.3)}
@@ -2046,13 +2036,13 @@ button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi
 @media (max-height:420px){.sb-chal{width:62px;gap:4px}.sb-chal::before{font-size:13px}}
 /* ==== fin TV D3 ==== */
 /* ==== TV D4: tarjetas de modo ==== */
-/* Tarjetas planas (D1): radio 10 px, sin contorno de tinta ni sombra dura; el foco es un aro ámbar por fuera (outline: no lo tapa el dibujo).
+/* Tarjetas planas (D1): radio 10 px, sin contorno de tinta ni sombra dura; el foco es el aro ámbar interior común (TV D7, capa ::after).
    Dibujo = fondo plano del color del modo + marca grande tipo dorsal («2v2», «6v6») o copa plana de un solo color (Carrera).
    La marca escala con su caja (container queries) para caber en todas las variantes responsive. */
 #menu .mode{border-radius:10px;background:rgba(40,33,74,.94);box-shadow:0 6px 18px rgba(10,6,24,.35);
   transition:transform .2s var(--ease),outline-color .15s,background .2s}
 #menu .mode:hover{background:rgba(54,45,98,.96)}
-#menu .mode:focus-visible,#menu .mode.kf{transform:translateY(-4px);outline:4px solid #ffb238;outline-offset:3px;
+#menu .mode:focus-visible,#menu .mode.kf{transform:translateY(-4px);
   box-shadow:0 10px 24px rgba(10,6,24,.45)}
 #menu .mode:active{transform:translateY(1px)}
 #menu .mode.soon:hover{box-shadow:0 6px 18px rgba(10,6,24,.35)}
@@ -2145,6 +2135,121 @@ button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi
   #intro .in-skip{padding:0 12px 9px}
 }
 /* ==== fin TV D5 ==== */
+/* ==== TV D6: mosca de directo, franja de equipo y dato de portada ==== */
+/* Mosca roja recta «DIRECTO» (sin brillo, sin parpadeo, sin «DEMO»); solo se ve con la demo detrás (ui.js bootBgOut). */
+#menu .live{gap:7px;padding:5px 10px 5px 9px;border:0;border-radius:2px;background:#d4251c;box-shadow:none;color:#fff;
+  font:800 12px/1 var(--display);letter-spacing:.16em;text-shadow:none}
+#menu .live::before{width:7px;height:7px;background:#fff;box-shadow:none;animation:none}
+/* bajo el logo, el dato vivo del último Partido rápido («Última: 2-0 a la CPU | Normal», ui.js renderMenu); sin partidos no sale */
+#menu .tagline{margin-top:10px;font:700 15px/1.3 var(--ui);color:var(--fg2);letter-spacing:0}
+#menu .tagline .sep-v{margin:-.1em .55em 0}
+/* la franja de color de arriba solo en la hoja final, con el color del ganador (equipaciones de kitTick: --k0 tú, --k1 la CPU);
+   la previa ya lleva los colores de equipo en sus bloques (TV D5) */
+.sheet::before{display:none}
+#end .sheet::before{display:block}
+#end.win .sheet::before{background:var(--k0)}
+#end.lose .sheet::before{background:var(--k1)}
+/* ==== fin TV D6 ==== */
+/* ==== TV D7: un solo foco ==== */
+/* Foco de teclado/mando = aro ámbar INTERIOR, igual en todo (botones, pestañas, .sq-pk, listas, tarjetas de modo, Carrera).
+   Va en outline con desfase negativo (no choca con las sombras de cada botón y se pinta encima del contenido); las reglas de D1
+   que usan var(--ring-f) pintan la misma banda. Sobre fondos claros o saturados (amarillo de seleccionado, naranja de la acción
+   principal) el aro lleva filo de tinta por fuera y por dentro (--focus-ring-on) para que se vea. Sin contornos blancos ni dorados. */
+#app{--focus:#ffb238;--focus-ring:inset 0 0 0 3px var(--focus);
+  --focus-ring-on:inset 0 0 0 3px var(--tk),inset 0 0 0 6px var(--focus),inset 0 0 0 7.5px var(--tk);--ring-f:var(--focus-ring)}
+#app :is(button,a,input,select,textarea,[tabindex]):is(:focus-visible,.kf){outline:3px solid var(--focus);outline-offset:-3px}
+/* fondo claro o saturado: el outline pasa a filo de tinta y el ámbar va dentro (box-shadow) */
+#app :is(#btnPlay,#btnGo,#btnResume,#btnAgain,#btnTutNext,#btnFirstTut,.tabs .tab.on,.sq-pk.on,.sq-r button):is(:focus-visible,.kf),
+#app #career button:is(.pri,.warn,[aria-pressed="true"]):is(:focus-visible,.kf){outline-color:var(--tk)}
+#app #menu .mi.primary:is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),5px 6px 0 var(--tk)}
+#app :is(#btnResume,#btnAgain,#btnTutNext,#btnFirstTut):is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),0 4px 0 var(--tk)}
+#app .tabs .tab.on:is(:focus-visible,.kf),#app #career .tabs .tab.on:is(:focus-visible,.kf){box-shadow:var(--focus-ring-on)}
+#app .sq-pk.on:is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),var(--flat-sh)}
+/* «+1» de Jugadores: fondo naranja (--t0), aro con filo de tinta y se conserva el contorno de 2px */
+#app .sq-r button:is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),0 0 0 2px var(--tk)}
+#app #career button:is(.pri,.warn):not(.tab):not(.tb-k):is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),4px 5px 0 var(--tk)}
+#app #career button[aria-pressed="true"]:not(.tab):not(.tb-k):is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),var(--flat-sh)}
+/* tarjetas de modo: el dibujo de color tapa las sombras interiores; el aro va en una capa encima (::after) */
+#menu .mode::after{content:"";position:absolute;inset:0;z-index:2;border-radius:inherit;pointer-events:none}
+#app #menu .mode:is(:focus-visible,.kf){outline:none}
+#app #menu .mode:is(:focus-visible,.kf)::after{box-shadow:var(--focus-ring-on)}
+/* Cuenta cuelga de body (account.js), no de #app: no hereda --focus, va el color literal */
+body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
+/* ==== fin TV D7 ==== */
+/* ==== TV D8: seleccionado ==== */
+/* «Seleccionado» = un solo degradado amarillo (--sel) con texto en tinta, en pestañas, segmentados de Ajustes, Jugadores y Carrera.
+   El naranja queda para la acción principal. Las muestras de color de la equipación (.seg.kit) no cambian. */
+#app{--sel:linear-gradient(180deg,#ffd23f,#ffc21a)}
+.tabs .tab.on,#app #career .tabs .tab.on{background:var(--sel)}
+.sq-pk.on{background:var(--sel)}
+.seg:not(.kit) span.on{background:var(--sel);color:var(--tk)}
+#app #career button[aria-pressed="true"]:not(.tab){background:var(--sel);color:var(--tk)}
+/* ==== fin TV D8 ==== */
+/* ==== TV D9: Carrera, jerarquía de navegación y repaso de la Carrera de pista ==== */
+/* Tres niveles que ya no se confunden (antes los tres eran la misma píldora amarilla):
+   1) apartado (primer nivel, #crTabs): píldora amarilla, como en D1+D2 (no se toca aquí);
+   2) sub-pestaña (#crSub): texto sobre una raya fina, la elegida en dorado con subrayado de 3 px, sin píldora;
+   3) filtro de circuito / liga / país / división (.lg-sw de Clasificación): segmentado pequeño plano, sin sombra.
+   Mismo alto de caja en las pestañas (el componente VB.UI.tabs y career-ui.js no se tocan). */
+#app #career .cr-sub.tabs .tb-row{gap:2px;padding:0 2px;border-radius:0;background:transparent;box-shadow:inset 0 -1px 0 rgba(255,255,255,.14)}
+#app #career .cr-sub.tabs .tab{border-radius:0;background:transparent;color:var(--soft);box-shadow:none}
+#app #career .cr-sub.tabs .tab:hover:not(.on){background:rgba(255,255,255,.06);color:#fff}
+#app #career .cr-sub.tabs .tab.on{background:transparent;color:#ffd23f;box-shadow:inset 0 -3px 0 #ffd23f}
+#app #career .cr-sub.tabs .tab.kf,#app #career .cr-sub.tabs .tab:focus-visible{background:rgba(255,255,255,.06);box-shadow:var(--ring-f)}
+#app #career .cr-sub.tabs .tab.on.kf,#app #career .cr-sub.tabs .tab.on:focus-visible{box-shadow:var(--ring-f),inset 0 -3px 0 #ffd23f}
+/* filtros: los de Clasificación cuelgan directos de la tarjeta (#crBody>.card>.lg-sw); el selector de país de «Crea tu jugador»
+   (.cf) es una elección, no un filtro, y sigue con botones planos. #crBody da el tercer id: gana a la regla plana de D1 */
+#app #career #crBody>.card>.lg-sw{display:flex;width:fit-content;max-width:100%;gap:2px;padding:3px;margin-bottom:6px;border-radius:8px;background:rgba(10,6,24,.42)}
+#app #career #crBody>.card>.lg-sw button{flex:0 0 auto;min-width:0;min-height:32px;padding:0 10px;border-radius:6px;background:transparent;box-shadow:none;
+  color:var(--soft);font:700 13px/1 var(--ui);letter-spacing:.02em;text-transform:none;text-shadow:none;transform:none}
+#app #career #crBody>.card>.lg-sw button:hover{background:rgba(255,255,255,.08);color:#fff}
+#app #career #crBody>.card>.lg-sw button[aria-pressed="true"]{background:#ffd23f;color:var(--tk)}
+#app #career #crBody>.card>.lg-sw button:is(:focus-visible,.kf){background:rgba(255,255,255,.1);box-shadow:var(--ring-f)}
+#app #career #crBody>.card>.lg-sw button[aria-pressed="true"]:is(:focus-visible,.kf){background:#ffd23f;box-shadow:inset 0 0 0 3px #ffb238,inset 0 0 0 4.5px var(--tk)}
+#app.is-touch #career #crBody>.card>.lg-sw button{min-height:44px;min-width:44px}
+/* «Ver» de la tabla comparativa de ofertas: 39 px de ancho en el táctil */
+#app.is-touch #career td button{min-width:44px}
+/* ≤900 px: el filtro de país es una sola fila deslizable sin barra; el borde derecho se funde para avisar de que hay más países
+   (y 32 px de relleno al final: al llegar al último país, el fundido cae sobre el hueco y no sobre el botón) */
+@media (max-width:900px){#app #career #crBody>.card>.cc-row{flex-wrap:nowrap;overflow-x:auto;padding-right:32px;
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent)}}
+/* ---- repaso de la Carrera (playa y pista) ---- */
+/* etiquetas de la Carrera (+XP, ¡Nivel!, Entreno, Simulado, Ascenso…): texto secundario en minúscula de frase, planas */
+#app #career .tag{font:700 12px/1.25 var(--ui);letter-spacing:0;text-transform:none}
+#app #career .tag:not(.g):not(.y):not(.r){box-shadow:none}
+/* insignias bloqueadas: antes todo el botón al 60 % (el «Bloqueada» y la ayuda quedaban por debajo de 4,5:1); ahora solo se apagan
+   el icono y el nombre, y el texto se lee entero */
+#app #career .bd.lock{opacity:1}
+#app #career .bd.lock .ic{opacity:.5}
+#app #career .bd.lock strong{color:var(--muted)}
+/* «Bloqueada»: career-ui.js le pone en línea TIER_C[0] (#6b6390, ~2,5:1 sobre la tarjeta); --muted pasa de 4,5:1. El !important gana
+   al estilo en línea (lo limpio, cambiar TIER_C[0], es de la sesión de Carrera). La ayuda va en --soft y sin negrita: que no destaque
+   sobre el nombre */
+#app #career .bd.lock strong+span{color:var(--muted)!important}
+#app #career .bd.lock>span:last-child{color:var(--soft);font-weight:400}
+/* hoja final de un partido de Carrera: «¡NIVEL 7! +4 puntos» (texto de main.js) en minúscula de frase y plano, sin tinta;
+   ::first-letter recoge el «¡» y la N → «¡Nivel 7! +4 puntos» */
+#end .end-xp .lv{display:inline-block;box-shadow:none;font:700 13px/1.3 var(--ui);letter-spacing:0;text-transform:lowercase}
+#end .end-xp .lv::first-letter{text-transform:uppercase}
+/* vista previa de atributos al crear: 5 columnas fijas pegaban «Colocación 35Potencia» en la columna estrecha (844×390, 1280×720) */
+#app #career .prev{grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}
+/* teléfono vertical y ventanas estrechas */
+@media (max-width:560px){
+  /* título de la cabecera: hasta dos líneas en vez de «PISTA PRUEBA / H…» */
+  #app #career .cr-title b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:20px;line-height:1.05}
+  /* previa de partido: los dos clubes uno debajo del otro (lado a lado, los nombres de pista se partían en 4 líneas con «…») */
+  #app #career .vs{grid-template-columns:minmax(0,1fr);gap:6px}
+  #app #career .team.r{flex-direction:row;text-align:left}
+  #app #career .vs-mid{font-size:18px;line-height:1;padding-left:58px}
+  #app #career .team b{font-size:19px}
+  /* segmentados de elección (puesto, duración del contrato): letra algo menor y menos relleno, sin cortes */
+  #app #career .seg{gap:6px}
+  #app #career .seg button{min-width:0;padding:0 4px;font-size:14px;line-height:1.1}
+  /* «Comparar ofertas»: el nombre del club en varias líneas en vez de «Hama…» (solo en las tablas con botón «Ver») */
+  #app #career tr:has(button) td{padding-left:3px;padding-right:3px}
+  #app #career tr:has(button) td.club{white-space:normal;overflow-wrap:break-word;hyphens:auto;font-size:13px;line-height:1.2}
+}
+/* ==== fin TV D9 ==== */
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -2213,7 +2318,7 @@ button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi
   <div id="fsTip" role="status" hidden></div>
   <!-- ================= MENÚ ================= -->
   <div id="menu" class="screen intro" hidden>
-    <div class="live">EN DIRECTO<span class="sep sep-v"><span class="sr">, </span></span>DEMO</div>
+    <div class="live">DIRECTO</div>
     <button class="fs-btn" id="btnFs" data-ui hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Pantalla completa</span></button>
     <div class="menu-col">
       <div class="brand">
@@ -2221,7 +2326,7 @@ button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi
         <h1 class="logo" aria-label="Make the Cut">
           <svg class="lg" viewBox="0 0 780 490" aria-hidden="true" focusable="false"><use href="#mtcLogo"/></svg>
         </h1>
-        <p class="tagline">Vóley en pista cubierta, con la cámara detrás de tu jugador: <b>tú y tu pareja contra la CPU</b>.</p>
+        <p class="tagline" id="menuLast" hidden></p>
       </div>
       <!-- Menú principal (menús v2, nov-2026): pocas entradas grandes y sin números. JUGAR abre la página de modos (#mpPlay) y
            Partido rápido su preparación (#mpQuick); pila de páginas en ui.js (menuGo / menuBack: Esc, B o el botón Volver) -->
