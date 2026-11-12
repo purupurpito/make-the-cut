@@ -902,14 +902,25 @@
    *  Solo para el humano (la IA bloquea como siempre). Vale en 2v2 y 6v6. */
   var PRESS_EARLY = 0.30, PRESS_NET_T = 0.5, PRESS_NET = 0.9, NET_PRESS = { easy: 0.4, normal: 0.6, hard: 0.75, expert: 0.85 };
   var _bw = {};
-  function blockPress(g, p) {
+  /** ¿GOLPEAR sería ahora una pulsación de bloqueo (true) o un golpe normal (false)? Sin efectos ni g.rng: lo usa también la UI
+   *  (aviso «Al remate: ¡muro!»). */
+  function blockPressCase(g, p) {
     var b = g.ball, sd = side(p.team);
-    if (!(p.z > 0.2) || Math.abs(p.x) > BLK_ZONE || g.touchTeam === p.team) return false;
+    if (!p || !(p.z > 0.2) || Math.abs(p.x) > BLK_ZONE || g.touchTeam === p.team || g.mode !== 'rally') return false;
     // (side(t) = signo del campo propio: el balón viene hacia nosotros cuando vx tiene ese signo, como exige checkBlock)
     var spiked = g.lastKind === 'spike' || g.lastKind === 'free', toward = !b.held && b.vx * sd > 0.5;
     // balón ya en nuestro campo: golpe normal (un ataque en vuelo sigue siendo bloqueable mientras esté en la zona de checkBlock, |x| <= 0,6)
     if (b.x * sd > (spiked && toward ? 0.6 : 0.3)) return false;
-    if (!spiked && toward && Math.abs(b.x) < 0.6) return false;   // overpass / balón libre que cruza: golpe normal
+    // overpass, balón que cruza sin atacar o saque que viene: golpe normal. En 6v6 esté donde esté (revisión del 12-nov: con
+    // |b.x| >= 0,6 el humano en la red que anticipaba el remate del overpass se comía un toque de red con lead = ∞); en 2v2 solo
+    // cerca de la red, como lo dejó «Bloqueo activo» (cambiarlo mueve la huella 2v2: petición en SIGUIENTE.md)
+    if (!spiked && toward && (g.rot || Math.abs(b.x) < 0.6)) return false;
+    return true;
+  }
+  function blockPress(g, p) {
+    if (!blockPressCase(g, p)) return false;
+    var b = g.ball, sd = side(p.team);
+    var spiked = g.lastKind === 'spike' || g.lastKind === 'free', toward = !b.held && b.vx * sd > 0.5;
     var lead;   // s hasta el golpe del rematador (negativo = el ataque ya va en vuelo)
     if (spiked && toward) lead = -1;
     else if (g.touches < 2 && !g.rot) lead = Infinity;              // 2v2: aún no han colocado
@@ -2626,7 +2637,7 @@
     // añadidos (opcionales)
     hitWindow: hitWindow, aimPoint: aimPoint, predictKind: predictKind, canDive: canDive, timingQ: timingQ, gradeOf: gradeOf,
     normDiff: normDiff, DIFF: DIFF, TIMING: TIMING,
-    atkPhase: atkPhase, canJset: canJset, jsetReady: jsetReady, jsetVoid: jsetVoid, JSET: JSET, // colocación en salto
+    atkPhase: atkPhase, blockPressCase: blockPressCase, canJset: canJset, jsetReady: jsetReady, jsetVoid: jsetVoid, JSET: JSET, // colocación en salto
     // internos expuestos para la IA y los tests
     _aimFloat: aimFloat, _floatPath: floatPath,
     _hit: hit, _jump: jump, _dive: dive, _diveMiss: diveMiss, _humanJump: humanJump, _holdPos: holdPos, _holdBase: holdBase, _ritualBall: ritualBall, _ritualStyle: ritualStyle, _stepPlayer: stepPlayer, _emit: emit, _rnd: rnd, _gauss: gauss,

@@ -1328,6 +1328,16 @@ de que llegue la pelota), puedes tocar la red y que sea falta, pero si no lo apr
 - **Pendiente en otros ficheros** (SIGUIENTE.md, Peticiones entre lotes): pose de «bajar el bloqueo» en players.js sobre el evento
   `blockPress` (manos por encima de la red, muñecas hacia abajo) y consejo del entrenador en ui.js («En el bloqueo, GOLPEAR justo
   cuando remata = muro; antes = red»).
+- **Hecho por el lote A (12-nov-2026)**: players.js, evento `blockPress` → `r.pressT/r.pressOk`: con `ok` las manos avanzan 0,14 m y bajan
+  0,05 m con las muñecas cerradas (+0,8) durante 0,3 s; con `ok:false` un amago de 0,15 s al 40 %; el contacto `block` con `pressed`
+  (`r.blockHard`) es más corto (0,14 s) y rígido. ui.js: sello «¡Muro!» en el directo pulsado, aviso «Al remate: ¡muro!» en el aire
+  (`blkP`) y consejos del bloqueo en 2v2, 6v6 y coach6 del central («salta y GOLPEAR justo cuando remata: muro; antes, red»).
+- **Revisión adversarial del 12-nov (workflow de 7 agentes, 3 hallazgos confirmados, aplicados)**: nuevo `VB.Sim.blockPressCase(g, p)`,
+  predicado puro (sin `g.rng`) de «GOLPEAR sería pulsación de bloqueo»; `blockPress` y la UI lo comparten. (1) El aviso «muro» salía
+  con un overpass, donde GOLPEAR es golpe normal; (2) salía durante el saque rival (touches 3 tras el saque) e invitaba a un toque de red;
+  ahora `blkP` = `blockPressCase` y ataque rival pendiente o en vuelo, nunca con `lastKind 'serve'`. (3) En 6v6, un overpass que aún está a
+  ≥ 0,6 m en el campo rival hacía que el humano en la red se comiera un toque de red al anticipar el remate (`lead = ∞`): ahora
+  `!spiked && toward` es golpe normal esté donde esté (solo con `g.rot`; en 2v2 cambia la huella: petición en SIGUIENTE.md). simtest (n).
 
 ## 6v6, lote A: posiciones jugables, rotaciones reales y pistas en el campo (11-nov-2026) — sim / ai6 / fx / players / ui
 Pedido de Ferran en SIGUIENTE.md (lote A). Todo detrás de `g.rot`: la huella 2v2 sigue idéntica (150 partidas, 1591 puntos, 572 632

@@ -466,7 +466,7 @@
       yaw: 0, yawT: 0, phase: 0, vf: 0, vl: 0, clock: Math.random() * 10, headYaw: 0, headPitch: 0,
       // tiempos de eventos (tiempo de juego), -99 = nunca
       hitT: -99, hitKind: '', hitC: new THREE.Vector3(), hitQ: 1,
-      jumpT: -99, jumpKind: '', landT: -99, blockT: -99, swingT: -99,
+      jumpT: -99, jumpKind: '', landT: -99, blockT: -99, swingT: -99, pressT: -99, pressOk: false, blockHard: false,
       pointT: -99, pointWin: false, celeb: 0, matchEnd: false, mateHF: false,
       cvW0: 0, cvW1: 0, cvMode: 0, cvRx: 0, cvRy: 0, cvRz: 0, cvLx: 0, cvLy: 0, cvLz: 0,
       lieW: 0, diveTc: 0, pdW: 0, pdT0: -1, pdTp: 0, pdX: 0, pdY: 0, pdZ: 0, pdLive: false,
@@ -1604,11 +1604,20 @@
         if (hk === 'serve') layerG(P, T2, wOut, 0, true); else blendP(P, T2, wOut);
       }
     }
+    // bloqueo activo (sim blockPress, evento con ok): a tiempo, las manos pasan por encima de la cinta y las muñecas caen
+    // («bajar el bloqueo», ~0,3 s); pronto, un amago corto. Solo con la pose de bloqueo en el aire.
+    var prAge = tm - r.pressT, prLen = r.pressOk ? 0.3 : 0.15;
+    if (air && r.jumpKind === 'block' && prAge >= 0 && prAge < prLen) {
+      var pd = Math.sin(clamp(prAge / prLen, 0, 1) * PI) * (r.pressOk ? 1 : 0.4);
+      P.v[HL].z += 0.14 * pd; P.v[HR].z += 0.14 * pd; P.v[HL].y -= 0.05 * pd; P.v[HR].y -= 0.05 * pd;
+      P.s[WRL] += 0.8 * pd; P.s[WRR] += 0.8 * pd; P.s[CP] += 0.08 * pd;
+    }
     var blkAge = tm - r.blockT;
     if (blkAge >= 0 && blkAge < 0.5 && air) {
-      var push = Math.sin(clamp(blkAge / 0.25, 0, 1) * PI);
-      P.v[HL].z += 0.08 * push; P.v[HR].z += 0.08 * push; P.v[HL].y += 0.03 * push; P.v[HR].y += 0.03 * push;
-      P.s[WRL] += 0.5 * push; P.s[WRR] += 0.5 * push; // las muñecas "cierran" sobre el balón
+      // contacto: con el bloqueo bajado (block pressed) más seco y corto, brazos rígidos (sin el empuje elástico)
+      var bh = r.blockHard, push = Math.sin(clamp(blkAge / (bh ? 0.14 : 0.25), 0, 1) * PI);
+      P.v[HL].z += (bh ? 0.05 : 0.08) * push; P.v[HR].z += (bh ? 0.05 : 0.08) * push; P.v[HL].y += 0.03 * push; P.v[HR].y += 0.03 * push;
+      P.s[WRL] += (bh ? 0.7 : 0.5) * push; P.s[WRR] += (bh ? 0.7 : 0.5) * push; // las muñecas "cierran" sobre el balón
     }
     var swAge = tm - r.swingT;
     if (swAge >= 0 && swAge < 0.3 && !(hitAge >= 0 && hitAge < 0.5)) {
@@ -3044,7 +3053,7 @@
   }
   function resetRig(r) {
     r.callT = -99; r.callKey = -99; r.tgtW = 0; r.covW = 0; r.fxForce = '';
-    r.inited = false; r.hitT = r.jumpT = r.landT = r.blockT = r.swingT = r.pointT = r.diveT = r.tossT = -99;
+    r.inited = false; r.hitT = r.jumpT = r.landT = r.blockT = r.pressT = r.swingT = r.pointT = r.diveT = r.tossT = -99;
     r.hitKind = ''; r.hitShot = ''; r.hitGrade = ''; r.jumpKind = ''; r.hasFace = false; r.yawRate = 0; r.yawV = 0; r.vf = r.vl = 0;
     r.diveUp = 1; r.diveDz = 0; r.ozGiven = 0; r.upBoost = 0; r.offX = r.offY = r.ox0 = r.oy0 = 0; r.lpx = r.p.x; r.lpy = r.p.y;
     r.fk[0].lock = r.fk[1].lock = false; r.locoOwn = 0; r.aw0 = r.aw1 = 0; r.hitMode = ''; r.pdW = 0; r.pdLive = false; r.diveTc = 0;
@@ -3205,7 +3214,8 @@
         r.diveUp = 0; r.ozGiven = 0; r.upBoost = 0; r.pdW = 0; r.pdLive = false;
         r.diveYaw = e.dir ? Math.atan2(e.dir[1], e.dir[0]) : r.yaw;
         break;
-      case 'block': if (r) { r.blockT = tm; lastBlocker = r; } break;
+      case 'block': if (r) { r.blockT = tm; r.blockHard = !!e.pressed; lastBlocker = r; } break;
+      case 'blockPress': if (r) { r.pressT = tm; r.pressOk = !!e.ok; } break;   // bloqueo activo (sim blockPress): pose de «bajar el bloqueo»
       case 'swing': if (r) r.swingT = tm; break;
       case 'miss': if (r) r.missT = tm; break;   // MUÑECO: gesto sin balón → cara de sorpresa un instante
       case 'serveReady':

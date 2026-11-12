@@ -686,7 +686,8 @@
         case 'block':
           if (e.human && e.result === 'stuff') pulse(e.team, false);
           // tu propio bloqueo directo es un logro personal (dorado); el resto, del color del equipo que bloquea
-          callout(e.result === 'soft' || e.result === 'tool' || e.result === 'touch' ? 'Toque de bloqueo' : '¡Bloqueo!', e.team, e.human && e.result === 'stuff' ? 'good' : '');
+          // (bloqueo activo: el directo con GOLPEAR pulsado a tiempo, e.pressed, es «¡Muro!»)
+          callout(e.result === 'soft' || e.result === 'tool' || e.result === 'touch' ? 'Toque de bloqueo' : e.human && e.pressed && e.result === 'stuff' ? '¡Muro!' : '¡Bloqueo!', e.team, e.human && e.result === 'stuff' ? 'good' : '');
           break;
         case 'hit':
           if (e.team === 0) { clearPrompt(); if (guideT > 0) guideHide(); } // el aviso del que acaba de golpear no pasa al compañero
@@ -1560,7 +1561,7 @@
     }
     // zaguero: pipe solo si puede pedirlo (ai6 canPipe: receptor u opuesto; el central que acaba de sacar, sin líbero aún, defiende)
     if (!p.front) return VB.AI6 && VB.AI6.canPipe && VB.AI6.canPipe(p) ? lead + '<b>pipe</b>' + (touchDev ? ' desde atrás' : ', pídela desde atrás con ' + gl.sw) : lead + '<b>defiende</b> en la marca';   // D5
-    if (r === 'MB') return ph === 'block' ? '<b>Bloquea</b>: salta en la marca' : nt === 2 ? lead + '<b>primer tiempo</b>' + (touchDev ? ', salta ya' : ', pide y salta ya con ' + gl.sw) : lead + 'a la marca, a punto para el <b>primer tiempo</b>';
+    if (r === 'MB') return ph === 'block' ? '<b>Bloquea</b>: salta en la marca y ' + gl.hit + ' al remate' : nt === 2 ? lead + '<b>primer tiempo</b>' + (touchDev ? ', salta ya' : ', pide y salta ya con ' + gl.sw) : lead + 'a la marca, a punto para el <b>primer tiempo</b>';
     if (nt === 2) return lead + (r === 'OPP' ? '<b>ataca</b> por la derecha' : 'prepárate para atacar') + ask;
     return lead + 'a la marca' + (ph === 'attack' ? ', batida por la ' + (r === 'OPP' ? 'derecha' : 'izquierda') : '');   // (fx posMark: tu sitio sin balón; el personaje ya no va solo)
   }
@@ -1753,13 +1754,18 @@
         // misma ventana que el brillo de GOLPEAR (input.js): press en (-0,15, 0,24)
         var reach = w ? (w.reach && wpr < HINT_ON && wpr > HINT_OFF && nt > 0) : (VB.Sim && VB.Sim.canReach ? cr(g, p) : false);
         // en el aire junto a la red con el remate rival aún en su lado: es un bloqueo (automático), no un golpe
-        if (reach && g.touchTeam !== 0 && p.z > 0.2 && Math.abs(p.x) < 1.8 && g.ball.x <= 0.3) reach = false;
+        // bloqueo activo: la misma decisión que la sim (VB.Sim.blockPressCase); un overpass o un saque que viene sigue siendo golpe
+        var bpc = !!(VB.Sim && VB.Sim.blockPressCase && VB.Sim.blockPressCase(g, p));
+        if (reach && bpc) reach = false;
+        // aviso «Al remate: ¡muro!»: solo con un ataque rival pendiente (ya han colocado) o en vuelo
+        var blkP = bpc && (g.touches >= 2 || g.lastKind === 'spike' || g.lastKind === 'free') && g.lastKind !== 'serve';
         // en el aire con colocación en salto posible (sim jsetReady): las dos opciones en el aviso, en rejilla 2×2 (.two):
         // tecla de GOLPEAR + «Rematar» / tecla de COLOCAR + «Colocar»; con la ventana abierta, encendido (go)
         var jr = p.z > 0.05 && !!(VB.Sim && VB.Sim.jsetReady && VB.Sim.jsetReady(g));
         // (táctil: los glifos ya son los nombres de los botones; «COLOCAR Colocar» repetía la palabra → «en salto»)
         if (jr && help) { pk = 'hit'; ptext = '<span>' + (Math.abs(g.ball.x) < 3.8 && g.ball.z > 2.53 ? 'Rematar' : 'Golpear') + '</span>' + gl.jset + '<span>' + (touchDev ? 'en salto' : 'Colocar') + '</span>'; pcls = reach ? 'hit go two' : 'hit two'; }
         else if (reach) { pk = 'hit'; ptext = '¡Golpea ahora!'; pcls = 'hit go'; }
+        else if (blkP && help) { pk = 'hit'; ptext = 'Al remate: ¡muro!'; pcls = 'hit'; }
         else if (p.z <= 0.01 && g.pr3) {
           var pr = g.pr3;
           if (w && w.attack && w.jumpT > -0.06 && w.jumpT < 0.32) { pk = 'jump'; ptext = '¡Salta!'; pcls = 'jump go'; }
@@ -1771,7 +1777,7 @@
           if (nt === 1) coach = 'Al círculo y ' + gl.hit;
           else if (nt === 2) coach = g.size === 6 && p.role === 'S' ? 'Bajo el balón y ' + gl.hit + '; ' + gl.aim + ' elige a quién' : 'Bajo el balón y ' + gl.hit + ', o salta y ' + gl.jset;   // (6v6 D3: el colocador humano elige el carril)
           else if (nt === 3) coach = aim3(g, p) ? 'Apunta con ' + gl.aim : gl.jump + ' y ' + gl.hit + ' arriba';
-          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? (g.size === 6 ? '<b>Bloquea</b>: salta en la marca' : '<b>Bloqueo</b>: a la red y ' + gl.jump)
+          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? (g.size === 6 ? '<b>Bloquea</b>: salta en la marca y ' + gl.hit + ' al remate' : '<b>Bloqueo</b>: ' + gl.jump + ' y ' + gl.hit + ' al remate')
             : g.size === 6 ? (p.role === 'L' ? '<b>Defiende</b>: llevas al líbero' : p.front ? '<b>Retírate</b> a la marca' : '<b>Defiende</b> en la marca')
             : '<b>Defiende</b> el círculo' + (one ? '' : ' (' + gl.sw + ' bloqueas tú)');
         } else if (tips) {
@@ -1780,7 +1786,7 @@
             : '2º toque · <b>Colocación</b>: ponte debajo del balón y pulsa ' + gl.hit + '. Si saltas y pulsas ' + gl.jset + ', colocas en el aire';
           else if (nt === 3) coach = aim3(g, p) ? '3r toque · <b>Apunta con ' + gl.aim + '</b> y golpea con ' + gl.hit + ' en lo alto'
             : '3r toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
-          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? (g.size === 6 ? 'La CPU va a atacar: <b>bloquea</b>, salta en la marca con ' + gl.jump : 'La CPU va a atacar: frente al atacante, ' + gl.jump + ' para <b>bloquear</b>')
+          else if (g.touchTeam === 1 && g.touches === 2) coach = g.defRole === 'block' ? (g.size === 6 ? 'La CPU va a atacar: salta en la marca con ' + gl.jump + ' y pulsa ' + gl.hit + ' justo cuando remata: <b>muro</b>. Antes de tiempo, red' : 'La CPU va a atacar: frente al atacante, ' + gl.jump + ' y pulsa ' + gl.hit + ' justo cuando remata: <b>muro</b>. Antes de tiempo, red')
             : g.size === 6 ? (p.role === 'L' ? 'La CPU va a atacar: llevas al líbero, <b>defiende</b> en la marca' : p.front ? 'La CPU va a atacar: <b>retírate</b> a la marca, bloquean tus compañeros' : 'La CPU va a atacar: <b>defiende</b> en la marca del fondo')
             : 'La CPU va a atacar: <b>defiende</b> el círculo, tu compañero bloquea' + (one ? '' : ' (' + gl.sw + ' para bloquear tú)');
         }

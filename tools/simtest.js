@@ -2385,6 +2385,31 @@ if (ONLY !== 'matrix') {
         H.encontrado && H.movido > 0.3 && H.solapados > 0 && H.motivo === 'position' && H.equipo === 1 && H.texto === 'Falta de posición' && H.iaSolapada === 0 && !H.ex &&
         E.encontrado && E.movido < 0.05 && E.solapados === 0 && E.motivo !== 'position' && E.iaSolapada === 0 && !E.ex, out]);
     }
+    { // (n) bloqueo activo y overpass (revisión del 12-nov): el humano en la red (colocador) que pulsa GOLPEAR en el aire ante un pase
+      // rival que se pasa de campo, aún a 0,8 m en el campo rival, hace un golpe normal (swing), nunca toque de red ni pulsación de bloqueo.
+      // VB.Sim.blockPressCase: false con el overpass y con el saque que viene; true con el rival construyendo (balón que se aleja)
+      const HIT = { move: [0, 0], hit: true, jump: false, switchPlayer: false }, o = { casos: 0, swing: 0, red: 0, pulsa: 0, casoSet: 0, casoSaque: 0 };
+      try {
+        for (let sd = 0; sd < 40; sd++) {
+          const g = S.createGame({ format: '6v6', seed: 3100 + sd, difficulty: 'normal', ctrl: 'one' });
+          S.setCtrlRole(g, 'S');
+          for (let i = 0; i < 60 * 120 && g.mode !== 'rally'; i++) { S.step(g, DT, null); S.drainEvents(g); }
+          if (g.mode !== 'rally') continue;
+          const h = g.ctrl, b = g.ball; o.casos++;
+          h.x = 0.5; h.y = 0; h.z = 0.6; h.vz = 0; h.swing = null;
+          g.touchTeam = 1; g.touches = 1; g.lastKind = 'pass'; b.held = false; b.x = -0.8; b.y = 0; b.z = 3; b.vx = 3; b.vy = 0; b.vz = 0;
+          const c1 = S.blockPressCase(g, h); g.lastKind = 'serve'; g.touches = 3; const c2 = S.blockPressCase(g, h);
+          g.lastKind = 'set'; g.touches = 2; b.vx = -1; b.x = -2; if (S.blockPressCase(g, h)) o.casoSet++;
+          g.lastKind = 'pass'; g.touches = 1; b.x = -0.8; b.vx = 3; if (!c1 && !c2) o.casoSaque++;
+          S.step(g, DT, HIT); const ev = S.drainEvents(g);
+          if (ev.some(e => e.type === 'swing')) o.swing++;
+          if (ev.some(e => e.type === 'netTouch' || (e.type === 'point' && e.reason === 'net'))) o.red++;
+          if (ev.some(e => e.type === 'blockPress')) o.pulsa++;
+        }
+      } catch (e) { o.ex = e && e.stack || String(e); }
+      res.push(['(n) bloqueo activo: GOLPEAR en el aire ante un overpass a 0,8 m = golpe normal (swing), sin red ni pulsación; blockPressCase sí con el rival colocando, no con el saque',
+        o.casos >= 30 && o.swing === o.casos && o.red === 0 && o.pulsa === 0 && o.casoSet === o.casos && o.casoSaque === o.casos && !o.ex, o]);
+    }
     const bad = res.filter(r => !r[1]);
     if (bad.length) fail('6v6 con humano: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
     console.log('\n6v6 con humano (sin movimientos solos, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)' + (failures === f0 ? ' OK' : '') + '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));

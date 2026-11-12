@@ -175,10 +175,10 @@ Ferran lo revise. Usa búsqueda web.
 - **Bloqueo activo (sim.js, 11-nov-2026, pedido de Ferran; ver notes/sim.md «Bloqueo activo») → js/players.js (lote A)**: pose sobre
   el evento nuevo `blockPress` (`player`, `ok`): con `ok:true` las manos pasan por encima de la red con las muñecas hacia abajo
   («bajar el bloqueo», ~0,3 s); con `ok:false` un amago corto. El evento `block` lleva ahora `pressed:true|false`: con `pressed` el
-  contacto puede ser más seco (brazos rígidos). Sin esto la mecánica funciona pero no se ve.
+  contacto puede ser más seco (brazos rígidos). Sin esto la mecánica funciona pero no se ve. **Hecho (lote A, 12-nov-2026).**
 - **Bloqueo activo → js/ui.js consejos (lote A, coach/coach6)**: cuando el humano está en el bloqueo (`g.defRole === 'block'` o
   sitio de bloqueo en 6v6) y la CPU va a rematar: «Salta y pulsa GOLPEAR justo cuando remata: muro. Antes de tiempo: toque de red».
-  Y en el aviso del contacto, `e.pressed` → «¡Muro!» en el sello del bloqueo directo.
+  Y en el aviso del contacto, `e.pressed` → «¡Muro!» en el sello del bloqueo directo. **Hecho (lote A, 12-nov-2026)**: también el aviso «Al remate: ¡muro!» en el aire.
 - **Bloqueo activo → js/audio.js (audio)**, opcional: `blockPress ok:true` = golpe seco de manos sobre la cinta; `ok:false` nada.
 - **Lote A → js/main.js (ui_main)**: `loadSettings`: añadir `ctrlRole6: 'OH'` al ajuste por defecto y validarlo
   (`VB.Sim.CTRL_ROLES6.indexOf(s.ctrlRole6) >= 0`, si no 'OH'); `startMatch` (createGame, ~línea 361):
@@ -194,6 +194,11 @@ Ferran lo revise. Usa búsqueda web.
   `point` con `reason 'position'` («Falta de posición», `SIGNAL.position = 'attackFault'`). `VB.AI6`: `FORM.RECV[1..6]`, tempo `'pipe'`
   (`canPipe`), `spot(g, p).phase`. fx.js: pistas por fase (`posMark`, `posMark2`, `posArrow`; 0 dibujos) con densidad por nivel.
   players.js: postura de cobertura. ui.js: fila Controlar con 4 puestos, `localStorage 'voley3d.role6'`.»
+- **Lote A → js/sim.js `blockPressCase` en 2v2 (dueño de «Bloqueo activo»; cambia la huella 2v2, regenerar con `--write`)**: revisión del
+  12-nov. Un overpass o un balón que cruza sin atacar (`!spiked && toward`) con el balón aún a más de 0,6 m en el campo rival hace que
+  GOLPEAR en el aire sea pulsación de bloqueo con `lead = ∞`, y eso acaba en toque de red (prob. NET_PRESS) en vez de golpe. En 6v6 ya va
+  arreglado (`g.rot ||`); en 2v2 basta quitar `(g.rot || Math.abs(b.x) < 0.6)` y dejar `if (!spiked && toward) return false;`. Cambia 7 de 150
+  partidas de la huella (variantes human/attrs del bot).
 - **Lote A → tools/console.sh (ui_main)**: la línea 9 `EXTRA="${4:-}"` pisa la variable de entorno `EXTRA`, así que
   `EXTRA=format=6v6 bash tools/console.sh all` prueba el 2v2 normal. Cambio: `EXTRA="${4:-${EXTRA:-}}"`. Mientras tanto, pásalo como
   4º argumento: `bash tools/console.sh all 1280 720 format=6v6`.
