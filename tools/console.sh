@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # VOLEY 3D — vuelca los mensajes de consola de una escena (owner: ui_main)
-# Uso: tools/console.sh <escena|all> [W=1280] [H=720] [params extra]
+# Uso: tools/console.sh <escena|all> [W=1280] [H=720] [params extra]  (sin 4.º argumento vale la variable EXTRA: EXTRA=map=beach)
 # Imprime la consola de la página y sale con 1 si hay errores JS (excepción, console.error, [VB][ERROR], error de WebGL).
 # Delegado en tools/shot.js (sin captura; viewport exacto y GPU real; GL=swiftshader para software).
 set -uo pipefail

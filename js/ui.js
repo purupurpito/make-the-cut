@@ -2779,18 +2779,39 @@
     // sede (Ajustes · Imagen): arena.js la cambia en vivo, también con la demo del menú de fondo
     arena: { vals: ['hall', 'beach'], labels: ['Pabellón', 'Playa'] },
     // luz de la playa (Ajustes · Imagen): arena.js la cambia en vivo (VB.Arena.beachLight, onSettings 'beachLight'); en el pabellón no se nota
-    beachLight: { vals: ['dia', 'tarde'], labels: ['Día', 'Tarde'] }
+    beachLight: { vals: ['dia', 'tarde'], labels: ['Día', 'Tarde'] },
+    // sede de cada tipo (Ajustes · Imagen; js/venues.js: las disponibles + «Al azar»). arena.js la cambia en vivo
+    mapBeach: mapOpt('beach'), mapHall: mapOpt('hall')
   };
+  /** Valores de las filas de sede: las sedes disponibles del tipo (VB.Venues.list) y «Al azar». */
+  function mapOpt(kind) {
+    var V = VB.Venues, L = V ? V.list(kind) : [kind === 'beach' ? 'platja' : 'palau'];
+    return { vals: L.concat(L.length > 1 ? ['rand'] : []), labels: L.map(function (id) { var d = V && V.def(id); return (d && (d.short || d.name)) || id; }).concat(L.length > 1 ? ['Al azar'] : []) };
+  }
+  /** Ayuda de una sede (venues.js `help`). */
+  function venueHelpOf(kind) {
+    var V = VB.Venues, A = VB.Arena, id = '';
+    if (!V) return '';
+    if (A && A.map && V.kindOf(A.map()) === kind) id = A.map();
+    else if (ctx.settings[kind === 'beach' ? 'mapBeach' : 'mapHall'] === 'rand') {
+      // «Al azar» sin montar: la ya sorteada, o una línea genérica (no se sortea al redibujar)
+      id = A && A.randPick ? A.randPick(kind) : '';
+      if (!id) return kind === 'beach' ? 'Sede de playa al azar, pista de 16 × 8' : 'Pabellón al azar, pista de 18 × 9';
+    } else id = V.resolve(kind, ctx.settings);
+    var d = V.def(id); return d && d.help;
+  }
   /** Nombre de la sede (arena.js: ajuste `arena` o ?map=): Palau del Mar / Platja Llarga. */
   function venueName() { return VB.Arena && VB.Arena.venueName ? VB.Arena.venueName() : 'Palau del Mar'; }
   /** Pone el nombre de la sede en los textos fijos del HTML (antetítulo del menú, tarjeta de presentación, cortinilla,
    *  marcador, final). Busca cada vez (otros pueden rehacer esos nodos) y respeta MAYÚSCULAS. */
   function applyVenue() {
-    var nm = venueName(), re = /Palau del Mar|Platja Llarga/gi, w, n;
+    var NAMES = ['Palau del Mar', 'Platja Llarga']; if (VB.VENUES) for (var vk in VB.VENUES) if (NAMES.indexOf(VB.VENUES[vk].name) < 0) NAMES.push(VB.VENUES[vk].name);
+    var nm = venueName(), re = new RegExp(NAMES.join('|'), 'gi'), w, n;
     try { w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false); } catch (e) { return; }
     while ((n = w.nextNode())) {
       var v = n.nodeValue; if (!v || v.length < 12) continue; re.lastIndex = 0; if (!re.test(v)) continue;
-      if (/Palau del Mar/i.test(v) && /Platja Llarga/i.test(v)) continue; // «Palau del Mar o Platja Llarga» (ayuda de Escenario) nombra las dos
+      var hits = v.match(re), many = false; for (var hi = 1; hits && hi < hits.length; hi++) if (hits[hi].toLowerCase() !== hits[0].toLowerCase()) many = true;
+      if (many) continue; // «Palau del Mar o Platja Llarga» (ayuda de Escenario) nombra varias sedes: se deja
       var nv = v.replace(re, function (m) { return m === m.toUpperCase() ? nm.toUpperCase() : nm; }); if (nv !== v) n.nodeValue = nv;
     }
   }
@@ -2913,6 +2934,15 @@
       for (var j = 0; j < o.labels.length; j++) h += '<span data-i="' + j + '"' + (j === cur ? ' class="on"' : '') + '>' + o.labels[j] + '</span>';
       segs[i].innerHTML = h;
     }
+    // Ajustes · Imagen: la fila de pabellones solo con más de uno; «Luz de playa» solo si la sede de playa elegida la admite
+    var rowH = document.querySelector('#optList [data-opt="mapHall"]'), rowB = document.querySelector('#optList [data-opt="mapBeach"]'), rowL = document.querySelector('#optList [data-opt="beachLight"]');
+    if (rowH) rowH.hidden = OPT.mapHall.vals.length < 2;
+    if (rowB) rowB.hidden = OPT.mapBeach.vals.length < 2;
+    if (rowL) {   // con «Al azar», manda la sede de playa montada (o ya sorteada): la de luz fija oculta la fila
+      var mb = ctx.settings.mapBeach, AR = VB.Arena;
+      if (mb === 'rand' && AR && AR.map && VB.Venues) mb = VB.Venues.kindOf(AR.map()) === 'beach' ? AR.map() : (AR.randPick && AR.randPick('beach')) || mb;
+      var dB = VB.Venues && VB.Venues.def(mb); rowL.hidden = !!(dB && !dB.lights);
+    }
     var sls = document.querySelectorAll('[data-sl]');
     for (var m = 0; m < sls.length; m++) {
       var key = sls[m].getAttribute('data-sl'), c = SLIDERS[key], v = slVal(key), f = (v - c.min) / (c.max - c.min) * 100;
@@ -2953,7 +2983,7 @@
       el.venueVal.textContent = OPT.arena.labels[vi];
       if (lastVenueI >= 0) { var vv = el.venueVal.parentNode; vv.classList.remove('sl-l', 'sl-r'); void vv.offsetWidth; vv.classList.add(vi > lastVenueI ? 'sl-r' : 'sl-l'); }
       el.optVenue.setAttribute('aria-label', 'Escenario: ' + OPT.arena.labels[vi] + ' (' + venueName(OPT.arena.vals[vi]) + (vb ? ', reglas de vóley playa' : six ? ', el 6 contra 6 es de pabellón' : '') + ')');
-      el.optVenue.title = vb ? 'Platja Llarga, vóley playa: pista de 16 × 8, sets a 21 y el tercero a 15, y cambio de campo cada 7 puntos' : 'Palau del Mar, pista cubierta de 18 × 9';
+      el.optVenue.title = vb ? venueName('beach') + ', vóley playa: pista de 16 × 8, sets a 21 y el tercero a 15, y cambio de campo cada 7 puntos' : venueName('hall') + ', pista cubierta de 18 × 9';
     }
     lastVenueI = vi;
     var vas = el.optVenue ? el.optVenue.querySelectorAll('.arr') : [];
@@ -3010,7 +3040,7 @@
     el.optCtrl.classList.toggle('one', ci > 0 && !six);
     // Partido rápido: una línea de ayuda bajo cada fila (con Playa, Puntos explica las reglas de playa)
     setText(el.fmtHelp, 'fh', six ? 'Equipos completos: llevas al ' + roleName().toLowerCase() : 'Tú y tu compañero contra la CPU');
-    setText(el.venueHelp, 'vh', six ? 'El 6 contra 6 se juega en el pabellón' : vb ? 'Platja Llarga, vóley playa en pista de 16 × 8' : 'Palau del Mar, pista cubierta de 18 × 9');
+    setText(el.venueHelp, 'vh', six ? 'El 6 contra 6 se juega en el pabellón' : venueHelpOf(vb ? 'beach' : 'hall') || (vb ? 'Platja Llarga, vóley playa en pista de 16 × 8' : 'Palau del Mar, pista cubierta de 18 × 9'));
     setText(el.diffHelp, 'dh', DIFF_HELP[di] || 'Nivel de la CPU');
     setText(el.ptsHelp, 'ph', vb ? 'Reglas de playa: sets a 21 y el tercero a 15' : 'Al mejor de 3 sets; el tercero, a ' + Math.min(15, OPT.setPoints.vals[pi]));
     setText(el.ctrlHelp, 'ch', six ? (ROLE_HELP[role6] || 'Llevas al ' + roleName().toLowerCase() + ' (n.º ' + sixNum() + '); la IA mueve al resto') : ci > 0 ? 'Llevas al n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] : 'El control pasa a quien va a tocar');
@@ -3521,7 +3551,7 @@
       hudSet = [1, 1.15, 1.3].indexOf(+s.hudScale) >= 0 ? +s.hudScale : 1;
       vpFit(); // --hs = ajuste × --vs (pantallas grandes)
       el.app.classList.toggle('soft-flash', !!s.softFlash);
-      if (!arguments[1] || arguments[1] === 'arena') applyVenue(); // sede: nombre en el menú y demás textos fijos
+      if (!arguments[1] || arguments[1] === 'arena' || arguments[1] === 'mapBeach' || arguments[1] === 'mapHall') applyVenue(); // sede: nombre en el menú y demás textos fijos
       kitTick();
       hudFit();
       renderOpts();

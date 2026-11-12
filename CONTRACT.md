@@ -6,7 +6,7 @@ Proyecto personal. Este documento es la ley para los 6 especialistas que trabaja
 ## 1. Propiedad de ficheros (exacta)
 
 ```json
-{"sim":"js/sim.js and js/ai.js (gameplay simulation, rules, AI, hit quality/timing, serve types, difficulty) and tools/simtest.js","players":"js/players.js (athlete models, materials, procedural animation state machine, celebrations)","arena":"js/arena.js and js/fx.js (pavilion, floor, lines, net, antennas, posts, lighting, shadows, stands, crowd, LED boards, hanging scoreboard, ball mesh+shadow+trail, particles/impact FX)","camera_input":"js/camera.js and js/input.js (third-person camera rig, transitions, shake, slow-mo hook, camera-relative input mapping, keyboard, gamepad, touch controls overlay)","audio":"js/audio.js (procedural WebAudio: hit sounds per touch type, spike crack, net, block, whistle, crowd ambience and reactions, UI clicks, music sting)","ui_main":"index.html, css (inline in index.html), js/ui.js and js/main.js (boot, loop, renderer setup, adaptive quality, menus, HUD, scoreboard overlay, pause, end screen, settings, tutorial/onboarding, debug scenes, tools/shot.sh, tools/console.sh)"}
+{"sim":"js/sim.js and js/ai.js (gameplay simulation, rules, AI, hit quality/timing, serve types, difficulty) and tools/simtest.js","players":"js/players.js (athlete models, materials, procedural animation state machine, celebrations)","arena":"js/arena.js, js/venues.js, js/venue-*.js and js/fx.js (venue registry and maps, pavilion, floor, lines, net, antennas, posts, lighting, shadows, stands, crowd, LED boards, hanging scoreboard, ball mesh+shadow+trail, particles/impact FX)","camera_input":"js/camera.js and js/input.js (third-person camera rig, transitions, shake, slow-mo hook, camera-relative input mapping, keyboard, gamepad, touch controls overlay)","audio":"js/audio.js (procedural WebAudio: hit sounds per touch type, spike crack, net, block, whistle, crowd ambience and reactions, UI clicks, music sting)","ui_main":"index.html, css (inline in index.html), js/ui.js and js/main.js (boot, loop, renderer setup, adaptive quality, menus, HUD, scoreboard overlay, pause, end screen, settings, tutorial/onboarding, debug scenes, tools/shot.sh, tools/console.sh)"}
 ```
 
 `js/prog.js` (estadísticas y progresión de tus jugadores: `VB.Prog`, guardado en `voley3d.squad`) también es de **ui_main**; sim lo recibe ya convertido en `createGame({attrs: [[st7, st11], [st3, st9]]})` (atributos 1-99 con las claves `VB.ATTR_KEYS`; 50 = neutro; sin `attrs` la sim no cambia), que deja `p.st`, `p.prof` (perfil de IA, `Sim.statProf`) y `p.ak` (multiplicadores del humano, `Sim.attrK`; constantes en `VB.ATTR_K`). Integración (10-nov-2026): `p.ak` añade `eRecv/eDig/eSet/eAtk` (precisión del toque: dispersión ×1,5-0,6 y calidad del pase/colocación) y `rRecv/rDig` (alcance del 1r toque ×0,94-1,05); con Velocidad < 50 frenar y girar es al momento (la rampa `accT` solo al arrancar).
@@ -30,7 +30,7 @@ Vida en la pista (12-nov-2026): los textos de decisiones guardados en `c.life.lo
 ## 2. Restricciones técnicas
 
 - Scripts clásicos (`<script src>`), SIN módulos ES, sin import/export, sin bundler. Un único espacio global `window.VB`.
-- Orden de carga (index.html): `three.min.js` (cdnjs 0.149.0) → `js/sim.js` → `js/ai.js` → `js/arena.js` → `js/fx.js` →
+- Orden de carga (index.html): `three.min.js` (cdnjs 0.149.0) → `js/sim.js` → `js/ai.js` → `js/venues.js` → `js/arena.js` → `js/venue-*.js` (sedes: `venue-fanals.js`, `venue-moll.js`, `venue-canrebot.js`, `venue-cupula.js`) → `js/fx.js` →
   `js/players.js` → `js/camera.js` → `js/input.js` → `js/audio.js` → `js/ui.js` → `js/main.js` (main arranca).
 - Three.js: `https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js` (verificado 200; r149 es el último sin aviso de deprecación del build UMD).
   API r149: `outputEncoding`/`sRGBEncoding`, `CapsuleGeometry` disponible, `THREE.ColorManagement.legacyMode = false` (lo pone main.js:
@@ -523,8 +523,17 @@ Arte y nombres originales; marcas de las vallas ficticias (NÓRDIKA, VOLTA, ALBA
   va una coma `.sr` para lectores. Las frases van con puntuación normal, no con «·».
 - **Escala de UI:** `--vs` en `#app` (ui.js `vpFit`): 1 hasta ~1280×760, 1,34 a 1920×1080, 1,71 a 2560×1440, tope 2; `.vs-up` con --vs > 1,05. Menú, Carrera
   (`.cr-in`) y tarjeta de presentación (`#intro .in-card`) usan `zoom: var(--vs)`; HUD y hojas usan `--hs` = Tamaño del HUD × --vs. Por debajo no cambia nada.
-- **Escenario:** ajuste `arena` (arriba). `VB.Arena.venueName(id?)` da «Palau del Mar» / «Platja Llarga»; ui.js cambia el nombre en los textos visibles
-  (los que nombran los dos se dejan). La playa se construye al elegirla y se libera al volver (sin fugas); el pabellón solo se oculta. Ver notes/arena.md «Playa».
+- **Escenario:** ajuste `arena` (arriba). `VB.Arena.venueName(id?)` da el nombre de la sede montada (o la de un id / tipo); ui.js cambia el nombre en los
+  textos visibles (los que nombran varias sedes se dejan). La playa se construye al elegirla y se libera al volver (sin fugas); el pabellón solo se oculta. Ver notes/arena.md «Playa».
+- **Sedes (mapas, 12-nov-2026).** Registro de datos `VB.VENUES` / `VB.Venues` en `js/venues.js` (sin THREE: `def(id)`, `kindOf(id)`, `list(kind)` = las
+  disponibles, `valid(kind, v)`, `resolve(tipoOId, settings, seed)`). Sedes de hoy: pabellón `palau` (Palau del Mar), `canrebot` (Poliesportiu Can Rebot, de día) y `cupula` (Cúpula del Far, de noche); playa `platja` (Platja Llarga),
+  `fanals` (Cala dels Fanals, de noche) y `moll` (Moll de la Sorra, en el puerto; día o tarde). Ajustes nuevos `mapHall` ('palau' | 'canrebot' | 'cupula' | 'rand') y `mapBeach` ('platja' | 'moll' | 'fanals' | 'rand'), validados en
+  `loadSettings` contra el registro (lo desconocido vuelve a la sede de serie; los guardados viejos siguen valiendo). Ajustes · Imagen: «Pabellón»
+  y «Sede de playa» (cada fila sale cuando hay más de una sede de su tipo); «Luz de playa» solo con sedes que la admiten (`lights`). `?map=` acepta un tipo (`hall`, `beach`) o un id
+  (`?map=fanals`). **Lo único que va a la sim sigue siendo el tipo** (`VB.Arena.venue()` → 'hall' | 'beach'). Añadidos: `VB.Arena.map()` (id montado),
+  `VB.Arena.maps()`, `VB.Arena.registerMap(def)` (lo llaman los `js/venue-<id>.js` al cargar), `VB.Arena.look()` → `{map, kind, night, sand}` (fx.js
+  saca de `sand` el color de las partículas de arena), `landmarks.scoreBoard.map`. main.js `forceVenue(v)` acepta tipo o id (`onSettings` de arena con
+  la copia de los ajustes y `forceMap`). Detalle en notes/arena.md «Sedes».
 
 ### TAJO y playa completa (10-nov-2026)
 Identidad propia de los atletas (dirección «TAJO», lo contrario de otros juegos de vóley playa low-poly: cabezones de ~5 cabezas, superficies lisas,
