@@ -800,7 +800,7 @@ section('Carrera de pista: ojeadores y ofertas del extranjero');
 section('Carrera de pista: puestos que crecen solos, guardado dañado y migración');
 {
   let c6 = C.get();
-  ok(C.positions().join() === 'OH', 'hoy sim.js solo deja llevar al receptor');
+  ok(C.positions().join() === VB.Sim.CTRL_ROLES6.join(), 'los puestos de la Carrera son los que exporta sim.js (lote A: ' + VB.Sim.CTRL_ROLES6.join() + ')');
   VB.Sim.CTRL_ROLES6 = ['OH', 'S', 'OPP', 'MB'];
   ok(C.positions().join() === 'OH,S,OPP,MB', 'si sim.js exporta más puestos, la lista crece sola');
   ok(C.setPosition('S') && c6.player.roleKey === 'S' && c6.player.role === 'Colocador', 'cambiar a colocador');
