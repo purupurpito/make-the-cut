@@ -5,7 +5,7 @@
 # Delegado en tools/shot.js (sin captura; viewport exacto y GPU real; GL=swiftshader para software).
 set -uo pipefail
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
-SCENE="${1:-menu}"; W="${2:-1280}"; H="${3:-720}"; EXTRA="${4:-}"
+SCENE="${1:-menu}"; W="${2:-1280}"; H="${3:-720}"; EXTRA="${4:-${EXTRA:-}}"
 JS="$DIR/tools/shot.js"; command -v cygpath >/dev/null 2>&1 && JS="$(cygpath -m "$JS")"
 if [ "$SCENE" = all ] || [[ "$SCENE" == *,* ]]; then
   # varias escenas: captura igualmente (es barato) en tools/out/console-WxH/

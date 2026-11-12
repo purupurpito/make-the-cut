@@ -1295,6 +1295,16 @@
     if (!rt || !rt.on || rt.player !== p || g.mode !== 'serve' || g.serveState !== 'ready' || b.held !== p) { r.ritOn = false; return false; }
     var ph = rt.phase, th, R0 = ((VB.RITUAL && VB.RITUAL.relZ) || 1.0) + p.z, hx = b.x, hy = b.y, hz = b.z;
     r.ritOn = true; r.ritPh = ph; r.ritU = rt.u || 0;
+    if (g.beach) {
+      // PLAYA (12-nov-2026): sin bote. La palma izquierda lleva el balón delante del pecho y da toquecitos hacia arriba
+      // ('juggle'); mientras vuela, espera abierta en el punto de recogida (Sim._holdPos lo da: J o bajo el balón).
+      if (ph !== 'pre' && ph !== 'juggle' && ph !== 'post') { r.catchN = -1; return false; }
+      r.aMode = 'hold'; r.aX = hx; r.aY = hy; r.aZ = hz; r.aDx = r.aDy = r.aDz = 0; r.aLean = 0; r.aUp = 0;
+      if (VB.Sim._holdPos) { try { VB.Sim._holdPos(g, p, HOLDP); r.aX = HOLDP.x; r.aY = HOLDP.y; r.aZ = HOLDP.z; } catch (e) { } }
+      r.aw0 = 1; r.aw1 = 0; r.holdWr = HOLD_WR; r.holdTw = HOLD_TW;
+      if (ph === 'juggle') r.holdWr += 0.35 * sstep(0, 0.06, r.ritU) * (1 - sstep(0.1, 0.3, r.ritU)); // golpe de muñeca al soltar
+      return true;
+    }
     if (ph === 'pre') th = lerp(-PI / 2, PI / 2, sstep(0, 0.85, rt.pre > 0 ? rt.t / rt.pre : 1));
     else if (ph === 'dribble') {
       th = PI / 2;
@@ -1673,8 +1683,10 @@
         if (r.ritOn) {
           // ritual (PLY-16): tronco inclinado sobre el bote, rodillas que se doblan en cada empujón y amortiguan la recogida,
           // la cabeza sigue al balón; al subirlo a la mano se endereza (y en 'done' mira al campo rival)
-          var rph = r.ritPh, ru = r.ritU, lean = rph === 'dribble' ? 1 : rph === 'pre' ? 0.7 : rph === 'post' ? 0.45 : 0;
-          var push = rph === 'dribble' ? sstep(0, 0.1, ru) * (1 - sstep(0.18, 0.55, ru)) + 0.5 * sstep(0.78, 0.92, ru) * (1 - sstep(0.92, 1, ru)) : 0;
+          var rph = r.ritPh, ru = r.ritU, lean = rph === 'dribble' ? 1 : rph === 'pre' ? 0.7 : rph === 'post' ? 0.45 : rph === 'juggle' ? 0.2 : 0;
+          var push = rph === 'dribble' ? sstep(0, 0.1, ru) * (1 - sstep(0.18, 0.55, ru)) + 0.5 * sstep(0.78, 0.92, ru) * (1 - sstep(0.92, 1, ru)) :
+            rph === 'juggle' ? 0.35 * sstep(0, 0.05, ru) * (1 - sstep(0.08, 0.3, ru)) : 0; // playa: leve flexión de rodillas en cada toque
+          if (g.beach && rph !== 'juggle') lean *= 0.3;   // playa: de pie, sin agacharse hacia el suelo
           s2[DROP] += 0.05 * lean + 0.11 * push; s2[CP] += 0.2 * lean + 0.09 * push; s2[PP] += 0.08 * lean + 0.03 * push;
           v2[KL].z += 0.3 * push; v2[KR].z += 0.3 * push; s2[LOOK] = 1; s2[CY] = lerp(s2[CY], -0.1, lean);
           T2.rb = Math.max(T2.rb, 16);

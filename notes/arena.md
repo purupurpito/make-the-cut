@@ -660,6 +660,26 @@ vallas de ondas y soles) y arreglar lo pendiente de TRASPASO. Capturas: `tools/o
   playa (camera_input; no lo toco porque cambia sus cajas de encuadre); el público de la playa (cabezones, sombreros, grupos por
   equipo) es del agente de personajes.
 
+### Arena de dibujo y saque sin bote (12-nov-2026, pedido de Ferran)
+«Añádele efectos de arena cuando alguien se tire o la pelota toque el suelo, y quita que el jugador bote el balón antes de sacar en la arena».
+- **Por qué no se veía**: los granos del pool de polvo (0,24 m) eran del mismo color que la pista. Ahora (solo `onBeach()`) van en el lote del
+  dibujo `toonFx` (0 dibujos nuevos; pool 48 → 128; atlas 1024×512 → 1024×1024, filas v 3-2 las de siempre, fila v 1 la arena: nube ×2,
+  terrón, corona; tinta marrón `SAND_INK` y 3 tonos). Fuerza k = (|v| total del balón − 5) / 15 (remate: k ≥ 0,6):
+  bote suave = 1-2 nubecitas y 3-4 terrones; remate al suelo = corona de 0,9 + 1,6·k m, 7 nubes, 17 terrones que saltan en arco y caen,
+  anillo de nubecitas a ras de suelo y cráter de dibujo (celda 11 redibujada, 0,6 + 1,1·k m) con 6 lenguas de arena alrededor (celda del
+  surco). Plancha (`sandDive`): abanico de terrones hacia delante, nubes a los LADOS del cuerpo (no encima: el muñeco se sigue viendo),
+  nube baja delante (sin corona: de cerca tapaba el tronco como un cajón), surco 2,1 m; durante ~2 s le caen granitos al muñeco (`sandyMark`/`updateSandy`, «arena pegada»). Caída del
+  salto: 2 nubecitas + 4 terrones; balón muerto que rebota: poco y su hoyito. Granos sueltos de antes, más oscuros (0,82/0,6/0,36) y de 0,3 m.
+  Calidad: media 80 %, baja 50 % de piezas y sin corona salvo k > 0,7. Math.random solo de presentación (g.rng intacto).
+  Capturas (scratch de la sesión) a 1280×720 y 844×390 táctil: remate, plancha, bote suave. El pabellón no cambia (comprobado con
+  bloqueo + plancha inyectados contra HEAD: mismas estrellas, explosión y nubes). perf.js 844x390: mismos dibujos y triángulos que antes.
+- **Saque de la CPU sin bote** (sim.js `ritualBallBeach`, `VB.RITUAL_BEACH`): MISMAS fases y tiempos (pre, n ciclos, post, still; silbato →
+  lanzamiento idéntico, sin g.rng; huella 2v2 idéntica y una huella de playa propia de 90 partidas igual antes/después: puntos, eventos,
+  llamadas a g.rng, horas de lanzamiento). En vez de botar: lleva el balón delante del pecho, lo gira (fx: giro rápido en la mano) y da
+  n toquecitos hacia arriba con la izquierda (fase `'juggle'`, evento `juggle` en cada recogida; audio: palmada suave con el sonido `set`,
+  sin bote de parqué). players.js: palma en el punto de recogida (anclaje 'hold'), de pie (sin agacharse al suelo), leve flexión al soltar.
+  simtest (j) en «Vóley playa». El humano no tiene ritual; la demo del menú en la playa usa el mismo gesto.
+
 ## Petición de sim/ui_main (agente reglas de playa, 10-nov-2026): la PISTA de la playa mide 16 × 8
 La sim ya juega la playa con reglas de vóley playa (`createGame({venue:'beach'})`, main.js lo pasa con `VB.Arena.venue()`):
 **pista 16 × 8** (`g.HL = 8`, `g.HW = 4`; antes 9 / 4,5), red igual (2,43). El bote es «fuera» más allá de 8 m de fondo y 4 m de lateral,
