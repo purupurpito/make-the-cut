@@ -58,12 +58,25 @@
   /** Destino del saque de la IA. Según el perfil: a la zona libre (entre receptores, `seam`) o a por un
    *  receptor con ruido (`srvNoise`); el fácil saca casi siempre "a las manos". */
   function serveTarget(g, sv) {
+    if (g.drill) { var dt = drillServe(g, sv); if (dt) return dt; } // E6 (Entrenamiento)
     var pr = (sv.prof || g.prof[sv.team]), sd = side(sv.team), opp = g.teams[1 - sv.team];
     if (g.rng() < (pr.seam != null ? pr.seam : 1)) return openSpot(g, sv, 4, _t2).slice();
     var q = opp[Math.floor(g.rng() * opp.length)], n = pr.srvNoise != null ? pr.srvNoise : 1;
     var cs = g.cs || 1, depth = clamp(Math.abs(q.x) + S._rnd(g, 1.4), 4.2 * cs, 8.2 * cs);
     var y = clamp(q.y + S._rnd(g, n), -3.9 * cs, 3.9 * cs);
     return [-sd * depth, y];
+  }
+
+  /** E6: diana del saque de la IA en el Entrenamiento (o null = la de siempre). Recepción: a por el humano ± DRILL.kinds.recv.jit m
+   *  (azar de g.rng: solo en el ejercicio); Saque con autopilot (pruebas de UI): a la diana del ejercicio. */
+  function drillServe(g, sv) {
+    var d = g.drill, cs = g.cs || 1, h = g.ctrl;
+    if (d.kind === 'recv' && sv.team === 1) {
+      var j = VB.DRILL.kinds.recv.jit;
+      return [clamp(h.x + S._rnd(g, j), 2 * cs, 8.2 * cs), clamp(h.y + S._rnd(g, j), -3.9 * cs, 3.9 * cs)];
+    }
+    if (d.kind === 'serve' && sv.team === 0 && d.target) return [d.target.x, d.target.y];
+    return null;
   }
 
   /** Segundos que tardaría p en plantarse en el punto (x,y): aterrizar (si está en el aire), levantarse
@@ -238,6 +251,7 @@
         var hc = g.ctrl, hm = other(g, hc);
         bl = g.defRole === 'block' ? hc : g.defRole === 'dig' ? hm : (Math.abs(hc.x) > 4 ? hm : hc);
       }
+      if (t === 0 && g.drill) bl = g.ctrl; // E6 (Bloqueo, también con autopilot): bloquea el del humano
       if (p === bl) return setTg(sd * 0.6, clamp(g.pr3.y + g.blockOff[t], -4.2 * cs, 4.2 * cs), false, true);
       // defensor: a media pista, algo hacia la diagonal (el bloqueo tapa parte de la paralela), sin dejar
       // vendida la línea: desde ahí llega a la diagonal y, lanzándose, a la paralela
@@ -306,11 +320,47 @@
     return L.on;
   }
 
+  /** E6 (Remate con bloqueador): el rival solo hace la rama de bloqueo de pos/update. Se planta en la red frente a la colocación
+   *  (g.pr3 + su error g.blockOff) tras su reacción y salta cuando ve despegar al atacante, con el retardo de su perfil. Nunca juega el balón. */
+  function blockOnly(g, p, dt) {
+    var t = p.team, sd = side(t), pr = p.prof || g.prof[t], cs = g.cs || 1, mx = 0, my = 0;
+    var atk = S.atkPhase(g, 1 - t) && g.pr3.x * side(1 - t) > 0;
+    var tx = sd * 0.6, ty = atk ? clamp(g.pr3.y + g.blockOff[t], -4.2 * cs, 4.2 * cs) : p.y;
+    if (g.time - g.lastTouchT < S.aiReact(g, p, pr)) ty = p.y;
+    if (p.z === 0) {
+      var dx = tx - p.x, dy = ty - p.y, dl = Math.hypot(dx, dy);
+      if (dl > 0.05) { var f = Math.min(1, dl / 0.35) * pr.speed; mx = dx / dl * f; my = dy / dl * f; }
+    }
+    S._stepPlayer(g, p, dt, mx, my);
+    if (g.mode !== 'rally' || !atk || p.z !== 0 || p.vz !== 0 || p.down > 0) return;
+    var opp = g.teams[1 - t], up = false;
+    for (var a = 0; a < opp.length && !up; a++) up = opp[a].z > 0.1 && Math.abs(opp[a].x) < 4;
+    if (up && Math.abs(p.x) < 1.3) { p.bd += dt; if (p.bd > p.bdT) { aiJump(g, p); p.bd = 0; p.bdT = pr.blockReact + g.rng() * 0.1; } }
+    else p.bd = 0;
+  }
+
+  /** E2: ¿deja pasar el equipo team el saque en curso? (lectura pura de la decisión de leaveServe, g._lv; false si no hay). */
+  function leaving(g, team) {
+    var L = g._lv && g._lv[team];
+    return !!(L && L.on && L.t === g.lastTouchT);
+  }
+
   /** Un paso de IA para el jugador p (mueve, salta, golpea). */
   function update(g, p, dt) {
+    if (g.drill && g.drill.cpu === 'block' && p.team === 1) { blockOnly(g, p, dt); return; } // E6 (Remate desde la 6ª)
     var t = p.team, sd = side(t), pr = p.prof || g.prof[t], mx = 0, my = 0, b = g.ball;
     // insignias (Líder del compañero, Sangre fría): reacción y timing efectivos; sin insignias = los del perfil
     var react = S.aiReact(g, p, pr), timing = S.aiTiming(g, p, pr);
+    // E1 (maestría, solo con g.mastery): la CPU lee tarde la finta del humano (feintRead) y, en Difícil/Experto, antes la dejada a la
+    // vista (tipRead). Sin azar: solo mueve el retardo de reacción
+    // El que estaba en el aire al llegar la finta (el bloqueador que saltó contra el remate armado) sigue engañado feintRead s DESPUÉS
+    // de caer: sin eso la dejada por encima del bloqueo la recogía siempre él al aterrizar, a 1-2 m, y la finta no valía nada
+    if (g.mastery && t === 1 && g.lastTeam === 0) {
+      if (g.feintT === g.lastTouchT) {
+        if (p.e1T !== g.lastTouchT) { p.e1T = g.lastTouchT; p.e1Until = g.time + (pr.feintRead || 0) + (p.z > 0 ? (p.vz + Math.sqrt(p.vz * p.vz + 2 * C.G * p.z)) / C.G : 0); }
+        react = Math.max(react + (pr.feintRead || 0), p.e1Until - g.lastTouchT);
+      } else if (g.lastKind === 'free' && g.lastShot === 'tip') react = Math.max(0, react - (pr.tipRead || 0));
+    }
     // balón que esta IA "no va a sacar" (dado de defensa/recepción en contra): lee tarde y va lenta.
     // Se ve el fallo (llega tarde, se tira y no llega, o la toca y sale desviada); nunca se queda quieta.
     // (g.digOk solo es false tras un remate/saque/toque de bloqueo que el dado de defensa/recepción da por perdido)
@@ -385,10 +435,14 @@
       var opp2 = g.teams[1 - t], blockUp = false;
       for (var k = 0; k < opp2.length; k++) if (opp2[k].z > 0.3 && Math.abs(opp2[k].x) < 1.2 && Math.abs(opp2[k].y - p.y) < 1.2) blockUp = true;
       if (blockUp && g.rng() < pr.tip) { shot = 'tip'; tgt = [-sd * (1.3 + g.rng() * 1.4), clamp(-p.y * 0.6 + S._rnd(g, 1.5), -3.6 * (g.cs || 1), 3.6 * (g.cs || 1))]; } // playa: pokey (sim)
+      // E1 (g.mastery): golpe colocado por encima del bloqueo, al fondo libre (decisión con S.hk: no gasta g.rng)
+      else if (blockUp && g.mastery && S.hk(g, 0xE12) < (pr.roll || 0)) { shot = 'roll'; tgt = openSpot(g, p, 6.5, [0, 0], true); }
       else tgt = openSpot(g, p, 2.2, [0, 0], true);
+      if (g.drill && t === 0 && g.drill.kind === 'atk' && g.drill.target && shot !== 'tip') { tgt = [g.drill.target.x, g.drill.target.y]; shot = ''; } // E6 (autopilot): a la diana
     } else if (count === 3) tgt = openSpot(g, p, 4, [0, 0]);
     S._hit(g, p, null, -w.t, shot, tgt);
   }
 
-  VB.AI = { aim: aim, computeJob: computeJob, pos: pos, update: update, serveTarget: serveTarget, openSpot: openSpot, timeTo: timeTo };
+  VB.AI = { aim: aim, computeJob: computeJob, pos: pos, update: update, serveTarget: serveTarget, openSpot: openSpot, timeTo: timeTo,
+    leaving: leaving }; // (E2: VB.AI.leaving(g, team))
 })();

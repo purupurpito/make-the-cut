@@ -37,6 +37,8 @@
   try { isMobile = isTouch && Math.min(screen.width || 9999, screen.height || 9999) < 900; } catch (e) { }
   if (Q.debug === 'mobile') { isTouch = true; isMobile = true; }
 
+  // E3: ajustes que solo valen para este dispositivo (voley3d.device; ver DEFAULTS)
+  var DEVICE_KEYS = ['resScale', 'fpsCap', 'showFps', 'touchSize', 'padDead'];
   var ctx = VB.ctx = {
     THREE: THREE,
     container: document.getElementById('stage'),
@@ -56,8 +58,47 @@
     actions: {},                // startMatch, pause, resume, toMenu, restart, setSetting, toggleMute
     // Atajos que implementa la cámara (camera.js). Seguros si no existen.
     shake: function (amount, dur) { if (VB.CameraRig && VB.CameraRig.shake) VB.CameraRig.shake(amount, dur); },
-    slowmo: function (scale, realSeconds) { if (VB.CameraRig && VB.CameraRig.slowmo) VB.CameraRig.slowmo(scale, realSeconds); }
+    slowmo: function (scale, realSeconds) { if (VB.CameraRig && VB.CameraRig.slowmo) VB.CameraRig.slowmo(scale, realSeconds); },
+    // E3 (sprint 5): movimiento reducido = ajuste «Menos movimiento» (lessMotion 'on' | 'off' | 'auto' = lo que pida el sistema).
+    // Propiedad PROPIA de ctx (camera.js la lee con hasOwnProperty); la recalculan setSetting('lessMotion') y el cambio del sistema
+    reduceMotion: false,
+    renderScale: 1              // escala de render en uso (E3: Ajustes · Imagen · Resolución la enseña; la escribe applyQuality)
   };
+  var mqReduce = null;
+  try { mqReduce = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : null; } catch (e) { }
+  function calcReduce() { var m = ctx.settings.lessMotion; return m === 'on' ? true : m === 'off' ? false : !!(mqReduce && mqReduce.matches); }
+  ctx.reduceMotion = calcReduce();
+  try { if (mqReduce) { var onRM = function () { ctx.reduceMotion = calcReduce(); }; if (mqReduce.addEventListener) mqReduce.addEventListener('change', onRM); else if (mqReduce.addListener) mqReduce.addListener(onRM); } } catch (e) { }
+
+  // E3 (sprint 5): valores por defecto de TODOS los ajustes (loadSettings y ctx.actions.resetSettings). Las claves de
+  // DEVICE_KEYS se guardan aparte, en voley3d.device (solo este dispositivo: account.js no la sube), y no en voley3d.settings:
+  // un móvil no hereda los 30 fps ni el 50 % de resolución del PC. keys/padKeys guardan SOLO las diferencias con las teclas y
+  // botones de fábrica (input.js las sanea). aimSet / msTiming: E1 (colocación dirigida; timing en ms en el sello, solo UI).
+  function DEFAULTS() {
+    return { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, format: '2v2', cam6: '3p', camSens: 1, sfxVol: 1, musicVol: 0.75,
+      camStable: false, rumble: true, hudScale: 1, softFlash: false, arena: Q.debug ? 'hall' : 'beach', arenaV: 2, beachLight: 'dia',
+      volume: 1, crowdVol: 0.85, resScale: 0, fpsCap: 0, showFps: false, camDist: 'normal', camCuts: 'all', lessMotion: 'auto', cbColors: false, ballStyle: 'clasico',
+      keys: {}, padKeys: {}, padDead: 0.18, touchSize: 1, aimSet: true, msTiming: false, mapHall: 'palau', mapBeach: 'platja' };
+    // mapHall / mapBeach: sede de cada tipo (js/venues.js: 'palau' | … y 'platja' | 'fanals' | …, o 'rand' = al azar); Ajustes · Imagen.
+    // El tipo (`arena`) sigue siendo lo único que va a la sim; la sede solo cambia el escenario. Lo desconocido vuelve a la de serie.
+  }
+  /** keys / padKeys: objeto plano de como mucho 12 acciones; teclado = arrays de ≤ 2 cadenas de ≤ 24 caracteres, mando = arrays
+   *  de ≤ 1 entero 0-11. Cualquier otra cosa → {} (de fábrica). Lo semántico (tecla reservada, repetida…) lo sanea input.js. */
+  function cleanBinds(m, pad) {
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return {};
+    var out = {}, n = 0;
+    for (var a in m) {
+      if (!Object.prototype.hasOwnProperty.call(m, a)) continue;
+      var v = m[a];
+      if (++n > 12 || a.length > 16 || !Array.isArray(v) || v.length > (pad ? 1 : 2)) return {};
+      for (var i = 0; i < v.length; i++) {
+        if (pad ? !(typeof v[i] === 'number' && v[i] === (v[i] | 0) && v[i] >= 0 && v[i] <= 11) : !(typeof v[i] === 'string' && v[i].length <= 24)) return {};
+      }
+      out[a] = v.slice();
+    }
+    return out;
+  }
+  function clamp01(v, def) { v = +v; return isFinite(v) ? Math.max(0, Math.min(1, v)) : def; }
 
   function loadSettings() {
     // camSens: 0.5..1.5 (rapidez de seguimiento de la cámara; la lee camera.js si quiere)
@@ -66,8 +107,7 @@
     // móvil; input.js), hudScale (1 | 1,15 | 1,3: tamaño del HUD y de las hojas; ui.js), softFlash (destellos suaves; arena/fx/ui)
     // coachTips: consejos del partido (franja de arriba). Se ven hasta la primera victoria: ui.js los apaga al ganar el 1r partido
     // y se pueden volver a encender en Ajustes · Juego.
-    var s = { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, format: '2v2', cam6: '3p', camSens: 1, sfxVol: 1, musicVol: 0.75,
-      camStable: false, rumble: true, hudScale: 1, softFlash: false, arena: Q.debug ? 'hall' : 'beach', arenaV: 2, beachLight: 'dia' };
+    var s = DEFAULTS();
     // beachLight: luz de la playa ('dia' mediodía | 'tarde' sol bajo y cálido; arena.js la lee en onSettings y al montar, ?luz= manda)
     // arena: sede ('hall' Palau del Mar | 'beach' Platja Llarga; ?map=beach en pruebas). Desde el 10-nov-2026 la Playa es el
     // escenario por defecto del 2v2 (decisión de Ferran); el 6v6 se juega siempre en el pabellón y la Carrera
@@ -75,7 +115,9 @@
     // siguen en el pabellón para que las capturas y las pruebas sean comparables.
     var saved = false;
     var o = null;
-    try { var raw = localStorage.getItem('voley3d.settings'); if (raw) { saved = true; o = JSON.parse(raw); for (var k in o) if (k in s && typeof o[k] === typeof s[k]) s[k] = o[k]; } } catch (e) { }
+    try { var raw = localStorage.getItem('voley3d.settings'); if (raw) { saved = true; o = JSON.parse(raw); if (!o || typeof o !== 'object') o = null; for (var k in o) if (k in s && DEVICE_KEYS.indexOf(k) < 0 && typeof o[k] === typeof s[k]) s[k] = o[k]; } } catch (e) { o = null; }
+    // ajustes de ESTE dispositivo (E3): voley3d.device
+    try { var dv = JSON.parse(localStorage.getItem('voley3d.device') || 'null'); if (dv && typeof dv === 'object') for (var dk = 0; dk < DEVICE_KEYS.length; dk++) { var kk = DEVICE_KEYS[dk]; if (kk in dv && typeof dv[kk] === typeof s[kk]) s[kk] = dv[kk]; } } catch (e) { }
     // Jugador nuevo (sin ajustes guardados ni partidos jugados): empieza en Fácil. Normal contra un novato
     // es un muro (simtest: un bot novato gana ~30 % de los puntos en Normal y ~54 % en Fácil).
     // Las escenas de depuración siguen en Normal para que las capturas sean comparables.
@@ -94,6 +136,9 @@
     s.musicVol = Math.max(0, Math.min(1, isFinite(+s.musicVol) ? +s.musicVol : 0.75));
     if ([1, 1.15, 1.3].indexOf(s.hudScale) < 0) s.hudScale = 1;
     if (s.beachLight !== 'tarde') s.beachLight = 'dia';
+    var VV = VB.Venues;
+    if (!VV || !VV.valid('hall', s.mapHall)) s.mapHall = 'palau';
+    if (!VV || !VV.valid('beach', s.mapBeach)) s.mapBeach = 'platja';
     if ([11, 15, 21, 25].indexOf(s.setPoints) < 0) s.setPoints = 25;
     // equipación: solo colores de las paletas de ui.js (OPT.kit*) y diseños conocidos
     if (['diag', 'liso', 'franjas', 'rayas'].indexOf(s.kitPattern) < 0) s.kitPattern = 'diag';   // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS)
@@ -101,10 +146,30 @@
     if (s.format !== '6v6') s.format = '2v2';                           // Partido rápido: 2 contra 2 o 6 contra 6 (sprint 3 del 6v6; fila «Formato»)
     if (s.cam6 !== 'tv') s.cam6 = '3p';                                 // cámara del 6v6: en 3ª persona (por defecto) o de televisión (camera.js; ?cam6= manda)
     s.ctrlPlayer = 0;                                                    // modo Uno: llevas siempre al n.º 1 (teams[0][0]); el ajuste antiguo (1 = el otro) se ignora
+    // E3 (sprint 5): claves nuevas, cada una validada (lo corrupto vuelve a su valor por defecto)
+    s.volume = clamp01(s.volume, 1);
+    // migración (una vez, sin versión): ajustes de antes de existir el volumen del público → la mezcla que se oía (público = 0,85 × efectos)
+    if (o && !('crowdVol' in o)) s.crowdVol = Math.round(0.85 * s.sfxVol * 100) / 100;
+    s.crowdVol = clamp01(s.crowdVol, 0.85);
+    if ([0, 1, 0.85, 0.7, 0.5].indexOf(s.resScale) < 0) s.resScale = 0;
+    if (s.fpsCap !== 30) s.fpsCap = 0;
+    if (['near', 'normal', 'far'].indexOf(s.camDist) < 0) s.camDist = 'normal';
+    if (s.camCuts !== 'less') s.camCuts = 'all';
+    if (['auto', 'on', 'off'].indexOf(s.lessMotion) < 0) s.lessMotion = 'auto';
+    if (s.ballStyle !== 'contraste') s.ballStyle = 'clasico';
+    s.keys = cleanBinds(s.keys, false); s.padKeys = cleanBinds(s.padKeys, true);
+    if (!(s.padDead >= 0.1 && s.padDead <= 0.3)) s.padDead = 0.18; else s.padDead = Math.round(s.padDead * 100) / 100;
+    if ([1, 1.15, 1.3].indexOf(s.touchSize) < 0) s.touchSize = 1;
     if (Q.diff && DIFFS.indexOf(Q.diff) >= 0) s.difficulty = Q.diff;
     return s;
   }
-  function saveSettings() { try { localStorage.setItem('voley3d.settings', JSON.stringify(ctx.settings)); } catch (e) { } }
+  /** Guarda los ajustes: los de DEVICE_KEYS en voley3d.device (solo aquí) y el resto en voley3d.settings (account.js lo sincroniza). */
+  function saveSettings() {
+    var st = ctx.settings, a = {}, d = {};
+    for (var k in st) { if (!Object.prototype.hasOwnProperty.call(st, k)) continue; if (DEVICE_KEYS.indexOf(k) >= 0) d[k] = st[k]; else a[k] = st[k]; }
+    try { localStorage.setItem('voley3d.settings', JSON.stringify(a)); } catch (e) { }
+    try { localStorage.setItem('voley3d.device', JSON.stringify(d)); } catch (e) { }
+  }
 
   // ---------- Calidad ----------
   var QUALITY = {
@@ -154,7 +219,12 @@
     // alta 1,5, media 1,25, baja 1 (844x390 en media = 1055x488 px: 0,69 × los píxeles de antes, con pr 1,5).
     // Escritorio: el pixelRatio de cada nivel con tope 2 (sin cambios: alta mantiene su aspecto).
     var cap = isMobile ? (q.mobilePixelRatio || q.pixelRatio) : Math.min(2, q.pixelRatio);
-    if (q.rank > 0) renderScale = 1;
+    // E3: Resolución fija elegida por el jugador (resScale > 0) = pixelRatio × resScale y la adaptativa ya no toca la escala
+    // (puede seguir bajando el nivel con Calidad = Auto); en Auto (0), como siempre: solo la adaptativa la baja en «baja»
+    var us = +ctx.settings.resScale || 0;
+    if (us > 0) { renderScale = us; if (aq) aq.noScale = true; }
+    else if (q.rank > 0) renderScale = 1;
+    ctx.renderScale = renderScale;
     ctx.renderer.setPixelRatio(Math.min(dpr, cap) * renderScale);
     // sombras: un tipo fijo por dispositivo (ver shadowType); solo cambia si algún día cambia la regla
     var st = shadowType(q), sm = ctx.renderer.shadowMap;
@@ -248,7 +318,7 @@
     if (ctx.state === 'playing') ctx.actions.pause();
     showFatal('Recuperando los gráficos…', true);
     clearTimeout(glLostTimer);
-    glLostTimer = setTimeout(function () { if (glLost) showFatal('Se ha perdido el contexto gráfico. Recarga la página para seguir jugando.'); }, 6000);
+    glLostTimer = setTimeout(function () { if (glLost) showFatal('Se ha perdido el contexto gráfico. Vuelve a abrir el juego para seguir jugando.'); }, 6000);
   }
   function onContextRestored() {
     glLost = false; clearTimeout(glLostTimer);
@@ -295,7 +365,7 @@
   /** Escenario del partido que se crea ('hall' | 'beach'): el que tiene arena montado (ajuste `arena` o ?map=). En la playa la sim
    *  juega con reglas de vóley playa (createGame({venue:'beach'}): pista 16×8, sets a 21/15, cambio de campo cada 7). */
   function venueNow() {
-    var v = VB.Arena && VB.Arena.venue ? VB.Arena.venue() : (Q.map || ctx.settings.arena);
+    var v = VB.Arena && VB.Arena.venue ? VB.Arena.venue() : (Q.map ? (VB.Venues && VB.Venues.kindOf(Q.map)) || Q.map : ctx.settings.arena);
     return v === 'beach' ? 'beach' : 'hall';
   }
   /** Escenario pedido en Ajustes durante un partido: se monta al salir de él (menú o partido nuevo). */
@@ -305,8 +375,18 @@
    *  ajuste fuera `v` (los módulos lo reciben por onSettings(s, 'arena'), sin tocar ctx.settings) y al volver al menú
    *  (toMenu → unforceVenue) se vuelve al escenario del ajuste. */
   var venueForced = '';   // escenario que había antes de forzar el de la Carrera ('' = no forzado)
-  function applyVenue(v) { var s = Object.assign({}, ctx.settings, { arena: v }); for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', s, 'arena'); }
-  function forceVenue(v) { var cur = venueNow(); if (cur === v) return; venueForced = cur; applyVenue(v); }
+  // v = tipo ('hall' | 'beach': la sede del ajuste de ese tipo) o id de sede ('fanals'…: esa; arena lo lee en `forceMap`)
+  function isMapId(v) { return !!(VB.Venues && VB.Venues.def(v)); }
+  function mapNow() { return VB.Arena && VB.Arena.map ? VB.Arena.map() : ''; }
+  function applyVenue(v) {
+    var id = isMapId(v), kind = id ? VB.Venues.kindOf(v) : v;
+    var s = Object.assign({}, ctx.settings, { arena: kind, forceMap: id ? v : '' });
+    for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', s, 'arena');
+  }
+  function forceVenue(v) {
+    var id = isMapId(v), cur = id ? mapNow() : venueNow(); if (cur === v) return;
+    venueForced = mapNow() || venueNow(); applyVenue(v);
+  }
   function unforceVenue() {
     if (!venueForced) return;
     var back = venueForced; venueForced = '';
@@ -327,8 +407,21 @@
     var v = opts && opts.ctrlIdx != null ? +opts.ctrlIdx : Q.ctrlidx != null ? +Q.ctrlidx : 0;
     return v === 1 ? 1 : 0;
   }
+  /** E6: id de ejercicio válido (VB.DRILL de la sim) o null. */
+  function drillId(id) { return typeof id === 'string' && VB.DRILL && VB.DRILL.kinds && VB.DRILL.kinds.hasOwnProperty(id) ? id : null; }
+  /** E2 (sprint 5): celebración de firma de tu n.º 1 (career-life: la elegida en Fama, también en Partido rápido) y rival personal
+   *  (solo en el duelo de la Carrera: m.career.rivalNum). players.js limpia el rival solo si no se vuelve a llamar. */
+  function animHooks(cs) {
+    var P = VB.Players; if (!P) return;
+    try { if (P.setSignature) P.setSignature(VB.CareerLife && VB.CareerLife.signatureNow ? VB.CareerLife.signatureNow() || '' : ''); } catch (e) { reportError('Players.setSignature', e); }
+    try { if (P.setRival) P.setRival(cs && cs.rivalNum != null && isFinite(+cs.rivalNum) ? +cs.rivalNum : -1); } catch (e) { reportError('Players.setRival', e); }
+  }
   ctx.actions.startMatch = function (opts) {
     opts = opts || {};
+    // E6: ejercicio del Entrenamiento (opts.drill). Siempre 2v2 en el escenario del ajuste; dificultad Normal y control Uno salvo en
+    // el peloteo libre (los del Partido rápido); sin marcador ni récord. &gymauto=1 / opts.autopilot: la IA juega por ti (pruebas)
+    var drill = drillId(opts.drill);
+    if (drill) { startDrill(drill, opts); return; }
     // Carrera: «Reiniciar partido» (pausa) repite el partido de Carrera; «Revancha» / Intro en la hoja final vuelven al hub
     // (ui.js llama a startMatch() sin opciones en los dos casos)
     if (!opts.career && !opts.autopilot && ctx.game && ctx.game.career && !ctx.game.demo) {
@@ -358,13 +451,17 @@
     // (el 6v6 al revés: siempre en el pabellón, aunque el ajuste sea la playa; la sim juega en su pista 18×9)
     var cv = cs ? (opts.venue === 'hall' ? 'hall' : 'beach') : fmt ? 'hall' : null;
     if (cv) forceVenue(cv);
+    if (!auto) animHooks(cs);
     var g = Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: auto, rookie: cs ? !!opts.rookie : isRookie(), present: !opts.autopilot,
       points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: fmt ? 'one' : (opts.ctrl || Q.ctrl || ctx.settings.ctrlMode), ctrlRole: fmt ? (cs && opts.ctrlRole) || 'OH' : undefined, // (6v6: siempre 'one'; el receptor, o tu puesto en la Carrera de pista; espectador sin eventos switch)
       ctrlIdx: ctrlIdxOf(opts),
       attrs: opts.attrs || (own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null),
       badges: cs ? (opts.badges || null) : (own && !Q.nobadges ? squadBadges() : null),
       // (Carrera: cv = 'beach'; antes jugaba siempre con reglas de pabellón)
-      ref: opts.ref || undefined, nums: opts.nums || undefined, format: fmt, venue: fmt ? undefined : cv || venueNow() });
+      ref: opts.ref || undefined, nums: opts.nums || undefined, format: fmt, venue: fmt ? undefined : cv || venueNow(),
+      // E1 (sprint 5): maestría (finta, golpe colocado, al filo, colocación dirigida) en los partidos humanos de 2v2; la sim la
+      // ignora sola en demo, autopilot y 6v6. aimSet = Ajustes · Juego · Colocación dirigida
+      mastery: !fmt && !auto, aimSet: ctx.settings.aimSet !== false });
     // partido de Carrera: marca para ui.js/badges.js (no reparten experiencia ni insignias al escuadrón de Partido rápido) y
     // para el hub (VB.Career.matchDone al llegar gameOver)
     if (cs) g.career = cs;
@@ -379,6 +476,33 @@
     // UI-14: tarjeta de presentación (partidos humanos; en depuración solo con &intro=1)
     if (!auto && !opts.noIntro && Q.intro !== '0' && (!ctx.debug || Q.intro === '1')) introStart();
   };
+  /** E6: arranca un ejercicio (ver startMatch). createGame({drill}) monta la 1ª repetición; la sim no emite point/whistle/gameOver
+   *  y al acabar la 10ª emite drillEnd (frame → 'over'). g.gym = id (marca para ui.js). */
+  function startDrill(id, opts) {
+    var auto = !!opts.autopilot;
+    if (!ctx.debug && !auto && call('UI', 'bootBusy')) { startWait = opts; return; }
+    startWait = null;
+    call('Audio', 'unlock');
+    tryFullscreen();
+    ctx.frozen = false;
+    applyVenuePend(); unforceVenue();
+    var free = id === 'free', own = !auto && !Q.debug;
+    animHooks(null);
+    var g = Sim.createGame({ demo: false, seed: seed(), drill: id, venue: venueNow(), autopilot: auto, present: false, rookie: false,
+      difficulty: free ? ctx.settings.difficulty : 'normal', ctrl: free ? (Q.ctrl || ctx.settings.ctrlMode) : 'one', ctrlIdx: 0,
+      points: ctx.settings.setPoints,
+      attrs: own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null,
+      badges: own && !Q.nobadges ? squadBadges() : null,
+      // E1: la maestría también se practica en los ejercicios (finta y golpe colocado en Remate, colocación dirigida en Colocación)
+      mastery: !auto, aimSet: ctx.settings.aimSet !== false });
+    g.gym = g.drill ? id : null;
+    endTweaked = false; careerEnd = null;
+    restoreEndButtons();
+    setGame(g, null);
+    setState('playing');
+    if (Q.prewarm !== '0') { prewarm('t'); prewarmPrograms(false); }
+    if (!auto && !opts.noIntro && Q.intro !== '0' && (!ctx.debug || Q.intro === '1')) introStart();
+  }
   /** Insignias equipadas del escuadrón de Partido rápido para createGame({badges}) (null sin js/badges.js o sin ninguna). */
   function squadBadges() {
     var B = VB.Badges; if (!B) return null;
@@ -410,7 +534,11 @@
       format: m.format === '6v6' ? '6v6' : undefined, ctrlRole: m.ctrlRole || undefined, // Carrera de pista (lote C): 6v6 en tu puesto
       // equipación del club rival (Players.setKit st.rival); en la pista también kitLibero (color del líbero del club, que usa setKit, y con él la 2ª del rival si choca)
       kit: m.kit ? Object.assign({}, m.kit, { rival: m.rivalKit || null }) : null,
-      nums: m.nums || (m.career ? [[m.career.num | 0 || null, m.career.mateNum | 0 || null], null] : undefined) }); // tus dorsales (sim: opts.nums)
+      // tus dorsales (sim: opts.nums; la pista los trae hechos en m.nums) y, en la playa, en el duelo con tu rival personal (career-life
+      // setup → m.career.rivalNum), su dorsal en el n.º 1 rival (E2: players lo reconoce con setRival; cambia su aspecto porque el hash
+      // del muñeco usa el dorsal)
+      nums: m.nums || (m.career ? [[m.career.num | 0 || null, m.career.mateNum | 0 || null], m.career.rivalNum != null && (m.career.rivalNum | 0) > 0 ? [m.career.rivalNum | 0, (m.career.rivalNum | 0) === 9 ? 3 : null] : null] : undefined) });
+    // (si el rival lleva el 9, el 2º CPU, que es el 9 por defecto, pasa al 3: si no, los dos harían de rival en players.js)
     return true;
   };
   function restoreEndButtons() {
@@ -498,21 +626,40 @@
   ctx.actions.pause = function () { if (ctx.state === 'playing') setState('paused'); };
   ctx.actions.resume = function () { if (ctx.state === 'paused') setState('playing'); };
   ctx.actions.togglePause = function () { if (ctx.state === 'playing') ctx.actions.pause(); else if (ctx.state === 'paused') ctx.actions.resume(); };
-  ctx.actions.restart = function () { ctx.actions.startMatch(); };
+  // (E6: con un ejercicio en curso, «Reiniciar» repite el mismo ejercicio)
+  ctx.actions.restart = function () { var g = ctx.game; if (g && g.drill && !g.demo) ctx.actions.startMatch({ drill: g.drill.kind, autopilot: !!g.autopilot }); else ctx.actions.startMatch(); };
   ctx.actions.setSetting = function (k, v) {
     if (ctx.settings[k] === v) return;
     ctx.settings[k] = v; saveSettings();
     if (k === 'muted') call('Audio', 'setMuted', !!v);
     if (k.indexOf('kit') === 0 && ctx.game) call('Players', 'setKit', ctx.settings, ctx.game); // vista previa en vivo
     if (k === 'quality') { aq.downs = 0; aq.lastDown = -99; aq.noScale = false; aq.chk = null; applyQuality(pickQuality()); }
+    // E3: resolución fija o automática, tope de 30 fps, contador de FPS y menos movimiento
+    if (k === 'resScale') { aq.downs = 0; aq.lastDown = -99; aq.noScale = false; aq.chk = null; aq.low = aq.mild = aq.high = 0; aq.skip = 1; if (!(+v > 0)) renderScale = 1; applyQuality(ctx.quality); }
+    if (k === 'fpsCap') { aq.low = aq.mild = aq.high = 0; aq.skip = 1; aq.chk = null; capNext = 0; }
+    if (k === 'showFps' && fpsEl) { fpsEl.hidden = !v && Q.fps !== '1'; fpsShowT = 1; }
+    if (k === 'lessMotion') ctx.reduceMotion = calcReduce();
     // escenario en mitad de un partido (Ajustes desde la pausa): la pista y las reglas del partido no pueden cambiar a medias
     // (16×8 / 18×9), así que el cambio espera al siguiente partido o al menú (applyVenuePend)
-    if (k === 'arena' && ctx.game && !ctx.game.demo && ctx.state !== 'menu') { venuePend = true; call('UI', 'onSettings', ctx.settings, k); return; }
+    var venueK = k === 'arena' || k === 'mapHall' || k === 'mapBeach';
+    if (venueK && ctx.game && !ctx.game.demo && ctx.state !== 'menu') { venuePend = true; call('UI', 'onSettings', ctx.settings, k); return; }
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', ctx.settings, k);
     // escenario: la demo del menú pasa a jugar con las reglas (y la pista) del nuevo escenario. En partido no cambia nada hasta el siguiente
-    if (k === 'arena' && ctx.state === 'menu' && ctx.game && ctx.game.demo && ctx.game.venue !== venueNow()) setGame(demoGame());
+    if (venueK && ctx.state === 'menu' && ctx.game && ctx.game.demo && ctx.game.venue !== venueNow()) setGame(demoGame());
   };
   ctx.actions.toggleMute = function () { ctx.actions.setSetting('muted', !ctx.settings.muted); };
+  /** E3: vuelve a los valores por defecto (DEFAULTS) las claves dadas (todas si no se dan), guarda y avisa a cada módulo con
+   *  onSettings(s, k) por clave (setSetting). «Restablecer este apartado» de Ajustes y «Restablecer teclas» de Controles.
+   *  Nunca toca la dificultad ni el escenario (son de la preparación del Partido rápido). */
+  ctx.actions.resetSettings = function (keys) {
+    var d = DEFAULTS(), list = Array.isArray(keys) ? keys : Object.keys(d);
+    for (var i = 0; i < list.length; i++) {
+      var k = list[i]; if (!(k in d) || k === 'difficulty' || k === 'arena' || k === 'arenaV') continue;
+      var v = d[k];
+      if (v && typeof v === 'object') { if (JSON.stringify(ctx.settings[k]) === JSON.stringify(v)) continue; v = JSON.parse(JSON.stringify(v)); }
+      ctx.actions.setSetting(k, v);
+    }
+  };
   // Challenge (B7): pide revisión de la última llamada de línea para el humano (equipo 0). true si sim la acepta
   ctx.actions.challenge = function () {
     if (ctx.state !== 'playing' || !ctx.game || !Sim.challenge) return false;
@@ -605,7 +752,8 @@
   var pendingEvents = [], frameEvents = [], EMPTY = [], PFX = [];
   var acc = 0, last = 0, fxAge = 0, idleT = 0, drawn = 0, bootDone = false, dollOn = false;
   var bootEl = document.getElementById('boot'), fpsEl = document.getElementById('fps');
-  var meter = { t: 0, n: 0, js: 0, lt: 0 }, fpsShowT = 0;
+  var meter = { t: 0, n: 0, js: 0, lt: 0 }, fpsShowT = 0, capNext = 0;
+  var QNAME = { high: 'Alta', medium: 'Media', low: 'Baja' };
   // Tareas largas del hilo principal (>50 ms, incluidas las que no son del juego: GC, otras pestañas del proceso, compositor).
   // ctx.frameMs solo mide el JS del juego; con la máquina saturada se queda corto y la calidad adaptativa creía que el cuello
   // era la GPU. La suma de la ventana se usa como cota inferior del tiempo ocupado (ver measure / adaptQuality).
@@ -619,6 +767,15 @@
     requestAnimationFrame(frame);
     var tWork = performance.now(); // coste JS de este frame (ctx.frameMs; lo lee tools/perf.js)
     now = now || tWork;
+    // E3: tope de fotogramas (Ajustes · Imagen · Fotogramas = 30): este frame no se hace si aún no toca. Va ANTES del poll: las
+    // pulsaciones del teclado se acumulan en input.js (flancos) y llegan al siguiente frame que sí se hace; `last` no se toca,
+    // así el realDt del frame siguiente cubre todo el intervalo. capNext avanza por pasos fijos (sin deriva a 120/144 Hz)
+    var fcap = ctx.settings.fpsCap;
+    if (fcap > 0) {
+      var per = 1000 / fcap;
+      if (capNext && now < capNext - 2.5) return;
+      capNext = capNext && now - capNext < per ? capNext + per : now + per;
+    } else capNext = 0;
     var raw = last ? Math.max(0, (now - last) / 1000) : 1 / 60;
     var realDt = Math.min(MAX_DT, raw); last = now;
     ctx.realDt = realDt; ctx.time += realDt; ctx.frame++;
@@ -690,6 +847,8 @@
       if (n === MAX_STEPS) acc = 0;
       Sim.drainEvents(g, frameEvents);
       if (ctx.state === 'playing' && g.finished && frameEvents.some(isGameOver)) setState('over');
+      // E6: la 10ª repetición del ejercicio (la sim no emite gameOver: drillEnd y g.drill.done)
+      else if (ctx.state === 'playing' && g.drill && g.drill.done && frameEvents.some(isDrillEnd)) setState('over');
       if (g.career && !g.demo && frameEvents.length) careerEvents(g, frameEvents);
     } else { edge.hit = edge.jump = edge.jset = edge.switchPlayer = false; acc = 0; }
     ctx.gameDt = gdt;
@@ -697,7 +856,7 @@
     var ev = frameEvents.length ? frameEvents : EMPTY;
     // escena tapada (pausa, pantalla final ya visible): se pinta a ritmo reducido. Durante la celebración
     // previa a la pantalla final (ctx.endHold, ui.js) se pinta a ritmo completo.
-    if ((ctx.state === 'over' && g && g.finished && !ctx.endHold) || ctx.state === 'paused') idleT += realDt; else idleT = 0;
+    if ((ctx.state === 'over' && g && (g.finished || (g.drill && g.drill.done)) && !ctx.endHold) || ctx.state === 'paused') idleT += realDt; else idleT = 0;
     call('Arena', 'update', g, gdt, ev);
     call('Players', 'update', g, gdt, ev);
     // contactos cosméticos de la celebración (players PLY-07): se reparten como eventos 'fx:*' a FX, cámara, audio y UI
@@ -741,13 +900,14 @@
     // telón: en depuración se quita sin más; si no, ui.js hace el relevo al menú (espera a las fuentes; UI-07)
     if (drawn === 3 && !bootDone && bootEl) {
       bootDone = true;
-      if (ctx.debug) bootEl.hidden = true;
+      if (ctx.debug || drillId(Q.drill)) bootEl.hidden = true;   // (&drill=: el ejercicio empieza ya, sin relevo al menú)
       else if (!call('UI', 'bootReady', bootEl)) { bootEl.classList.add('gone'); var mn = document.getElementById('menu'); if (mn) mn.classList.remove('intro'); }
     }
     if (idleT > 0.6 || ctx.portraitBlock || progWarm.gate) { meter.t = 0; meter.n = 0; meter.js = 0; meter.lt = 0; } else measure(raw); // sin medir mientras se pinta a ritmo reducido
     ctx.frameMs = performance.now() - tWork;
   }
   function isGameOver(e) { return e.type === 'gameOver'; }
+  function isDrillEnd(e) { return e.type === 'drillEnd'; }
   /** Partido de Carrera: estadísticas para la nota (VB.Career.ingest) y cierre en gameOver (antes de UI.update). */
   function careerEvents(g, evs) {
     var K = VB.Career; if (!K) return;
@@ -786,6 +946,12 @@
       fpsShowT = 0; var info = ctx.renderer.info.render;
       fpsEl.hidden = false;
       fpsEl.textContent = Math.round(ctx.fps) + ' fps · ' + ctx.quality.level + ' · pr ' + ctx.renderer.getPixelRatio().toFixed(2) + (renderScale < 1 ? ' (×' + renderScale + ')' : '') + '\n' + info.calls + ' draw · ' + Math.round(info.triangles / 1000) + 'k tri · js ' + ctx.frameMsAvg.toFixed(1) + ' ms';
+    } else if (fpsEl && ctx.settings.showFps && (fpsShowT += raw) > 0.5) {
+      // E3: Ajustes · Imagen · Ver FPS: una línea corta (el texto solo se escribe si cambia)
+      fpsShowT = 0;
+      var ft = Math.round(ctx.fps) + ' fps | ' + (QNAME[ctx.quality.level] || '');
+      if (fpsEl.hidden) fpsEl.hidden = false;
+      if (fpsEl.textContent !== ft) fpsEl.textContent = ft;
     }
     if (meter.t < 2) return;
     ctx.fps = meter.n / meter.t; ctx.frameMsAvg = meter.js / meter.n;
@@ -818,7 +984,9 @@
       }
     }
     var r = ctx.quality.rank;
-    if (fps < 45) {
+    // E3: con el tope de 30 fps se compara contra 30 (baja si < 26; subir, nunca): con los umbrales de 60 bajaría siempre
+    var capped = ctx.settings.fpsCap > 0;
+    if (fps < (capped ? 26 : 45)) {
       aq.high = 0; aq.mild++;
       if (++aq.low < 2) return;
       if (r > 0) { stepDown('baja', fps, load); return; }
@@ -829,6 +997,7 @@
         renderScale = renderScale > 0.9 ? 0.8 : 0.67;
         applyQuality(ctx.quality); logQ('escala', fps, load);
       } else aq.low = 0;
+    } else if (capped) { aq.low = 0; aq.mild = 0; aq.high = 0;
     } else if (fps < 52) {
       aq.low = 0; aq.high = 0;
       if (r > 0 && ++aq.mild >= 3) stepDown('baja (justa)', fps, load);
@@ -985,6 +1154,20 @@
       case 'over': case 'end':
         g = mk(true);
         keep = advanceUntil(g, function (e) { return e && e.type === 'gameOver'; }, 0, 3000, uiIngest); state = 'over'; break;
+      // E6: ejercicios del Entrenamiento con la IA jugando por ti (autopilot) y congelados en un momento que se lea en la captura:
+      // drill_serve (3r saque, balón en el aire), drill_recv (2º saque de la CPU llegando), drill_set (2º balón, antes de colocar),
+      // drill_atk (6ª repetición: ya con el bloqueador), drill_block (2º ataque, el remate rival armado), drill_end (hoja final).
+      // &n=N la repetición (1-10), &t=s tras su montaje. drill_end no apunta nada en voley3d.gym (depuración)
+      case 'drill_serve': case 'drill_recv': case 'drill_set': case 'drill_atk': case 'drill_block': case 'drill_free': case 'drill_end': {
+        var dk = name === 'drill_end' ? (drillId(Q.drill) || 'serve') : name.slice(6);
+        g = Sim.createGame({ demo: false, autopilot: true, seed: sd, drill: dk, venue: venueNow(), difficulty: dk === 'free' ? diff : 'normal' });
+        g.gym = dk;
+        if (name === 'drill_end') { keep = advanceUntil(g, function (e) { return e && e.type === 'drillEnd'; }, 0, 900); state = 'over'; break; }
+        var dn = Q.n ? Math.max(1, +Q.n | 0) : ({ serve: 3, recv: 2, set: 2, atk: 6, block: 2, free: 1 })[dk];
+        var dt0 = Q.t ? +Q.t : ({ serve: 1.15, recv: 1.25, set: 0.45, atk: 0.85, block: 0.95, free: 6 })[dk];
+        keep = advanceUntil(g, function (e) { return e && e.type === 'drillStage' && e.n >= dn - 1; }, dt0, 900);
+        break;
+      }
       case 'doll':   // maqueta del muñeco nuevo (js/doll.js): el pabellón con 4 muñecos y cámara fija; la sim queda congelada en el saque
         g = mk(true, true); break;
       default:
@@ -1188,9 +1371,10 @@
     // UI-23: el documento está en castellano (lectores de pantalla, separación de sílabas, traducción automática). index.html no
     // lleva <html> (Artifact): se pone aquí, lo primero
     try { document.documentElement.lang = 'es'; } catch (e) { }
-    if (!THREE) { showFatal('No se ha podido cargar el motor 3D. Revisa la conexión y recarga la página.'); return; }
+    if (!THREE) { showFatal('No se ha podido cargar el motor 3D. Revisa la conexión y vuelve a abrir el juego.'); return; }
     if (!Sim) { showFatal('No se ha podido cargar la simulación del juego.'); return; }
-    var bi = ctx.bootInfo = { t0: Math.round(performance.now()) }, tb = performance.now();
+    var bi = ctx.bootInfo = { t0: Math.round(performance.now()), version: VB.VERSION || '' }, tb = performance.now();
+    if (VB.VERSION) console.info('[VB] Make the Cut v' + VB.VERSION);
     try { initRenderer(); }
     catch (e) { console.error(e); showFatal('Tu navegador no permite WebGL. Prueba con otro navegador o activa la aceleración por hardware.'); return; }
     bi.renderer = Math.round(performance.now() - tb);
@@ -1211,6 +1395,7 @@
     bi.quality = Math.round(performance.now() - tb);
     call('Audio', 'setMuted', !!ctx.settings.muted);
     for (var j = 0; j < MODS.length; j++) call(MODS[j], 'onSettings', ctx.settings, null);
+    if (fpsEl && ctx.settings.showFps) fpsEl.hidden = false;
     // primer gesto del usuario: desbloquea el audio
     var unlock = function () { call('Audio', 'unlock'); };
     window.addEventListener('pointerdown', unlock, { passive: true });
@@ -1220,6 +1405,8 @@
     document.addEventListener('visibilitychange', function () { if (document.hidden && ctx.state === 'playing' && !ctx.debug) ctx.actions.pause(); last = 0; });
     window.addEventListener('blur', function () { if (ctx.state === 'playing' && !ctx.debug) ctx.actions.pause(); });
     if (ctx.debug) debugScene(ctx.debug); else ctx.actions.toMenu();
+    // E6: &drill=<id> empieza ese ejercicio (&gymauto=1: la IA juega por ti; lo usa tools/gymtest.js); sin autopilot espera al telón
+    if (!ctx.debug && drillId(Q.drill)) ctx.actions.startMatch({ drill: Q.drill, autopilot: Q.gymauto === '1' });
     if (Q.prewarm !== '0') prewarm(Q.prewarm === 'c' || Q.prewarm === 'r' ? Q.prewarm : 't'); // tras el telón de carga (en depuración, el primer frame lo tapa)
     // programas: en paralelo bajo el telón; no se pinta hasta que estén (el hilo queda libre: telón, fuentes y audio siguen)
     if (Q.prewarm !== '0' && Q.prewarm !== 'c' && Q.prewarm !== 'r') { prewarmPrograms(true); needWarmDraw = Q.warmdraw !== '0'; }

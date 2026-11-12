@@ -243,6 +243,10 @@
   function gradeMul(gr) { return gr === 'perfect' ? 1.25 : gr === 'poor' ? 0.75 : 1; }
   function isPlaying() { return ctx && (ctx.state === 'playing' || ctx.state === 'paused'); }
 
+  /** Punto sin plano de reacción (E3 «Planos de tele: Menos» y ejercicios del gimnasio, E6): se queda la cámara de juego. */
+  function quietPoint(g) { return cutsLess || !!g.drill; }
+  // (true mientras el punto se juega con la cámara de juego: al pasar al saque, corte asentado en vez de cruzar la pista)
+  var QP = { on: false, stage: false };
   /** Elige el plano según el estado del partido. */
   function pickShot(g) {
     if (!g || g.demo || ctx.state === 'menu') return 'menu';
@@ -259,7 +263,7 @@
     if (CL.on) return 'clinch';   // (cierre de set/partido, CAM-09)
     if (CW.on && g.mode === 'serve') return 'cutaway';   // (sacador rival antes del lanzamiento, CAM-14)
     if (g.mode === 'over' || g.finished || ctx.state === 'over') return 'over';
-    if (g.mode === 'point') return (CC.on && CC.t >= CC.start) ? 'court' : 'point';
+    if (g.mode === 'point') return (CC.on && CC.t >= CC.start) ? 'court' : quietPoint(g) ? 'rally' : 'point';
     if (g.mode === 'serve') return g.serving === 0 ? 'serveUs' : 'serveThem';
     if (FT.on && GAMEPLAY[FT.shot] && FT.shot !== 'serveUs' && FT.shot !== 'serveThem') return FT.shot;   // (seguimiento del remate: el plano no cambia hasta el bote)
     var p = g.ctrl, b = g.ball;
@@ -336,11 +340,26 @@
   // (se lee una vez por frame en update: camStable puede no existir en ctx.settings y una lectura de un campo
   // inexistente en cada llamada ataba media cámara a la cadena de prototipos)
   var calmNow = false, stableNow = false;
+  // E3 (sprint 5): Ajustes > Cámara. distK = Distancia ('near' ×0,86 | 'normal' 1 | 'far' ×1,18: back y h de rally/defend/attack);
+  // cutsLess = Planos de tele 'less' (sin plano del sacador rival ni plano de reacción/héroe del punto: la cámara de juego se
+  // queda en la pausa; presentación, cierre de set/partido y grúa del cambio de campo, como siempre).
+  var distK = 1, cutsLess = false, rmMQ = null;
+  function hasK(o, k) { return !!o && Object.prototype.hasOwnProperty.call(o, k); }
   function readComfort() {
     var st = ctx && ctx.settings;
     // (UI-16: el ajuste explícito «Cámara estable» quita el temblor del todo; prefers-reduced-motion lo deja al 30 %)
     stableNow = !!(st && Object.prototype.hasOwnProperty.call(st, 'camStable') && st.camStable);
+    // «Menos movimiento» (E3): manda ctx.reduceMotion (main.js: lessMotion + prefers-reduced-motion); sin él, el ajuste
+    // lessMotion 'on'|'off'|'auto' y, en 'auto', la consulta del sistema (leída en vivo, sin crear nada)
+    if (hasK(ctx, 'reduceMotion') && typeof ctx.reduceMotion === 'boolean') reduceMotion = ctx.reduceMotion;
+    else {
+      var lm = hasK(st, 'lessMotion') ? st.lessMotion : 'auto';
+      reduceMotion = lm === 'on' ? true : lm === 'off' ? false : !!(rmMQ && rmMQ.matches);
+    }
     calmNow = reduceMotion || stableNow;
+    var cd = hasK(st, 'camDist') ? st.camDist : 'normal';
+    distK = cd === 'near' ? 0.86 : cd === 'far' ? 1.18 : 1;
+    cutsLess = hasK(st, 'camCuts') && st.camCuts === 'less';
     // 6v6: cámara en 3ª persona ('3p', por defecto) o de televisión ('tv'); ?cam6=tv|3p manda (pruebas)
     cam6Tv = Q6 ? Q6 === 'tv' : !!(st && Object.prototype.hasOwnProperty.call(st, 'cam6') && st.cam6 === 'tv');
   }
@@ -380,7 +399,7 @@
     var Gc = (VB.C && VB.C.G) || 9.81, tUp = mx(0, b.vz) / Gc;
     var ax = b.x + b.vx * tUp, az = b.z + mx(0, b.vz) * tUp * 0.5;
     var c = SHOTS[shot] && SHOTS[shot].wide ? SHOTS[shot] : SHOTS.rally;
-    var back = c.back * (ctx.isMobile ? 0.94 : 1), h = (ctx.isMobile && c.hMob) ? c.hMob : c.h;
+    var back = c.back * (ctx.isMobile ? 0.94 : 1) * distK, h = ((ctx.isMobile && c.hMob) ? c.hMob : c.h) * distK;
     var tanH = Math.tan(fovFor(c.fov, 0, 0, 1) * DEG / 2), lim = Math.atan(0.68 * tanH) + Math.atan(0.68 * tanH);
     var px = p.x, ex = 0;
     // (el balón va hacia nuestro campo: el que lo jugará estará cerca de la cumbre/caída; si va al rival, manda el jugador actual)
@@ -473,6 +492,7 @@
   function gameplayShot(g, c) {
     var dt = K.dt, b = g.ball, ahead = b.x < S.x + c.back - 1.2;   // balón por delante de la cámara
     var back = c.back, h = (ctx.isMobile && c.hMob) ? c.hMob : c.h, p = g.ctrl, calm = comfort();
+    if (c.wide && distK !== 1) { back *= distK; h *= distK; }   // (Ajustes > Cámara > Distancia: rally, defend y attack)
     // EN LA RED: el jugador controlado pegado a la red con el rival construyendo (o recién bloqueado).
     // Se mide antes de colocar la cámara porque cambia la distancia y la altura (entra en ~0,7 s).
     var netW = 0;
@@ -2135,7 +2155,7 @@
   var CW = { on: false, t: 0.5, dur: 0.5, x0: 0.5, y0: 0.5, x1: 0.5, y1: 0.5, z: 1.3, side: 1, sv: null, cutIn: false, cutOut: false };
   /** ¿Habrá cutaway en la vuelta al saque? (para anunciar el corte durante el punto) */
   function cutawayNext(g) {
-    return !!(g && !g.demo && ctx.state === 'playing' && g.mode === 'point' && g.serving === 1 && !g.pendingSet && !CL.on && !CC.on && g.ritual !== undefined);
+    return !!(g && !cutsLess && !g.drill && !g.demo && ctx.state === 'playing' && g.mode === 'point' && g.serving === 1 && !g.pendingSet && !CL.on && !CC.on && g.ritual !== undefined);
   }
   /** Arranca el cutaway en el serveReady del rival (si hay tiempo hasta el lanzamiento). */
   function cutawayStart(g) {
@@ -2822,6 +2842,8 @@
     if (from === 'court') { if (ccAbort) cutCheck = true; else startBlend(1.4, 0.9, 12); return; }
     // del punto al saque: corte o transición fija según lo decidido (y anunciado) durante el punto (ver update)
     if (from === 'point' && (to === 'serveUs' || to === 'serveThem')) { backPending = true; return; }
+    // punto con la cámara de juego (Menos planos / gimnasio): al saque por corte asentado (los jugadores se recolocan de golpe)
+    if (QP.on && (to === 'serveUs' || to === 'serveThem')) { PF.backCut = true; backPending = true; return; }
     // 6v6: del plano de reacción a la cámara de televisión, siempre por corte (como la tele; deslizando cruzaba la pista entre jugadores)
     if (from === 'point' && to === 'tv') { PF.backCut = true; backPending = true; return; }
     if (from === 'point') cutCheck = true;
@@ -3543,10 +3565,12 @@
   }
 
   VB.CameraRig = {
+    /** E3: claves de ctx.settings que la cámara ya soporta (ui.js esconde las filas ★ que falten). */
+    OPTS: ['camDist', 'camCuts', 'lessMotion'],
     init: function (c) {
       ctx = c; THREE = c.THREE; cam = c.camera; tgt3 = new THREE.Vector3();
       cam.near = 0.12; cam.far = 220; cam.fov = K.fovCur; cam.updateProjectionMatrix();
-      try { reduceMotion = !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { }
+      try { rmMQ = root.matchMedia ? root.matchMedia('(prefers-reduced-motion: reduce)') : null; reduceMotion = !!(rmMQ && rmMQ.matches); } catch (e) { rmMQ = null; }
       readComfort(); readBounds();
     },
     onGameStart: function (g) {
@@ -3643,7 +3667,7 @@
      *  {heroId, mateId, team, camX, camY (sitio de la cámara, sim), hx, hy (sitio del héroe), heroYaw (rad, sim: de cara a la
      *  cámara, abierto hacia el compañero), conv (el compañero va a su sitio), mx, my (sitio del compañero; NaN si no va),
      *  mateYaw, t (g.time del plan)}. Solo cambia la cámara si VB.Players.heroShotAware === true. No modificar. */
-    heroShot: function () { var g = ctx && ctx.game; return HS.on && g && (g.mode === 'point') && !reviewOn(g) ? HS : null; },
+    heroShot: function () { var g = ctx && ctx.game; return HS.on && !cutsLess && g && !g.drill && (g.mode === 'point') && !reviewOn(g) ? HS : null; },
     /** Ejes de la cámara de juego en el plano del suelo (coordenadas de simulación). */
     getBasis: function () { return basis; },
     /** OPCIONAL (depuración / tests): plano actual y datos de encuadre. */
@@ -3691,10 +3715,12 @@
         else if (e.type === 'serveReady' || e.type === 'newMatch' || e.type === 'toss') landOk = false;
         if ((e.type === 'hit' || e.type === 'block') && shot === 'menu') MN.hitT = K.timeAcc;
         if (BRK === 'cut' && e.type === 'toss' && GAMEPLAY[shot]) { P.y += 3; P.z += 1; }   // (camBreak: salto sin corte anotado)
-        if (e.type === 'serveReady' && e.team === 1 && shot === 'point' && !g.demo && ctx.state === 'playing' && !ctx.frozen && !CL.on && g.size !== 6) cutawayStart(g);
+        if (e.type === 'serveReady' && e.team === 1 && shot === 'point' && !cutsLess && !g.drill && !g.demo && ctx.state === 'playing' && !ctx.frozen && !CL.on && g.size !== 6) cutawayStart(g);
         if ((e.type === 'hit' || e.type === 'block') && e.player && (e.team === 0 || e.team === 1)) { lastTouch[e.team] = e.player; touchFitPlan(g); if (e.type === 'block' || e.team === 1) FT.on = false;
           if (CL.on && CL.phase === 'track' && !CL.pointed) { clinchEnd(); CL.abortCut = true; slow.t = 0; ctx.timeScale = 1; } }
-        else if (e.type === 'serveReady' || e.type === 'newMatch') { lastTouch[0] = null; lastTouch[1] = null; HS.on = false; SVC.idx = -1; K.tfBackT = 0; FT.on = false; K.ftU = 0; }
+        else if (e.type === 'serveReady' || e.type === 'newMatch' || e.type === 'drillStage') { lastTouch[0] = null; lastTouch[1] = null; HS.on = false; SVC.idx = -1; K.tfBackT = 0; FT.on = false; K.ftU = 0; }
+        // gimnasio (E6): el montaje de cada repetición teletransporta a los jugadores → la cámara se recoloca de golpe
+        if (e.type === 'drillStage') { QP.stage = true; CW.on = false; CL.on = false; slow.t = 0; K.hsT = 0; K.hsE = 0; }
         if (e.type === 'switch') {
           if (!e.reset && e.from && e.to) {
             // deslizar el sujeto desde donde está ahora hasta el nuevo jugador
@@ -3791,7 +3817,7 @@
       if (slow.t > 0 || K.hsT > 0 || K.hsE > 0 || ctx.timeScale !== 1) ctx.timeScale = mn(sScale, hScale);
 
       // CIERRE DE SET / PARTIDO (CAM-09): detección y fases (reloj real; el de juego para el bote previsto)
-      if (!CL.on && !ctx.frozen && g.size !== 6) clinchDetect(g);   // (6v6: sin plano de cierre hasta el sprint 3)
+      if (!CL.on && !ctx.frozen && g.size !== 6 && !g.drill) clinchDetect(g);   // (gimnasio: sin cierre de set)   // (6v6: sin plano de cierre hasta el sprint 3)
       if (CL.on && clinchPlanSoon) { clinchPlanSoon = false; clinchPlan(g); }
       if (CL.on) clinchTick(g, runs ? dt : 0);
       if (INTRO.on) { INTRO.t += dt; if (INTRO.t >= INTRO.dur || g.mode !== 'serve' || g.demo) { INTRO.handoff = INTRO.t >= INTRO.dur && g.mode === 'serve' && !g.demo && BRK !== 'intro'; INTRO.on = false; } }
@@ -3805,6 +3831,7 @@
       // plano
       var ns = pickShot(g);
       if (ns !== shot) { onShotChange(g, shot, ns); prevShot = shot; shot = ns; }
+      QP.on = g.mode === 'point' && shot === 'rally';
       // (6v6 en 3ª persona: el corte al plano de reacción, pasados TPP.hold s reales del punto)
       if (shot === 'tpPoint' && g.mode === 'point' && !TPP.cutDone && TPP.willCut && ctx.state !== 'paused' && !ctx.frozen) {
         TPP.t += dt; if (TPP.t >= TPP.hold) { tpPlan(g); TPP.cutDone = true; TPP.cutNow = true; }
@@ -3841,6 +3868,10 @@
         // posiciones y frente del instante del corte (con el acuerdo de players, no: la coreografía ya sigue a ESTA cámara)
         if (PF.mode === 'hero' && !HS.on) planPoint(g, PF.how, pointPlayer, true);
         settle(g); markCut('point', 'point', 'point');
+      }
+      if (QP.stage) {
+        QP.stage = false; backPending = false; cutCheck = false;
+        if (GAMEPLAY[shot]) { if (FB.on) FB.on = false; settle(g); markCut(prevShot, shot, 'drill'); }
       }
       if (backPending) {
         backPending = false;

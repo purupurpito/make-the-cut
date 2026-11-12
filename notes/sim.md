@@ -1443,3 +1443,156 @@ sobre todo con salto, se pitan dobles»).
   por nota (|te| uniforme 0–0,4): perfect 0 %, good 0 %, poor 32 % en el suelo y 52 % en salto; pabellón 0 % siempre.
 - `VB.Sim.dblSetP` exportada; `VB.BEACH` gana `dblA0, dblA1, dblP0, dblP1, dblJump, dblMax`. simtest «Vóley playa (k)».
 - Petición a ui.js (consejo del 2º toque en la playa: «A destiempo pitan dobles (en salto, más)») en el requests.md del workflow.
+## E1 (sprint 5): maestría — finta, golpe colocado, al filo, colocación dirigida (12-nov-2026) — sim
+Spec: E1.md del sprint 5 (tramo 1 entero + M7 del tramo 2). **Todo detrás de `g.mastery`**: `createGame({mastery:true})` →
+`g.mastery = !!opts.mastery && !g.demo && !g.autopilot && !g.rot` (se decide una vez). Sin la bandera no cambia ninguna rama ni
+llamada a `g.rng`: `node tools/fingerprint6.js` «huella 2v2 idéntica» SIN regenerar fp-2v2.json. El azar nuevo sale de
+`VB.Sim.hk(g, salt) = hash01(g.seed, (setNo·64 + marcador)·32 + rally.hits, salt)` (salts 0xE11 finta, 0xE12 colocado CPU, 0xE13/0xE17
+colocación CPU), nunca de `g.rng`. Huella propia de la maestría: `node tools/fingerprint6.js --variant mastery` → tools/fp-mastery.json
+(50 semillas × 150 s, bot que también pulsa COLOCAR en el aire; regenerar con `--write` solo con un cambio intencionado de la maestría).
+
+### Controles (sin acciones nuevas: GOLPEAR, SALTAR, COLOCAR y el stick; ninguna se mantiene pulsada)
+| Contexto | GOLPEAR | SALTAR | COLOCAR | Stick |
+|---|---|---|---|---|
+| Ataque en el aire (3r toque) | remate (mira libre) | dejada | **golpe colocado** `'roll'` | diana, ahora **hasta 0,05 m de las líneas** |
+| Gesto abierto con GOLPEAR | — | **finta** (dejada) | **finta** (colocado) | — |
+| 2º toque desde el suelo (2v2) | colocación | — | — | **↑ rápida · ← → a un lado · ↓ alta** (stick ≥ 0,6) |
+
+Finta = GOLPEAR y, ≥ `MASTERY.feint.minT` (0,03 s; antes 0,06) después y antes del contacto, SALTAR o COLOCAR (táctil: deslizar de GOLPEAR a
+SALTAR/COLOCAR). El timing sigue saliendo de la primera pulsación (`swingT0`): la finta real es «armar antes y cambiar».
+
+### API nueva (todo aditivo)
+- Opciones: `opts.mastery` (bool), `opts.aimSet` (bool, por defecto true: colocación dirigida).
+- Estado (solo lectura): `g.mastery`, `g.aimSet`, `g.atkMove` ('' | 'feint' | 'roll' | 'edge' | 'quick'), `g.atkEdge` (0..1),
+  `g.lastTempo` ('' | 'quick' | 'lane' | 'high'), `g.feintT`, `g.swingShot0`, `g.swingSwapT`, `g.chain`, `g.chainH` (tramo 2).
+  Jugador: `p.e1T`, `p.e1Until` (interno de la IA). `p.shot` admite `'roll'` (con `p.lastAction 'spike'`).
+- Evento `hit` añade `feint` (bool), `tempo` ('' | 'quick' | 'lane' | 'high'; solo en la colocación de suelo 2v2), `edge` (0..1) y
+  `chain` (int, 0 sin mastery o en la CPU). `shot` admite **`'roll'`** con `kind 'spike'` (`power` 0,2). El `hit` del saque lleva
+  `feint:false, tempo:'', edge:0, chain:0`.
+- Evento `point` (y `g.lastPoint`) añade `move` ('' | 'feint' | 'roll' | 'edge' | 'quick'): la etiqueta del último ataque del equipo que
+  gana cuando el punto es suyo (`how` 'kill' o 'tip', block-out incluido). La CPU también puede dar 'roll'. «¡Manos fuera!» =
+  `move 'edge'` y `tool`.
+- **Evento nuevo `feint {player, team, shot:'tip'|'roll'}`**, después del `hit`, en el mismo paso (simtest lo tiene en KNOWN).
+- `VB.Sim.altReady(g)` → '' | 'jset' | 'roll' (qué ofrece COLOCAR en el aire; caché por `g.time`), `VB.Sim.setPreview(g, out)` →
+  null | {x, y, tempo} (destino sin error de la colocación dirigida con el stick de ahora; sin memoria nueva), `VB.Sim.edgeOf(g, x, y)`
+  (0..1, pura), `VB.Sim.hk`, `VB.MASTERY` (= `VB.Sim.MASTERY`).
+- `aimPoint` añade `out.edge` (0..1; dispersión ×(1 + 0,35·e) en la mira libre) y `kind 'roll'` (radio ×0,6) mientras el gesto del
+  3r toque es COLOCAR.
+- `g.stats.mastery` = {feint, roll, edge, quick: [usos, puntos], tool, lane, high, cpu: {roll: [usos, puntos], lane}} (humano; cpu aparte;
+  la rápida se cuenta al colocarla el humano y su punto con `move 'quick'` del equipo 0, la remate quien la remate).
+- `VB.DIFF.*` añade `feintRead`, `tipRead`, `roll`, `zoneSet`, `feintBeat` (tabla `E1DIFF` en sim.js; demo 0 en todo).
+
+### Mecánicas y números (VB.MASTERY)
+- **Finta** (`feint {minT 0,06, q 0,92}`): calidad ×0,92. Premio: con el bloqueador CPU en el aire (`blkAir`), la defensa queda
+  engañada con prob. `feintBeat` (Fácil 0,32, Normal 0,25, Difícil 0,17, Experto 0,11; dado `hk`, sin g.rng: `g.digOk = false`, la
+  IA «perdida» de siempre: lee tarde, va lenta y no la controla) y además lee `feintRead` s más tarde (0,16/0,12/0,08/0,05; el que
+  estaba en el aire, `feintRead` s DESPUÉS de caer). **Cambio sobre la spec**: con solo la reacción la finta no valía nada (medido:
+  dejada con finta = a la vista, 12 % / 8 % / 4 %, incluso con +0,5 s), porque la dejada tarda ~1,2 s y el bloqueador que aterriza a
+  1-2 m la recoge siempre. La dejada a la vista: en Difícil/Experto la CPU la lee `tipRead` s antes (0,05/0,08).
+- **Golpe colocado** (`roll {spread 0,6, clear 1,85, digK 1,0}`): misma diana que el remate, dispersión ×0,6 con los mismos dos dados,
+  `launchApex` con cima ≥ NET_H + 1,85 (con 1,25 de la spec el bloqueo lo tocaba el 78-94 %; con 1,7 el 35-43 %; con 1,8 o más, 0 %),
+  `kind 'spike'`, defensa sin el ×0,85 de la spec (con él rendía más que el remate perfecto: ratio 1,04). Mal timing (q < 0,45):
+  a veces corto a la red, como el remate. La IA lo usa con su bloqueo humano arriba y sin dejada: `hk(0xE12) < pr.roll` (0,02 / 0,06
+  / 0,10 / 0,14; compañero 0,08) al fondo libre (`openSpot(…6,5…)`).
+- **Al filo y manos fuera** (`edge {d 0,9, lim 0,05, spr 0,35, spd 0,8, dig 0,2, tool 0,2, tag 0,5}`): la mira libre llega hasta
+  `g.HW/HL − 0,05`. Con `e = edgeOf` del punto apuntado: dispersión ×(1 + 0,35e), +0,8e m/s, defensa ×(1 − 0,2e); en `checkBlock`,
+  block-out + 0,2·e·(1 − cen) (tope 0,6). `atkMove 'edge'` con e > 0,5.
+- **Colocación dirigida** (`set {dead 0,6, fwd 0,7, lat 0,5, laneY 2,6, quickX 1,0, quickApex 4,0, quickBlk 0,6, highX 2,4, highApex
+  5,9}`, `setAim`): mismas llamadas `rnd` que la de siempre (neutra = byte a byte). Rápida: el error del bloqueador rival ×(1 + 0,6q)
+  y `atkMove 'quick'` en el remate siguiente. La CPU (solo el equipo 1) coloca a un lado con `hk(0xE13) < pr.zoneSet` (0 / 0,15 /
+  0,30 / 0,45) al lado contrario de `g.ctrl.y`; su atacante la sigue (pr3) y la remata (98-100 %).
+- **Colocador plantado** (con g.mastery y g.aimSet): mientras dura el gesto de la colocación de 2º toque desde el suelo, el stick apunta y
+  NO mueve al jugador (en la matriz, el bot que elegía zona se iba del balón y la colocación salía mala).
+- **Jugada perfecta** (tramo 2, M7; `chain {dig 0,85, spd 0,6, minTight 0,6}`): 3 toques perfectos seguidos del equipo 0 en la
+  posesión con 2 o más del humano → el remate (de GOLPEAR) +0,6 m/s y defensa CPU ×0,85 (suelo 0,6). `hit.chain` para el sello.
+- No hecho (tramo 2): avisos del rematador CPU (M6, necesita players/fx para verse) y flotante en salto humano (M8, necesita input.js).
+
+### Pruebas (simtest «Maestría (E1)», `SIMTEST_ONLY=e1`; `SIMTEST_E1=b,c` filtra)
+(a) sin bandera = mastery:false = mastery en demo/autopilot/6v6: 64/64 idénticas (puntos y llamadas a g.rng). (a2) informativo.
+(b) finta 30/30 y su evento; a los 0,03 s no; sin mastery nunca; calidad ×0,92. (b2) % de puntos de la dejada (escenario fijo, 300
+semillas): finta / a la vista / a la vista sin mastery = Fácil 30/11/11, Normal 30/11/11, Difícil 20/7/8, Experto 11/3/4. (c) colocado:
+pasa el bloqueo 100 %, puntos 0,80× (Normal) y 0,78× (Difícil) los del remate perfecto. (c2) CPU: 0,025 (pr 0,06; 121 ocasiones, dentro de 2,5σ) y 0,143 (pr 0,14)
+con el bloqueo arriba, 0 en la demo. (d) filo: dispersión ×1,30, fuera 32,5 % vs 0 %, digOk 38 % vs 58 %. (e) tempos y destinos
+±0,5 m, neutra idéntica, zona muerta, aimSet:false, setPreview. (e2) CPU a un lado 0,178 (0,15) / 0,444 (0,45), 100 % lejos, rematadas 92-95 %.
+(f) eventos sin undefined. (g) altReady/aimPoint. (h) jugada perfecta 1-2-3 y corte.
+Matriz con la bandera: `SIMTEST_MASTERY=1 SIMTEST_ONLY=matrix node tools/simtest.js 0 12345 20 4` (la CPU usa lo suyo; los bots no)
+y `SIMTEST_MASTERY=2 …` (los bots también: `BOT_MASTERY`; `SIMTEST_BOTM=feint,set` deja solo esas).
+Matriz con mastery, 4 semillas × 20 min (semilla 12345), % de puntos del bot; entre paréntesis la matriz SIN bandera con las mismas semillas:
+perfecto 93,5 (95,2) / 84,4 (86,1) / 75,5 (75,2) / 59,2 (62,8); bueno 85,8 (91,5) / 70,1 (66,8) / 51,3 (56,6) / 37,7 (35,7); medio 73,5 (79,2) /
+50,4 (52,4) / 35,3 (40,4) / 26,5 (24,7); novato 45,8 (49,7) / 31,2 (39,6) / 20,7 (25,1) / 13,2 (14,6) (Fácil / Normal / Difícil / Experto).
+Escalera limpia y todas las bandas de MATRIX_STAT en verde («TODO OK»). La CPU con mastery aprieta algo más en Normal/Difícil (golpe colocado,
+colocación a un lado y lectura de la dejada): novato/Normal −8 y medio/Difícil −5 puntos, dentro de banda; si se nota demasiado, bajar
+`zoneSet` antes que tocar VB.DIFF. Bots que USAN la maestría al azar (`SIMTEST_MASTERY=2`, 12 semillas, semilla 777, frente a =1):
+perfecto 95,1/81,3/75,1 (94,9/82,4/74,7), bueno 85,3/64,9/55,1 (86,3/66,6/54,3), medio 71,2/45,9/36,9 (68,2/48,2/38,7): neutro (±2, ruido
+~1,4). Los bots usan finta/colocado/filo/zona sin elegir el momento; el techo de habilidad se ve en los escenarios (b2), (c) y (d).
+
+
+### Peticiones (scratchpad sprint5/requests.md)
+main.js (`mastery: !fmt6 && !auto, aimSet`), ui.js (rótulos por `point.move`, consejos, hoja final con `stats.mastery`, Ajustes
+«Colocación dirigida» / «Timing exacto», aviso con `altReady`), input.js (botón «COLOCADO» con `altReady === 'roll'`), fx.js (retícula
+`kind 'roll'`, aro coral con `edge > 0,5`, marcador de `setPreview`), players.js (`shot 'roll'`, `hit.feint`, `tempo 'quick'`),
+audio.js (`shot 'roll'`, `feint`). CONTRACT §4.2/§4.3 (integrador): copiar «API nueva» de aquí.
+
+## E6 (sprint 5): Entrenamiento (gimnasio) en la sim + VB.AI.leaving (12-nov-2026) — sim (tarea S)
+Todo detrás de `g.drill` (null fuera del modo; el campo está siempre en el literal de createGame). Huella 2v2 y de maestría idénticas
+(no se ha regenerado nada).
+- **createGame({drill})**: `'serve'|'recv'|'set'|'atk'|'block'|'free'` (id desconocido o demo → sin ejercicio; con `format:'6v6'` → 2v2).
+  Ejercicios con repeticiones (todos menos 'free'): control 'one' con el n.º 1 (ignora ctrl/ctrlIdx), sin `present`, sin ayuda de primer
+  partido (`rookie`), sin regla de los 8 s. En todos (también 'free'): árbitro sin error (`refErr` a 0) y sin challenge (`chalPerSet` 0),
+  y **sin eventos `point`, `whistle` (tampoco el del saque) ni `gameOver`/`set`/`match`/`sideout`**. Marcador, sets y `g.stats` no cambian.
+- **`g.drill`** = `{kind, n (repetición en curso, 0-based), of (10; 0 en free), total, pts (de la última), last {pts,res,text,d}, target
+  {x,y,r,r2} | null (mundo; fx.js), idle [b0,b1], cpu ('' | 'block'), mateIdle, best, done, srvJump, reps [pts…]}` + internos (`_t`, `side`,
+  `jumped`, `tip`, `grade`, `jset`, `jump`, `ak`, `blk`, `mateAtk`, `cnt`, `recOn/recX/recY`).
+- **Montaje** `drillStage(g)` (público `VB.Sim.drillStage`): en createGame en lugar del primer saque y tras `DRILL.hold` (1,1 s) de cada
+  repetición. serve/recv/free = `setupServe` (serve: saca siempre el humano, rivales en la banda x −4,5, y ±(HW+1,2); recv: saca el n.º 3,
+  el compañero espera en la zona del colocador (2,0 ; 0) porque la recepción va a su y; free: el saque alterna). set/atk/block = el STAGE de
+  tools/jsetdrill.js dentro de la sim (reseteo de setupServe sin azar, `launchApex`, `touches/lastKind/lastPlayer`, `mode 'rally'`,
+  `refreshPred`): set (compañero (5,5 ; ∓1,4), humano (2,1 ; ±0,6), touches 1), atk (compañero coloca desde (1 ; 0) a (1,2 ; ±2,8) cima 4,6;
+  humano (3,4 ; ±2,6); desde la 6ª el n.º 3 bloquea con `cpu 'block'`), block (el n.º 9 coloca desde (−1 ; 0) al n.º 3 en (−4,6 ; ±2,6);
+  humano (0,8 ; 0) con `defRole 'block'`, compañero atrás). El lado alterna (block: `DRILL.kinds.block.sides`). Emite
+  **`drillStage {kind, n, of, target: [x,y,r] | null}`**.
+- **Fin de repetición**: `point()` → `drillPoint` (primera línea); `drillOnHit` (hit y doServe, tras emitir `hit`: recepción = el 2º toque
+  cierra; bloqueo = cualquier toque del equipo 0 cierra; libre = cuenta toques del equipo 0) y `drillOnBlock` (checkBlock: cierra Remate y
+  Bloqueo). `drillFinish`: modo 'point', `g.timer = g.hold = DRILL.hold`, `g.lastPoint` neutro (`how:'drill'`, highlight 0, signal '', …),
+  **`drillRep {kind, n, of, pts, total, res, text, x, y, d, grade, hits, best, isBest}`** (en free: `hits` = toques del equipo 0 del peloteo,
+  `best`, `isBest`; pts/total 0) y, tras la 10ª, **`drillEnd {kind, total, reps, best}`** con `g.drill.done = true` y el modo en 'point' quieto
+  (step no vuelve a montar; main.js pasa a 'over').
+- **Puntos** `VB.Sim.drillScore(kind, ctx)` (pura; ctx documentado en el código) → `{pts 0..3, res, text, d}`. res: bull/near/in/out/net
+  (saque, remate), perfect/good/fair/miss/ace (recepción), perfect/good/poor (colocación), stuff/soft/touch/tool/none/read (bloqueo), tip.
+  `text` = rótulo corto (`VB.DRILL.text`: «¡Diana!», «Cerca», «Dentro», «Fuera», «A la red», «Perfecta», «Buena», «Justa», «Floja», «Fallo»,
+  «Ace», «Bloqueo», «Amortiguado», «Toque», «Manos fuera», «Leída», «Sin bloqueo», «Dejada dentro»; la UI añade «+3»). Como E6 §2.4, con
+  estas decisiones: remate bloqueado `soft` 0 y `touch` 1 (E6 solo decía stuff 0 / tool 1); remate de GOLPEAR desde el suelo que cae dentro
+  1 (como la dejada); bloqueo: «dejada leída» (+1) = la CPU deja, el humano no salta y el balón cae a < 2 m de la red o lo toca el equipo 0.
+- **`VB.DRILL`** (solo lectura): `{hold, order, text, kinds:{serve {of, r:[0,8;1,6], targets}, recv {zone, r:[1;2,2], srvJump, jit 1,2},
+  set, atk {r 1,2, targets (y × lado), blockFrom 5}, block {sides, net 2}, free}}`, cada uno con **`medals`** recalibradas con los bots
+  (ver abajo): serve 12/18/24, recv 18/24/28, set 16/22/27, atk 12/18/23, block 6/11/16. gym.js debe leerlas (petición).
+- **Bucle**: los que no juegan (`drillIdle`: idle[1], mateIdle, el compañero en recepción hasta que recibes, el n.º 9 con `cpu 'block'`) solo
+  `stepPlayer(0,0)`; `drillJobs` pasa su balón al del humano (equipo 0) o a nadie (equipo 1). `g.drill.jumped` (Bloqueo) se marca en step.
+- **ai.js**: `serveTarget` → `drillServe` (recepción: humano ± 1,2 m con g.rng; saque con autopilot: la diana); el tipo de saque de la CPU
+  sale de `srvJump[n]` (stepServe) y nunca hay error de saque de la CPU en recepción (doServe); `update` con `cpu 'block'` → `blockOnly`
+  (solo la rama de bloqueo); `pos`: con g.drill bloquea siempre el del humano (también con autopilot); autopilot en Remate: a la diana.
+- **`VB.AI.leaving(g, team)`** (para E2/players): `g._lv[team].on && g._lv[team].t === g.lastTouchT` (lectura pura; false sin `_lv`).
+
+### Pruebas (simtest «Gimnasio (E6)», `SIMTEST_ONLY=gym`, ~8 s)
+(1) 5 ejercicios × 3 bots (bueno, perfecto con mira a la diana `gymBot`, novato) × 3 semillas + playa + autopilot = 55 partidas: 10 drillRep
+(n 0-9) y drillEnd, total = suma, pts 0-3, marcador y sets 0-0, `stats.points` 0, 0 point/whistle/gameOver/set/match/sideout, invariantes,
+sin campos undefined, `lastPoint.how 'drill'`. (2) montaje de cada drillStage según la tabla; saque de la CPU a ≤ 2,5 m del humano 84,5 %.
+(3) 34 casos fijos de drillScore. (4) determinismo. (5) techo (totales de 3 semillas): serve perfecto 30/30/30, bueno 15/13/18, novato
+10/10/10; recv 30/30/29, 25/27/28, 23/21/20; set 27/29/30, 24/25/28, 21/20/18; atk 25/23/27, 16/16/17, 13/10/8; block (perfecto con bloqueo
+activo) 6/10/4, 7/3/1, 6/0/0 → umbrales nuevos: el perfecto saca oro en saque y remate y el novato no pasa de bronce en ≥ 2 de 3.
+(6) peloteo libre 3 min (uno / ambos): 14 y 16 peloteos, máx. 12 y 9 toques, best = máximo. (7) g.drill null fuera del modo, demo, id raro;
+6v6 + drill = 2v2; `VB.AI.leaving`.
+
+## Arreglos tras revisión de juego (fixer, sprint 5, 12-nov-2026)
+- **Colocador plantado** (sim.js, humano en el suelo): antes plantaba con CUALQUIER gesto vivo en el 2º toque (pulsar pronto aún
+  corriendo al balón = frenazo, y sin imán). Como el stick es también el movimiento, ahora planta solo si `swingHasAim`,
+  `swingLen >= MASTERY.set.dead`, y el balón ya le llega desde donde está (`hitWindow(g, hp, _wPlant).reach` y `d < 0,6 m`); plantado
+  sigue el imán (`assistMove(g, hp, 0, 0)`). Matriz `SIMTEST_MASTERY=1`, semilla 4242, 12 semillas por casilla (novato/medio vs
+  Normal): plantado viejo ≈ 31/49 % (semilla 777) → ahora 40,5/55,8 %, igual que sin plantar (38,3/53,7 %). El «−8 novato/Normal» de
+  más arriba era del plantado, no de la CPU.
+- **Finta**: `minT` 0,06 → 0,03 (con pulsación perfecta la ventana del cambio es 0,03-0,07 s, antes 10 ms) y una finta con gesto
+  'poor' ya no engaña (`feint = false`: sale dejada vista, con el ×0,92). Arnés del revisor (e1Atk, 200 semillas): finta mala
+  (arma 0,25) 31,0 → 10,9 % en Normal y 19,9 → 7,6 % en Difícil (como la dejada vista, 11,5/7,7 %); finta buena (arma 0) ~24 % en
+  Difícil (remate perfecto 35 %).
+- `tools/fp-mastery.json` regenerada (`--variant mastery --write`): cambian a propósito el plantado y la finta. La huella 2v2 no cambia.
+  OJO: hay que regenerarla otra vez tras fusionar origin/main (0565a4f cambia el sobrepase en 2v2).

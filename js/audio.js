@@ -1261,7 +1261,7 @@
   var vol = { master: 0.9, sfx: 1, music: 0.75, crowd: 0.85 };
   var MAX_VOICES = 32, ends = new Float64Array(40), slowRate = 1;
   var last = {};                      // nombre -> último instante (anti-amontonado)
-  var stats = { played: {}, skipped: 0, built: 0, synth: 0, total: 0, genMs: 0, steps: 0, maxStepMs: 0, maxStep: '', maxSliceMs: 0, slow: [], hist: new Uint32Array(41), // hist[k]: pasos de k/4..(k+1)/4 ms (el último: ≥ 10 ms)
+  var stats = { played: {}, chain: 0, skipped: 0, built: 0, synth: 0, total: 0, genMs: 0, steps: 0, maxStepMs: 0, maxStep: '', maxSliceMs: 0, slow: [], hist: new Uint32Array(41), // hist[k]: pasos de k/4..(k+1)/4 ms (el último: ≥ 10 ms)
                 startedAt: -1, synthDoneAt: -1, unlockAt: -1, bankDoneAt: -1, reverbAt: -1,
                 deferred: 0, lateDrop: 0, lateMax: 0, ticks: 0, worker: 'none', workerMs: 0, workerHi: -1, bumped: 0, missed: {},
                 // AUD-05: contactos de celebración y botes del ritual recibidos / que sonaron; tiras del pool usadas / pool lleno;
@@ -1316,8 +1316,10 @@
   // pulido ola 3: también el resto de sonidos de juego (plancha, toc del reloj de saque, refuerzos del golpe perfecto, celebración,
   // latido, cortinilla): sin Worker o con la CSP bloqueándolo, la cola los dejaba detrás de la grada y la música y en los
   // primeros 20 s se pedían sin buffer (medido: missed {slide:1}). Solo grada y música quedan para la segunda pasada.
-  var CORE = ['click', 'start', 'whistle', 'dribble', 'set', 'toonPop', 'feet', 'serve', 'whoosh', 'pass', 'spike', 'toonWhack', 'land', 'whistleLong', 'free', 'block', 'net', 'boing', 'bounce',
-    'scuff', 'squeak', 'slam', 'netTape', 'slide', 'hover', 'back', 'slap', 'handclap', 'tick', 'perfect', 'sub', 'spikeHero', 'blockHero', 'slamSub',
+  // sprint 5: 'handclap' sube junto al bote del ritual: el gesto de espera «muslos» de players (E2) da palmadas (fx:clap) antes del
+  // 1r saque; detrás de los toques, sin Worker y con el equipo cargado llegaba sin buffer (audiotest b/c: missed {handclap:1}).
+  var CORE = ['click', 'start', 'whistle', 'dribble', 'handclap', 'set', 'toonPop', 'feet', 'serve', 'whoosh', 'pass', 'spike', 'toonWhack', 'land', 'whistleLong', 'free', 'block', 'net', 'boing', 'bounce',
+    'scuff', 'squeak', 'slam', 'netTape', 'slide', 'hover', 'back', 'slap', 'tick', 'perfect', 'sub', 'spikeHero', 'blockHero', 'slamSub',
     'fist', 'chest', 'beat', 'wipe', 'toonZip'];
   /* Un sonido de grada o música aplazado (bump: ovación de bienvenida, reacción del público) pasa al frente de la cola,
    * pero DETRÁS de los sonidos de juego de la primera pasada que aún falten (coreAhead). Antes iba delante de todo: la
@@ -1916,11 +1918,12 @@
   /** Capa del golpe según el toque. Remate: «¡zas!» (más flojo en el perfecto: el chasquido va por el bus de refuerzo con techo
    *  de pico y el «¡PAM!» ya lo marca) y, si es fuerte (potencia ≥ 0,65 o ≥ 19 m/s), el zumbido de velocidad 15 ms después. */
   function toonHit(k, shot, hg, pw, sp, perf, x, y) {
-    if (k === 'spike' || (k === 'serve' && shot === 'jump')) {
+    if ((k === 'spike' && shot !== 'roll') || (k === 'serve' && shot === 'jump')) {
       var js = k === 'serve';
       toon('toonWhack', hg * (0.8 + 0.3 * pw) * (perf ? 0.4 : 1) * (js ? 0.8 : 1), x, y, jit(0.05) * (1.04 - 0.08 * pw), 0);
       if (pw >= 0.65 || sp >= 19) toon('toonZip', 0.5 + 0.3 * clamp(Math.max(pw, (sp - 15) / 10), 0, 1), x, y, jit(0.06) * (0.95 + 0.1 * pw), 0.015);
-    } else if (k === 'set' || shot === 'tip') toon('toonPop', 0.5 * hg, x, y, jit(0.05) * 1.38, 0);     // dedos: «pip» más agudo
+    } else if (shot === 'roll') toon('toonPop', 0.6 * hg, x, y, jit(0.05) * 1.05, 0);                // golpe colocado (E1): «bonk» redondo, sin «¡zas!»
+    else if (k === 'set' || shot === 'tip') toon('toonPop', 0.5 * hg, x, y, jit(0.05) * 1.38, 0);     // dedos: «pip» más agudo
     else if (k === 'serve') toon('toonPop', 0.55 * hg, x, y, jit(0.05) * 1.12, 0);
     else if (k === 'free') toon('toonPop', 0.55 * hg, x, y, jit(0.05) * (shot === 'overhead' ? 1.2 : 0.92), 0);
     else toon('toonPop', 0.6 * hg * (shot === 'shank' ? 0.8 : 1), x, y, jit(0.05) * (shot === 'shank' ? 0.8 : 1), 0); // recepción
@@ -1946,9 +1949,17 @@
           if (perf) { sweeten(0.55); play('spikeHero', punchCap('spikeHero', gj, x, y, PUNCH_CEIL_LIGHT), x, y, jit(0.06) * 1.05, 0.35, 0, 'punch'); }
           else play('spike', gj, x, y, jit(0.06) * 1.05, 0.35);
         } else play('serve', 0.8 * hg * clamp(0.75 + sp / 40, 0.8, 1.15), x, y, jit(0.08), 0.28);
+        // flotante en salto (E1, hit.style 'jfloat'): el flotante de siempre más el roce de la batida
+        if (e.style === 'jfloat') play('scuff', 0.3 * hg, x, y, jit(0.12), 0.05);
         break;
       case 'set': play('set', 0.55 * hg, x, y, jit(0.1) * (0.95 + q * 0.1), 0.12); break;
       case 'spike':
+        if (shot === 'roll') { // golpe colocado (E1): «tump» medio de mano abierta envolvente, no el chasquido del remate
+          play('free', 0.72 * hg, x, y, jit(0.06) * 0.9, 0.18);
+          play('set', 0.3 * hg, x, y, jit(0.06) * 0.8, 0.08);
+          if (!demo) exciteBoost = Math.max(exciteBoost, 0.12);
+          lastSpikeT = isFinite(e.t) ? e.t : 0; lastSpikeTeam = e.team; break;
+        }
         // remate perfecto del humano: el chasquido sube ~1 dB, un pelo más grave (más "peso"), y lleva el sub
         if (perf) sweeten(1);
         if (perf) { // chasquido entero por el bus de refuerzo (con techo de pico), un pelo más grave: más "peso"
@@ -1979,7 +1990,11 @@
     // encima del contacto sumaba 0,21 de pico a la salida (medido en Chrome) sin sumar sonoridad; detrás, se oye mejor.
     toonHit(k, shot, hg, pw, sp, perf, x, y);
     // sprint cartoon: el remate perfecto del humano (la onomatopeya «¡PAM!» de fx/ui) lleva su golpe de metal en vez del destello
-    if (perf && k === 'spike' && shot !== 'tip' && !demo && toonAllowed() && pamWanted()) pam(0.16);
+    // jugada perfecta (E1, hit.chain === 3 del equipo local): tres campanas que suben en lugar del destello; tras el «¡PAM!», de cola
+    var chain = !demo && e.chain === 3 && e.team === 0, pamd = false;
+    if (perf && k === 'spike' && shot !== 'tip' && shot !== 'roll' && !demo && toonAllowed() && pamWanted()) pamd = pam(0.16);
+    if (chain) chainBells(pamd ? 0.55 : 0.045);
+    else if (pamd) { /* el «¡PAM!» ya lleva su destello */ }
     else if (e.human && e.grade === 'perfect' && !demo) {
       var big = k === 'spike' || k === 'serve';
       play('perfect', big ? 0.16 : 0.12, null, null, k === 'spike' ? 1.06 : 1, 0.1, big ? 0.045 : 0, 'music');
@@ -2213,6 +2228,68 @@
     if (playPooled(name, gain, x, y, rate, send, 0)) stats.fxOut++;
   }
 
+  /* ---- Sprint 5 (E1/E2/E3/E6): solo sonidos que ya están en el banco (sin entradas nuevas en el catálogo ni en LEVEL) ---- */
+  /** Jugada perfecta (E1 M1): el destello «perfecto» tres veces en tríada mayor que sube, por el bus de música (≈ -24). */
+  var CHAIN_R = [1, 1.26, 1.5];
+  function chainBells(delay) {
+    var n = 0;
+    for (var k = 0; k < 3; k++) if (play('perfect', 0.19 + 0.03 * k, null, null, CHAIN_R[k], 0.1, delay + 0.075 * k, 'music')) n++;
+    if (n) stats.chain++;
+  }
+  /** Palmada o puñetazo al suelo de una celebración (E2, 'fx:floor' {team,x,y,z,strength}). Pabellón: golpe sordo de mano en
+   *  la tarima (el choque de puños, más grave). Playa: «puf» de arena (roce de ruido, grave y corto). */
+  function floorHit(e, g) {
+    var s = fxS(e, 0.5), beach = !!(g ? g.beach : vctx && vctx.game && vctx.game.beach), gn = (demo ? 0.5 : 1) * (0.45 + 0.55 * s);
+    if (beach) fxPlay('scuff', 0.55 * gn, e.x, e.y, jit(0.08) * 0.62, 0.03);
+    else fxPlay('fist', 0.6 * gn, e.x, e.y, jit(0.06) * (0.66 + 0.08 * s), 0.12);
+  }
+  /** Gimnasio (E6). Cada repetición: «ding» de tantas notas como puntos (1-3) que suben; 0 puntos, el pestillo grave del «No».
+   *  Peloteo libre: solo suena el récord. Al final, ráfaga corta según la medalla (VB.Gym.medalOf, o la tabla de la spec). */
+  var DRILL_R = [1, 1.26, 1.5], DRILL_MED = { serve: [12, 18, 24], recv: [12, 18, 24], set: [12, 18, 24], atk: [12, 18, 24], block: [10, 16, 22] };
+  function drillRep(e) {
+    if (demo) return;
+    if (e.kind === 'free') { if (e.isBest) play('stepUp', 0.55, null, null, 1.12, 0.04, 0, 'music'); return; }
+    var p = isFinite(e.pts) ? clamp(Math.round(e.pts), 0, 3) : 0;
+    if (!p) { play('tglOff', 0.5, null, null, 0.9, 0, 0, 'music'); return; }
+    for (var k = 0; k < p; k++) play('optSel', 0.5 + 0.06 * k, null, null, DRILL_R[k], 0.05, 0.085 * k, 'music');
+    if (p === 3) play('perfect', 0.14, null, null, 1.5, 0.1, 0.2, 'music');
+  }
+  function medalOf(e) {
+    var G = VB.Gym, t = isFinite(e.total) ? +e.total : 0;
+    if (G && typeof G.medalOf === 'function') { try { var m = G.medalOf(e.kind, t); if (isFinite(m)) return clamp(m | 0, 0, 3); } catch (err) { } }
+    var th = DRILL_MED[e.kind]; if (!th) return 0;
+    return t >= th[2] ? 3 : t >= th[1] ? 2 : t >= th[0] ? 1 : 0;
+  }
+  function drillEnd(e) {
+    if (demo || e.kind === 'free') return;
+    var m = medalOf(e), d = 0.4; // tras el «ding» de la última repetición (llega en el mismo paso)
+    if (m === 3) play('setWin', 0.7, null, null, 1, 0.12, d, 'music');
+    else if (m === 2) play('mvpWin', 0.75, null, null, 1, 0.1, d - 0.3, 'music');   // su acento cae a 0,6 s
+    else if (m === 1) play('cntLock', 0.7, null, null, 1, 0.05, d, 'music');
+    else play('mvpLose', 0.55, null, null, 1, 0.08, d - 0.3, 'music');
+  }
+  /** Muestra al mover un deslizador de volumen (E3): 'crowd' oleada de 0,6 s por el bus de la grada; 'sfx' un toque de
+   *  recepción; 'music' / 'master' un clic. Antes del primer gesto (sin contexto) o en silencio: no suena y devuelve false. */
+  var prevT = -9;
+  function preview(kind) {
+    if (!live()) return false;
+    if (kind === 'crowd') {
+      if (now() - prevT < 0.45 || !(bank.roar && bank.roar.length)) return false; // sin buffer no se aplaza: sonaría entera, tarde
+      prevT = now();
+      var src = play('roar', 0.6, null, null, jit(0.04), 0, 0, 'crowd'), gn = lastGain;
+      if (!src) return false;
+      try {
+        var t0 = AC.currentTime;
+        gn.gain.setValueAtTime(gn.gain.value, t0 + 0.38); gn.gain.setTargetAtTime(0, t0 + 0.38, 0.07);
+        src.stop(t0 + 0.75);
+      } catch (err) { }
+      return true;
+    }
+    if (kind === 'sfx') return !!playGap('pass', 0.08, 0.6, null, null, jit(0.08), 0.12, 0, 'sfx');
+    if (kind === 'music' || kind === 'master' || kind === 'volume') return !!playGap('click', 0.06, 0.6, null, null, jit(0.04), 0, 0, 'music');
+    return false;
+  }
+
   /** Silbato + hueco en la grada: mientras suena, un ecualizador de campana en el bus de la grada baja ~9 dB la
    *  banda del silbato (2,6-4,2 kHz). El punto lo pita el árbitro justo cuando la grada estalla; sin el hueco, en
    *  el render de un partido el silbato quedaba solo 6 dB por encima de la ovación en su banda (audiotest). */
@@ -2333,6 +2410,12 @@
       case 'fx:fistbump': fxPlay('fist', (demo ? 0.3 : 0.55) * (0.55 + 0.45 * fxS(e, 0.55)), e.x, e.y, jit(0.08), 0.1); break;
       case 'fx:chestbump': fxPlay('chest', (demo ? 0.3 : 0.6) * (0.6 + 0.4 * fxS(e, 1)), e.x, e.y, jit(0.06), 0.16); break;
       case 'fx:clap': fxPlay('handclap', (demo ? 0.25 : 0.5) * (0.5 + 0.5 * fxS(e, 0.6)), e.x, e.y, jit(0.06), 0.12); break;
+      case 'fx:floor': floorHit(e, g); break;
+      // E1: finta (el brazo armado frena y sale la dejada o el colocado): roce de aire corto y agudo. 'tell'/'call'/'cpuRead': sin sonido
+      case 'feint': if (!demo) playGap('whoosh', 0.15, 0.22, evx(e), evy(e), jit(0.1) * 1.5, 0); break;
+      // E6 gimnasio (sin 'point': ni silbato ni ovación)
+      case 'drillRep': drillRep(e); break;
+      case 'drillEnd': drillEnd(e); break;
       case 'fx:catch': fxPlay('set', (demo ? 0.15 : 0.3) * (0.6 + 0.4 * fxS(e, 0.6)), e.x, e.y, jit(0.06) * 0.78, 0.06); break; // el sacador recoge el bote (opcional)
       case 'dribble': { // ritual del sacador (SIM-04): bote en el parqué, más suave que un bote de peloteo
         stats.dribIn++;
@@ -2468,6 +2551,8 @@
       applyVolumes(false);
     },
     getVolume: function (kind) { return vol[kind]; },
+    /** OPCIONAL (E3): muestra al mover un deslizador: 'crowd' | 'sfx' | 'music' | 'master'. Seguro antes del primer gesto. */
+    preview: function (kind) { try { return preview(kind); } catch (e) { return false; } },
     /** Sonidos de interfaz (por el bus de música: no les afecta la pausa ni la cámara lenta). */
     click: function () { play('click', 0.6, null, null, jit(0.04), 0, 0, 'music'); },
     hover: function () { playGap('hover', 0.04, 0.35, null, null, jit(0.06), 0, 0, 'music'); },

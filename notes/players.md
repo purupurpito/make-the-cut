@@ -972,3 +972,70 @@ point,dive,over,jumpserve,menu}.png`, `six-{1280,844t}/{serve6,rally6,point6}.pn
   ±0,27), codos atrás y un poco fuera. Un brazo doblado nunca se lee largo. Las demás posturas (recepción, defensa, carrera, saque) no cambian.
 - **Capturas** `tools/out/brazos/`: `antes-*` / `despues-*` (doll, serve, point, rally6h, spike, block) y `zoom-*` (recortes ×3 del contacto
   del remate, del bloqueo y de los muñecos de pie). Sim intacta (huella 2v2 idéntica).
+
+## E2 (sprint 5, 12-nov-2026, players): variedad de la animación — personalidad, variantes por contexto, firma y rival
+Spec: scratchpad sprint5/specs/E2-animation.md. Todo es visual y determinista (hash32 de datos de la sim, nunca `g.rng`): huella 2v2 idéntica.
+Las variantes se eligen en el EVENTO y quedan como cadenas constantes en el rig (`r.persona`, `r.cvar`, `r.dvar`, `r.lvar`, `r.idle`, `r.celV`).
+Sin materiales, geometrías ni dibujos nuevos (el puño es escala de la manopla). doll.js no cambia.
+
+### Lo nuevo
+- **Personalidad** (`r.persona`, `buildRig`): tu n.º 1 `show`, tu n.º 2 `calma`; el resto `hash32(num·31 + team·7 + RIVAL_SIG) % 4` entre
+  show/calma/fuego/guason (los rivales de un club se reconocen en la Carrera). Tabla `PERSONA` (pesos de celebración de puntos normales y
+  de error propio, gestos de espera y `amp` 1,2/0,75/1,1/1,0 que escala los brincos).
+- **Carrera al balón**: `accelLean` (aceleración en el eje del cuerpo filtrada, `r.acF`: arranque con el tronco delante y hombros que caen
+  0,15 s; frenada > 3 m/s² con peso atrás, talón plantado y brazos de equilibrio) y **paso cruzado** en lateral a > 3 m/s (`locomotion`:
+  el pie de atrás cruza por delante uno de cada dos pasos suyos).
+- **Anticipación del salto**: `blockLoad` (en la red con el rival ya colocado: flexión 0,17 → 0,30 y manos a los hombros entre TC − 0,7 y
+  TC − 0,35 s; vuelve en 0,2 s) y **retardo de despegue** (`r.lagOn`, saltos sin carrera: 70 ms con las rodillas dobladas, ≤ 10 cm).
+- **Contactos** (`r.cvar`, `cvarOf` en el hit): `recv`, `dig` (también la plancha que defiende), `shank`, `onearm`, `set`/`backset`
+  (`hit.tempo 'quick'` = manos más rápidas), `spikeLine`/`spikeCross` (ángulo del frente a `hit.target`), `tip`, `pokey` (puño, empuje
+  corto), `roll` (E1: brazo envolvente sin latigazo, sin compresión del brazo ni grito), `jserve`/`fserve`; `hit.feint` = frenazo del brazo
+  armado. Un shot desconocido cae en la pose de siempre (`cvar ''`). Defensa prevista (remate rival) → postura más baja y abierta.
+- **Eventos** (`eventGesture`, capa 5b): `block.result` touch (mano abierta arriba) y tool (tras caer sacude las manos, cara de sorpresa),
+  `netTouch` (manos fuera), `net` sin cinta (manos a la cabeza; luego `headHands` si pierde), `challenge` (rectángulo con las dos manos),
+  `challengeResult` (puño / palmas), `land` fuera tras dejarla pasar (señala la línea) y `drillRep.pts >= 3` («¡sí!»).
+- **Plancha** (`r.dvar`): `front`, `side` (balón a > ~55º del frente que tenía al golpe rival, `r.yawAtk`: cae de costado, el pecho sigue
+  al atacante, se levanta rodando hacia la flexión), `pancake` (mano derecha plana) y `miss` (`dive.miss` y la cosmética: 0,25 s más en el
+  suelo, puñetazo al suelo `fx:floor` 0,4, cara de pena; playa: sacude la cabeza).
+- **Aterrizaje** (`r.lvar`): `stumble` (saque en salto o deriva > 1,2 m/s: brazos de equilibrio; en el saque en salto además 2 pasitos
+  hacia la pista con desfase visual ≤ 0,55 m que se recupera como el de la plancha, `diveOffset`; en el remate solo la pose, porque el
+  desfase movía la convergencia del punto y camtest pillaba al que anotó de perfil) o `stick`. Playa: pies hundidos 3 cm, amortiguación ×1,4 más lenta y polvo una vez por caída.
+- **Celebraciones** (añadidas a `CEL_ALT`, `pickCeleb` ponderado por persona): `digHero` (palmada al suelo, `fx:floor` 0,6), `baile`, `pecho`,
+  `asiente`, `palmLook` (falta de saque), `stuffed` (bloqueado), `noToque` (señal 'touched' siendo él el bloqueador), `jarras`, `arena`
+  (playa), `pina` (racha rival de 3, 5 u 8 con la pareja a < 3,5 m: los que pierden se juntan, convergencia de tipo 5, mano al hombro), `pique`/`rabia` (rival
+  personal) y `firma` (tu n.º 1: puntos grandes, set, y 1 de cada 4; nunca dos seguidas; va sin convergencia). Caras con celdas existentes.
+  Con el plano de héroe, el que anotó mira a su frente (la cámara) en vez de a la grada.
+- **Espera** (`r.idle`): `puntillas`, `sacudir`, `ajuste` (con complemento), `muslos` (`fx:clap` 0,3), `arenaManos` (playa), `rodillas`;
+  en el saque hasta el lanzamiento (el silbato llega a 0,7 s: antes del silbato no cabía ningún gesto) y al final de la pausa del punto.
+  **Dejar pasar** (`leavePose`): con `VB.AI.leaving(g, team)` (guarda: `g._lv`) y a < 3 m del bote previsto. **Señas de playa** sin dedos:
+  manos a la espalda en puño o abiertas, 1,2 s, el compañero del sacador en la red.
+- **Gimnasio**: `drillStage` = `serveReady` (`resetServe`); con `g.drill` no hay celebración, convergencia, piña ni espera.
+
+### API nueva (todo opcional)
+`VB.Players.CELEBS` [{id, name, tier}] (ids = CareerLife.CELEB_DEF), `setSignature(id)` → id aceptado o '', `setRival(num)` (vale para el
+partido creado junto a la llamada; el siguiente sin llamada lo limpia), pruebas `_anim(p)`, `_celeb(p, id)`, `_idle(p, id, u)`. `fx:floor`
+por `drainFx`. Rig de solo lectura: `persona, cvar, dvar, lvar, idle`.
+
+### Medido (ejecutado)
+- `node tools/animtest.js 240 7,99 hall,beach hard` → «TODO OK»: 21 celebraciones distintas, 0 repetidas seguidas, 7 planchas laterales, dig
+  13/13 · 13/14 · 18/19 · 17/18, pokey 2/2 · 4/4, plancha fallida 1/1, stumble en saque en salto 16/16, polvo ≤ 1 por caída, leave sin
+  falsos, firma y rival, gimnasio sin dvar/lvar/celebración tras drillStage. 3-4 idle distintos por jugador.
+- `tools/out/ply1/m.js 240 7 normal` (copia en tools/out/e2/m.js): medianas de la mano iguales a la base (±0,001 m).
+- `bench.js 60 low 4`: 0,452 ms frente a 0,419 (+0,033 ms). `ALLOC=1` perf baja: players.js 353,8 KB/s frente a 354,8 de la base (copia con
+  `VB_ROOT`). `STRICT=1 perf.js 844x390 20 medium,low 4 2.75`: 31/34 dibujos en baja, 50 programas (igual que la base), objetivos cumplidos.
+- `node tools/simtest.js`: «huella 2v2 idéntica: 150 partidas, 1596 puntos, 572083 llamadas a g.rng», «TODO OK». `console.sh all` (también
+  `map=beach` y `format=6v6`): sin errores. `drive.js 1280 720 30`: «TODO OK».
+- `camtest.js`: falla también en la base (copia con el players.js de antes y `VB_ROOT`/`PAGE_ROOT`): spiker, clutter («cabeza bajo la
+  cinta»), wide, fovpump, hero 844x390t y heroAll (8 líneas FAIL en la base, 10 con E2: fovpump y spiker en un tamaño más, sin aislar si es
+  ruido). Lo que sí era de E2 (hero 1280/1680 al 86 %: el desfase del stumble del remate y la piña lejana) está corregido (93 % / 92 %).
+- Capturas antes/después en `tools/out/e2/before`, `tools/out/e2/after` (`cel/` celebraciones y firmas, `var/` plancha lateral y fallida,
+  stumble, bloqueo touch/tool, espera de playa).
+
+### Recortado
+- **P2 (dedos)**: no se hizo; las señas van con puño y mano abierta (como prevé el plan). doll.js intacto.
+- `onearm` solo tras el contacto (antes, la plataforma de siempre: el anclaje 'palm' es solo de la mano derecha).
+- La distribución por persona (±15 %) no se comprueba en animtest (se informa el reparto); `avion` sin trayectoria en círculo (balanceo).
+
+### Problemas conocidos
+- `pina` sale a menudo contra la CPU en Difícil (8 veces en ~65 puntos): si cansa, subir el umbral en `cvPoint`.
+- Las celebraciones nuevas para puntos normales (`baile`, `asiente`) y `palmLook` salen poco en autopilot (casi todo son remates o errores).

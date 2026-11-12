@@ -7,8 +7,10 @@
  *
  * Teclado: flechas / WASD (por código físico: vale en AZERTY/QWERTZ),
  *   Espacio saltar (pulgar), J o X golpear/sacar (J: mano derecha con WASD; X: mano
- *   izquierda con las flechas), C cambiar, V challenge, P/Esc pausa, M sonido.
- *   K sigue saltando (alias mudo del mapa antiguo: no se anuncia).
+ *   izquierda con las flechas), K colocar, C cambiar, V challenge, P/Esc pausa, M sonido.
+ *   REASIGNABLES (E3, sprint 5): dos teclas por acción (ctx.settings.keys = diferencias con DEFAULT_KEYS) y un
+ *   botón por acción en el mando estándar (ctx.settings.padKeys); Esc, Intro y los botones de menú (A/B/LB/RB) fijos.
+ *   API: OPTS, bindings, rebind, captureNext, keyName, padName; poll() añade navOk/navBack/navTab.
  *   Sin auto‑repetición (e.repeat se ignora) y con prioridad a la última
  *   tecla pulsada si se aprietan dos opuestas (izq+der).
  * Ratón (solo en partido, sobre la pista): clic izquierdo golpear/sacar, clic
@@ -36,28 +38,90 @@
   var VB = window.VB = window.VB || {};
   var ctx = null;
   var it = { mx: 0, my: 0, hit: false, jump: false, jset: false, switchPlayer: false, pause: false, mute: false, challenge: false, any: false,
-             confirm: false, device: 'keyboard', hitHeld: false, jumpHeld: false, padEvent: '' };
+             confirm: false, device: 'keyboard', hitHeld: false, jumpHeld: false, padEvent: '',
+             navOk: false, navBack: false, navTab: 0 };   // (E3: menús con mando, botones fijos A / B / LB-RB)
 
   // ---------------- Teclado ----------------
-  // acciones por código físico (e.code) y, de reserva, por e.key
-  var CODE = {
-    ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
-    ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
-    // K = COLOCAR (jset): en el aire, colocación en salto; en el suelo salta como Espacio (poll lo manda también como jump)
-    Space: 'jump', KeyJ: 'hit', KeyX: 'hit', KeyK: 'jset', KeyC: 'switch', KeyV: 'challenge',
-    KeyP: 'pause', Escape: 'pause', KeyM: 'mute', Enter: 'confirm', NumpadEnter: 'confirm'
-  };
-  var KEY = {
-    arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down',
-    ' ': 'jump', spacebar: 'jump', j: 'hit', x: 'hit', k: 'jset', c: 'switch', v: 'challenge', p: 'pause', escape: 'pause', esc: 'pause', m: 'mute', enter: 'confirm'
-  };
+  // TECLAS REASIGNABLES (E3, sprint 5): dos teclas por acción (código físico e.code). ctx.settings.keys guarda SOLO las
+  // diferencias con DEFAULT_KEYS ({} = de fábrica): { acción: [tecla1, tecla2] } de las acciones que cambian.
+  // K = COLOCAR (jset): en el aire, colocación en salto (y en el 3r toque golpe colocado / finta de E1); en el suelo salta
+  // como Espacio (poll lo manda también como jump). E1 no añade acciones nuevas: la finta es GOLPEAR y, antes del golpe,
+  // SALTAR o COLOCAR; nada se mantiene pulsado (sin holdMode).
+  var ACTS = ['up', 'down', 'left', 'right', 'hit', 'jump', 'jset', 'switch', 'challenge', 'pause', 'mute'];
+  var DEFAULT_KEYS = { up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
+                       hit: ['KeyJ', 'KeyX'], jump: ['Space', ''], jset: ['KeyK', ''], 'switch': ['KeyC', ''], challenge: ['KeyV', ''],
+                       pause: ['KeyP', ''], mute: ['KeyM', ''] };
+  // fijas (no se pueden quitar ni asignar): Esc pausa / vuelve, Intro acepta
+  var FIXED_CODE = { Escape: 'pause', Enter: 'confirm', NumpadEnter: 'confirm' };
+  var FIXED_KEY = { escape: 'pause', esc: 'pause', enter: 'confirm' };
+  // reservadas: las fijas, Tab (menús), F1-F12, modificadores del sistema y F (pantalla completa, main.js)
+  var RESERVED = { Escape: 1, Enter: 1, NumpadEnter: 1, Tab: 1, ControlLeft: 1, ControlRight: 1, AltLeft: 1, AltRight: 1, MetaLeft: 1, MetaRight: 1,
+                   OSLeft: 1, OSRight: 1, ContextMenu: 1, KeyF: 1, Backspace: 1, Delete: 1 };
+  for (var fk = 1; fk <= 24; fk++) RESERVED['F' + fk] = 1;
+  var keysEff = null;     // teclas efectivas { acción: [c1, c2] } (sale de DEFAULT_KEYS + ctx.settings.keys, saneado)
+  // acciones por código físico (e.code) y, de reserva (sin e.code: teclados virtuales), por e.key. Se rehacen en buildCode().
+  var CODE = {}, KEY = {};
+  function validCode(c) { return typeof c === 'string' && c.length > 0 && c.length <= 24 && /^[A-Za-z0-9]+$/.test(c) && !RESERVED[c] && c.indexOf('Mouse') !== 0; }
+  /** Teclas efectivas: primero las diferencias guardadas (mandan), luego las de fábrica que no choquen. */
+  function effKeys(diff) {
+    var eff = {}, used = {}, a, i, s, c;
+    if (!diff || typeof diff !== 'object' || Array.isArray(diff)) diff = {};
+    for (i = 0; i < ACTS.length; i++) eff[ACTS[i]] = ['', ''];
+    for (i = 0; i < ACTS.length; i++) {             // 1) explícitas
+      a = ACTS[i]; var d = diff[a];
+      if (!Array.isArray(d)) continue;
+      eff[a].x = true;                              // (marca: esta acción viene del guardado)
+      for (s = 0; s < 2; s++) { c = d[s]; if (validCode(c) && !used[c]) { eff[a][s] = c; used[c] = a; } }
+    }
+    for (i = 0; i < ACTS.length; i++) {             // 2) de fábrica, sin repetir (la 2ª casilla vacía guardada se respeta)
+      a = ACTS[i];
+      for (s = 0; s < 2; s++) {
+        if (eff[a][s]) continue;
+        if (eff[a].x && s === 1 && Array.isArray(diff[a]) && diff[a][1] === '') continue;
+        c = DEFAULT_KEYS[a][s]; if (c && !used[c]) { eff[a][s] = c; used[c] = a; }
+      }
+      if (!eff[a][0] && eff[a][1]) { eff[a][0] = eff[a][1]; eff[a][1] = ''; }
+      delete eff[a].x;
+    }
+    return eff;
+  }
+  /** Diferencias de unas teclas efectivas con las de fábrica (lo que se guarda). */
+  function diffKeys(eff) {
+    var o = {};
+    for (var i = 0; i < ACTS.length; i++) { var a = ACTS[i], e = eff[a], d = DEFAULT_KEYS[a]; if (e[0] !== d[0] || e[1] !== d[1]) o[a] = [e[0], e[1]]; }
+    return o;
+  }
+  /** e.key en minúsculas que da un código en QWERTY (respaldo cuando el evento no trae e.code). */
+  function keyOfCode(c) {
+    if (/^Key[A-Z]$/.test(c)) return c.charAt(3).toLowerCase();
+    if (/^Digit[0-9]$/.test(c)) return c.charAt(5);
+    if (c === 'Space') return ' ';
+    if (/^Arrow/.test(c)) return c.toLowerCase();
+    return '';
+  }
+  function buildCode() {
+    keysEff = effKeys(ctx && ctx.settings ? ctx.settings.keys : null);
+    CODE = {}; KEY = {};
+    for (var i = 0; i < ACTS.length; i++) {
+      var a = ACTS[i];
+      for (var s = 0; s < 2; s++) { var c = keysEff[a][s]; if (!c) continue; CODE[c] = a; var k = keyOfCode(c); if (k) { KEY[k] = a; if (k === ' ') KEY.spacebar = a; } }
+    }
+    for (var f in FIXED_CODE) CODE[f] = FIXED_CODE[f];
+    for (var g in FIXED_KEY) KEY[g] = FIXED_KEY[g];
+    buildGlyphs();
+  }
   var down = {};          // acción -> número de teclas físicas que la mantienen
   var held = {};          // código -> acción (para soltar bien aunque cambie el layout)
   var stamp = {};         // acción -> instante de la última pulsación (prioridad de opuestas)
   var edge = {};          // acción -> pulsada desde el último poll
   var seq = 0;
 
-  function actionOf(e) { return CODE[e.code] || KEY[(e.key || '').toLowerCase()] || null; }
+  // (con e.code, solo el mapa reasignable; e.key solo para lo fijo o si el evento no trae código: una letra reasignada no
+  // sigue funcionando por su e.key)
+  function actionOf(e) {
+    var c = e.code, k = (e.key || '').toLowerCase();
+    return CODE[c] || ((!c || c === 'Unidentified') ? KEY[k] : FIXED_KEY[k]) || null;
+  }
   function typingTarget(e) {
     var t = e.target; if (!t || !t.tagName) return false;
     var n = t.tagName; return n === 'INPUT' || n === 'TEXTAREA' || n === 'SELECT' || t.isContentEditable;
@@ -221,9 +285,94 @@
   var PB_X = { hit: [0], jump: [1], jset: [2], sw: [3, 4, 5], pause: [7], mute: [6], chal: [] };    // no estándar, <= 11 botones (XInput)
   var PB_D = { hit: [0], jump: [1], jset: [2], sw: [3, 4, 5], pause: [9], mute: [8], chal: [6] };    // no estándar, DirectInput genérico (L2)
   var padNow = { hit: false, jump: false, jset: false, sw: false, pause: false, mute: false, chal: false };
-  // glifos de texto por acción (los usa la UI en avisos y en el panel de controles)
+  // BOTONES REASIGNABLES (E3): solo en el mapeo estándar (PB); PB_X/PB_D no cambian. ctx.settings.padKeys = diferencias
+  // { acción: [botón] }. Valen 0-7, 10 y 11 (Start, Select y la cruceta no). LB/RB (4/5) son además extras FIJOS de
+  // cambiar jugador mientras ninguna otra acción los use. En los menús A (0) acepta, B (1) vuelve y LB/RB cambian de
+  // apartado SIEMPRE (poll: navOk/navBack/navTab), se reasigne lo que se reasigne.
+  var PAD_ACTS = ['hit', 'jump', 'jset', 'sw', 'chal'];
+  var DEFAULT_PAD = { hit: [0], jump: [1], jset: [2], sw: [3], chal: [6] };
+  var PAD_OK = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 10: 1, 11: 1 };
+  var padEff = null, padExtra = [4, 5];
+  function validBtn(b) { return typeof b === 'number' && b === (b | 0) && PAD_OK[b] === 1; }
+  function effPad(diff) {
+    var eff = {}, used = {}, a, i, b;
+    if (!diff || typeof diff !== 'object' || Array.isArray(diff)) diff = {};
+    for (i = 0; i < PAD_ACTS.length; i++) eff[PAD_ACTS[i]] = [-1];
+    for (i = 0; i < PAD_ACTS.length; i++) { a = PAD_ACTS[i]; b = Array.isArray(diff[a]) ? diff[a][0] : -1; if (validBtn(b) && !used[b]) { eff[a][0] = b; used[b] = 1; } }
+    for (i = 0; i < PAD_ACTS.length; i++) { a = PAD_ACTS[i]; b = DEFAULT_PAD[a][0]; if (eff[a][0] < 0 && !used[b]) { eff[a][0] = b; used[b] = 1; } }
+    return eff;
+  }
+  function diffPad(eff) {
+    var o = {};
+    for (var i = 0; i < PAD_ACTS.length; i++) { var a = PAD_ACTS[i]; if (eff[a][0] !== DEFAULT_PAD[a][0]) o[a] = [eff[a][0]]; }
+    return o;
+  }
+  /** Rehace PB (en su sitio: poll lo lee cada frame) con los botones efectivos. */
+  function buildPad() {
+    padEff = effPad(ctx && ctx.settings ? ctx.settings.padKeys : null);
+    var used = {};
+    for (var i = 0; i < PAD_ACTS.length; i++) {
+      var a = PAD_ACTS[i], b = padEff[a][0], L = PB[a];
+      L.length = 0; if (b >= 0) { L.push(b); used[b] = 1; }
+    }
+    padExtra.length = 0;
+    if (!used[4]) { PB.sw.push(4); padExtra.push(4); }
+    if (!used[5]) { PB.sw.push(5); padExtra.push(5); }
+    buildGlyphs();
+  }
+  /** Nombre de un botón del mando estándar (fam 'ps' = PlayStation). */
+  var PADN = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', '↑', '↓', '←', '→', 'Guía'];
+  var PADN_PS = ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Share', 'Options', 'L3', 'R3', '↑', '↓', '←', '→', 'PS'];
+  function padFam() { return /054c|playstation|dualshock|dualsense|sony/i.test(pad.id || '') ? 'ps' : 'xbox'; }
+  function padName(i, fam) {
+    i = +i; if (!(i >= 0) || i !== (i | 0)) return '—';
+    var T0 = (fam || padFam()) === 'ps' ? PADN_PS : PADN;
+    return T0[i] || ('B' + i);
+  }
+  // NOMBRES DE TECLA: navigator.keyboard.getLayoutMap() (Chrome: la letra real en AZERTY, la Ñ…) en caché; si no, una tabla
+  // con la distribución española para los signos.
+  var layoutMap = null;
+  var KEYN = { Space: 'Espacio', ShiftLeft: 'Mayús', ShiftRight: 'Mayús der.', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+               Enter: 'Intro', NumpadEnter: 'Intro', Escape: 'Esc', Tab: 'Tab', Backspace: 'Retroceso', Delete: 'Supr', Insert: 'Insert',
+               Home: 'Inicio', End: 'Fin', PageUp: 'RePág', PageDown: 'AvPág', CapsLock: 'Bloq Mayús', ControlLeft: 'Ctrl', ControlRight: 'Ctrl der.',
+               AltLeft: 'Alt', AltRight: 'Alt Gr', MetaLeft: 'Win', MetaRight: 'Win der.', ContextMenu: 'Menú',
+               Backquote: 'º', Minus: '\'', Equal: '¡', BracketLeft: '`', BracketRight: '+', Backslash: 'Ç', IntlBackslash: '<', Semicolon: 'Ñ',
+               Quote: '´', Comma: ',', Period: '.', Slash: '-',
+               NumpadAdd: 'Num +', NumpadSubtract: 'Num -', NumpadMultiply: 'Num *', NumpadDivide: 'Num /', NumpadDecimal: 'Num ,' };
+  function keyName(code) {
+    if (!code || typeof code !== 'string') return '—';
+    if (KEYN[code] && !(layoutMap && /^(Backquote|Minus|Equal|Bracket|Backslash|IntlBackslash|Semicolon|Quote|Comma|Period|Slash)/.test(code) && layoutMap.get(code))) return KEYN[code];
+    if (layoutMap) { try { var v = layoutMap.get(code); if (v && v.length === 1 && v !== ' ') return v.toUpperCase(); } catch (_) { } }
+    if (/^Key[A-Z]$/.test(code)) return code.charAt(3);
+    if (/^Digit[0-9]$/.test(code)) return code.charAt(5);
+    if (/^Numpad[0-9]$/.test(code)) return 'Num ' + code.charAt(6);
+    return KEYN[code] || code;
+  }
+  function loadLayout() {
+    try {
+      var kb = navigator.keyboard;
+      if (kb && kb.getLayoutMap) {
+        var pr = kb.getLayoutMap();
+        if (pr && pr.then) pr.then(function (m) { layoutMap = m; buildGlyphs(); }, function () { });
+      }
+    } catch (_) { }
+  }
+  // glifos de texto por acción (los usa la UI en avisos y en el panel de controles); salen de las teclas y botones
+  // efectivos (buildGlyphs, al cambiar keys/padKeys y al llegar el mapa de la distribución)
   var GLYPHS = { challenge: { keyboard: 'V', gamepad: 'LT', ps: 'L2', touch: 'CHALLENGE' },
-                 jset: { keyboard: 'K', mouse: 'clic central', gamepad: 'X', ps: '□', touch: 'COLOCAR' } };
+                 jset: { keyboard: 'K', mouse: 'clic central', gamepad: 'X', ps: '□', touch: 'COLOCAR' },
+                 hit: { keyboard: 'J', mouse: 'clic izq.', gamepad: 'A', ps: '✕', touch: 'GOLPEAR' },
+                 jump: { keyboard: 'Espacio', mouse: 'clic der.', gamepad: 'B', ps: '○', touch: 'SALTAR' } };
+  function buildGlyphs() {
+    if (keysEff) {
+      GLYPHS.challenge.keyboard = keyName(keysEff.challenge[0]); GLYPHS.jset.keyboard = keyName(keysEff.jset[0]);
+      GLYPHS.hit.keyboard = keyName(keysEff.hit[0]); GLYPHS.jump.keyboard = keyName(keysEff.jump[0]);
+    }
+    if (padEff) {
+      var m = { challenge: 'chal', jset: 'jset', hit: 'hit', jump: 'jump' };
+      for (var a in m) { var b = padEff[m[a]][0]; GLYPHS[a].gamepad = b >= 0 ? padName(b, 'xbox') : ''; GLYPHS[a].ps = b >= 0 ? padName(b, 'ps') : ''; }
+    }
+  }
   function anyBtn(p, list) { for (var i = 0; i < list.length; i++) if (padBtn(p, list[i])) return true; return false; }
   // cruceta de un mando no estándar por el eje hat (axes[9]): -1 arriba … +1 arriba-izq. en pasos de 2/7; reposo ~1,29
   var HATX = [0, 1, 1, 1, 0, -1, -1, -1], HATY = [1, 1, 0, -1, -1, -1, 0, 1], hat = { x: 0, y: 0 };
@@ -240,10 +389,10 @@
   // ---------------- Táctil ----------------
   var T = { lastTouch: 0, idle: false, see: [false, false, false], rects: null, rectAt: -1, joy: null, ox: 0, oy: 0, jx: 0, jy: 0, R: 58, hit: false, jump: false, set: false, setOn: false, pause: false, sw: false, chal: false,
             hitDown: false, jumpDown: false, used: false, shown: false, lastLabel: '', lastReady: null, lastServe: null,
-            touchN: 0, touchEvT: 0, lastW: 0, lastH: 0, lastRing: -2, lastCue: false, dead: false };
+            touchN: 0, touchEvT: 0, lastW: 0, lastH: 0, lastRing: -2, lastCue: false, dead: false, setRoll: false, swHide: false, sw6: false };
   var el = {};
   // estadística/diagnóstico (VB.Input._debug(): pruebas táctiles y de mando con eventos reales vía DevTools)
-  var stats = { press: { hit: 0, jump: 0, sw: 0, pause: 0, set: 0 }, out: { hit: 0, jump: 0, sw: 0, pause: 0, confirm: 0, chal: 0, jset: 0 }, mouse: { hit: 0, jump: 0, jset: 0 }, slide: 0, lost: 0, adopt: 0,
+  var stats = { press: { hit: 0, jump: 0, sw: 0, pause: 0, set: 0 }, out: { hit: 0, jump: 0, sw: 0, pause: 0, confirm: 0, chal: 0, jset: 0, mute: 0, navOk: 0, navBack: 0, navTab: 0 }, mouse: { hit: 0, jump: 0, jset: 0 }, slide: 0, lost: 0, adopt: 0,
                 promote: 0, resets: 0, padLost: 0, padPause: 0 };
   // punteros táctiles activos: pointerId -> { role:'joy'|'hit'|'jump'|'sw'|'pause'|'set'|'none', x, y, touch }
   var ptrs = {}, nPtr = 0, cnt = { hit: 0, jump: 0, sw: 0, pause: 0, set: 0 };
@@ -291,7 +440,7 @@
     '#touch.idle .vt-btn.see:not(.dn):not(.ready):not(.cue):not(.off){opacity:.26}' +
     // ❚❚ (pausa) se queda legible en reposo y con jugador detrás: sobre fondos claros a .3 casi no se veía (mismos :not() que las reglas de arriba para ganarles en especificidad)
     '#touch.idle .vt-btn.vt-pause:not(.dn):not(.ready):not(.cue):not(.off),#touch .vt-btn.vt-pause.see:not(.dn):not(.ready):not(.cue):not(.off),#touch.idle .vt-btn.vt-pause.see:not(.dn):not(.ready):not(.cue):not(.off){opacity:.85;transform:none}' +
-    '.vt-hit{width:104px;height:104px;right:calc(22px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));' +
+    '.vt-hit{width:calc(104px*var(--vts,1));height:calc(104px*var(--vts,1));font-size:calc(15px*var(--vts,1));right:calc(22px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));' +
       // (UI-19: paradas más oscuras; rótulo blanco de 15 px >= 4,5:1 en el centro del botón)
       'background:radial-gradient(circle at 40% 30%,#ec7444,#c9441a 55%,#a8300e)}' +
     '.vt-hit.ready{box-shadow:0 0 0 4px rgba(255,210,63,.85),0 0 28px rgba(255,190,60,.75),0 8px 22px rgba(0,0,0,.4),inset 0 2px 0 rgba(255,255,255,.28);opacity:1}' +
@@ -302,37 +451,37 @@
     '.vt-hit.cue{opacity:1}' +
     // arco con >= 16 px entre botones: SALTAR a la izquierda y algo más abajo que GOLPEAR; CAMBIAR (⇄) arriba a la
     // derecha de GOLPEAR, fuera del recorrido del pulgar de SALTAR a GOLPEAR (antes estaba encima de SALTAR a 8 px)
-    '.vt-jump{width:78px;height:78px;right:calc(150px + env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));' +
-      'background:radial-gradient(circle at 40% 30%,#6a9cf5,#2c62e0 55%,#1d4bbf);font-size:13px}' +
+    '.vt-jump{width:calc(78px*var(--vts,1));height:calc(78px*var(--vts,1));right:calc(150px*var(--vts,1) + env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));' +
+      'background:radial-gradient(circle at 40% 30%,#6a9cf5,#2c62e0 55%,#1d4bbf);font-size:calc(13px*var(--vts,1))}' +
     // DESACTIVADO (SALTAR y ⇄ en el saque): borde discontinuo, sin relieve ni color, icono atenuado y un candado pequeño
     '.vt-jump.off,.vt-sw.off{opacity:.62;border-style:dashed;border-color:rgba(255,255,255,.6);box-shadow:none;filter:saturate(.15) brightness(.8)}' +
     '.vt-jump.off{background:radial-gradient(circle at 40% 30%,rgba(90,110,140,.55),rgba(30,40,58,.6))}' +
     '.vt-btn.off svg,.vt-btn.off span{opacity:.5}' +
     '.vt-btn.off::before{content:"";position:absolute;right:12%;top:9%;width:7px;height:6px;margin-top:-5px;border:2px solid #dfe6ef;border-bottom:0;border-radius:5px 5px 0 0;box-sizing:border-box}' +
     '.vt-btn.off::after{content:"";position:absolute;right:calc(12% - 1px);top:9%;width:9px;height:7px;border-radius:2px;background:#dfe6ef;box-shadow:0 0 0 1.5px rgba(8,13,22,.85)}' +
-    '.vt-sw{width:50px;height:50px;right:calc(14px + env(safe-area-inset-right));bottom:calc(152px + env(safe-area-inset-bottom));' +
+    '.vt-sw{width:50px;height:50px;right:calc(14px + env(safe-area-inset-right));bottom:calc(152px*var(--vts,1) + env(safe-area-inset-bottom));' +
       'background:rgba(8,13,22,.78);border-color:rgba(255,255,255,.62);font-size:10px;letter-spacing:.1em}' +
     '.vt-sw svg{width:46%}' +
     // COLOCAR (colocación en salto): encima de SALTAR, lejos del joystick y de GOLPEAR; aparece al despegar con el balón
     // jugable y se va al caer (visibility: la geometría medida sigue valiendo). Hueco con SALTAR: 12 px medidos en pantallas
     // bajas (844×390, 667×375: 56 px CSS por max-height:420); los márgenes de toque (12 y 16 px) se tocan a propósito para
     // poder deslizar el dedo de SALTAR a COLOCAR
-    '.vt-set{width:64px;height:64px;right:calc(157px + env(safe-area-inset-right));bottom:calc(110px + env(safe-area-inset-bottom));' +
-      'background:radial-gradient(circle at 40% 30%,#3fd6a4,#13946d 55%,#0c7556);font-size:11px;visibility:hidden;opacity:0;transform:scale(.7);' +
+    '.vt-set{width:calc(64px*var(--vts,1));height:calc(64px*var(--vts,1));right:calc(157px*var(--vts,1) + env(safe-area-inset-right));bottom:calc(110px*var(--vts,1) + env(safe-area-inset-bottom));' +
+      'background:radial-gradient(circle at 40% 30%,#3fd6a4,#13946d 55%,#0c7556);font-size:calc(11px*var(--vts,1));visibility:hidden;opacity:0;transform:scale(.7);' +
       'transition:opacity .1s,transform .1s,visibility 0s .1s}' +
     '.vt-set.on{visibility:visible;opacity:1;transform:scale(1);transition:opacity .1s,transform .1s}' +
     '.vt-set.on.dn{transform:scale(.88)}' +
     '.vt-pause{width:46px;height:46px;right:calc(14px + env(safe-area-inset-right));top:calc(14px + env(safe-area-inset-top));' +
       'background:rgba(8,13,22,.66);border-color:rgba(255,255,255,.3)}' +
     '.vt-pause svg{width:40%}' +
-    '@media (max-height:420px){.vt-hit{width:90px;height:90px;bottom:calc(16px + env(safe-area-inset-bottom))}' +
-      '.vt-jump{width:68px;height:68px;right:calc(134px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom))}' +
-      '.vt-sw{width:44px;height:44px;right:calc(14px + env(safe-area-inset-right));bottom:calc(128px + env(safe-area-inset-bottom))}' +
-      '.vt-set{width:56px;height:56px;right:calc(140px + env(safe-area-inset-right));bottom:calc(92px + env(safe-area-inset-bottom))}' +
+    '@media (max-height:420px){.vt-hit{width:calc(90px*var(--vts,1));height:calc(90px*var(--vts,1));bottom:calc(16px + env(safe-area-inset-bottom))}' +
+      '.vt-jump{width:calc(68px*var(--vts,1));height:calc(68px*var(--vts,1));right:calc(134px*var(--vts,1) + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom))}' +
+      '.vt-sw{width:44px;height:44px;right:calc(14px + env(safe-area-inset-right));bottom:calc(128px*var(--vts,1) + env(safe-area-inset-bottom))}' +
+      '.vt-set{width:calc(56px*var(--vts,1));height:calc(56px*var(--vts,1));right:calc(140px*var(--vts,1) + env(safe-area-inset-right));bottom:calc(92px*var(--vts,1) + env(safe-area-inset-bottom))}' +
       '.vt-pause{width:44px;height:44px}}' +
-    '@media (max-height:340px){.vt-hit{width:78px;height:78px}.vt-jump{width:60px;height:60px;right:calc(120px + env(safe-area-inset-right))}' +
-      '.vt-sw{right:calc(12px + env(safe-area-inset-right));bottom:calc(118px + env(safe-area-inset-bottom))}' +
-      '.vt-set{width:52px;height:52px;right:calc(124px + env(safe-area-inset-right));bottom:calc(84px + env(safe-area-inset-bottom))}}';
+    '@media (max-height:340px){.vt-hit{width:calc(78px*var(--vts,1));height:calc(78px*var(--vts,1))}.vt-jump{width:calc(60px*var(--vts,1));height:calc(60px*var(--vts,1));right:calc(120px*var(--vts,1) + env(safe-area-inset-right))}' +
+      '.vt-sw{right:calc(12px + env(safe-area-inset-right));bottom:calc(118px*var(--vts,1) + env(safe-area-inset-bottom))}' +
+      '.vt-set{width:calc(52px*var(--vts,1));height:calc(52px*var(--vts,1));right:calc(124px*var(--vts,1) + env(safe-area-inset-right));bottom:calc(84px*var(--vts,1) + env(safe-area-inset-bottom))}}';
 
   var ICON_HIT = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><g><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(120 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(240 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g></svg>';
   var ICON_JUMP = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>';
@@ -359,7 +508,8 @@
     el.base = rootEl.querySelector('.vt-base'); el.knob = rootEl.querySelector('.vt-knob');
     el.hit = rootEl.querySelector('.vt-hit'); el.hitLabel = el.hit.querySelector('span'); el.ring = el.hit.querySelector('.vt-ring');
     el.jump = rootEl.querySelector('.vt-jump'); el.pause = rootEl.querySelector('.vt-pause'); el.sw = rootEl.querySelector('.vt-sw');
-    el.safe = rootEl.querySelector('.vt-safe'); el.set = rootEl.querySelector('.vt-set');
+    el.safe = rootEl.querySelector('.vt-safe'); el.set = rootEl.querySelector('.vt-set'); el.setLabel = el.set.querySelector('span');
+    applyTouchSize();
 
     // GESTOR ÚNICO DE PUNTEROS sobre todo el overlay (no un listener por botón): cada dedo tiene un papel.
     // - Dedo que nace sobre un botón (círculo + margen de 16 px en GOLPEAR/SALTAR para dedos gordos) -> ese botón.
@@ -665,10 +815,150 @@
     var swOff = g.mode === 'serve' || (sw6 && !!S && !!S.askOk && !S.askOk(g));
     var key = (jumpOff ? 1 : 0) + (swOff ? 2 : 0);
     if (key !== T.lastServe) { T.lastServe = key; el.jump.classList.toggle('off', jumpOff); el.sw.classList.toggle('off', swOff); }
-    // COLOCAR: solo en el aire con el balón jugable para una colocación en salto (sim jsetReady); al caer, fuera
-    var setOn = false;
-    if (S && S.jsetReady) { try { setOn = !!S.jsetReady(g); } catch (_) { setOn = false; } }
+    // COLOCAR: solo en el aire con el balón jugable para una colocación en salto (sim jsetReady) o, con la maestría de E1, en el
+    // ataque del 3r toque para el golpe colocado (sim altReady 'roll': el botón dice COLOCADO); al caer, fuera
+    var setOn = false, alt = '';
+    if (S && S.altReady) { try { alt = S.altReady(g) || ''; } catch (_) { alt = ''; } setOn = !!alt; }
+    else if (S && S.jsetReady) { try { setOn = !!S.jsetReady(g); } catch (_) { setOn = false; } }
+    var roll = alt === 'roll';
+    if (setOn && roll !== T.setRoll) {
+      T.setRoll = roll;
+      if (el.setLabel) el.setLabel.textContent = roll ? 'COLOCADO' : 'COLOCAR';
+      el.set.setAttribute('aria-label', roll ? 'Golpe colocado' : 'Colocar en salto');
+    }
     if (setOn !== T.setOn) { T.setOn = setOn; el.set.classList.toggle('on', setOn); el.set.setAttribute('aria-hidden', setOn ? 'false' : 'true'); }
+  }
+
+  // ---------------- Reasignar: captura de la siguiente tecla / botón (E3) ----------------
+  // captureNext(kind, cb) → cancel(). Teclado: un listener PERMANENTE de keydown en window, fase de captura, registrado en
+  // init (antes que el de career-ui), que solo actúa con una captura viva: stopImmediatePropagation + preventDefault, así
+  // ni onKeyDown ni ui.onKey ni main.js (F) la ven; su keyup también se traga. Esc → cb(null,'cancel'); Retroceso/Supr →
+  // cb('','clear'); 6 s → cb(null,'timeout'); blur / pestaña oculta → cb(null,'cancel'). Mando: dentro de poll, el primer
+  // flanco de un botón válido (0-7, 10, 11) desde que empezó la captura → cb(i); mientras dura y hasta soltar todo, poll da
+  // todos los flancos a false. La limpieza va SIEMPRE antes del callback (try/finally): una excepción en cb no deja el
+  // teclado muerto.
+  var CAP = { on: false, kind: '', cb: null, timer: 0, swallow: '', base: null, hush: false, token: null };
+  function capEnd(v, why) {
+    if (!CAP.on) return;
+    var cb = CAP.cb;
+    CAP.on = false; CAP.cb = null; CAP.kind = ''; CAP.base = null;
+    if (CAP.timer) { try { clearTimeout(CAP.timer); } catch (_) { } CAP.timer = 0; }
+    for (var ek in edge) edge[ek] = false;
+    try { if (cb) cb(v, why); } catch (e) { try { console.error('Input.captureNext', e); } catch (_) { } }
+  }
+  function onCapKey(e) {
+    if (!CAP.on || CAP.kind !== 'key') return;
+    if (e.cancelable) e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.repeat) return;
+    var c = e.code || '';
+    if (!c || c === 'Unidentified') return;
+    CAP.swallow = c;
+    if (c === 'Escape') capEnd(null, 'cancel');
+    else if (c === 'Backspace' || c === 'Delete') capEnd('', 'clear');
+    else capEnd(c, 'key');
+  }
+  function onCapKeyUp(e) {
+    if (CAP.swallow && e.code === CAP.swallow) {
+      CAP.swallow = '';
+      if (e.cancelable) e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }
+  function captureNext(kind, cb) {
+    if (CAP.on) capEnd(null, 'cancel');            // (una captura nueva cancela la anterior)
+    kind = kind === 'pad' ? 'pad' : 'key';
+    CAP.on = true; CAP.kind = kind; CAP.cb = typeof cb === 'function' ? cb : null; CAP.base = null;
+    if (kind === 'pad') CAP.hush = true;
+    try { CAP.timer = setTimeout(function () { capEnd(null, 'timeout'); }, 6000); } catch (_) { CAP.timer = 0; }
+    clearKeys();
+    var token = {};
+    CAP.token = token;
+    return function cancel() { if (CAP.on && CAP.token === token) capEnd(null, 'cancel'); };
+  }
+  /** Captura de mando dentro de poll: true si se está capturando (los flancos de ese frame no salen). */
+  function capPad(p) {
+    if (!CAP.on || CAP.kind !== 'pad') return false;
+    var b = p && p.buttons, n = b ? Math.min(b.length, 18) : 0, i;
+    if (!CAP.base) { CAP.base = []; for (i = 0; i < n; i++) CAP.base.push(padBtn(p, i)); return true; }
+    for (i = 0; i < n; i++) {
+      var on = padBtn(p, i);
+      if (on && !CAP.base[i]) {
+        if (validBtn(i)) { capEnd(i, 'pad'); return true; }
+        if (i === 9) { capEnd(null, 'cancel'); return true; }   // (Start: cancelar desde el mando)
+      }
+      CAP.base[i] = on;
+    }
+    return true;
+  }
+  /**
+   * Reasignación PURA (no guarda nada): ui.js guarda el resultado con setSetting('keys'|'padKeys', res.keys|res.pad).
+   * kind 'key': slot 0/1, code = e.code ('' borra; solo la 2ª). Si la tecla ya está en otra acción, se intercambian.
+   * kind 'pad': slot 0, code = índice de botón. → { keys|pad: diferencias nuevas, swap: {act, slot, code}|null,
+   * err: '' | 'reserved' | 'empty' (el intercambio dejaría otra acción sin tecla) | 'primary' (la 1ª no se quita) | 'bad' }.
+   */
+  function rebind(kind, act, slot, code) {
+    var st = ctx && ctx.settings;
+    if (kind === 'pad') {
+      var pe = effPad(st ? st.padKeys : null), out = { pad: diffPad(pe), swap: null, err: '' };
+      if (!pe[act]) { out.err = 'bad'; return out; }
+      if (code === '' || code == null) { out.err = 'primary'; return out; }
+      code = +code;
+      if (!validBtn(code)) { out.err = 'reserved'; return out; }
+      var old = pe[act][0];
+      if (old === code) return out;
+      for (var i = 0; i < PAD_ACTS.length; i++) {
+        var o = PAD_ACTS[i];
+        if (o !== act && pe[o][0] === code) {
+          if (old < 0) { out.err = 'empty'; return out; }
+          pe[o][0] = old; out.swap = { act: o, slot: 0, code: old };
+        }
+      }
+      pe[act][0] = code; out.pad = diffPad(pe);
+      return out;
+    }
+    var ke = effKeys(st ? st.keys : null), res = { keys: diffKeys(ke), swap: null, err: '' };
+    slot = slot ? 1 : 0;
+    if (!ke[act]) { res.err = 'bad'; return res; }
+    if (code === '' || code == null) {
+      if (slot === 0) { res.err = 'primary'; return res; }
+      ke[act][1] = ''; res.keys = diffKeys(ke); return res;
+    }
+    if (!validCode(code)) { res.err = 'reserved'; return res; }
+    var prev = ke[act][slot];
+    if (prev === code) return res;
+    for (var j = 0; j < ACTS.length; j++) {
+      var a2 = ACTS[j];
+      for (var s2 = 0; s2 < 2; s2++) {
+        if (ke[a2][s2] !== code || (a2 === act && s2 === slot)) continue;
+        if (a2 === act) {                             // (la otra casilla de la misma acción: se intercambian dentro)
+          if (!prev) return res;                      // ([K, ''] y K en la 2ª: nada cambia)
+          ke[a2][s2] = prev;
+        } else {
+          if (!prev && s2 === 0) { res.err = 'empty'; return res; }
+          ke[a2][s2] = prev;
+          if (!ke[a2][0] && ke[a2][1]) { ke[a2][0] = ke[a2][1]; ke[a2][1] = ''; }
+          res.swap = { act: a2, slot: s2, code: prev };
+        }
+      }
+    }
+    ke[act][slot] = code;
+    if (!ke[act][0] && ke[act][1]) { ke[act][0] = ke[act][1]; ke[act][1] = ''; }
+    res.keys = diffKeys(ke);
+    return res;
+  }
+  /** Zona muerta del stick (padDead 0,1-0,3; por defecto 0,18). */
+  function applyPadDead() {
+    var v = ctx && ctx.settings ? +ctx.settings.padDead : NaN;
+    DZ = v === v && v > 0 ? Math.max(0.1, Math.min(0.3, v)) : 0.18;
+    PAD_SOFT = Math.max(0.26, DZ + 0.08);
+  }
+  /** Tamaño de los botones táctiles GOLPEAR, SALTAR y COLOCAR (touchSize 1 / 1,15 / 1,3): variable CSS --vts. */
+  var touchK = 1;
+  function applyTouchSize() {
+    var v = ctx && ctx.settings ? +ctx.settings.touchSize : NaN;
+    touchK = v === v && v > 0 ? Math.max(1, Math.min(1.3, v)) : 1;
+    if (el.root) { el.root.style.setProperty('--vts', String(touchK)); GEO.ok = false; T.rects = null; }
   }
 
   // ---------------- Vibración ----------------
@@ -735,9 +1025,17 @@
   }
 
   VB.Input = {
+    /** E3: claves de ctx.settings que este módulo ya soporta (ui.js esconde las filas ★ que falten). */
+    OPTS: ['keys', 'padKeys', 'padDead', 'touchSize'],
+    DEFAULT_KEYS: DEFAULT_KEYS,
+    DEFAULT_PAD: DEFAULT_PAD,
     init: function (c) {
       ctx = c;
       it.device = ctx.isTouch ? 'touch' : 'keyboard';
+      buildCode(); buildPad(); applyPadDead(); loadLayout();
+      // captura de teclas (reasignar): PRIMERO de todos en window (fase de captura), solo actúa con una captura viva
+      window.addEventListener('keydown', onCapKey, true);
+      window.addEventListener('keyup', onCapKeyUp, true);
       window.addEventListener('keydown', onKeyDown);
       window.addEventListener('keyup', onKeyUp);
       // ratón (fase de burbuja: el overlay táctil para la propagación de sus punteros y no se duplica el golpe)
@@ -748,8 +1046,8 @@
       window.addEventListener('mousedown', onAux, { passive: false });
       window.addEventListener('auxclick', onAux, { passive: false });
       window.addEventListener('contextmenu', onCtxMenu);
-      window.addEventListener('blur', function () { clearKeys(); resetTouch(); });
-      document.addEventListener('visibilitychange', function () { if (document.hidden) { clearKeys(); resetTouch(); } });
+      window.addEventListener('blur', function () { capEnd(null, 'cancel'); clearKeys(); resetTouch(); });
+      document.addEventListener('visibilitychange', function () { if (document.hidden) { capEnd(null, 'cancel'); clearKeys(); resetTouch(); } });
       // un toque en cualquier sitio en un equipo no detectado como táctil activa los controles táctiles;
       // la lista de dedos (e.touches) sirve además para detectar dedos perdidos (ver sweepLost)
       window.addEventListener('touchstart', function (e) { T.used = true; it.device = 'touch'; onTouchList(e); }, { passive: true, capture: true });
@@ -781,8 +1079,40 @@
       if (d === 'gamepad' && fam === 'ps' && t.ps) return t.ps;
       return t[d] || t.keyboard || '';
     },
-    /** OPCIONAL: tabla de glifos { acción: { keyboard, gamepad, ps, touch } } (para el panel de controles). */
+    /** OPCIONAL: tabla de glifos { acción: { keyboard, gamepad, ps, touch } } (para el panel de controles). Acciones: challenge,
+     *  jset, hit, jump; salen de las teclas y botones efectivos (reasignables). */
     glyphs: function () { return GLYPHS; },
+    /** E3: ajustes de este módulo (k = clave cambiada; null/undefined = todos). keys/padKeys se sanean aquí (lo inválido o
+     *  repetido vuelve a la tecla de fábrica de esa casilla). */
+    onSettings: function (s, k) {
+      if (!ctx) return;
+      if (k == null || k === 'keys') { buildCode(); clearKeys(); }
+      if (k == null || k === 'padKeys') buildPad();
+      if (k == null || k === 'padDead') applyPadDead();
+      if (k == null || k === 'touchSize') applyTouchSize();
+    },
+    /** E3: teclas y botones efectivos (copias): { keys: {acción: [c1, c2]}, pad: {acción: [botón]}, padStd (false = mando
+     *  conectado sin mapeo estándar: botones de solo lectura), padFam ('xbox'|'ps'), acts, padActs, fixed }. */
+    bindings: function () {
+      var k = {}, pd = {}, i;
+      if (!keysEff) buildCode();
+      if (!padEff) buildPad();
+      for (i = 0; i < ACTS.length; i++) k[ACTS[i]] = keysEff[ACTS[i]].slice();
+      for (i = 0; i < PAD_ACTS.length; i++) pd[PAD_ACTS[i]] = padEff[PAD_ACTS[i]].slice();
+      return { keys: k, pad: pd, padStd: pad.idx < 0 || pad.mapping === 'standard', padFam: padFam(), acts: ACTS.slice(), padActs: PAD_ACTS.slice(),
+               fixed: { keys: ['Escape', 'Enter'], pad: { ok: 0, back: 1, tabL: 4, tabR: 5, pause: 9, mute: 8, swExtra: padExtra.slice() } } };
+    },
+    /** E3: reasignación pura → { keys|pad, swap, err } (ver rebind arriba). */
+    rebind: rebind,
+    /** E3: captura la siguiente tecla ('key') o botón del mando ('pad'): cb(code|índice|''|null, motivo 'key'|'pad'|'clear'|
+     *  'cancel'|'timeout'). Devuelve cancel(). Con una captura viva, ni el partido ni los menús reciben esa pulsación. */
+    captureNext: captureNext,
+    /** E3: ¿hay una captura en marcha? */
+    capturing: function () { return CAP.on; },
+    /** E3: nombre de una tecla por su e.code («Espacio», «↑», «Num 4», «Ñ»…; la letra real con getLayoutMap). */
+    keyName: keyName,
+    /** E3: nombre de un botón del mando estándar ('A', 'LB', 'RT' / PlayStation '✕', 'L1', 'R2'); fam por defecto la del mando activo. */
+    padName: padName,
     /** OPCIONAL: pulso de challenge desde fuera (p. ej. un botón táctil propio de la UI): sale en el siguiente poll(). */
     pressChallenge: function () { T.chal = true; },
     resize: function (w, h) {
@@ -812,7 +1142,8 @@
                pad: { idx: pad.idx, known: pad.known, id: pad.id, mapping: pad.mapping,
                       rest: pad.idx >= 0 && pad.rest[pad.idx] ? { x: pad.rest[pad.idx].x, y: pad.rest[pad.idx].y } : null },
                geo: JSON.parse(JSON.stringify({ hit: GEO.hit, jump: GEO.jump, sw: GEO.sw, pause: GEO.pause, set: GEO.set })), stats: JSON.parse(JSON.stringify(stats)), setOn: T.setOn,
-               sigs: sigLog.slice(), dead: T.dead };
+               sigs: sigLog.slice(), dead: T.dead, dz: DZ, padSoft: PAD_SOFT, cap: CAP.on, hush: CAP.hush, touchK: touchK, setRoll: T.setRoll,
+               code: JSON.parse(JSON.stringify(CODE)), pb: JSON.parse(JSON.stringify(PB)) };
     },
     /** Devuelve las intenciones del frame (objeto reutilizado). */
     poll: function (dt) {
@@ -820,6 +1151,7 @@
       var mx = axis('left', 'right'), my = axis('down', 'up');
       if (mx && my) { mx *= 0.7071; my *= 0.7071; }
       var hit = !!edge.hit, jump = !!edge.jump, jset = !!edge.jset, sw = !!edge['switch'], pause = !!edge.pause, mute = !!edge.mute, confirm = !!edge.confirm;
+      var navOk = false, navBack = false, navTab = 0;
       var chal = !!edge.challenge || T.chal; T.chal = false;
       var hitHeld = isDown('hit'), jumpHeld = isDown('jump') || isDown('jset');
       for (var ek in edge) edge[ek] = false; // sin asignar un objeto nuevo por frame
@@ -865,14 +1197,24 @@
         if (dx || dy) { var dl = Math.hypot(dx, dy); mx = dx / dl; my = dy / dl; used = true; }
         padNow.hit = anyBtn(p, map.hit); padNow.jump = anyBtn(p, map.jump); padNow.jset = anyBtn(p, map.jset); padNow.sw = anyBtn(p, map.sw);
         padNow.pause = anyBtn(p, map.pause); padNow.mute = anyBtn(p, map.mute); padNow.chal = anyBtn(p, map.chal);
-        var pv = pad.prev[pad.idx] || (pad.prev[pad.idx] = [false, false, false, false, false, false, false]);   // (una vez por mando)
-        if (padNow.hit && !pv[0]) hit = true; if (padNow.jump && !pv[1]) jump = true; if (padNow.sw && !pv[2]) sw = true;
-        if (padNow.pause && !pv[3]) pause = true; if (padNow.mute && !pv[4]) mute = true; if (padNow.chal && !pv[5]) chal = true;
-        if (padNow.jset && !pv[6]) jset = true;
-        if ((padNow.hit && !pv[0]) || (padNow.pause && !pv[3])) confirm = true;
-        if (padNow.hit || padNow.jump || padNow.jset || padNow.sw || padNow.pause || padNow.mute || padNow.chal) used = true;
+        // menús: botones FIJOS 0 (acepta), 1 (vuelve) y 4/5 (apartado), aunque se reasignen las acciones del partido
+        var nOk = padBtn(p, 0), nBk = padBtn(p, 1), nL = padBtn(p, 4), nR = padBtn(p, 5);
+        var pv = pad.prev[pad.idx] || (pad.prev[pad.idx] = [false, false, false, false, false, false, false, false, false, false, false]);   // (una vez por mando)
+        // captura de un botón (Ajustes > Controles) y hasta soltarlo todo: ningún flanco sale de poll
+        var hushNow = capPad(p);
+        if (!hushNow && CAP.hush) { if (anyPadBtn(p)) hushNow = true; else CAP.hush = false; }
+        if (!hushNow) {
+          if (padNow.hit && !pv[0]) hit = true; if (padNow.jump && !pv[1]) jump = true; if (padNow.sw && !pv[2]) sw = true;
+          if (padNow.pause && !pv[3]) pause = true; if (padNow.mute && !pv[4]) mute = true; if (padNow.chal && !pv[5]) chal = true;
+          if (padNow.jset && !pv[6]) jset = true;
+          if (nOk && !pv[7]) navOk = true; if (nBk && !pv[8]) navBack = true;
+          if (nL && !pv[9]) navTab = -1; else if (nR && !pv[10]) navTab = 1;
+          if (navOk || (padNow.pause && !pv[3])) confirm = true;
+        } else { hit = jump = sw = pause = mute = chal = jset = confirm = false; }
+        if (padNow.hit || padNow.jump || padNow.jset || padNow.sw || padNow.pause || padNow.mute || padNow.chal || nOk || nBk) used = true;
         hitHeld = hitHeld || padNow.hit; jumpHeld = jumpHeld || padNow.jump || padNow.jset;
         pv[0] = padNow.hit; pv[1] = padNow.jump; pv[2] = padNow.sw; pv[3] = padNow.pause; pv[4] = padNow.mute; pv[5] = padNow.chal; pv[6] = padNow.jset;
+        pv[7] = nOk; pv[8] = nBk; pv[9] = nL; pv[10] = nR;
         if (used) it.device = 'gamepad';
       }
       // mando activo desconectado en pleno partido: pausa (una vez; si ya está en pausa, nada)
@@ -883,9 +1225,11 @@
       it.jset = jset;
       it.mx = mx; it.my = my; it.hit = hit; it.jump = jump; it.switchPlayer = sw; it.pause = pause; it.mute = mute;
       it.confirm = confirm; it.hitHeld = hitHeld; it.jumpHeld = jumpHeld; it.challenge = chal;
+      it.navOk = navOk; it.navBack = navBack; it.navTab = navTab;
       it.padEvent = pad.event; pad.event = '';
-      it.any = hit || jump || sw || pause || mute || confirm || chal || mx !== 0 || my !== 0;
+      it.any = hit || jump || sw || pause || mute || confirm || chal || navOk || navBack || navTab !== 0 || mx !== 0 || my !== 0;
       if (hit) stats.out.hit++; if (jump) stats.out.jump++; if (sw) stats.out.sw++; if (pause) stats.out.pause++; if (confirm) stats.out.confirm++; if (chal) stats.out.chal++;
+      if (mute) stats.out.mute++; if (navOk) stats.out.navOk++; if (navBack) stats.out.navBack++; if (navTab) stats.out.navTab += navTab;
 
       // --- overlay táctil: en partido, en horizontal, si se está jugando con el dedo
       var touchy = T.used || ctx.isTouch;

@@ -19,7 +19,7 @@ Un flujo multiagente (guion en `tools/workflow/voley-3d.workflow.js`) con estas 
 2. **Build** ✅ — 6 especialistas en paralelo, cada uno dueño de sus ficheros:
    - `sim` → `js/sim.js`, `js/ai.js`, `tools/simtest.js` (reglas, calidad de golpe, saques, dificultad)
    - `players` → `js/players.js` (atletas y animación procedural)
-   - `arena` → `js/arena.js`, `js/fx.js` (pabellón, luces, público, red, balón, efectos)
+   - `arena` → `js/arena.js`, `js/venues.js`, `js/venue-*.js`, `js/fx.js` (sedes, pabellón, luces, público, red, balón, efectos)
    - `camera_input` → `js/camera.js`, `js/input.js` (cámara 3ª persona, teclado, mando, táctil)
    - `audio` → `js/audio.js` (sonido procedural) ✅ terminado
    - `ui_main` → `index.html`, `js/ui.js`, `js/main.js`, `tools/shot.sh`, `tools/console.sh`, `tools/drive.js`, `tools/eval.js`
@@ -220,6 +220,10 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - **Repo de redirección**: la URL antigua de Pages (/voley-3d/) da 404. ¿Se crea la redirección en el repo `purupurpito.github.io`?
 
 ### To-do
+- **Sedes nuevas** (12-nov-2026, pedido de Ferran «mapas nuevos de playa y de pista»; plan aprobado con 4 mapas): arquitectura,
+  las 4 sedes del plan HECHAS (**Cala dels Fanals**, **Moll de la Sorra**, **Poliesportiu Can Rebot** y **Cúpula del Far**; ver Hecho
+  «Sedes»). Queda: Carrera con la sede por club y por nivel (`matchSetup().map`, sin tocar el guardado ni la sim; Cúpula = finales de
+  copa y élite del 6v6, Can Rebot = 2ª división).
 - **«Que no parezca un Doodle»: plan de juego completo** (12-nov-2026; informe entero con propuestas A1-E7, referencias y fuentes en
   notes/juego-completo.md). Ferran aprobó **los sprints 2, 3 y 4** («son muy buenos») y abrió **el 5** a continuación. El sprint 1
   («Los primeros 60 segundos»: A1-A8) queda apuntado, sin decisión de Ferran.
@@ -232,8 +236,14 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     «Mejores jugadas» en el cierre.
   - **Sprint 4 «Volver mañana»:** D1 retos bronce/plata/oro + diario y semanal por fecha-semilla (los 28 logros de Vida de la
     Carrera son solo de Carrera), D2 perfil y álbum con huecos (nivel de cuenta nuevo), D3 cosméticos que lucen, D4 sincronizar
-    cada guardado nuevo en account.js con migraciones, D5 playa nocturna.
+    cada guardado nuevo en account.js con migraciones, ~~D5 playa nocturna~~ (HECHO 12-nov: sede «Cala dels Fanals», ver Hecho «Sedes»).
   - Preguntas para Ferran: música en ogg dentro de index.html o procedural; moneda única o ninguna; ¿6v6 visible en JUGAR?
+  - **Después del sprint 5: entrenamientos de la Carrera al estilo NBA 2K** (idea de Ferran, 12-nov-2026: «que nos entrenen y nos
+    hagan hacer ejercicios»). Entre jornadas, sesión de entrenamiento con el club: Faro (el mentor del E4) o el entrenador del club
+    elige 1-3 ejercicios del gimnasio (E6, `g.drill`) según tus puntos flojos o el rival siguiente. La nota de la sesión (bronce,
+    plata u oro) da progreso de atributos (`c.train`/`c.tp`), confianza del entrenador, química con la pareja y minutos o titularidad.
+    Saltarla o simularla da menos progreso, sin castigo grande. Variantes: entrenamiento específico antes de un duelo o una final, y
+    sesión de pretemporada. Depende de E4 y E6 (sprint 5). Ojo: no duplicar el entreno automático actual: sustituirlo o mejorarlo.
 - **Pendiente del muñeco y la Carrera de playa** (11-nov-2026, tras las revisiones; nada roto). Fusionado en main y publicado
   el 11-nov-2026 (9a4f10c).
   - ~~Oficiales y público sin muñeco~~ HECHO 11-nov (arena; notes/arena.md «Muñeco oficial») (~~cabezas que se cruzan en el ace~~ HECHO 11-nov): ver «Mapa de playa» abajo.
@@ -451,6 +461,33 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
   - `tools/drive.js` falló 1 vez de 4 («el humano llega a tocar el balón», con el PC al 60 % de CPU); las otras 3, TODO OK. Vigilar.
 
 ### Hecho
+- **Sedes (mapas)** (12-nov-2026, arena + lo justo de ui_main): registro `js/venues.js` (`VB.VENUES` / `VB.Venues`: nombre, nivel, ayuda,
+  color de arena, luces) y `VB.Arena.registerMap` para sedes en ficheros propios `js/venue-<id>.js`. El tipo de reglas que va a la sim
+  ('hall' | 'beach') no cambia de significado (huella 2v2 idéntica). Ajustes `mapHall` / `mapBeach` (Ajustes · Imagen · «Sede de playa»,
+  con «Al azar»; «Luz de playa» se oculta en las sedes de luz fija), `?map=<id>` (`?map=fanals`; `?map=beach` / `hall` siguen igual),
+  guardados viejos válidos (lo desconocido vuelve a Platja / Palau). Primera sede nueva: **Cala dels Fanals** (`js/venue-fanals.js`), vóley
+  playa de noche en una cala: luna, estrellas y rielada, torres de focos, guirnalda de farolillos, barcas de pesca de luz, arena horneada
+  bajo los focos y cinta lima. Baja 29/32 dibujos (Platja 31/33). Sin fugas (`node tools/venuetest.js`). Detalle en notes/arena.md «Sedes».
+  Segunda sede de playa: **Moll de la Sorra** (`js/venue-moll.js`), torneo urbano sobre una isla de arena en el muelle de un puerto inventado,
+  de día o de tarde (`Luz de playa`; de tarde el telón se repinta con las ventanas encendidas): hormigón con juntas, canto del muelle con
+  norays y el agua más baja, grúa pórtico teal con un contenedor colgado y grúa coral enfrente, pilas de contenedores, ferri, remolcador y
+  veleros amarrados, gradas con terraza sobre contenedores, food trucks, banderines y cinta azul. Todo en la estática (0 dibujos nuevos; sin
+  llaüts animados): baja 29/32 · 122 k, media 40/41 · 291 k (Platja 30/32 · 112 k, 41/44 · 260 k). Ganchos nuevos del constructor de playa:
+  `P.tile`, `P.courtBase`, `P.relight` (notes/arena.md «Sedes»).
+  Primer pabellón nuevo: **Poliesportiu Can Rebot** (`js/venue-canrebot.js`), el polideportivo del barrio de día: tarima repintada (sintético
+  verde, pista terracota y las líneas de baloncesto y balonmano desvaídas debajo), gimnasio en 1 malla (espalderas, canastas plegadas,
+  ventanales, techo en dientes de sierra con lucernarios, grada telescópica de 6 filas con ~110 vecinos, vestuarios, máquina de bebidas,
+  vitrina de trofeos), campanas industriales, haces de sol (media/alta), marcador de segmentos en los dos fondos y pancartas pintadas
+  («CV CAN REBOT», «ÀNIMS EQUIP!»). Oculta la vestimenta de Palau: baja 27/29 · 95 k (Palau 32/34), 6v6 baja 33/35. Ajustes · Imagen ·
+  «Pabellón» (Palau / Can Rebot / Al azar); `?map=canrebot`. Ganchos nuevos de pabellón: `def.floor`, `def.score` + `drawScore`, `K.crowd`.
+  Segundo pabellón nuevo: **Cúpula del Far** (`js/venue-cupula.js`), la arena de las finales de noche, como PIEL de Palau (reutiliza
+  grada, público, vallas, banderas y videomarcadores): pista dorada con barniz brillante sobre zona libre añil con el abanico del faro,
+  asientos recoloreados de azul noche a violeta, cúpula de paneles hexagonales con nervios, perforaciones de estrella y óculo encendido,
+  el «faro» colgado (linterna-marcador de 8 caras: el marcador colgado de Palau en 4 caras, lentes en las otras 4, linterna y cubierta),
+  anillo de 12 focos, aro LED cian y magenta en lo alto de las gradas (1,5 s del color del que anota), 6 haces que barren la grada
+  (media/alta, más deprisa en punto de set), vallas con «CÚPULA DEL FAR» y estandartes añil con estrella de 8 puntas. Mismos dibujos y
+  triángulos que Palau (baja 30/33 · 108 k, media 47/50 · 306 k). Ganchos nuevos: `K.staticHide` / `K.staticTint` (tramos con nombre
+  de la estática y la emisiva de Palau), `def.brands`, `def.flagPal`, `def.screen`, `K.hungMat`, `K.crowdLight`.
 - **Vida de la Carrera** (12-nov-2026, pedido de Ferran: Carrera «más extensa, mejor y más enticing»): reto de cada jornada, fama y
   seguidores, patrocinadores inventados, decisiones (prensa, fiestas, rival…), rival personal con duelos, tienda de material y servicios,
   premios de temporada, 28 logros, legado con declive desde los 32, retirada desde los 30 y Salón de la Fama. Pestaña «Fama». Ver
@@ -653,6 +690,8 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
 - `node tools/perf.js`, `touchplay.js`, `padplay.js`, `touchtest.js`, `padtest.js`, `courttest.js`, `audiotest.js`, `drive.js` — ver CONTRACT.md §6.
 - `tools/shot.sh <escena> <ancho> <alto> <salida.png>` — captura. Escenas: `?debug=menu|serve|rally|spike|block|point|switch|mobile|end` (ver `CONTRACT.md`).
 - `tools/console.sh` — errores de consola.
+- Sedes: `node tools/venuetest.js [vueltas=3]` (recorre todas las sedes disponibles y vuelve a Palau: geometrías, texturas y programas
+  iguales que al empezar) y cada sede con `EXTRA=map=<id>` en `console.sh all` y `perf.js` (p. ej. `EXTRA=map=fanals`; console.sh lee `EXTRA` del entorno o como 4.º argumento: `bash tools/console.sh all 1280 720 map=fanals`).
 - `tools/out/` no se sube (capturas y logs); se regenera.
 
 ## Restricciones (se publicará como Artifact de claude.ai)

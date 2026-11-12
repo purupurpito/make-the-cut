@@ -6,7 +6,7 @@ Proyecto personal. Este documento es la ley para los 6 especialistas que trabaja
 ## 1. Propiedad de ficheros (exacta)
 
 ```json
-{"sim":"js/sim.js and js/ai.js (gameplay simulation, rules, AI, hit quality/timing, serve types, difficulty) and tools/simtest.js","players":"js/players.js (athlete models, materials, procedural animation state machine, celebrations)","arena":"js/arena.js and js/fx.js (pavilion, floor, lines, net, antennas, posts, lighting, shadows, stands, crowd, LED boards, hanging scoreboard, ball mesh+shadow+trail, particles/impact FX)","camera_input":"js/camera.js and js/input.js (third-person camera rig, transitions, shake, slow-mo hook, camera-relative input mapping, keyboard, gamepad, touch controls overlay)","audio":"js/audio.js (procedural WebAudio: hit sounds per touch type, spike crack, net, block, whistle, crowd ambience and reactions, UI clicks, music sting)","ui_main":"index.html, css (inline in index.html), js/ui.js and js/main.js (boot, loop, renderer setup, adaptive quality, menus, HUD, scoreboard overlay, pause, end screen, settings, tutorial/onboarding, debug scenes, tools/shot.sh, tools/console.sh)"}
+{"sim":"js/sim.js and js/ai.js (gameplay simulation, rules, AI, hit quality/timing, serve types, difficulty) and tools/simtest.js","players":"js/players.js (athlete models, materials, procedural animation state machine, celebrations)","arena":"js/arena.js, js/venues.js, js/venue-*.js and js/fx.js (venue registry and maps, pavilion, floor, lines, net, antennas, posts, lighting, shadows, stands, crowd, LED boards, hanging scoreboard, ball mesh+shadow+trail, particles/impact FX)","camera_input":"js/camera.js and js/input.js (third-person camera rig, transitions, shake, slow-mo hook, camera-relative input mapping, keyboard, gamepad, touch controls overlay)","audio":"js/audio.js (procedural WebAudio: hit sounds per touch type, spike crack, net, block, whistle, crowd ambience and reactions, UI clicks, music sting)","ui_main":"index.html, css (inline in index.html), js/ui.js and js/main.js (boot, loop, renderer setup, adaptive quality, menus, HUD, scoreboard overlay, pause, end screen, settings, tutorial/onboarding, debug scenes, tools/shot.sh, tools/console.sh)"}
 ```
 
 `js/prog.js` (estadísticas y progresión de tus jugadores: `VB.Prog`, guardado en `voley3d.squad`) también es de **ui_main**; sim lo recibe ya convertido en `createGame({attrs: [[st7, st11], [st3, st9]]})` (atributos 1-99 con las claves `VB.ATTR_KEYS`; 50 = neutro; sin `attrs` la sim no cambia), que deja `p.st`, `p.prof` (perfil de IA, `Sim.statProf`) y `p.ak` (multiplicadores del humano, `Sim.attrK`; constantes en `VB.ATTR_K`). Integración (10-nov-2026): `p.ak` añade `eRecv/eDig/eSet/eAtk` (precisión del toque: dispersión ×1,5-0,6 y calidad del pase/colocación) y `rRecv/rDig` (alcance del 1r toque ×0,94-1,05); con Velocidad < 50 frenar y girar es al momento (la rampa `accT` solo al arrancar).
@@ -15,6 +15,17 @@ Proyecto personal. Este documento es la ley para los 6 especialistas que trabaja
 Vida en la pista (12-nov-2026): los textos de decisiones guardados en `c.life.log` y los logros de `sum.life.ach` salen con el nombre de pabellón; el reto «tidy» de la playa (L0, n = 1) dice ahora «Gana con un error como mucho» (antes «Gana con 1 errores o menos»), único texto de playa que cambia; el objetivo de patrocinio de pista cuenta las jornadas que juegas (sin descansos de una liga impar).
 `tools/audiotest.js` es de **audio**; `tools/touchtest.js`, `tools/padtest.js` y `tools/courttest.js` son de **camera_input**.
 `js/badges.js` (`VB.Badges`, insignias), `js/career.js` (`VB.Career`, datos y lógica de la Carrera, sin DOM), `js/career-ui.js` (`VB.CareerUI`, pantallas de la Carrera: crea su propio DOM `#career` y su `<style>` desde JS), `js/career-life.js` (`VB.CareerLife`, «vida» de la Carrera: retos, fama, patrocinios, decisiones, rival, tienda, premios, logros y legado; sin DOM) y `js/career-life-ui.js` (`VB.CareerLifeUI`, pestaña «Fama») son de **ui_main**, igual que `js/leagues.js` (`VB.Leagues`, datos de las ligas de pista; GENERADO por `tools/build-leagues.js` desde `notes/clubes/*.json`, no se edita a mano), `tools/build-leagues.js`, `tools/leagues-fixture.js`, `tools/badgetest.js` y `tools/careertest.js`. Guardados: `voley3d.squad` (v3: escuadrón inicial a media 50; los v1/v2 suben +10 cada atributo una vez), `voley3d.career` (playa, con `c.life`), `voley3d.career6` (pista, también con `c.life` desde el 12-nov-2026; un guardado sin él lo crea al cargar), `voley3d.career.mode` (cuál está activa) y `voley3d.legends` (Salón de la Fama).
+
+**Sprint 5 (12-nov-2026).** Nuevos de **ui_main**: `js/version.js` (`VB.VERSION/VERSION_DATE/CHANGELOG/CREDITS`), `js/gym.js` (`VB.Gym`,
+guardado `voley3d.gym`), `js/career-world.js` (`VB.CareerWorld`: Faro el mentor, noticias de la liga, anales y fichas de club; sin DOM) y
+`js/career-world-ui.js` (`VB.CareerWorldUI`), y las herramientas `tools/og-image.js` (→ `pages/og.png`), `tools/abouttest.js`,
+`tools/gymtest.js` y `tools/settest.js`. `tools/keytest.js` es de **camera_input**; `tools/animtest.js` de **players**;
+`tools/fp-mastery.json` (huella de la maestría, `node tools/fingerprint6.js --variant mastery`) de **sim**. Guardados nuevos:
+`voley3d.gym` (v1 `{v, d:{id:{b,m,n,t}}, free:{rally}, xp:{id:nivel}}`; aún NO va a `DOCS`: `GYM_SYNC = false` en account.js hasta que Ferran
+despliegue firebase/firestore.rules, que ya admiten `'gym'`), `voley3d.device` (ajustes del aparato: `resScale, fpsCap, showFps, touchSize,
+padDead`), `voley3d.seen` (`{v}`: última versión cuyas Novedades se vieron) y `voley3d.e1tips` (consejos de maestría vistos); estos tres
+NUNCA van a `DOCS`. Dentro de `voley3d.career` (sin subir VER): `c.world` (`mentor{on,seen,last,q[≤3]}`, `h2h`, `since`, `news[≤60]`, `newsN`,
+`newsSeen`, `annals[≤40]`, `lead`, `tpl`; ≈ 13 KB a 12 temporadas) y `c.life.celeb` / `c.life.celebAnn`.
 
 **Reglas**
 - Cada especialista edita SOLO sus ficheros. Nada de tocar ficheros ajenos "solo una línea".
@@ -30,8 +41,13 @@ Vida en la pista (12-nov-2026): los textos de decisiones guardados en `c.life.lo
 ## 2. Restricciones técnicas
 
 - Scripts clásicos (`<script src>`), SIN módulos ES, sin import/export, sin bundler. Un único espacio global `window.VB`.
-- Orden de carga (index.html): `three.min.js` (cdnjs 0.149.0) → `js/sim.js` → `js/ai.js` → `js/arena.js` → `js/fx.js` →
-  `js/players.js` → `js/camera.js` → `js/input.js` → `js/audio.js` → `js/ui.js` → `js/main.js` (main arranca).
+- Orden de carga (index.html, sprint 5): `three.min.js` (cdnjs 0.149.0) → `js/version.js` → `js/account.js` → `js/sim.js` → `js/ai.js` →
+  `js/ai6.js` → `js/prog.js` → `js/gym.js` → `js/badges.js` → `js/venues.js` → `js/arena.js` → `js/venue-*.js` (sedes: `venue-fanals.js`, `venue-moll.js`, `venue-canrebot.js`, `venue-cupula.js`) → `js/fx.js` → `js/players.js` → `js/doll.js` → `js/camera.js` →
+  `js/input.js` → `js/audio.js` → `js/leagues.js` → `js/career.js` → `js/career-life.js` → `js/career-life-ui.js` → `js/career-world.js` →
+  `js/career-world-ui.js` → `js/career-ui.js` → `js/ui.js` → `js/install.js` → `js/main.js` (main arranca). gym.js lee `VB.DRILL` (sim) de forma
+  perezosa. Favicon como data URI en index.html (build-pages lo quita en Pages y pone el suyo).
+- **Versión:** cada publicación visible sube `VB.VERSION` (semver) y añade su entrada al principio de `VB.CHANGELOG` (js/version.js);
+  `tools/build-pages.js` falla si `CHANGELOG[0].v !== VERSION`, si falta `pages/og.png` o si no hay exactamente un `rel="icon"`.
 - Three.js: `https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js` (verificado 200; r149 es el último sin aviso de deprecación del build UMD).
   API r149: `outputEncoding`/`sRGBEncoding`, `CapsuleGeometry` disponible, `THREE.ColorManagement.legacyMode = false` (lo pone main.js:
   los hex de materiales son sRGB; **toda textura de color de canvas debe llevar `tex.encoding = THREE.sRGBEncoding`**).
@@ -95,6 +111,21 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
 | `fixShadowDepth()` | pone un `customDepthMaterial` compartido por variante a `SkinnedMesh`/`InstancedMesh` (evita recompilar el material de profundidad 4 veces por frame). Llamarlo si se crean casters nuevos después de `onGameStart`/`setQuality` |
 | `bootInfo` | tiempos del arranque por módulo en ms (`{t0, renderer, yield, Arena, FX, …, quality, end}`; UI-07) |
 | `window.__vbFontFaces` | lo deja el script en línea de index.html: número de caras de Google Fonts cargadas DE VERDAD (0 si falla la red). Para comprobar fuentes, usar esto o buscar en `document.fonts` una cara con `status === 'loaded'`; nunca `document.fonts.check()` (da true sin ninguna cara) |
+
+**Sprint 5 en `VB.ctx`** (main.js): `reduceMotion` (booleano, propiedad PROPIA de ctx: `settings.lessMotion` 'on'/'off', o con 'auto'
+`prefers-reduced-motion`; lo leen ui.js `rm()`, camera.js y fx.js), `renderScale` (escala de render vigente), `actions.resetSettings(keys[])`
+(restablece un apartado de Ajustes), `bootInfo.version`. `actions.startMatch({drill, autopilot})`: con `drill` = 'serve'|'recv'|'set'|'atk'|
+'block'|'free' arranca el Entrenamiento (2v2 siempre; Normal y control 'one' salvo en 'free'; `g.gym` = id, marca de main.js);
+`drillEnd` → `state 'over'`; `restart()` repite el ejercicio. URL `&drill=<id>`, `&gymauto=1` (la IA juega por ti), `&nonews=1` (sin
+Novedades automáticas), escenas `debug=drill_serve|drill_recv|drill_set|drill_atk|drill_block|drill_free|drill_end` (`&n=` repetición,
+`&t=` s). startMatch pasa `mastery: !6v6 && !autopilot` y `aimSet` a createGame, y en cada partido humano llama
+`VB.Players.setSignature(VB.CareerLife.signatureNow())` y `setRival(rivalNum | -1)` (en el duelo de la Carrera `nums[1] = [rivalNum, null]`).
+`settings` añade (validadas en `loadSettings`, por defecto en `DEFAULTS()`): `volume`, `crowdVol` (migración única: 0,85 × `sfxVol`),
+`resScale` (0 = auto, 1, .85, .7, .5: fija la escala y para la escala adaptativa), `fpsCap` (0 \| 30; con 30 la calidad adaptativa baja
+por debajo de 26 fps y no sube), `showFps`, `camDist` ('near' \| 'normal' \| 'far'), `camCuts` ('all' \| 'less'), `lessMotion` ('auto' \|
+'on' \| 'off'), `cbColors`, `ballStyle` ('clasico' \| 'contraste'), `keys` / `padKeys` (objeto plano con solo las diferencias; ≤ 12
+acciones), `padDead` (0,1-0,3, por defecto 0,18), `touchSize` (1 \| 1,15 \| 1,3), `aimSet` (true: colocación dirigida de E1), `msTiming`
+(false: sello en ms). `DEVICE_KEYS` van a `voley3d.device`, no a `voley3d.settings`.
 
 ### 4.2 Simulación `VB.Sim` (sim.js) + `VB.AI` (ai.js) + `VB.C` (constantes)
 - `createGame(opts)` → `game`. `opts = {demo, autopilot, seed, difficulty ('easy'|'normal'|'hard'|'expert' = Fácil/Normal/Difícil/Experto, alias castellanos; orden en `VB.DIFF_ORDER`, nombre visible `VB.DIFF[k].name`), serveClock (false = sin regla de 8 s), stats, rookie (primer partido: la CPU saca más suave; sin efecto en Difícil/Experto), present (pausas de presentación del punto, SIM-03: main.js lo pone en partidos humanos sin autopilot), ctrl ('both' por defecto: el control pasa a quien da el siguiente toque; 'one': el humano lleva siempre a `teams[0][0]` y la IA al compañero en todo, saque incluido, sin eventos `switch`; queda en `g.ctrlMode`; main.js lo toma de `ctx.settings.ctrlMode`), ctrlIdx (0 \| 1, solo con ctrl 'one': 0 = `teams[0][0]` n.º 1, 1 = `teams[0][1]` n.º 2; queda en `g.ctrlIdx`; con 1 el orden de saque del equipo 0 va en espejo; el juego pasa siempre 0, el 1 solo con `&ctrlidx=1` o `opts.ctrlIdx` en pruebas), ctrlRole ('OH': 6v6, sprint 3; puesto del jugador del humano, el primero de ese puesto = OH1, n.º 2; v1 solo el receptor, `CTRL_ROLES6` en sim.js; queda en `g.ctrlRole`, '' en 2v2. En 6v6 sin `demo` `ctrlMode` es siempre 'one')}`.
@@ -190,6 +221,28 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
   → GOLPEAR en el momento justo golpea (`hit kind:'serve'`). Si el balón cae sin golpearlo o pasan 8 s → falta de saque (`point reason:'serve'`).
 - Solo sim escribe en `game`. Los demás módulos lo leen y NUNCA lo modifican.
 
+**Sprint 5 · Maestría (E1; detalle en notes/sim.md «E1 (sprint 5)»).** Todo detrás de `createGame({mastery:true})` →
+`g.mastery = !!opts.mastery && !demo && !autopilot && !rot` (2v2 humano). El azar nuevo sale de `VB.Sim.hk(g, salt)` (hash de semilla,
+set, marcador y toques), nunca de `g.rng`: la huella 2v2 no cambia. Opciones `opts.mastery`, `opts.aimSet` (colocación dirigida; false =
+neutra). Mecánicas: **finta** (GOLPEAR y, ≥ 0,06 s después y antes del contacto, SALTAR o COLOCAR → dejada o colocado; con el bloqueador
+CPU en el aire la defensa puede quedar «batida», `DIFF.feintBeat`), **golpe colocado** (COLOCAR en el 3r toque: `kind 'spike'`,
+`shot 'roll'`), **al filo** (apuntar hasta 0,05 m de la línea: `VB.Sim.edgeOf`, más dispersión y más manos fuera), **colocación
+dirigida 2v2** (stick ↑ rápida, ←/→ carril, ↓ alta; zona muerta 0,6) y **jugada perfecta** (`g.chain`/`g.chainH`: remate perfecto con
+cadena 3 y ≥ 2 toques humanos). Estado: `g.mastery, g.aimSet, g.atkMove ('' \| 'feint' \| 'roll' \| 'edge' \| 'quick'), g.atkEdge,
+g.lastTempo, g.feintT, g.chain, g.chainH, g.stats.mastery {feint, roll, edge, quick: [usos, puntos], tool, lane, high, cpu:{roll, lane}}`.
+Funciones: `VB.Sim.altReady(g)` → '' \| 'jset' \| 'roll' (qué hace COLOCAR ahora), `VB.Sim.setPreview(g, out)` → null \| `{x, y, tempo}`,
+`VB.Sim.edgeOf`, `VB.Sim.hk`; `VB.MASTERY` (constantes); `aimPoint` añade `out.edge` y `kind 'roll'`. `VB.DIFF[k]` añade `feintRead,
+tipRead, roll, zoneSet, feintBeat`. Sin acciones de entrada nuevas. Si un lote cambia a propósito la maestría, regenerar
+`tools/fp-mastery.json` con `node tools/fingerprint6.js --variant mastery --write` y decirlo.
+
+**Sprint 5 · Entrenamiento (E6; detalle en notes/sim.md «E6 (sprint 5)»).** `createGame({drill})` con 'serve' \| 'recv' \| 'set' \| 'atk' \|
+'block' \| 'free' (id desconocido o demo → sin ejercicio; `format '6v6'` + drill → 2v2). `g.drill` está SIEMPRE en el partido: `null` fuera del
+modo, si no `{kind, n (0-based), of, total, pts, last, target {x,y,r,r2} | null (mundo, ya × g.cs), idle[2], cpu, mateIdle, best, done,
+srvJump, reps[], jumped}`. Con `g.drill` (salvo 'free') control 'one' en el n.º 1, sin `present`, sin `rookie` ni reloj de 8 s; ningún
+ejercicio tiene error arbitral ni challenges. `VB.DRILL {hold, order, text, kinds{…medals}}` (solo lectura; `medals` = umbrales de
+bronce/plata/oro que usa `VB.Gym.medalsOf`), `VB.Sim.drillStage(g)`, `VB.Sim.drillScore(kind, ctx)` (pura → `{pts 0..3, res, text, d}`),
+`VB.AI.leaving(g, team)` (la IA ha decidido dejar botar el saque: lectura pura de `g._lv`).
+
 ### 4.3 Eventos (cada frame main.js pasa el mismo array `events` a todos los módulos)
 Todos llevan `type` y `t` (tiempo de juego). `player` es la referencia al objeto jugador de `game.players`.
 | type | payload | cuándo |
@@ -254,6 +307,19 @@ Todos llevan `type` y `t` (tiempo de juego). `player` es la referencia al objeto
   la colocación de su equipo); `g.ask6` solo se guarda si vale. Evento nuevo `{type:'ask', player, ok}` en cada pulsación de CAMBIAR en
   6v6 (ui.js: sello «¡Aquí!» / «Ahora no»; audio.js). fx.js: en 6v6 el aro amarillo solo sale con el balón del humano. El 6v6 humano no
   cuenta en el récord del Partido rápido.
+
+**Sprint 5 en los eventos.**
+- `hit` añade `feint` (bool), `tempo` ('' \| 'quick' \| 'lane' \| 'high', en la colocación), `edge` (0..1) y `chain` (int; 3 = jugada
+  perfecta); `shot` puede ser `'roll'` (golpe colocado, `kind 'spike'`). El saque los lleva con valores neutros. `point` y `g.lastPoint`
+  añaden `move` ('' \| 'feint' \| 'roll' \| 'edge' \| 'quick').
+- Nuevos: `feint {player, team, shot:'tip'|'roll'}` (finta), `drillStage {kind, n, of, target:[x,y,r] | null}` (montaje de cada repetición:
+  los jugadores se teletransportan; players lo trata como `serveReady` y la cámara corta con `lastCut.kind 'drill'`), `drillRep {kind, n, of,
+  pts, total, res, text, x, y, d, grade, hits, best, isBest}` (`text` = sello en castellano de `VB.DRILL.text`; en 'free' `hits/best/isBest`
+  son el peloteo y `pts` 0), `drillEnd {kind, total, reps, best}`.
+- **Con `g.drill` NO hay `point`, `whistle` (tampoco el de autorización del saque), `gameOver`, `set`, `match` ni `sideout`**; marcador y
+  estadísticas quedan a 0, y entre repeticiones `g.lastPoint.how === 'drill'` (no pintar rótulos de punto con él).
+- `fx:floor {team, x, y, z, strength}` (players, por `drainFx`): palmada al suelo de `digHero` (0,6) y puñetazo de la plancha fallida (0,4).
+  Audio: golpe sordo en el pabellón, «puf» de arena en la playa.
 
 ### 4.4 Módulos de presentación (todas las funciones son opcionales; main.js las llama con guarda y try/catch)
 Objetos: `VB.Arena`, `VB.FX`, `VB.Players`, `VB.CameraRig`, `VB.Input`, `VB.Audio`, `VB.UI`.
@@ -412,6 +478,47 @@ la vuelta al saque se anuncia en `nextCutIn` y casi siempre es corte.
 El cierre del set/partido (CAM-09) entra por corte al seguimiento del balón a cámara lenta y corta otra vez a la órbita de los ganadores (`'clinch'`). Antes de cada saque rival hay un plano corto del sacador (CAM-14, 0,95-1,4 s) que vuelve a la recepción ≥ 0,55 s antes del lanzamiento. Tras nuestro ataque la cámara sigue el balón hasta el bote (CAM-08), sin corte.
 El cambio de campo (`courtChange`, plano `'court'`) usa un corte deliberado (reacción → grúa alta por la banda de la mesa) y baja SIN corte al plano del saque; la base de control queda congelada durante la grúa.
 
+**Sprint 5 en los módulos de presentación** (todo opcional y con guarda):
+- **Input** (E3): `OPTS`, `DEFAULT_KEYS` (11 acciones × 2 teclas), `DEFAULT_PAD {hit:[0], jump:[1], jset:[2], sw:[3], chal:[6]}`,
+  `onSettings(s, k)`, `bindings()` → `{keys, pad, padStd, padFam, acts, padActs, fixed}`, `rebind(kind, act, slot, code)` → `{keys|pad, swap,
+  err: '' | 'reserved' | 'empty' | 'primary' | 'bad'}`, `captureNext(kind, cb)` → cancel (cb(v, why) con why 'key' \| 'pad' \| 'clear' \|
+  'cancel' \| 'timeout'; 6 s; Esc / Start cancelan; escucha en fase de captura, sin fugas), `capturing()`, `keyName(code)`, `padName(i, fam)`.
+  `poll()` añade `navOk / navBack / navTab` (botones fijos 0, 1 y 4/5 del mando); `confirm` del mando = navOk o Start. `glyph()` cubre
+  hit/jump. Fijas: Esc, Enter; reservadas: Tab, F1-F24, F, modificadores, ContextMenu, Backspace/Delete. El botón táctil COLOCAR usa
+  `Sim.altReady` y lee «COLOCADO» con 'roll'. `--vts` (CSS) = `touchSize`.
+- **CameraRig** (E3/E6): `OPTS = ['camDist','camCuts','lessMotion']`; `distK` 0,86 / 1 / 1,18; con `camCuts 'less'` o `g.drill` el punto
+  no tiene plano de reacción, de héroe ni del sacador rival (`heroShot()` null) y la vuelta al saque es un corte 'serve' sin `nextCutIn`;
+  `drillStage` → corte seco `lastCut.kind 'drill'` (sin cámara lenta, hit-stop ni seguimiento del remate). Intro, cierre de set/partido y
+  grúa del cambio de campo, igual. El 6v6 no cambia.
+- **FX** (E3/E6/E1): `OPTS = ['cbColors','ballStyle']`, `onSettings(s, k)`; paleta para daltónicos (bote dentro azul / fuera naranja,
+  retícula ámbar → azul perfecta, aro al filo magenta) y balón de contraste (textura rehecha una vez). Diana del ejercicio desde
+  `g.drill.target` en el lote de calcomanías (0 dibujos más), pulso apagado con `ctx.reduceMotion`, destello con `drillRep.pts >= 3`.
+  Retícula `kind 'roll'` verde, aro coral con `edge > 0,5`, marcador `Sim.setPreview` por tempo, sin estela con `shot 'roll'`, estela
+  dorada con `chain >= 3`.
+- **Audio**: `preview(kind)` ('crowd' \| 'sfx' \| 'music' \| 'master' \| 'volume'; false antes del 1r gesto o en silencio), `stats.chain`;
+  maneja `fx:floor`, `feint`, `drillRep`, `drillEnd`, `hit.shot 'roll'`, `hit.style 'jfloat'` y `hit.chain`.
+- **Players** (E2): `CELEBS [{id, name, tier}]` (mismos ids que `CareerLife.CELEB_DEF`), `setSignature(id)` → id aceptado \| '',
+  `setRival(num)` (vale para el partido que se crea con la llamada; -1 o ninguna llamada lo limpia). Rig de solo lectura: `persona, cvar,
+  dvar, lvar, idle`. Pruebas: `_anim(p)` → `{persona, cvar, dvar, lvar, idle, celId, celV, leave, evG, blk, sig, rival}`, `_celeb(p, id)`,
+  `_idle(p, id, u)`. `rigOf` puede ir hasta 10 cm por debajo de la sim 70 ms al despegar sin carrera y hasta 0,55 m por delante tras un
+  saque en salto (pasitos que se recuperan como el desfase de la plancha). Con `g.drill`: sin celebración, convergencia, piña ni idle.
+- **UI**: `openAbout(tab)`, `_about()` → `{seen, returning, auto}`, `_settings()` (prueba), `menuGo('gym')` y `menuPage()` → 'gym';
+  `openPanel(name, {from, tab, focus})` con una sola pila de vuelta (Atrás / Esc / B vuelven a la pestaña y fila de origen). Ajustes con 7
+  pestañas (audio, image, cam, game, a11y, kit, info; modo compacto de solo iconos si no caben) y filas con `data-need` (se esconden si el
+  módulo no publica la opción en su `OPTS`).
+- **VB.Gym** (js/gym.js, sin DOM): `DRILLS [{id, name, short, help}]` (6), `IDS` (5 con medalla), `MEDALS` (reserva = los de `VB.DRILL`),
+  `medalsOf(id)`, `XP [30, 50, 80]`, `MAX 30`, `MEDAL_NAMES`, `load/save/clean/get/drill/medalOf/record/recordRally/count/nextOf/bestRally/
+  reset`. `record(id, total)` → `{best, prev, isBest, medal, newMedal, xp, n}` y da la XP con `VB.Prog.addXP(0/1)` una vez por nivel (ui.js
+  no la da por su cuenta). `VB.Account._mergeGym/_gymSync` (fusión por máximo, apagada).
+- **Versión** (js/version.js): `VB.VERSION`, `VB.VERSION_DATE`, `VB.CHANGELOG [{v, d, t, items}]`, `VB.CREDITS {by, tools, fonts,
+  licenses:{three, threeLine, ofl}, note}`; en Pages, `window.__vbBuild = {v, sha, date}`.
+- **Carrera** (E2/E4/E5): `VB.CareerLife.celebs/setCeleb/signatureNow/CELEB_DEF`; `m.career.rivalNum` (solo en los duelos, lo pone
+  `setup()`). `VB.CareerWorld`: `hook, ensure, MENTOR, BEATS, BEAT_ORDER, LINE_MAX, Q_MAX, mentorScene(c), mentorDone(), mentorSkip(),
+  mentorSkipAll(), setMentor(on), mentorOn(c), news(c, n), newsUnseen(c), markNewsSeen(), newsWhen(x), lore(c, k), clubRows(c, lvl),
+  clubCard(c, id), leaguesOf(c), TPL, NEWS_MAX, ANNALS_MAX, W_SUMMER, W_END, MKT`. `VB.CareerWorldUI`: `mentorCard, optsHTML, headlines,
+  newsHTML, clubsHTML, act, back, reset, focusSel, isCard, css, FACE`. career.js `life()` llama a CareerLife y después a CareerWorld, y
+  `life(c, 'join', o)` al final de `joinClub`. Bandeja: tipo nuevo `k 'mentor'` (solo escenas no vistas).
+
 ## 5. Orden por frame (main.js)
 1. `realDt = min(maxdt, Δ)`; `resize` si cambió el contenedor.
 2. `it = Input.poll(realDt)`; `it.pause` → `togglePause`; `it.mute` → `toggleMute`; `it.any` → `Audio.unlock`.
@@ -524,8 +631,17 @@ Arte y nombres originales; marcas de las vallas ficticias (NÓRDIKA, VOLTA, ALBA
   va una coma `.sr` para lectores. Las frases van con puntuación normal, no con «·».
 - **Escala de UI:** `--vs` en `#app` (ui.js `vpFit`): 1 hasta ~1280×760, 1,34 a 1920×1080, 1,71 a 2560×1440, tope 2; `.vs-up` con --vs > 1,05. Menú, Carrera
   (`.cr-in`) y tarjeta de presentación (`#intro .in-card`) usan `zoom: var(--vs)`; HUD y hojas usan `--hs` = Tamaño del HUD × --vs. Por debajo no cambia nada.
-- **Escenario:** ajuste `arena` (arriba). `VB.Arena.venueName(id?)` da «Palau del Mar» / «Platja Llarga»; ui.js cambia el nombre en los textos visibles
-  (los que nombran los dos se dejan). La playa se construye al elegirla y se libera al volver (sin fugas); el pabellón solo se oculta. Ver notes/arena.md «Playa».
+- **Escenario:** ajuste `arena` (arriba). `VB.Arena.venueName(id?)` da el nombre de la sede montada (o la de un id / tipo); ui.js cambia el nombre en los
+  textos visibles (los que nombran varias sedes se dejan). La playa se construye al elegirla y se libera al volver (sin fugas); el pabellón solo se oculta. Ver notes/arena.md «Playa».
+- **Sedes (mapas, 12-nov-2026).** Registro de datos `VB.VENUES` / `VB.Venues` en `js/venues.js` (sin THREE: `def(id)`, `kindOf(id)`, `list(kind)` = las
+  disponibles, `valid(kind, v)`, `resolve(tipoOId, settings, seed)`). Sedes de hoy: pabellón `palau` (Palau del Mar), `canrebot` (Poliesportiu Can Rebot, de día) y `cupula` (Cúpula del Far, de noche); playa `platja` (Platja Llarga),
+  `fanals` (Cala dels Fanals, de noche) y `moll` (Moll de la Sorra, en el puerto; día o tarde). Ajustes nuevos `mapHall` ('palau' | 'canrebot' | 'cupula' | 'rand') y `mapBeach` ('platja' | 'moll' | 'fanals' | 'rand'), validados en
+  `loadSettings` contra el registro (lo desconocido vuelve a la sede de serie; los guardados viejos siguen valiendo). Ajustes · Imagen: «Pabellón»
+  y «Sede de playa» (cada fila sale cuando hay más de una sede de su tipo); «Luz de playa» solo con sedes que la admiten (`lights`). `?map=` acepta un tipo (`hall`, `beach`) o un id
+  (`?map=fanals`). **Lo único que va a la sim sigue siendo el tipo** (`VB.Arena.venue()` → 'hall' | 'beach'). Añadidos: `VB.Arena.map()` (id montado),
+  `VB.Arena.maps()`, `VB.Arena.registerMap(def)` (lo llaman los `js/venue-<id>.js` al cargar), `VB.Arena.look()` → `{map, kind, night, sand}` (fx.js
+  saca de `sand` el color de las partículas de arena), `landmarks.scoreBoard.map`. main.js `forceVenue(v)` acepta tipo o id (`onSettings` de arena con
+  la copia de los ajustes y `forceMap`). Detalle en notes/arena.md «Sedes».
 
 ### TAJO y playa completa (10-nov-2026)
 Identidad propia de los atletas (dirección «TAJO», lo contrario de otros juegos de vóley playa low-poly: cabezones de ~5 cabezas, superficies lisas,

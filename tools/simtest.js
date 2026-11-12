@@ -18,6 +18,9 @@
  *   La matriz (dificultades y bots) va en paralelo con worker_threads.
  *   minutosMatriz = minutos de juego por semilla y casilla (0 = saltar matriz); semillas = partidas por casilla.
  *   SIMTEST_ONLY=matrix: solo la matriz. MATRIX_FILTER='novato vs easy|medio vs normal': solo esas casillas.
+ *   SIMTEST_ONLY=e1: solo la sección «Maestría (E1)». SIMTEST_MASTERY=1: la matriz con createGame({mastery:true}) (la CPU lee la finta
+ *   y usa golpe colocado / colocación a un lado); SIMTEST_MASTERY=2: además los bots usan finta, colocado, filo y colocación dirigida.
+ *   SIMTEST_ONLY=gym: solo la sección «Gimnasio (E6)» (createGame({drill}): ejercicios y peloteo libre).
  */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), os = require('os');
@@ -29,6 +32,7 @@ const NSEED = Math.max(1, +(process.argv[5] || 4)); // semillas por casilla de l
 // SIMTEST_ROOKIE=all: el bot novato juega TODOS los partidos con la ayuda de primer partido (medir rookieProf);
 // SIMTEST_ROOKIE=off: ninguno. Por defecto solo el primero, como el juego real (main.js isRookie).
 const ROOKIE_MODE = process.env.SIMTEST_ROOKIE || 'first';
+const MASTERY_MODE = +(process.env.SIMTEST_MASTERY || 0); // E1: 1 = matriz con mastery (la CPU), 2 = y los bots la usan
 const ONLY = process.env.SIMTEST_ONLY || '', MFILTER = process.env.MATRIX_FILTER ? new RegExp(process.env.MATRIX_FILTER) : null;
 
 function load() {
@@ -45,7 +49,7 @@ let failures = 0;
 const fail = m => { failures++; console.error('FALLO:', m); };
 const KNOWN = ['hit', 'block', 'net', 'land', 'point', 'set', 'match', 'gameOver', 'whistle', 'jump', 'switch', 'serveReady',
   'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange', 'dribble', 'juggle', 'challenge', 'challengeResult',
-  'rotation', 'libero', 'blockPress']; // (rotation y libero, solo 6v6; blockPress = GOLPEAR en el aire en el bloqueo, sim.js blockPress)
+  'rotation', 'libero', 'blockPress', 'feint', 'drillStage', 'drillRep', 'drillEnd']; // (feint: E1, solo con createGame({mastery:true})) // (rotation y libero, solo 6v6; blockPress = GOLPEAR en el aire en el bloqueo, sim.js blockPress)
 const pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '-';
 // Vocabulario del árbitro (FCVB): cada motivo de punto con sus textos válidos. Un texto nuevo debe pasar por aquí.
 const POINT_TEXTS = {
@@ -369,11 +373,22 @@ function gapAim(g, p, out) {
  *  opt.role (lote A): puesto del humano. Con 'S' (colocador) el 2º toque de su equipo es suyo: sigue yendo a su sitio (VB.AI6.spot,
  *  el punto de colocación) y de ahí al balón cuando lo lee (pase alto: poco error), y al golpear de 2º empuja el stick en una de las
  *  4 direcciones (al azar: VB.AI6.laneOf elige el carril). Los demás puestos, igual que sin role. */
+/** E1 (maestría): con qué frecuencia usa cada bot lo nuevo cuando juega con opt.mastery (SIMTEST_MASTERY=2): finta (con el bloqueo
+ *  arriba arma GOLPEAR 0,1 s antes y cambia a SALTAR o COLOCAR a los 0,08 s), golpe colocado (COLOCAR en vez de GOLPEAR con el bloqueo
+ *  arriba), al filo (la diana del hueco a 0,15 m de la lateral) y colocación dirigida (stick al colocar de 2º toque). */
+const BOT_MASTERY = {
+  perfecto: { feint: 0.2, roll: 0.15, edge: 0.4, set: 0.5 }, bueno: { feint: 0.15, roll: 0.12, edge: 0.3, set: 0.4 },
+  medio: { feint: 0.1, roll: 0.08, edge: 0.2, set: 0.3 }, novato: { feint: 0.03, roll: 0.03, edge: 0, set: 0.1 }
+};
+// SIMTEST_BOTM=feint,set: solo esas jugadas (afinado; las demás a 0)
+if (process.env.SIMTEST_BOTM) { const on = process.env.SIMTEST_BOTM.split(","); for (const b in BOT_MASTERY) for (const k in BOT_MASTERY[b]) if (!on.includes(k)) BOT_MASTERY[b][k] = 0; }
+const SETDIRS = [[-1, 0], [1, 0], [0, 1], [0, -1]]; // colocación dirigida (mundo, equipo 0 en x > 0): ↑ rápida, ↓ alta, ← → a un lado
 function makeBot(bp, seed, opt) {
   const six = !!(opt && opt.six), role = six && opt.role || '';
+  const pm = opt && opt.mastery || null; let mPlan = '', mEdge = false, mSet = null, mT = -9, mBtn = 'jump'; // E1: maestría del bot
   const LANES = [[1, 0], [-1, 0], [0, 1], [0, -1]]; let laneV = null; // stick del colocador bot en su 2º toque (mundo; laneOf lo pasa a local)
   const rng = S._makeRng(seed), gauss = () => (rng() + rng() + rng() + rng() - 2) * 1.732;
-  const mv = [0, 0], want = [0, 0], aimv = [0, 0], out = { move: mv, hit: false, jump: false, switchPlayer: false };
+  const mv = [0, 0], want = [0, 0], aimv = [0, 0], out = { move: mv, hit: false, jump: false, jset: false, switchPlayer: false };
   let stamp = -9, lead = 0, jlead = 0, eu = 0, ev = 0, presses = 0, useAim = false, useGap = false, serveWait = 0;
   let react = 0, wrongT = 0, wrongD = 0, jumpOk = true, blockT = 0, blockSeen = -1;
   let lastCtrl = null, yawE = 0, yawT = 0, naive = false; const mvOut = [0, 0], aimSt = [0, 0];
@@ -381,7 +396,7 @@ function makeBot(bp, seed, opt) {
   // reacción: lognormal con mediana bp.react (+ despiste ocasional)
   const sampleReact = () => bp.react * Math.exp(gauss() * bp.rlog) + (rng() < bp.lapse ? 0.2 + rng() * 0.3 : 0);
   return (g) => {
-    const p = g.ctrl, sd = 1; out.hit = out.jump = out.switchPlayer = false; out.move = mv;
+    const p = g.ctrl, sd = 1; out.hit = out.jump = out.switchPlayer = out.jset = false; out.move = mv;
     if (p !== lastCtrl) { if (lastCtrl && bp.camYaw) { yawE = gauss() * bp.camYaw * Math.PI / 180; yawT = g.time; } lastCtrl = p; }
     if (g.mode === 'serve') {
       mv[0] = mv[1] = 0; want[0] = want[1] = 0;
@@ -419,6 +434,8 @@ function makeBot(bp, seed, opt) {
       const a = rng() * 6.283; aimv[0] = Math.cos(a); aimv[1] = Math.sin(a); useAim = rng() < bp.aim; useGap = rng() < (bp.gap || 0);
       naive = !bp.block && g.touchTeam === 1 && g.touches === 2 && rng() < (bp.netJump || 0); // "bloqueo" de novato
       if (bp.misSwitch && rng() < bp.misSwitch) out.switchPlayer = true;
+      if (pm) { const r = rng(); mPlan = r < pm.feint ? 'feint' : r < pm.feint + pm.roll ? 'roll' : ''; mEdge = rng() < pm.edge;
+        mSet = rng() < pm.set ? SETDIRS[Math.floor(rng() * 4) % 4] : null; mBtn = rng() < 0.6 ? 'jump' : 'jset'; mT = -9; }
     }
     const since = g.time - g.lastTouchT, job = g.jobs[0] === p;
     const set2 = role === 'S' && job && g.touchTeam === 0 && g.touches === 1; // colocador bot: el 2º toque es suyo
@@ -454,13 +471,20 @@ function makeBot(bp, seed, opt) {
       S.hitWindow(g, p, w);
       if (attack && jumpOk && p.z === 0 && w.attack && w.jumpT <= jlead && Math.hypot(g.pr3.x + 0.35 - p.x, g.pr3.y - p.y) < 1.3) out.jump = true;
       const near = Math.hypot(b.x - p.x, b.y - p.y) < 2.6;
-      if (near && !(attack && jumpOk && p.z === 0 && w.jumpT > -0.2) && presses < 2 && !g.swingLive && w.t <= lead) {
-        out.hit = true; presses++;
+      // E1: con el bloqueo rival arriba, finta (arma antes) o golpe colocado (COLOCAR en vez de GOLPEAR)
+      const blkUp = pm && mPlan && p.z > 0.25 && g.touchTeam === 0 && g.touches === 2 && g.teams[1].some(q => q.z > 0.15 && Math.abs(q.x) < 1.2);
+      if (near && !(attack && jumpOk && p.z === 0 && w.jumpT > -0.2) && presses < 2 && !g.swingLive && w.t <= lead + (blkUp && mPlan === 'feint' ? 0.1 : 0)) {
+        if (blkUp && mPlan === 'roll') out.jset = true; else out.hit = true;
+        presses++;
+        if (blkUp && mPlan === 'feint') mT = g.time;
         if (set2) { laneV = LANES[Math.floor(rng() * 4) % 4]; out.move = laneV; } // colocador: elige carril con el stick (laneOf)
         else if (useGap && p.z > 0.25) { gapAim(g, p, aimv); out.move = aimv; } // remate: busca el hueco
         else if (useAim) out.move = aimv;
+        if (mSet && p.z === 0 && g.touchTeam === 0 && g.touches === 1) out.move = mSet; // E1: colocación dirigida
       }
     }
+    if (mT > 0 && g.swingLive && g.time - mT >= 0.08) { out[mBtn] = true; mT = -9; } // E1: el cambio de botón de la finta
+    if (mSet && g.swingLive && p.z === 0 && g.touchTeam === 0 && g.touches === 1) out.move = mSet;
     if (set2 && laneV && g.swingLive) out.move = laneV; // mantiene el stick hasta que el gesto llega al balón (sim.hit lee la dirección ahí)
     else if (!set2) laneV = null;
     // bloqueo: salta cuando VE despegar al rematador rival (con su reacción y su error de timing)
@@ -474,7 +498,7 @@ function makeBot(bp, seed, opt) {
     if (g.aim3 && g.aim3.on && g.ctrl === p) {
       if (useGap || useAim) {
         if (useGap) gapAim(g, p, aimv);
-        const tx = Math.max(-8.3, Math.min(-1.4, -5 + aimv[0] * 3)), ty = Math.max(-3.9, Math.min(3.9, aimv[1] * 3.7));
+        const tx = Math.max(-8.3, Math.min(-1.4, -5 + aimv[0] * 3)), ty = pm && mEdge && useGap ? (aimv[1] < 0 ? -1 : 1) * (g.HW - 0.15) : Math.max(-3.9, Math.min(3.9, aimv[1] * 3.7));
         const dx = tx - g.aim3.x, dy = ty - g.aim3.y, d = Math.hypot(dx, dy), f = d > 1e-6 ? Math.min(1, d / 0.25) / d : 0;
         aimSt[0] = dx * f; aimSt[1] = dy * f; out.move = aimSt;
       } else { aimSt[0] = aimSt[1] = 0; out.move = aimSt; }
@@ -569,7 +593,10 @@ function runJob(j) {
   if (j.kind === 'hl') return runHlMatch(j);
   const opts = j.kind === 'auto' ? { demo: false, autopilot: true, difficulty: j.diff, seed: j.seed } :
     { demo: false, difficulty: j.diff, serveClock: true, seed: j.seed, rookie: !!BOTS[j.bot].rookie && ROOKIE_MODE !== 'off' };
-  const r = run(j.label, opts, j.seconds, j.kind === 'bot' ? makeBot(BOTS[j.bot], j.seed * 7 + 3) : null, true);
+  // E1: SIMTEST_MASTERY=1 juega los partidos de los bots con createGame({mastery:true}) (la CPU lee y usa lo suyo; el bot no usa nada
+  // nuevo); SIMTEST_MASTERY=2, además el bot usa finta / golpe colocado / al filo / colocación dirigida (BOT_MASTERY)
+  if (j.kind === 'bot' && MASTERY_MODE) opts.mastery = true;
+  const r = run(j.label, opts, j.seconds, j.kind === 'bot' ? makeBot(BOTS[j.bot], j.seed * 7 + 3, MASTERY_MODE === 2 ? { mastery: BOT_MASTERY[j.bot] } : undefined) : null, true);
   return { label: j.label, kind: j.kind, bot: j.bot, diff: j.diff, won0: r.st.won[0], points: r.st.points, med: r.med,
     hits: r.st.hits, how: r.st.how, blocks: r.st.blocks, dives: r.st.dives, misses: r.st.misses, hgrades: r.st.hgrades, why: r.st.why,
     matchWins: r.matchWins, failures };
@@ -591,7 +618,499 @@ function runMatrix(jobs) {
   });
 }
 
+// ================= Maestría (E1, sprint 5) =================
+/* createGame({mastery:true}): finta, golpe colocado ('roll'), al filo / manos fuera, colocación dirigida y la lectura de la CPU.
+ * SIMTEST_ONLY=e1 node tools/simtest.js: solo esta sección. Escenarios propios con la sim entera (step + entrada real) y casos con
+ * S._hit; todo el azar del test es el de la sim y el de un mulberry propio (no toca g.rng). Ver notes/sim.md «E1 (sprint 5)». */
+function e1Mulberry(seed) {
+  let s = seed >>> 0;
+  return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+/** 3r toque del humano con la sim entera: el compañero IA acaba de colocar (x 1,35, cima 5,3) y el humano salta en el momento ideal
+ *  (hitWindow.jumpT) y pulsa o.b1 ('hit' | 'jump' | 'jset') cuando hitWindow.press <= o.arm (0 = pulsación perfecta; 0,1 = 0,1 s antes);
+ *  con o.b2 pulsa ese botón o.dt s después (finta). o.tx/o.ty: diana de la mira libre (se fija en g.aim3 cada paso, con los límites de
+ *  la sim). La CPU juega con su IA (bloqueo y defensa). Devuelve el toque del humano, la finta, los bloqueos y el punto. */
+function e1Atk(seed, o) {
+  o = o || {};
+  const g = S.createGame({ seed, ctrl: 'one', stats: true, mastery: o.mastery !== false, difficulty: o.diff || 'normal' });
+  const h = g.teams[0][0], m = g.teams[0][1], b = g.ball, G = C.G, c = g.teams[1];
+  g.mode = 'rally'; b.held = null; S.drainEvents(g);
+  const yy = o.y != null ? o.y : ((seed % 7) - 3) * 0.8;
+  m.x = 2.0; m.y = yy - 1.0; h.x = 2.4; h.y = yy;
+  c[0].x = -1.2; c[0].y = yy * 0.6; c[1].x = -6; c[1].y = -yy * 0.3;
+  Object.assign(b, { x: m.x, y: m.y, z: 2.3, dip: 0, wobA: 0, spin: 0 });
+  { const z0 = b.z, tz = 3, ap = 5.3, vz = Math.sqrt(2 * G * (ap - z0)), T = vz / G + Math.sqrt(2 * (ap - tz) / G); b.vx = (1.35 - b.x) / T; b.vy = (yy - b.y) / T; b.vz = vz; }
+  g.touchTeam = 0; g.touches = 2; g.lastPlayer = m; g.lastTeam = 0; g.lastKind = 'set'; g.lastShot = 'overhead'; g.lastQ = 0.95; g.lastTouchT = g.time; g.ctrl = h;
+  S._refreshPred(g);
+  const r = { h: null, feint: null, blocks: 0, pt: null, g, cpuDig: null, t1: -1 };
+  const w = {}; let jumped = false, p1 = false, p2 = false;
+  for (let i = 0; i < 120 * 10 && !r.pt; i++) {
+    const inp = { move: [0, 0], hit: false, jump: false, jset: false, switchPlayer: false };
+    if (!r.h && g.mode === 'rally') {
+      S.hitWindow(g, h, w);
+      if (!jumped && h.z === 0 && w.attack && w.jumpT <= 0) { inp.jump = true; jumped = true; }
+      else if (jumped && h.z > 0.2 && !p1 && w.press <= (o.arm || 0)) { inp[o.b1 || 'hit'] = true; p1 = true; r.t1 = g.time; }
+      else if (p1 && o.b2 && !p2 && g.time - r.t1 >= o.dt - 1e-9) { inp[o.b2] = true; p2 = true; }
+      if (o.tx != null && g.aim3.on && g.aim3.kind === 'spike') { g.aim3.x = o.tx; g.aim3.y = o.ty; }
+    }
+    S.step(g, DT, inp);
+    for (const e of S.drainEvents(g)) {
+      if (e.type === 'hit' && e.player === h && !r.h) r.h = e;
+      else if (e.type === 'hit' && r.h && e.team === 1 && !r.cpuDig) r.cpuDig = e;
+      if (e.type === 'feint') r.feint = e;
+      if (e.type === 'block' && r.h && !r.cpuDig) r.blocks++;
+      if (e.type === 'point') r.pt = e;
+    }
+  }
+  return r;
+}
+function e1Rally(g, ball) { g.mode = 'rally'; g.ball.held = null; Object.assign(g.ball, { vx: 0, vy: 0, vz: 0, dip: 0, wobA: 0 }, ball); }
+function e1Section() {
+  const f0 = failures, res = [], t0 = Date.now();
+  // SIMTEST_E1='b,c2': solo esas pruebas (afinado); cada resultado se escribe al momento
+  const E1F = process.env.SIMTEST_E1 ? process.env.SIMTEST_E1.split(',') : null, want = k => !E1F || E1F.includes(k);
+  const push0 = res.push.bind(res); res.push = (r) => { console.log('  ' + r[0] + ' ' + JSON.stringify(r[2]) + (r[1] ? '' : '   <<< FALLA')); return push0(r); };
+  console.log('\nMaestría (E1, createGame({mastery:true}))');
+  const isNum = v => typeof v === 'number' && Number.isFinite(v);
+  // (a) base: sin la bandera, con mastery:false, y con mastery:true en la demo / con autopilot / en 6v6 = idéntico (puntos y llamadas a g.rng)
+  if (want('a')) {
+    const trace = (opts, bot, secs) => {
+      const g = S.createGame(Object.assign({ stats: true }, opts)); let n = 0; const r0 = g.rng; g.rng = () => { n++; return r0(); };
+      const pts = []; const inp = bot ? makeBot(BOTS.medio, (opts.seed | 0) * 7 + 3) : null;
+      for (let i = 0; i < Math.round(secs / DT); i++) { S.step(g, DT, inp ? inp(g) : null);
+        for (const e of S.drainEvents(g)) if (e.type === 'point') pts.push(e.team + e.reason + e.how + e.score.join('-')); }
+      return { pts: pts.join(' '), rng: n, m: g.mastery };
+    };
+    let same = 0, n = 0, flags = 0; const bad = [];
+    for (let s = 1; s <= 20; s++) {
+      const d = ['easy', 'normal', 'hard', 'expert'][s % 4];
+      const cases = [[{ seed: s, demo: true }, false], [{ seed: s, autopilot: true, difficulty: d }, false], [{ seed: s, difficulty: d }, true]];
+      if (s <= 4) cases.push([{ seed: s, format: '6v6', difficulty: d }, false]);
+      for (const [o, bot] of cases) {
+        const a = trace(o, bot, 150), b2 = trace(Object.assign({ mastery: o.demo || o.autopilot || o.format ? true : false }, o), bot, 150);
+        n++; if (a.pts === b2.pts && a.rng === b2.rng) same++; else bad.push(JSON.stringify(o));
+        if (b2.m) flags++;
+      }
+    }
+    res.push(['(a) sin la bandera = mastery:false = mastery:true en demo / autopilot / 6v6 (puntos y llamadas a g.rng, 20 semillas × 150 s)', same === n && flags === 0, { iguales: same + '/' + n, bandera: flags, distintas: bad.slice(0, 3) }]);
+  }
+  // (a2) mastery:true con roll = zoneSet = 0 y el bot que no usa nada nuevo: cuántas partidas cambian (solo la reacción ante la dejada
+  // en Difícil/Experto y el filo de la mira a ±3,9 m). Informativo
+  if (want('a2')) {
+    const keep = {}; for (const k in VB.DIFF) { keep[k] = [VB.DIFF[k].roll, VB.DIFF[k].zoneSet]; VB.DIFF[k].roll = 0; VB.DIFF[k].zoneSet = 0; }
+    let diff = 0, n = 0, pts = 0, ptsSame = 0;
+    try {
+      for (let s = 1; s <= 12; s++) {
+        const d = ['easy', 'normal', 'hard', 'expert'][s % 4], run1 = (ms) => {
+          const g = S.createGame({ seed: 40 + s, difficulty: d, mastery: ms }), inp = makeBot(BOTS.medio, s * 7 + 3), out = [];
+          for (let i = 0; i < Math.round(150 / DT); i++) { S.step(g, DT, inp(g)); for (const e of S.drainEvents(g)) if (e.type === 'point') out.push(e.team + e.reason + e.how); }
+          return out;
+        };
+        const a = run1(false), b2 = run1(true); n++; if (a.join() !== b2.join()) diff++;
+        let k = 0; while (k < a.length && k < b2.length && a[k] === b2[k]) k++; ptsSame += k; pts += a.length;
+      }
+    } finally { for (const k in keep) { VB.DIFF[k].roll = keep[k][0]; VB.DIFF[k].zoneSet = keep[k][1]; } }
+    res.push(['(a2) mastery con roll = zoneSet = 0 y bot sin lo nuevo: partidas que cambian (informativo: lectura de la dejada y filo a ±3,9 m)', true,
+      { cambian: diff + '/' + n, puntosAntesDeDivergir: pct(ptsSame, pts) }]);
+  }
+  // (b) finta: GOLPEAR 0,1 s antes y SALTAR a los 0,10 s → hit.feint y evento feint; a los 0,015 s (< minT 0,03), no; sin mastery, nunca;
+  //     con un gesto malo (GOLPEAR 0,25 s antes: 'poor') tampoco engaña (fixer sprint 5)
+  if (want('b')) {
+    const o = { si: 0, no: 0, ev: 0, roll: 0, rollF: 0, off: 0, poor: 0, n: 0, q: 0, qv: 0 };
+    for (let s = 1; s <= 30; s++) {
+      const a = e1Atk(s, { b1: 'hit', arm: 0.1, b2: 'jump', dt: 0.10 }), b2 = e1Atk(s, { b1: 'hit', arm: 0.1, b2: 'jump', dt: 0.015 });
+      const pr = e1Atk(s, { b1: 'hit', arm: 0.25, b2: 'jump', dt: 0.10 });
+      const c2 = e1Atk(s, { b1: 'hit', arm: 0.1, b2: 'jset', dt: 0.10 }), d2 = e1Atk(s, { b1: 'hit', arm: 0.1, b2: 'jump', dt: 0.10, mastery: false });
+      const v = e1Atk(s, { b1: 'jump', arm: 0.1 });
+      if (!a.h || !b2.h || !c2.h || !d2.h || !v.h || !pr.h) continue; o.n++;
+      if (pr.h.feint === false && !pr.feint && pr.h.grade === 'poor') o.poor++;
+      if (a.h.feint === true && a.h.shot === 'tip' && a.feint && a.feint.shot === 'tip' && a.feint.player === a.h.player) o.si++;
+      if (a.feint) o.ev++;
+      if (b2.h.feint === false && !b2.feint && b2.h.shot === 'tip') o.no++;
+      if (c2.h.shot === 'roll' && c2.h.kind === 'spike') { o.roll++; if (c2.h.feint && c2.feint && c2.feint.shot === 'roll') o.rollF++; }
+      if (d2.h.feint === false && !d2.feint && d2.h.shot === 'tip') o.off++;
+      o.q += a.h.quality; o.qv += v.h.quality;
+    }
+    const ok = o.n >= 25 && o.si === o.n && o.no === o.n && o.roll === o.n && o.rollF === o.n && o.off === o.n && o.poor === o.n && Math.abs(o.q / o.qv - VB.MASTERY.feint.q) < 0.02;
+    res.push(['(b) finta: GOLPEAR→SALTAR a los 0,10 s = finta (evento feint), a los 0,015 s no, gesto malo no, GOLPEAR→COLOCAR = finta de colocado, sin mastery nunca; calidad ×0,92', ok,
+      Object.assign(o, { q: +(o.q / o.qv).toFixed(3), qv: undefined })]);
+  }
+  // (b2) premio: % de puntos de la dejada con finta frente a la dejada a la vista (mismo timing), y la dejada a la vista con y sin mastery
+  const tipPts = (diff, plan, ms, N) => { let w = 0, n = 0; for (let s = 1; s <= N; s++) { const r = e1Atk(1000 + s, Object.assign({ diff, mastery: ms }, plan)); if (!r.h || !r.pt) continue; n++; if (r.pt.team === 0) w++; } return n ? w / n : 0; };
+  if (want('b2')) {
+    const N = 300, F = { b1: 'hit', arm: 0.1, b2: 'jump', dt: 0.1 }, V = { b1: 'jump', arm: 0.1 };
+    const o = {};
+    for (const d of ['easy', 'normal', 'hard', 'expert']) o[d] = { finta: tipPts(d, F, true, N), vista: tipPts(d, V, true, N), vistaSin: tipPts(d, V, false, N) };
+    const H = o.hard, E = o.expert;
+    const ok = H.finta >= H.vista + 0.10 && E.vista <= E.vistaSin + 0.005 && Math.abs(o.easy.vista - o.easy.vistaSin) <= 0.02 && Math.abs(o.normal.vista - o.normal.vistaSin) <= 0.02;
+    const fmt = {}; for (const d in o) fmt[d] = Object.entries(o[d]).map(([k, v]) => k + ' ' + (100 * v).toFixed(0) + '%').join(' / ');
+    res.push(['(b2) Difícil: finta >= dejada a la vista + 10 puntos; Experto: a la vista <= sin mastery; Fácil/Normal: a la vista igual (±2)', ok, fmt]);
+  }
+  // (c) golpe colocado: COLOCAR en el 3r toque = 'roll' (kind 'spike', nunca 'tip'); pasa el bloqueo; rentabilidad frente al remate perfecto
+  if (want('c')) {
+    const o = {}; let okShape = true, n = 0, over = 0;
+    for (const d of ['normal', 'hard']) {
+      let rw = 0, rn = 0, pw = 0, pn = 0, rb = 0, pb = 0;
+      for (let s = 1; s <= 300; s++) {
+        const ty = ((s % 5) - 2) * 1.2;
+        const r = e1Atk(2000 + s, { diff: d, b1: 'jset', tx: -7.2, ty }), p = e1Atk(2000 + s, { diff: d, b1: 'hit', tx: -7.2, ty });
+        if (r.h) { n++; if (r.h.shot !== 'roll' || r.h.kind !== 'spike') okShape = false; if (r.pt) { rn++; if (r.pt.team === 0) rw++; } if (r.blocks) rb++; else over++; }
+        if (p.h && p.h.grade === 'perfect' && p.pt) { pn++; if (p.pt.team === 0) pw++; if (p.blocks) pb++; }
+      }
+      o[d] = { colocado: pct(rw, rn), remate: pct(pw, pn), ratio: +((rw / rn) / (pw / pn)).toFixed(2), bloqueosColocado: pct(rb, rn), bloqueosRemate: pct(pb, pn) };
+    }
+    const okR = ['normal', 'hard'].every(d => o[d].ratio >= 0.6 && o[d].ratio <= 0.9);
+    res.push(['(c) golpe colocado: shot roll / kind spike; pasa el bloqueo >= 85 %; puntos 0,6-0,9× los del remate perfecto (Normal, Difícil)', okShape && over / n >= 0.85 && okR,
+      Object.assign({ pasa: pct(over, n) }, o)]);
+  }
+  // (c2) la CPU usa el golpe colocado cuando le toca (bloqueo humano arriba y sin dejada): frecuencia ~ pr.roll; 0 en la demo
+  if (want('c2')) {
+    const o = {};
+    for (const d of ['normal', 'expert']) {
+      let up = 0, rolls = 0, tips = 0;
+      for (let s = 1; s <= 10; s++) {
+        const g = S.createGame({ seed: 3000 + s, difficulty: d, mastery: true }), inp = makeBot(BOTS.bueno, s * 13 + 1);
+        for (let i = 0; i < Math.round(240 / DT); i++) {
+          S.step(g, DT, inp(g));
+          for (const e of S.drainEvents(g)) if (e.type === 'hit' && e.team === 1 && (e.kind === 'spike' || e.shot === 'tip') && e.z > C.NET_H + 0.1) {
+            const a = e.player, bu = g.teams[0].some(q => q.z > 0.3 && Math.abs(q.x) < 1.2 && Math.abs(q.y - a.y) < 1.2);
+            if (!bu) continue; if (e.shot === 'tip') { tips++; continue; } up++; if (e.shot === 'roll') rolls++;
+          }
+        }
+      }
+      o[d] = { ocasiones: up, colocados: rolls, frec: +(rolls / Math.max(1, up)).toFixed(3), pr: VB.DIFF[d].roll };
+    }
+    let demoRoll = 0; { const g = S.createGame({ seed: 5, demo: true, mastery: true }); for (let i = 0; i < Math.round(600 / DT); i++) { S.step(g, DT, null); for (const e of S.drainEvents(g)) if (e.type === 'hit' && e.shot === 'roll') demoRoll++; } }
+    const near = (x) => x.ocasiones >= 40 ? Math.abs(x.frec - x.pr) <= Math.max(0.3 * x.pr, 2.5 * Math.sqrt(x.pr * (1 - x.pr) / x.ocasiones)) : x.colocados >= 0;
+    res.push(['(c2) la CPU coloca con frecuencia ~ pr.roll (±30 % o ±2,5σ) con el bloqueo arriba; 0 en la demo', near(o.normal) && near(o.expert) && demoRoll === 0, Object.assign({ demo: demoRoll }, o)]);
+  }
+  // (d) al filo: diana a y = HW − 0,1 frente a y = 2 con la misma calidad: dispersión ×1,25-1,4, más fuera (>= 8 puntos), defensa de la CPU
+  // (digOk) >= 10 % más baja. Y la diana llega a la línea solo con mastery
+  if (want('d')) {
+    const shoot = (ty, N) => {
+      let sp = 0, out = 0, dig = 0, n = 0;
+      for (let k = 0; k < N; k++) {
+        const g = S.createGame({ demo: false, seed: 500 + k, mastery: true, difficulty: 'normal' }), h = g.teams[0][0], m = g.teams[0][1];
+        e1Rally(g, { x: 1.4, y: 0.5, z: C.NET_H + 0.6, vz: -0.5 }); g.touchTeam = 0; g.touches = 2; g.lastTeam = 0; g.lastPlayer = m; g.lastKind = 'set';
+        g.ctrl = h; h.x = 1.6; h.y = 0.5; h.z = 0.6; h.vz = 0.3; m.x = 6; m.y = -2;
+        for (const q of g.teams[1]) { q.x = -6; q.y = q.idx ? 2 : -2; }
+        const tx = -(3.5 + (k % 4)); g.aim3.on = true; g.aim3.kind = 'spike'; g.aim3.x = tx; g.aim3.y = ty;
+        S._hit(g, h, null, 0.06, ''); const hv = S.drainEvents(g).find(e => e.type === 'hit'); if (!hv || hv.kind !== 'spike') continue;
+        const ld = S.predictLanding(g, {}); n++; sp += Math.hypot(ld.x - tx, ld.y - ty); if (Math.abs(ld.y) > g.HW + C.IN_TOL || Math.abs(ld.x) > g.HL + C.IN_TOL) out++; if (g.digOk) dig++;
+      }
+      return { sp: sp / n, out: out / n, dig: dig / n, n };
+    };
+    const E = shoot(4.4, 600), M = shoot(2, 600), kSp = E.sp / M.sp;
+    const lim = (ms) => { const g = S.createGame({ demo: false, seed: 9, mastery: ms }), h = g.teams[0][0], m = g.teams[0][1];
+      e1Rally(g, { x: 1.2, y: 0.5, z: 4.6, vz: 0 }); g.touchTeam = 0; g.touches = 2; g.lastTeam = 0; g.lastPlayer = m; g.lastKind = 'set';
+      g.ctrl = h; h.x = 1.5; h.y = 0.5; h.z = 0.3; h.vz = 2.5; m.x = 6; S.step(g, DT, null); g.aim3.x = -12; g.aim3.y = 9; S.step(g, DT, { move: [-0.6, 0.8], hit: false, jump: false });
+      return [+g.aim3.x.toFixed(2), +g.aim3.y.toFixed(2)]; };
+    const lOn = lim(true), lOff = lim(false), ap = (() => { const g = S.createGame({ demo: false, seed: 9, mastery: true }); return S.edgeOf(g, -5, 4.45); })();
+    res.push(['(d) al filo: dispersión ×1,25-1,4, >= 8 puntos más fuera, digOk de la CPU >= 10 % más bajo; la diana llega a 0,05 m de la línea solo con mastery',
+      kSp >= 1.25 && kSp <= 1.4 && E.out >= M.out + 0.08 && E.dig <= M.dig * 0.9 && lOn[1] >= 4.44 && lOff[1] <= 3.9 + 1e-9 && ap > 0.9,
+      { dispersion: +kSp.toFixed(2), fuera: pct(E.out * 1000, 1000) + ' vs ' + pct(M.out * 1000, 1000), digOk: pct(E.dig * 1000, 1000) + ' vs ' + pct(M.dig * 1000, 1000), diana: [lOn, lOff], edgeOf: +ap.toFixed(2) }]);
+  }
+  // (e) colocación dirigida: cada dirección da su tempo y su destino (±0,5 m con q = 1); neutra idéntica a hoy; con aimSet:false nunca
+  if (want('e')) {
+    const setCase = (aim, len, ms, aimSet, seed) => {
+      const g = S.createGame({ demo: false, seed: seed || 77, mastery: ms, aimSet }), h = g.teams[0][0], m = g.teams[0][1];
+      e1Rally(g, { x: 2.0, y: 0.3, z: 2.2, vx: 0, vy: 0, vz: -1 }); g.touchTeam = 0; g.touches = 1; g.lastTeam = 0; g.lastPlayer = m; g.lastKind = 'pass';
+      g.ctrl = h; h.x = 2.0; h.y = 0.3; h.z = 0; m.x = 4.3; m.y = -1.5; g.swingLen = len;
+      S._hit(g, h, aim, 0, ''); const hv = S.drainEvents(g).find(e => e.type === 'hit');
+      const pr = S.predict(g, 3, {}); return { hv, x: pr.x, y: pr.y, v: [g.ball.vx, g.ball.vy, g.ball.vz], g };
+    };
+    const M = VB.MASTERY.set, o = {};
+    const q = setCase([-1, 0], 1, true), hi = setCase([1, 0], 1, true), l = setCase([0, 1], 1, true), r2 = setCase([0, -1], 1, true);
+    const neu0 = setCase(null, 0, false), neu1 = setCase(null, 0, true), dead = setCase([0, 1], 0.4, true), off = setCase([-1, 0], 1, true, false);
+    o.quick = [q.hv.tempo, +q.x.toFixed(2), +q.y.toFixed(2)]; o.high = [hi.hv.tempo, +hi.x.toFixed(2)]; o.lane = [l.hv.tempo, +l.y.toFixed(2), r2.hv.tempo, +r2.y.toFixed(2)];
+    const ok = q.hv.tempo === 'quick' && Math.abs(q.x - M.quickX) < 0.5 && Math.abs(q.y - (-1.5)) < 0.5 &&
+      hi.hv.tempo === 'high' && Math.abs(hi.x - M.highX) < 0.5 && l.hv.tempo === 'lane' && Math.abs(l.y - M.laneY) < 0.5 && r2.hv.tempo === 'lane' && Math.abs(r2.y + M.laneY) < 0.5 &&
+      neu1.hv.tempo === '' && neu0.v.every((v, i) => v === neu1.v[i]) && dead.hv.tempo === '' && off.hv.tempo === '' && q.g.lastTempo === 'quick';
+    o.neutra = neu0.v.every((v, i) => v === neu1.v[i]); o.zonaMuerta = dead.hv.tempo; o.aimSetOff = off.hv.tempo;
+    // vista previa (setPreview) = destino real sin error
+    { const g = S.createGame({ demo: false, seed: 5, mastery: true }), h = g.teams[0][0], m = g.teams[0][1];
+      e1Rally(g, { x: 2.6, y: 0.3, z: 3.2, vx: -0.5, vz: -1 }); g.touchTeam = 0; g.touches = 1; g.lastTeam = 0; g.lastPlayer = m; g.lastKind = 'pass'; g.lastTouchT = g.time;
+      g.ctrl = h; h.x = 2.0; h.y = 0.3; m.x = 4.3; m.y = -1.5; g.ctrlMode = 'one';
+      S.step(g, DT, { move: [0, 1], hit: false, jump: false }); const sp = S.setPreview(g, {});
+      o.vista = sp && [sp.tempo, +sp.x.toFixed(2), +sp.y.toFixed(2)];
+      if (!(sp && sp.tempo === 'lane' && Math.abs(sp.y - M.laneY) < 1e-9 && Math.abs(sp.x - 1.35) < 1e-9)) o.vistaMal = true; }
+    res.push(['(e) colocación dirigida: ↑ rápida, ↓ alta, ← → a un lado (destino ±0,5 m); neutra idéntica; zona muerta 0,6; aimSet:false sin tempo; setPreview', ok && !o.vistaMal, o]);
+  }
+  // (e2) la CPU coloca a un lado (zoneSet) con frecuencia ~ pr.zoneSet y siempre lejos del jugador del humano; su atacante remata
+  if (want('e2')) {
+    const o = {};
+    for (const d of ['normal', 'expert']) {
+      let sets = 0, lane = 0, away = 0, spk = 0, pend = null;
+      for (let s = 1; s <= 8; s++) {
+        const g = S.createGame({ seed: 4000 + s, difficulty: d, mastery: true }), inp = makeBot(BOTS.medio, s * 11 + 5);
+        for (let i = 0; i < Math.round(240 / DT); i++) {
+          const hy = g.ctrl.y; S.step(g, DT, inp(g));
+          for (const e of S.drainEvents(g)) {
+            if (e.type === 'hit' && e.team === 1 && e.kind === 'set' && e.touch === 2 && e.shot !== 'jump') { sets++; pend = null;
+              if (e.tempo === 'lane') { lane++; const pr = S.predict(g, 3, {}); if (Math.abs(hy) <= 0.2 || Math.sign(pr.y) === -Math.sign(hy)) away++; pend = 1; } }
+            else if (e.type === 'hit' && pend && e.team === 1) { if (e.kind === 'spike' || e.shot === 'tip') spk++; pend = null; }
+            else if (e.type === 'point') pend = null;
+          }
+        }
+      }
+      o[d] = { colocaciones: sets, aUnLado: lane, frec: +(lane / Math.max(1, sets)).toFixed(3), pr: VB.DIFF[d].zoneSet, lejos: pct(away, lane), rematadas: pct(spk, lane) };
+    }
+    const okD = (x) => Math.abs(x.frec - x.pr) <= Math.max(0.3 * x.pr, 2.5 * Math.sqrt(x.pr * (1 - x.pr) / Math.max(1, x.colocaciones))) && x.aUnLado > 0;
+    const allAway = ['normal', 'expert'].every(d => o[d].lejos === '100.0%');
+    res.push(['(e2) CPU: a un lado con frecuencia ~ zoneSet, siempre lejos del jugador humano, y su atacante la remata', okD(o.normal) && okD(o.expert) && allAway, o]);
+  }
+  // (f) eventos: hit / point / feint sin campos undefined; números en dblFields (no enteros Smi sueltos: basta que sean finitos)
+  if (want('f')) {
+    let bad = 0, nh = 0, np = 0, nf = 0; const ex = [];
+    for (let s = 1; s <= 6; s++) {
+      const g = S.createGame({ seed: 6000 + s, difficulty: ['normal', 'hard'][s % 2], mastery: true, stats: true }), inp = makeBot(BOTS.bueno, s * 3 + 1, { mastery: BOT_MASTERY.perfecto });
+      for (let i = 0; i < Math.round(180 / DT); i++) {
+        S.step(g, DT, inp(g));
+        for (const e of S.drainEvents(g)) {
+          if (e.type !== 'hit' && e.type !== 'point' && e.type !== 'feint') continue;
+          if (e.type === 'hit') { nh++; if (typeof e.feint !== 'boolean' || typeof e.tempo !== 'string' || !isNum(e.edge) || e.edge < 0 || e.edge > 1) { bad++; ex.push(e.type); } }
+          if (e.type === 'point') { np++; if (typeof e.move !== 'string' || !['', 'feint', 'roll', 'edge', 'quick'].includes(e.move) || g.lastPoint.move !== e.move) { bad++; ex.push('point ' + e.move); } }
+          if (e.type === 'feint') { nf++; if (!e.player || e.team !== 0 || !['tip', 'roll'].includes(e.shot)) { bad++; ex.push('feint'); } }
+          for (const k in e) if (e[k] === undefined) { bad++; ex.push(e.type + '.' + k); }
+        }
+      }
+      if (s === 1) { const sm = g.stats.mastery; res.push(['(f0) stats.mastery cuenta usos y puntos (bot con maestría, 180 s)', sm.feint[0] + sm.roll[0] + sm.edge[0] + sm.lane + sm.high + sm.quick[0] > 0, JSON.stringify(sm)]); }
+    }
+    res.push(['(f) eventos hit / point / feint sin undefined, con feint/tempo/edge/move válidos', bad === 0 && nf > 0, { hits: nh, puntos: np, fintas: nf, mal: bad, ej: ex.slice(0, 4) }]);
+  }
+  // (g) altReady / aimPoint: COLOCAR ofrece 'roll' en el 3r toque en el aire (solo con mastery) y la retícula es kind 'roll'
+  if (want('g')) {
+    const mk = (ms) => { const g = S.createGame({ demo: false, seed: 63, mastery: ms }), h = g.teams[0][0], m = g.teams[0][1];
+      e1Rally(g, { x: 1.2, y: 0.5, z: 3.6, vz: 0 }); g.touchTeam = 0; g.touches = 2; g.lastTeam = 0; g.lastPlayer = m; g.lastKind = 'set';
+      g.ctrl = h; h.x = 1.5; h.y = 0.5; h.z = 0.3; h.vz = 2.5; m.x = 6; m.y = -2; for (const q of g.teams[1]) { q.x = -8; q.y = q.idx ? 4.5 : -4.5; }
+      S.step(g, DT, null); return g; };
+    // (altReady: alguna vez 'roll' mientras sube y baja en el aire con mastery; nunca sin ella)
+    const scan = (ms) => { const g = mk(ms); let r = ''; for (let i = 0; i < 120 && g.ctrl.z > 0 && g.mode === 'rally'; i++) { const v = S.altReady(g); if (v) { r = v; break; } S.step(g, DT, null); } return r; };
+    const g1 = mk(true), a1 = scan(true), a0 = scan(false);
+    g1.swingLive = true; g1.swingShot = 'jset'; const ap = S.aimPoint(g1, {}, null); g1.swingLive = false; g1.swingShot = '';
+    g1.aim3.y = 4.45; const ap2 = S.aimPoint(g1, {}, null);
+    res.push(['(g) altReady = roll en el 3r toque (solo con mastery); aimPoint kind roll (radio ×0,6) y edge al filo', a1 === 'roll' && a0 === '' && ap && ap.kind === 'roll' && ap2 && ap2.kind === 'spike' && ap2.edge > 0.9,
+      { altReady: [a1, a0], roll: ap && [ap.kind, +ap.spread.toFixed(3)], filo: ap2 && [ap2.kind, +ap2.edge.toFixed(2)] }]);
+  }
+  // (h) tramo 2, jugada perfecta: recepción, colocación y remate perfectos seguidos (2 del humano) → hit.chain 1, 2, 3 y el remate con
+  // la defensa CPU más justa; una colocación con te = 0,06 corta la racha; sin mastery, hit.chain siempre 0
+  if (want('h')) {
+    const seq = (ms, teSet) => {
+      const g = S.createGame({ demo: false, seed: 71, mastery: ms, ctrl: 'one' }), h = g.teams[0][0], m = g.teams[0][1], ch = [];
+      e1Rally(g, { x: 5, y: 0, z: 1, vz: -2 }); g.touchTeam = 1; g.touches = 3; g.lastTeam = 1; g.lastKind = 'free'; g.lastPlayer = g.teams[1][0];
+      g.ctrl = h; h.x = 5; h.y = 0; h.z = 0; S.drainEvents(g);
+      const one = (p, te) => { S._hit(g, p, null, te, ''); const e = S.drainEvents(g).find(x => x.type === 'hit'); ch.push(e ? e.chain : -1); return e; };
+      one(h, 0); m.x = 2; m.y = 0; m.z = 0; Object.assign(g.ball, { x: 2, y: 0, z: 2.2 }); one(m, teSet);
+      h.x = 1.4; h.y = 0; h.z = 0.6; Object.assign(g.ball, { x: 1.4, y: 0, z: C.NET_H + 0.6, vz: -0.5 }); const sp = one(h, 0);
+      return { ch, kind: sp && sp.kind, speed: sp && +sp.speed.toFixed(2) };
+    };
+    const a = seq(true, 0), b2 = seq(true, 0.06), c2 = seq(false, 0);
+    res.push(['(h) jugada perfecta: hit.chain 1-2-3 (remate más rápido), se corta con te = 0,06, 0 sin mastery', a.ch.join() === '1,2,3' && a.kind === 'spike' && b2.ch.join() === '1,0,1' &&
+      c2.ch.join() === '0,0,0' && a.speed > c2.speed, { con: a, corte: b2, sin: c2 }]);
+  }
+  const bad = res.filter(r => !r[1]);
+  if (bad.length) fail('maestría (E1): ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+  console.log('Maestría (E1): ' + res.length + ' pruebas, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s' + (failures === f0 ? ' OK' : ''));
+}
+
+// ================= Gimnasio (E6, sprint 5) =================
+/* createGame({drill}): ejercicios con repeticiones (saque, recepción, colocación, remate, bloqueo) y peloteo libre. Bots humanos de
+ * siempre (makeBot) con la entrada real; gymBot además lleva la mira (saque dirigible y remate) a la diana del ejercicio.
+ * SIMTEST_ONLY=gym node tools/simtest.js: solo esta sección. Ver notes/sim.md «E6 (sprint 5)». */
+const GYM_KINDS = ['serve', 'recv', 'set', 'atk', 'block'];
+/** makeBot + mira a g.drill.target (saque: durante el lanzamiento; remate: en el aire). */
+function gymBot(bp, seed) {
+  const base = makeBot(bp, seed), st = [0, 0], w = {}; let pressed = -9;
+  return g => {
+    const o = base(g), d = g.drill, a = g.aim3, p = g.ctrl;
+    // bloqueo activo: en el aire en la red, GOLPEAR cuando al rematador rival le quedan ~0,15 s para el golpe (VB.Sim.blockPressCase)
+    if (d && d.kind === 'block' && g.mode === 'rally' && p.z > 0.2 && pressed !== g.lastTouchT && S.blockPressCase(g, p)) {
+      const q = g.teams[1][0]; S.hitWindow(g, q, w);
+      if (w.reach && w.t <= 0.15) { o.hit = true; pressed = g.lastTouchT; }
+    }
+    if (d && d.target && a && a.on && ((a.kind === 'serve' && g.serveState === 'toss') || a.kind === 'spike')) {
+      const dx = d.target.x - a.x, dy = d.target.y - a.y, dd = Math.hypot(dx, dy), f = dd > 1e-6 ? Math.min(1, dd / 0.25) / dd : 0;
+      st[0] = dx * f; st[1] = dy * f; o.move = st;
+    }
+    return o;
+  };
+}
+/** Montaje esperado tras cada drillStage (tabla de E6 §2.4). Devuelve '' o el problema. */
+function gymStageIssue(g, e) {
+  const d = g.drill, k = d.kind, h = g.ctrl, m = g.teams[0][1 - h.idx], cs = g.cs, s = d.side, near = (p, x, y) => Math.hypot(p.x - x, p.y - y) < 0.05;
+  const T = VB.DRILL.kinds[k];
+  if (e.n !== d.n || e.of !== d.of || e.kind !== k) return 'evento ' + JSON.stringify([e.kind, e.n, e.of]);
+  if (h !== g.teams[0][0] && k !== 'free') return 'el humano no es el n.º 1';
+  if (k === 'serve') {
+    if (g.mode !== 'serve' || g.server !== h) return 'saque: modo ' + g.mode + ' sacador ' + (g.server && g.server.num);
+    if (!g.teams[1].every(q => Math.abs(q.y) > g.HW)) return 'saque: rivales dentro de la pista';
+    if (!e.target || Math.abs(e.target[0] - T.targets[d.n][0] * cs) > 1e-9) return 'saque: diana ' + JSON.stringify(e.target);
+  } else if (k === 'recv') {
+    if (g.mode !== 'serve' || g.server.team !== 1) return 'recepción: modo ' + g.mode;
+    if (!e.target || Math.abs(e.target[0] - 1.6 * cs) > 1e-9) return 'recepción: zona ' + JSON.stringify(e.target);
+  } else if (k === 'free') {
+    if (g.mode !== 'serve') return 'libre: modo ' + g.mode;
+  } else {
+    if (g.mode !== 'rally' || g.ball.held || g.lastTouchT !== g.time) return k + ': modo ' + g.mode;
+    if (k === 'set' && !(g.touchTeam === 0 && g.touches === 1 && g.lastKind === 'pass' && g.lastPlayer === m && near(h, 2.1 * cs, 0.6 * s * cs) && near(m, 5.5 * cs, -1.4 * s * cs) && g.ball.vz > 0)) return 'colocación: estado';
+    if (k === 'atk' && !(g.touchTeam === 0 && g.touches === 2 && g.lastKind === 'set' && g.lastPlayer === m && near(h, 3.4 * cs, 2.6 * s * cs) && (d.cpu === 'block') === (d.n >= T.blockFrom))) return 'remate: estado';
+    if (k === 'block' && !(g.touchTeam === 1 && g.touches === 2 && g.lastKind === 'set' && g.lastPlayer === g.teams[1][1] && g.defRole === 'block' && near(h, 0.8 * cs, 0) && s === T.sides[d.n])) return 'bloqueo: estado';
+    if (!g.players.every(p => p.z === 0 && p.vz === 0)) return k + ': alguien en el aire';
+  }
+  return '';
+}
+/** Un ejercicio entero con inputFn (o autopilot). Devuelve repeticiones, eventos y problemas. */
+function gymRun(kind, seed, inputFn, o) {
+  o = o || {};
+  const g = S.createGame(Object.assign({ seed, drill: kind, stats: true }, o.opts || {}));
+  const r = { g, reps: [], hits: [], ev: newCounters(), end: null, ex: null, inv: true, stageBad: [], recv: [0, 0], undef: [], lpBad: 0, stages: 0 };
+  const evs = [], pr = { x: 0, y: 0, z: 0, t: 0 }, secs = o.secs || 420;
+  const chk = e => { for (const k in e) if (e[k] === undefined) r.undef.push(e.type + '.' + k); };
+  try {
+    for (let i = -1; i < secs / DT; i++) {
+      if (i >= 0) S.step(g, DT, inputFn ? inputFn(g, i) : null); // (i = -1: los eventos del montaje de createGame, antes del primer paso)
+      evs.length = 0; S.drainEvents(g, evs);
+      for (const e of evs) {
+        if (!(e.type in r.ev)) { fail('gimnasio: evento desconocido ' + e.type); r.ev[e.type] = 0; }
+        r.ev[e.type]++;
+        if (e.type === 'drillStage') { r.stages++; chk(e); const bad = gymStageIssue(g, e); if (bad) r.stageBad.push(e.n + ' ' + bad); }
+        if (e.type === 'drillRep') { chk(e); r.reps.push(e); if (kind === 'free') r.hits.push(e.hits); if (!g.lastPoint || g.lastPoint.how !== 'drill') r.lpBad++; }
+        if (e.type === 'drillEnd') { chk(e); r.end = e; }
+        if (e.type === 'hit' && e.kind === 'serve' && e.team === 1 && kind === 'recv') { // ¿el saque de la CPU va a por el humano?
+          S.predict(g, 1, pr); r.recv[1]++; if (Math.hypot(pr.x - g.ctrl.x, pr.y - g.ctrl.y) <= 2.5) r.recv[0]++;
+        }
+      }
+      if (i >= 0 && i % 120 === 0 && !checkInvariants(g, 'gimnasio ' + kind)) { r.inv = false; break; }
+      if (r.end) break;
+    }
+  } catch (e) { r.ex = e && e.stack || String(e); }
+  return r;
+}
+const gymMedal = (k, tot) => { const m = VB.DRILL.kinds[k].medals; return tot >= m[2] ? 3 : tot >= m[1] ? 2 : tot >= m[0] ? 1 : 0; };
+function gymSection() {
+  const f0 = failures, res = [], t0 = Date.now();
+  const push0 = res.push.bind(res); res.push = (r) => { console.log('  ' + r[0] + ' ' + JSON.stringify(r[2]) + (r[1] ? '' : '   <<< FALLA')); return push0(r); };
+  console.log('\nGimnasio (E6, createGame({drill}))');
+  const SEEDS = [11, 23, 37];
+  // (1) cada ejercicio con 3 bots (bueno, perfecto con mira a la diana, novato) y 3 semillas, en el pabellón; y una pasada en la playa
+  const runs = {}, bad1 = [];
+  for (const k of GYM_KINDS) {
+    runs[k] = { bueno: [], perfecto: [], novato: [] };
+    for (const sd of SEEDS) {
+      runs[k].bueno.push(gymRun(k, sd, makeBot(BOTS.bueno, sd * 7 + 1)));
+      runs[k].perfecto.push(gymRun(k, sd, gymBot(BOTS.perfecto, sd * 7 + 2)));
+      runs[k].novato.push(gymRun(k, sd, makeBot(BOTS.novato, sd * 7 + 3)));
+    }
+    runs[k].beach = [gymRun(k, SEEDS[0], gymBot(BOTS.bueno, 5), { opts: { venue: 'beach' } })];
+    runs[k].auto = [gymRun(k, SEEDS[1], null, { opts: { autopilot: true } })];
+  }
+  const all = [];
+  for (const k of GYM_KINDS) for (const b in runs[k]) for (const r of runs[k][b]) all.push([k, b, r]);
+  for (const [k, b, r] of all) {
+    const tag = k + '/' + b + '/' + r.g.seed, ns = r.reps.map(e => e.n).join(',');
+    const sum = r.reps.reduce((a, e) => a + e.pts, 0);
+    if (r.ex) bad1.push(tag + ' excepción ' + r.ex.split('\n')[0]);
+    else if (!r.end) bad1.push(tag + ' sin drillEnd (' + r.reps.length + ' rep.)');
+    else if (r.reps.length !== 10 || ns !== '0,1,2,3,4,5,6,7,8,9') bad1.push(tag + ' repeticiones ' + ns);
+    else if (r.end.total !== sum || r.end.reps.join() !== r.reps.map(e => e.pts).join() || r.g.drill.total !== sum) bad1.push(tag + ' total ' + r.end.total + ' != ' + sum);
+    else if (!r.reps.every(e => Number.isInteger(e.pts) && e.pts >= 0 && e.pts <= 3 && typeof e.res === 'string' && typeof e.text === 'string')) bad1.push(tag + ' pts fuera de 0..3');
+    else if (r.g.score.join() !== '0,0' || r.g.sets.join() !== '0,0' || r.g.stats.points !== 0) bad1.push(tag + ' marcador ' + r.g.score + ' / ' + r.g.sets);
+    else if (r.ev.point || r.ev.whistle || r.ev.gameOver || r.ev.set || r.ev.match || r.ev.sideout) bad1.push(tag + ' eventos de partido ' + JSON.stringify([r.ev.point, r.ev.whistle, r.ev.gameOver]));
+    else if (!r.inv) bad1.push(tag + ' invariantes');
+    else if (r.undef.length) bad1.push(tag + ' campos undefined ' + r.undef.slice(0, 3));
+    else if (r.lpBad) bad1.push(tag + ' g.lastPoint.how != drill');
+    else if (!r.g.drill.done || r.g.mode !== 'point' || r.stages !== 10) bad1.push(tag + ' estado final ' + r.g.mode + ' montajes ' + r.stages);
+  }
+  res.push(['(1) 10 drillRep + drillEnd, total = suma, pts 0-3, marcador 0-0, sin point/whistle/gameOver, invariantes (5 ejercicios × 3 bots × 3 semillas + playa + autopilot)',
+    !bad1.length, { partidas: all.length, mal: bad1.slice(0, 4) }]);
+  // (2) montaje tras cada drillStage; la CPU saca a por el humano en Recepción
+  const bad2 = []; let rn = 0, rd = 0;
+  for (const [k, b, r] of all) { for (const s of r.stageBad) bad2.push(k + '/' + b + ' ' + s); if (k === 'recv') { rn += r.recv[1]; rd += r.recv[0]; } }
+  res.push(['(2) montaje según la tabla (posiciones, toques, lastKind, modo) y saque de la CPU a ≤ 2,5 m del humano en ≥ 80 %', !bad2.length && rn >= 50 && rd / rn >= 0.8,
+    { mal: bad2.slice(0, 4), saquesCerca: pct(rd, rn) + ' de ' + rn }]);
+  // (3) puntuación pura (casos fijos)
+  const sc = S.drillScore, T0 = { tx: -6, ty: 0, cs: 1 }, cases = [
+    ['serve 0,5 m', sc('serve', Object.assign({ land: { x: -6.5, y: 0, inside: true } }, T0)).pts, 3],
+    ['serve 1,2 m', sc('serve', Object.assign({ land: { x: -6, y: 1.2, inside: true } }, T0)).pts, 2],
+    ['serve 2 m', sc('serve', Object.assign({ land: { x: -4, y: 0, inside: true } }, T0)).pts, 1],
+    ['serve fuera', sc('serve', Object.assign({ land: { x: -9.4, y: 0, inside: false } }, T0)).pts, 0],
+    ['serve red', sc('serve', Object.assign({ land: null }, T0)).pts, 0],
+    ['serve propio campo', sc('serve', Object.assign({ land: { x: 2, y: 0, inside: true } }, T0)).pts, 0],
+    ['serve salto perfecto 1,2 m', sc('serve', Object.assign({ land: { x: -6, y: 1.2, inside: true }, jump: true, grade: 'perfect' }, T0)).pts, 3],
+    ['serve salto perfecto diana (tope)', sc('serve', Object.assign({ land: { x: -6, y: 0, inside: true }, jump: true, grade: 'perfect' }, T0)).pts, 3],
+    ['serve salto bueno 2 m', sc('serve', Object.assign({ land: { x: -4, y: 0, inside: true }, jump: true, grade: 'good' }, T0)).pts, 1],
+    ['serve playa 0,75 m (×cs)', sc('serve', { land: { x: -6.75, y: 0, inside: true }, tx: -6, ty: 0, cs: 8 / 9 }).pts, 2],
+    ['recv 0,5', sc('recv', { touched: true, own: true, x: 2.1, y: 0, tx: 1.6, ty: 0, cs: 1 }).pts, 3],
+    ['recv 1,5', sc('recv', { touched: true, own: true, x: 3.1, y: 0, tx: 1.6, ty: 0, cs: 1 }).pts, 2],
+    ['recv 3', sc('recv', { touched: true, own: true, x: 4.6, y: 0, tx: 1.6, ty: 0, cs: 1 }).pts, 1],
+    ['recv desviada', sc('recv', { touched: true, own: false, x: -2, y: 0, tx: 1.6, ty: 0, cs: 1 }).pts, 0],
+    ['recv ace', sc('recv', { touched: false, tx: 1.6, ty: 0, cs: 1 }).pts, 0],
+    ['set perfecta en salto + remate dentro (tope)', sc('set', { grade: 'perfect', jset: true, spikeIn: true }).pts, 3],
+    ['set buena + remate dentro', sc('set', { grade: 'good', jset: false, spikeIn: true }).pts, 2],
+    ['set perfecta en salto', sc('set', { grade: 'perfect', jset: true, spikeIn: false }).pts, 3],
+    ['set floja', sc('set', { grade: 'poor', jset: false, spikeIn: false }).pts, 0],
+    ['set sin tocar', sc('set', { grade: '' }).pts, 0],
+    ['atk diana', sc('atk', Object.assign({ kind: 'spike', land: { x: -6.8, y: 0.5, inside: true }, block: '' }, T0)).pts, 3],
+    ['atk dentro', sc('atk', Object.assign({ kind: 'spike', land: { x: -3, y: 2, inside: true }, block: '' }, T0)).pts, 2],
+    ['atk dejada dentro', sc('atk', Object.assign({ kind: 'tip', land: { x: -6, y: 0, inside: true }, block: '' }, T0)).pts, 1],
+    ['atk fuera', sc('atk', Object.assign({ kind: 'spike', land: { x: -9.5, y: 0, inside: false }, block: '' }, T0)).pts, 0],
+    ['atk tool', sc('atk', Object.assign({ kind: 'spike', land: null, block: 'tool' }, T0)).pts, 1],
+    ['atk stuff', sc('atk', Object.assign({ kind: 'spike', land: null, block: 'stuff' }, T0)).pts, 0],
+    ['block stuff', sc('block', { block: 'stuff' }).pts, 3], ['block soft', sc('block', { block: 'soft' }).pts, 2],
+    ['block touch', sc('block', { block: 'touch' }).pts, 1], ['block tool', sc('block', { block: 'tool' }).pts, 0],
+    ['block sin bloqueo', sc('block', { block: '' }).pts, 0],
+    ['block dejada leída', sc('block', { block: '', tip: true, jumped: false, read: true }).pts, 1],
+    ['block dejada con salto', sc('block', { block: '', tip: true, jumped: true, read: true }).pts, 0],
+    ['block stuff + dejada leída (tope)', sc('block', { block: 'stuff', tip: true, jumped: false, read: true }).pts, 3]];
+  const bad3 = cases.filter(c => c[1] !== c[2]).map(c => c[0] + ' ' + c[1] + '≠' + c[2]);
+  const pure = JSON.stringify(sc('serve', Object.assign({ land: { x: -6.5, y: 0, inside: true } }, T0))) === JSON.stringify(sc('serve', Object.assign({ land: { x: -6.5, y: 0, inside: true } }, T0)));
+  res.push(['(3) VB.Sim.drillScore con casos fijos (pura)', !bad3.length && pure, { casos: cases.length, mal: bad3 }]);
+  // (4) determinismo: misma semilla y mismas entradas -> mismas repeticiones
+  const bad4 = [];
+  for (const k of GYM_KINDS) {
+    const a = gymRun(k, 99, gymBot(BOTS.medio, 4)), b = gymRun(k, 99, gymBot(BOTS.medio, 4));
+    const sa = a.reps.map(e => e.pts + e.res + e.x.toFixed(6)).join(), sb = b.reps.map(e => e.pts + e.res + e.x.toFixed(6)).join();
+    if (sa !== sb || !a.end) bad4.push(k);
+  }
+  res.push(['(4) determinismo (misma semilla y bot)', !bad4.length, { mal: bad4 }]);
+  // (5) techo: el perfecto con mira a la diana gana oro en Saque y Remate; el novato no pasa de bronce en >= 2 de 3 semillas
+  const tot = (k, b) => runs[k][b].map(r => r.end ? r.end.total : -1), info5 = {}, bad5 = [];
+  const hist = (k, b) => { const h = {}; for (const r of runs[k][b]) for (const e of r.reps) h[e.res] = (h[e.res] || 0) + 1; return Object.entries(h).map(([a, n]) => a + ':' + n).join(' '); };
+  for (const k of GYM_KINDS) info5[k] = { perfecto: tot(k, 'perfecto').join('/') + ' (' + hist(k, 'perfecto') + ')', bueno: tot(k, 'bueno').join('/'), novato: tot(k, 'novato').join('/') + ' (' + hist(k, 'novato') + ')' };
+  for (const k of ['serve', 'atk']) if (!tot(k, 'perfecto').every(t => gymMedal(k, t) === 3)) bad5.push(k + ' perfecto sin oro');
+  for (const k of GYM_KINDS) if (tot(k, 'novato').filter(t => gymMedal(k, t) <= 1).length < 2) bad5.push(k + ' novato por encima de bronce');
+  res.push(['(5) techo de las medallas (umbrales VB.DRILL.kinds[k].medals)', !bad5.length, Object.assign({ mal: bad5 }, info5)]);
+  // (6) peloteo libre: 3 min de bot -> peloteos con toques, best = máximo, sin marcador ni eventos de partido
+  { const bad6 = []; const info6 = {};
+    for (const [lab, opts, bot] of [['uno', { ctrl: 'one' }, makeBot(BOTS.medio, 61)], ['ambos', {}, makeBot(BOTS.bueno, 62)]]) {
+      const r = gymRun('free', 61, bot, { secs: 180, opts });
+      const mx = Math.max(0, ...r.hits), bestOk = r.reps.every((e, i) => e.best === Math.max(...r.hits.slice(0, i + 1)) && e.isBest === (e.hits > (i ? Math.max(...r.hits.slice(0, i)) : 0)));
+      info6[lab] = { peloteos: r.reps.length, max: mx, media: r.hits.length ? +(r.hits.reduce((a, b) => a + b, 0) / r.hits.length).toFixed(2) : 0 };
+      if (r.ex) bad6.push(lab + ' excepción ' + r.ex.split('\n')[0]);
+      if (r.reps.length < 8 || mx < 3 || r.g.drill.best !== mx || !bestOk) bad6.push(lab + ' peloteos/best');
+      if (r.g.score.join() !== '0,0' || r.ev.point || r.ev.whistle || r.ev.gameOver || r.end || r.g.drill.done) bad6.push(lab + ' marcador/eventos');
+      if (!r.reps.every((e, i) => e.n === i && e.of === 0 && e.pts === 0)) bad6.push(lab + ' n/of/pts');
+      if (r.undef.length || !r.inv) bad6.push(lab + ' undefined/invariantes');
+      const sv = r.g.teams.map(t => t.map(p => p.num)); void sv;
+    }
+    res.push(['(6) peloteo libre (3 min, bot medio con un jugador y bot bueno con los dos)', !bad6.length, Object.assign({ mal: bad6 }, info6)]); }
+  // (7) sin opts.drill: g.drill null y ningún evento del gimnasio; drill en la demo y en 6v6 = sin ejercicio / 2v2; accesor VB.AI.leaving
+  { const g0 = S.createGame({ seed: 5 }), gd = S.createGame({ seed: 5, demo: true, drill: 'serve' }), g6 = S.createGame({ seed: 5, drill: 'atk', format: '6v6' });
+    const gx = S.createGame({ seed: 5, drill: 'nada' });
+    let lvOk = typeof VB.AI.leaving === 'function' && VB.AI.leaving(g0, 0) === false;
+    g0._lv = [{ t: g0.lastTouchT, on: true }, { t: -1, on: false }]; lvOk = lvOk && VB.AI.leaving(g0, 0) === true && VB.AI.leaving(g0, 1) === false;
+    g0.lastTouchT += 1; lvOk = lvOk && VB.AI.leaving(g0, 0) === false;
+    const ok7 = g0.drill === null && 'drill' in g0 && gd.drill === null && gx.drill === null && g6.drill && g6.size === 2 && g6.ctrlMode === 'one' && lvOk;
+    res.push(['(7) g.drill null fuera del modo (también demo e id desconocido); 6v6 + drill = 2v2; VB.AI.leaving', !!ok7, { leaving: lvOk, seis: g6.size }]); }
+  const bad = res.filter(r => !r[1]);
+  if (bad.length) fail('gimnasio (E6): ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
+  console.log('Gimnasio (E6): ' + res.length + ' pruebas, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s' + (failures === f0 ? ' OK' : ''));
+}
+
 async function main() {
+// E1: SIMTEST_ONLY=e1, solo la sección de maestría
+if (ONLY === 'gym') { gymSection(); console.log(failures ? failures + ' FALLOS' : 'TODO OK'); process.exit(failures ? 1 : 0); } // E6: SIMTEST_ONLY=gym
+if (ONLY === 'e1') { e1Section(); console.log(failures ? failures + ' FALLOS' : 'TODO OK'); process.exit(failures ? 1 : 0); }
 // ================= 1) CPU vs CPU =================
 if (ONLY !== 'matrix') {
 const demo = run('CPU vs CPU (demo del menú, perfil DIFF.demo)', { demo: true }, MIN * 60);
@@ -2556,6 +3075,12 @@ if (ONLY !== 'matrix') {
     if (bad.length) fail('vóley playa: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
     console.log('\nVóley playa (' + NB + ' partidos, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)' + (failures === f0 ? ' OK' : '') + '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));
   }
+
+  // MAESTRÍA (E1, sprint 5): createGame({mastery:true})
+  if (ONLY !== 'matrix') e1Section();
+
+  // GIMNASIO (E6, sprint 5): createGame({drill})
+  if (ONLY !== 'matrix') gymSection();
 
   // Huella 2v2 (sprint 1 del 6v6): 150 partidas de referencia deben dar EXACTAMENTE lo mismo que tools/fp-2v2.json
   if (ONLY !== 'matrix') {

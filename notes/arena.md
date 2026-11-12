@@ -755,3 +755,196 @@ y azul con `Path2D` de los mismos trazados que ICON_HIT de input.js, tres costur
   y brillo visible: calvo con la corona de la nuca. Los zapatones no se estiran. 0 dibujos y 0 geometría nueva al cambiar de sede.
 - `placeOfficials` refresca ahora `P.st.hx/hy/hz` (cabeza a la que apunta la mirada) al recolocar a cada oficial.
 - Medido: perf baja playa 30/33 dibujos · 110 k (PC cargado, fps no válidos); pabellón (`EXTRA=map=hall`) 30/34 · 103 k, objetivos cumplidos.
+## Sprint 5 · Tarea A (fx.js, 12-nov-2026)
+- **E3 `VB.FX.OPTS = ['cbColors','ballStyle']`** y `VB.FX.onSettings(s, k)` (k null, 'cbColors' o 'ballStyle'; también se aplica al final de
+  `init` y en `onGameStart`). Dos paletas creadas al arrancar (`buildPalettes`: PAL[0] clásica, PAL[1] daltonismo); `applyPal` las copia
+  en los colores activos (MARK_IN/OUT, RIM_IN/OUT, RIP_OUT, REV_IN/OUT, AIM_OR/OK/SV, AIM_ROLL, AIM_EDGE): nada por frame.
+  Daltonismo: dentro azul `#2f8cff`, fuera naranja `#ff8a00` (marca del bote, su onda y la huella del challenge; la X se queda), diana
+  ámbar `#ff9f1c` → azul `#38a3ff` al ir perfecta, saque blanco, «al filo» magenta `#ff4fc8` (el coral se confundía con el ámbar).
+  Las pistas de fase del 6v6 no cambian: se distinguen por forma (celda, punto, chevrón, barra, aro con filo); solo `dig` frente a
+  `net`/sin fase difieren solo por tono (azul frente a celeste), sin rojo ni verde.
+  `ballStyle 'contraste'`: `ballTexture('contraste')` = amarillo `#ffd21f` / azul oscuro `#13235a` / crema `#fff6c8` (logo claro en el
+  panel oscuro); se rehace una vez al cambiar y se libera la textura vieja. Sin mallas ni materiales nuevos.
+- **E6 diana del ejercicio**: 3 mallas de estado nuevas en el lote de calcomanías (`N` +3; 0 dibujos): `drillTarget` (celda 8, `#ffb238`),
+  `drillRing` (aro con filo, celda 2, `#ffd27a`) y `setPreview` (E1). Lee `g.drill.target {x, y, r[, r2]}` cada frame (apagada con
+  `g.drill` null o `target` null, con fundido). Diana con el filo blanco en r; aro en `r2` o, si no viene, saque 2·r, recepción 2,2·r,
+  otros sin aro. Entra con un «pop» al cambiar de diana o con `drillStage`; pulso 0,95-1,05 a 2 Hz. Con `ctx.reduceMotion` (o, sin él,
+  `prefers-reduced-motion`) quieta. `drillRep` con `pts >= 3` → dos ondas doradas del `ripPool` en la diana (×0,4 con softFlash).
+- **E1**: retícula `aimPoint().kind === 'roll'` con el verde de COLOCAR `#3fd6a4`; `aimPoint().edge > 0.5` → aro coral `#ff6a4d` y el
+  relleno con el color del timing (dorado medido sin los factores roll ×0,6 y filo ×(1 + 0,35·e) de VB.MASTERY). Marcador de
+  `VB.Sim.setPreview(g, out)` (solo con `g.mastery`, ni demo ni autopilot): aro en el destino, color y tamaño por tempo ('' blanco 0,95,
+  quick naranja 0,72, lane verde 0,95, high celeste 1,25). Sin estela con `hit.shot === 'roll'`; `hit.chain >= 3`: estela dorada y
+  `speedLines(9)`.
+- Medido: `STRICT=1 perf.js 844x390 20 low` 29/31 draw calls (media/pico), igual con cbColors + contraste (copia de perf.js que los
+  inyecta) y con `EXTRA=drill=atk&gymauto=1` (main.js aún no monta el ejercicio: partido normal). Capturas de la diana con
+  un `g.drill` falso en pabellón y playa.
+## Revisión de rendimiento (12-nov-2026, ultracode)
+Cinco frentes revisados con datos de `tools/perf.js` (PROFILE/ALLOC) y del perfil de arranque, cada propuesta verificada por un revisor escéptico. Aplicado:
+- `forceSinglePass: true` en los dos únicos materiales transparent+DoubleSide (galón del jugador controlado, players.js; nubes de playa, arena.js).
+  En r149 un transparente DoubleSide se pinta en 2 pasadas con `needsUpdate=true` en cada una: recalculaba el programa (getParameters,
+  getProgramCacheKey, join) 2-4 veces por frame. Ahora 0; 3-4 programas menos; misma imagen (son MeshBasic y se ven siempre de frente).
+- Arranque: `fitDown()` en arena.js salta a la talla estimada en los rótulos de vallas, lonas y protección del poste (antes de 2 en 2 px;
+  igual resultado comprobado en 200 000 casos aleatorios); sin `buildEnvironment()` (PMREM): `scene.environment` solo lo lee
+  MeshStandard/Physical y no hay ninguno (si algún día se añade uno, volver a llamarla). Estimado: ~0,4-0,5 s menos de CPU ×4 al arrancar.
+- Sin cambios (medido, por debajo de 0,1 ms/frame o con cambio visible): players.js (Players.update 3,6-4,3 ms/frame en 6v6 ×4, repartido),
+  grafo de escena (lo estático ya está congelado; el coste son los huesos de los atletas y Skeleton.update), CanvasTexture (ya se suben solo
+  al cambiar; las subidas por frame son las boneTexture). Lo único grande que queda: animar menos a los atletas lejanos (cambia lo que se ve).
+## Sedes (mapas): registro, kit y «Cala dels Fanals» (arena, 12-nov-2026)
+Pedido de Ferran: mapas nuevos de playa y de pista. Plan aprobado con 4 sedes; en esta pasada, la ARQUITECTURA y la primera playa.
+- **Registro** `js/venues.js` (datos puros, sin THREE; se carga antes de arena.js): `VB.VENUES[id] = {kind, name, short, pad, tier, help,
+  sand, lights, night}` con las 6 sedes del plan (palau, canrebot, cupula, platja, moll, fanals). `VB.Venues.list(kind)` devuelve solo
+  las DISPONIBLES (las de serie palau/platja y las que hayan llamado `VB.Arena.registerMap`); `resolve(tipoOId, settings, seed)` da el
+  id que toca (con un tipo manda `settings.mapHall` / `mapBeach`; 'rand' = al azar; lo desconocido, la sede de serie).
+- **Lo que llega a la sim no cambia**: `VB.Arena.venue()` sigue siendo el tipo ('hall' | 'beach'); fx.onBeach, players (ropa), ui,
+  camera y main.venueNow no se tocan. Huella 2v2 idéntica por construcción.
+- **arena.js**: `VENUE = {id: tipo, map: id, def, hidden}`; `MAPS[id]` = definiciones (palau y platja de serie). `setVenue(x)` acepta tipo
+  o id: (1) devuelve a la vista lo que la sede anterior ocultó de Palau y libera la sede anterior (Palau es la base: nunca se libera),
+  (2) monta la nueva, (3) luz (`venueLook` con `curLook()`), protecciones, marcador, calidad (`mapQuality`, que llama `def.quality`) y
+  `fixShadowDepth`. Paso por frame: `mapStep` → `def.step(t, rdt, g, K)`.
+  - **Playa = piel del constructor de playa**: `buildBeach(def)` mezcla `def.P` sobre `PLATJA_P` (luces por modo `looks`, nubes /
+    gaviotas / barcas sí o no, ola `surf`, cinta, marca y lonas, colores de red/silla/mesa `bcol`, gradas, marcador, público, sombrilla
+    de banquillo, atrezo `props(B, K)`, arena por vértice `sand(x, y, k, wet)` y color del mosaico, pintor del telón `backdrop(g, W, H, k, h)`)
+    y llama `def.build(G, K, B)` (B = la estática de la playa, para meter piezas sin dibujos nuevos; G = grupo para mallas propias).
+  - **Pabellón ≠ Palau**: `buildHallMap(def)` monta `def.build(G, K)` en un grupo `map-<id>` sobre Palau y `venueVis` oculta lo de
+    `def.hide` (nombres de piezas de Palau). Luz de `def.look` con los mismos campos (multiplicadores sobre la fila LT sin los `BL` de la playa).
+    Ganchos de pabellón (Can Rebot): `def.floor(g, h)` pinta la tarima de Palau en el MISMO lienzo (todo menos las líneas FIVB, que
+    pinta arena.js encima con `def.floorLine`; h = {W, H, ppm, X, Y, rect, C, FZX, FZY, TX, TY, rnd, FONT, kit}; `floorRepaint` vuelve a
+    la de Palau al salir: 0 dibujos, 0 memoria); `def.score = {x, y, z, w, h}` (pantalla propia: `landmarks.scoreHung/scoreBoard`) con
+    `def.drawScore(K, SB)` (arena la llama cuando `SB.dirty`); `def.seed` (azar fijo de la sede); `look.crowdDim` (cuánto se apaga la
+    grada en tensión). Pieles de Palau (Cúpula): `def.brands` ({nombre de marca: marca}: vallas LED, mismo número de marcas),
+    `def.flagPal` ([local, visitante] sobre los colores de los estandartes; `.points` = puntas de la estrella), `def.screen` ({a, b, fg}:
+    cabecera de los videomarcadores y del marcador colgado, con el `pad` de la sede); `skinRepaint()` los pinta al entrar y vuelve a los de
+    Palau al salir, en los MISMOS lienzos (0 memoria).
+  - **Luz de una sede** (`look`, o cada entrada de `P.looks`): `sky {zen, hor, fog, sun}`, `sun` (dirección del sol / luna, sim), `hemi`,
+    `ground`, `key`, `fill`, `rim`, `keyK`, `hemiK`, `fillK`, `rimK`, `floorK`, `near`, `far`, `haze`, `hazeK` (bruma de la grada),
+    `crowdLight` (luz de la grada, × en applyMood), `keyDir` (opcional; se guarda y se restaura la de Palau), playa: `deep`, `shal`, `foam`,
+    `tint`, `stars`, `moon`, `glint` + `glintK` + `glintDir` (rielada), `sand` (partículas de fx). Mismo número de luces siempre.
+  - **Shaders de playa**: cielo con `uStars` (estrellas por celda) y `uMoon` (halo frío y manchas en el disco), mar con `uSurf` (ola que
+    rompe) y `uGlintC/uGlintK/uGlintDir` (reflejo con `cameraPosition`, en bandas rotas). Uniformes, sin #define: Platja no cambia y no
+    hay programas nuevos.
+- **Kit K** (en `build`, `step`, `quality`, `dispose`; interno, fuera de CONTRACT): `THREE, ctx, C, G, TAU, rnd, pick, col, canvas,
+  Builder, UNIT_BOX, BGEO (solo durante build), objM, part, lrod, stripGeo, taperGeo, fitFont, drawDeco, PROP_INK, TEAMC, SHIRTS, SKINS,
+  HAIRS, FONT, at` (constantes: orilla, gradas, marcador de playa, zona libre, vallas, telón, banquillos, pabellón), `seats` (asientos de
+  la grada de playa), `texOf / radialTex` (texturas que se liberan al salir), `toonMat`, `ink(mesh)` (tinta, se suelta al salir),
+  `caster(mesh)` (sombra en media/alta), `haloMaterial(map)` (halos con su escala al tamaño del búfer), `coneMesh(list, color, k)` (haces
+  aditivos fusionados: el programa de los conos de Palau con el color en un uniforme), `mood()` (tense, win, pf, t), `soft()`,
+  `quality()`, `props` (piezas de Platja: palm, pine, umbrella, lounger, towel, beachBall, featherFlag, chiringuito, lifeChair, boat),
+  `crowd(seats, o)` (público instanciado de un pabellón sobre sus asientos, 1 dibujo, LOD y densidad por calidad), `SB` (estado del
+  marcador, solo lectura), y para pabellones sobre Palau: `staticHide(nombres)` / `staticTint(nombre, fn(extra) → Color)` sobre los tramos
+  con nombre de las mallas fusionadas `static` y `emissive` de Palau (`STAG`, anotados al construir con `tagOpen` / `tagClose` sin tocar
+  la geometría ni el azar: 'seat' {b: bloque de color, r: fila, k: sombreado de la fila}, 'cove' (línea de luz del antepecho), 'truss'
+  (cerchas), 'lampRing' (anillo de focos, estática + emisiva), 'hung' (caja, cables y filos del marcador colgado)); aplastar = vértices al
+  mismo punto (triángulos de área 0); `setVenue` lo devuelve todo con `staticRestore()` antes de liberar la sede. `SEAT_BLOCKS`,
+  `hungMat` / `hungTex` (material LED y lienzo del marcador colgado de Palau, compartidos: la malla lleva `userData.sharedMat`) y
+  `crowdLight` (el uniforme de la luz de la grada). Las mallas del grupo de un pabellón quedan con `matrixAutoUpdate = false` (salvo `userData.live`), como la playa.
+- **Liberación**: `disposeMapState(T)` suelta tintas, sombras, `def.dispose(K)`, geometrías y materiales del grupo (salvo
+  `userData.sharedMat` / `sharedGeo`) y texturas anotadas. `node tools/venuetest.js 3`: 3 vueltas por todas las sedes disponibles
+  (palau → canrebot → cupula → platja → moll → fanals → palau)
+  con el onSettings de arena (como `forceVenue`): 65 geometrías / 45 texturas / 47 programas al empezar y al acabar.
+  (Por `ctx.actions.setSetting`, `SETTINGS=1`, la demo del menú se rehace con equipaciones al azar y las texturas de los atletas varían
+  ±1-2 sin fuga.)
+- **Ajustes / menú / URL** (main.js y lo justo de ui.js): `mapHall`, `mapBeach` (validados en loadSettings), Ajustes · Imagen · «Sede de
+  playa» (Platja / Moll / Fanals / Al azar; la fila «Pabellón» aparece cuando haya más de uno; «Luz de playa» se oculta con sedes sin `lights`),
+  `applyVenue` de ui.js con todos los nombres del registro, ayuda de Escenario desde `help`. `?map=fanals` = playa + Fanals.
+  `forceVenue(v)` con tipo o id (`onSettings(copia, 'arena')` con `forceMap`). Al azar se elige al aplicar el ajuste (arranque,
+  cambio en Ajustes); nunca a media partida (en partido el cambio espera, como el Escenario). La sede sorteada se guarda por tipo
+  (`randPick` en arena.js, `VB.Arena.randPick(kind)`) y solo se vuelve a sortear al cambiar el ajuste de ESE tipo: tocar «Pabellón»
+  con la playa montada no reconstruye la playa (onSettings ignora el ajuste del otro tipo). La ayuda de Partido rápido y la fila
+  «Luz de playa» leen la sede montada o la ya sorteada (sin sortear: línea genérica «… al azar»).
+- **Cala dels Fanals** (`js/venue-fanals.js`, D5 «playa nocturna»): luna baja sobre el mar en el plano del fondo rival, estrellas,
+  rielada, sin nubes ni gaviotas ni barcas animadas; telón propio (promontorios violáceos que cierran la cala, torre de vigía en ruinas,
+  ventanas cálidas, bocana con luz roja y verde); 4 torres de focos de celosía (6 cabezas cada una, halos y 4 haces en media/alta);
+  guirnalda de ~80 farolillos de papel en catenaria (coral, amarillo, turquesa, rosa, papel) sobre los laterales y el fondo rival y
+  hacia el chiringuito; faroles de pie; chiringuito con tira de bombillas; 3 barcas de pesca de luz fondeadas; peñascos en la orilla y
+  en las faldas de la cala; pinos; arena horneada clara bajo los focos y lila azulada fuera (`sand`), partículas #b9a88f; cinta lima;
+  lonas azul marino con el tajo dorado; red, silla y mesa en azul marino y oro; gradas con toldos lila y teal; público sin sombreros y
+  con camisetas claras y de neón; flashes de móvil (media/alta, el material de los flashes del pabellón). Luz de tensión: en punto de
+  set los focos y la guirnalda bajan un 10 %; en la victoria, barrido por la guirnalda (shader de la emisiva `vb-fanals-emis`, 1 programa).
+  Emisiva y halos: 1 dibujo cada uno.
+- **Medido** (`EXTRA=map=<id> perf.js 844x390 10 high,medium,low 4`, PC cargado por otros flujos: fps no válidos, dibujos y triángulos sí):
+  | nivel | Fanals | Platja | Palau |
+  |---|---|---|---|
+  | alta | 40/43 · 446 k | 41/45 · 449 k | — |
+  | media | 40/43 · 257 k | 43/46 · 260 k | 48/51 · 306 k |
+  | baja | 29/32 · 135 k | 31/33 · 126 k | 29/33 · 105 k |
+  Capturas: `tools/out/sedes/fanals/` (`d1280/`, `m844/` táctil, `m844-low/`, `d1280-low-rally.png`); Palau y Platja antes/después de la
+  refactorización en `tools/out/sedes/antes|despues2/` (iguales salvo la animación del público, que no es determinista entre capturas).
+- **Moll de la Sorra** (`js/venue-moll.js`, segunda playa): torneo urbano sobre una isla de arena traída al muelle de un puerto inventado.
+  Luz `dia` (cielo #8fc6ee → #d6ecf7) y `tarde` (sol bajo detrás de la grúa teal, rielada naranja #e88a4f, telón con ventanas encendidas).
+  - Ganchos nuevos de la piel de playa (arena.js, PLATJA_P; Platja y Fanals no los usan): `tile(g, N, h)` pinta el mosaico del suelo en vez
+    de la arena (aquí, hormigón: losas de 2,5 m con juntas, áridos, manchas y grietas); `courtBase(g, h)` pinta en la capa de la pista DEBAJO
+    de las cintas (aquí, la isla de arena #efd29c de ±16,3 × ±10,05 m con la arena amontonada contra el bordillo: 0 dibujos); `relight: true`
+    repinta el telón en la MISMA textura al cambiar de luz (el pintor recibe `h.mode`; la semilla es fija, sin memoria nueva).
+  - En `build`: el mar baja 1,1 m (`beachSea.position.y`) con la orilla (`uShore` = −25) debajo del hormigón, y la malla de arena se recorta
+    al canto del muelle (x = −29); `surf: 0` (sin ola que rompe), `boats: false`. Canto del muelle (cantil, paramento con franja mojada, norays,
+    defensas y escalas), muelle de enfrente con tinglados y farolas altas, grúa pórtico teal en nuestro muelle (pluma de celosía hacia el agua,
+    carro con cabina y un contenedor colgado del spreader) y grúa coral enfrente con la pluma hacia nosotros, pilas de contenedores de 20 pies
+    (cerca, con postes y ondas; lejos, solo caja y largueros), ferri blanco atracado a la derecha con amarras, remolcador rojo a la izquierda,
+    dos veleros abarloados, bordillo de tablones de la isla, gradas de aluminio + contenedores apilados (2 de alto) con terraza, barandilla,
+    escalera de dos tramos y una fila de público (la grada de aluminio cede asientos al azar: el público total queda como el de Platja),
+    cabina de comentaristas sobre un contenedor, farolas de puerto con banderines (laterales y fondo rival, nunca sobre la pista), food trucks,
+    bancos de palés, jardineras con olivos, y un tinglado viejo con palmeras en el lado de tierra. Telón: sierra, ciudad (bloques, torre de
+    cristal, campanario, antenas), silos y grúas lejanas a los lados y la escollera con los faros rojo y verde de la bocana.
+  - Cinta azul #1e4fd8; lonas con la marca MOLL DE LA SORRA en teal (las demás marcas con sus colores); red y protecciones teal y coral;
+    partículas de arena #e6d3ae. Público con gorras (30 %).
+  - Medido (`EXTRA=map=moll perf.js 844x390 10 high,medium,low 4`): alta 41/44 · 490 k, media 40/41 · 291 k, baja 29/32 · 122 k (Platja
+    41/43 · 447 k, 41/44 · 260 k, 30/32 · 112 k). Estática 29 k triángulos (Platja 19,5 k); público 268 (Platja 245). Capturas en
+    `tools/out/sedes/moll/` (`d1280/`, `m844/` táctil, `tarde/`, `land-*.png` lado de tierra, `overview*.png`).
+- **Poliesportiu Can Rebot** (`js/venue-canrebot.js`, primer pabellón nuevo, 12-nov-2026): el polideportivo municipal del barrio, DE DÍA
+  (polo opuesto al Palau nocturno). Gimnasio de 43,2 × 30,6 m (paredes en x = ±21,6, y = −17,2 / +13,4), techo en 6 dientes de sierra.
+  - Suelo: la tarima de Palau REPINTADA (`def.floor`): sintético verde #2e9a6b con borde #27855c, pista terracota #d8673b / ataque
+    #c95c33, debajo de las líneas FIVB blancas las de baloncesto (amarillo al 50 %) y balonmano / fútbol sala (azul al 50 %), grano de goma,
+    barniz mate y «CAN REBOT» en la zona libre. Fuera de la tarima, `canrebotFloor` (lienzo pequeño; sustituye a `outerFloor`) con el resto
+    de la pista de balonmano y el cemento #8f9196 de los bordes.
+  - `canrebotStatic` (1 malla toon + tinta en media/alta): zócalo teal y pared crema, ventanales altos, espalderas en los dos fondos,
+    colchonetas, canastas plegadas al techo, persianas del almacén, salidas de emergencia, carcasas de los marcadores; grada telescópica
+    de 6 filas en el lado −y (asientos madera / rojo alternos, pasillo con cantoneras, barandillas); banquillos y tarima de la cámara;
+    en el lado +y vestuarios, máquina de bebidas, fuente, vitrina de trofeos, corcho, reloj y extintores; chapa, nervios y cerchas.
+  - `canrebotEmissive` (MeshBasic sin tono, 1 dibujo): lucernarios, ventanales, 8 campanas industriales, máquina y salidas de emergencia.
+  - `canrebotPrints` (toon con atlas, 1 dibujo): letrero «POLIESPORTIU MUNICIPAL · CAN REBOT», pancartas de tela «CV CAN REBOT» y
+    «ÀNIMS EQUIP!», carteles de vestuarios / almacén, cartel del torneo de barrio, escudo del club.
+  - `canrebotScore` (1 dibujo, los dos fondos con el mismo lienzo): marcador de pared de SEGMENTOS (dígitos rojos #ff3b2f y ámbar #ffb02e
+    sobre negro, sets, set en juego, avisos); se enciende un poco con el destello del punto.
+  - `canrebotCrowd`: ~110 vecinos y familias con ropa de calle (`K.crowd`). `canrebotBeams`: 6 haces de sol desde los lucernarios
+    (`K.coneMesh`, k 0,05; solo media y alta; bajan en tensión y suben en la victoria).
+  - `def.hide`: outerFloor, ledBoards, ledRefl, crowd0-3, crowdImp, flags, endScreen, hungScreens, hallShell, halos, lightCones, banners,
+    hallName, camFlashes, static, emissive. Se quedan tarima, red, silla, mesa, postes (protecciones «CAN REBOT»), oficiales y crew.
+  - Luz: sol cálido #fff1c8 alto desde +x (`keyDir` [15, 5, 23]), hemi #f3e6c8 / #8f6a4a, fill #cfe3ff, rim #fff6e4, niebla #d9cdb4
+    36-110, `crowdDim` 0,12 (de día la grada apenas se apaga en tensión). Programas: +4 variantes (toon con textura, básicas de la
+    emisiva y del marcador, haces con su color), compiladas al montar la sede; venuetest vuelve a la base (65 geo / 45 tex / 47 prog).
+  - Medido (`EXTRA=map=canrebot perf.js 844x390 15 high,medium,low 4`, PC cargado: fps no válidos): alta 38/41 · 339 k, media 39/43 ·
+    238 k, baja 27/29 · 95 k. 6v6 (`format=6v6&map=canrebot`): media 49/53 · 265 k, baja 33/35 · 110 k (Palau 6v6 en la misma pasada:
+    56/64 · 326 k y 36/39 · 121 k). Capturas en `tools/out/cr/` (`d/` 1280×720, `m/` 844×390, `low/` baja, `others/` el resto de sedes).
+- **Cúpula del Far** (`js/venue-cupula.js`, segundo pabellón nuevo, 12-nov-2026): la arena de espectáculo DE NOCHE de las finales, como
+  PIEL de Palau (grada, público, vallas LED, banderas, videomarcadores de los fondos, flashes y oficiales se quedan).
+  - Tarima repintada (`def.floor`): zona libre añil #1c1648 con un abanico de 16 rayos #2e2676 desde el centro (el haz del faro), pista
+    oro #ebc863 / ataque #dfba55 con barniz brillante (franjas al 14 %), «CÚPULA DEL FAR» y estrellas de 8 puntas doradas en la zona
+    libre, filo oscuro #2a2150 bajo las líneas blancas para que se lean sobre el oro.
+  - Piel: asientos de los 6 bloques de color recoloreados de azul noche a violeta (#1e2a5a … #5a3fa0, conservan el degradado por filas),
+    línea de luz del antepecho en cian; cerchas, anillo de focos y caja del marcador colgado de Palau aplastados (`K.staticHide`);
+    vallas con «CÚPULA DEL FAR» (cian sobre añil, deco `star8` nueva en `drawDeco`) y «MARINA FM» en magenta; estandartes añil con la
+    estrella de 8 puntas dorada (franja del color del equipo); cabecera de los marcadores añil y oro.
+  - `cupulaDome` (1 dibujo, ShaderMaterial propio con niebla, baja con `uCrowdLight` salvo óculo y estrellas): paredes de Palau hasta
+    18,5 m con el derrame cian del aro; cúpula de 10 anillos × 32 puntos que pasa del rectángulo de las paredes a una elipse (flecha
+    9,5 m), paneles hexagonales en coordenadas de vuelta y meridiano (`aP`, juntas con fwidth que se apagan a distancia), nervios cada
+    6 celdas, perforaciones de estrella (1 de cada ~8 celdas), cornisa dorada y óculo encendido; utillaje sin luces con el sombreado
+    horneado por cara (cuerpo del faro, base, remates dorados, linterna con montantes, cubierta, péndolas, anillo de focos de 11,5 m
+    a 17,2 m con 12 cabezas).
+  - El faro: chaflán de 4,9 m con las 4 caras rectas de pantalla (`cupulaScreens`, 3,5 × 1,97 m a z 11,4: el marcador colgado de Palau,
+    su lienzo y su material LED compartidos, así el destello y el apagado bajo el HUD siguen funcionando) y 4 caras de lentes. `def.score`
+    lo publica en `landmarks.scoreHung/scoreBoard`.
+  - `cupulaGlow` (1 dibujo, MeshBasic sin tono + `vb-cupula-glow`): aro LED cian #39e0ff (0,22 m) y magenta #ff4fa0 en el remate de los
+    muros traseros de las 4 gradas (encima de las vallas altas), con persecución lenta (`aRing.y` = metros de aro); 1,5 s del color del
+    equipo que anota y persecución viva en la victoria; lentes, linterna, anillo bajo la base y cabezas de los focos. Todo ≤ 0,8 (umbral
+    del bloom de alta 0,82). `cupulaHalos` (12 focos + linterna). `cupulaBeams`: 6 haces desde la base del faro hacia la grada (`K.coneMesh`,
+    k 0,034, solo media/alta) con barrido (`sweep` 0,2, fase propia: más deprisa y marcado en punto de set y en la victoria).
+  - `def.hide`: hallShell, hungScreens, banners, hallName, halos, lightCones. Luz: principal #fff3e0 desde (7, −8, 27), hemi #8a7ad8 /
+    #2a2150, relleno #6a5ab8, contraluz #ff8fd0 (0,55), niebla #1f1846 34-95, bruma #2a1f5a (0,4), grada al 74 % (`crowdLight`), en
+    tensión baja la mitad (`crowdDim` 0,5).
+  - Medido (`EXTRA=map=cupula perf.js 844x390 15 high,medium,low 4`, PC cargado: fps no válidos): alta 46/50 · 1216 k, media 47/50 ·
+    306 k, baja 30/33 · 108 k; Palau en la misma pasada 45/50 · 1213 k, 46/50 · 298 k, 30/33 · 104 k. +3 programas (cúpula, emisiva,
+    haces con color) al montar la sede. Capturas en `tools/out/cu/` (`d/` 1280×720, `m/` 844×390 táctil, `low/`, `6v6/`, `over*.png`
+    vistas generales, `after/` el resto de sedes).
+  - El brillo del bloom alrededor de las camisetas en alta es el de siempre (también en Palau); sobre la zona libre oscura se nota más.
+- Pendiente: Carrera con sede por club (`matchSetup().map`); la cámara de la
+  grúa del cambio de campo en la playa sigue sin `courttest`.

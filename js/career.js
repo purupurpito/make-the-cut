@@ -37,6 +37,7 @@
  *   - changeMate(i) cambiar de compañero entre los de la plantilla (c.squad); química con el compañero (c.mate.chem).
  *   - Bandeja de mensajes c.inbox (entrenador, ofertas, objetivos): readMsg(id), readAll(), unread(c).
  *   - En la Carrera solo controlas a tu jugador (ctrl siempre 'one'; los guardados con 'both' se migran).
+ * Mundo de la Carrera (career-world.js, sprint 5): mentor, noticias y clubes (life() reparte el gancho; 'join' al final de joinClub).
  */
 (function () {
   'use strict';
@@ -681,6 +682,7 @@
     c.offers = []; c.window = '';
     if (c.phase === 'pick') { c.phase = 'league'; c.week = 0; c.pick = null; }
     if (c.phase !== 'off') { c.objective = makeObjective(c); welcome(c); }
+    life(c, 'join', o);
   }
   function welcome(c) {
     var k = myClub(c), ct = c.contract;
@@ -691,7 +693,7 @@
   function plural(n, a, b) { return n + ' ' + (n === 1 ? a : b); }
   /** «Vida» de la Carrera (js/career-life.js: retos, fama, patrocinios, decisiones, rival, tienda, premios, logros, legado). Sin el
    *  fichero, nada cambia. */
-  function life(c, kind, a, b) { var Lf = VB.CareerLife; if (!Lf || !Lf.hook) return; try { Lf.hook(c, kind, a, b); } catch (e) { try { console.error('CareerLife.' + kind, e); } catch (e2) { } } }
+  function life(c, kind, a, b) { [VB.CareerLife, VB.CareerWorld].forEach(function (Lf) { if (!Lf || !Lf.hook) return; try { Lf.hook(c, kind, a, b); } catch (e) { try { console.error('Career hook ' + kind, e); } catch (e2) { } } }); }
   /** Inicio: rechazar todas → nuevas ofertas, peores (de los clubes más flojos de la Regional y sin prueba). */
   function rejectAll() {
     var c = load(); if (!c || c.phase !== 'pick') return false;
@@ -1906,6 +1908,7 @@
       c.objective = objectiveFor6(c, k); welcome6(c);
       if (c.phase === 'league') { if (c.week >= weeksOf6(c, k.lid)) endLeague6(c); else skipBye6(c); }
     }
+    life(c, 'join', o);   // (como joinClub en la playa: Faro, «antes del debut» o «club nuevo»)
   }
   function welcome6(c) {
     var k = myClub(c), L = lg6(c, k.lid), ct = c.contract;

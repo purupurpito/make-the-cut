@@ -71,6 +71,9 @@
     ['chDone', 'chTried', 'streak', 'best', 'bestNota', 'evN', 'duelW', 'duelL', 'hurt', 'spent', 'earned'].forEach(function (k) { if (!(+l[k] >= 0)) l[k] = 0; });
     if (l.sponsor && typeof l.sponsor !== 'object') l.sponsor = null;
     if (l.ev && (typeof l.ev !== 'object' || !EVENTS[l.ev.key])) l.ev = null;
+    // celebración de firma (sprint 5, E2): '' = ninguna; celebAnn = último escalón ya avisado (las carreras viejas no reciben avisos atrasados)
+    if (typeof l.celeb !== 'string') l.celeb = '';
+    if (!(l.celebAnn >= 0)) l.celebAnn = tierIdx(l.fameMax);
     return l;
   }
 
@@ -97,7 +100,52 @@
       K(c)._msg(c, 'fans', 'Fama: «' + tierName(t1, c) + '»', 'Ya te siguen ' + num(l.fame) + ' personas. ' + fl + (t1 >= 1 ? ' Los patrocinadores empiezan a llamar a tu agente.' : ''));
       if (t1 >= 1) sponsorOffers(c, 'tier');
     }
+    celebCheck(c);
     return n;
+  }
+
+  // ------------------------------------------------------------------ celebración de firma (sprint 5, E2 §2.8)
+  // El catálogo de verdad es VB.Players.CELEBS (players.js, con los gestos); este es el de reserva para node o sin players.
+  // tier = índice de TIERS que la desbloquea (por fameMax: nunca se pierde).
+  var CELEB_DEF = [{ id: 'saludo', name: 'Saludo', tier: 1 }, { id: 'bailecito', name: 'Bailecito', tier: 2 }, { id: 'avion', name: 'Avioncito', tier: 3 },
+    { id: 'arquero', name: 'Arquero', tier: 4 }, { id: 'silencio', name: 'Silencio', tier: 5 }, { id: 'rodillazo', name: 'Rodillazo', tier: 6 }];
+  function celebTier(x) {
+    if (typeof x.tier === 'number') return clamp(x.tier | 0, 0, TIERS.length - 1);
+    for (var j = 0; j < TIERS.length; j++) if (TIERS[j][1] === x.tier) return j;
+    return TIERS.length - 1;
+  }
+  function celebCat() {
+    var P = VB.Players && VB.Players.CELEBS, out = [];
+    if (Array.isArray(P)) P.forEach(function (x) { if (x && typeof x.id === 'string' && x.id) out.push({ id: x.id, name: String(x.name || x.id), tier: celebTier(x) }); });
+    return out.length ? out : CELEB_DEF;
+  }
+  /** [{id, name, tier, tierName, open, on}] para Fama › Celebración. */
+  function celebs(c) {
+    var l = ensure(c), ti = tierIdx(l.fameMax);
+    return celebCat().map(function (x) { return { id: x.id, name: x.name, tier: x.tier, tierName: tierName(x.tier), open: x.tier <= ti, on: l.celeb === x.id }; });
+  }
+  /** Elige la celebración ('' = ninguna). false si no existe o aún está bloqueada. */
+  function setCeleb(id) {
+    var c = K().load(); if (!c) return false; var l = ensure(c);
+    id = typeof id === 'string' ? id : '';
+    if (id) { var x = celebs(c).filter(function (e) { return e.id === id; })[0]; if (!x || !x.open) return false; }
+    l.celeb = id; K().save(c); return true;
+  }
+  /** Firma del guardado de Carrera (también para Partido rápido, solo lectura); '' si no hay carrera, no hay firma o ya no vale. */
+  function signatureNow() {
+    try {
+      var c = K() && K().load && K().load(); if (!c || !c.life || typeof c.life.celeb !== 'string' || !c.life.celeb) return '';
+      var x = celebs(c).filter(function (e) { return e.id === c.life.celeb; })[0];
+      return x && x.open ? x.id : '';
+    } catch (e) { return ''; }
+  }
+  /** Aviso en la bandeja al desbloquear una celebración (una sola vez por escalón: l.celebAnn). */
+  function celebCheck(c) {
+    var l = ensure(c), ti = tierIdx(l.fameMax); if (ti <= l.celebAnn) return;
+    var from = l.celebAnn; l.celebAnn = ti;
+    celebCat().forEach(function (x) {
+      if (x.tier > from && x.tier <= ti) K()._msg(c, 'fans', 'Celebración nueva: ' + x.name, 'Ya puedes elegirla en Fama › Celebración. La harás en tus puntos grandes.');
+    });
   }
   var FAME_LINE = ['', 'En tu barrio ya te paran por la calle para pedirte una foto.', 'Los comentaristas del circuito saben pronunciar tu apellido. Casi siempre.',
     'Las gradas empiezan a llevar tu dorsal pintado en la cara.', 'Sales en los resúmenes de la tele y tus jugadas dan la vuelta a las redes.',
@@ -662,6 +710,8 @@
     Object.keys(st).forEach(function (k) { st[k] = clamp(Math.round(st[k] + (gb[k] | 0) - hurt), 1, 99); });
     m.gear = gb; m.hurt = hurt;
     var ch = challenge(c); if (ch && m.career) { m.career.goal = ch.txt; m.career.duel = ch.duel; }
+    // E2: dorsal del rival personal solo en el duelo (main.js lo pasa a nums[1] y a Players.setRival)
+    if (ch && ch.duel && m.career && l.rival && l.rival.num >= 0) m.career.rivalNum = l.rival.num | 0;
   }
   function onCreate(c) { var f = legacyStart(); var l = ensure(c); if (f) { l.fame = l.fameMax = f; } }
   function hook(c, kind, a, b) {
@@ -682,6 +732,7 @@
     rivalOvr: rivalOvr, pendingEvent: pendingEvent, answer: answer, EVENTS: EVENTS,
     achList: achList, check: check, AWARDS: AWARDS,
     legacyScore: legacyScore, legacyTier: legacyTier, canRetire: canRetire, retire: retire, legends: legends, RETIRE_AGE: RETIRE_AGE, DECLINE_AGE: DECLINE_AGE,
-    eur: eur, num: num
+    eur: eur, num: num,
+    CELEB_DEF: CELEB_DEF, celebs: celebs, setCeleb: setCeleb, signatureNow: signatureNow
   };
 })();

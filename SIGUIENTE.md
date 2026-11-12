@@ -39,6 +39,15 @@ por sistema) y notes/ui_main.md (guía de estilo de textos).
   - **Género neutro:** el juego no separa por género.
   - **Correo:** el correo de la cuenta de Google de pruebas de Ferran no se escribe en ningún fichero.
   - **Repo de redirección:** `purupurpito.github.io` no se crea sin que Ferran diga que sí.
+- **Versión (sprint 5).** Cada publicación visible sube `VB.VERSION` en js/version.js y añade su entrada al principio de
+  `VB.CHANGELOG` (textos cortos, sin «·» ni «navegador»). build-pages falla si no cuadran. `node tools/abouttest.js` lo comprueba.
+- **Pruebas nuevas (sprint 5):** `tools/settest.js`, `tools/keytest.js`, `tools/animtest.js`, `tools/gymtest.js`, `tools/abouttest.js`,
+  `tools/audiotest.js`, y `node tools/fingerprint6.js --variant mastery` («huella de la maestría idéntica»).
+  Al tocar el juego del humano, mirar también `SIMTEST_MASTERY=1 SIMTEST_ONLY=matrix node tools/simtest.js 0 <semilla> 20 <n>`: todo
+  partido 2v2 de verdad va con `mastery:true` y la matriz por defecto no lo cubre (así se vio que el colocador plantado bajaba la escala).
+- **Fusión pendiente (sprint 5):** la rama sprint5 salió de 6313ac5 y origin/main va 10 commits por delante (lote C y 0565a4f). Al
+  fusionar: resolver los 15 ficheros tocados por los dos lados, repasar los ganchos de career-world con el career.js de lote C, pasar
+  simtest, fingerprint6 y careertest (con y sin `NOWORLD=1`) y regenerar `tools/fp-mastery.json` (`--variant mastery --write`).
 
 ---
 
@@ -219,6 +228,29 @@ Ferran lo revise. Usa búsqueda web.
 - **Lote A → tools/console.sh (ui_main)**: la línea 9 `EXTRA="${4:-}"` pisa la variable de entorno `EXTRA`, así que
   `EXTRA=format=6v6 bash tools/console.sh all` prueba el 2v2 normal. Cambio: `EXTRA="${4:-${EXTRA:-}}"`. Mientras tanto, pásalo como
   4º argumento: `bash tools/console.sh all 1280 720 format=6v6`.
+- **Sprint 5 (E3/E6) → lote B (camera.js; rama de la cámara lenta)**: camera.js ya trae del sprint 5 `OPTS = ['camDist','camCuts','lessMotion']`,
+  `readComfort()` una vez por frame (`distK` en `gameplayShot`/`touchFitPlan`, `cutsLess`, `reduceMotion` desde `ctx.reduceMotion` si es
+  propiedad propia de ctx), `quietPoint(g) = cutsLess || g.drill` (sin plano de reacción/héroe/sacador rival en 'point'; vuelta al saque con
+  corte 'serve') y el evento `drillStage` (corte seco `lastCut.kind 'drill'` que además APAGA cámara lenta, hit-stop, cutaway, clinch y
+  seguimiento del remate). Al rebasar: conserva esas ramas; la cámara lenta antes del golpe NO debe actuar con `g.drill` (el Entrenamiento
+  va siempre a velocidad 1) ni saltarse `ctx.reduceMotion`; si añades un ajuste nuevo, publícalo en `OPTS` (ui.js esconde las filas con
+  `data-need` si no está). Detalle en notes/camera_input.md «Sprint 5, E3 + E6».
+- **Mundo de la Carrera (sprint 5, E4/E5) → lote C (rama `carrera-pista`)**: al rebasar, conservar en career.js el reparto de `life()`
+  (llama a `VB.CareerLife` y después a `VB.CareerWorld`, cada uno con guarda) y `life(c, 'join', o)` al final de `joinClub`; en career-ui.js
+  los ganchos `WUI()` (tarjeta de Faro y «Titulares» tras `lastCard`) también en `renderMatch6` de la pista, `SUBS.league` con «Noticias» y
+  «Clubes», y en `renderTable` de la pista el nombre del club como `<button class="cw-tl-b" data-act="cw-club" data-id>`; en career-life.js
+  `setup()` deja `m.career.rivalNum = l.rival.num` solo en los duelos (main.js lo pasa como `nums[1]` y a `VB.Players.setRival`). Las ligas
+  de las noticias y los anales salen de `leaguesOf(c)` / `topLv(c)` en career-world.js (hoy los 5 circuitos de playa, 8 clubes, 14
+  jornadas): con las ligas por país, cambia solo esas dos. Detalle en notes/carrera.md «Mundo de la Carrera (C1/C2)».
+- **Merge sprint 5 + main (12-nov-2026): Mundo de la Carrera en la pista HECHO.** Faro, Noticias y Clubes funcionan también en la
+  Carrera de pista (career-world.js con las ligas por país: `leaguesOf`/`topLv`/`otherLv` por `lid`, `BEATS_H`; career-ui.js `SUBS6.league`,
+  `lgSw6`, botones de club en `renderTable6`, mentor y Titulares en `renderMatch6`; careertest «Mundo de la Carrera en la pista»). Queda:
+  en la pista `m.nums` manda (main.js) y el dorsal del rival personal (`m.career.rivalNum`) no se coloca en el equipo rival; y la ficha
+  de un club de otra liga no enseña la forma reciente («Esta temporada»), porque la pista solo guarda los resultados de tu liga (`c.myRes`).
+- **Sprint 5 → Ferran (decisiones)**: `MKT = true` en career-world.js (rumores de verano con jugadores inventados; false para quitarlos);
+  línea «Claude Code» en los créditos (TODO en version.js); salto a 1.0.0; desplegar firebase/firestore.rules (con 'gym') y DESPUÉS poner
+  `GYM_SYNC = true` en account.js; probar el oro del bloqueo (16) con humanos; la recompensa de la finta (tirada «batida» por hash en vez
+  del retraso puro de la spec).
 - **HECHO (12-nov-2026) · Lote C → lote A, js/players.js (color del líbero del club):** `matchSetup()` de la Carrera de pista ya pasa `kit.kitLibero` y
   `rivalKit.kitLibero` (main.js los deja en `opts.kit` y `opts.kit.rival`). En `setKit(st)`, guardar `st.kitLibero` (equipo 0) y
   `st.rival.kitLibero` (equipo 1); en `liberoKit(team)`, usarlos como camiseta del líbero si son número y se distinguen de las dos

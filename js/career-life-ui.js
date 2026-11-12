@@ -34,6 +34,7 @@
     '#career .lf-item b{font:800 15.5px var(--display);letter-spacing:.03em;text-transform:uppercase}',
     '#career .lf-item small{display:block;color:#b9b0e6;font:600 12.5px var(--ui)}',
     '#career .lf-item button{min-height:44px;min-width:120px}',
+    '#career .lf-lock{opacity:.6}',
     '#career .lf-pips{display:inline-flex;gap:3px;vertical-align:-1px;margin-left:6px}#career .lf-pips i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.18);box-shadow:0 0 0 1.5px var(--tk)}#career .lf-pips i.on{background:#ffd23f}',
     '#career .lf-ach{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}',
     '#career .lf-a{padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.2)}#career .lf-a.done{background:rgba(47,143,90,.28);box-shadow:inset 0 0 0 2px #2f8f5a}',
@@ -88,6 +89,7 @@
       (f.next ? bar(f.p) + '<p class="muted" style="margin:0">' + sp(['Siguiente: ' + esc(f.next), 'faltan ' + num(f.to - f.fans)], 'v') + '</p>' : '<p class="muted">Lo máximo. Tu nombre ya es historia del vóley.</p>') +
       '<p class="muted">' + sp([l.streak >= 2 ? 'Racha de ' + l.streak + ' victorias (más seguidores por partido)' : '', 'Mejor racha: ' + (l.best | 0), l.bestNota ? 'Mejor nota: ' + String(l.bestNota).replace('.', ',') : ''], 'v') + '</p>' +
       '<p class="muted">Ganas seguidores con buenas notas, victorias, retos, títulos y premios. La fama trae patrocinadores y hace que los clubes te miren más (+' + String(Lf().offerBonus(c)).replace('.', ',') + ' de interés).</p></div>';
+    h += celebCard(c);
     // patrocinio
     h += '<div class="card"><h3>Patrocinio</h3>';
     if (l.sponsor) {
@@ -109,6 +111,19 @@
     // decisiones recientes
     if (l.log && l.log.length) h += '<div class="card"><h3>Tus decisiones</h3>' + l.log.slice(-6).reverse().map(function (x) { return '<p class="muted" style="margin:3px 0">' + sp(['T' + x.s, esc(x.t), '<b style="color:#fff">' + esc(x.o) + '</b>'], 'v') + '</p>'; }).join('') + '</div>';
     return h;
+  }
+  /** Celebración de firma (sprint 5, E2): «Ninguna» y una fila por celebración (Elegida / Elegir / bloqueada con su escalón). */
+  function celebCard(c) {
+    if (!Lf().celebs) return '';
+    var L = Lf().celebs(c), cur = c.life && c.life.celeb || '', open = L.filter(function (x) { return x.open; }).length;
+    function row(id, name, hint, on, lock) {
+      return '<div class="lf-item"><div><b>' + esc(name) + '</b><small>' + esc(hint) + '</small></div>' +
+        (on ? '<span class="tag g">Elegida</span>' : lock ? '<span class="tag lf-lock">Fama: ' + esc(lock) + '</span>' : '<button data-act="lf-celeb" data-id="' + esc(id) + '">Elegir</button>') + '</div>';
+    }
+    return '<div class="card" data-nav><h3>' + sp(['Celebración', open + ' de ' + L.length], 'd') + '</h3>' +
+      '<p class="muted">Tu gesto en los puntos grandes: remates de los que levantan la grada y el punto que cierra un set.</p>' +
+      row('', 'Ninguna', 'La reacción de siempre', !cur, '') +
+      L.map(function (x) { return row(x.id, x.name, x.open ? 'Desbloqueada con «' + x.tierName + '»' : 'Se desbloquea con la fama', x.on, x.open ? '' : x.tierName); }).join('') + '</div>';
   }
   function shop(c) {
     var l = c.life, money = +c.money || 0, h = '';
@@ -167,6 +182,7 @@
         note = k === 'ok' ? 'Comprado: ' + L.gearName(c, id) + '.' : k === 'money' ? 'No te llega: cuesta ' + eur(p) + '.' : k === 'max' ? 'Ya está al máximo.' : ''; return 'render'; }
       case 'lf-svc': { var c2 = C().get(), id2 = b.getAttribute('data-id'), k2 = L.toggleSvc(id2);
         note = k2 === 'on' ? 'Contratado: ' + L.SVC[id2].name + '.' : k2 === 'off' ? 'Cancelado: ' + L.SVC[id2].name + '.' : k2 === 'money' ? 'No te llega para la primera jornada (' + eur(L.svcCost(c2, id2)) + ').' : ''; return 'render'; }
+      case 'lf-celeb': { var cid = b.getAttribute('data-id') || ''; note = L.setCeleb && L.setCeleb(cid) ? (cid ? 'Celebración elegida.' : 'Sin celebración propia.') : 'Aún no la tienes.'; return 'render'; }
       case 'lf-ret':
         if (retArm && performance.now() - retArm < 4000) { retArm = 0; var rec = L.retire(); return rec ? 'retired' : 'render'; }
         retArm = performance.now(); return 'render';

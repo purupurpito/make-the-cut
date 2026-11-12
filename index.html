@@ -22,6 +22,7 @@
 </script>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#070b14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10.6' fill='%23fffaf0' stroke='%231d1530' stroke-width='1.6'/%3E%3Cpath d='M12 12C12 8 10.5 4.5 8 2.8A10 10 0 0 1 13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8C16 13.9 13.7 13 12 12Z' fill='%231cc4b4'/%3E%3Cpath d='M12 12C12 8 10.5 4.5 8 2.8A10 10 0 0 1 13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8C16 13.9 13.7 13 12 12Z' fill='%230b8a86' transform='rotate(120 12 12)'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;0,900;1,700;1,800;1,900&family=Barlow:wght@400;500;600;700&display=swap">
@@ -2278,6 +2279,190 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+/* =====================================================================
+   E3 (sprint 5) · Ajustes de PC y Controles editables · E7 · Acerca de, versión (owner: ui_main)
+   ===================================================================== */
+/* Ajustes con 7 pestañas: hoja más ancha en pantallas grandes (las etiquetas enteras caben a partir de ~940 px) */
+@media (min-width:1000px){#panel .sheet.tabbed:has(#pnSet:not([hidden])){max-width:940px}}
+/* pestañas compactas (7 en Ajustes): si no caben, solo el icono y la etiqueta de la elegida (ui.js fitTabs → .tabs-ic) */
+.tabs.tabs-ic .tab{flex:0 0 auto;padding:5px 9px}
+.tabs.tabs-ic .tab:not(.on) .tb-t{display:none}
+.tabs.tabs-ic .tab:not(.on) svg{display:block!important;width:19px;height:19px}
+.tabs.tabs-ic .tb-row{justify-content:space-between}
+/* restablecer el apartado (doble pulsación) */
+.opt-reset{align-self:flex-start;margin-top:4px;padding:8px 12px;border-radius:8px;font:700 14px var(--ui);letter-spacing:0;text-transform:none;color:var(--soft,#cfc8f2);
+  background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14);text-shadow:none}
+.opt-reset:hover{background:rgba(255,255,255,.06);color:#fff}
+.opt-reset:focus-visible,.opt-reset.kf{background:rgba(255,255,255,.08);color:#fff}
+/* armado (2ª pulsación borra): el mismo aviso naranja que «Reiniciar partido» de la Pausa (#btnRestart.arm), no el amarillo de elegido */
+.opt-reset.arm{color:#fff;background:rgba(255,90,44,.22);box-shadow:inset 0 0 0 2px #ff6a2e}
+.is-touch .opt-reset{min-height:40px}
+/* fila que abre otro panel (Controles, Novedades, Créditos) */
+.opt-go .go-ic{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;background:rgba(0,0,0,.28)}
+.opt-go .go-ic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+/* filas informativas de Info (no se enfocan) */
+.opt.info{cursor:default;box-sizing:border-box}
+.opt.info .iv{font:600 15px var(--ui);letter-spacing:0;text-transform:none;color:var(--fg2);font-variant-numeric:tabular-nums;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* versión en la esquina de la portada */
+.menu-foot .ver{pointer-events:auto;align-self:flex-end;margin:0 0 0 auto;padding:5px 9px;border-radius:6px;font:700 12px var(--ui);letter-spacing:.02em;
+  text-transform:none;font-variant-numeric:tabular-nums;color:var(--muted);background:transparent;box-shadow:none;text-shadow:none;position:relative}
+.menu-foot .ver:hover{color:var(--fg);background:rgba(255,255,255,.08)}
+.menu-foot .ver.new::after{content:"";position:absolute;right:2px;top:3px;width:7px;height:7px;border-radius:50%;background:#ffd23f;box-shadow:none}
+.menu-foot .ver+.rec{margin-left:0}
+/* Controles editables */
+.ctl-pane{display:flex;flex-direction:column;gap:8px}
+.ctl-pane>.ctl{margin:0}
+.ctl.kb>div{min-height:40px}
+.ctl .kl{min-width:0;font-size:15px;color:var(--fg2)}
+.ctl .kl small{display:block;font:500 12px var(--ui);color:var(--muted)}
+.ctl .ks{display:flex;gap:6px;flex:0 0 auto}
+.kslot{min-width:58px;height:34px;padding:0 10px;border-radius:6px;font:800 15px/1 var(--display);letter-spacing:.04em;text-transform:none;color:var(--tk,#1d1530);
+  background:#fff7e8;box-shadow:inset 0 0 0 1.5px var(--tk,#1d1530),0 2px 0 var(--tk,#1d1530);text-shadow:none}
+.kslot:hover:not(:disabled):not(.cap){background:#fff}
+.kslot.empty{color:var(--muted);background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14)}
+.kslot.empty:hover:not(:disabled){background:rgba(255,255,255,.06)}
+.kslot.cap{color:var(--tk,#1d1530);background:var(--sel,#ffd23f);font:700 14px/1 var(--ui);letter-spacing:0;animation:kcap 1s ease-in-out infinite}
+.kslot.fixed,.kslot:disabled{opacity:.55;cursor:default}
+.rm .kslot.cap{animation:none}
+@keyframes kcap{0%,100%{box-shadow:inset 0 0 0 1.5px var(--tk,#1d1530),0 0 0 0 rgba(255,210,63,.55)}50%{box-shadow:inset 0 0 0 1.5px var(--tk,#1d1530),0 0 0 5px rgba(255,210,63,0)}}
+.is-touch .kslot{height:40px}
+.ctl-fixed{margin:0;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.4;color:var(--muted);background:rgba(29,21,48,.35)}
+.ctl-fixed b{color:var(--fg2);font-weight:600}
+.ctl-msg{min-height:1.3em;margin:6px 0 0;font:600 13.5px var(--ui);color:var(--gold)}
+.ctl-msg:empty{min-height:0;margin:0}
+.ctl-msg.bad{color:#ff9a8a}
+/* (sprint 5, arreglo) el aviso de la captura y el resultado se quedan pegados abajo de la hoja: en pantallas bajas quedaban fuera de vista */
+.ctl-msg:not(:empty){position:sticky;bottom:0;z-index:2;margin:6px -10px 0;padding:7px 10px;border-radius:6px;background:var(--tk,#1d1530);box-shadow:0 -6px 16px rgba(0,0,0,.4)}
+.ctl-pane .opt-g{gap:6px}
+/* Acerca de */
+.ab{display:flex;flex-direction:column;gap:10px}
+.ab .ab-k{margin:0;font:700 13px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ab .card{padding:12px 16px;border-radius:8px;background:var(--flat,rgba(46,39,86,.95));box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08),var(--flat-sh,0 2px 0 #1d1530)}
+.ab .card h3{margin:0 0 6px;font:800 18px var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--fg);text-shadow:none}
+.ab .card h3 small{margin-left:8px;font:600 13px var(--ui);letter-spacing:0;text-transform:none;color:var(--muted);font-variant-numeric:tabular-nums}
+.ab .ab-lics{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ab .ab-lics .opt-reset{margin-top:0}
+.ab .card ul{margin:0;padding-left:18px;color:var(--fg2);font-size:14.5px;line-height:1.45}
+.ab .card p{margin:0;color:var(--fg2);font-size:14.5px;line-height:1.45}
+.ab .card p+p{margin-top:4px}
+.ab details{border-radius:8px;background:rgba(29,21,48,.35);padding:8px 14px}
+.ab summary{cursor:pointer;font:700 14px var(--ui);letter-spacing:0;text-transform:none;color:var(--soft,#cfc8f2)}
+.ab .lic{margin:8px 0 2px;max-height:180px;overflow:auto;white-space:pre-wrap;font:500 11px/1.45 ui-monospace,monospace;color:var(--muted)}
+.ab .ab-note{margin:0;font-size:12.5px;color:var(--muted)}
+.ab .ab-build{margin:0;font:600 11px ui-monospace,monospace;color:var(--dim-text)}
+.ab-foot{display:flex;justify-content:flex-end;margin-top:12px}
+@media (max-height:560px){
+  .ab .card{padding:8px 12px}.ab .card h3{font-size:16px;margin-bottom:4px}.ab .card ul,.ab .card p{font-size:13.5px;line-height:1.35}
+  .ab-foot{margin-top:8px}.ab-foot button{padding:10px 20px}
+  .ctl.kb>div{min-height:34px}.kslot{height:30px;min-width:50px;font-size:14px}.is-touch .kslot{height:38px}
+  .opt-reset{padding:6px 10px;font-size:12px;margin-top:2px}
+}
+@media (max-height:420px){.ab .ab-k{display:none}.ab{gap:7px}.ab .card ul{font-size:13px;line-height:1.28}.ab-foot{margin-top:6px}.ab-foot button{padding:8px 18px}}
+/* ================= ENTRENAMIENTO (E6, sprint 5) =================
+   Tarjeta .m-gym en Jugar (4 columnas), página #mpGym (filas con medalla y récord), pastilla #drillBar en el sitio del marcador,
+   tarjeta de presentación (#intro.drill), sello del ejercicio (.ms = 0 puntos) y hoja final #gymEnd .sheet.drill. Medallas en SVG
+   (ui.js medalSVG): bronce #c9824a, plata #c9d3de, oro #ffc83a; sin medalla, un círculo hueco. */
+:root{--brz:#c9824a;--slv:#c9d3de;--gld:#ffc83a}
+#mpPlay{width:min(1060px,100%)}
+@media (min-width:621px){.modes{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* tarjeta en el estilo plano de TV D4: fondo de un color y silueta crema de un solo color (cono y balón), como la copa de Carrera */
+#menu .m-gym .md-art{background:#c8433b}
+#menu .md-art .md-flat{position:static;inset:auto;width:auto;height:min(84cqh,58cqw);aspect-ratio:1;fill:#fff8ee;
+  filter:drop-shadow(0 3px 0 rgba(20,12,40,.22))}
+#menu .md-art .md-flat .md-gseam{fill:none;stroke:#c8433b;stroke-width:2.2;stroke-linecap:round}
+#menu .mode:hover .md-art .md-flat,#menu .mode.kf .md-art .md-flat,#menu .mode:focus-visible .md-art .md-flat{animation:tvD4Bob 1.8s ease-in-out infinite}
+@media (max-width:620px){#menu .md-art .md-flat{height:min(80cqh,74cqw)}}
+@media (max-width:900px) and (min-width:621px){.md-tx b{font-size:22px}.md-tx small{font-size:12.5px}}
+@media (max-height:420px){.modes{gap:8px}.md-tx{padding:8px 10px 0}.md-tx b{font-size:19px}}
+/* página Entrenamiento */
+#mpGym{width:min(620px,100%)}
+.gy-list .mi{height:58px;grid-template-columns:minmax(0,1fr) auto;padding-right:12px}
+.gy-list .mi-l{font-size:21px}
+.gy-r{display:flex;align-items:center;gap:8px;font:700 13px/1.1 var(--ui);letter-spacing:.01em;text-transform:none;color:var(--soft);white-space:nowrap}
+.gy-r b{font:700 16px/1 var(--ui);color:#ffd23f;letter-spacing:0;font-variant-numeric:tabular-nums}
+.gy-r .gy-rec{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.gy-r .gy-rec small{font:600 12px/1 var(--ui);color:var(--muted)}
+.gy-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 2px 0;font:600 13px/1.3 var(--ui);color:var(--soft);text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.gy-foot b{color:#ffd23f;font-variant-numeric:tabular-nums}
+.mdl{display:inline-block;width:30px;height:30px;flex:0 0 auto;vertical-align:middle}
+.mdl .rb{fill:#e2553f}
+.mdl .rb2{fill:#3f7be0}
+.mdl .dk{stroke:rgba(20,12,40,.28);stroke-width:1.5}
+.mdl.m0 .dk{fill:none;stroke:rgba(255,255,255,.35);stroke-width:2;stroke-dasharray:3 3}
+.mdl.m0 .rb,.mdl.m0 .st{display:none}
+.mdl.m1 .dk{fill:var(--brz)}.mdl.m2 .dk{fill:var(--slv)}.mdl.m3 .dk{fill:var(--gld)}
+.mdl .st{fill:rgba(255,255,255,.8)}
+.mdl.off{opacity:.32;filter:saturate(.3)}
+@media (max-height:420px){#menu[data-page="gym"] #menuRecord{display:none}
+  #menu[data-page="gym"] .fs-btn{width:38px;padding:0;justify-content:center;gap:0;right:calc(10px + var(--sr))}
+  #menu[data-page="gym"] .fs-btn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .is-touch #menu[data-page="gym"] .fs-btn{width:44px}}
+@media (max-height:420px){.gy-list .mi{height:44px}.gy-list .mi-l{font-size:17px}.gy-list .mi-h{display:none}.mdl{width:24px;height:24px}.gy-foot{margin-top:5px;font-size:11.5px}}
+/* HUD del ejercicio: la pastilla ocupa el sitio del marcador (los avisos cortos de #callout siguen colgando del marcador) */
+#drillBar{display:none;align-items:center;gap:10px;height:40px;padding:0 6px 0 0;border-radius:0 2px 2px 0;background:var(--tk);color:#fff7e8;
+  box-shadow:0 6px 18px rgba(0,0,0,.35);font:800 18px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 0 rgba(0,0,0,.45)}
+#drillBar .db-ic{align-self:stretch;width:7px;height:auto;border-radius:0;background:var(--k0,#ff6a2e);box-shadow:none}
+#drillBar b{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 6px;margin-left:2px;
+  background:#fff7e8;color:var(--tk);font-weight:900;font-variant-numeric:tabular-nums;text-shadow:none}
+#drillBar small{font:700 13px var(--ui);letter-spacing:0;text-transform:none;color:var(--soft);text-shadow:none}
+#drillBar .sep{opacity:.7}
+#app.drill-on #drillBar{display:flex}
+#app.drill-on #sb>.sb-top,#app.drill-on #sb>.sb-bw,#app.drill-on #sb>.sb-tag,#app.drill-on #sb>.rl,#app.drill-on #chal{display:none}
+.is-touch #drillBar{height:36px;font-size:16px;gap:8px}
+.is-touch #drillBar b{height:26px;min-width:26px}
+/* tarjeta de presentación del ejercicio */
+.in-drill{display:none;margin:8px 0 6px}
+#intro.drill .in-vs,#intro.drill .in-meta{display:none}
+#intro.drill .in-drill{display:block}
+.in-drill h3{margin:0;font:900 italic 46px/.95 var(--display);text-transform:uppercase;color:#fff8ee;text-shadow:var(--ring2),3px 4px 0 var(--tk)}
+.id-goal{margin:8px 0 0;font:600 16px/1.3 var(--ui);color:var(--fg2)}
+.id-keys{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 14px;margin:10px 0 0;font:700 14px/1.2 var(--ui);color:var(--soft)}
+.id-keys .ik{display:inline-flex;align-items:center;gap:6px}
+.id-med{display:flex;justify-content:center;align-items:center;gap:6px 14px;margin:10px 0 2px;font:800 15px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:#fff8ee}
+.id-med .im{display:inline-flex;align-items:center;gap:5px}
+#intro.drill.show .in-drill{animation:fadeUp .4s .12s var(--ease) both}
+@media (max-height:420px){.in-drill{margin:4px 0 2px}.in-drill h3{font-size:32px}.id-goal{font-size:13.5px;margin-top:4px}.id-keys{font-size:12.5px;margin-top:6px}.id-med{font-size:13px;margin-top:6px}.id-med .mdl{width:20px;height:20px}}
+#pause.drill .p-score{display:none}
+.end-rec .e1{color:var(--fg2)}
+/* sello de una repetición sin puntos */
+#stamp.ms .st-in b{font-size:24px;color:#ffd9cf;text-shadow:var(--ring2),2px 3px 0 var(--tk)}
+.is-touch #stamp.ms .st-in b{font-size:20px}
+/* hoja final del ejercicio */
+#gymEnd .sheet{max-width:560px;padding:28px 32px 24px}
+#gymEnd .sheet::before{background:linear-gradient(90deg,#ffa04a,#f0524e)}
+.ge-title{font-size:clamp(40px,6.4vw,64px)}
+.ge-top{display:flex;align-items:center;gap:18px 26px;flex-wrap:wrap;margin:14px 0 8px}
+.ge-total{display:flex;align-items:baseline;gap:8px;font-family:var(--display)}
+.ge-total b{font:900 76px/.9 var(--display);color:#fff8ee;font-variant-numeric:tabular-nums;text-shadow:var(--ring2),3px 4px 0 var(--tk)}
+.ge-total small{font:700 17px var(--ui);letter-spacing:0;text-transform:none;color:var(--muted)}
+.ge-meds{display:flex;gap:12px}
+.ge-m{display:flex;flex-direction:column;align-items:center;gap:5px;font:700 13px/1 var(--ui);letter-spacing:0;text-transform:none;color:var(--muted);font-variant-numeric:tabular-nums}
+.ge-m .mdl{width:44px;height:44px}
+.ge-m.on{color:#fff8ee}
+.ge-m.new .mdl{animation:geNew .7s .45s var(--spring) both}
+@keyframes geNew{from{transform:scale(.3) rotate(-25deg);opacity:0}to{transform:none;opacity:1}}
+.ge-reps{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;align-items:end;height:38px;margin:4px 0 6px}
+.ge-reps i{display:block;border-radius:2px;background:#ffb238;box-shadow:none}
+.ge-reps i.p0{height:5px;background:rgba(255,255,255,.22)}.ge-reps i.p1{height:33%}.ge-reps i.p2{height:66%}.ge-reps i.p3{height:100%;background:#ffd23f}
+.ge-rec{margin:8px 0 14px}
+.ge-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
+.ge-btns #btnGeAgain{grid-column:1/-1}
+.ge-btns #btnGeNext[hidden]+#btnGeList{grid-column:1/-1}
+@media (max-height:420px){
+  #gymEnd .sheet{padding:14px 20px 12px}
+  #gymEnd .sh-k{margin-bottom:2px}
+  .ge-title{font-size:34px}
+  .ge-top{margin:6px 0 4px;gap:10px 18px}
+  .ge-total b{font-size:50px}
+  .ge-m .mdl{width:32px;height:32px}
+  .ge-reps{height:24px;margin:2px 0 4px}
+  .ge-rec{margin:4px 0 8px;font-size:13px}
+  .ge-btns{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .ge-btns #btnGeAgain{grid-column:auto}
+  .ge-btns{align-items:stretch}
+  .ge-btns button{height:auto;min-height:44px;padding:6px 8px;font-size:14px;white-space:normal;line-height:1.1}
+}
 </style>
 
 <div id="app">
@@ -2287,6 +2472,7 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
   <!-- ================= HUD ================= -->
   <div id="hud" hidden>
     <div class="sb" id="sb">
+      <div id="drillBar"><i class="db-ic" aria-hidden="true"></i><span id="drillTxt">Saque</span></div>
       <div class="sb-top">
         <span class="sb-venue"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><g><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(120 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(240 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g></svg>PALAU DEL MAR</span>
         <span class="sb-set" id="sbSet">SET 1</span>
@@ -2335,6 +2521,7 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
     <p class="in-k"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><g><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(120 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(240 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g></svg>Palau del Mar<span><span class="sr">, </span>2 contra 2</span></p>
     <div class="in-vs"><div class="in-t t0"><b>TÚ</b><small>+ compañero</small></div><div class="in-x">vs</div><div class="in-t t1"><b>CPU</b><small>Pareja rival</small></div></div>
     <div class="in-meta"><span class="in-chip" id="introDiff">Nivel Normal</span><span id="introFmt">Al mejor de 3 sets</span><span class="in-srv" id="introSrv">Sacas tú</span></div>
+    <div class="in-drill" id="introDrill"><h3 id="idTitle">Saque a diana</h3><p class="id-goal" id="idGoal"></p><p class="id-keys" id="idKeys"></p><p class="id-med" id="idMed"></p></div>
     <p class="in-skip" id="introHint">Pulsa cualquier tecla para empezar ya</p>
     <i class="in-bar"><b></b></i>
   </div></div>
@@ -2373,6 +2560,7 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
         <button class="mode m-quick" id="btnQuick"><span class="md-art" aria-hidden="true"><span class="md-num">2<i>v</i>2</span></span><span class="md-tx"><b>Partido rápido</b><small>Un partido contra la CPU, a tu medida</small></span></button>
         <button class="mode m-career" id="btnCareer"><span class="md-art" aria-hidden="true"><svg class="md-trophy" viewBox="0 0 64 64"><path d="M16 8h32v12c0 12-7 19-16 20-9-1-16-8-16-20zM16 12H8v6c0 7 4 11 9 12l1-4c-4-1-6-4-6-8v-2h4zM48 12h8v6c0 7-4 11-9 12l-1-4c4-1 6-4 6-8v-2h-4zM28 39h8v9h-8zM20 48h24l2 8H18z"/></svg></span><span class="md-tx"><b>Carrera</b><small class="md-s" id="careerSub">Crea tu jugador: liga, ofertas y fichajes</small></span></button>
         <button class="mode m-6v6" id="btn6v6"><span class="md-art" aria-hidden="true"><span class="md-num">6<i>v</i>6</span></span><span class="md-tx"><b>6 contra 6</b><small>Equipos completos: elige tu puesto</small></span></button>
+        <button class="mode m-gym" id="btnGym"><span class="md-art" aria-hidden="true"><svg class="md-flat" viewBox="0 0 64 64"><path d="M24 12h8l3.1 11H20.9zM19.8 27h16.4l2.5 9H17.3zM16.2 40h23.6l2.2 8H14zM8 50h40v5H8z"/><circle cx="50" cy="17" r="9"/><path class="md-gseam" d="M50 8c-3 3-4 7-3 11M59 16c-4-1.5-8-1-11 1.5M44 24c3-2 6-2.6 9.5-2"/></svg></span><span class="md-tx"><b>Entrenamiento</b><small class="md-s" id="gymSub">Ejercicios con medallas y peloteo libre</small></span></button>
       </nav>
     </div>
     <!-- PARTIDO RÁPIDO: preparación (formato, escenario, dificultad, puntos y control) y ¡A JUGAR! (en 6 contra 6, Controlar queda fijo: .lock; y en
@@ -2392,8 +2580,18 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
         <button class="mi primary" id="btnGo"><span>¡A jugar!<br><span class="mi-s" id="playSub"><span class="chip">Partido rápido</span></span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
       </div>
     </div>
+    <!-- ENTRENAMIENTO (E6, sprint 5): 5 ejercicios con medallas y el peloteo libre (filas de js/gym.js; ui.js renderGym) -->
+    <div class="mpage" id="mpGym" data-page="gym" hidden>
+      <div class="mp-head">
+        <button class="mp-back" id="btnGymBack" aria-label="Volver a los modos de juego"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg><span>Volver</span></button>
+        <div class="mp-tt"><p class="kicker">Jugar</p><h2 class="mp-t">Entrenamiento</h2></div>
+      </div>
+      <div class="qlist gy-list" id="gymList" data-nav aria-label="Ejercicios"></div>
+      <p class="gy-foot" id="gymFoot"></p>
+    </div>
     <div class="menu-foot">
       <span class="navhint" id="navHint"></span>
+      <button type="button" class="ver" id="btnVer" aria-label="Novedades de la versión" hidden></button>
       <span class="rec" id="menuRecord"></span>
     </div>
   </div>
@@ -2441,6 +2639,22 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
     <button class="end-back" id="btnEndBack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>Ver resultado</button>
   </div>
 
+  <!-- ================= FINAL DEL EJERCICIO (E6) ================= -->
+  <div id="gymEnd" class="screen dim" hidden>
+    <div class="sheet drill" role="dialog" aria-labelledby="geTitle">
+      <p class="sh-k" id="geKick">Entrenamiento</p>
+      <h2 class="ge-title" id="geTitle">Saque a diana</h2>
+      <div class="ge-top"><div class="ge-total"><b id="geTotal">0</b><small>de <span id="geMax">30</span></small></div><div class="ge-meds" id="geMeds"></div></div>
+      <div class="ge-reps" id="geReps" aria-hidden="true"></div>
+      <div class="end-rec ge-rec" id="geRec"></div>
+      <div class="row-btn ge-btns" data-nav>
+        <button id="btnGeAgain">Repetir</button>
+        <button class="ghost" id="btnGeNext">Siguiente ejercicio</button>
+        <button class="ghost" id="btnGeList">Entrenamiento</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= PANELES ================= -->
   <div id="panel" class="screen dim" hidden>
     <div class="sheet" role="dialog" aria-labelledby="pnTitle">
@@ -2469,7 +2683,9 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
       <div id="pnCtl" hidden>
         <!-- pestañas Teclado · Mando · Táctil (componente VB.UI.tabs de ui.js; «en uso» marca el dispositivo activo) -->
         <div id="ctlTabs" aria-label="Dispositivo"></div>
-        <dl class="ctl tab-pane" id="ctlGrid" role="tabpanel"></dl>
+        <!-- E3: con VB.Input.captureNext, Teclado y Mando son filas con botones de tecla (button.kslot) que se pueden reasignar -->
+        <div class="ctl-pane tab-pane" id="ctlGrid" role="tabpanel" data-nav></div>
+        <p class="ctl-msg" id="ctlMsg" aria-live="polite"></p>
         <p class="ctl-note"><b>Arriba</b> es siempre hacia la red. El control pasa solo a quien da el siguiente toque. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.</p>
       </div>
       <div id="pnSquad" hidden>
@@ -2487,27 +2703,39 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
         <div class="opts tab-pane" data-nav id="optList" role="tabpanel">
           <div class="opt-g" data-tab="audio">
             <p class="opt-h">Audio</p>
-            <button class="opt opt-snd" data-opt="sfxVol"><span>Sonido<small>Golpes, silbato y público</small></span><span class="snd"><span class="mute" data-mute role="switch" aria-label="Silenciar"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="sp" d="M4 9h4l5-4v14l-5-4H4z"/><path class="wv" d="M16 8.5a5 5 0 0 1 0 7"/><path class="x" d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg></span><span class="slider" data-sl="sfxVol"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></span></button>
+            <button class="opt opt-snd" data-opt="volume" data-need="Audio"><span>General<small>Volumen de todo el juego</small></span><span class="snd"><span class="mute" data-mute role="switch" aria-label="Silenciar"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="sp" d="M4 9h4l5-4v14l-5-4H4z"/><path class="wv" d="M16 8.5a5 5 0 0 1 0 7"/><path class="x" d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg></span><span class="slider" data-sl="volume"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></span></button>
+            <button class="opt" data-opt="sfxVol"><span>Efectos<small>Golpes, silbato y botes</small></span><span class="slider" data-sl="sfxVol"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></button>
+            <button class="opt" data-opt="crowdVol" data-need="Audio"><span>Público<small>Grada, ánimos y reacciones</small></span><span class="slider" data-sl="crowdVol"><span class="trk"><i></i><b></b></span><span class="v">85%</span></span></button>
             <button class="opt" data-opt="musicVol"><span>Música<small>Sintonías y sonidos del menú</small></span><span class="slider" data-sl="musicVol"><span class="trk"><i></i><b></b></span><span class="v">75%</span></span></button>
+            <button type="button" class="opt-reset" data-reset="audio">Restablecer este apartado</button>
           </div>
           <div class="opt-g" data-tab="image">
             <p class="opt-h">Imagen</p>
             <button class="opt" data-opt="quality"><span>Calidad<small id="qualNote">Auto la ajusta sola</small></span><span class="seg" data-seg="quality"></span></button>
-            <button class="opt" data-opt="camSens"><span>Cámara<small>Rapidez con la que sigue a tu jugador</small></span><span class="slider" data-sl="camSens"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></button>
-            <button class="opt" data-opt="cam6"><span>Cámara en 6 contra 6<small>Detrás de tu jugador o alta, como en la tele</small></span><span class="seg" data-seg="cam6"></span></button>
+            <button class="opt" data-opt="resScale"><span>Resolución<small id="resNote">Auto: la baja sola si va lento</small></span><span class="seg" data-seg="resScale"></span></button>
+            <button class="opt" data-opt="fpsCap"><span>Fotogramas<small>Con 30 ahorras batería</small></span><span class="seg" data-seg="fpsCap"></span></button>
+            <button class="opt" data-opt="showFps"><span>Ver FPS<small>Contador en una esquina</small></span><span class="seg" data-seg="showFps"></span></button>
+            <button class="opt" data-opt="mapHall"><span>Pabellón<small>Dónde se juega en pista cubierta</small></span><span class="seg" data-seg="mapHall"></span></button>
+            <button class="opt" data-opt="mapBeach"><span>Sede de playa<small>Dónde se juega en la arena</small></span><span class="seg" data-seg="mapBeach"></span></button>
             <button class="opt" data-opt="beachLight"><span>Luz de playa<small>Al mediodía o de tarde, con el sol bajo</small></span><span class="seg" data-seg="beachLight"></span></button>
+            <button type="button" class="opt-reset" data-reset="image">Restablecer este apartado</button>
+          </div>
+          <div class="opt-g" data-tab="cam">
+            <p class="opt-h">Cámara</p>
+            <button class="opt" data-opt="camSens"><span>Seguimiento<small>Rapidez con la que sigue a tu jugador</small></span><span class="slider" data-sl="camSens"><span class="trk"><i></i><b></b></span><span class="v">100%</span></span></button>
+            <button class="opt" data-opt="camDist" data-need="CameraRig"><span>Distancia<small>Más cerca o más lejos de tu jugador</small></span><span class="seg" data-seg="camDist"></span></button>
+            <button class="opt" data-opt="camCuts" data-need="CameraRig"><span>Planos de tele<small>Plano del sacador rival y del punto</small></span><span class="seg" data-seg="camCuts"></span></button>
+            <button class="opt" data-opt="cam6"><span>Cámara en 6 contra 6<small>Detrás de tu jugador o alta, como en la tele</small></span><span class="seg" data-seg="cam6"></span></button>
+            <button type="button" class="opt-reset" data-reset="cam">Restablecer este apartado</button>
           </div>
           <div class="opt-g" data-tab="game">
             <p class="opt-h">Juego</p>
             <button class="opt" data-opt="showHelp"><span>Ayudas en pantalla<small>Avisos del momento de golpear y saltar</small></span><span class="seg" data-seg="showHelp"></span></button>
             <button class="opt" data-opt="coachTips"><span>Consejos<small>Qué hacer en cada toque. Se apagan al ganar tu primer partido</small></span><span class="seg" data-seg="coachTips"></span></button>
-          </div>
-          <div class="opt-g" id="optKit" data-tab="kit">
-            <p class="opt-h">Equipación</p>
-            <button class="opt opt-kit" data-opt="kitShirt"><span>Camiseta<small>Color de tu equipo</small></span><span class="seg kit" data-seg="kitShirt"></span></button>
-            <button class="opt opt-kit" data-opt="kitAccent"><span>Detalles<small>Franjas, ribetes y zapatillas</small></span><span class="seg kit" data-seg="kitAccent"></span></button>
-            <button class="opt opt-kit" data-opt="kitShorts"><span>Pantalón</span><span class="seg kit" data-seg="kitShorts"></span></button>
-            <button class="opt" data-opt="kitPattern"><span>Diseño<small>Si la CPU se parece, cambia de equipación</small></span><span class="seg" data-seg="kitPattern"></span></button>
+            <button class="opt" data-opt="aimSet" data-need="Sim"><span>Colocación dirigida<small>Al colocar, la dirección elige rápida, a un lado o alta</small></span><span class="seg" data-seg="aimSet"></span></button>
+            <button class="opt" data-opt="msTiming"><span>Golpe al milisegundo<small>El sello dice cuántos ms llegas pronto o tarde</small></span><span class="seg" data-seg="msTiming"></span></button>
+            <button class="opt opt-go" data-go="ctl"><span>Controles<small>Ver y cambiar teclas y botones</small></span><span class="go-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></button>
+            <button type="button" class="opt-reset" data-reset="game">Restablecer este apartado</button>
           </div>
           <div class="opt-g" id="optA11y" data-tab="a11y">
             <p class="opt-h">Accesibilidad</p>
@@ -2515,9 +2743,34 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
             <button class="opt" data-opt="rumble"><span>Vibración<small>Del mando y del móvil en los golpes</small></span><span class="seg" data-seg="rumble"></span></button>
             <button class="opt" data-opt="hudScale"><span>Tamaño del HUD<small>Marcador, avisos y menús</small></span><span class="seg" data-seg="hudScale"></span></button>
             <button class="opt" data-opt="softFlash"><span>Destellos suaves<small>Menos destellos en los puntos y las celebraciones</small></span><span class="seg" data-seg="softFlash"></span></button>
+            <button class="opt" data-opt="lessMotion"><span>Menos movimiento<small>Cortinillas y animaciones cortas. En Auto, lo que pida el sistema</small></span><span class="seg" data-seg="lessMotion"></span></button>
+            <button class="opt" data-opt="cbColors" data-need="FX"><span>Colores para daltonismo<small>Diana y marcas del bote sin rojo ni verde</small></span><span class="seg" data-seg="cbColors"></span></button>
+            <button class="opt" data-opt="ballStyle" data-need="FX"><span>Balón<small>El de alto contraste es amarillo y azul oscuro</small></span><span class="seg" data-seg="ballStyle"></span></button>
+            <button type="button" class="opt-reset" data-reset="a11y">Restablecer este apartado</button>
+          </div>
+          <div class="opt-g" id="optKit" data-tab="kit">
+            <p class="opt-h">Equipación</p>
+            <button class="opt opt-kit" data-opt="kitShirt"><span>Camiseta<small>Color de tu equipo</small></span><span class="seg kit" data-seg="kitShirt"></span></button>
+            <button class="opt opt-kit" data-opt="kitAccent"><span>Detalles<small>Franjas, ribetes y zapatillas</small></span><span class="seg kit" data-seg="kitAccent"></span></button>
+            <button class="opt opt-kit" data-opt="kitShorts"><span>Pantalón</span><span class="seg kit" data-seg="kitShorts"></span></button>
+            <button class="opt" data-opt="kitPattern"><span>Diseño<small>Si la CPU se parece, cambia de equipación</small></span><span class="seg" data-seg="kitPattern"></span></button>
+            <button type="button" class="opt-reset" data-reset="kit">Restablecer este apartado</button>
+          </div>
+          <div class="opt-g" data-tab="info">
+            <p class="opt-h">Info</p>
+            <div class="opt info"><span>Versión</span><span class="iv" id="optVer">—</span></div>
+            <div class="opt info"><span>Progreso</span><span class="iv" id="optSave">Guardado en este dispositivo</span></div>
+            <button class="opt opt-go" data-go="news"><span>Novedades<small>Qué ha cambiado en esta versión</small></span><span class="go-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></button>
+            <button class="opt opt-go" data-go="credits"><span>Créditos<small>Quién lo ha hecho y con qué</small></span><span class="go-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></button>
           </div>
         </div>
         <p class="opt-foot" id="optFoot"><span class="kh"><span class="key">←</span><span class="key">→</span> cambia el valor</span><span class="kh"><span class="key">Intro</span> pasa al siguiente</span><span class="kh"><span class="key">Q</span><span class="key">E</span> apartado</span></p>
+      </div>
+      <div id="pnAbout" hidden>
+        <!-- E7: Acerca de, pestañas Novedades y Créditos (datos en js/version.js; ui.js renderAbout los pinta al abrir) -->
+        <div id="abTabs" aria-label="Acerca de"></div>
+        <div class="ab tab-pane" id="abBody" data-nav role="tabpanel"></div>
+        <div class="ab-foot" data-nav><button type="button" id="btnAbOk">Entendido</button></div>
       </div>
     </div>
   </div>
@@ -2564,13 +2817,20 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js"></script>
+<script src="js/version.js"></script>
 <script src="js/account.js"></script>
 <script src="js/sim.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/ai6.js"></script>
 <script src="js/prog.js"></script>
+<script src="js/gym.js"></script>
 <script src="js/badges.js"></script>
+<script src="js/venues.js"></script>
 <script src="js/arena.js"></script>
+<script src="js/venue-fanals.js"></script>
+<script src="js/venue-moll.js"></script>
+<script src="js/venue-canrebot.js"></script>
+<script src="js/venue-cupula.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/players.js"></script>
 <script src="js/doll.js"></script>
@@ -2581,6 +2841,8 @@ body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
 <script src="js/career.js"></script>
 <script src="js/career-life.js"></script>
 <script src="js/career-life-ui.js"></script>
+<script src="js/career-world.js"></script>
+<script src="js/career-world-ui.js"></script>
 <script src="js/career-ui.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/install.js"></script>
