@@ -33,9 +33,9 @@
             {
               "real": "Montpellier HSC VB",
               "official": "Montpellier Hérault Sport Club Volley-Ball (MHSC VB)",
-              "name": "Montpelhièr Volley",
+              "name": "Clapàs Volley",
               "realSponsor": false,
-              "short": "MPL",
+              "short": "CLP",
               "city": "Montpellier",
               "gender": "M",
               "colors": {
@@ -45,7 +45,7 @@
               },
               "liberoEstimated": true,
               "ovr": 86,
-              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Montpelhièr Volley\" OR \"Montpelhier Volley\". Resultado: No hay nada con la grafía occitana, pero el club real se llama comúnmente «Montpellier Volley» (así se titula su artículo en Wikipedia). Montpelhièr es el mismo nombre de ciudad en occitano, así que el nombre queda casi idéntico al real (cambian «lh» y la tilde). Propuesta: «Clapas Volley» (Lo Clapàs es el apodo occitano de Montpellier; sin comprobar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Montpellier en occitano. Verificación: campeón de Francia 2025-26 (fr.wikipedia); OVR 85→86."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Clapàs Volley» no existe como club ni competición oficial. Método: WebSearch \"Clapàs Volley\" OR \"Volley Clapas\": no sale ningún club (Lo Clapàs es el apodo occitano de Montpellier). Se cambió porque el nombre anterior, «Montpelhièr Volley», chocaba: El buscador lo lleva directo a «Montpellier Volley» (título del artículo de Wikipedia EN del Montpellier HSC VB). «Montpelhièr» es solo la grafía occitana de Montpellier, así que es una traducción del nombre real. (WebSearch \"Montpelhièr Volley\".) Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Montpelhièr Volley\" OR \"Montpelhier Volley\". Resultado: No hay nada con la grafía occitana, pero el club real se llama comúnmente «Montpellier Volley» (así se titula su artículo en Wikipedia). Montpelhièr es el mismo nombre de ciudad en occitano, así que el nombre queda casi idéntico al real (cambian «lh» y la tilde). Propuesta: «Clapas Volley» (Lo Clapàs es el apodo occitano de Montpellier; sin buscar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Montpellier en occitano. Verificación: campeón de Francia 2025-26 (fr.wikipedia); OVR 85→86. [Abreviatura MPL → CLP.]"
             },
             {
               "real": "Tourcoing LM",
@@ -205,7 +205,7 @@
             {
               "real": "Volero Le Cannet",
               "official": "Volero Le Cannet",
-              "name": "Volaro Le Cannet",
+              "name": "Voley Le Cannet",
               "realSponsor": false,
               "short": "VLR",
               "city": "Le Cannet",
@@ -217,7 +217,7 @@
               },
               "liberoEstimated": true,
               "ovr": 77,
-              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia (volleybox dio 403). Resultado: No hay ningún resultado para «Volaro». Pero solo cambia una letra respecto al nombre real, Volero Le Cannet: no es solo una tilde, aunque queda casi igual. Propuesta: «Volantes Le Cannet» o «Riviera Le Cannet Volley» (sin comprobar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Una letra cambiada de «Volero»."
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volaro Le Cannet». Nota anterior: […] entre comillas (oleada final 12-nov): «Volaro Le Cannet» no existe como club oficial. Método: WebSearch \"Volaro Le Cannet\". Resultado: Cero resultados con «Volaro». El club real es Volero Le Cannet: cambia una sola letra de una palabra inventada y se lee como guiño, no como el mismo nombre. Nota anterior: Oleadas 11-nov: dudoso. Método: Cupo de WebSearch agotado; WebFetch de la búsqueda de fr.wikipedia (volleybox dio 403). Resultado: No hay ningún resultado para «Volaro». Pero solo cambia una letra respecto al nombre real, Volero Le Cannet: no es solo una tilde, aunque queda casi igual. Propuesta: «Volantes Le Cannet» o «Riviera Le Cannet Volley» (sin buscar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Una letra cambiada de «Volero»."
             }
           ]
         },
@@ -333,7 +333,7 @@
             {
               "real": "GFC Ajaccio Volley",
               "official": "Gazélec Football Club Ajaccio Volley-Ball (GFCA Volley)",
-              "name": "Aiacciu Volley",
+              "name": "Cità Imperiale Volley",
               "realSponsor": false,
               "short": "AIA",
               "city": "Ajaccio",
@@ -345,7 +345,7 @@
               },
               "liberoEstimated": true,
               "ovr": 69,
-              "check": "No comprobado como libre (patrocinadores 11-nov): DUDOSO. Método: WebSearch \"Aiacciu Volley\". Resultado: no hay club con esa grafía, pero «Aiacciu» es Ajaccio en corso y el club real figura en el registro SIRENE como «Ajaccio Volley Ball»: queda casi idéntico al real (igual que pasa con Montpelhièr). Propuesta: «Cità Imperiale Volley» (Ajaccio, ciudad imperial de Napoleón; sin comprobar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Ajaccio en corso. Bajó de la 1ª en 2025-26."
+              "check": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Aiacciu Volley». Nota anterior: […] como libre (oleada final 12-nov): DUDOSO. Método: WebSearch \"Aiacciu Volley\". Resultado: No existe ningún club oficial con ese nombre, pero «Aiacciu» es Ajaccio en corso y la prensa corsa (Corse Net Infos, crónicas en corso) llama así al GFC Ajaccio Volley. El oficial es «GFC Ajaccio Volley-Ball»: no es igual (falta GFC), aunque es casi una traducción. Alternativa sin buscar: «Aiacciu Isula Volley». Nota anterior: Patrocinadores 11-nov: dudoso. Método: WebSearch \"Aiacciu Volley\". Resultado: no hay club con esa grafía, pero «Aiacciu» es Ajaccio en corso y el club real figura en el registro SIRENE como «Ajaccio Volley Ball»: queda casi idéntico al real (igual que pasa con Montpelhièr). Propuesta: «Cità Imperiale Volley» (Ajaccio, ciudad imperial de Napoleón; sin buscar). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (LNV vía Eurosport y the-sports.org; FFvolley): no coincide con ninguno. Ajaccio en corso. Bajó de la 1ª en 2025-26."
             },
             {
               "real": "Béziers VB",
@@ -1369,9 +1369,9 @@
     },
     {
       "real": "DVV-Pokal (las dos)",
-      "name": "Bundespokal Volley",
+      "name": "Netzpokal",
       "short": "BPV",
-      "note": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch: \"Bundespokal Volley\"; propuesta comprobada en la búsqueda de de.wikipedia (volleybox devolvió 403; ya no quedaba cupo de WebSearch). Resultado: No hay ninguna competición que se llame exactamente «Bundespokal Volley». Pero la DVV organiza cada año el «Bundespokal» de vóley juvenil para selecciones regionales (Rising Talents / Elite-Cup), y algunas fuentes también llaman «Bundespokal» al DVV-Pokal sénior. Le estamos añadiendo «Volley» a un nombre oficial de vóley que existe, así que queda casi pegado a uno real. Propuesta: Netzpokal (en de.wikipedia no sale nada; no se ha podido buscar en la web abierta porque se acabó el cupo). Copa nacional única de Alemania.",
+      "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Bundespokal Volley».",
       "kind": "cup",
       "country": "DE"
     },

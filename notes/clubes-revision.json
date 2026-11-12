@@ -1,12 +1,12 @@
 {
- "generated": "2026-11-11",
+ "generated": "2026-11-12",
  "competitions": [
   {
    "real": "CEV Champions League (hombres y mujeres)",
    "name": "Champions Cup VEC",
    "short": "CCV",
    "note": "Libre: No sale nada exacto. La CEV Champions League se llamó «CEV European Champions Cup» entre 1959 y 2000, pero lleva CEV y no VEC, y el orden es otro. La…",
-   "doubt": "Ferran pidió «Champions Cup», pero ese nombre a secas es oficial en rugby (EPCR) y en fútbol (CONCACAF), y fue el de la propia CEV hasta 2000. Se usa «Champions Cup VEC» en todos los ficheros.",
+   "doubt": null,
    "searched": true
   },
   {
@@ -30,7 +30,7 @@
    "name": "Mundial de Clubes VBF",
    "short": "MCV",
    "note": "Libre: No sale nada con VBF. Solo aparecen el Mundialito de Clubes (fútbol playa) y el FIFA Club World Cup, que tienen otro nombre. «VBF» por FIVB revuelto.",
-   "doubt": "Unificado: antes «World Club Cup» (Asia) y «Mundial VBC de Clubes» (América).",
+   "doubt": null,
    "searched": true
   },
   {
@@ -70,7 +70,7 @@
    "name": "Coppa Tricolore",
    "short": "CTC",
    "note": "Añadida por el integrador. Búsqueda «\"Coppa Tricolore\" pallavolo» (11-nov-2026): ninguna competición oficial con ese nombre; «tricolore» solo sale como apodo…",
-   "doubt": "Nueva del integrador; una búsqueda, sin competición oficial con ese nombre.",
+   "doubt": null,
    "searched": false
   },
   {
@@ -78,7 +78,7 @@
    "name": "Puchar Orła",
    "short": "PUO",
    "note": "Añadida por el integrador (el águila del escudo). Búsqueda «\"Puchar Orła\" siatkówka» (11-nov-2026): sin coincidencias.",
-   "doubt": "Nueva del integrador; una búsqueda, sin coincidencias.",
+   "doubt": null,
    "searched": false
   },
   {
@@ -86,7 +86,7 @@
    "name": "Hilal Kupası",
    "short": "HLK",
    "note": "Añadida por el integrador (la media luna). Búsqueda «\"Hilal Kupası\" voleybol» (11-nov-2026): sin coincidencias.",
-   "doubt": "Nueva del integrador; una búsqueda, sin coincidencias.",
+   "doubt": null,
    "searched": false
   },
   {
@@ -94,7 +94,7 @@
    "name": "Kubok Volgi",
    "short": "KVG",
    "note": "Añadida por el integrador (el Volga). Búsqueda «\"Кубок Волги\" волейбол» (11-nov-2026): sin competición con ese nombre.",
-   "doubt": "Nueva del integrador; una búsqueda, sin coincidencias.",
+   "doubt": null,
    "searched": false
   },
   {
@@ -139,18 +139,18 @@
   },
   {
    "real": "DVV-Pokal (las dos)",
-   "name": "Bundespokal Volley",
+   "name": "Netzpokal",
    "short": "BPV",
-   "note": "Dudoso: No hay ninguna competición que se llame exactamente «Bundespokal Volley». Pero la DVV organiza cada año el «Bundespokal» de vóley juvenil para…",
-   "doubt": "La DVV ya organiza un «Bundespokal» de vóley juvenil. Alternativa (solo Wikipedia): «Netzpokal».",
-   "searched": false
+   "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Bundespokal Volley».",
+   "doubt": null,
+   "searched": true
   },
   {
    "real": "Supercup de la VBL",
    "name": "Hyper-Cup",
    "short": "HYC",
    "note": "Dudoso: No existe ningún club ni competición real con ese nombre. Pero «Hyper Cup» es el nombre de un modo de juego en varios videojuegos de fútbol de Konami…",
-   "doubt": "«Hyper Cup» es un modo de juego de videojuegos de fútbol de Konami; no es competición real.",
+   "doubt": null,
    "searched": false
   },
   {
@@ -219,35 +219,35 @@
   },
   {
    "real": "Český pohár",
-   "name": "Copa Bohemia",
+   "name": "Copa Vltava",
    "short": "CBO",
-   "note": "Dudoso: No hay ninguna competición actual con ese nombre. Hubo una copa histórica de fútbol de Bohemia (1906-1946) que la Wikipedia en catalán titula «Copa de…",
-   "doubt": "Hubo una copa de fútbol de Bohemia (1906-1946) y Bohemia es marca de cerveza. Alternativas sin buscar: «Copa Moldava», «Copa de Praga».",
-   "searched": false
+   "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Copa Bohemia».",
+   "doubt": null,
+   "searched": true
   },
   {
    "real": "Kup Srbije",
-   "name": "Copa Srbija",
+   "name": "Copa Šumadija",
    "short": "CSR",
-   "note": "Dudoso: No hay coincidencia literal. Pero es casi una traducción del nombre real (Kup Srbije), y las webs en español (Soccerway) llaman a la copa serbia de…",
-   "doubt": "Casi la traducción del real «Kup Srbije». Alternativas sin buscar: «Copa Danubio Serbio», «Copa Šumadija».",
-   "searched": false
+   "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Copa Srbija».",
+   "doubt": null,
+   "searched": true
   },
   {
    "real": "Pokal Slovenije",
-   "name": "Copa Triglav",
+   "name": "Copa Alpes Julianos",
    "short": "CTR",
-   "note": "Dudoso: No existe ninguna competición con ese nombre exacto. Pero Triglav es la gran aseguradora eslovena (Zavarovalnica Triglav), patrocinadora habitual de…",
-   "doubt": "Triglav es la gran aseguradora eslovena (patrocinadora habitual). Alternativas sin buscar: «Copa Alpes Julianos».",
-   "searched": false
+   "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Copa Triglav».",
+   "doubt": null,
+   "searched": true
   },
   {
    "real": "Cupa României",
-   "name": "Copa Carpatos",
+   "name": "Copa Transilvania",
    "short": "CCP",
-   "note": "Dudoso: No hay coincidencia literal, pero existen la Coupe des Carpathes (Cup of the Carpathians, carrera ciclista UCI en Polonia) y el Carpathian Trophy…",
-   "doubt": "Casi la traducción de la Coupe des Carpathes (ciclismo) y del Carpathian Trophy (balonmano). Alternativa sin buscar: «Copa Transilvania».",
-   "searched": false
+   "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Copa Carpatos».",
+   "doubt": null,
+   "searched": true
   },
   {
    "real": "Superliga Banco do Brasil (masculina y femenina)",
@@ -326,7 +326,7 @@
    "name": "Copa del Sur de Clubes",
    "short": "CSC",
    "note": "Dudoso: No existe con el nombre exacto, pero hubo una «Copa del Sur» de fútbol en Buenos Aires (ediciones de 1964 y 1968, según RSSSF) y existe la «Copa Sur»…",
-   "doubt": "Hubo una «Copa del Sur» de fútbol (Buenos Aires, 1964 y 1968) y existe la «Copa Sur» brasileña; «de Clubes» la diferencia.",
+   "doubt": null,
    "searched": false
   },
   {
@@ -342,7 +342,7 @@
    "name": "Mundial de Clubes VBF",
    "short": "MCV",
    "note": "Libre: No sale nada con VBF. Solo aparecen el Mundialito de Clubes (fútbol playa) y el FIFA Club World Cup, que tienen otro nombre. Mismo nombre y siglas que…",
-   "doubt": "Unificado: antes «World Club Cup» (Asia) y «Mundial VBC de Clubes» (América).",
+   "doubt": null,
    "searched": true
   },
   {
@@ -430,7 +430,7 @@
    "name": "Mundial de Clubes VBF",
    "short": "MCV",
    "note": "Libre: No sale nada con VBF. Solo aparecen el Mundialito de Clubes (fútbol playa) y el FIFA Club World Cup, que tienen otro nombre. Unificado por el…",
-   "doubt": "Unificado: antes «World Club Cup» (Asia) y «Mundial VBC de Clubes» (América).",
+   "doubt": null,
    "searched": true
   },
   {
@@ -476,7 +476,7 @@
       {
        "real": "Sir Safety Perugia",
        "official": "Sir Susa Scai Perugia (club: Sir Safety Umbria Volley Perugia)",
-       "name": "Volley Perugia",
+       "name": "Voley Perugia",
        "short": "PER",
        "city": "Perugia",
        "colors": {
@@ -487,9 +487,9 @@
        "liberoEstimated": false,
        "ovr": 93,
        "sponsor": "Salumificio Il Bagher",
-       "searched": true,
-       "doubt": "Casi igual que «Perugia Volley» (Black Angels, otro club).",
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Black Angels Perugia Volley, School Volley Perugia y la desaparecida Sirio Perugia…"
+       "searched": false,
+       "doubt": null,
+       "note": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley…"
       },
       {
        "real": "Itas Trentino",
@@ -566,7 +566,7 @@
       {
        "real": "Rana Verona",
        "official": "Rana Verona (club: Verona Volley)",
-       "name": "Volley Verona",
+       "name": "Voley Verona",
        "short": "VER",
        "city": "Verona",
        "colors": {
@@ -578,8 +578,8 @@
        "ovr": 88,
        "sponsor": "Pandoro Ace",
        "searched": true,
-       "doubt": "Casi igual que el real («Verona Volley», mismas palabras en otro orden).",
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe como club; el real es «Verona Volley» (orden inverso) y hay una ASD «Verona Volley 2006». Nombre…"
+       "doubt": null,
+       "note": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley…"
       },
       {
        "real": "Igor Gorgonzola Novara",
@@ -638,7 +638,7 @@
       {
        "real": "Reale Mutua Fenera Chieri '76",
        "official": "Reale Mutua Fenera Chieri '76 (club: Chieri '76 Volleyball)",
-       "name": "Volley Chieri",
+       "name": "Voley Chieri",
        "short": "CHI",
        "city": "Chieri",
        "colors": {
@@ -649,9 +649,9 @@
        "liberoEstimated": true,
        "ovr": 84,
        "sponsor": "Grissini Fuori Tutto",
-       "searched": true,
-       "doubt": "Casi igual que el real («Chieri ’76»).",
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; existió «Chieri Volley» (orden inverso) y hoy está Chieri '76 Volleyball."
+       "searched": false,
+       "doubt": null,
+       "note": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley…"
       },
       {
        "real": "Megabox Ondulati del Savio Vallefoglia",
@@ -754,7 +754,7 @@
       {
        "real": "MA Acqua San Bernardo Cuneo",
        "official": "MA Acqua San Bernardo Cuneo (club: Cuneo Volley)",
-       "name": "Volley Cuneo",
+       "name": "Voley Cuneo",
        "short": "CUN",
        "city": "Cuneo",
        "colors": {
@@ -765,9 +765,9 @@
        "liberoEstimated": false,
        "ovr": 76,
        "sponsor": "Marroni Invasione",
-       "searched": true,
-       "doubt": "Casi igual que el real; además falta Cuneo Granda (10ª de la Serie A1), que chocaría.",
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; los reales son «Cuneo Volley» (orden inverso) y Cuneo Granda Volley."
+       "searched": false,
+       "doubt": null,
+       "note": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley…"
       },
       {
        "real": "Il Bisonte Firenze",
@@ -790,7 +790,7 @@
       {
        "real": "Cisterna Volley",
        "official": "Cisterna Volley",
-       "name": "Volley Cisterna",
+       "name": "Voley Cisterna",
        "short": "CIS",
        "city": "Cisterna di Latina",
        "colors": {
@@ -801,9 +801,9 @@
        "liberoEstimated": true,
        "ovr": 75,
        "sponsor": null,
-       "searched": true,
-       "doubt": "Casi igual que el real («Cisterna Volley»).",
-       "note": "Búsqueda web del nombre exacto entre comillas: no existe; los reales son «Cisterna Volley» (orden inverso) y Pallavolo Cisterna 88."
+       "searched": false,
+       "doubt": null,
+       "note": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley…"
       },
       {
        "real": "CBF Balducci HR Macerata",
@@ -998,7 +998,7 @@
        "ovr": 85,
        "sponsor": "Hydraulika Pod Siatką",
        "searched": true,
-       "doubt": "Colores: Wikipedia da verde, negro y amarillo (los del club); aquí van naranja y negro (la marca JSW). Elegir.",
+       "doubt": null,
        "note": "Búsqueda web del nombre exacto entre comillas: no existe como club (la sociedad que lo gestiona se llama «Volley Club», nombre distinto). «Węgiel» viene de la…"
       },
       {
@@ -1382,7 +1382,7 @@
        "ovr": 95,
        "sponsor": "Simitçi Ace",
        "searched": true,
-       "doubt": "Nombre nuevo de la verificación (antes aludía al apodo de Fenerbahçe); ya buscado (oleadas 11-nov): libre.",
+       "doubt": null,
        "note": "Libre: No sale nada exacto. En Üsküdar solo aparecen el Istanbul Voleybol Kulübü y los equipos de la Üsküdar Üniversitesi. El nombre anterior, «İstanbul…"
       },
       {
@@ -1606,7 +1606,7 @@
        "ovr": 76,
        "sponsor": "Çaycı Libero",
        "searched": true,
-       "doubt": "En el límite: guiña al barrio de la sede de THY, que es también el del antiguo aeropuerto.",
+       "doubt": null,
        "note": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Yeşilyurt y Yeşilay. La aerolínea es la dueña: fuera; guiño al barrio del antiguo…"
       },
       {
@@ -1768,7 +1768,7 @@
        "ovr": 68,
        "sponsor": "Kokoreç Plonjon",
        "searched": true,
-       "doubt": "Club nuevo de la verificación (İlbank sustituye a Keçiören); nombre ya buscado (oleadas 11-nov): libre.",
+       "doubt": null,
        "note": "Libre: No sale ningún club con ese nombre, solo resultados genéricos de vóley turco. Sustituye a Keçiören, que NO jugó Sultanlar 2025-26. Guiño: «Angora»…"
       },
       {
@@ -2152,7 +2152,7 @@
        "ovr": 72,
        "sponsor": null,
        "searched": true,
-       "doubt": "Club nuevo de la verificación (Korabelka sustituye a Murom); nombre ya buscado (libre), colores estimados.",
+       "doubt": null,
        "note": "Libre: No sale nada exacto. Solo aparece «Piter Saint Petersburg» en FotMob (fútbol), que tiene otro nombre. Sustituye a Murom, que NO jugó la Superliga…"
       },
       {
@@ -2282,8 +2282,8 @@
       {
        "real": "Montpellier HSC VB",
        "official": "Montpellier Hérault Sport Club Volley-Ball (MHSC VB)",
-       "name": "Montpelhièr Volley",
-       "short": "MPL",
+       "name": "Clapàs Volley",
+       "short": "CLP",
        "city": "Montpellier",
        "colors": {
         "shirt": "#003c82",
@@ -2293,9 +2293,9 @@
        "liberoEstimated": true,
        "ovr": 86,
        "sponsor": null,
-       "searched": false,
-       "doubt": "Es «Montpellier Volley» (el real) en occitano. Alternativa sin buscar: «Clapas Volley».",
-       "note": "Dudoso: No hay nada con la grafía occitana, pero el club real se llama comúnmente «Montpellier Volley» (así se titula su artículo en Wikipedia). Montpelhièr…"
+       "searched": true,
+       "doubt": null,
+       "note": "Cambiado: antes «Montpelhièr Volley», que chocaba. El buscador lo lleva directo a «Montpellier Volley» (título del artículo de Wikipedia EN del Montpellier…"
       },
       {
        "real": "Tours VB",
@@ -2480,7 +2480,7 @@
       {
        "real": "Volero Le Cannet",
        "official": "Volero Le Cannet",
-       "name": "Volaro Le Cannet",
+       "name": "Voley Le Cannet",
        "short": "VLR",
        "city": "Le Cannet",
        "colors": {
@@ -2492,8 +2492,8 @@
        "ovr": 77,
        "sponsor": null,
        "searched": false,
-       "doubt": "A una letra del real, Volero Le Cannet. Alternativas sin buscar: «Volantes Le Cannet», «Riviera Le Cannet Volley».",
-       "note": "Dudoso: No hay ningún resultado para «Volaro». Pero solo cambia una letra respecto al nombre real, Volero Le Cannet: no es solo una tilde, aunque queda casi…"
+       "doubt": null,
+       "note": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volaro Le…"
       }
      ]
     },
@@ -2650,7 +2650,7 @@
       {
        "real": "GFC Ajaccio Volley",
        "official": "Gazélec Football Club Ajaccio Volley-Ball (GFCA Volley)",
-       "name": "Aiacciu Volley",
+       "name": "Cità Imperiale Volley",
        "short": "AIA",
        "city": "Ajaccio",
        "colors": {
@@ -2661,9 +2661,9 @@
        "liberoEstimated": true,
        "ovr": 69,
        "sponsor": null,
-       "searched": false,
-       "doubt": "Ajaccio no jugó la Ligue A 2025-26 (sería Ligue B); Royan, que sube, podría sustituirlo.",
-       "note": "No comprobado como libre (patrocinadores 11-nov): DUDOSO. Método: WebSearch \"Aiacciu Volley\". Resultado: no hay club con esa grafía, pero «Aiacciu» es Ajaccio…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: No existe ningún club oficial con ese nombre, pero «Aiacciu» es Ajaccio en corso y la prensa corsa (Corse Net Infos, crónicas en corso) llama así al…"
       },
       {
        "real": "Terville Florange OC",
@@ -2768,7 +2768,7 @@
        "ovr": 84,
        "sponsor": "Rostbratwurst Block",
        "searched": true,
-       "doubt": "Colores de Brandfetch: pueden ser los del patrocinador (Lotto Thüringen).",
+       "doubt": null,
        "note": "Libre: ningún club con ese nombre (solo VfB Suhl y un club de MTB «Rennsteig»). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas…"
       },
       {
@@ -3224,7 +3224,7 @@
        "ovr": 72,
        "sponsor": "Churrería El Saque",
        "searched": true,
-       "doubt": "Club real dudoso: dataproject dice «Fundación Cajasol Andalucía» y es.wikipedia «F. Unicaja Andalucía VB» (Dos Hermanas).",
+       "doubt": null,
        "note": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB…"
       },
       {
@@ -3260,7 +3260,7 @@
        "ovr": 70,
        "sponsor": "Ensaïmades Es Bloqueig",
        "searched": true,
-       "doubt": "Casi igual que el real (CV Manacor; voleimanacor.club puede ser su marca). Es el ejemplo de Ferran.",
+       "doubt": null,
        "note": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB…"
       },
       {
@@ -3278,7 +3278,7 @@
        "ovr": 70,
        "sponsor": "Mojo Picón La Red",
        "searched": true,
-       "doubt": "Club real probable: J.A.V. Olímpico (Emalsa Gran Canaria), por confirmar.",
+       "doubt": null,
        "note": "No comprobado por búsqueda web (se agotó el cupo de búsquedas de la sesión). Contrastado solo con las listas oficiales de equipos 2025-26 consultadas (RFEVB…"
       },
       {
@@ -3394,7 +3394,7 @@
        "ovr": 64,
        "sponsor": null,
        "searched": true,
-       "doubt": "Empató 10-12 con Teruel (Voley Turia): Conqueridor (6º) está en la 2ª y Teruel (7º) en la 1ª; se pueden cambiar.",
+       "doubt": null,
        "note": "Libre (solo Wikipedia): ca.wikipedia: solo menciones históricas (Palma, Poblet); ningún club. Contrastado solo con las listas oficiales de equipos 2025-26…"
       },
       {
@@ -3625,15 +3625,15 @@
        "liberoEstimated": true,
        "ovr": 68,
        "sponsor": "Bakkerij Den Ace",
-       "searched": false,
-       "doubt": "Casi la traducción de «Volleybalclub Maaseik» (el real). Se podría usar el pabellón (Steengoed Arena).",
-       "note": "Dudoso: El club real figura como VC Maaseik / Volleybalclub Maaseik (Greenyard Maaseik). No sale nada que se llame exactamente «Volley Maaseik» ni «Voley…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: Solo sale VC (Greenyard) Maaseik, cuyo nombre oficial es Volleybalclub Maaseik o Greenyard Maaseik. No hay ningún club llamado «Volley/Voley Maaseik»…"
       },
       {
        "real": "Knack Roeselare",
        "official": "Knack Volley Roeselare",
-       "name": "Voley Roeselare",
-       "short": "ROE",
+       "name": "Voley Mandel",
+       "short": "MDL",
        "city": "Roeselare",
        "colors": {
         "shirt": "#151b54",
@@ -3643,9 +3643,9 @@
        "liberoEstimated": true,
        "ovr": 68,
        "sponsor": "Rodilleras Rodríguez",
-       "searched": false,
-       "doubt": "La prensa llama «Volley Roeselare» al real (Knack); además existe «Polonia Volley Roeselare».",
-       "note": "Dudoso: El club real es Knack Volley Roeselare / Volleyteam Roeselare (it.wikipedia «Volleyteam Roeselare»), y la prensa lo llama a menudo «Volley Roeselare»…"
+       "searched": true,
+       "doubt": null,
+       "note": "Cambiado: antes «Voley Roeselare», que chocaba. El club real se llama Knack Volley Roeselare, y la VRT titula «Volley Roeselare gehuldigd op stadhuis» (2025)…"
       },
       {
        "real": "Haasrode Leuven",
@@ -3661,9 +3661,9 @@
        "liberoEstimated": true,
        "ovr": 66,
        "sponsor": null,
-       "searched": false,
-       "doubt": "El real es «Volley Haasrode Leuven»: solo le falta Haasrode. Se puede dejar.",
-       "note": "Dudoso: No hay ningún club que se llame exactamente así. El real es «Volley Haasrode Leuven» (VHL), así que se parece pero no es igual (le falta Haasrode). Se…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: No hay ningún «Volley Leuven». El club real es Volley Haasrode Leuven (VHL), con «Haasrode» en medio: se parece, pero no es igual. Nota anterior…"
       },
       {
        "real": "Decospan Menen",
@@ -3680,7 +3680,7 @@
        "ovr": 64,
        "sponsor": "Mosselhuis De Muur",
        "searched": true,
-       "doubt": "Tectum Achel jugó la Copa VEC 2025-26 y no está: podría sustituir a Menen.",
+       "doubt": null,
        "note": "Cambiado: antes «Voley Menen», que chocaba. El nombre oficial del club en la Wikipedia inglesa es «Volley Menen» (en.wikipedia.org/wiki/Volley_Menen; con…"
       },
       {
@@ -3769,9 +3769,9 @@
        "liberoEstimated": true,
        "ovr": 56,
        "sponsor": "Fromagerie Le Contre",
-       "searched": false,
-       "doubt": "Parecidos: «La Chapelle Volley Ball» (Francia) y el real Tchalou Chapelle-lez-Herlaimont. Se puede dejar.",
-       "note": "Dudoso: No hay ningún club que se llame exactamente así. Hay parecidos: «La Chapelle Volley Ball» (La Chapelle-d'Armentières, Francia), «ACC Volley La…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: No existe ningún club llamado «Volley Chapelle». Salen Tchalou Volley (Chapelle-lez-Herlaimont), ACC Volley La Chapelle-sur-Erdre y La Chapelle Volley…"
       }
      ]
     }
@@ -3822,7 +3822,7 @@
        "ovr": 63,
        "sponsor": null,
        "searched": true,
-       "doubt": "Sin confirmar que tuviera equipo en la Eredivisie de hombres 2025-26.",
+       "doubt": null,
        "note": "Libre: Solo sale Sliedrecht Sport. No coincide con ningún club de las listas de la Eredivisie de hombres (Wikipedia) y de mujeres (BetExplorer); no hay…"
       },
       {
@@ -3846,8 +3846,8 @@
       {
        "real": "Lycurgus (Groningen)",
        "official": "Lycurgus Groningen (Abiant / Nova-Tech Lycurgus)",
-       "name": "Lykurgos Groningen",
-       "short": "LYK",
+       "name": "Wetgevers Groningen",
+       "short": "WTG",
        "city": "Groninga",
        "colors": {
         "shirt": "#0d57ff",
@@ -3857,9 +3857,9 @@
        "liberoEstimated": true,
        "ovr": 62,
        "sponsor": "Bakkerij Bovenhands",
-       "searched": false,
-       "doubt": "Transliteración griega del real «Lycurgus Groningen»: suena casi igual.",
-       "note": "Dudoso: El real es «Lycurgus Groningen». «Lykurgos» es la transliteración griega del mismo nombre: no es idéntico, pero suena casi igual. Si el dueño lo…"
+       "searched": true,
+       "doubt": null,
+       "note": "Cambiado: antes «Lykurgos Groningen», que chocaba. El buscador lo resuelve como Lycurgus Groningen, el club real (betexplorer, Olympedia «Lycurgus…"
       },
       {
        "real": "Dynamo Apeldoorn",
@@ -4024,7 +4024,7 @@
       {
        "real": "Milon",
        "official": "A.O.N.S. Milon (Nea Smyrni)",
-       "name": "Milo Nea Smirni",
+       "name": "Prosfyges Nea Smirni",
        "short": "MNS",
        "city": "Nea Smyrni (Atenas)",
        "colors": {
@@ -4035,9 +4035,9 @@
        "liberoEstimated": true,
        "ovr": 63,
        "sponsor": null,
-       "searched": false,
-       "doubt": "Casi «AONS Milon Nea Smyrni» (el real en la CEV). Alternativa buscada: «Prosfyges Nea Smirni».",
-       "note": "Dudoso: El real es «AONS Milon» (Nea Smyrni) y la CEV lo inscribe como «AONS Milon Nea Smyrni». «Milo Nea Smirni» se queda a una letra (Milon/Milo) y a una…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: El real figura en la CEV como «AONS Milon Nea Smyrni Athens». «Milo Nea Smirni» cambia dos letras (Milon→Milo, Smyrni→Smirni) y quita AONS: no es…"
       },
       {
        "real": "Foinikas Syros",
@@ -4268,8 +4268,8 @@
        "ovr": 56,
        "sponsor": null,
        "searched": false,
-       "doubt": "«Tigres da Costa Verde» es el apodo del SC Espinho y existe «Escola de Formação de Espinho - Os Tigres» (balonmano playa).",
-       "note": "Dudoso: «Tigres da Costa Verde» es el apodo del SC Espinho. Además existe un club de balonmano playa cuyo nombre oficial es «Escola de Formação de Espinho -…"
+       "doubt": null,
+       "note": "Dudoso: No existe ningún club oficial con ese nombre exacto, pero «Os Tigres (da Costa Verde)» es el apodo del SC Espinho, y el club de balonmano playa…"
       },
       {
        "real": "Vitória SC",
@@ -4470,7 +4470,7 @@
       {
        "real": "Genève Volley",
        "official": "Genève Volley (Infomaniak Genève Volley)",
-       "name": "Voley Ginebra",
+       "name": "Voley Lemán",
        "short": "GIN",
        "city": "Ginebra",
        "colors": {
@@ -4481,9 +4481,9 @@
        "liberoEstimated": true,
        "ovr": 56,
        "sponsor": "Fromagerie La Manchette",
-       "searched": false,
-       "doubt": "Casi la traducción de «Genève Volley» (el real), con el orden cambiado.",
-       "note": "Dudoso: El club real es Genève Volley (ahora con patrocinador: Infomaniak Genève Volley). «Voley Ginebra» es casi su traducción al castellano con el orden…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: No existe ningún club «Voley/Volley Ginebra» (solo el Ginebra San Miguel, de baloncesto filipino). Pero es la traducción al español, con el orden…"
       },
       {
        "real": "Chênois Genève Volleyball",
@@ -4808,7 +4808,7 @@
       {
        "real": "Volejbal Kladno",
        "official": "Volejbal Kladno",
-       "name": "Voley Kladno",
+       "name": "Voley Kladensko",
        "short": "KLA",
        "city": "Kladno",
        "colors": {
@@ -4819,9 +4819,9 @@
        "liberoEstimated": true,
        "ovr": 56,
        "sponsor": null,
-       "searched": false,
-       "doubt": "Mismas ideas que el real «Kladno volejbal cz», en otro orden. Alternativa sin buscar: «Mineros de Kladno».",
-       "note": "Dudoso: El nombre oficial del club real es «Kladno volejbal cz, z.s.» (perfil CEV y Wikipedia «Kladno volejbal cz»). «Voley Kladno» usa las mismas dos ideas…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: El real se llama oficialmente «Kladno volejbal cz» (antes VK Kladno). «Voley Kladno» es casi su traducción, en otro orden y sin el «cz»: patrón…"
       },
       {
        "real": "VK Královo Pole Brno",
@@ -5056,8 +5056,8 @@
       {
        "real": "OTP banka Branik",
        "official": "ŽOK Branik Maribor (OTP banka Branik)",
-       "name": "Branič Maribor",
-       "short": "BRA",
+       "name": "Pohorje Maribor",
+       "short": "VIJ",
        "city": "Maribor",
        "colors": {
         "shirt": "#5b2c83",
@@ -5067,9 +5067,9 @@
        "liberoEstimated": true,
        "ovr": 60,
        "sponsor": "Pekarna Pri Mreži",
-       "searched": false,
-       "doubt": "A una letra de los muchos «Branik Maribor» (también OK Branik de vóley). Alternativa sin buscar: «Pohorje Maribor».",
-       "note": "Dudoso: Hay muchos clubes «Branik Maribor» (AVK waterpolo, AKK baloncesto, RK Maribor Branik balonmano, NK Branik fútbol histórico, OK Branik vóley), que se…"
+       "searched": true,
+       "doubt": null,
+       "note": "Cambiado: antes «Branič Maribor», que chocaba. Existen AVK Branik Maribor (waterpolo), RK Maribor Branik (balonmano), NK Branik Maribor (fútbol) y NK Maribor…"
       },
       {
        "real": "Calcit Volley",
@@ -5158,7 +5158,7 @@
        "ovr": 56,
        "sponsor": "Ribarnica Blok",
        "searched": true,
-       "doubt": "Muy cerca del nombre registrado del club real («Club di pallavolo Koper-Capodistria»).",
+       "doubt": null,
        "note": "No coincide con ningún club de las clasificaciones oficiales 2025-26 de la OZS (dataproject: 1A. DOL hombres y mujeres); no hay artículo con ese título en…"
       },
       {
@@ -5317,9 +5317,9 @@
        "liberoEstimated": true,
        "ovr": 58,
        "sponsor": null,
-       "searched": false,
-       "doubt": "La prensa llama «Volei Zalău» al real (Volei Municipal Zalău). Alternativa sin buscar: «Sălaj Zalău».",
-       "note": "Dudoso: El club real se llama oficialmente (CS) Volei Municipal Zalău, abreviado VM Zalău, y hoy aparece como SCM Zalău. «Volei Zalău» se usa en la prensa…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: El real es VM Zalău (Volei Municipal Zalău), antes Remat Zalău; también existe SCM Zalău (fútbol). No hay ningún «Volei/Voley Zalău» exacto: al nuestro…"
       },
       {
        "real": "CS Unirea Dej",
@@ -5513,9 +5513,9 @@
        "liberoEstimated": true,
        "ovr": 83,
        "sponsor": null,
-       "searched": false,
-       "doubt": "«Tricolor das Laranjeiras» es el apodo muy conocido del Fluminense (mismas palabras); no es nombre oficial.",
-       "note": "Dudoso: No hay club oficial con ese nombre, pero «Tricolor das Laranjeiras» es el apodo muy conocido del Fluminense (mismas palabras en otro orden). No es el…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: No hay ningún club con ese nombre. Solo salen referencias al Fluminense (el «Tricolor», con sede en Laranjeiras) y a eventos como el «Arraiá Tricolor…"
       },
       {
        "real": "Suzano Vôlei",
@@ -5586,7 +5586,7 @@
        "ovr": 81,
        "sponsor": "Padaria Meio de Rede",
        "searched": true,
-       "doubt": "Colores (magenta y negro) sin fuente.",
+       "doubt": null,
        "note": "Libre: Sin club ni competición; solo una radio, «Cidade Canção FM». Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial…"
       }
      ]
@@ -5618,7 +5618,7 @@
       {
        "real": "Viapol Vôlei São José",
        "official": "Vôlei São José (São José dos Campos)",
-       "name": "Vôlei Joseense",
+       "name": "Aeroespacial Vôlei",
        "short": "SJC",
        "city": "São José dos Campos",
        "colors": {
@@ -5629,9 +5629,9 @@
        "liberoEstimated": true,
        "ovr": 76,
        "sponsor": "Sardinhas do Rodízio",
-       "searched": false,
-       "doubt": "Existió «Vôlei Feminino Joseense» (São José dos Campos, 2019-20). Alternativa buscada: «Aeroespacial Vôlei».",
-       "note": "Dudoso: Hacia 2019-2020 existió un equipo «Vôlei Feminino Joseense» (Associação Joseense de Voleibol, São José dos Campos; sjc.sp.gov.br, agosto de 2019). Hoy…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: Hubo un equipo «Vôlei Feminino Joseense» (São José dos Campos, campeón de la Superliga C 2019, según el ayuntamiento). No es igual (lleva «Feminino»)…"
       },
       {
        "real": "Batavo Mackenzie",
@@ -5756,7 +5756,7 @@
        "ovr": 71,
        "sponsor": null,
        "searched": true,
-       "doubt": "Sin confirmar que jugara la Superliga B 2025-26.",
+       "doubt": null,
        "note": "Libre: Solo Montes Claros Vôlei (apodo «Pequi Atômico»). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese…"
       },
       {
@@ -5774,7 +5774,7 @@
        "ovr": 71,
        "sponsor": null,
        "searched": true,
-       "doubt": "Sin confirmar que jugara la Superliga B 2025-26.",
+       "doubt": null,
        "note": "Libre: No hay club «Araucárias» en SP. Existe el Araucária Esporte Clube (fútbol, Paraná), pero en singular y sin «SP», así que el nombre es distinto. Lo…"
       },
       {
@@ -5792,7 +5792,7 @@
        "ovr": 70,
        "sponsor": null,
        "searched": true,
-       "doubt": "Sin confirmar que jugara la Superliga B 2025-26.",
+       "doubt": null,
        "note": "Libre: «Alencarino/alencarina» solo aparece como adjetivo de Ceará (p. ej. «equipe alencarina» = Norde Vôlei); ningún club con ese nombre. Lo construí a…"
       },
       {
@@ -6064,7 +6064,7 @@
       {
        "real": "LOVB Salt Lake",
        "official": "LOVB Salt Lake (League One Volleyball)",
-       "name": "Volley Salt Lake",
+       "name": "Volley Wasatch",
        "short": "SLC",
        "city": "Salt Lake City",
        "colors": {
@@ -6076,8 +6076,8 @@
        "ovr": 72,
        "sponsor": null,
        "searched": true,
-       "doubt": "Mismas palabras que «Salt Lake Volleyball» (la prensa llama así al equipo real). Alternativa sin buscar: «Volley Wasatch».",
-       "note": "Verificación (11-nov-2026): búsqueda entre comillas sin club con ese nombre exacto. Ojo: la prensa llama al equipo real «Salt Lake Volleyball» (mismas…"
+       "doubt": null,
+       "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Volley Salt Lake»…"
       },
       {
        "real": "Dallas Pulse",
@@ -6093,9 +6093,9 @@
        "liberoEstimated": true,
        "ovr": 72,
        "sponsor": null,
-       "searched": false,
-       "doubt": "Conserva «Pulse»: el real, Dallas Pulse, juega en Frisco y la prensa lo llama «Frisco’s Dallas Pulse». Alternativa buscada: «Frisco Pulsar».",
-       "note": "Dudoso: No existe un equipo llamado «Frisco Pulse». Pero el real, Dallas Pulse (MLV, campeón en 2026), juega como local en el Comerica Center de Frisco, y la…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: No existe ningún equipo llamado así. El real es Dallas Pulse (MLV), que juega en Frisco: el guiño está claro, pero el nombre es distinto. Nota…"
       },
       {
        "real": "Omaha Supernovas",
@@ -6118,7 +6118,7 @@
       {
        "real": "Orlando Valkyries",
        "official": "Orlando Valkyries (Major League Volleyball)",
-       "name": "Orlando Valquirias",
+       "name": "Orlando Asgard",
        "short": "ORL",
        "city": "Orlando",
        "colors": {
@@ -6129,14 +6129,14 @@
        "liberoEstimated": false,
        "ovr": 71,
        "sponsor": null,
-       "searched": false,
-       "doubt": "Traducción literal de Orlando Valkyries (misma ciudad). Alternativa buscada: «Kissimmee Valquirias».",
-       "note": "Dudoso: No hay ningún equipo con el nombre en español, pero es la traducción literal de Orlando Valkyries (MLV, campeón en 2025): misma ciudad y mismo apodo…"
+       "searched": true,
+       "doubt": null,
+       "note": "Cambiado: antes «Orlando Valquirias», que chocaba. Es la traducción directa de Orlando Valkyries (MLV, campeonas en 2025): justo el ejemplo de choque de la…"
       },
       {
        "real": "Hawaiʻi Rainbow Warriors",
        "official": "University of Hawaiʻi at Mānoa (Rainbow Warriors)",
-       "name": "Manoa Rainbows",
+       "name": "Manoa Arcoíris",
        "short": "MNO",
        "city": "Honolulu",
        "colors": {
@@ -6147,9 +6147,9 @@
        "liberoEstimated": true,
        "ovr": 68,
        "sponsor": null,
-       "searched": false,
-       "doubt": "La prensa llama «Rainbows» a Hawái (antes «Hawaii Rainbows»). Alternativa sin buscar: «Manoa Arcoíris».",
-       "note": "Dudoso: No es un nombre oficial: los equipos de la Universidad de Hawái en Mānoa se llaman Rainbow Warriors y Rainbow Wahine. Pero la prensa los llama a…"
+       "searched": true,
+       "doubt": null,
+       "note": "Libre: Ningún equipo oficial se llama así, pero los de la Universidad de Hawaiʻi en Mānoa se llamaron oficialmente «Hawaii Rainbows» (fútbol americano, años…"
       },
       {
        "real": "UC Irvine Anteaters",
@@ -6332,7 +6332,7 @@
       {
        "real": "Montréal Carabins",
        "official": "Université de Montréal (Carabins)",
-       "name": "Montréal Carabines",
+       "name": "Montréal Internes",
        "short": "MTL",
        "city": "Montreal",
        "colors": {
@@ -6343,9 +6343,9 @@
        "liberoEstimated": true,
        "ovr": 55,
        "sponsor": null,
-       "searched": false,
-       "doubt": "A una letra del real, Montréal Carabins. Alternativa sin buscar: «Montréal Mousquetaires».",
-       "note": "Dudoso: No existe ningún equipo llamado «Carabines», pero se queda a una letra del real, Montréal Carabins (Universidad de Montreal). No cambia solo una…"
+       "searched": true,
+       "doubt": null,
+       "note": "Cambiado: antes «Montréal Carabines», que chocaba. El buscador lo resuelve como Montréal Carabins (Université de Montréal, RSEQ/U Sports). «Carabines» solo…"
       },
       {
        "real": "Laval Rouge et Or",
@@ -7462,24 +7462,6 @@
      "strength": 67,
      "clubs": [
       {
-       "real": "Foolad Sirjan Iranian",
-       "official": "Foolad Sirjan Iranian (فولاد سیرجان ایرانیان)",
-       "name": "Valibal Sirjan",
-       "short": "SRJ",
-       "city": "Sirjan",
-       "colors": {
-        "shirt": "#0d47a1",
-        "shirt2": "#ffffff",
-        "libero": "#ffb300"
-       },
-       "liberoEstimated": true,
-       "ovr": 76,
-       "sponsor": "Kebab Sirjan Smash",
-       "searched": true,
-       "doubt": "ovr 76, por encima de las ligas medias de Europa; Ferran puede bajarlo.",
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; «valibal» es «voleibol» en persa (forma local de «Voley…"
-      },
-      {
        "real": "Shahdab Yazd",
        "official": "Shahdab Yazd (شهداب یزد)",
        "name": "Valibal Yazd",
@@ -7496,6 +7478,24 @@
        "searched": true,
        "doubt": null,
        "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma local de «Voley Yazd»; se quita Shahdab (empresa)."
+      },
+      {
+       "real": "Foolad Sirjan Iranian",
+       "official": "Foolad Sirjan Iranian (فولاد سیرجان ایرانیان)",
+       "name": "Valibal Sirjan",
+       "short": "SRJ",
+       "city": "Sirjan",
+       "colors": {
+        "shirt": "#0d47a1",
+        "shirt2": "#ffffff",
+        "libero": "#ffb300"
+       },
+       "liberoEstimated": true,
+       "ovr": 71,
+       "sponsor": "Kebab Sirjan Smash",
+       "searched": true,
+       "doubt": null,
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; «valibal» es «voleibol» en persa (forma local de «Voley…"
       },
       {
        "real": "Chadormalu Ardakan",
@@ -7640,24 +7640,6 @@
      "strength": 65,
      "clubs": [
       {
-       "real": "Al Rayyan SC",
-       "official": "Al-Rayyan Sports Club (نادي الريان; también campeón de la liga W 2024-25)",
-       "name": "Voley Rayyan",
-       "short": "RAY",
-       "city": "Al Rayyan",
-       "colors": {
-        "shirt": "#d50032",
-        "shirt2": "#111111",
-        "libero": "#ffffff"
-       },
-       "liberoEstimated": true,
-       "ovr": 74,
-       "sponsor": null,
-       "searched": true,
-       "doubt": "ovr 74, por encima de las ligas medias de Europa (63-70); campeón de Asia 2025. Ferran puede bajarlo.",
-       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma «Voley [Ciudad]»; campeón 2024-25 y campeón de Asia…"
-      },
-      {
        "real": "Al Arabi SC",
        "official": "Al-Arabi Sports Club (النادي العربي)",
        "name": "Arabi Doha",
@@ -7674,6 +7656,24 @@
        "searched": true,
        "doubt": null,
        "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; campeón 2023-24 y, según el primer informe, 2025-26 (sin…"
+      },
+      {
+       "real": "Al Rayyan SC",
+       "official": "Al-Rayyan Sports Club (نادي الريان; también campeón de la liga W 2024-25)",
+       "name": "Voley Rayyan",
+       "short": "RAY",
+       "city": "Al Rayyan",
+       "colors": {
+        "shirt": "#d50032",
+        "shirt2": "#111111",
+        "libero": "#ffffff"
+       },
+       "liberoEstimated": true,
+       "ovr": 71,
+       "sponsor": null,
+       "searched": true,
+       "doubt": null,
+       "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma «Voley [Ciudad]»; campeón 2024-25 y campeón de Asia…"
       },
       {
        "real": "Police SC",
@@ -7832,7 +7832,7 @@
        "ovr": 57,
        "sponsor": "Lechon Libero",
        "searched": true,
-       "doubt": "Nombre genérico.",
+       "doubt": null,
        "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca PLDT y también «High Speed», que es su…"
       },
       {
@@ -7850,7 +7850,7 @@
        "ovr": 56,
        "sponsor": "Halo-Halo Block",
        "searched": true,
-       "doubt": "Nombre genérico; además Cignal se dio de baja temporal en enero de 2026.",
+       "doubt": null,
        "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Cignal y también «HD», que es su…"
       },
       {
@@ -7868,7 +7868,7 @@
        "ovr": 56,
        "sponsor": "Pandesal Pass Bakery",
        "searched": true,
-       "doubt": "Petro Gazz se dio de baja temporal en 2026.",
+       "doubt": null,
        "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita la marca Petro Gazz; guiño a «Angels»…"
       },
       {
@@ -7976,7 +7976,7 @@
        "ovr": 50,
        "sponsor": "Bangus Net Fishery",
        "searched": true,
-       "doubt": "Navy ya no figura en la Spikers’ Turf.",
+       "doubt": null,
        "note": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; se quita PGJC (patrocinador); guiño a «Sea Lions»…"
       }
      ]

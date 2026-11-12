@@ -161,7 +161,7 @@
               },
               "liberoEstimated": true,
               "ovr": 83,
-              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Laranjeiras Tricolor\" clube. Resultado: No hay club oficial con ese nombre, pero «Tricolor das Laranjeiras» es el apodo muy conocido del Fluminense (mismas palabras en otro orden). No es el nombre oficial, así que no choca con la regla; se deja como guiño reconocible. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Laranjeiras es el barrio de su sede; «Tricolor» es su apodo."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Laranjeiras Tricolor» no existe como club oficial. Método: WebSearch \"Laranjeiras Tricolor\". Resultado: No hay ningún club con ese nombre. Solo salen referencias al Fluminense (el «Tricolor», con sede en Laranjeiras) y a eventos como el «Arraiá Tricolor nas Laranjeiras». Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Laranjeiras Tricolor\" clube. Resultado: No hay club oficial con ese nombre, pero «Tricolor das Laranjeiras» es el apodo muy conocido del Fluminense (mismas palabras en otro orden). No es el nombre oficial, así que no choca con la regla; se deja como guiño reconocible. Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Laranjeiras es el barrio de su sede; «Tricolor» es su apodo."
             },
             {
               "real": "Monte Carmelo Vôlei",
@@ -247,7 +247,7 @@
             {
               "real": "Viapol Vôlei São José",
               "official": "Vôlei São José (São José dos Campos)",
-              "name": "Vôlei Joseense",
+              "name": "Aeroespacial Vôlei",
               "realSponsor": true,
               "sponsor": "Sardinhas do Rodízio",
               "sponsorCheck": "Juego de palabras: rodízio (rotación). Búsqueda web del nombre exacto entre comillas (WebSearch, 11-nov-2026): ninguna empresa ni marca real con ese nombre; solo resultados genéricos.",
@@ -261,7 +261,7 @@
               },
               "liberoEstimated": true,
               "ovr": 76,
-              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Vôlei Joseense\" y una 2ª: \"Vôlei Feminino Joseense\" OR \"Joseense de Voleibol\". Resultado: Hacia 2019-2020 existió un equipo «Vôlei Feminino Joseense» (Associação Joseense de Voleibol, São José dos Campos; sjc.sp.gov.br, agosto de 2019). Hoy se llama São José Vôlei. El nombre no es idéntico, pero se parece mucho. También existe el Clube Atlético Joseense, de fútbol, que es otro nombre. Propuesta: Aeroespacial Vôlei (guiño al polo aeroespacial de São José dos Campos; WebSearch \"Aeroespacial Vôlei\": sin coincidencias). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio; ojo, existen «Vôlei São José» y «São José Vôlei», y el nuestro es distinto."
+              "check": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Vôlei Joseense». Nota anterior: […] como libre (oleada final 12-nov): DUDOSO. Método: WebSearch \"Vôlei Joseense\" OR \"Volei Joseense\". Resultado: Hubo un equipo «Vôlei Feminino Joseense» (São José dos Campos, campeón de la Superliga C 2019, según el ayuntamiento). No es igual (lleva «Feminino»), pero se parece mucho. El club actual es Vôlei São José. Alternativas sin buscar: «Vôlei Vale do Paraíba», «Joseense Paraíba». Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Vôlei Joseense\" y una 2ª: \"Vôlei Feminino Joseense\" OR \"Joseense de Voleibol\". Resultado: Hacia 2019-2020 existió un equipo «Vôlei Feminino Joseense» (Associação Joseense de Voleibol, São José dos Campos; sjc.sp.gov.br, agosto de 2019). Hoy se llama São José Vôlei. El nombre no es idéntico, pero se parece mucho. También existe el Clube Atlético Joseense, de fútbol, que es otro nombre. Propuesta: Aeroespacial Vôlei (guiño al polo aeroespacial de São José dos Campos; WebSearch \"Aeroespacial Vôlei\": sin coincidencias). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Gentilicio; ojo, existen «Vôlei São José» y «São José Vôlei», y el nuestro es distinto."
             },
             {
               "real": "Saneago Goiás Vôlei",
@@ -697,7 +697,7 @@
             {
               "real": "LOVB Salt Lake",
               "official": "LOVB Salt Lake (League One Volleyball)",
-              "name": "Volley Salt Lake",
+              "name": "Volley Wasatch",
               "realSponsor": false,
               "short": "SLC",
               "city": "Salt Lake City",
@@ -709,7 +709,7 @@
               },
               "liberoEstimated": true,
               "ovr": 72,
-              "check": "Verificación (11-nov-2026): búsqueda entre comillas sin club con ese nombre exacto. Ojo: la prensa llama al equipo real «Salt Lake Volleyball» (mismas palabras en otro orden) y hay un club juvenil «Salt Lake Volleyball Club». No coincide exactamente, pero es el más cercano de todo el fichero."
+              "check": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Volley Salt Lake». Nota anterior: Verificación (11-nov-2026): […] club con ese nombre exacto. Ojo: la prensa llama al equipo real «Salt Lake Volleyball» (mismas palabras en otro orden) y hay un club juvenil «Salt Lake Volleyball Club». No coincide exactamente, pero es el más cercano de todo el fichero."
             },
             {
               "real": "Dallas Pulse",
@@ -726,7 +726,7 @@
               },
               "liberoEstimated": true,
               "ovr": 72,
-              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Frisco Pulse\" volleyball; 2ª búsqueda \"Frisco Pulsar\". Resultado: No existe un equipo llamado «Frisco Pulse». Pero el real, Dallas Pulse (MLV, campeón en 2026), juega como local en el Comerica Center de Frisco, y la prensa lo llama a menudo «Frisco's Dallas Pulse». Al cambiar solo la ciudad, se identifica casi directamente con el real. Propuesta: Frisco Pulsar (comprobado: no hay ningún equipo con ese nombre). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Juega en Frisco; guiño a «Pulse» con otra ciudad."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Frisco Pulse» no existe como club oficial. Método: WebSearch \"Frisco Pulse\". Resultado: No existe ningún equipo llamado así. El real es Dallas Pulse (MLV), que juega en Frisco: el guiño está claro, pero el nombre es distinto. Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Frisco Pulse\" volleyball; 2ª búsqueda \"Frisco Pulsar\". Resultado: No existe un equipo llamado «Frisco Pulse». Pero el real, Dallas Pulse (MLV, campeón en 2026), juega como local en el Comerica Center de Frisco, y la prensa lo llama a menudo «Frisco's Dallas Pulse». Al cambiar solo la ciudad, se identifica casi directamente con el real. Propuesta: Frisco Pulsar (comprobado: no hay ningún equipo con ese nombre). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Juega en Frisco; guiño a «Pulse» con otra ciudad."
             },
             {
               "real": "Omaha Supernovas",
@@ -748,7 +748,7 @@
             {
               "real": "Orlando Valkyries",
               "official": "Orlando Valkyries (Major League Volleyball)",
-              "name": "Orlando Valquirias",
+              "name": "Orlando Asgard",
               "realSponsor": false,
               "short": "ORL",
               "city": "Orlando",
@@ -760,12 +760,12 @@
               },
               "liberoEstimated": false,
               "ovr": 71,
-              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Orlando Valquirias\"; 2ª búsqueda \"Kissimmee Valquirias\". Resultado: No hay ningún equipo con el nombre en español, pero es la traducción literal de Orlando Valkyries (MLV, campeón en 2025): misma ciudad y mismo apodo traducido. No es idéntico, pero se acerca mucho a la regla de «mismas palabras». Propuesta: Kissimmee Valquirias (comprobado: no hay ningún equipo con ese nombre). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Traducción al español."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Orlando Asgard» no existe como club ni competición oficial. Método: WebSearch \"Orlando Asgard\" team: ningún equipo real (solo un equipo de ficción de Blood Bowl, «Asgard Ravens»). Guiño: Asgard, el mundo de las valquirias. Se cambió porque el nombre anterior, «Orlando Valquirias», chocaba: Es la traducción directa de Orlando Valkyries (MLV, campeonas en 2025): justo el ejemplo de choque de la regla de las traducciones. (WebSearch \"Orlando Valquirias\" OR \"Valquirias de Orlando\".) Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Orlando Valquirias\"; 2ª búsqueda \"Kissimmee Valquirias\". Resultado: No hay ningún equipo con el nombre en español, pero es la traducción literal de Orlando Valkyries (MLV, campeón en 2025): misma ciudad y mismo apodo traducido. No es idéntico, pero se acerca mucho a la regla de «mismas palabras». Propuesta: Kissimmee Valquirias (comprobado: no hay ningún equipo con ese nombre). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Traducción al español."
             },
             {
               "real": "Hawaiʻi Rainbow Warriors",
               "official": "University of Hawaiʻi at Mānoa (Rainbow Warriors)",
-              "name": "Manoa Rainbows",
+              "name": "Manoa Arcoíris",
               "realSponsor": false,
               "short": "MNO",
               "city": "Honolulu",
@@ -777,7 +777,7 @@
               },
               "liberoEstimated": true,
               "ovr": 68,
-              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Manoa Rainbows\" volleyball. Resultado: No es un nombre oficial: los equipos de la Universidad de Hawái en Mānoa se llaman Rainbow Warriors y Rainbow Wahine. Pero la prensa los llama a menudo «Rainbows» (p. ej. «Rainbows sweep Utah Valley»), e históricamente se llamaron «Hawaii Rainbows». El nombre se acerca mucho a ese uso histórico y coloquial. Propuesta: Manoa Arcoíris (no comprobado). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Mānoa es el campus y «Rainbow» su apodo. [Integrador: abreviatura MAN → MNO, para que no se repita con otro club del juego.]"
+              "check": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Manoa Rainbows». Nota anterior: […] como libre (oleada final 12-nov): DUDOSO. Método: WebSearch \"Manoa Rainbows\". Resultado: Ningún equipo oficial se llama así, pero los de la Universidad de Hawaiʻi en Mānoa se llamaron oficialmente «Hawaii Rainbows» (fútbol americano, años 30 y 50); hoy son Rainbow Warriors / Rainbow Wahine. Solo cambia una palabra respecto al nombre histórico. Alternativa sin buscar: «Manoa Ānuenue». Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Manoa Rainbows\" volleyball. Resultado: No es un nombre oficial: los equipos de la Universidad de Hawái en Mānoa se llaman Rainbow Warriors y Rainbow Wahine. Pero la prensa los llama a menudo «Rainbows» (p. ej. «Rainbows sweep Utah Valley»), e históricamente se llamaron «Hawaii Rainbows». El nombre se acerca mucho a ese uso histórico y coloquial. Propuesta: Manoa Arcoíris (no comprobado). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Mānoa es el campus y «Rainbow» su apodo. [Integrador: abreviatura MAN → MNO, para que no se repita con otro club del juego.]"
             },
             {
               "real": "UC Irvine Anteaters",
@@ -934,7 +934,7 @@
             {
               "real": "Montréal Carabins",
               "official": "Université de Montréal (Carabins)",
-              "name": "Montréal Carabines",
+              "name": "Montréal Internes",
               "realSponsor": false,
               "short": "MTL",
               "city": "Montreal",
@@ -946,7 +946,7 @@
               },
               "liberoEstimated": true,
               "ovr": 55,
-              "check": "No comprobado por búsqueda como libre (oleadas 11-nov): DUDOSO. Método: WebSearch \"Montréal Carabines\". Resultado: No existe ningún equipo llamado «Carabines», pero se queda a una letra del real, Montréal Carabins (Universidad de Montreal). No cambia solo una tilde, aunque casi es lo mismo; el propio buscador lo trató como el real. Propuesta: Montréal Mousquetaires (no comprobado). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Carabin → carabine."
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Montréal Internes» no existe como club ni competición oficial. Método: WebSearch \"Montréal Internes\" OR \"Internes de Montréal\": ningún equipo, solo guías de prácticas médicas («carabin» es el estudiante de medicina; «interne», el médico en prácticas). Se cambió porque el nombre anterior, «Montréal Carabines», chocaba: El buscador lo resuelve como Montréal Carabins (Université de Montréal, RSEQ/U Sports). «Carabines» solo añade una letra a «Carabins». (WebSearch \"Montréal Carabines\" OR \"Carabines de Montréal\".) Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Montréal Carabines\". Resultado: No existe ningún equipo llamado «Carabines», pero se queda a una letra del real, Montréal Carabins (Universidad de Montreal). No cambia solo una tilde, aunque casi es lo mismo; el propio buscador lo trató como el real. Propuesta: Montréal Mousquetaires (no comprobado). Lo construí a partir de un apodo, barrio o gentilicio, y no conozco ningún club oficial con ese nombre. Carabin → carabine."
             },
             {
               "real": "Laval Rouge et Or",

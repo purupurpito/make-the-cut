@@ -33,67 +33,9 @@ const SPONSORS = ['Sir Safety', 'Sir Susa', 'Itas', 'Lube', 'Cucine', 'Rana', 'G
 const SPONSOR_RE = new RegExp('(^|[^\\p{L}])(' + SPONSORS.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')([^\\p{L}]|$)', 'iu');
 
 // Dudas que debe decidir Ferran (de los informes de los verificadores y del integrador), por nombre nuestro.
-const DOUBT = {
-  'Üsküdar Arıları': 'Nombre nuevo de la verificación (antes aludía al apodo de Fenerbahçe); ya buscado (oleadas 11-nov): libre.',
-  'Angora Voleybol': 'Club nuevo de la verificación (İlbank sustituye a Keçiören); nombre ya buscado (oleadas 11-nov): libre.',
-  'Sudoverf Piter': 'Club nuevo de la verificación (Korabelka sustituye a Murom); nombre ya buscado (libre), colores estimados.',
-  'Volley Jastrzębie': 'Colores: Wikipedia da verde, negro y amarillo (los del club); aquí van naranja y negro (la marca JSW). Elegir.',
-  'Volley Verona': 'Casi igual que el real («Verona Volley», mismas palabras en otro orden).',
-  'Volley Cisterna': 'Casi igual que el real («Cisterna Volley»).', 'Volley Cuneo': 'Casi igual que el real; además falta Cuneo Granda (10ª de la Serie A1), que chocaría.',
-  'Volley Chieri': 'Casi igual que el real («Chieri ’76»).', 'Volley Perugia': 'Casi igual que «Perugia Volley» (Black Angels, otro club).',
-  'Yeşilköy Voleybol': 'En el límite: guiña al barrio de la sede de THY, que es también el del antiguo aeropuerto.',
-  'Voley Hispalis': 'Club real dudoso: dataproject dice «Fundación Cajasol Andalucía» y es.wikipedia «F. Unicaja Andalucía VB» (Dos Hermanas).',
-  'Voley Tamarán': 'Club real probable: J.A.V. Olímpico (Emalsa Gran Canaria), por confirmar.',
-  'Aiacciu Volley': 'Ajaccio no jugó la Ligue A 2025-26 (sería Ligue B); Royan, que sube, podría sustituirlo.',
-  'Rennsteig Volley Suhl': 'Colores de Brandfetch: pueden ser los del patrocinador (Lotto Thüringen).',
-  'Rei en Jaume Vòlei': 'Empató 10-12 con Teruel (Voley Turia): Conqueridor (6º) está en la 2ª y Teruel (7º) en la 1ª; se pueden cambiar.',
-  'Menen Vauban': 'Tectum Achel jugó la Copa VEC 2025-26 y no está: podría sustituir a Menen.',
-  'Voley Sliedrecht': 'Sin confirmar que tuviera equipo en la Eredivisie de hombres 2025-26.',
-  'Volley Salt Lake': 'Mismas palabras que «Salt Lake Volleyball» (la prensa llama así al equipo real). Alternativa sin buscar: «Volley Wasatch».',
-  'Frisco Pulse': 'Conserva «Pulse»: el real, Dallas Pulse, juega en Frisco y la prensa lo llama «Frisco’s Dallas Pulse». Alternativa buscada: «Frisco Pulsar».',
-  'Vôlei Cidade Canção': 'Colores (magenta y negro) sin fuente.',
-  'Vôlei Montesclarense': 'Sin confirmar que jugara la Superliga B 2025-26.', 'Vôlei Alencarino': 'Sin confirmar que jugara la Superliga B 2025-26.',
-  'Araucárias SP': 'Sin confirmar que jugara la Superliga B 2025-26.',
-  'Metro Spikers': 'Nombre genérico; además Cignal se dio de baja temporal en enero de 2026.',
-  'Heavy Hitters Manila': 'Nombre genérico.', 'Manila Angelz': 'Petro Gazz se dio de baja temporal en 2026.',
-  'Bay Sealions': 'Navy ya no figura en la Spikers’ Turf.',
-  'Vòlei Manacor': 'Casi igual que el real (CV Manacor; voleimanacor.club puede ser su marca). Es el ejemplo de Ferran.',
-  'Capodistria Volley': 'Muy cerca del nombre registrado del club real («Club di pallavolo Koper-Capodistria»).',
-  'Voley Rayyan': 'ovr 74, por encima de las ligas medias de Europa (63-70); campeón de Asia 2025. Ferran puede bajarlo.',
-  'Valibal Sirjan': 'ovr 76, por encima de las ligas medias de Europa; Ferran puede bajarlo.',
-  // oleadas de búsqueda (11-nov): nombres dudosos
-  'Laranjeiras Tricolor': '«Tricolor das Laranjeiras» es el apodo muy conocido del Fluminense (mismas palabras); no es nombre oficial.',
-  'Vôlei Joseense': 'Existió «Vôlei Feminino Joseense» (São José dos Campos, 2019-20). Alternativa buscada: «Aeroespacial Vôlei».',
-  'Orlando Valquirias': 'Traducción literal de Orlando Valkyries (misma ciudad). Alternativa buscada: «Kissimmee Valquirias».',
-  'Manoa Rainbows': 'La prensa llama «Rainbows» a Hawái (antes «Hawaii Rainbows»). Alternativa sin buscar: «Manoa Arcoíris».',
-  'Montréal Carabines': 'A una letra del real, Montréal Carabins. Alternativa sin buscar: «Montréal Mousquetaires».',
-  'Voley Maaseik': 'Casi la traducción de «Volleybalclub Maaseik» (el real). Se podría usar el pabellón (Steengoed Arena).',
-  'Voley Roeselare': 'La prensa llama «Volley Roeselare» al real (Knack); además existe «Polonia Volley Roeselare».',
-  'Voley Leuven': 'El real es «Volley Haasrode Leuven»: solo le falta Haasrode. Se puede dejar.',
-  'Voley Chapelle': 'Parecidos: «La Chapelle Volley Ball» (Francia) y el real Tchalou Chapelle-lez-Herlaimont. Se puede dejar.',
-  'Lykurgos Groningen': 'Transliteración griega del real «Lycurgus Groningen»: suena casi igual.',
-  'Milo Nea Smirni': 'Casi «AONS Milon Nea Smyrni» (el real en la CEV). Alternativa buscada: «Prosfyges Nea Smirni».',
-  'Tigres Espinho': '«Tigres da Costa Verde» es el apodo del SC Espinho y existe «Escola de Formação de Espinho - Os Tigres» (balonmano playa).',
-  'Voley Ginebra': 'Casi la traducción de «Genève Volley» (el real), con el orden cambiado.',
-  'Voley Kladno': 'Mismas ideas que el real «Kladno volejbal cz», en otro orden. Alternativa sin buscar: «Mineros de Kladno».',
-  'Branič Maribor': 'A una letra de los muchos «Branik Maribor» (también OK Branik de vóley). Alternativa sin buscar: «Pohorje Maribor».',
-  'Voley Zalău': 'La prensa llama «Volei Zalău» al real (Volei Municipal Zalău). Alternativa sin buscar: «Sălaj Zalău».',
-  'Montpelhièr Volley': 'Es «Montpellier Volley» (el real) en occitano. Alternativa sin buscar: «Clapas Volley».',
-  'Volaro Le Cannet': 'A una letra del real, Volero Le Cannet. Alternativas sin buscar: «Volantes Le Cannet», «Riviera Le Cannet Volley».',
+const DOUBT = { // todas las dudas resueltas por Claude el 12-nov (Ferran lo delegó)
 };
-const COMP_DOUBT = {
-  'Champions Cup VEC': 'Ferran pidió «Champions Cup», pero ese nombre a secas es oficial en rugby (EPCR) y en fútbol (CONCACAF), y fue el de la propia CEV hasta 2000. Se usa «Champions Cup VEC» en todos los ficheros.',
-  'Mundial de Clubes VBF': 'Unificado: antes «World Club Cup» (Asia) y «Mundial VBC de Clubes» (América).',
-  'Coppa Tricolore': 'Nueva del integrador; una búsqueda, sin competición oficial con ese nombre.', 'Puchar Orła': 'Nueva del integrador; una búsqueda, sin coincidencias.',
-  'Hilal Kupası': 'Nueva del integrador; una búsqueda, sin coincidencias.', 'Kubok Volgi': 'Nueva del integrador; una búsqueda, sin coincidencias.',
-  // oleadas de búsqueda (11-nov): nombres dudosos
-  'Copa del Sur de Clubes': 'Hubo una «Copa del Sur» de fútbol (Buenos Aires, 1964 y 1968) y existe la «Copa Sur» brasileña; «de Clubes» la diferencia.',
-  'Copa Bohemia': 'Hubo una copa de fútbol de Bohemia (1906-1946) y Bohemia es marca de cerveza. Alternativas sin buscar: «Copa Moldava», «Copa de Praga».',
-  'Copa Srbija': 'Casi la traducción del real «Kup Srbije». Alternativas sin buscar: «Copa Danubio Serbio», «Copa Šumadija».',
-  'Copa Triglav': 'Triglav es la gran aseguradora eslovena (patrocinadora habitual). Alternativas sin buscar: «Copa Alpes Julianos».',
-  'Copa Carpatos': 'Casi la traducción de la Coupe des Carpathes (ciclismo) y del Carpathian Trophy (balonmano). Alternativa sin buscar: «Copa Transilvania».',
-  'Bundespokal Volley': 'La DVV ya organiza un «Bundespokal» de vóley juvenil. Alternativa (solo Wikipedia): «Netzpokal».',
-  'Hyper-Cup': '«Hyper Cup» es un modo de juego de videojuegos de fútbol de Konami; no es competición real.'
+const COMP_DOUBT = { // todas las dudas resueltas por Claude el 12-nov (Ferran lo delegó)
 };
 // Clubes reales que faltan (para la sección de dudas)
 const MISSING = [
@@ -232,7 +174,7 @@ let nDoubt = 0, nPend = 0;
 const md = [];
 md.push('# Clubes reales → Make the Cut: lista para que la revise Ferran');
 md.push('');
-md.push('Generada el 11-nov-2026 por `tools/build-leagues.js` a partir de `notes/clubes/*.json` (cinco investigaciones verificadas). Es la');
+md.push('Generada el 12-nov-2026 por `tools/build-leagues.js` a partir de `notes/clubes/*.json` (cinco investigaciones verificadas). Es la');
 md.push('misma lista que lleva el juego (`js/leagues.js`): ' + nCountries + ' países, ' + nLeagues + ' ligas y ' + nClubs + ' clubes. Para cambiar algo, se corrige');
 md.push('el JSON y se vuelve a ejecutar `node tools/build-leagues.js`; el detalle de cada investigación sigue en `notes/clubes/*.md`.');
 md.push('');
@@ -320,7 +262,7 @@ function shortNote(t) {
   if (t.length <= 160) return t;
   const cut = t.slice(0, 159); return cut.slice(0, Math.max(cut.lastIndexOf(' '), 120)).replace(/[\s,;:.]+$/, '') + '…';
 }
-const rev = { generated: '2026-11-11', competitions: [], countries: [] };
+const rev = { generated: '2026-11-12', competitions: [], countries: [] };
 for (const key in compSeen) {
   const { x } = compSeen[key];
   rev.competitions.push({ real: x.real || '', name: x.name, short: x.short, note: shortNote(x.note), doubt: COMP_DOUBT[x.name] || null, searched: searched(x.note || '') });

@@ -884,7 +884,7 @@
                 "libero": "#FFB300"
               },
               "liberoEstimated": true,
-              "ovr": 76,
+              "ovr": 71,
               "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; «valibal» es «voleibol» en persa (forma local de «Voley Sirjan»); se quita Foolad (empresa). [Integrador: abreviatura SIR → SRJ, para que no se repita con otro club del juego.]"
             },
             {
@@ -1113,7 +1113,7 @@
                 "libero": "#FFFFFF"
               },
               "liberoEstimated": true,
-              "ovr": 74,
+              "ovr": 71,
               "check": "Búsqueda web del nombre exacto entre comillas (+ \"volleyball\"): sin ningún club real con ese nombre; forma «Voley [Ciudad]»; campeón 2024-25 y campeón de Asia 2025 (3-0 a Osaka Bluteon)."
             },
             {

@@ -16,7 +16,7 @@
             {
               "real": "Sir Safety Perugia",
               "official": "Sir Susa Scai Perugia (club: Sir Safety Umbria Volley Perugia)",
-              "name": "Volley Perugia",
+              "name": "Voley Perugia",
               "sponsor": "Salumificio Il Bagher",
               "realSponsor": true,
               "short": "PER",
@@ -29,7 +29,7 @@
               },
               "liberoEstimated": false,
               "ovr": 93,
-              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Black Angels Perugia Volley, School Volley Perugia y la desaparecida Sirio Perugia. Campeón de la SuperLega 2025-26.",
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley Perugia». Nota anterior: […] entre comillas: no existe; solo salen Black Angels Perugia Volley, School Volley Perugia y la desaparecida Sirio Perugia. Campeón de la SuperLega 2025-26.",
               "sponsorCheck": "Juego de palabras: bagher (toque de antebrazos); embutido umbro. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
             },
             {
@@ -73,7 +73,7 @@
             {
               "real": "Rana Verona",
               "official": "Rana Verona (club: Verona Volley)",
-              "name": "Volley Verona",
+              "name": "Voley Verona",
               "sponsor": "Pandoro Ace",
               "realSponsor": true,
               "short": "VER",
@@ -86,7 +86,7 @@
               },
               "liberoEstimated": true,
               "ovr": 88,
-              "check": "Búsqueda web del nombre exacto entre comillas: no existe como club; el real es «Verona Volley» (orden inverso) y hay una ASD «Verona Volley 2006». Nombre distinto, pero muy pegado: alternativa «Volley Scaligera». [Integrador, búsqueda web 11-nov-2026: el club real se llama «Verona Volley»: mismas palabras en otro orden. No coincide exactamente. ⚠]",
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley Verona». Nota anterior: […] entre comillas: no existe como club; el real es «Verona Volley» (orden inverso) y hay una ASD «Verona Volley 2006». Nombre distinto, pero muy pegado: alternativa «Volley Scaligera». [Integrador, búsqueda web 11-nov-2026: el club real se llama «Verona Volley»: mismas palabras en otro orden. No coincide exactamente. ⚠]",
               "sponsorCheck": "Juego de palabras: ace; el pandoro es de Verona. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real."
             },
             {
@@ -206,7 +206,7 @@
             {
               "real": "Reale Mutua Fenera Chieri '76",
               "official": "Reale Mutua Fenera Chieri '76 (club: Chieri '76 Volleyball)",
-              "name": "Volley Chieri",
+              "name": "Voley Chieri",
               "sponsor": "Grissini Fuori Tutto",
               "realSponsor": true,
               "short": "CHI",
@@ -219,7 +219,7 @@
               },
               "liberoEstimated": true,
               "ovr": 84,
-              "check": "Búsqueda web del nombre exacto entre comillas: no existe; existió «Chieri Volley» (orden inverso) y hoy está Chieri '76 Volleyball.",
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley Chieri». Nota anterior: […] entre comillas: no existe; existió «Chieri Volley» (orden inverso) y hoy está Chieri '76 Volleyball.",
               "sponsorCheck": "Juego de palabras: fuori tutto (balón fuera tras bloqueo); grissini piamonteses (evita seguros, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
             },
             {
@@ -291,7 +291,7 @@
             {
               "real": "Cisterna Volley",
               "official": "Cisterna Volley",
-              "name": "Volley Cisterna",
+              "name": "Voley Cisterna",
               "realSponsor": false,
               "short": "CIS",
               "city": "Cisterna di Latina",
@@ -303,13 +303,13 @@
               },
               "liberoEstimated": true,
               "ovr": 75,
-              "check": "Búsqueda web del nombre exacto entre comillas: no existe; los reales son «Cisterna Volley» (orden inverso) y Pallavolo Cisterna 88.",
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley Cisterna». Nota anterior: […] entre comillas: no existe; los reales son «Cisterna Volley» (orden inverso) y Pallavolo Cisterna 88.",
               "sponsorCheck": "Sin patrocinador en el nombre: 2025-26 jugó como «Cisterna Volley» en la SuperLega. WebSearch 11-nov-2026."
             },
             {
               "real": "MA Acqua San Bernardo Cuneo",
               "official": "MA Acqua San Bernardo Cuneo (club: Cuneo Volley)",
-              "name": "Volley Cuneo",
+              "name": "Voley Cuneo",
               "sponsor": "Marroni Invasione",
               "realSponsor": true,
               "short": "CUN",
@@ -322,7 +322,7 @@
               },
               "liberoEstimated": false,
               "ovr": 76,
-              "check": "Búsqueda web del nombre exacto entre comillas: no existe; los reales son «Cuneo Volley» (orden inverso) y Cuneo Granda Volley.",
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley Cuneo». Nota anterior: […] entre comillas: no existe; los reales son «Cuneo Volley» (orden inverso) y Cuneo Granda Volley.",
               "sponsorCheck": "Juego de palabras: invasione (invasión); castañas de Cuneo (evita agua, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
             },
             {
