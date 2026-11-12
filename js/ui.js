@@ -26,7 +26,7 @@
   // Presentación (UI-02/03/04): banKind = qué anuncia el banner visible ('point' | 'set' | 'match' | 'court' | 'info' | 'sp');
   // banGate = cómo acaba ('cut' = con el corte de vuelta al saque; 'court' = al bajar la grúa del cambio de campo)
   var banKind = '', banTier = 0, banRect = null, bugT = 0, bugOut = false;
-  var record = { played: 0, wins: 0, bestStreak: 0, winRun: 0, tut: 0 };
+  var record = { played: 0, wins: 0, bestStreak: 0, winRun: 0, tut: 0, lastA: 0, lastB: 0, lastD: '' }; // last*: sets y dificultad del último Partido rápido (dato de portada, TV D6)
   var hudScale = 1;            // UI-16: escala del HUD (ctx.settings.hudScale) × vpScale (pantallas grandes; vpFit)
   var hudSet = 1, vpScale = 1; // ajuste del jugador (1 | 1,15 | 1,3) y escala por tamaño de pantalla (--vs)
 
@@ -121,7 +121,7 @@
     if (!bg) return;
     bg.__out = true; el.app.classList.remove('bt-wait');
     var dry = ctx.state !== 'menu' || !!wp.ph;
-    // «EN DIRECTO · DEMO» solo cuando se ve la demo
+    // mosca «DIRECTO» solo cuando se ve la demo (TV D6)
     var lv = el.menu && el.menu.querySelector('.live');
     if (lv && lv.animate && !dry) { try { lv.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 250, easing: 'ease-out', fill: 'backwards' }); } catch (e) { } }
     if (dry) { if (bg.parentNode) bg.parentNode.removeChild(bg); bootBg = null; return; }
@@ -341,7 +341,7 @@
   }
   var stats = newStats();
 
-  function loadRecord() { try { var r = JSON.parse(localStorage.getItem('voley3d.record') || 'null'); if (r && typeof r.played === 'number') for (var k in record) if (typeof r[k] === 'number') record[k] = r[k]; } catch (e) { } }
+  function loadRecord() { try { var r = JSON.parse(localStorage.getItem('voley3d.record') || 'null'); if (r && typeof r.played === 'number') for (var k in record) if (typeof r[k] === typeof record[k]) record[k] = r[k]; } catch (e) { } }
   function saveRecord() { try { localStorage.setItem('voley3d.record', JSON.stringify(record)); } catch (e) { } }
   function click() { if (VB.Audio && VB.Audio.click) try { VB.Audio.click(); } catch (e) { } }
   function uiSound(kind) { try { if (VB.Audio && VB.Audio.ui) VB.Audio.ui(kind); else click(); } catch (e) { } }
@@ -381,7 +381,7 @@
       'pS0', 'pS1', 'pMid', 'endTitle', 'endKicker', 'endS0', 'endS1', 'endSets', 'endStats', 'endRecord',
       'btnPlay', 'optDiff', 'optVenue', 'venueVal', 'optPts', 'ptsVal', 'optCtrl', 'ctrlVal', 'btnTut', 'btnControls', 'btnSettings', 'btnSquad', 'squadSub', 'sqBody', 'btnResume', 'btnRestart', 'btnQuit', 'btnPControls', 'btnPSettings',
       'btnAgain', 'btnMenu', 'btnPanelBack', 'btnTutPrev', 'btnTutNext', 'btnHudPause', 'btnHudMute', 'icoSound',
-      'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord',
+      'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord', 'menuLast',
       'btnQuick', 'btnGo', 'btnPlayBack', 'btnQuickBack', 'mpPlay', 'mpQuick', 'venueHelp', 'ptsHelp', 'ctrlHelp', 'diffHelp', 'optFmt', 'fmtVal', 'fmtHelp', 'optCam6', 'cam6Val', 'cam6Help', 'btn6v6', 'sqPick', 'ctlTabs', 'sqTabs', 'setTabs', 'optList',
       'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack', 'btnEndOpts',
       'btnVer', 'abTabs', 'abBody', 'btnAbOk', 'optVer', 'optSave', 'resNote', 'ctlMsg',
@@ -392,6 +392,7 @@
     el.row0 = $('sbRow0'); el.row1 = $('sbRow1'); el.name0 = $('sbName0'); el.name1 = $('sbName1');
     el.pts0 = $('sbPts0'); el.pts1 = $('sbPts1');
     el.pips0 = $('sbSets0').children; el.pips1 = $('sbSets1').children;
+    el.sn0 = $('sbSets0').querySelector('.sb-sn'); el.sn1 = $('sbSets1').querySelector('.sb-sn'); // sets ganados en cifra (marcador de TV)
     el.tb = [$('tb1'), $('tb2'), $('tb3')];
     el.app = $('app');
     el.veil = $('veil'); el.vp = $('vpulse');
@@ -892,7 +893,7 @@
     var ik = el.intro.querySelector('.in-k > span'), it = ik && ik.lastChild;
     var dr = !!(g && g.drill && !g.demo); introUI.drill = dr;
     if (it && it.nodeType === 3) it.nodeValue = dr ? 'Entrenamiento' : six ? '6 contra 6' : '2 contra 2';
-    if (dr) gymIntro(g);
+    if (dr) drillIntro(g);
     var d = device();
     el.introHint.innerHTML = d === 'touch' ? 'Toca para empezar ya' : d === 'gamepad' ? padKey('a') + 'para empezar ya' : 'Pulsa cualquier tecla para empezar ya';
     el.intro.className = ''; void el.intro.offsetWidth; el.intro.className = 'show' + (dr ? ' drill' : '');
@@ -1171,7 +1172,7 @@
     ctx.camera.updateMatrixWorld();
     var pf = e.grade === 'perfect', hint = '';
     if (!pf && typeof e.timing === 'number' && Math.abs(e.timing) > 0.03) hint = e.timing < 0 ? 'un pelín pronto' : 'un pelín tarde';
-    // E1: Ajustes · Juego · Timing exacto: los milisegundos (siempre, también en el perfecto)
+    // E1: Ajustes · Juego · Golpe al milisegundo (msTiming): los milisegundos (siempre, también en el perfecto)
     if (ctx.settings && ctx.settings.msTiming && typeof e.timing === 'number') { var ms = Math.round(Math.abs(e.timing) * 1000); hint = ms < 5 ? 'justo a tiempo' : ms + ' ms ' + (e.timing < 0 ? 'pronto' : 'tarde'); }
     // E1 (M7): remate perfecto que cierra 3 toques perfectos seguidos de tu equipo: «¡Jugada perfecta!» y la cadena debajo
     var chainOk = pf && e.kind === 'spike' && (e.chain | 0) >= 3;
@@ -1673,6 +1674,7 @@
     if (last.sets !== sk) {
       last.sets = sk;
       for (var i = 0; i < 2; i++) { el.pips0[i].classList.toggle('on', i < g.sets[0]); el.pips1[i].classList.toggle('on', i < g.sets[1]); }
+      if (el.sn0) { el.sn0.textContent = g.sets[0]; el.sn1.textContent = g.sets[1]; }
     }
     var hk = (g.setScores || []).length;
     if (last.hist !== hk) {
@@ -2243,6 +2245,13 @@
       var gc = safe(VB.Gym.count) | 0;
       setHTML(el.gymSub, 'gyms', gc ? 'Ejercicios con medallas y peloteo libre <span class="chip">Medallas ' + gc + '/15</span>' : 'Ejercicios con medallas y peloteo libre');
     }
+    // bajo el logo, en vez del lema de folleto, el dato vivo del último Partido rápido (TV D6); sin partidos, nada
+    if (el.menuLast) {
+      var lA = record.lastA, lB = record.lastB, lDn = record.lastD && VB.DIFF && VB.DIFF[record.lastD] && VB.DIFF[record.lastD].name;
+      var lst = record.played && lDn && lA !== lB ? ['Última: ' + lA + '-' + lB + (lA > lB ? ' a la CPU' : ' ante la CPU'), lDn] : null;
+      if (lst) setSep(el.menuLast, lst, 'v');
+      el.menuLast.hidden = !lst;
+    }
     if (el.squadSub && VB.Prog) {
       var sq = VB.Prog.get().a, pt = sq[0].pts + sq[1].pts;
       // sin puntos: una pastilla por jugador con su dorsal en círculo («(1) Nv 3  (2) Nv 2»)
@@ -2396,6 +2405,7 @@
       // los consejos del partido acompañan hasta la primera victoria; luego se apagan (se reactivan en Ajustes · Juego · Consejos)
       if (win && record.wins === 1 && ctx.settings.coachTips !== false) ctx.actions.setSetting('coachTips', false);
       if (T[0].best > record.bestStreak) { record.bestStreak = T[0].best; isNew = record.bestStreak >= 3; } // las rachas cortas no son récord
+      if (ctx.game && ctx.game.sets) { record.lastA = ctx.game.sets[0] | 0; record.lastB = ctx.game.sets[1] | 0; record.lastD = String(ctx.game.difficulty || ''); }
       saveRecord();
     }
     el.end.classList.toggle('win', win); el.end.classList.toggle('lose', !win);
@@ -3179,9 +3189,6 @@
       if (/Palau del Mar/i.test(v) && /Platja Llarga/i.test(v)) continue; // «Palau del Mar o Platja Llarga» (ayuda de Escenario) nombra las dos
       var nv = v.replace(re, function (m) { return m === m.toUpperCase() ? nm.toUpperCase() : nm; }); if (nv !== v) n.nodeValue = nv;
     }
-    // lema del menú: en la playa no es «pista cubierta» (y se juega con reglas de vóley playa: sim createGame({venue:'beach'}))
-    var tg = document.querySelector('#menu .tagline'), tn = tg && tg.firstChild, beach = VB.Arena && VB.Arena.venue && VB.Arena.venue() === 'beach';
-    if (tn && tn.nodeType === 3) tn.nodeValue = tn.nodeValue.replace(beach ? 'Vóley en pista cubierta' : 'Vóley en la playa', beach ? 'Vóley en la playa' : 'Vóley en pista cubierta');
   }
   /** Dorsales del equipo humano (sim: teams[0][i].num; 1 y 2 si aún no hay partido). */
   function teamNums() {
@@ -3777,7 +3784,7 @@
       : sepHTML([{ h: escT(drillName(d.kind, true)) + ' <b>' + n + '/' + d.of + '</b>' }, { h: '<b>' + (d.total | 0) + '</b> pts' }, gymBestV ? { h: '<small>Récord</small> <b>' + gymBestV + '</b>' } : ''], 'd');
   }
   /** Tarjeta de presentación del ejercicio (introStart con g.drill): nombre, objetivo, teclas del dispositivo y medallas. */
-  function gymIntro(g) {
+  function drillIntro(g) {
     var id = g.drill.kind, gl = G(), ik = function (k, t) { return '<span class="ik">' + k + (k ? ' ' : '') + t + '</span>'; };
     el.idTitle.textContent = drillName(id);
     var row = gymRow(id); el.idGoal.textContent = row ? row.help : '';

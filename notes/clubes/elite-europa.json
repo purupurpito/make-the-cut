@@ -1,0 +1,1957 @@
+{
+  "region": "Élite europea (Italia, Polonia, Turquía, Rusia) + competiciones internacionales",
+  "countries": [
+    {
+      "country": "Italia",
+      "code": "IT",
+      "tier": 1,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "SuperLega + Serie A1 2025-26 (mezcla; mitad y mitad)",
+          "name": "IperLega",
+          "short": "IPL",
+          "strength": 90,
+          "clubs": [
+            {
+              "real": "Sir Safety Perugia",
+              "official": "Sir Susa Scai Perugia (club: Sir Safety Umbria Volley Perugia)",
+              "name": "Voley Perugia",
+              "sponsor": "Salumificio Il Bagher",
+              "realSponsor": true,
+              "short": "PER",
+              "city": "Perugia",
+              "gender": "M",
+              "colors": {
+                "shirt": "#111111",
+                "shirt2": "#D6001C",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": false,
+              "ovr": 93,
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley Perugia». Nota anterior: […] entre comillas: no existe; solo salen Black Angels Perugia Volley, School Volley Perugia y la desaparecida Sirio Perugia. Campeón de la SuperLega 2025-26.",
+              "sponsorCheck": "Juego de palabras: bagher (toque de antebrazos); embutido umbro. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Itas Trentino",
+              "official": "Itas Trentino (club: Trentino Volley)",
+              "name": "Volley Trento",
+              "sponsor": "Speck Primo Tempo",
+              "realSponsor": true,
+              "short": "TRE",
+              "city": "Trento",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#13294B",
+                "libero": "#C8102E"
+              },
+              "liberoEstimated": false,
+              "ovr": 91,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Trentino Volley y Trentino Rosa.",
+              "sponsorCheck": "Juego de palabras: primo tempo (ataque rápido); speck del Trentino. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Cucine Lube Civitanova",
+              "official": "Cucine Lube Civitanova (club: A.S. Volley Lube)",
+              "name": "Volley Civitanova",
+              "sponsor": "Materassi Pallonetto",
+              "realSponsor": true,
+              "short": "CIV",
+              "city": "Civitanova Marche",
+              "gender": "M",
+              "colors": {
+                "shirt": "#D50032",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 89,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale A.S. Volley Lube. Lube es la empresa patrocinadora: fuera.",
+              "sponsorCheck": "Juego de palabras: pallonetto (finta); colchones. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Rana Verona",
+              "official": "Rana Verona (club: Verona Volley)",
+              "name": "Voley Verona",
+              "sponsor": "Pandoro Ace",
+              "realSponsor": true,
+              "short": "VER",
+              "city": "Verona",
+              "gender": "M",
+              "colors": {
+                "shirt": "#003DA5",
+                "shirt2": "#FFD100",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 88,
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley Verona». Nota anterior: […] entre comillas: no existe como club; el real es «Verona Volley» (orden inverso) y hay una ASD «Verona Volley 2006». Nombre distinto, pero muy pegado: alternativa «Volley Scaligera». [Integrador, búsqueda web 11-nov-2026: el club real se llama «Verona Volley»: mismas palabras en otro orden. No coincide exactamente. ⚠]",
+              "sponsorCheck": "Juego de palabras: ace; el pandoro es de Verona. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Gas Sales Bluenergy Piacenza",
+              "official": "Gas Sales Bluenergy Volley Piacenza",
+              "name": "Placentia Volley",
+              "sponsor": "Idraulica La Rete",
+              "realSponsor": true,
+              "short": "PIA",
+              "city": "Piacenza",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#0B1F4B"
+              },
+              "liberoEstimated": true,
+              "ovr": 86,
+              "check": "«Volley Piacenza» SÍ existió (club cerrado en 2018), por eso uso el nombre latino. Búsqueda web del nombre exacto entre comillas «Placentia Volley»: nada.",
+              "sponsorCheck": "Juego de palabras: la rete (la red); fontanería. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Valsa Group Modena",
+              "official": "Valsa Group Modena (club: Modena Volley)",
+              "name": "Mutina Volley",
+              "sponsor": "Acetaia Diagonale",
+              "realSponsor": true,
+              "short": "MOD",
+              "city": "Modena",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#002855",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 84,
+              "check": "«Volley Modena» SÍ existe (club de la A2 de mujeres), por eso uso el nombre latino. Búsqueda web del nombre exacto entre comillas «Mutina Volley»: nada.",
+              "sponsorCheck": "Juego de palabras: diagonale (ataque cruzado); vinagre balsámico de Módena. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Prosecco Doc Imoco Conegliano",
+              "official": "Prosecco Doc A. Carraro Imoco Conegliano (club: Imoco Volley)",
+              "name": "Volley Conegliano",
+              "sponsor": "Chanclas Supersónicas",
+              "realSponsor": true,
+              "short": "CON",
+              "city": "Conegliano",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1F3C88",
+                "shirt2": "#FFD100",
+                "libero": "#E5007E"
+              },
+              "liberoEstimated": true,
+              "ovr": 95,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Imoco Volley y ATL-Etico Volley Conegliano (escuela). Campeón de Serie A1 2025-26.",
+              "sponsorCheck": "Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida."
+            },
+            {
+              "real": "Vero Volley (Numia Vero Volley Milano, equipos en SuperLega y Serie A1)",
+              "official": "Numia Vero Volley Milano (club de la Serie A1: Pro Victoria Pallavolo, Monza; el de la SuperLega juega en Milán)",
+              "name": "Volley Brianza",
+              "sponsor": "Mobilificio Muro Alto",
+              "realSponsor": true,
+              "short": "BRI",
+              "city": "Monza",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#D6177A",
+                "shirt2": "#14213D",
+                "libero": "#00A3E0"
+              },
+              "liberoEstimated": true,
+              "ovr": 90,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Pool Volley Brianza y Club Brianza Volleyball Team (nombres distintos). Club con equipo en las dos ligas: cuenta una vez. Numia es patrocinador: fuera.",
+              "sponsorCheck": "Juego de palabras: muro (bloqueo); muebles de la Brianza. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Savino Del Bene Scandicci",
+              "official": "Savino Del Bene Scandicci (club: Pallavolo Scandicci Savino Del Bene)",
+              "name": "Volley Scandicci",
+              "sponsor": "Pelletteria Alzata",
+              "realSponsor": true,
+              "short": "SCA",
+              "city": "Scandicci",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1B3F8B",
+                "shirt2": "#FFFFFF",
+                "libero": "#9B1B30"
+              },
+              "liberoEstimated": true,
+              "ovr": 90,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Pallavolo Scandicci y Unione Pallavolo Scandicci. Savino Del Bene es la empresa patrocinadora: fuera.",
+              "sponsorCheck": "Juego de palabras: alzata (colocación); marroquinería florentina. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Igor Gorgonzola Novara",
+              "official": "Igor Gorgonzola Novara (club: AGIL Volley)",
+              "name": "Volley Novara",
+              "sponsor": "Riseria Ricezione",
+              "realSponsor": true,
+              "short": "NOV",
+              "city": "Novara",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1E3A8A",
+                "shirt2": "#FFFFFF",
+                "libero": "#9AA0A6"
+              },
+              "liberoEstimated": false,
+              "ovr": 87,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen AGIL Volley y la desaparecida Asystel Volley. [Integrador, búsqueda web 11-nov-2026: sin club actual con ese nombre (solo AGIL Volley y la desaparecida Asystel Volley Novara).]",
+              "sponsorCheck": "Juego de palabras: ricezione (recepción); arroz de Novara (evita el queso del patrocinador real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Reale Mutua Fenera Chieri '76",
+              "official": "Reale Mutua Fenera Chieri '76 (club: Chieri '76 Volleyball)",
+              "name": "Voley Chieri",
+              "sponsor": "Grissini Fuori Tutto",
+              "realSponsor": true,
+              "short": "CHI",
+              "city": "Chieri",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F28C28"
+              },
+              "liberoEstimated": true,
+              "ovr": 84,
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley Chieri». Nota anterior: […] entre comillas: no existe; existió «Chieri Volley» (orden inverso) y hoy está Chieri '76 Volleyball.",
+              "sponsorCheck": "Juego de palabras: fuori tutto (balón fuera tras bloqueo); grissini piamonteses (evita seguros, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Megabox Ondulati del Savio Vallefoglia",
+              "official": "Megabox Ondulati del Savio Vallefoglia (club: Megavolley)",
+              "name": "Volley Vallefoglia",
+              "sponsor": "Rodilleras Rodríguez",
+              "realSponsor": true,
+              "short": "VAL",
+              "city": "Vallefoglia",
+              "gender": "W",
+              "colors": {
+                "shirt": "#F28C28",
+                "shirt2": "#1D1D1B",
+                "libero": "#00A3E0"
+              },
+              "liberoEstimated": true,
+              "ovr": 81,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; el club real se llama Megavolley.",
+              "sponsorCheck": "Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida."
+            }
+          ]
+        },
+        {
+          "lvl": 2,
+          "real": "Parte baja de SuperLega y Serie A1 + campeones de A2 2025-26 (mezcla)",
+          "name": "IperLega Due",
+          "short": "IP2",
+          "strength": 76,
+          "clubs": [
+            {
+              "real": "Allianz Milano",
+              "official": "Allianz Milano (club: Powervolley Milano)",
+              "name": "Milano Power",
+              "sponsor": "Panettoneria Set Point",
+              "realSponsor": true,
+              "short": "MIL",
+              "city": "Milán",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0B3D91",
+                "shirt2": "#FFFFFF",
+                "libero": "#FF6A13"
+              },
+              "liberoEstimated": true,
+              "ovr": 82,
+              "check": "«Volley Milano» chocaría con el nombre de Vero Volley Milano, así que guiño a Powervolley. Búsqueda web del nombre exacto entre comillas «Milano Power»: solo sale el real Power Volley Milano (orden distinto). Allianz es patrocinador: fuera.",
+              "sponsorCheck": "Juego de palabras: set point; panettone milanés (evita seguros, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Sonepar Padova",
+              "official": "Sonepar Padova (club: Pallavolo Padova)",
+              "name": "Volley Padova",
+              "sponsor": "Ferramenta Doppio Tocco",
+              "realSponsor": true,
+              "short": "PAD",
+              "city": "Padua",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#C8102E",
+                "libero": "#B39DDB"
+              },
+              "liberoEstimated": false,
+              "ovr": 77,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Pallavolo Padova.",
+              "sponsorCheck": "Juego de palabras: doppio tocco (dobles); ferretería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Cisterna Volley",
+              "official": "Cisterna Volley",
+              "name": "Voley Cisterna",
+              "realSponsor": false,
+              "short": "CIS",
+              "city": "Cisterna di Latina",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00205B",
+                "shirt2": "#F6EB14",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 75,
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley Cisterna». Nota anterior: […] entre comillas: no existe; los reales son «Cisterna Volley» (orden inverso) y Pallavolo Cisterna 88.",
+              "sponsorCheck": "Sin patrocinador en el nombre: 2025-26 jugó como «Cisterna Volley» en la SuperLega. WebSearch 11-nov-2026."
+            },
+            {
+              "real": "MA Acqua San Bernardo Cuneo",
+              "official": "MA Acqua San Bernardo Cuneo (club: Cuneo Volley)",
+              "name": "Voley Cuneo",
+              "sponsor": "Marroni Invasione",
+              "realSponsor": true,
+              "short": "CUN",
+              "city": "Cuneo",
+              "gender": "M",
+              "colors": {
+                "shirt": "#1F3F9A",
+                "shirt2": "#6EC1E4",
+                "libero": "#F28C28"
+              },
+              "liberoEstimated": false,
+              "ovr": 76,
+              "check": "Decisión de Claude (12-nov): regla de Ferran «Voley [Ciudad]» con la grafía española, que no coincide con ningún nombre oficial. Nombre anterior: «Volley Cuneo». Nota anterior: […] entre comillas: no existe; los reales son «Cuneo Volley» (orden inverso) y Cuneo Granda Volley.",
+              "sponsorCheck": "Juego de palabras: invasione (invasión); castañas de Cuneo (evita agua, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Yuasa Battery Grottazzolina",
+              "official": "Yuasa Battery Grottazzolina (club: M&G Scuola Pallavolo)",
+              "name": "Volley Grottazzolina",
+              "sponsor": "Olive all'Ace",
+              "realSponsor": true,
+              "short": "GRO",
+              "city": "Grottazzolina",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 73,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen M&G Scuola Pallavolo y la antigua Wild Volley Grottazzolina.",
+              "sponsorCheck": "Juego de palabras: ace; aceitunas ascolanas de las Marcas. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Tinet Prata di Pordenone",
+              "official": "Tinet Prata di Pordenone (club: Volley Prata)",
+              "name": "Volley Prata Friuli",
+              "sponsor": "Gelateria Fallo di Rete",
+              "realSponsor": true,
+              "short": "PRA",
+              "city": "Prata di Pordenone",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#003DA5",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 73,
+              "check": "«Volley Prata» ES el nombre oficial del club, así que añado «Friuli». Búsqueda web del nombre exacto entre comillas «Volley Prata Friuli»: nada. Campeón de A2 2025-26.",
+              "sponsorCheck": "Juego de palabras: fallo di rete (toque de red); heladería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Volley Bergamo 1991",
+              "official": "Volley Bergamo 1991",
+              "name": "Bergomum Volley",
+              "realSponsor": false,
+              "short": "BER",
+              "city": "Bergamo",
+              "gender": "W",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#002D72",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 78,
+              "check": "«Volley Bergamo» fue el nombre oficial histórico y el actual es «Volley Bergamo 1991», así que uso el nombre latino. Búsqueda web del nombre exacto entre comillas «Bergomum Volley»: nada.",
+              "sponsorCheck": "Sin patrocinador en el nombre: 2025-26 jugó como «Volley Bergamo 1991» (ChorusLife solo entra en 2026-27). WebSearch 11-nov-2026."
+            },
+            {
+              "real": "Il Bisonte Firenze",
+              "official": "Il Bisonte Firenze (club: Azzurra Volley Firenze)",
+              "name": "Volley Firenze",
+              "sponsor": "Trippaio La Schiacciata",
+              "realSponsor": true,
+              "short": "FIR",
+              "city": "Florencia",
+              "gender": "W",
+              "colors": {
+                "shirt": "#4FA3E0",
+                "shirt2": "#FFFFFF",
+                "libero": "#F28C28"
+              },
+              "liberoEstimated": true,
+              "ovr": 76,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe como club; el real es «Azzurra Volley Firenze». Il Bisonte es patrocinador: fuera.",
+              "sponsorCheck": "Juego de palabras: schiacciata (remate) y pan florentino; puesto de lampredotto. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Eurotek UYBA Busto Arsizio",
+              "official": "Eurotek UYBA Busto Arsizio (club: UYBA Volley)",
+              "name": "Farfalle Busto",
+              "sponsor": "Tintoria Rotazione",
+              "realSponsor": true,
+              "short": "BUS",
+              "city": "Busto Arsizio",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E2001A",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": false,
+              "ovr": 77,
+              "check": "«Volley Busto» no sale como club, pero volleybusto.com es la web del club real; por eso uso el apodo «Farfalle» (mariposas). Búsqueda web del nombre exacto entre comillas: nada. UYBA viene de Unendo Yamamay (patrocinador): fuera.",
+              "sponsorCheck": "Juego de palabras: rotazione (rotación); tintorería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "CBF Balducci HR Macerata",
+              "official": "CBF Balducci HR Macerata (club: Helvia Recina Volley Macerata)",
+              "name": "Volley Macerata",
+              "sponsor": "Ciauscolo Cambio Palla",
+              "realSponsor": true,
+              "short": "MAC",
+              "city": "Macerata",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#111111",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 75,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe como club; en la ciudad están CBF Balducci y Pallavolo Macerata.",
+              "sponsorCheck": "Juego de palabras: cambio palla (cambio de saque); embutido de las Marcas. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Consolini Volley (San Giovanni in Marignano)",
+              "official": "Omag-Mt San Giovanni in Marignano (Polisportiva Adolfo Consolini)",
+              "name": "Volley Marignano",
+              "sponsor": "Piadineria La Veloce",
+              "realSponsor": true,
+              "short": "MAR",
+              "city": "San Giovanni in Marignano",
+              "gender": "W",
+              "colors": {
+                "shirt": "#003DA5",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; el club real es Polisportiva Adolfo Consolini.",
+              "sponsorCheck": "Juego de palabras: veloce (ataque rápido); piadina romañola. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Valsabbina Millenium Brescia",
+              "official": "Volley Millenium Brescia",
+              "name": "Volley Brescia",
+              "sponsor": "Casoncelli Seconda Linea",
+              "realSponsor": true,
+              "short": "BRE",
+              "city": "Brescia",
+              "gender": "W",
+              "colors": {
+                "shirt": "#00539F",
+                "shirt2": "#FFFFFF",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Búsqueda web del nombre exacto entre comillas: no sale como club; el real es «Volley Millenium Brescia» (nombre distinto). Campeón de A2 2025-26.",
+              "sponsorCheck": "Juego de palabras: seconda linea (zaguero); pasta rellena bresciana. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Polonia",
+      "code": "PL",
+      "tier": 1,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "PlusLiga + Tauron Liga 2025-26 (mezcla; 7 de PlusLiga, 5 de Tauron Liga, porque PlusLiga es mucho más fuerte)",
+          "name": "PlusPlus Liga",
+          "short": "PPL",
+          "strength": 88,
+          "clubs": [
+            {
+              "real": "Aluron CMC Warta Zawiercie",
+              "official": "KS Aluron CMC Warta Zawiercie S.A.",
+              "name": "Volley Zawiercie",
+              "sponsor": "Kiełbaski Blok",
+              "realSponsor": true,
+              "short": "ZAW",
+              "city": "Zawiercie",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#00843D",
+                "libero": "#1D1D1B"
+              },
+              "liberoEstimated": true,
+              "ovr": 92,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Warta Zawiercie. Campeón de PlusLiga 2025-26.",
+              "sponsorCheck": "Juego de palabras: blok (bloqueo); salchichas. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "PGE Projekt Warszawa",
+              "official": "PGE Projekt Warszawa",
+              "name": "Volley Warszawa",
+              "sponsor": "Pączki Zagrywka",
+              "realSponsor": true,
+              "short": "WAR",
+              "city": "Varsovia",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#001533",
+                "libero": "#F2A900"
+              },
+              "liberoEstimated": true,
+              "ovr": 90,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Projekt, Legia y AZS AWF.",
+              "sponsorCheck": "Juego de palabras: zagrywka (saque); buñuelos. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Bogdanka LUK Lublin",
+              "official": "Bogdanka LUK Lublin (Lubelski Klub Przyjaciół Siatkówki)",
+              "name": "Volley Lublin",
+              "sponsor": "Seguros Tie-Break",
+              "realSponsor": true,
+              "short": "LUB",
+              "city": "Lublin",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#00843D",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 90,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale LKPS/LUK Lublin.",
+              "sponsorCheck": "Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida."
+            },
+            {
+              "real": "Asseco Resovia",
+              "official": "Asseco Resovia Rzeszów",
+              "name": "Rezovia",
+              "sponsor": "Pierogarnia Kiwka",
+              "realSponsor": true,
+              "short": "RES",
+              "city": "Rzeszów",
+              "gender": "M",
+              "colors": {
+                "shirt": "#D50032",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 88,
+              "check": "Búsqueda web del nombre exacto entre comillas: nada. Guiño a «Resovia» (nombre latino de Rzeszów). Asseco es patrocinador: fuera.",
+              "sponsorCheck": "Juego de palabras: kiwka (finta); pierogi. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Jastrzębski Węgiel",
+              "official": "KS Jastrzębski Węgiel S.A.",
+              "name": "Volley Jastrzębie",
+              "sponsor": "Hydraulika Pod Siatką",
+              "realSponsor": true,
+              "short": "JAS",
+              "city": "Jastrzębie-Zdrój",
+              "gender": "M",
+              "colors": {
+                "shirt": "#F47B20",
+                "shirt2": "#111111",
+                "libero": "#00A3E0"
+              },
+              "liberoEstimated": true,
+              "ovr": 85,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe como club (la sociedad que lo gestiona se llama «Volley Club», nombre distinto). «Węgiel» viene de la minera JSW: fuera.",
+              "sponsorCheck": "Juego de palabras: pod siatką (bajo la red); fontanería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Indykpol AZS Olsztyn",
+              "official": "Indykpol AZS Olsztyn",
+              "name": "Volley Olsztyn",
+              "sponsor": "Materace Obrona",
+              "realSponsor": true,
+              "short": "OLS",
+              "city": "Olsztyn",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#00843D",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 84,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen AZS Olsztyn y clubes de Iława.",
+              "sponsorCheck": "Juego de palabras: obrona (defensa); colchones (evita aves, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "PGE GiEK Skra Bełchatów",
+              "official": "KPS Skra Bełchatów S.A.",
+              "name": "Volley Bełchatów",
+              "sponsor": "Bigosownia Przyjęcie",
+              "realSponsor": true,
+              "short": "BEL",
+              "city": "Bełchatów",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#111111",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 83,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Skra.",
+              "sponsorCheck": "Juego de palabras: przyjęcie (recepción y también «fiesta»); bigos. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "PGE Budowlani Łódź",
+              "official": "PGE Budowlani Łódź",
+              "name": "Murarze Łódź",
+              "sponsor": "Szewc Aut",
+              "realSponsor": true,
+              "short": "MUR",
+              "city": "Łódź",
+              "gender": "W",
+              "colors": {
+                "shirt": "#005BAC",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 84,
+              "check": "Búsqueda web del nombre exacto entre comillas: nada. Guiño: «budowlani» (constructores) → «murarze» (albañiles). Campeón de Tauron Liga 2025-26.",
+              "sponsorCheck": "Juego de palabras: aut (fuera); zapatero. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Developres Rzeszów",
+              "official": "KS Developres Rzeszów",
+              "name": "Volley Rzeszów",
+              "sponsor": "Ogórki Rozegranie",
+              "realSponsor": true,
+              "short": "RZE",
+              "city": "Rzeszów",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 83,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Resovia y Developres. Developres es la empresa patrocinadora: fuera.",
+              "sponsorCheck": "Juego de palabras: rozegranie (colocación); pepinillos. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "ŁKS Łódź",
+              "official": "ŁKS Commercecon Łódź",
+              "name": "Volley Łódź",
+              "sponsor": "Cukiernia Libero",
+              "realSponsor": true,
+              "short": "LKS",
+              "city": "Łódź",
+              "gender": "W",
+              "colors": {
+                "shirt": "#D50032",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 79,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen ŁKS y Budowlani (y «Volley Radomsko», otra ciudad).",
+              "sponsorCheck": "Juego de palabras: líbero; pastelería. WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "UNI Opole",
+              "official": "UNI Opole",
+              "name": "Volley Opole",
+              "realSponsor": false,
+              "short": "OPO",
+              "city": "Opole",
+              "gender": "W",
+              "colors": {
+                "shirt": "#00539F",
+                "shirt2": "#FFD100",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 80,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen UNI Opole y un torneo de minivoley."
+            },
+            {
+              "real": "BKS Bielsko-Biała",
+              "official": "BKS Bostik ZGO Bielsko-Biała",
+              "name": "Volley Bielsko",
+              "sponsor": "Warsztat Plasowanie",
+              "realSponsor": true,
+              "short": "BIE",
+              "city": "Bielsko-Biała",
+              "gender": "W",
+              "colors": {
+                "shirt": "#003DA5",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 77,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen BKS Stal y BBTS Bielsko-Biała.",
+              "sponsorCheck": "Juego de palabras: plasowanie (colocar el balón); taller mecánico. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            }
+          ]
+        },
+        {
+          "lvl": 2,
+          "real": "Parte baja de PlusLiga y Tauron Liga 2025-26 (mezcla)",
+          "name": "PlusPlus Liga 2",
+          "short": "PP2",
+          "strength": 75,
+          "clubs": [
+            {
+              "real": "ZAKSA Kędzierzyn-Koźle",
+              "official": "Grupa Azoty ZAKSA Kędzierzyn-Koźle",
+              "name": "Volley Kędzierzyn",
+              "sponsor": "Twarożek Dwa Odbicia",
+              "realSponsor": true,
+              "short": "KED",
+              "city": "Kędzierzyn-Koźle",
+              "gender": "M",
+              "colors": {
+                "shirt": "#005BAC",
+                "shirt2": "#FFFFFF",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 80,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale ZAKSA. ZAKSA son las siglas de la planta química: fuera.",
+              "sponsorCheck": "Juego de palabras: dwa odbicia (dobles); requesón. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Energa Trefl Gdańsk",
+              "official": "Energa Trefl Gdańsk",
+              "name": "Volley Gdańsk",
+              "sponsor": "Śledzie Wystawa",
+              "realSponsor": true,
+              "short": "GDA",
+              "city": "Gdańsk",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#111111",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 79,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Trefl, Gedania y AZS UG. Trefl es la empresa propietaria/patrocinadora: fuera.",
+              "sponsorCheck": "Juego de palabras: wystawa (colocación); arenques del Báltico. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Ślepsk Malow Suwałki",
+              "official": "Ślepsk Malow Suwałki",
+              "name": "Volley Suwałki",
+              "sponsor": "Rodilleras Rodríguez",
+              "realSponsor": true,
+              "short": "SUW",
+              "city": "Suwałki",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Ślepsk.",
+              "sponsorCheck": "Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida."
+            },
+            {
+              "real": "Cuprum Stilon Gorzów",
+              "official": "Cuprum Gorzów S.A.",
+              "name": "Volley Gorzów",
+              "sponsor": "Pralnia Pipe",
+              "realSponsor": true,
+              "short": "GOR",
+              "city": "Gorzów Wielkopolski",
+              "gender": "M",
+              "colors": {
+                "shirt": "#B87333",
+                "shirt2": "#111111",
+                "libero": "#00A3E0"
+              },
+              "liberoEstimated": true,
+              "ovr": 71,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Cuprum.",
+              "sponsorCheck": "Juego de palabras: pipe; lavandería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "InPost ChKS Chełm",
+              "official": "InPost ChKS Chełm",
+              "name": "Volley Chełm",
+              "sponsor": "Kapusta Kontra",
+              "realSponsor": true,
+              "short": "CHE",
+              "city": "Chełm",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00539F",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale ChKS (Arka) Chełm.",
+              "sponsorCheck": "Juego de palabras: kontra (contraataque); col (evita mensajería, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Politechnika Częstochowa (antes Norwid)",
+              "official": "Steam Hemarpol Politechnika Częstochowa",
+              "name": "Volley Częstochowa",
+              "sponsor": "Obwarzanki Krótka",
+              "realSponsor": true,
+              "short": "CZE",
+              "city": "Częstochowa",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#005BAC",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 69,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Norwid y la desaparecida AZS Częstochowa.",
+              "sponsorCheck": "Juego de palabras: krótka (ataque corto); rosquillas. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Chemik Police",
+              "official": "KPS Chemik Police S.A.",
+              "name": "Alchemik Police",
+              "sponsor": "Wędzarnia Czapa",
+              "realSponsor": true,
+              "short": "ALC",
+              "city": "Police",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#003DA5",
+                "libero": "#E4002B"
+              },
+              "liberoEstimated": true,
+              "ovr": 76,
+              "check": "Búsqueda web del nombre exacto entre comillas: nada. Guiño: Chemik (químico) → Alchemik (alquimista).",
+              "sponsorCheck": "Juego de palabras: czapa (bloqueo «gorro»); ahumadero. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Radomka Radom",
+              "official": "MOYA Radomka Radom",
+              "name": "Volley Radom",
+              "sponsor": "Lody Ścięcie",
+              "realSponsor": true,
+              "short": "RAD",
+              "city": "Radom",
+              "gender": "W",
+              "colors": {
+                "shirt": "#00843D",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 74,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Czarni, Jadar y Radomka (y «METPRIM Volley Radomsko», otra ciudad).",
+              "sponsorCheck": "Juego de palabras: ścięcie (remate); helados. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "#VolleyWrocław",
+              "official": "KGHM #VolleyWrocław",
+              "name": "Siatkówka Wrocław",
+              "sponsor": "Kwiaciarnia Rotacja",
+              "realSponsor": true,
+              "short": "WRO",
+              "city": "Wrocław",
+              "gender": "W",
+              "colors": {
+                "shirt": "#F47B20",
+                "shirt2": "#111111",
+                "libero": "#00A3E0"
+              },
+              "liberoEstimated": true,
+              "ovr": 73,
+              "check": "«Volley Wrocław» ES el nombre oficial del club, así que uso la palabra polaca. Búsqueda web del nombre exacto entre comillas «Siatkówka Wrocław»: nada.",
+              "sponsorCheck": "Juego de palabras: rotacja (rotación); floristería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Pałac Bydgoszcz",
+              "official": "Pałac Bydgoszcz",
+              "name": "Volley Bydgoszcz",
+              "realSponsor": false,
+              "short": "BYD",
+              "city": "Bydgoszcz",
+              "gender": "W",
+              "colors": {
+                "shirt": "#003DA5",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "Búsqueda web del nombre exacto entre comillas: no sale ningún club con ese nombre."
+            },
+            {
+              "real": "ITA Tools Stal Mielec",
+              "official": "ITA Tools Stal Mielec",
+              "name": "Volley Mielec",
+              "sponsor": "Pizzeria Pod Antenką",
+              "realSponsor": true,
+              "short": "MIE",
+              "city": "Mielec",
+              "gender": "W",
+              "colors": {
+                "shirt": "#005BAC",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "Búsqueda web del nombre exacto entre comillas: no sale ningún club con ese nombre.",
+              "sponsorCheck": "Juego de palabras: pod antenką (junto a la varilla); pizzería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Sokół & Hagric Mogilno",
+              "official": "Sokół & Hagric Mogilno",
+              "name": "Volley Mogilno",
+              "sponsor": "Chanclas Supersónicas",
+              "realSponsor": true,
+              "short": "MOG",
+              "city": "Mogilno",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#E30613",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 69,
+              "check": "Búsqueda web del nombre exacto entre comillas: no sale ningún club con ese nombre.",
+              "sponsorCheck": "Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Turquía",
+      "code": "TR",
+      "tier": 1,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Sultanlar Ligi + Efeler Ligi 2025-26 (mezcla; se inclina a Sultanlar, la más fuerte del mundo)",
+          "name": "Efsaneler Ligi",
+          "short": "EFS",
+          "strength": 87,
+          "clubs": [
+            {
+              "real": "VakıfBank",
+              "official": "VakıfBank Spor Kulübü",
+              "name": "Üsküdar Arıları",
+              "sponsor": "Simitçi Ace",
+              "realSponsor": true,
+              "short": "ARI",
+              "city": "Estambul (Üsküdar)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 95,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Üsküdar Arıları\" voleybol. Resultado: No sale nada exacto. En Üsküdar solo aparecen el Istanbul Voleybol Kulübü y los equipos de la Üsküdar Üniversitesi. El nombre anterior, «İstanbul Melekleri», guiñaba a «Sarı Melekler» (ángeles amarillos), que es el apodo de las mujeres de Fenerbahçe, el gran rival, no de VakıfBank. Guiño nuevo: su barrio (Üsküdar, sede del club) y su amarillo y negro (abejas). VakıfBank es el banco dueño: fuera. Campeón de Sultanlar Ligi 2025-26.",
+              "sponsorCheck": "Juego de palabras: ace; simit (rosca de sésamo). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Eczacıbaşı Dynavit",
+              "official": "Eczacıbaşı Spor Kulübü",
+              "name": "Turuncu Voleybol",
+              "sponsor": "Baklavacı Manşet",
+              "realSponsor": true,
+              "short": "TUR",
+              "city": "Estambul",
+              "gender": "W",
+              "colors": {
+                "shirt": "#F47B20",
+                "shirt2": "#FFFFFF",
+                "libero": "#1D3C78"
+              },
+              "liberoEstimated": true,
+              "ovr": 91,
+              "check": "Búsqueda web del nombre exacto entre comillas: nada. Eczacıbaşı es el grupo empresarial dueño: fuera. Guiño a su naranja («turuncu»).",
+              "sponsorCheck": "Juego de palabras: manşet (toque de antebrazos); baklava. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Fenerbahçe Medicana",
+              "official": "Fenerbahçe Spor Kulübü",
+              "name": "Kanarya Kadıköy",
+              "sponsor": "Lokumcu Servis Atışı",
+              "realSponsor": true,
+              "short": "KAN",
+              "city": "Estambul (Kadıköy)",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#FFED00",
+                "shirt2": "#002D72",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 93,
+              "check": "Búsqueda web del nombre exacto entre comillas: nada. Guiño a su apodo «Sarı Kanaryalar» y a su barrio. Equipo en las dos ligas: cuenta una vez. Medicana es patrocinador: fuera.",
+              "sponsorCheck": "Juego de palabras: servis atışı (saque); delicias turcas. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Galatasaray",
+              "official": "Galatasaray Spor Kulübü (HDI Sigorta / Daikin)",
+              "name": "Galata Voleybol",
+              "sponsor": "Balıkçı File",
+              "realSponsor": true,
+              "short": "GAL",
+              "city": "Estambul",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#A90432",
+                "shirt2": "#FDB912",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 88,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Galatasaray y un club brasileño «Galatasaray Voleybol». Equipo en las dos ligas: cuenta una vez. Finalista de Efeler 2025-26.",
+              "sponsorCheck": "Juego de palabras: file (red de vóley y de pesca); pescadería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Nilüfer Belediyespor",
+              "official": "Nilüfer Belediyespor (Eker)",
+              "name": "Nilüfer Voleybol",
+              "sponsor": "İskender Pas",
+              "realSponsor": true,
+              "short": "NIL",
+              "city": "Bursa (Nilüfer)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#6A1B9A",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 80,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Nilüfer Belediyespor.",
+              "sponsorCheck": "Juego de palabras: pas (colocación); iskender de Bursa. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Zeren Spor",
+              "official": "Zeren Spor Kulübü",
+              "name": "Ankara Voleybol",
+              "sponsor": "Halıcı Sayı",
+              "realSponsor": true,
+              "short": "ANK",
+              "city": "Ankara",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0A2463",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2A900"
+              },
+              "liberoEstimated": true,
+              "ovr": 88,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Zeren, Ziraat, Halkbank y SGK VİK. Zeren es el grupo dueño: fuera.",
+              "sponsorCheck": "Juego de palabras: sayı (punto); alfombras. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Aras Kargo",
+              "official": "Aras Spor Kulübü (Aras Kargo)",
+              "name": "Kordon İzmir",
+              "sponsor": "Boyoz Smaç",
+              "realSponsor": true,
+              "short": "KOR",
+              "city": "Esmirna",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#0057B8",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 79,
+              "check": "Búsqueda web del nombre exacto entre comillas: nada. Aras Kargo es la empresa dueña: fuera; guiño al paseo marítimo de Esmirna. («Ege Voleybol» se descartó: existe un club amateur con ese nombre).",
+              "sponsorCheck": "Juego de palabras: smaç (remate); boyoz, bollo de Esmirna. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Ziraat Bankkart",
+              "official": "Ziraat Bankası Spor Kulübü",
+              "name": "Başkent Voleybol",
+              "sponsor": "Tesisat Blok Out",
+              "realSponsor": true,
+              "short": "BAS",
+              "city": "Ankara",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 89,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe como club (es el nombre de un pabellón). El banco es el dueño: fuera. Campeón de Efeler Ligi 2025-26.",
+              "sponsorCheck": "Juego de palabras: blok out (bloqueo fuera); fontanería. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Halkbank",
+              "official": "Halkbank Spor Kulübü",
+              "name": "Çankaya Voleybol",
+              "sponsor": "Seguros Tie-Break",
+              "realSponsor": true,
+              "short": "CAN",
+              "city": "Ankara",
+              "gender": "M",
+              "colors": {
+                "shirt": "#005BAC",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 86,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo actos del ayuntamiento de Çankaya. El banco es el dueño: fuera.",
+              "sponsorCheck": "Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida."
+            },
+            {
+              "real": "Spor Toto",
+              "official": "Spor Toto Spor Kulübü",
+              "name": "Ulus Voleybol",
+              "sponsor": "Dönerci Altın Set",
+              "realSponsor": true,
+              "short": "ULU",
+              "city": "Ankara",
+              "gender": "M",
+              "colors": {
+                "shirt": "#009A44",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 82,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe. Spor Toto (lotería) es el dueño: fuera.",
+              "sponsorCheck": "Juego de palabras: altın set (set de oro); döner. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "İstanbul Gençlikspor",
+              "official": "İstanbul Gençlik Spor Kulübü",
+              "name": "Genç İstanbul",
+              "realSponsor": false,
+              "short": "GEN",
+              "city": "Estambul",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 80,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale İstanbul Gençlik Spor."
+            },
+            {
+              "real": "Bursa Büyükşehir Belediyespor",
+              "official": "Bursa Büyükşehir Belediyespor",
+              "name": "Bursa Voleybol",
+              "realSponsor": false,
+              "short": "BUR",
+              "city": "Bursa",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00843D",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 79,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Bursa BB."
+            }
+          ]
+        },
+        {
+          "lvl": 2,
+          "real": "Parte baja de Sultanlar Ligi y Efeler Ligi 2025-26 (mezcla)",
+          "name": "Efsaneler 1. Lig",
+          "short": "EF1",
+          "strength": 72,
+          "clubs": [
+            {
+              "real": "Beşiktaş",
+              "official": "Beşiktaş Jimnastik Kulübü",
+              "name": "Dolmabahçe Voleybol",
+              "realSponsor": false,
+              "short": "DOL",
+              "city": "Estambul (Beşiktaş)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#111111",
+                "shirt2": "#FFFFFF",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 73,
+              "check": "Búsqueda web del nombre exacto entre comillas: nada. Guiño al palacio de su barrio.",
+              "sponsorCheck": "Sin patrocinador en el nombre: 2025-26 en Sultanlar Ligi como «Beşiktaş»; solo patrocinio de camiseta, no de nombre. WebSearch 11-nov-2026."
+            },
+            {
+              "real": "Kuzeyboru",
+              "official": "Kuzeyboru Spor Kulübü",
+              "name": "Aksaray Voleybol",
+              "sponsor": "Pide Çift Vuruş",
+              "realSponsor": true,
+              "short": "AKS",
+              "city": "Aksaray",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F28C28"
+              },
+              "liberoEstimated": true,
+              "ovr": 74,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Kuzeyboru. Kuzeyboru es la empresa dueña: fuera.",
+              "sponsorCheck": "Juego de palabras: çift vuruş (dobles); pide. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Türk Hava Yolları",
+              "official": "Türk Hava Yolları Spor Kulübü",
+              "name": "Yeşilköy Voleybol",
+              "sponsor": "Çaycı Libero",
+              "realSponsor": true,
+              "short": "YES",
+              "city": "Estambul (Yeşilköy)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#FFFFFF",
+                "libero": "#1D1D1B"
+              },
+              "liberoEstimated": true,
+              "ovr": 76,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Yeşilyurt y Yeşilay. La aerolínea es la dueña: fuera; guiño al barrio del antiguo aeropuerto.",
+              "sponsorCheck": "Juego de palabras: líbero; casa de té (evita viajes, como el real). WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Göztepe",
+              "official": "Göztepe Spor Kulübü",
+              "name": "İzmir Körfez",
+              "realSponsor": false,
+              "short": "KRF",
+              "city": "Esmirna",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#D50032",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Búsqueda web del nombre exacto entre comillas: nada (el único «Körfez» es un club de Kocaeli con nombre distinto)."
+            },
+            {
+              "real": "Aydın Büyükşehir Belediyespor",
+              "official": "Aydın Büyükşehir Belediyespor",
+              "name": "Aydın Voleybol",
+              "realSponsor": false,
+              "short": "AYD",
+              "city": "Aydın",
+              "gender": "W",
+              "colors": {
+                "shirt": "#003DA5",
+                "shirt2": "#FFFFFF",
+                "libero": "#F28C28"
+              },
+              "liberoEstimated": true,
+              "ovr": 67,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Aydın BB."
+            },
+            {
+              "real": "İlbank",
+              "official": "İlbank Spor Kulübü",
+              "name": "Angora Voleybol",
+              "sponsor": "Kokoreç Plonjon",
+              "realSponsor": true,
+              "short": "ANG",
+              "city": "Ankara",
+              "gender": "W",
+              "colors": {
+                "shirt": "#14213D",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2A900"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Angora Voleybol\". Resultado: No sale ningún club con ese nombre, solo resultados genéricos de vóley turco. Sustituye a Keçiören, que NO jugó Sultanlar 2025-26. Guiño: «Angora», nombre antiguo de Ankara. İlbank (banco) es el dueño: fuera.",
+              "sponsorCheck": "Juego de palabras: plonjon (plancha); kokoreç. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Altekma",
+              "official": "Altekma Spor Kulübü",
+              "name": "Bornova Voleybol",
+              "sponsor": "Tamirhane Çapraz",
+              "realSponsor": true,
+              "short": "BOR",
+              "city": "Esmirna",
+              "gender": "M",
+              "colors": {
+                "shirt": "#003DA5",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 75,
+              "check": "Búsqueda web del nombre exacto entre comillas: nada. Altekma es la empresa dueña: fuera.",
+              "sponsorCheck": "Juego de palabras: çapraz (ataque cruzado); taller. WebSearch (frase exacta entre comillas, en tanda con otros nombres inventados, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Gebze Belediyespor",
+              "official": "Gebze Belediyespor",
+              "name": "Gebze Voleybol",
+              "realSponsor": false,
+              "short": "GEB",
+              "city": "Gebze",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Gebze Belediyespor."
+            },
+            {
+              "real": "Gaziantep Gençlikspor",
+              "official": "Gaziantep Gençlik Spor Kulübü",
+              "name": "Antep Voleybol",
+              "realSponsor": false,
+              "short": "ANT",
+              "city": "Gaziantep",
+              "gender": "M",
+              "colors": {
+                "shirt": "#D50032",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 69,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo salen Merinos y Adam Voleybol (Gaziantep)."
+            },
+            {
+              "real": "ON Hotels Alanya Belediyespor",
+              "official": "Alanya Belediyespor",
+              "name": "Alanya Voleybol",
+              "sponsor": "Chanclas Supersónicas",
+              "realSponsor": true,
+              "short": "ALA",
+              "city": "Alanya",
+              "gender": "M",
+              "colors": {
+                "shirt": "#F47B20",
+                "shirt2": "#00843D",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Alanya Belediyespor. ON Hotels es patrocinador: fuera.",
+              "sponsorCheck": "Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida."
+            },
+            {
+              "real": "İstanbul Büyükşehir Belediyespor",
+              "official": "İstanbul Büyükşehir Belediyesi Spor Kulübü",
+              "name": "Metropol İstanbul",
+              "realSponsor": false,
+              "short": "MET",
+              "city": "Estambul",
+              "gender": "M",
+              "colors": {
+                "shirt": "#F47B20",
+                "shirt2": "#002D72",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 69,
+              "check": "Búsqueda web del nombre exacto entre comillas: nada. («İstanbul Voleybol» se descartó: existe el İstanbul Voleybol Kulübü)."
+            },
+            {
+              "real": "Kuşgöz İzmir Vinç Akkuş Belediyespor",
+              "official": "Akkuş Belediyespor",
+              "name": "Akkuş Voleybol",
+              "sponsor": "Rodilleras Rodríguez",
+              "realSponsor": true,
+              "short": "AKK",
+              "city": "Akkuş (Ordu)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#009A44",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 65,
+              "check": "Búsqueda web del nombre exacto entre comillas: no existe; solo sale Akkuş Belediyespor.",
+              "sponsorCheck": "Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Rusia",
+      "code": "RU",
+      "tier": 2,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Superliga de hombres + Superliga de mujeres 2025-26 (mezcla; 7 de la de hombres, más fuerte)",
+          "name": "Mega-Liga",
+          "short": "MGL",
+          "strength": 82,
+          "clubs": [
+            {
+              "real": "Dinamo Moskva",
+              "official": "VK Dinamo Moskva (equipos en las dos Superligas)",
+              "name": "Dynamik Moskva",
+              "realSponsor": false,
+              "short": "DYM",
+              "city": "Moscú",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#0039A6",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 86,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso): nada. Equipo en las dos ligas: cuenta una vez. Campeón de la Superliga de hombres 2025-26."
+            },
+            {
+              "real": "Zenit Kazan",
+              "official": "VK Zenit-Kazan",
+              "name": "Apogei Kazan",
+              "realSponsor": false,
+              "short": "APK",
+              "city": "Kazán",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0055A5",
+                "shirt2": "#4FC3F7",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 86,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Апогей»): nada. Guiño: cénit → apogeo."
+            },
+            {
+              "real": "Lokomotiv Novosibirsk",
+              "official": "VK Lokomotiv Novosibirsk",
+              "name": "Parovoz Novosibirsk",
+              "realSponsor": false,
+              "short": "PAR",
+              "city": "Novosibirsk",
+              "gender": "M",
+              "colors": {
+                "shirt": "#D50032",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 84,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Паровоз»): nada. Guiño: locomotora → máquina de vapor."
+            },
+            {
+              "real": "Zenit Sankt-Peterburg",
+              "official": "VK Zenit Sankt-Peterburg",
+              "name": "Perigei Piter",
+              "realSponsor": false,
+              "short": "PRG",
+              "city": "San Petersburgo",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00A3E0",
+                "shirt2": "#FFFFFF",
+                "libero": "#0A2463"
+              },
+              "liberoEstimated": true,
+              "ovr": 83,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Перигей»): nada. Guiño astronómico, pareja del de Kazán."
+            },
+            {
+              "real": "Dinamo-LO",
+              "official": "VK Dinamo-LO (Sosnovy Bor)",
+              "name": "Volei Sosnovy Bor",
+              "realSponsor": false,
+              "short": "SOS",
+              "city": "Sosnovy Bor",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0039A6",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 79,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso): nada."
+            },
+            {
+              "real": "Belogorie Belgorod",
+              "official": "VK Belogorie",
+              "name": "Belogor Belgorod",
+              "realSponsor": false,
+              "short": "BLG",
+              "city": "Bélgorod",
+              "gender": "M",
+              "colors": {
+                "shirt": "#003DA5",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 79,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Белогор»): solo sale el real «Белогорье»."
+            },
+            {
+              "real": "Fakel Novy Urengoy",
+              "official": "VK Fakel Yamal",
+              "name": "Plamya Urengoy",
+              "realSponsor": false,
+              "short": "PLA",
+              "city": "Novy Urengói",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#F47B20",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 79,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Пламя»): nada en voleibol. Guiño: antorcha → llama. Gazprom (dueño): fuera."
+            },
+            {
+              "real": "Dinamo-Ak Bars Kazan",
+              "official": "VK Dinamo-Ak Bars",
+              "name": "Dinamika Kazan",
+              "sponsor": "Seguros Tie-Break",
+              "realSponsor": true,
+              "short": "DIK",
+              "city": "Kazán",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0039A6",
+                "shirt2": "#00843D",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 85,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Динамика Казань»): nada. Ak Bars es patrocinador: fuera. Campeón de la Superliga de mujeres 2025-26.",
+              "sponsorCheck": "Marca recurrente del gag del juego (inventada, la misma en todas las regiones); no es empresa real conocida."
+            },
+            {
+              "real": "Lokomotiv Kaliningrad",
+              "official": "VK Lokomotiv Kaliningrad",
+              "name": "Teplovoz Kaliningrad",
+              "realSponsor": false,
+              "short": "TEP",
+              "city": "Kaliningrado",
+              "gender": "W",
+              "colors": {
+                "shirt": "#D50032",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 78,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Тепловоз»): nada. Guiño: locomotora → locomotora diésel."
+            },
+            {
+              "real": "Zarechye Odintsovo",
+              "official": "VK Zarechye-Odintsovo",
+              "name": "Volei Odintsovo",
+              "realSponsor": false,
+              "short": "ODI",
+              "city": "Odintsovo",
+              "gender": "W",
+              "colors": {
+                "shirt": "#003DA5",
+                "shirt2": "#FFD100",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 83,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Одинцово»): nada. Finalista de la Superliga de mujeres 2025-26."
+            },
+            {
+              "real": "Uralochka-NTMK",
+              "official": "VK Uralochka-NTMK",
+              "name": "Volei Yekaterinburg",
+              "sponsor": "Pirozhkovaya Setka",
+              "realSponsor": true,
+              "short": "EKA",
+              "city": "Ekaterimburgo",
+              "gender": "W",
+              "colors": {
+                "shirt": "#00843D",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 80,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Екатеринбург»): nada. NTMK (acería) es patrocinador: fuera; «Uralochka» es un nombre con género gramatical, por eso no se usa.",
+              "sponsorCheck": "Juego de palabras: setka (red); pirozhki (en ruso «Пирожковая Сетка»). WebSearch (frase exacta entre comillas, 11-nov-2026): sin coincidencias con ninguna empresa real."
+            },
+            {
+              "real": "Leningradka",
+              "official": "VK Leningradka",
+              "name": "Volei Neva",
+              "realSponsor": false,
+              "short": "NEV",
+              "city": "San Petersburgo",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 78,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Нева»): nada. «Leningradka» es un nombre con género gramatical, por eso no se usa."
+            }
+          ]
+        },
+        {
+          "lvl": 2,
+          "real": "Parte baja de las dos Superligas 2025-26 (mezcla)",
+          "name": "Liga Alfa",
+          "short": "ALF",
+          "strength": 70,
+          "clubs": [
+            {
+              "real": "Kuzbass Kemerovo",
+              "official": "VK Kuzbass",
+              "name": "Kuznetsk Kemerovo",
+              "realSponsor": false,
+              "short": "KUZ",
+              "city": "Kémerovo",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 74,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Кузнецк Кемерово»): nada."
+            },
+            {
+              "real": "Gorky Nizhny Novgorod",
+              "official": "VK Gorky (antes ASK)",
+              "name": "Volei Nizhny",
+              "realSponsor": false,
+              "short": "NIZ",
+              "city": "Nizhni Nóvgorod",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#111111"
+              },
+              "liberoEstimated": true,
+              "ovr": 71,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso): nada."
+            },
+            {
+              "real": "Yaroslavich",
+              "official": "VK Yaroslavich",
+              "name": "Volei Yaroslavl",
+              "realSponsor": false,
+              "short": "YAR",
+              "city": "Yaroslavl",
+              "gender": "M",
+              "colors": {
+                "shirt": "#003DA5",
+                "shirt2": "#E30613",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Ярославль»): nada; solo sale el NP «Ярославич»."
+            },
+            {
+              "real": "Dinamo-Ural Ufa",
+              "official": "VK Dinamo-Ural",
+              "name": "Volei Ufa",
+              "realSponsor": false,
+              "short": "UFA",
+              "city": "Ufá",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00843D",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Уфа»): nada."
+            },
+            {
+              "real": "Orenburzhye Orenburg (antes Neftyanik)",
+              "official": "VK Orenburzhye (Neftyanik)",
+              "name": "Volei Orenburg",
+              "realSponsor": false,
+              "short": "ORE",
+              "city": "Oremburgo",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD100",
+                "shirt2": "#111111",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Оренбург»): nada."
+            },
+            {
+              "real": "Yenisey Krasnoyarsk",
+              "official": "VK Yenisey (equipos en las dos Superligas)",
+              "name": "Volei Krasnoyarsk",
+              "realSponsor": false,
+              "short": "KRS",
+              "city": "Krasnoyarsk",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F28C28"
+              },
+              "liberoEstimated": true,
+              "ovr": 73,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Красноярск»): nada. Equipo en las dos ligas: cuenta una vez."
+            },
+            {
+              "real": "Proton Saratov",
+              "official": "VK Proton",
+              "name": "Neitron Saratov",
+              "realSponsor": false,
+              "short": "NEI",
+              "city": "Sarátov",
+              "gender": "W",
+              "colors": {
+                "shirt": "#003DA5",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 71,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Нейтрон»): nada. Guiño: protón → neutrón."
+            },
+            {
+              "real": "Tulitsa",
+              "official": "VK Tulitsa",
+              "name": "Volei Tula",
+              "realSponsor": false,
+              "short": "TUL",
+              "city": "Tula",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFD100",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Тула»): nada. «Tulitsa» es un nombre con género gramatical, por eso no se usa."
+            },
+            {
+              "real": "Metar Chelyabinsk",
+              "official": "VK Metar",
+              "name": "Volei Chelyabinsk",
+              "realSponsor": false,
+              "short": "CHL",
+              "city": "Cheliábinsk",
+              "gender": "W",
+              "colors": {
+                "shirt": "#111111",
+                "shirt2": "#F2A900",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 67,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Челябинск»): nada. Metar es la empresa: fuera."
+            },
+            {
+              "real": "Omichka Omsk",
+              "official": "VK Omichka",
+              "name": "Volei Omsk",
+              "realSponsor": false,
+              "short": "OMS",
+              "city": "Omsk",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#E30613",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 69,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Омск»): nada. «Omichka» es un nombre con género gramatical, por eso no se usa."
+            },
+            {
+              "real": "Dinamo Krasnodar",
+              "official": "VK Dinamo Krasnodar",
+              "name": "Volei Krasnodar",
+              "realSponsor": false,
+              "short": "KRD",
+              "city": "Krasnodar",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0039A6",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "Búsqueda web del nombre exacto entre comillas (ruso «Волей Краснодар»): nada."
+            },
+            {
+              "real": "Korabelka",
+              "official": "VK Korabelka (club de la universidad naval SPbGMTU)",
+              "name": "Sudoverf Piter",
+              "realSponsor": false,
+              "short": "SUD",
+              "city": "San Petersburgo",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0A2463",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD100"
+              },
+              "liberoEstimated": true,
+              "ovr": 72,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Sudoverf Piter\" волейбол. Resultado: No sale nada exacto. Solo aparece «Piter Saint Petersburg» en FotMob (fútbol), que tiene otro nombre. Sustituye a Murom, que NO jugó la Superliga 2025-26 (perdió la promoción 0-3 con Minchanka). Guiño: «Korabelka» (constructora de barcos, nombre con género gramatical) → «Sudoverf» (astillero)."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "competitions": [
+    {
+      "real": "CEV Champions League (hombres y mujeres)",
+      "name": "Champions Cup VEC",
+      "short": "CCV",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Champions Cup VEC\" volleyball. Resultado: No sale nada exacto. La CEV Champions League se llamó «CEV European Champions Cup» entre 1959 y 2000, pero lleva CEV y no VEC, y el orden es otro. La que propuso Ferran («Champions Cup») con «VEC» detrás: la Champions de la CEV se llamó oficialmente «CEV (European) Champions Cup» hasta 2000, así que «Champions Cup» a secas se queda demasiado pegado. «VEC» es CEV del revés.",
+      "kind": "intl",
+      "rank": 1
+    },
+    {
+      "real": "CEV Cup",
+      "name": "Copa VEC",
+      "short": "CVC",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Copa VEC\" voleibol. Resultado: Ningún resultado menciona «Copa VEC». La propuesta de Ferran. No encontré ninguna competición oficial con este nombre.",
+      "kind": "intl",
+      "rank": 2
+    },
+    {
+      "real": "CEV Challenge Cup",
+      "name": "Challenge VEC",
+      "short": "CHV",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Challenge VEC\" volleyball. Resultado: No sale nada exacto. Solo aparece la CEV Challenge Cup. Tercera copa europea.",
+      "kind": "intl",
+      "rank": 3
+    },
+    {
+      "real": "FIVB Club World Championship (Mundial de Clubes)",
+      "name": "Mundial de Clubes VBF",
+      "short": "MCV",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Mundial de Clubes VBF\". Resultado: No sale nada con VBF. Solo aparecen el Mundialito de Clubes (fútbol playa) y el FIFA Club World Cup, que tienen otro nombre. «VBF» por FIVB revuelto.",
+      "kind": "skip"
+    },
+    {
+      "real": "FIVB Volleyball Nations League (VNL)",
+      "name": "VBN",
+      "short": "VBN",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"VBN\" volleyball league competition. Resultado: No sale ninguna competición de vóley con la sigla VBN (la real es VNL). Al ser una sigla de 3 letras puede tener otros usos fuera del deporte, pero no hay ningún club ni competición. Propuesta de Ferran. Desarrollo sugerido: «Volley Battle of Nations». No encontré ninguna competición con esas siglas.",
+      "kind": "skip"
+    },
+    {
+      "real": "CEV EuroVolley (Campeonato de Europa de selecciones)",
+      "name": "Europeo VEC",
+      "short": "EUV",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Europeo VEC\". Resultado: No sale nada deportivo, solo criptomonedas y siglas sin relación. Evita la marca oficial «EuroVolley».",
+      "kind": "skip"
+    },
+    {
+      "real": "FIVB Volleyball World Championship (Mundial de selecciones)",
+      "name": "Mundial VBF",
+      "short": "MUV",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Mundial VBF\" voleibol. Resultado: No sale la sigla VBF. Todo lo que aparece es de la FIVB.",
+      "kind": "skip"
+    },
+    {
+      "real": "Juegos Olímpicos (torneo de voleibol)",
+      "name": "Juegos Cuatrienales",
+      "short": "JCU",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Juegos Cuatrienales\". Resultado: Ningún evento se llama oficialmente así. La expresión solo se usa de forma descriptiva, por ejemplo «una segunda serie de juegos cuatrienales» al hablar de los Juegos Intercalados de 1906. «Olímpico», «Olimpiada» y los anillos son marcas del COI y no se pueden usar; «World Games» y «Juegos Mundiales» ya existen, por eso este nombre.",
+      "kind": "skip"
+    },
+    {
+      "real": "Coppa Italia (las dos)",
+      "name": "Coppa Tricolore",
+      "short": "CTC",
+      "kind": "cup",
+      "country": "IT",
+      "note": "Añadida por el integrador. Búsqueda «\"Coppa Tricolore\" pallavolo» (11-nov-2026): ninguna competición oficial con ese nombre; «tricolore» solo sale como apodo del trofeo."
+    },
+    {
+      "real": "Puchar Polski (las dos)",
+      "name": "Puchar Orła",
+      "short": "PUO",
+      "kind": "cup",
+      "country": "PL",
+      "note": "Añadida por el integrador (el águila del escudo). Búsqueda «\"Puchar Orła\" siatkówka» (11-nov-2026): sin coincidencias."
+    },
+    {
+      "real": "Kupa Voley / Türkiye Kupası (las dos)",
+      "name": "Hilal Kupası",
+      "short": "HLK",
+      "kind": "cup",
+      "country": "TR",
+      "note": "Añadida por el integrador (la media luna). Búsqueda «\"Hilal Kupası\" voleybol» (11-nov-2026): sin coincidencias."
+    },
+    {
+      "real": "Copa de Rusia (Kubok Rossii, las dos)",
+      "name": "Kubok Volgi",
+      "short": "KVG",
+      "kind": "cup",
+      "country": "RU",
+      "note": "Añadida por el integrador (el Volga). Búsqueda «\"Кубок Волги\" волейбол» (11-nov-2026): sin competición con ese nombre."
+    }
+  ]
+}

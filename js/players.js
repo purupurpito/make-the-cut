@@ -114,6 +114,23 @@
     return { base: shirt, top: mixHex(shirt, 0xffffff, 0.14), accent: acc, dark: light ? 0x20242e : mixHex(shirt, 0x000000, 0.62),
       trim: light ? 0x20242e : 0xffffff, shorts: sh, sole: acc, band: acc, pad: 0x1d1f26, pattern: pat, numFill: light ? '#20242e' : '#ffffff' };
   }
+  /** Equipación del club rival contra la tuya (shirt = tu camiseta ya pasada por mkKit, sh = tu pantalón): {rk0: su 1ª,
+   *  rk: la que viste (su 1ª, su 2ª con rk.alt, o null = la de la CPU)}. Sin g.rng ni estado (también lo usa rivalKit). */
+  function rivalPick(shirt, sh, rv) {
+    var rk = null, rk0 = null;
+    if (rv) {
+      var rAcc = typeof rv.kitAccent === 'number' ? rv.kitAccent : 0xffffff, rSh = typeof rv.kitShorts === 'number' ? rv.kitShorts : 0x0b0e17;
+      rk = rk0 = mkKit(rv.kitShirt, rAcc, rSh, rv.kitPattern || 'diag');
+      if (Math.min(kitDist(shirt, rk.base), kitDist(sh, rk.shorts) + 1.5) < 1.1) rk = null;
+      // (solo la pista: su setup trae kitLibero en el rival; la playa y la Carrera de playa siguen como antes)
+      if (!rk && typeof rv.kitAccent === 'number' && 'kitLibero' in rv) {
+        // pantalón: el suyo, salvo que se funda con la nueva camiseta (entonces el color de su 1ª camiseta)
+        rk = mkKit(rv.kitAccent, rv.kitShirt, kitDist(rv.kitAccent, rSh) < 0.6 ? rv.kitShirt : rSh, rv.kitPattern || 'diag');
+        if (Math.min(kitDist(shirt, rk.base), kitDist(sh, rk.shorts) + 1.5) < 1.1) rk = null; else rk.alt = true;
+      }
+    }
+    return { rk: rk, rk0: rk0 };
+  }
   function setKit(st) {
     st = st || {};
     var shirt = typeof st.kitShirt === 'number' ? st.kitShirt : TEAM0_DEF.base;
@@ -125,21 +142,21 @@
     var best = CPU_KITS[0], bd = -1;
     // integración Carrera: st.rival = {kitShirt, kitAccent, kitShorts, kitPattern} viste al equipo 1 con la equipación del club
     // rival si se distingue de la tuya; si se parece, la CPU de siempre (la alternativa más distinta)
-    var rv = st.rival && typeof st.rival.kitShirt === 'number' ? st.rival : null, rk = null;
-    if (rv) {
-      rk = mkKit(rv.kitShirt, typeof rv.kitAccent === 'number' ? rv.kitAccent : 0xffffff, typeof rv.kitShorts === 'number' ? rv.kitShorts : 0x0b0e17, rv.kitPattern || 'diag');
-      if (Math.min(kitDist(shirt, rk.base), kitDist(sh, rk.shorts) + 1.5) < 1.1) rk = null;
-    }
+    // Carrera de pista: si la 1ª se parece, su 2ª equipación (camiseta = su 2º color, kitAccent; detalles = su camiseta) antes
+    // que la de la CPU. rk0 = la 1ª del club (de ella sale RIVAL_SIG: los rivales del club se reconocen con cualquiera de las dos)
+    var rv = st.rival && typeof st.rival.kitShirt === 'number' ? st.rival : null, rp = rivalPick(shirt, sh, rv), rk = rp.rk, rk0 = rp.rk0;
     if (rk) { best = rk; bd = 9; }
     else for (var i = 0; i < CPU_KITS.length; i++) {   // la azul de siempre si se distingue bien; si no, la alternativa más distinta
       var d = Math.min(kitDist(shirt, CPU_KITS[i].base), kitDist(sh, CPU_KITS[i].shorts) + 1.5);
       if (i === 0 && d >= 1.1) { best = CPU_KITS[0]; bd = 9; break; }
       if (d > bd) { bd = d; best = CPU_KITS[i]; }
     }
-    var sig = [shirt, acc, sh, pat, rk ? [rk.base, rk.accent, rk.shorts, rk.pattern].join('/') : ''].join(':');
+    // color del líbero del club (Carrera de pista): el tuyo siempre; el del rival solo si viste de su club (1ª o 2ª)
+    var lib0 = typeof st.kitLibero === 'number' ? st.kitLibero : -1, lib1 = rk && typeof rv.kitLibero === 'number' ? rv.kitLibero : -1;
+    var sig = [shirt, acc, sh, pat, rk ? [rk.base, rk.accent, rk.shorts, rk.pattern].join('/') : '', lib0, lib1].join(':');
     if (sig === TEAMS._sig) return false;
-    TEAMS[0] = t0; TEAMS[1] = best; TEAMS._sig = sig; kitSig++;
-    RIVAL_SIG = rk ? hash32(((rk.base >>> 8) ^ (rk.accent >>> 4) ^ rk.shorts) >>> 0) & 0xffff : 0;   // MUÑECO: aspecto de los rivales por club
+    TEAMS[0] = t0; TEAMS[1] = best; TEAMS._sig = sig; kitSig++; LIBC[0] = lib0; LIBC[1] = lib1;
+    RIVAL_SIG = rk ? hash32(((rk0.base >>> 8) ^ (rk0.accent >>> 4) ^ rk0.shorts) >>> 0) & 0xffff : 0;   // MUÑECO: aspecto de los rivales por club
     flushCache();   // fuera los atletas construidos con la equipación anterior (texturas y mallas)
     return true;
   }
@@ -179,12 +196,21 @@
   // con la camiseta del equipo (se lee que es de los suyos), mismo pantalón y diseño liso. Se recalcula al cambiar la
   // equipación (kitSig). En 2v2 no se usa nunca (no hay role).
   var LIB_PAL = [0xffd23a, 0x2bd96b, 0xff3fa4, 0x18c8d8, 0xf4f8ff, 0x9a5cff, 0xff8a1e];
-  var LIBK = [null, null], LIBSIG = -1;
+  var LIBK = [null, null], LIBSIG = -1, LIBC = [-1, -1];   // LIBC: color del líbero del club (setKit; -1 = sin dato)
   function compHex(h) { return ((255 - (h >> 16 & 255)) << 16) | ((255 - (h >> 8 & 255)) << 8) | (255 - (h & 255)); }
   function liberoKit(team) {
     if (LIBSIG !== kitSig) { LIBK[0] = LIBK[1] = null; LIBSIG = kitSig; }
     if (LIBK[team]) return LIBK[team];
-    var own = TEAMS[team], riv = TEAMS[1 - team], cands = [own.accent, compHex(own.base)].concat(LIB_PAL), best = cands[0], bd = -1;
+    var own = TEAMS[team], riv = TEAMS[1 - team], k;
+    // Carrera de pista: el color del líbero del club si se distingue de las dos camisetas (y el rival, también del tuyo)
+    if (LIBC[team] >= 0) {
+      k = mkKit(LIBC[team], own.base, own.shorts, 'liso');
+      if (kitDist(k.base, own.base) >= 0.8 && kitDist(k.base, riv.base) >= 0.8 && (team === 0 || kitDist(k.base, liberoKit(0).base) >= 0.8)) {
+        k.libero = true; k.club = true;
+        return (LIBK[team] = k);
+      }
+    }
+    var cands = [own.accent, compHex(own.base)].concat(LIB_PAL), best = cands[0], bd = -1;
     var o0 = team === 1 ? liberoKit(0).base : -1;   // el líbero rival, además, distinto del tuyo
     for (var i = 0; i < cands.length; i++) {
       var c = cands[i], d = Math.min(kitDist(c, own.base), kitDist(c, riv.base), kitDist(c, riv.accent) + 0.4);
@@ -193,7 +219,7 @@
       if (hueSat(c)[1] < 0.25) d -= 0.35;                // a igualdad, mejor un color vivo que el blanco
       if (d > bd + 1e-6) { bd = d; best = c; }
     }
-    var k = mkKit(best, own.base, own.shorts, 'liso');
+    k = mkKit(best, own.base, own.shorts, 'liso');
     k.libero = true;
     return (LIBK[team] = k);
   }
@@ -1360,6 +1386,16 @@
     if (!rt || !rt.on || rt.player !== p || g.mode !== 'serve' || g.serveState !== 'ready' || b.held !== p) { r.ritOn = false; return false; }
     var ph = rt.phase, th, R0 = ((VB.RITUAL && VB.RITUAL.relZ) || 1.0) + p.z, hx = b.x, hy = b.y, hz = b.z;
     r.ritOn = true; r.ritPh = ph; r.ritU = rt.u || 0;
+    if (g.beach) {
+      // PLAYA (12-nov-2026): sin bote. La palma izquierda lleva el balón delante del pecho y da toquecitos hacia arriba
+      // ('juggle'); mientras vuela, espera abierta en el punto de recogida (Sim._holdPos lo da: J o bajo el balón).
+      if (ph !== 'pre' && ph !== 'juggle' && ph !== 'post') { r.catchN = -1; return false; }
+      r.aMode = 'hold'; r.aX = hx; r.aY = hy; r.aZ = hz; r.aDx = r.aDy = r.aDz = 0; r.aLean = 0; r.aUp = 0;
+      if (VB.Sim._holdPos) { try { VB.Sim._holdPos(g, p, HOLDP); r.aX = HOLDP.x; r.aY = HOLDP.y; r.aZ = HOLDP.z; } catch (e) { } }
+      r.aw0 = 1; r.aw1 = 0; r.holdWr = HOLD_WR; r.holdTw = HOLD_TW;
+      if (ph === 'juggle') r.holdWr += 0.35 * sstep(0, 0.06, r.ritU) * (1 - sstep(0.1, 0.3, r.ritU)); // golpe de muñeca al soltar
+      return true;
+    }
     if (ph === 'pre') th = lerp(-PI / 2, PI / 2, sstep(0, 0.85, rt.pre > 0 ? rt.t / rt.pre : 1));
     else if (ph === 'dribble') {
       th = PI / 2;
@@ -1782,8 +1818,10 @@
         if (r.ritOn) {
           // ritual (PLY-16): tronco inclinado sobre el bote, rodillas que se doblan en cada empujón y amortiguan la recogida,
           // la cabeza sigue al balón; al subirlo a la mano se endereza (y en 'done' mira al campo rival)
-          var rph = r.ritPh, ru = r.ritU, lean = rph === 'dribble' ? 1 : rph === 'pre' ? 0.7 : rph === 'post' ? 0.45 : 0;
-          var push = rph === 'dribble' ? sstep(0, 0.1, ru) * (1 - sstep(0.18, 0.55, ru)) + 0.5 * sstep(0.78, 0.92, ru) * (1 - sstep(0.92, 1, ru)) : 0;
+          var rph = r.ritPh, ru = r.ritU, lean = rph === 'dribble' ? 1 : rph === 'pre' ? 0.7 : rph === 'post' ? 0.45 : rph === 'juggle' ? 0.2 : 0;
+          var push = rph === 'dribble' ? sstep(0, 0.1, ru) * (1 - sstep(0.18, 0.55, ru)) + 0.5 * sstep(0.78, 0.92, ru) * (1 - sstep(0.92, 1, ru)) :
+            rph === 'juggle' ? 0.35 * sstep(0, 0.05, ru) * (1 - sstep(0.08, 0.3, ru)) : 0; // playa: leve flexión de rodillas en cada toque
+          if (g.beach && rph !== 'juggle') lean *= 0.3;   // playa: de pie, sin agacharse hacia el suelo
           s2[DROP] += 0.05 * lean + 0.11 * push; s2[CP] += 0.2 * lean + 0.09 * push; s2[PP] += 0.08 * lean + 0.03 * push;
           v2[KL].z += 0.3 * push; v2[KR].z += 0.3 * push; s2[LOOK] = 1; s2[CY] = lerp(s2[CY], -0.1, lean);
           T2.rb = Math.max(T2.rb, 16);
@@ -3966,6 +4004,14 @@
     /** Colores actuales (para la UI): {t0: {base, accent, shorts}, t1: {...}}. */
     /** 6v6: color de la camiseta del líbero del equipo t (0xRRGGBB; para la UI o pruebas). */
     liberoColor: function (t) { return liberoKit(t ? 1 : 0).base; },
+    /** Qué vestirá el rival con estos datos de setKit (para la UI, sin aplicar nada): null sin st.rival; si no
+     *  {kind: '1a' | '2a' | 'cpu', shirt, accent, shorts, pattern} (colores de la 2ª solo con kind '2a'). */
+    rivalKit: function (st) {
+      st = st || {}; var rv = st.rival && typeof st.rival.kitShirt === 'number' ? st.rival : null; if (!rv) return null;
+      var t0 = mkKit(typeof st.kitShirt === 'number' ? st.kitShirt : TEAM0_DEF.base, 0, typeof st.kitShorts === 'number' ? st.kitShorts : TEAM0_DEF.shorts, 'diag');
+      var rk = rivalPick(t0.base, t0.shorts, rv).rk;
+      return !rk ? { kind: 'cpu' } : rk.alt ? { kind: '2a', shirt: rv.kitAccent, accent: rk.accent, shorts: rk.shorts, pattern: rk.pattern } : { kind: '1a' };
+    },
     kitColors: function () { return { t0: { base: TEAMS[0].base, accent: TEAMS[0].accent, shorts: TEAMS[0].shorts }, t1: { base: TEAMS[1].base, accent: TEAMS[1].accent, shorts: TEAMS[1].shorts } }; },
     /** Modelo de personaje activo: siempre 'doll' (el muñeco de js/doll.js; los presets ?body= del atleta antiguo ya no existen). */
     body: function () { return BODY; },

@@ -96,7 +96,7 @@ async function browser() {
       var a=JSON.stringify({v:1,d:{serve:{b:20,m:2,n:3,t:5},atk:{b:9,m:0,n:1,t:7}},free:{rally:4},xp:{serve:2}}),
           b=JSON.stringify({v:1,d:{serve:{b:25,m:3,n:1,t:9},recv:{b:12,m:1,n:2,t:3}},free:{rally:11},xp:{serve:3,recv:1}});
       var o=JSON.parse(f(a,b));return JSON.stringify([o.d.serve,o.d.atk.b,o.d.recv.m,o.free.rally,o.xp.serve,o.xp.recv,f(a,a)===a,VB.Account._gymSync]);})()`);
-    check(mg === '[{"b":25,"m":3,"n":3,"t":9},9,1,11,3,1,true,false]', 'VB.Account._mergeGym une por máximo y GYM_SYNC sigue apagado: ' + mg);
+    check(mg === '[{"b":25,"m":3,"n":3,"t":9},9,1,11,3,1,true,true]', 'VB.Account._mergeGym une por máximo y GYM_SYNC encendido (reglas desplegadas): ' + mg);
     const runs = LIST.concat(LIST.includes('serve') ? ['serve'] : []);
     for (let i = 0; i < runs.length; i++) {
       const id = runs[i], again = i >= LIST.length;

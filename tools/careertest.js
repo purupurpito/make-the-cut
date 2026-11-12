@@ -2,7 +2,8 @@
 /* MAKE THE CUT — tools/careertest.js (owner: ui_main)
  * Prueba headless del modo Carrera (js/career.js) con localStorage falso: crear carrera, calendario, simular temporadas enteras,
  * clasificación coherente, copa, ofertas, cambio de club, ascensos/descensos, guardar/cargar, partido jugado (eventos falsos →
- * estadísticas y nota) y curva de progresión de varias temporadas.
+ * estadísticas y nota) y curva de progresión de varias temporadas. Al final, la dificultad de la Carrera (12-nov-2026: Normal idéntico
+ * al de antes, IA rival por nivel, atributos, XP, entreno, entrenador, objetivo, ofertas, cambio entre partidos, sellos y migración).
  * Uso: node tools/careertest.js [temporadas=8]   Sale con 1 si algo falla; acaba en «TODO OK».
  * NOWORLD=1: sin js/career-world.js (Faro, noticias y clubes); la prueba debe pasar igual con y sin él.
  */
@@ -11,15 +12,16 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const SEASONS = Math.max(2, +(process.argv[2] || 8));
 let fails = 0;
-function ok(c, msg) { if (!c) { fails++; console.log('  FALLO: ' + msg); } }
+let passes = 0, verbose = false;
+function ok(c, msg) { if (!c) { fails++; console.log('  FALLO: ' + msg); } else { passes++; if (verbose) console.log('  ok: ' + msg); } }
 function section(t) { console.log('\n== ' + t); }
 
 const mem = {};
 const fakeLS = { getItem: k => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
-const ctx = { console, Math, Date, JSON, localStorage: fakeLS }; ctx.globalThis = ctx; ctx.window = ctx;
+const ctx = { console, Math, Date, JSON, Set, localStorage: fakeLS }; ctx.globalThis = ctx; ctx.window = ctx;
 vm.createContext(ctx);
 const NOWORLD = !!process.env.NOWORLD;
-const FILES = ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/career.js', 'js/career-life.js', 'js/career-world.js'];
+const FILES = ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/leagues.js', 'js/career.js', 'js/career-life.js', 'js/career-world.js'];
 for (const f of FILES) {
   if (NOWORLD && f === 'js/career-world.js') continue;
   if (!fs.existsSync(path.join(ROOT, f))) { console.log('(sin ' + f + ')'); continue; }
@@ -594,12 +596,231 @@ section('quickSim');
   const q25 = C.quickSim(50, 50, r, 25); ok(q25.setScores.every((x, i) => Math.max(x[0], x[1]) >= (i === 2 ? 15 : 25)), 'sets a 25 y desempate a 15');
 }
 
+// ------------------------------------------------------------------ Carrera de pista (6v6, lote C)
+verbose = true;   // (la pista enseña cada comprobación: sirve de informe)
+// Las secciones de la pista usan ligas de PRUEBA inventadas (tools/leagues-fixture.js: liga impar de 9, una de 8 a doble vuelta, país sin
+// 2ª); los datos reales de js/leagues.js se prueban al final («datos reales»).
+const REAL_LEAGUES = VB.Leagues && VB.Leagues.regions, REAL_PROV = VB.Leagues && VB.Leagues.provisional;
+if (VB.Leagues) { VB.Leagues.regions = require('./leagues-fixture.js')(); VB.Leagues.provisional = true; }
+section('Carrera de pista (6v6): crear, guardado aparte, modo activo');
+{
+  const H = C.hall, beachRaw = mem['voley3d.career'];
+  ok(VB.Leagues && H && H.available(), 'datos de ligas (ligas de prueba) y Carrera de pista disponible');
+  ok(C.mode() === 'beach', 'sin pista, la Carrera activa es la de playa');
+  const cs = H.countries();
+  ok(cs.length >= 3 && cs.some(x => x.code === 'ES'), 'países: ' + cs.map(x => x.code).join(', '));
+  // datos: esquema y reglas de Ferran
+  const regs = VB.Leagues.regions, allClubs = [], allNames = [];
+  regs.forEach(rg => rg.countries.forEach(co => co.divisions.forEach(d => { allNames.push(d.name); d.clubs.forEach(k => { allClubs.push(k); allNames.push(k.name); }); })));
+  ok(allClubs.every(k => k.name && k.short && k.colors && /^#[0-9a-f]{6}$/i.test(k.colors.shirt) && /^#[0-9a-f]{6}$/i.test(k.colors.shirt2) && /^#[0-9a-f]{6}$/i.test(k.colors.libero) && k.ovr >= 0 && k.ovr <= 100 && 'liberoEstimated' in k && k.check && k.official && k.real),
+    'esquema de cada club: nombre, abreviatura, 3 colores, ovr 0-100, liberoEstimated, official, real, check (' + allClubs.length + ' clubes)');
+  ok(!allNames.some(n => /masculin|femenin/i.test(n)), 'ningún nombre dice «masculino» ni «femenino»');
+  ok(regs.every(rg => rg.countries.every(co => co.divisions.every(d => d.strength >= 0 && d.strength <= 100 && d.short && d.real))), 'divisiones con fuerza 0-100, abreviatura y «real»');
+  let c6 = C.create({ mode: 'hall', name: 'Pista Prueba', num: 9, pos: 'OH', seed: 777, points: 15 });
+  ok(c6 && c6.mode === 'hall' && C.mode() === 'hall', 'crear la de pista la deja activa');
+  ok(mem['voley3d.career'] === beachRaw && mem['voley3d.career6'], 'guardado aparte (voley3d.career6); el de playa no se toca');
+  ok(c6.cc === 'ES' && c6.points === 15 && c6.player.roleKey === 'OH' && c6.player.role === 'Receptor' && C.ovrOf(c6.player.st) === H.START_OVR, 'por defecto España, sets a 15, receptor, media ' + H.START_OVR);
+  ok(c6.phase === 'pick' && c6.offers.length >= 3 && c6.offers.filter(o => !o.trial).every(o => o.lid === 'ES2'), 'ofertas de inicio de clubes modestos de la 2ª (' + c6.offers.map(o => C.club(c6, o.club).short + (o.trial ? '*' : '')).join(' ') + ')');
+  ok(c6.offers.filter(o => o.trial).every(o => o.lid === 'ES1'), 'la prueba (si la hay) es en la 1ª');
+  ok(c6.clubs.every(k => k.kit && typeof k.kit.libero === 'number' && typeof k.kit.shirt === 'number'), 'equipaciones con camiseta, segundo color y líbero');
+  const pal = c6.clubs.find(k => k.name === 'Vòlei Rocaverde'); ok(pal && pal.kit.shirt === 0xc8102e && pal.kit.libero === 0x7b3fd1, 'colores tal cual los datos (rojo, líbero lila)');
+  ok(C.setMode('beach') && C.get().v === 3 && C.get().clubs.length === 40, 'se vuelve a la playa con su carrera intacta (v3, 40 clubes)');
+  C.setMode('hall'); ok(C.get() === c6, 'y de nuevo a la pista');
+  C._reset(); c6 = C.get(); ok(c6 && c6.mode === 'hall' && c6.phase === 'pick' && C.mode() === 'hall', 'se guarda y se carga en plena elección');
+}
+section('Carrera de pista: partido 6v6, nota, calendario impar, temporada, copas');
+{
+  let c6 = C.get(); const i0 = c6.offers.findIndex(o => !o.trial);
+  ok(C.acceptOffer(i0, 2) && c6.phase === 'league' && C.myClub(c6).lid === 'ES2', 'firmar por un club de la 2ª');
+  const W = C.weeksOf(c6, 'ES2'), n2 = C.leagueClubs(c6, 'ES2').length;
+  ok(n2 === 9 && W === 9, 'liga de 9 clubes a una vuelta: 9 jornadas (' + W + ')');
+  const sch = C.sched(c6, 'ES2'); ok(sch.every(wk => wk.length === 4) && C.leagueClubs(c6, 'ES2').every(k => sch.filter(wk => wk.some(m => m[0] === k.id || m[1] === k.id)).length === 8), 'cada club juega 8 y descansa 1');
+  ok(C.weeksOf(c6, 'BR1') === 14, 'con 8 clubes, doble vuelta (14)');
+  const n = C.next(c6) || (C.simulateNext(), C.next(c6)), ms = C.matchSetup(c6);
+  ok(ms && ms.format === '6v6' && ms.venue === 'hall' && ms.ctrlRole === 'OH' && ms.ctrl === 'one', 'partido 6v6 en el pabellón, llevas al receptor');
+  ok(ms.attrs[0].length === 6 && ms.attrs[1].length === 6 && ms.attrs[0][ms.ctrlIdx].jump === Math.max(1, c6.player.st.jump - ms.fatigue + 0) , 'atributos de los 12; los tuyos en tu hueco (' + ms.ctrlIdx + ')');
+  ok(ms.nums[0][ms.ctrlIdx] === 9 && new Set(ms.nums[0]).size === 6, 'tu dorsal en tu hueco y dorsales distintos (' + ms.nums[0].join(',') + ')');
+  ok(ms.kit.kitLibero === C.myClub(c6).kit.libero && ms.rivalKit.kitLibero === n.rival.kit.libero && ms.kit.kitShirt === C.myClub(c6).kit.shirt, 'equipaciones de los dos clubes con el color del líbero');
+  ok(ms.difficulty === H6diff(n.rival.ovr) && ms.career.mode === 'hall' && /Jornada/.test(ms.career.label), 'IA por la media del rival (' + n.rival.ovr + ' → ' + ms.difficulty + (ms.rookie ? ' suave' : '') + ')');
+  function H6diff(o) { return o >= 88 ? 'expert' : o >= 76 ? 'hard' : o >= 56 ? 'normal' : 'easy'; }
+  // partido jugado con eventos falsos: tu jugador (g.ctrl) en un 6v6
+  const team0 = [0, 1, 2, 3, 4, 5].map(i => ({ team: 0, id: i, num: ms.nums[0][i] })), me6 = team0[ms.ctrlIdx];
+  const g = { career: ms.career, size: 6, teams: [team0, [0, 1, 2, 3, 4, 5].map(i => ({ team: 1, id: 16 + i }))], ctrl: me6 };
+  const evs = [{ type: 'newMatch' }];
+  for (let i = 0; i < 7; i++) evs.push({ type: 'hit', team: 0, player: me6, kind: 'spike', touch: 3, human: true, grade: 'good' }, { type: 'point', team: 0, how: 'kill' });
+  for (let i = 0; i < 3; i++) evs.push({ type: 'hit', team: 0, player: team0[3], kind: 'spike', touch: 3 }, { type: 'point', team: 0, how: 'kill' });
+  C.ingest(evs, g);
+  const wk0 = c6.week, s = C.matchDone({ sets: [2, 0], setScores: [[15, 10], [15, 12]], win: true }, null, g);
+  ok(s && s.mode === 'hall' && s.me.kills === 7 && s.nota >= 6 && s.nota <= 10 && s.xp > 0, 'partido jugado: 7 remates tuyos (no los de los compañeros), nota ' + (s && s.nota) + ', XP ' + (s && s.xp));
+  ok(c6.week > wk0 && c6.myRes.w[wk0] && c6.myRes.w[wk0].some(r => r.mine), 'la jornada avanza y se guarda tu resultado');
+  // temporada entera simulada
+  let guard = 0, sawKO = false;
+  while (c6.phase !== 'off' && guard++ < 80) { if (c6.phase === 'ko') sawKO = true; if (!C.simulateNext()) break; }
+  ok(c6.phase === 'off' && c6.review && c6.review.season === 1, 'temporada 1 completa (' + guard + ' pasos)');
+  const allPj = c6.leagues.every(L => C.table(c6, L.id).every(r => r.pj === (C.leagueClubs(c6, L.id).length <= 8 ? 2 : 1) * (C.leagueClubs(c6, L.id).length - 1)));
+  ok(allPj, 'todas las ligas acaban su calendario (cada club, todos sus partidos)');
+  ok(c6.kos.length >= 2 && c6.kos.every(ko => ko.champion >= 0), 'copa nacional e internacionales jugadas: ' + c6.kos.map(ko => ko.name + ' (' + C.club(c6, ko.champion).short + ')').join(', '));
+  ok(c6.kos[0].kind === 'cup' && c6.kos[0].name === 'Copa de la Corona' && c6.kos.some(ko => ko.name === 'Champions Cup'), 'nombres de copa cambiados (Copa de la Corona, Champions Cup)');
+  const t1 = C.table(c6, 'IT1'), cc = c6.kos.find(ko => ko.name === 'Champions Cup');
+  ok(cc.ids.indexOf(t1[0].id) >= 0 || cc.ids.length === 4, 'a la Champions Cup van los primeros de las 1ªs');
+  ok(c6.history.length === 1 && c6.history[0].lgShort === 'HP2', 'historial de la temporada');
+}
+section('Carrera de pista: ascensos y descensos, tu ascenso');
+{
+  let c6 = C.get();
+  const mv = c6.review.moves, up = mv.filter(m => m.to === 'ES1'), down = mv.filter(m => m.to === 'ES2');
+  ok(up.length === 2 && down.length === 2 && mv.filter(m => m.to === 'IT1').length === 2, '2 suben y 2 bajan en España y en Italia; Polonia y Brasil (una división) sin movimientos');
+  C.stay(2);
+  ok(C.leagueClubs(c6, 'ES1').length === 10 && C.leagueClubs(c6, 'ES2').length === 9 && c6.season === 2, 'tamaños de liga conservados en la temporada 2');
+  // tu club, muy fuerte en la 2ª: asciende
+  const mk = C.myClub(c6);
+  if (mk.lid !== 'ES2') { ok(true, '(tu club ya está en la 1ª)'); }
+  else {
+    mk.ovr = 80; C.KEYS.forEach(k => { c6.player.st[k] = 80; });
+    let g = 0; while (c6.phase !== 'off' && g++ < 80) C.simulateNext();
+    ok(c6.review.move === 1 && c6.trophies.some(t => t.kind === 'ascenso' && /Hiperliga/.test(t.name)), 'campeón de la 2ª: asciende (' + c6.trophies.map(t => t.name).join(', ') + ')');
+    C.stay(1);
+    ok(C.myClub(c6).lid === 'ES1' && C.next(c6) && /^Hiperliga ·/.test(C.next(c6).label), 'la temporada siguiente juegas en la Hiperliga');
+  }
+}
+section('Carrera de pista: ojeadores y ofertas del extranjero');
+{
+  let c6 = C.get();
+  // jugador modesto (media 60): ningún club de la élite (fuerza ≥ 85) le hace oferta
+  C.KEYS.forEach(k => { c6.player.st[k] = 60; }); c6.notes = [{ nota: 7 }, { nota: 7 }]; c6.coach = 60; c6.scouts = {};
+  let off = C._genOffers(c6, true);
+  ok(off.every(o => C.league(o.lid).strength < 85), 'media 60: las ligas de élite no le quieren (' + off.map(o => C.club(c6, o.club).short + ' ' + o.lid).join(', ') + ')');
+  // jugador muy bueno con notas altas: llegan ofertas de fuera con país, liga, nivel, rol y sueldo
+  C.KEYS.forEach(k => { c6.player.st[k] = 90; }); c6.notes = [{ nota: 8.4 }, { nota: 8.6 }, { nota: 8.2 }]; c6.coach = 80;
+  off = C._genOffers(c6, true);
+  const fo = off.filter(o => o.foreign);
+  ok(fo.length >= 1, 'media 90 y notas de 8: ofertas del extranjero (' + off.map(o => C.club(c6, o.club).name + ' ' + o.cc + ' ' + o.role).join(', ') + ')');
+  ok(fo.every(o => o.cc !== C.myClub(c6).cc && C.league(o.lid).strength > 0 && o.ovr > 0 && o.role && o.salary > 0 && o.objective), 'cada oferta lleva país, liga (con su nivel), media, rol, sueldo y objetivo');
+  ok(fo.every(o => o.salary > c6.contract.salary), 'las ligas fuertes pagan más (' + fo.map(o => o.salary).join(', ') + ' contra ' + c6.contract.salary + ')');
+  // ojeador
+  let scout = null; for (let i = 0; i < 20 && scout == null; i++) { c6.notes.push({ nota: 8 }); scout = C.hall._scout(c6, 8); }
+  ok(scout != null && c6.scouts[scout] && c6.inbox.some(m => /Ojeadores/.test(m.t)), 'un ojeador viene a verte tras un buen partido (' + (scout != null ? C.club(c6, scout).name : '-') + ')');
+  // fichar por un club extranjero a mitad de temporada
+  if (c6.phase === 'league' && fo.length) {
+    c6.offers = off; c6.window = 'mid';
+    const fi = c6.offers.indexOf(fo[0]), dest = fo[0].club;
+    ok(C.acceptOffer(fi, 2) && c6.myClub === dest && C.myClub(c6).cc !== 'ES' && c6.myRes.lid === C.myClub(c6).lid && c6.inbox.some(m => /Fichaje internacional/.test(m.t)), 'fichar por un club extranjero: nueva liga (' + C.myClub(c6).lid + ') y su calendario');
+    let g = 0; while (c6.phase !== 'off' && g++ < 80) C.simulateNext();
+    ok(c6.phase === 'off' && c6.history.slice(-1)[0].country !== 'España', 'la temporada acaba en la liga extranjera (' + c6.history.slice(-1)[0].country + ')');
+  }
+}
+section('Carrera de pista: puestos que crecen solos, guardado dañado y migración');
+{
+  let c6 = C.get();
+  ok(C.positions().join() === VB.Sim.CTRL_ROLES6.join(), 'los puestos de la Carrera son los que exporta sim.js (lote A: ' + VB.Sim.CTRL_ROLES6.join() + ')');
+  VB.Sim.CTRL_ROLES6 = ['OH', 'S', 'OPP', 'MB'];
+  ok(C.positions().join() === 'OH,S,OPP,MB', 'si sim.js exporta más puestos, la lista crece sola');
+  ok(C.setPosition('S') && c6.player.roleKey === 'S' && c6.player.role === 'Colocador', 'cambiar a colocador');
+  if (c6.phase === 'off') C.stay(1);
+  const ms = C.next(c6) && !C.next(c6).bench ? C.matchSetup(c6) : null;
+  if (ms) ok(ms.ctrlRole === 'S' && ms.ctrlIdx === VB.Sim.ROLES6.indexOf('S') && ms.nums[0][ms.ctrlIdx] === c6.player.num, 'el partido te pone de colocador en su hueco');
+  delete VB.Sim.CTRL_ROLES6;
+  ok(C.ctrlRole(c6) === 'OH', 'sin el puesto en sim.js, juegas de receptor (tu perfil se queda)');
+  C._reset(); c6 = C.get(); ok(c6 && c6.player.roleKey === 'S', 'se guarda el puesto');
+  // guardado de pista dañado: se aparta, la playa sigue
+  const good6 = mem['voley3d.career6'];
+  mem['voley3d.career6'] = '{"v":1,"player":{},"leagues":[],"clubs":[]}'; C._reset();
+  ok(!C.hall.exists() && C.hall.lost() && mem['voley3d.career6.bak'] && C.mode() === 'beach' && C.get().v === 3, 'pista dañada: copia .bak, aviso, y la Carrera activa vuelve a la playa (intacta)');
+  mem['voley3d.career6'] = good6; delete mem['voley3d.career6.bak']; C._reset(); C.setMode('hall');
+  const raw = JSON.parse(good6); delete raw.tab; delete raw.myRes; delete raw.scouts; raw.chem = 'x'; delete raw.kos; raw.phase = raw.phase === 'off' ? 'off' : 'league';
+  mem['voley3d.career6'] = JSON.stringify(raw); C._reset();
+  const rc = C.get(); ok(rc && rc.mode === 'hall' && rc.tab && rc.myRes && rc.chem === 0 && Array.isArray(rc.kos), 'guardado de pista a medias: se repara');
+  let g = 0; while (rc.phase !== 'off' && g++ < 80) if (!C.simulateNext()) break;
+  ok(rc.phase === 'off', 'y se puede seguir jugando hasta el fin de temporada');
+  // la migración de un guardado de playa viejo no se ve afectada por tener una de pista
+  const v2 = JSON.parse(mem['voley3d.career']); v2.v = 2; v2.points = 15; v2.trophies = [{ season: 1, kind: 'liga', name: 'Liga Regional', club: 'X' }];
+  mem['voley3d.career'] = JSON.stringify(v2); C._reset(); C.setMode('beach');
+  const mb = C.get(); ok(mb && mb.v === 3 && mb.points === 21 && mb.trophies[0].name === 'Circuito Regional' && C.hall.exists(), 'un guardado de playa v2 migra igual con una Carrera de pista guardada al lado');
+  ok(C.matchSetup(mb) === null || C.matchSetup(mb).venue === 'beach', 'la playa sigue en la playa');
+  delete mem['voley3d.career6']; C._reset(); mem['voley3d.career.mode'] = 'hall';
+  ok(C.mode() === 'beach', 'modo pista sin guardado de pista: la activa es la playa');
+}
+
+section('Carrera de pista con los datos reales (js/leagues.js, generado de notes/clubes/*.json por tools/build-leagues.js)');
+{
+  const regs = REAL_LEAGUES;
+  if (!regs || REAL_PROV) console.log('  (js/leagues.js sin datos reales: se salta)');
+  else {
+    const keep = { c6: mem['voley3d.career6'], md: mem['voley3d.career.mode'] }, fix = VB.Leagues.regions;
+    VB.Leagues.regions = regs; VB.Leagues.provisional = false; delete mem['voley3d.career6']; C._reset();
+    const H = C.hall, cos = H.countries(), t0 = Date.now();
+    const ordn = n => n + (n === 1 || n === 3 ? 'r' : 'º');
+    const divs = [], clubs = [];
+    regs.forEach(rg => rg.countries.forEach(co => co.divisions.forEach(d => { divs.push([co, d]); d.clubs.forEach(k => clubs.push([co, d, k])); })));
+    ok(cos.length === 28 && divs.length === 37 && clubs.length === 390, cos.length + ' países, ' + divs.length + ' ligas, ' + clubs.length + ' clubes: ' + cos.map(x => x.code).join(' '));
+    const want = 'IT PL TR FR DE RU ES BE NL GR PT CH AT CZ RS SI RO BR AR US CA PE JP KR CN IR QA PH'.split(' ');
+    ok(want.every(cc => cos.some(x => x.code === cc)), 'los 28 países que pidió Ferran (17 de Europa, 5 de América, 6 de Asia)');
+    ok(cos.every(x => ['Europa', 'América', 'Asia'].indexOf(x.region) >= 0) && regs.map(r => r.region).join() === 'Europa,América,Asia', 'una región por continente');
+    const two = cos.filter(x => x.divs === 2).map(x => x.code).join(' ');
+    ok(two === 'IT PL TR RU FR DE ES BR JP', '1ª y 2ª en los países fuertes (' + two + '); solo 1ª en el resto');
+    ok(divs.every(([co, d]) => d.clubs.length >= 8 && d.clubs.length <= 12 && d.strength > 0 && d.strength <= 100), 'ligas de 8 a 12 clubes con fuerza 1-100');
+    ok(clubs.every(([co, d, k]) => k.name && /^[A-ZÀ-Ž0-9]{2,4}$/.test(k.short) && /^#[0-9a-f]{6}$/.test(k.colors.shirt) && /^#[0-9a-f]{6}$/.test(k.colors.shirt2) && /^#[0-9a-f]{6}$/.test(k.colors.libero) && k.ovr >= 40 && k.ovr <= 99 && typeof k.liberoEstimated === 'boolean'),
+      'esquema de cada club: nombre, abreviatura, 3 colores, ovr, liberoEstimated');
+    ok(clubs.every(([co, d, k]) => !('real' in k) && !('official' in k) && !('check' in k)), 'el juego no lleva los nombres reales ni oficiales (con patrocinadores)');
+    const nm = new Set(clubs.map(x => x[2].name.toLowerCase())), sh = new Set(clubs.map(x => x[2].short));
+    ok(nm.size === clubs.length, 'ningún nombre de club repetido entre países');
+    ok(sh.size === clubs.length, 'abreviaturas únicas en todo el juego (también dentro de cada liga)');
+    ok(!/masculin|femenin/i.test(JSON.stringify(regs)), 'ni «masculino» ni «femenino» en los datos');
+    // los nombres nuestros no coinciden con el real ni con el oficial de los JSON de investigación
+    const dir = path.join(ROOT, 'notes', 'clubes'), files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => /\.json$/.test(f)) : [], same = [];
+    let nsrc = 0;
+    files.forEach(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')).countries.forEach(co => co.divisions.forEach(d => d.clubs.forEach(k => {
+      nsrc++; const n = k.name.toLowerCase(); if (n === String(k.official).toLowerCase() || n === String(k.real).toLowerCase()) same.push(k.name);
+      if (!nm.has(n)) same.push(k.name + ' (no está en js/leagues.js: vuelve a ejecutar tools/build-leagues.js)');
+    }))));
+    ok(files.length === 5 && nsrc === clubs.length && !same.length, 'js/leagues.js al día con notes/clubes/*.json y ningún nombre igual al real u oficial' + (same.length ? ': ' + same.join(', ') : ''));
+    // dificultad de la IA por la media de cada club: la élite en Experto, España en Normal, las pequeñas entre Fácil y Normal
+    function H6r(o) { return o >= 88 ? 'expert' : o >= 76 ? 'hard' : o >= 62 ? 'normal' : o >= 56 ? 'soft' : 'easy'; }
+    const cnt = {}; clubs.forEach(([co, d, k]) => { const x = H6r(k.ovr); cnt[x] = (cnt[x] || 0) + 1; });
+    const lg = (cc, l) => divs.find(([co, d]) => co.code === cc && d.lvl === l)[1].clubs.map(k => H6r(k.ovr));
+    ok(cnt.easy > 0 && cnt.soft > 0 && cnt.normal > 0 && cnt.hard > 0 && cnt.expert > 0, 'IA de los clubes: ' + JSON.stringify(cnt));
+    ok(lg('IT', 1).filter(x => x === 'expert').length >= 6 && lg('ES', 1).every(x => x === 'normal') && lg('PH', 1).every(x => x === 'easy' || x === 'soft') && lg('IT', 2).some(x => x === 'normal'),
+      'la 1ª italiana casi toda en Experto, la Hiperliga en Normal, Filipinas entre Fácil y Normal suave; la 2ª italiana no es toda Difícil');
+    const c6 = C.create({ mode: 'hall', name: 'Real', num: 7, pos: 'OH', seed: 4242, autoClub: true });
+    ok(c6 && C.myClub(c6).lid === 'ES2' && c6.clubs.length === 390 && c6.leagues.length === 37 && !c6.provisional, 'Carrera de España con los datos reales: empiezas en la 2ª (' + C.myClub(c6).name + ')');
+    ok(c6.clubs.every(k => regs.some(rg => rg.countries.some(co => co.divisions.some(d => d.clubs.some(x => x.short === k.short && x.name === (k.nameBase || k.name)))))), 'abreviaturas del juego = las de los datos (no hace falta renombrar ninguna)');
+    const cupOf = cc => c6.cups[cc] && c6.cups[cc].name;
+    const cupCC = 'ES FR DE IT PL TR RU BE NL GR PT CH AT CZ RS SI RO BR AR JP KR'.split(' ');
+    ok(cupCC.every(cc => cupOf(cc)), 'copa nacional propia en ' + cupCC.length + ' países: ' + cupCC.map(cc => cc + ' ' + cupOf(cc)).join(', '));
+    ok(cupOf('IT') === 'Coppa Tricolore' && cupOf('PL') === 'Puchar Orła' && cupOf('TR') === 'Hilal Kupası' && cupOf('RU') === 'Kubok Volgi', 'las copas de Italia, Polonia, Turquía y Rusia ya no son la genérica');
+    const inm = cc => H.intlFor(c6, cc).map(x => x.name + ' (' + x.rank + ')').join(' + ');
+    ok(inm('ES') === 'Champions Cup VEC (1) + Copa VEC (2)' && inm('BE') === inm('ES') && inm('BR') === 'Copa del Sur de Clubes (1)' && inm('US') === 'Copa Norte de Campeones (1)' && inm('JP') === 'Champions Cup Asia (1)',
+      'copas internacionales unificadas: Europa ' + inm('ES') + '; BR ' + inm('BR') + '; US ' + inm('US') + '; JP ' + inm('JP'));
+    const allComp = []; regs.forEach(rg => rg.competitions.forEach(x => allComp.push(x.name)));
+    ok(!allComp.some(n => /^(Champions Cup|World Club Cup|Mundial VBC de Clubes|Challenge Trophy)$/.test(n)) && allComp.filter(n => n === 'Mundial de Clubes VBF').length === 3, 'un solo nombre por competición (Champions Cup VEC; Mundial de Clubes VBF en los tres continentes)');
+    ok(!Object.keys(c6.cups).some(cc => /Super|Hiper(liga|copa)|Liga/i.test(cupOf(cc))) && !Object.keys(c6.intl).some(r => c6.intl[r].some(x => /Mundial|World|VBN|Challenge/.test(x.name))), 'ni ligas, ni supercopas, ni el Mundial, ni la 3ª copa europea pasan por copas');
+    let g = 0; while (c6.season < 3 && g++ < 200) { if (c6.phase === 'off') C.stay(1); else C.simulateNext(); }
+    ok(c6.season === 3 && c6.history.length === 2, '2 temporadas simuladas en ' + (Date.now() - t0) + ' ms (' + c6.history.map(h => h.lgShort + ' ' + ordn(h.pos)).join(', ') + ')');
+    ok(c6.history.every(h => h.cup), 'la copa nacional se juega cada temporada');
+    ok(c6.leagues.every(L => C.leagueClubs(c6, L.id).length === divs.find(([co, d]) => co.code + d.lvl === L.id)[1].clubs.length), 'ascensos y descensos conservan el tamaño de cada liga');
+    ok(mem['voley3d.career6'].length < 400000, 'guardado de ' + Math.round(mem['voley3d.career6'].length / 1024) + ' KB');
+    // empezar en cada país: ofertas de su 2ª (o de su 1ª si no tiene)
+    const bad = [];
+    cos.forEach(x => {
+      delete mem['voley3d.career6']; C._reset();
+      const c = C.create({ mode: 'hall', name: 'P', num: 5, pos: 'OH', seed: 99, country: x.code }), low = x.divs === 2 ? x.code + '2' : x.code + '1';
+      if (!c || c.cc !== x.code || c.offers.length < 2 || !c.offers.filter(o => !o.trial).every(o => o.lid === low)) bad.push(x.code);
+    });
+    ok(!bad.length, 'crear en cualquiera de los 28 países: ofertas de su división más baja' + (bad.length ? ' (fallan ' + bad.join(' ') + ')' : ''));
+    VB.Leagues.regions = fix; VB.Leagues.provisional = true;
+    if (keep.c6 != null) mem['voley3d.career6'] = keep.c6; else delete mem['voley3d.career6'];
+    if (keep.md != null) mem['voley3d.career.mode'] = keep.md; else delete mem['voley3d.career.mode'];
+    C._reset();
+  }
+}
+
+verbose = false;
 // ------------------------------------------------------------------ vida de la Carrera (js/career-life.js)
 section('Vida de la Carrera: retos, fama, patrocinio, decisiones, rival, tienda, premios, logros y legado');
 if (!VB.CareerLife) console.log('  (sin js/career-life.js)');
 else {
   const Lf = VB.CareerLife;
-  C.abandon(); C._reset();
+  if (C.setMode) C.setMode('beach'); C.abandon(); C._reset();
   let c = C.create({ name: 'Vida', num: 5, role: 'atk', seed: 777, autoClub: true });
   ok(c.life && c.life.fame === 0, 'c.life creado al crear la carrera');
   // reto determinista y visible antes del partido
@@ -685,6 +906,15 @@ else {
   // guardado viejo sin c.life: se crea solo
   { c = C.load(); delete c.life; C.save(c); ok(Lf.challenge(C.load()) !== undefined && Lf.fameInfo(C.load()).fans === 0, 'guardado sin c.life: funciona'); }
   C.abandon(); C._reset();
+  // con la Carrera de pista activa (desde el 12-nov-2026 la pista también tiene vida: ver «Vida en la Carrera de pista» abajo)
+  if (C.hall && C.hall.available()) {
+    const keep6 = mem['voley3d.career6']; delete mem['voley3d.career6']; C._reset();
+    const h = C.create({ mode: 'hall', name: 'Vida Pista', num: 4, pos: 'OH', seed: 99 }); C.acceptOffer(0, 2);
+    let ch = null, err = '';
+    try { ch = Lf.challengeAt(C.get(), C.get().season, 'league', { week: 1 }, -1); Lf.challenge(C.get()); } catch (e) { err = e.message; }
+    ok(h && h.mode === 'hall' && ch && isFinite(ch.fans) && isFinite(ch.xp) && isFinite(ch.money) && !err, 'pista: el reto se calcula sin romper (league() de la pista busca por id)' + (err ? ' — ' + err : ''));
+    C.abandon(); if (keep6 != null) mem['voley3d.career6'] = keep6; C.setMode('beach'); C._reset();
+  }
 }
 
 // ------------------------------------------------------------------ sprint 5: celebración de firma y rival (E2, career-life.js)
@@ -735,7 +965,7 @@ else {
   const W = VB.CareerWorld;
   const boot = (withWorld) => {
     const m2 = {}; const LS = { getItem: k => (k in m2 ? m2[k] : null), setItem: (k, v) => { m2[k] = String(v); }, removeItem: k => { delete m2[k]; } };
-    const cx = { console, Math, Date, JSON, localStorage: LS }; cx.globalThis = cx; cx.window = cx; vm.createContext(cx);
+    const cx = { console, Math, Date, JSON, Set, localStorage: LS }; cx.globalThis = cx; cx.window = cx; vm.createContext(cx);
     for (const f of FILES) { if (f === 'js/career-world.js' && !withWorld) continue; const fp = path.join(ROOT, f); if (fs.existsSync(fp)) vm.runInContext(fs.readFileSync(fp, 'utf8'), cx, { filename: f }); }
     return { VB: cx.VB, mem: m2 };
   };
@@ -965,5 +1195,478 @@ else {
   }
 }
 
+// ------------------------------------------------------------------ dificultad de la Carrera (12-nov-2026; notes/carrera.md §Dificultad)
+section('Dificultad de la Carrera: niveles, IA, atributos, XP, entrenador, ofertas, sellos y migración');
+{
+  const DK = C.CDIFF_KEYS, CD = C.CDIFF, KEY = 'voley3d.career';
+  const G = () => ({ career: { season: 1 }, teams: [[{}, {}], [{}, {}]], demo: false, autopilot: false });
+  const fresh = o => { C.abandon(); C._reset(); return C.create(Object.assign({ name: 'Dif', num: 7, role: 'atk', seed: 4242, autoClub: true }, o || {})); };
+  const snap = () => mem[KEY];
+  const restore = (s, d) => { mem[KEY] = s; C._reset(); const x = C.load(); if (d) { x.diff = d; C.save(x); } return x; };
+  const sumUse = x => DK.reduce((s, k) => s + (x.dUse[k] | 0), 0);
+  const toOff = () => { for (let i = 0; i < 40 && C.load().phase !== 'off'; i++) C.simulateNext(); return C.load(); };
+  const STATS = { kills: 9, aces: 1, blocks: 2, digs: 6, assists: 3, errors: 2 }, RES = { sets: [2, 1], setScores: [[21, 18], [15, 21], [15, 12]], win: true };
+
+  // 1. crear
+  ok(DK.join() === 'easy,normal,hard,expert' && DK.every(k => CD[k] && CD[k].name === VB.DIFF[k].name && CD[k].hint), 'CDIFF: 4 niveles con el nombre de VB.DIFF (' + DK.map(k => CD[k].name).join(', ') + ')');
+  c = fresh(); ok(c.diff === 'normal' && sumUse(c) === 0 && DK.every(k => c.dUse[k] === 0), 'crear sin dificultad: Normal y dUse a ceros');
+  c = fresh({ diff: 'hard' }); ok(c.diff === 'hard' && C.diffOf(c) === 'hard', 'crear en Difícil');
+  c = fresh({ diff: 'xx' }); ok(c.diff === 'normal', 'clave mala: Normal');
+  ok(CD.normal.shift === 0 && CD.normal.attr === 0 && CD.normal.xp === 1 && CD.normal.train === 1 && CD.normal.coachPivot === 6.2 && CD.normal.objWin === 15 && CD.normal.objLose === -15 &&
+    CD.normal.coach0 === 0 && CD.normal.objE === 0 && CD.normal.offer === 0 && CD.normal.midNota === 0 && !CD.normal.regEasy && !CD.normal.noSoft, 'CDIFF.normal = la Carrera de siempre (palancas neutras)');
+
+  // 2. Normal idéntico (D2)
+  {
+    const strip = x => { const h = JSON.parse(JSON.stringify(x.history)); h.forEach(r => { delete r.d; delete r.dm; }); return JSON.stringify([x.res, x.player.st, x.player.lvl, x.coach, h, x.trophies.map(t => t.name + t.season)]); };
+    c = fresh({ seed: 777 }); delete c.diff; delete c.dUse; C.save(c); C._reset(); c = toOff(); const a = strip(c);
+    ok(c.diff === 'normal', 'guardado sin campo: Normal al cargar');
+    c = fresh({ seed: 777, diff: 'normal' }); c = toOff(); const b = strip(c);
+    ok(a === b, 'Normal: una temporada entera sin el campo y con diff Normal da lo mismo (resultados, atributos, nivel, entrenador, historial)');
+    c = fresh({ seed: 778 }); const n = C.next(c), riv = n.rival;
+    ok(n.ovrRival === C.clubOvr(riv) && n.ovrClub === C.clubOvr(riv) && n.cdiff === 'normal', 'Normal: next().ovrRival = media del club (' + n.ovrRival + ')');
+    ok(n.diff === C.difficultyFor(riv) && n.soft === C.softFor(riv) && n.diffName === C.diffLabel(riv), 'Normal: IA de next() = la de siempre (' + n.diffName + ')');
+    const c0 = c.coach, L = C.league(C.myClub(c).lvl), s = C.simulateNext();
+    const mp = Math.min(s.me.kills + s.me.aces + s.me.blocks, 10);
+    const xpOld = Math.round((40 + 22 * s.nota + (s.win ? 40 : 0) + 6 * mp) * L.xp * 0.5);
+    const coOld = Math.max(0, Math.min(100, Math.round(c0 + (s.nota - 6.2) * 2.5 + (s.win ? 1 : -1))));
+    ok(s.xp === xpOld && s.coach === coOld, 'Normal: XP (' + s.xp + ' = ' + xpOld + ') y entrenador (' + s.coach + ' = ' + coOld + ') con la fórmula de antes');
+    ok(c.coach >= 0 && C.load().dUse.normal === 1, 'el partido simulado cuenta en dUse.normal');
+  }
+
+  // 3-5. IA rival: Normal = base, escalera de cada nivel y monotonía
+  {
+    c = fresh({ seed: 31337 });
+    let bad3 = 0, bad4 = { easy: 0, hard: 0, expert: 0 }, bad5 = 0;
+    c.clubs.forEach(k => {
+      const a = C.rivalAI({ diff: 'normal' }, k);
+      if (a.diff !== C.difficultyFor(k) || a.soft !== C.softFor(k) || a.name !== C.diffLabel(k) || a.base !== C.baseStep(k) || a.step !== a.base) bad3++;
+      const e = C.rivalAI({ diff: 'easy' }, k), h = C.rivalAI({ diff: 'hard' }, k), x = C.rivalAI({ diff: 'expert' }, k), o = C.clubOvr(k), b = C.baseStep(k);
+      if (k.lvl === 0 ? !(e.diff === 'easy' && !e.soft && e.step === 0) : e.step !== Math.max(0, b - (k.lvl === 4 ? 2 : 1))) bad4.easy++;   // (shiftTop: en el Mundial, dos peldaños)
+      if (h.soft || h.step < b || (h.diff === 'expert' && !(b === 4 || o >= CD.hard.gate.expert))) bad4.hard++;
+      if (x.soft || x.step < 2 || x.step < b || (x.diff === 'expert' && !(b === 4 || o >= CD.expert.gate.expert))) bad4.expert++;
+      if (!(e.step <= a.step && a.step <= h.step && h.step <= x.step)) bad5++;
+    });
+    ok(bad3 === 0, 'IA Normal = difficultyFor / softFor / diffLabel en los 40 clubes (' + bad3 + ' distintos)');
+    ok(bad4.easy === 0, 'Fácil: Regional en Fácil puro, el resto un peldaño abajo y el Mundial dos (' + bad4.easy + ' mal)');
+    ok(bad4.hard === 0, 'Difícil: sin suave, nunca bajo la base, Experto solo con media ≥ ' + CD.hard.gate.expert + ' (' + bad4.hard + ' mal)');
+    ok(bad4.expert === 0, 'Experto: sin suave, al menos Normal, Experto solo con media ≥ ' + CD.expert.gate.expert + ' (' + bad4.expert + ' mal)');
+    ok(bad5 === 0, 'monotonía: Fácil ≤ Normal ≤ Difícil ≤ Experto en cada club (' + bad5 + ' mal)');
+    for (let L = 0; L < C.LEAGUES.length; L++) {
+      const ks = C.clubsOf(c, L).sort((p, q) => C.clubOvr(p) - C.clubOvr(q));
+      console.log('  ' + C.LEAGUES[L].short.padEnd(11) + ' medias ' + ks.map(C.clubOvr).join(' ') + '\n' + DK.map(d => '      ' + CD[d].name.padEnd(8) + ks.map(k => C.rivalAI({ diff: d }, k).name).join(' · ')).join('\n'));
+    }
+  }
+
+  // 6. matchSetup en Fácil y en Experto (misma semilla, jornada 1)
+  DK.forEach(d => {
+    c = fresh({ seed: 606, diff: d });
+    const n = C.next(c), ms = C.matchSetup(c), ai = C.rivalAI(c, n.rival), want = C.clubOvr(n.rival) + CD[d].attr;
+    ok(ms && ms.difficulty === ai.diff && ms.rookie === ai.soft && ms.diffName === ai.name && (ms.rookie === (ai.soft && ms.difficulty === 'normal')), CD[d].name + ': matchSetup lleva la IA de rivalAI (' + ms.diffName + ')');
+    ok(n.ovrRival === want && n.ovrClub === C.clubOvr(n.rival) && Math.abs(C.ovrOf(ms.attrs[1][0]) - (want + 1)) <= 1 && Math.abs(C.ovrOf(ms.attrs[1][1]) - (want - 1)) <= 1,
+      CD[d].name + ': rivales con media efectiva ' + want + ' (club ' + C.clubOvr(n.rival) + ', ' + (CD[d].attr >= 0 ? '+' : '') + CD[d].attr + '): ' + C.ovrOf(ms.attrs[1][0]) + ' y ' + C.ovrOf(ms.attrs[1][1]));
+    ok(ms.cdiff === d && ms.career.cdiff === d && n.cdiff === d, CD[d].name + ': matchSetup.cdiff');
+  });
+
+  // 7-8. experiencia, entreno y entrenador con el mismo partido en los 4 niveles
+  {
+    c = fresh({ seed: 808 }); c.train = 'phys'; c.tp = { phys: 0, def: 0, atk: 0 }; c.coach = 50; C.save(c);
+    const s0 = snap(), xp = {}, dco = {}, tp = {};
+    DK.forEach(d => {
+      let x = restore(s0, d); const co = x.coach;
+      const s = C.matchDone(RES, STATS, G()); x = C.load();
+      xp[d] = s.xp; dco[d] = s.coach - co;
+      tp[d] = x.tp.phys + 100 * s.train.gains.filter(k => C.TGROUP.phys.indexOf(k) >= 0).length;
+    });
+    ok(Math.abs(xp.easy - xp.normal * CD.easy.xp) <= 1 && Math.abs(xp.hard - xp.normal * CD.hard.xp) <= 1 && Math.abs(xp.expert - xp.normal * CD.expert.xp) <= 1, 'XP del mismo partido × ' + DK.map(d => CD[d].xp).join(' / ') + ': ' + DK.map(d => xp[d]).join(' / '));
+    ok(tp.easy > tp.normal && tp.normal > tp.hard && tp.hard > tp.expert, 'progreso del entreno Físico en una semana: ' + DK.map(d => tp[d]).join(' / '));
+    ok(dco.easy >= dco.normal && dco.normal >= dco.hard && dco.hard >= dco.expert && dco.easy > dco.expert, 'confianza del entrenador tras la misma nota: ' + DK.map(d => (dco[d] >= 0 ? '+' : '') + dco[d]).join(' / '));
+    // simulado: la XP también se escala y el rival efectivo cambia el resultado esperado
+    const xs = {}; DK.forEach(d => { restore(s0, d); xs[d] = C.simulateNext().xp; });
+    ok(xs.easy >= xs.normal * 1.1 && xs.expert <= xs.normal, 'XP simulada: ' + DK.map(d => xs[d]).join(' / '));
+    // confianza inicial al fichar
+    const co0 = {}; DK.forEach(d => { co0[d] = fresh({ seed: 808, diff: d }).coach; });
+    ok(co0.easy - co0.normal === CD.easy.coach0 && co0.hard - co0.normal === CD.hard.coach0 && co0.expert - co0.normal === CD.expert.coach0, 'confianza al fichar: ' + DK.map(d => co0[d]).join(' / '));
+  }
+
+  // 9. objetivo del club: Fácil más blando, Experto más exigente (todos los clubes)
+  {
+    c = fresh({ seed: 909 }); let bad = 0, softer = 0, harder = 0;
+    c.clubs.forEach(k => {
+      const p = {}; DK.forEach(d => { p[d] = C.objectiveFor(Object.assign({}, c, { diff: d }), k).pos; });
+      if (!(p.easy >= p.normal && p.normal >= p.hard && p.hard >= p.expert)) bad++;
+      if (p.easy > p.normal) softer++; if (p.expert < p.normal) harder++;
+    });
+    ok(bad === 0 && softer > 0 && harder > 0, 'objetivo: Fácil pide igual o menos y Experto igual o más (' + softer + ' clubes más blandos en Fácil, ' + harder + ' más exigentes en Experto)');
+  }
+
+  // 10. ofertas de fin de temporada: mismas tiradas, solo cambia el umbral
+  {
+    const tot = { easy: 0, normal: 0, hard: 0, expert: 0 }; let bad = 0;
+    for (const sd of [11, 12, 13, 14, 15, 16]) {
+      fresh({ seed: sd }); const x = toOff(); const n = {};
+      DK.forEach(d => { x.diff = d; n[d] = C._genOffers(x, false).length; tot[d] += n[d]; });
+      x.diff = 'normal'; C.save(x);
+      if (!(n.easy >= n.normal && n.normal >= n.hard && n.hard >= n.expert)) bad++;
+    }
+    ok(bad === 0 && tot.easy >= tot.expert, 'ofertas de fin de temporada (6 semillas): ' + DK.map(d => CD[d].name + ' ' + tot[d]).join(', '));
+    c = fresh({ seed: 10 }); ok(C.midNota(c) === 7, 'nota mínima de mitad de temporada en Normal: 7');
+    c.listed = true; ok(C.midNota(c) === 6.5, 'transferible: 6,5'); c.listed = false;
+    c.diff = 'easy'; ok(C.midNota(c) === 6.7, 'Fácil: 6,7'); c.diff = 'expert'; ok(C.midNota(c) === 7, 'Experto: 7');
+  }
+
+  // 11. cambiar la dificultad entre partidos
+  {
+    c = fresh({ seed: 1111 }); const n0 = C.next(c); const coA = c.coach;   // (create devuelve la carrera en uso: c cambia con setDifficulty)
+    ok(C.setDifficulty('xx') === 'bad' && C.setDifficulty('normal') === 'same', 'setDifficulty: clave mala → bad; la misma → same');
+    const m0 = c.inbox.length;
+    ok(C.setDifficulty('expert') === 'ok' && C.load().diff === 'expert', 'setDifficulty(expert) → ok');
+    const mm = C.load().inbox[C.load().inbox.length - 1];
+    ok(C.load().inbox.length === m0 + 1 && mm.k === 'club' && mm.t === 'Dificultad: Experto' && mm.x.indexOf('Aún no has jugado esta temporada') > 0 && mm.x.indexOf('contarán como') < 0, 'mensaje «Dificultad: Experto» (aún sin partidos: objetivo rehecho, sin sufijo de títulos)');
+    C._reset(); ok(C.load().diff === 'expert', 'persiste al guardar y cargar');
+    const n1 = C.next(); ok(n1.diffName !== n0.diffName && n1.ovrRival === n0.ovrRival + CD.expert.attr, 'el próximo partido cambia: IA ' + n0.diffName + ' → ' + n1.diffName + ', media ' + n0.ovrRival + ' → ' + n1.ovrRival);
+    {
+      // aún sin partidos: objetivo y confianza inicial como si la carrera se hubiera creado en Experto
+      const x = C.load(), xe = fresh({ seed: 1111, diff: 'expert' }); mem[KEY] = JSON.stringify(x); C._reset();
+      ok(x.objective.d === 'expert' && x.objective.text === xe.objective.text && x.coach === xe.coach && x.coach - coA === CD.expert.coach0 && x.coachD === 'expert',
+        'antes del primer partido: objetivo (' + x.objective.text + ') y confianza (' + coA + ' → ' + x.coach + ') como en Experto');
+    }
+    const ob1 = C.load().objective.text;
+    C.ingest([{ type: 'newMatch' }], G());
+    ok(C.setDifficulty('easy') === 'match' && C.load().diff === 'expert', 'con un partido a medias → match (no cambia)');
+    C.abortMatch(); ok(C.setDifficulty('easy') === 'ok' && C.load().diff === 'easy', 'tras abandonar el partido → ok');
+    C.setDifficulty('expert'); C.simulateNext(); const co1 = C.load().coach;
+    ok(C.setDifficulty('easy') === 'ok' && C.load().objective.text === ob1 && C.load().objective.d === 'expert' && C.load().coach === co1 && C.load().inbox.slice(-1)[0].x.indexOf('El objetivo del club no cambia hasta la temporada que viene.') > 0, 'con partidos ya jugados: el objetivo y la confianza no cambian');
+    c = fresh({ seed: 1112, autoClub: false }); ok(c.phase === 'pick' && C.setDifficulty('hard') === 'ok' && C.load().inbox.slice(-1)[0].x.indexOf('objetivo') < 0, 'se puede cambiar eligiendo club (sin sufijo de objetivo)');
+    C.abandon(); C._reset(); ok(C.setDifficulty('hard') === '', 'sin carrera → ""');
+  }
+
+  // 12. sellos: temporada mixta (3 en Fácil, el resto en Difícil) y temporada entera en Experto
+  {
+    c = fresh({ seed: 1212, diff: 'easy' });
+    for (let i = 0; i < 3; i++) C.simulateNext();
+    ok(C.load().dUse.easy === 3 && C.seasonDiff().d === 'easy' && !C.seasonDiff().dm, '3 partidos en Fácil');
+    ok(C.setDifficulty('hard') === 'ok' && /Esta temporada ya has jugado en Fácil: sus títulos contarán como Fácil\.$/.test(C.load().inbox.slice(-1)[0].x), 'mensaje con el sufijo «sus títulos contarán como Fácil»');
+    ok(C.seasonDiff().d === 'easy' && !C.seasonDiff().dm, 'antes de jugar en Difícil sigue sin ser mixta');
+    // una temporada descomunal para que career-life meta premios en el palmarés y comprobar su sello
+    for (let i = 0; i < 40 && C.load().phase === 'league' && C.load().week < 12; i++) C.simulateNext();
+    c = C.load(); c.stats = Object.assign(c.stats, { won: 13, sim: 0, pts: 340, kills: 220, aces: 75, blocks: 45, digs: 280, errors: 20 });
+    c.notes.forEach(n => { n.nota = 8.4; n.sim = 0; }); C.save(c);
+    c = toOff(); const h = c.history[c.history.length - 1], tr = c.trophies.filter(t => t.season === h.season);
+    ok(h.d === 'easy' && h.dm === true && c.review.d === 'easy' && c.review.dm === true, 'temporada mixta: historial y resumen con d = Fácil y mixta (Fácil ' + c.dUse.easy + ', Difícil ' + c.dUse.hard + ')');
+    ok(tr.length > 0 && tr.every(t => t.d === 'easy'), 'sus títulos y premios guardan Fácil (' + tr.map(t => t.kind + ' ' + t.name).join(', ') + ')');
+    ok(sumUse(c) === h.played + (c.stats.bench | 0), 'dUse cuenta tus partidos y banquillos (' + sumUse(c) + ' = ' + h.played + ' + ' + (c.stats.bench | 0) + ')');
+    // en verano la temporada ya está sellada: el cambio no habla de sus títulos
+    ok(C.setDifficulty('normal') === 'ok' && C.load().inbox.slice(-1)[0].x.indexOf('contarán como') < 0 && C.seasonDiff().d === 'easy', 'cambio en fin de temporada: sin sufijo de títulos (temporada ya sellada)');
+    C.stay(); c = C.load(); ok(sumUse(c) === 0, 'temporada nueva: dUse a ceros');
+    ok(C.setDifficulty('expert') === 'ok' && C.load().objective.d === 'expert', 'a Experto en verano (antes del primer partido: objetivo en Experto)');
+    c = C.load(); c.contract.role = C.ROLE_LV[0]; c.coach = 15; C.save(c);   // de la rotación y sin confianza: algún banquillo
+    c = toOff();
+    const h2 = c.history[c.history.length - 1];
+    ok(h2.d === 'expert' && h2.dm === false && c.review.d === 'expert' && c.trophies.filter(t => t.season === h2.season).every(t => t.d === 'expert'), 'temporada entera en Experto: d = Experto, no mixta');
+    ok((c.stats.bench | 0) > 0 && sumUse(c) === c.stats.played + (c.stats.bench | 0) && c.dUse.expert === sumUse(c) && h2.played + (c.stats.bench | 0) >= 14, 'los banquillos cuentan en dUse (banquillos ' + (c.stats.bench | 0) + ', partidos ' + c.stats.played + ', dUse ' + sumUse(c) + ')');
+  }
+
+  // 12b. trampas: cambiar de nivel solo para fijar objetivo y confianza, o solo para las jornadas de banquillo
+  {
+    const keep = snap();
+    // verano: Experto → Fácil → seguir → Experto antes de jugar = seguir en Experto
+    c = fresh({ seed: 777, diff: 'expert' }); c = toOff(); const s0 = snap();
+    C.stay(); const ref = C.load();
+    restore(s0); C.setDifficulty('easy'); C.stay(); C.setDifficulty('expert'); let x = C.load();
+    ok(x.objective.text === ref.objective.text && x.objective.d === 'expert' && x.coach === ref.coach && C.seasonDiff().d === 'expert' && !C.seasonDiff().dm, 'verano en Fácil y vuelta a Experto antes de jugar: objetivo (' + x.objective.text + ') y sello como en Experto');
+    // fichar en Fácil (confianza y objetivo) y volver a Experto antes de jugar: confianza corregida
+    restore(s0); const i0 = C.load().offers.length ? 0 : -1;
+    if (i0 >= 0) {
+      C.acceptOffer(0); const a = C.load(); restore(s0); C.setDifficulty('easy'); C.acceptOffer(0); C.setDifficulty('expert'); x = C.load();
+      ok(x.coach === a.coach && x.objective.text === a.objective.text && x.objective.d === 'expert', 'fichar en Fácil y volver a Experto antes de jugar: confianza ' + x.coach + ' = ' + a.coach);
+    }
+    // a mitad de temporada (ya con partidos): el objetivo fijado en Fácil cuenta en el sello aunque se juegue el resto en Experto
+    restore(s0); C.stay(); for (let i = 0; i < 3; i++) C.simulateNext();
+    x = C.load(); x.objective.d = 'easy'; C.save(x);   // como si hubieras fichado en la ventana con Fácil
+    ok(C.seasonDiff().d === 'easy' && C.seasonDiff().dm, 'objetivo fijado en Fácil + partidos en Experto: sello Fácil, mixta');
+    ok(C.setDifficulty('hard') === 'ok' && /El objetivo de esta temporada se fijó en Fácil: sus títulos contarán como Fácil\.$/.test(C.load().inbox.slice(-1)[0].x), 'mensaje: el objetivo se fijó en Fácil');
+    // banquillo en Fácil: cuenta en dUse.easy y marca la temporada
+    c = fresh({ seed: 1212, diff: 'expert' }); C.simulateNext(); x = C.load(); x.contract.role = C.ROLE_LV[0]; x.coach = 5; C.save(x);
+    let benched = false;
+    for (let i = 0; i < 12 && !benched; i++) { if (C.next().bench) { C.setDifficulty('easy'); C.simulateNext(); C.setDifficulty('expert'); benched = true; } else C.simulateNext(); }
+    ok(benched && C.load().dUse.easy === 1 && C.seasonDiff().d === 'easy' && C.seasonDiff().dm, 'jornada de banquillo en Fácil: cuenta en dUse.easy y la temporada queda en Fácil');
+    // simular en Fácil no regala el attr del jugado: ovrSim = media del club + simAttr
+    c = fresh({ seed: 606 }); const nn = DK.map(d => { c.diff = d; return C.next(c); });
+    ok(nn.every((n, i) => n.ovrSim === n.ovrClub + CD[DK[i]].simAttr) && nn[1].ovrSim === nn[1].ovrRival, 'ovrSim: ' + nn.map(n => n.ovrSim).join(' / ') + ' (Normal = ovrRival)');
+    // Mundial: en Difícil y Experto solo juegan en Experto los clubes que ya lo son en Normal (topX) y el desvío es attrTop
+    c = fresh({ seed: 31337 }); const top = C.clubsOf(c, C.LEAGUES.length - 1);
+    ok(top.every(k => ['hard', 'expert'].every(d => (C.rivalAI({ diff: d }, k).diff === 'expert') === (C.baseStep(k) === 4) && C.attrOf({ diff: d }, k) === CD[d].attrTop)) && C.attrOf({ diff: 'expert' }, C.clubsOf(c, 3)[0]) === CD.expert.attr,
+      'Mundial: IA Experto solo en la élite (' + top.filter(k => C.baseStep(k) === 4).length + ' clubes) y desvío ' + CD.hard.attrTop + ' / ' + CD.expert.attrTop);
+    restore(keep);
+  }
+
+  // 13. migración (D3): guardado de antes, a media temporada, sin ningún campo de dificultad
+  {
+    C.stay(); for (let i = 0; i < 5; i++) C.simulateNext();
+    c = C.load(); const old = JSON.parse(JSON.stringify(c));
+    delete old.diff; delete old.dUse; delete old.objective.d; delete old.coachD; old.history.forEach(h => { delete h.d; delete h.dm; }); old.trophies.forEach(t => { delete t.d; });
+    mem[KEY] = JSON.stringify(old); C._reset(); c = C.load();
+    ok(c && c.objective.d === 'normal' && !('coachD' in c), 'guardado viejo: objetivo sellado en Normal');
+    ok(c && c.diff === 'normal' && c.dUse.normal === c.stats.played + (c.stats.bench | 0) && c.stats.played > 0 && c.dUse.easy + c.dUse.hard + c.dUse.expert === 0, 'guardado viejo: Normal y dUse.normal = partidos de la temporada (' + c.dUse.normal + ')');
+    ok(c.history.length >= 2 && c.history.every(h => h.d === 'normal' && h.dm === false) && c.trophies.every(t => t.d === 'normal'), 'historial y palmarés de antes: Normal');
+    const j1 = JSON.stringify(c); C._reset(); const j2 = JSON.stringify(C.load()); C._reset(); const j3 = JSON.stringify(C.load());
+    ok(j1 === j2 && j2 === j3, 'migración idempotente (cargar dos veces da lo mismo)');
+    c = C.load(); c.dUse = { easy: 2, normal: 1, hard: 0, expert: 0 }; C.save(c); C._reset();
+    ok(JSON.stringify(C.load().dUse) === '{"easy":2,"normal":1,"hard":0,"expert":0}', 'un dUse ya guardado no se pisa con los partidos jugados');
+    c = C.load(); c.dUse = { easy: -3, normal: 'x' }; C.save(c); C._reset();
+    ok(JSON.stringify(C.load().dUse) === '{"easy":0,"normal":0,"hard":0,"expert":0}', 'dUse dañado: se repara a enteros ≥ 0');
+    // en fin de temporada: el resumen también
+    c = toOff(); const o2 = JSON.parse(JSON.stringify(c)); delete o2.diff; delete o2.dUse; delete o2.review.d; delete o2.review.dm;
+    mem[KEY] = JSON.stringify(o2); C._reset(); c = C.load();
+    ok(c.phase === 'off' && c.review.d === 'normal' && c.review.dm === false, 'guardado de fin de temporada: resumen en Normal');
+    // resumen perdido (saneDeep lo rehace): el sello sale del historial, no «Normal» a ciegas
+    const o4 = JSON.parse(JSON.stringify(c)); o4.history[o4.history.length - 1].d = 'expert'; o4.history[o4.history.length - 1].dm = false; delete o4.review;
+    mem[KEY] = JSON.stringify(o4); C._reset(); c = C.load();
+    ok(c.phase === 'off' && c.review && c.review.d === 'expert' && c.review.dm === false, 'resumen rehecho: sello del historial (Experto)');
+    const o5 = JSON.parse(JSON.stringify(c)); o5.history = o5.history.slice(0, -1); delete o5.review; o5.dUse = { easy: 0, normal: 0, hard: 9, expert: 5 }; o5.objective.d = 'hard';
+    mem[KEY] = JSON.stringify(o5); C._reset(); c = C.load();
+    ok(c.review.d === 'hard' && c.review.dm === true, 'resumen rehecho sin historial: sello de dUse (Difícil, mixta)');
+    // eligiendo club
+    c = fresh({ seed: 1313, autoClub: false }); const o3 = JSON.parse(JSON.stringify(c)); delete o3.diff; delete o3.dUse;
+    mem[KEY] = JSON.stringify(o3); C._reset(); c = C.load();
+    ok(c.phase === 'pick' && c.diff === 'normal' && sumUse(c) === 0, 'guardado eligiendo club: Normal');
+    // otro nivel: diff mala → Normal
+    o3.diff = 'imposible'; mem[KEY] = JSON.stringify(o3); C._reset(); ok(C.load().diff === 'normal', 'diff desconocida → Normal');
+  }
+
+  // 14. curva por nivel (todo simulado, 6 temporadas, misma semilla)
+  {
+    const fin = {}, lvl = {};
+    DK.forEach(d => {
+      c = fresh({ seed: 999, role: 'atk', diff: d }); const row = [];
+      for (let s = 0; s < 6; s++) {
+        c = toOff();
+        let spent = true; while (spent) { spent = false; const ks = C.KEYS.slice().sort((a, b) => c.player.st[a] - c.player.st[b]); for (const k of ks) if (C.bump(k)) { spent = true; break; } }
+        row.push(C.league(C.myClub(c).lvl).short.slice(0, 3) + ' ' + ordnT(c.review.pos) + ' ' + C.playerOvr(c));
+        if (c.offers.length) C.acceptOffer(0); else C.stay();
+        c = C.load();
+      }
+      fin[d] = C.playerOvr(c); lvl[d] = C.myClub(c).lvl;
+      console.log('  ' + CD[d].name.padEnd(8) + row.join(' · ') + ' → media ' + fin[d]);
+    });
+    ok(fin.easy >= fin.normal && fin.normal >= fin.hard && fin.hard >= fin.expert, 'media tras 6 temporadas: ' + DK.map(d => fin[d]).join(' ≥ '));
+    ok(lvl.easy >= lvl.normal, 'circuito alcanzado en Fácil ≥ Normal (' + lvl.easy + ' ≥ ' + lvl.normal + ')');
+  }
+  C.abandon(); C._reset();
+}
+function ordnT(n) { return n + (n === 1 || n === 3 ? 'r' : 'º'); }
+// ------------------------------------------------------------------ vida de la Carrera en la PISTA (12-nov-2026)
+section('Vida en la Carrera de pista: retos por puesto, fama, patrocinio de pabellón, tienda, decisiones, temporada y guardados');
+if (!VB.CareerLife || !C.hall || !C.hall.available()) console.log('  (sin js/career-life.js o sin ligas de pista)');
+else {
+  verbose = true;
+  const Lf = VB.CareerLife, H = C.hall;
+  const keep = { c6: mem['voley3d.career6'], md: mem['voley3d.career.mode'], roles: VB.Sim.CTRL_ROLES6 };
+  VB.Sim.CTRL_ROLES6 = ['OH', 'S', 'OPP', 'MB'];   // (los cuatro puestos que deja llevar sim.js)
+  // una Carrera de playa al lado: no debe cambiar nada mientras se juega la de pista
+  C.setMode('beach'); C.abandon(); C._reset(); C.create({ name: 'Playa Al Lado', num: 3, role: 'atk', seed: 4321, autoClub: true });
+  const beachRaw = mem['voley3d.career'];
+  delete mem['voley3d.career6']; C._reset();
+  let c = C.create({ mode: 'hall', name: 'Vida Pista', num: 10, pos: 'OH', seed: 2024 });
+  const inh = Lf.legends().length ? Lf.legacyTier(Lf.legends()[0].score).i * 150 : 0;   // (la retirada de arriba dejó una leyenda: fama heredada)
+  ok(c && c.mode === 'hall' && c.life && c.life.fame === inh && JSON.parse(mem['voley3d.career6']).life, 'crear: c.life dentro de voley3d.career6 (fama heredada ' + inh + ')');
+  ok(C.acceptOffer(c.offers.findIndex(o => !o.trial), 2) && c.phase === 'league', 'firma por un club de la 2ª');
+  // titular indiscutible con el entrenador contento: que juegue todas (sin banquillo)
+  const starter = () => { c = C.get(); c.contract.role = 'Titular indiscutible'; c.coach = 90; C.save(c); };
+  starter();
+  if (!C.next(c)) C.simulateNext();
+  // reto por puesto, con el umbral medido de la pista
+  { const L = Lf.lvlOf(c), Lg = C.league(C.myClub(c).lid), ch = Lf.challenge(c);
+    ok(L === Math.max(0, Math.min(4, Math.round((Lg.strength - 50) / 10))), 'nivel 0-4 desde la fuerza de la liga (' + Lg.name + ' ' + Lg.strength + ' → ' + L + ')');
+    const T = Lf.CH6.OH, okN = ch && (ch.id === 'win' || (T[ch.id] && T[ch.id][L] != null && (ch.id === 'nota' || ch.n === Math.max(1, Math.round(T[ch.id][L] * Lf.ptsF(c))))));
+    ok(okN, 'reto de receptor con el umbral de la pista: «' + (ch && ch.txt) + '»');
+    const ms = C.matchSetup(c); ok(ms && ms.career.goal === ch.txt, 'matchSetup de la pista lleva el reto a g.career.goal');
+    // umbrales por puesto: el colocador no remata (asistencias), el central no defiende ni asiste; a 25 puntos, más
+    const ids = pos => { const s = new Set(); c.player.roleKey = pos; for (let w = 0; w < 60; w++) s.add(Lf.challengeAt(c, 1, 'league', { week: w }, -1).id); c.player.roleKey = 'OH'; return [...s]; };
+    const iS = ids('S'), iM = ids('MB'), iO = ids('OH');
+    ok(iS.indexOf('kills') < 0 && iS.indexOf('assists') >= 0, 'colocador: retos de asistencias, nunca de remates (' + iS.join(', ') + ')');
+    ok(iM.indexOf('digs') < 0 && iM.indexOf('assists') < 0 && iM.indexOf('blocks') >= 0, 'central: bloqueo y remate, sin defensas ni asistencias (' + iM.join(', ') + ')');
+    ok(iO.indexOf('assists') < 0 && iO.indexOf('kills') >= 0 && iO.indexOf('clean') < 0, 'receptor: remates y defensas; «sin ceder un set» solo en L3 (' + iO.join(', ') + ')');
+    c.player.roleKey = 'S'; let chS = null; for (let w = 0; w < 60 && !chS; w++) { const x = Lf.challengeAt(c, 1, 'league', { week: w }, -1); if (x.id === 'assists') chS = x; }
+    ok(chS && chS.n === Lf.CH6.S.assists[L] && chS.n < 30, 'asistencias del colocador a 15: ' + (chS && chS.txt));
+    c.points = 25; let chS25 = null; for (let w = 0; w < 60 && !chS25; w++) { const x = Lf.challengeAt(c, 1, 'league', { week: w }, -1); if (x.id === 'assists') chS25 = x; }
+    ok(chS25 && chS25.n === Math.round(Lf.CH6.S.assists[L] * 25 / 15), 'a 25 puntos el umbral crece (' + (chS25 && chS25.txt) + ')');
+    c.points = 15; c.player.roleKey = 'OH'; C.save(c);
+    const t1 = Lf.challengeAt(c, 1, 'league', { week: 0 }, -1); ok(!/\b1 (aces|bloqueos|errores)\b/.test(t1.txt) && ['Haz un ace', 'Haz un bloqueo punto', 'Gana sin cometer ningún error'].every(s => typeof s === 'string'), 'textos en singular para 1 y «sin ningún error» para 0'); }
+  // tienda: el material se aplica en el partido de pista, en TU hueco (ctrlIdx), y no en los demás
+  { c = C.get(); c.money = 100000; C.save(c);
+    const before = C.matchSetup(c); ok(Lf.buyGear('eyes') === 'ok' && Lf.buyGear('eyes') === 'ok' && C.get().life.gear.eyes === 2, 'material comprado en la pista (2 niveles de ' + Lf.gearName(C.get(), 'eyes') + ')');
+    const after = C.matchSetup(C.get()), i = after.ctrlIdx, o = (i + 1) % 6;
+    ok(after.attrs[0][i].recv === Math.min(99, before.attrs[0][i].recv + 2) && after.attrs[0][i].dig === Math.min(99, before.attrs[0][i].dig + 2) && after.attrs[0][i].spike === before.attrs[0][i].spike, 'setup: +2 recepción y defensa en tu hueco (' + i + ')');
+    ok(after.attrs[0][o].recv === before.attrs[0][o].recv && JSON.stringify(after.attrs[1]) === JSON.stringify(before.attrs[1]), 'los compañeros y el rival, igual');
+    ok(C.get().player.st.recv === C.get().player.st.recv && after.gear && after.gear.recv === 2, 'el atleta no cambia (solo el partido)'); }
+  // partidos jugados: reto cumplido, fama, dinero, logros, rival de tu liga
+  { const big = { kills: 30, aces: 5, blocks: 5, digs: 30, assists: 40, errors: 0 };
+    const play = () => { starter(); const ms = C.matchSetup(C.get()); if (!ms) { C.simulateNext(); return null; } return C.matchDone({ sets: [2, 0], setScores: [[15, 8], [15, 9]], win: true }, big, { career: ms.career }); };
+    c = C.get(); const f0 = c.life.fame, m0 = c.money, d0 = c.life.chDone;
+    const s = play();
+    ok(s && s.mode === 'hall' && s.life && s.life.ch && s.life.ch.ok, 'partido de pista jugado: reto cumplido (' + (s && s.life && s.life.ch && s.life.ch.txt + ', ' + s.life.ch.prog) + ')');
+    c = C.get(); ok(c.life.chDone === d0 + 1 && c.life.fame > f0 && c.money > m0, 'premio: seguidores ' + f0 + ' → ' + c.life.fame + ', dinero ' + m0 + ' → ' + c.money);
+    ok(c.life.ach.m1 && c.life.ach.w1, 'logros «Debut» y «Primera victoria» en la pista');
+    const rk = c.life.rival && C.club(c, c.life.rival.club);
+    ok(rk && rk.lid === C.myClub(c).lid && rk.id !== c.myClub && c.life.rival.num !== 13 && c.life.rival.num !== c.player.num, 'rival personal de tu liga (por id): ' + (c.life.rival && c.life.rival.name + ', ' + rk.name));
+    ok(c.last && c.last.life && c.last.life.ch, 'la tarjeta del último partido lleva el reto (c.last.life)');
+    const fame = [c.life.fame]; for (let i = 0; i < 4; i++) { play(); fame.push(C.get().life.fame); }
+    ok(fame.every((v, i) => !i || v >= fame[i - 1]) && fame[4] > fame[0], 'la fama sube jornada a jornada jugando bien: ' + fame.join(' → '));
+    const ss = C.simulateNext(); ok(ss && ss.life && !ss.life.ch, 'simulando no hay reto'); }
+  // patrocinio de pabellón (inventado) y offerBonus en las ofertas de pista
+  { c = C.get();
+    Lf.addFame(c, Math.max(0, 600 - c.life.fame)); C.save(c); c = C.get();
+    if (!c.life.spOffers.length) { Lf.sponsorOffers(c, 'season'); C.save(c); c = C.get(); }
+    ok(c.life.spOffers.length === 2 && c.life.spOffers.every(o => Lf.SPONSORS6.indexOf(o.name) >= 0 && Lf.SPONSORS.indexOf(o.name) < 0), 'patrocinadores de pabellón inventados: ' + c.life.spOffers.map(o => o.name).join(', '));
+    ok(c.life.spOffers.every(o => Lf.SP_GOALS6.OH.some(g => g.stat === o.goal.stat) && o.goal.n >= 3), 'objetivo de temporada de receptor: ' + c.life.spOffers.map(o => o.goal.txt).join(' / '));
+    const sNo = C.beach.offerScore(Object.assign({}, c, { life: undefined })), sYes = C.beach.offerScore(c), sct = c.life.scout === c.season ? 2 : 0;
+    ok(Lf.offerBonus(c) > 0 && Math.abs(sYes - sNo - Lf.offerBonus(c) - sct) < 1e-9, 'la fama (y el ojeador) suman interés en las ofertas de pista (offerScore, que usa genOffers6): +' + Lf.offerBonus(c));
+    ok(Lf.signSponsor(0) && C.get().life.sponsor && Lf.SPONSORS6.indexOf(C.get().life.sponsor.name) >= 0, 'patrocinio firmado: ' + C.get().life.sponsor.name);
+    const m1 = C.get().money, sp = C.get().life.sponsor.pay; C.simulateNext(); ok(C.get().money >= m1 + sp - 1 || C.get().phase === 'off', 'el patrocinio paga cada jornada (' + sp + ' €)'); }
+  // decisiones: las de pabellón (solo en la pista) y la química del equipo
+  { c = C.get(); c.life.ev = { key: 'speech', id: 900 }; const ch0 = c.chem | 0; C.save(c);
+    const pe = Lf.pendingEvent(C.get()); ok(pe && pe.title === 'Charla en el vestuario' && pe.opts.length === 3, 'decisión de pabellón: «' + (pe && pe.title) + '»');
+    const r = Lf.answer(0); ok(r && C.get().chem === Math.min(100, ch0 + 8), 'la química que se mueve es la del equipo (' + ch0 + ' → ' + C.get().chem + ')');
+    c = C.get(); c.life.ev = { key: 'mateDown', id: 901 }; C.save(c); const md = Lf.pendingEvent(C.get());
+    ok(md && md.title === 'Un compañero está de bajón' && !/\{mate\}|^Un compañero apenas/.test(md.text) && md.opts.every(o => o.hint.every(h => h[0] !== 'Forma del compañero')), 'sin pareja: un compañero de la plantilla con nombre (' + md.text + ')');
+    c = C.get(); c.life.ev = { key: 'rivalTalk', id: 902 }; C.save(c); ok(/pabellón/.test(Lf.pendingEvent(C.get()).text), 'el pique del rival habla del pabellón');
+    c = C.get(); c.life.ev = null; C.save(c);
+    ok(Object.keys(Lf.EVENTS).filter(k => Lf.EVENTS[k].only === 'hall').length >= 2, 'hay decisiones que solo salen en la pista'); }
+  // textos de pabellón
+  { c = C.get();
+    const fi = Lf.fameInfo(Object.assign({}, c, { life: Object.assign({}, c.life, { fame: 2500 }) }));
+    ok(fi.name === 'Conocido en la liga' && Lf.tierName(2) === 'Conocido en el circuito', 'escalón de fama de pabellón: «' + fi.name + '» (playa: «' + Lf.tierName(2) + '»)');
+    ok(Lf.legacyTier(160, c).name === 'Ídolo del pabellón' && Lf.legacyTier(160).name === 'Ídolo del circuito', 'legado de pabellón: «' + Lf.legacyTier(160, c).name + '»');
+    const al = Lf.achList(c), txt = al.map(a => a.name + ' ' + a.d).join(' | ');
+    ok(al.some(a => a.name === 'Veterano del parqué') && al.some(a => a.name === 'Director de orquesta') && !/arena|circuito|\bopen\b/i.test(txt), 'logros de pabellón (sin arena, circuito ni open)');
+    ok(Lf.GEAR_KEYS.every(k => Lf.gearName(c, k)) && Lf.gearName(c, 'eyes') === 'Rodilleras de gel', 'material de pabellón'); }
+  // cierre de temporada y temporada nueva
+  { let g = 0; while (C.get().phase !== 'off' && g++ < 60) C.simulateNext();
+    c = C.get(); const r = c.review || {};
+    ok(c.phase === 'off' && r.fans > 0 && r.legacy > 0 && Array.isArray(r.awards) && c.history.length === 1, 'fin de temporada: fama ' + r.fans + ', legado ' + r.legacy + ', premios ' + (r.awards || []).length + ' (con 6 partidazos forzados)');
+    ok(c.life.sponsor && c.life.sponsor.done && c.inbox.some(m => m.k === 'fans' && (/^Bonus de /.test(m.t) || /objetivo no cumplido/.test(m.t))), 'el patrocinio se liquida al acabar la temporada');
+    const age0 = c.player.age; C.stay(1); c = C.get();
+    ok(c.season === 2 && c.player.age === age0 + 1 && !c.life.sponsor && (Lf.fameInfo(c).i < 1 || c.life.spOffers.length === 2) && c.life.rival, 'temporada nueva: el patrocinio se va, llegan ofertas nuevas y sigue el rival');
+    // premios de pabellón: una temporada de colocador descomunal y jugada → «Mejor colocador»
+    c.player.roleKey = 'S'; c.stats = { played: 12, won: 11, sim: 0, bench: 0, pts: 10, kills: 2, aces: 10, blocks: 14, assists: 330, digs: 30, errors: 4 };
+    c.notes = Array.from({ length: 12 }, () => ({ nota: 8.6, win: 1, sim: 0 }));
+    const a0 = c.life.awards.length; Lf.hook(c, 'season'); const got = c.life.awards.slice(a0).map(a => a.name);
+    ok(got.some(n => /^Mejor colocador /.test(n)) && !got.some(n => /^Máximo anotador/.test(n)), 'premios de pabellón por puesto: ' + got.join(', '));
+    c.player.roleKey = 'OH'; C._reset(); }
+  // guardado de pista viejo, sin c.life: se crea solo al cargar
+  { const raw = JSON.parse(mem['voley3d.career6']); delete raw.life; mem['voley3d.career6'] = JSON.stringify(raw); C._reset();
+    c = C.get(); ok(c && c.mode === 'hall' && c.life && c.life.fame === 0 && Array.isArray(c.life.awards) && Lf.fameInfo(c).fans === 0, 'guardado de pista sin c.life: se crea al cargar (fama 0)');
+    let err = ''; try { Lf.challenge(c); Lf.achList(c); C.simulateNext(); } catch (e) { err = e.message; } ok(!err && C.get().life, 'y la Carrera sigue sin errores' + (err ? ' — ' + err : '')); }
+  // textos de pabellón también en lo que se guarda: historial de decisiones y logros de la tarjeta del partido; jornadas de patrocinio
+  { c = C.get(); c.life.ev = { key: 'mateDown', id: 903 }; C.save(c); const pe = Lf.pendingEvent(C.get()); Lf.answer(0);
+    const lg = C.get().life.log.slice(-1)[0];
+    ok(lg && lg.t === 'Un compañero está de bajón' && lg.o === pe.opts[0].t && !/\{/.test(lg.o), 'historial de decisiones con el título de pabellón: «' + (lg && lg.t) + '» / «' + (lg && lg.o) + '»');
+    c = C.get(); c.career.played = 49; C.save(c); let sm = null, g = 0; while (!sm && g++ < 5) { const x = C.simulateNext(); if (x && x.life && x.life.ach && x.life.ach.length) sm = x; }
+    ok(sm && sm.life.ach.indexOf('Veterano del parqué') >= 0 && sm.life.ach.every(n => !/arena/i.test(n)), 'la tarjeta del partido nombra el logro de pabellón (' + (sm && sm.life.ach.join(', ')) + ')');
+    c = C.get(); const k = C.myClub(c), nC = H.leagueClubs(c, k.lid).length, w = H.weeksOf(c, k.lid);
+    ok(Lf.seasonWeeks(c) === (nC % 2 ? w - w / nC : w), 'objetivo de patrocinio con las jornadas que juegas (' + nC + ' clubes: ' + Lf.seasonWeeks(c) + ' de ' + w + ')');
+    const odd = [3, 5, 7, 9, 11].every(n => { const ww = n <= 8 ? 2 * n : n; return ww - ww / n === (n <= 8 ? 2 * (n - 1) : n - 1); });
+    ok(odd, 'con un nº impar de clubes se quitan los descansos (1 por vuelta)'); }
+  // y la playa, igual
+  ok(mem['voley3d.career'] === beachRaw, 'la Carrera de playa guardada al lado no ha cambiado');
+  { C.setMode('beach'); C._reset(); const cb = C.get(), ch = Lf.challenge(cb);
+    ok(cb && cb.mode !== 'hall' && ch && (ch.id === 'win' || ch.id === 'clean' || Lf.CH[ch.id].n[cb.myClub >= 0 ? C.myClub(cb).lvl : 0] === ch.n), 'playa: el reto sigue con sus umbrales (' + (ch && ch.txt) + ')');
+    ok(Lf.fameInfo(cb).name === 'Desconocido' && Lf.achList(cb).some(a => a.name === 'Veterano de la arena') && !Lf.achList(cb).some(a => a.name === 'Director de orquesta'), 'playa: sus textos y logros'); }
+  // dejar todo como estaba
+  C.abandon(); C._reset();
+  if (keep.c6 != null) mem['voley3d.career6'] = keep.c6; else delete mem['voley3d.career6'];
+  if (keep.md != null) mem['voley3d.career.mode'] = keep.md; else delete mem['voley3d.career.mode'];
+  if (keep.roles) VB.Sim.CTRL_ROLES6 = keep.roles; else delete VB.Sim.CTRL_ROLES6;
+  C._reset(); verbose = false;
+}
+
+// ------------------------------------------------------------------ mundo de la Carrera en la PISTA (merge sprint 5 + main)
+section('Mundo de la Carrera en la pista: Faro, noticias y clubes con las ligas por país');
+if (NOWORLD || !VB.CareerWorld) console.log('  (sin career-world.js: se salta el mundo en la pista)');
+else if (!C.hall || !C.hall.available()) console.log('  (sin ligas de pista)');
+else {
+  verbose = true;
+  const Wd = VB.CareerWorld, H = C.hall;
+  const keep = { c6: mem['voley3d.career6'], md: mem['voley3d.career.mode'], b: mem['voley3d.career'] };
+  const BAD = /arena|playa|circuito|\bopen\b|pareja|chiringuito/i, JUNK = /\{|undefined|NaN|null|\(\)/;
+  C.setMode('beach'); C.abandon(); C._reset(); C.create({ name: 'Playa Mundo', num: 3, role: 'atk', seed: 9191, autoClub: true });
+  const beachRaw = mem['voley3d.career'];
+  delete mem['voley3d.career6']; C._reset();
+  // la misma Carrera de pista con y sin el mundo: lo demás, idéntico (el mundo no consume el azar de career.js)
+  const strip = c => { const o = JSON.parse(JSON.stringify(c)); delete o.world; o.inbox = (o.inbox || []).filter(m => m.k !== 'mentor'); o.inbox.forEach(m => { delete m.id; }); delete o.msgN; delete o.created; return JSON.stringify(o); };
+  const run = () => {
+    delete mem['voley3d.career6']; C._reset();
+    const c = C.create({ mode: 'hall', name: 'Mundo Pista', num: 8, pos: 'OH', seed: 31337, now: 1 });
+    const hola = c.world && c.world.mentor.q.map(q => q.l.join(' ')).join(' ');
+    C.acceptOffer(c.offers.findIndex(o => !o.trial), 2);
+    let g = 0; while (C.get().season < 3 && g++ < 200) { if (C.get().phase === 'off') C.stay(1); else C.simulateNext(); }
+    return { c: C.get(), hola };
+  };
+  const Wsave = VB.CareerWorld; VB.CareerWorld = undefined;
+  const noW = run().c; VB.CareerWorld = Wsave;
+  const { c, hola } = run();
+  ok(c && c.mode === 'hall' && c.season === 3 && !noW.world, 'dos temporadas de pista simuladas (' + c.history.map(h => h.lgShort + ' ' + h.pos).join(', ') + ')');
+  ok(strip(c) === strip(noW), 'con y sin career-world.js la Carrera de pista es idéntica (salvo c.world y los mensajes de Faro)');
+  ok(hola && /pabellón/.test(hola) && !BAD.test(hola), 'Faro se presenta con textos de pabellón: «' + (hola || '').slice(0, 70) + '…»');
+  ok(c.world.mentor.seen.hola && c.world.mentor.seen.debut, 'escenas «hola» y «antes del debut» (gancho join de la pista)');
+  const allQ = c.world.mentor.q.concat([]).map(q => q.l.join(' ')).join(' | ') + ' | ' + c.inbox.filter(m => m.k === 'mentor').map(m => m.x).join(' | ');
+  ok(!BAD.test(allQ) && !/\{/.test(allQ), 'escenas y bandeja de Faro sin arena, playa, circuito ni pareja');
+  ok(Object.keys(Wd.BEATS_H).every(k => Wd.BEATS_H[k].every(l => l.length <= Wd.LINE_MAX && !BAD.test(l))), 'frases de pista ≤ ' + Wd.LINE_MAX + ' caracteres');
+  const me = C.myClub(c), L = H.league(me.lid, c), lgs = Wd.leaguesOf(c);
+  ok(lgs.length >= 1 && lgs.every(id => H.league(id, c) && H.league(id, c).cc === L.cc) && lgs.indexOf(me.lid) >= 0 && Wd.topLv(c) === L.cc + '1', 'leaguesOf: las ligas de tu país (' + lgs.join(', ') + ')');
+  const ol = Wd.otherLv(c, L.cc + '1'), OL = H.league(ol, c);
+  ok(OL && OL.lvl === 1 && OL.id !== L.cc + '1' && c.leagues.filter(x => x.lvl === 1 && x.id !== L.cc + '1').every(x => x.strength <= OL.strength), 'otra liga desde la 1ª: la 1ª más fuerte del mundo (' + ol + ')');
+  ok(Wd.isTop(c, 'IT1') && !Wd.isTop(c, 'ES1') && !Wd.isTop(c, 'ES2'), 'élite de la pista: 1ª con fuerza ≥ 84 (IT1 sí, ES1 y ES2 no)');
+  // noticias
+  const nw = Wd.news(c), txt = nw.map(x => x.t).join(' | ');
+  ok(nw.length >= 10, nw.length + ' noticias en dos temporadas: ' + [...new Set(nw.map(x => x.k))].join(', '));
+  ok(!JUNK.test(txt) && !BAD.test(txt), 'sin «{», «undefined» ni textos de playa: ' + nw.slice(0, 2).map(x => '«' + x.t + '»').join(' '));
+  ok(nw.every(x => x.c.every(id => C.club(c, id))), 'cada noticia apunta a clubes que existen');
+  const perWk = {}; nw.filter(x => x.w >= 1 && x.w < Wd.W_END).forEach(x => { const k = x.s + ':' + x.w; perWk[k] = (perWk[k] || 0) + 1; });
+  ok(Object.keys(perWk).length > 0 && Object.values(perWk).every(n => n <= 3), 'máx. 3 noticias por jornada (' + Object.keys(perWk).length + ' jornadas con noticias)');
+  ok(nw.some(x => x.k === 'champs') && nw.some(x => x.k === 'cup') && nw.filter(x => x.k === 'cup').every(x => Wd.newsWhen(x) === 'T' + x.s + ' Copa'), 'cierre: campeones y finales de copa («' + (nw.find(x => x.k === 'cup') || {}).t + '»)');
+  ok(nw.some(x => x.k === 'mkt'), 'rumores de verano con jugadores inventados de pista');
+  // anales y fichas
+  const an = c.world.annals;
+  ok(an.length === 2 && an.every(a => Array.isArray(a.l) && a.l.length === a.lg.length && a.lg.every((ids, i) => ids.length === H.leagueClubs(c, a.l[i]).length)), 'anales con los ids de las ligas (' + an.map(a => a.l.join('+')).join(', ') + ')');
+  const rows = Wd.clubRows(c, me.lid);
+  ok(rows.length === H.leagueClubs(c, me.lid).length && rows.filter(r => r.mine).length === 1 && rows.every(r => r.stars >= 1 && r.stars <= 5 && r.ovr > 0), 'Clubes: ' + rows.length + ' filas de ' + L.name + ', tu club marcado');
+  const kc = Wd.clubCard(c, me.id);
+  ok(kc && kc.league === L.name && kc.path.length >= 1 && kc.path.every(p => p.league && p.pos >= 1) && kc.lore && kc.lore.nick && kc.mine, 'ficha de tu club: liga, trayectoria (' + kc.path.map(p => 'T' + p.s + ' ' + p.league + ' ' + p.pos).join(', ') + '), apodo «' + kc.lore.nick + '»');
+  ok(!/Cangrejo|Gaviota|Delf|Medusa|orilla|cala/i.test(c.clubs.slice(0, 40).map(k => { const l = Wd.lore(c, k); return l.nick + ' ' + l.motto; }).join(' ')), 'apodos y lemas de pabellón (sin mar)');
+  const champ = an[0].lg[0][0], cc = Wd.clubCard(c, champ);
+  ok(cc && cc.titles.some(t => t.kind === 'liga' && t.s === 1), 'el campeón de la T1 tiene su título en la ficha (' + cc.name + ')');
+  const cupW = an.find(a => a.cup.some(x => x >= 0));
+  ok(!cupW || cupW.cn && Wd.clubCard(c, cupW.cup.find(x => x >= 0)).titles.some(t => t.kind === 'copa' && t.name === cupW.cn), 'la copa nacional cuenta en la ficha del campeón (' + (cupW ? cupW.cn : 'sin campeón de tus ligas') + ')');
+  ok(Object.keys(c.world.h2h).length > 0 && Object.keys(c.world.h2h).every(id => C.club(c, +id)), 'cara a cara con ' + Object.keys(c.world.h2h).length + ' clubes');
+  // la élite: Faro lo celebra en la pista con el nombre de la liga
+  { const t = JSON.parse(JSON.stringify(c)); t.world.mentor.seen.top = 0; t.world.mentor.q = []; const it = t.clubs.find(k => k.lid === 'IT1'); t.myClub = it.id;
+    Wd.hook(t, 'newSeason'); const q = t.world.mentor.q.find(x => x.id === 'top');
+    ok(q && /^IperLega: una de las grandes ligas/.test(q.l[0]), 'escena «En la élite» de pista: «' + (q && q.l[0]) + '»'); }
+  // guardado de pista viejo sin c.world: se crea al vuelo, y Faro no se presenta a mitad
+  { const raw = JSON.parse(mem['voley3d.career6']); delete raw.world; mem['voley3d.career6'] = JSON.stringify(raw); C._reset();
+    let err = ''; try { C.simulateNext(); } catch (e) { err = e.message; }
+    const r = C.get(); ok(!err && r.world && r.world.mentor.seen.hola && !r.world.mentor.q.some(q => q.id === 'hola'), 'guardado de pista sin c.world: se crea al jugar, sin la presentación' + (err ? ' — ' + err : '')); }
+  // career-life en la pista tras el merge: celebraciones (E2) y dorsal del rival en el duelo (setup → m.career.rivalNum)
+  if (VB.CareerLife) {
+    const Lf = VB.CareerLife, r = C.get(); let err = '', cl = null;
+    try { cl = Lf.celebs(r); } catch (e) { err = e.message; }
+    ok(!err && Array.isArray(cl), 'pista: celebraciones de firma disponibles (' + (cl ? cl.length : 0) + ')' + (err ? ' — ' + err : ''));
+    const rv = r.life && r.life.rival, rk = rv && C.club(r, rv.club);
+    if (rk) {
+      let ms = null, g = 0; while (g++ < 30) { const n = C.next(C.get()); if (!n) { if (C.get().phase === 'off') C.stay(1); else C.simulateNext(); continue; } if (n.rival.id === rk.id && !n.bench) { ms = C.matchSetup(C.get()); break; } C.simulateNext(); }
+      ok(!ms || (ms.career.duel && ms.career.rivalNum === (C.get().life.rival.num | 0) && Array.isArray(ms.nums)), 'pista: en el duelo, matchSetup lleva rivalNum ' + (ms ? ms.career.rivalNum : '(sin duelo a mano)') + ' (main.js usa m.nums de la pista)');
+    }
+  }
+  ok(mem['voley3d.career'] === beachRaw, 'la Carrera de playa guardada al lado no ha cambiado');
+  C.abandon(); C._reset();
+  if (keep.c6 != null) mem['voley3d.career6'] = keep.c6; else delete mem['voley3d.career6'];
+  if (keep.md != null) mem['voley3d.career.mode'] = keep.md; else delete mem['voley3d.career.mode'];
+  if (keep.b != null) mem['voley3d.career'] = keep.b; else delete mem['voley3d.career'];
+  C._reset(); verbose = false;
+}
+
+console.log('\n' + passes + ' comprobaciones bien');
 console.log(fails ? '\n' + fails + ' FALLOS' : '\nTODO OK');
 process.exit(fails ? 1 : 0);

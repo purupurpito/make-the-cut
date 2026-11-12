@@ -64,7 +64,7 @@ button{font:800 18px/1 var(--display);letter-spacing:.08em;text-transform:upperc
 button:hover{filter:brightness(1.08)}
 button:active{transform:translateY(1px) scale(.985)}
 button:focus{outline:none}
-button:focus-visible,button.kf{outline:3px solid var(--fg);outline-offset:3px}
+button:focus-visible,button.kf{outline:3px solid #ffb238;outline-offset:-3px} /* foco único: aro ámbar interior (TV D7) */
 button.ghost{background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px var(--line2);color:var(--fg)}
 button.ghost:hover{background:rgba(255,255,255,.11)}
 kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width:1.55em;height:1.55em;box-sizing:border-box;padding:0 .45em;
@@ -1343,7 +1343,6 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 .sq-r b{text-align:right;font:900 17px var(--display);color:var(--fg);font-variant-numeric:tabular-nums}
 .sq-r button{height:30px;padding:0;border-radius:9px;font:800 16px/1 var(--ui);letter-spacing:0;text-shadow:none;text-transform:uppercase;background:var(--t0);color:#fff;box-shadow:0 0 0 2px var(--tk)}
 .sq-r button:disabled{opacity:.6;filter:none;background:rgba(255,255,255,.08);color:var(--dim-text);box-shadow:inset 0 0 0 1px var(--line2)}
-.sq-r button.kf,.sq-r button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
 .sq-r.up b{animation:sqUp .5s var(--spring)}
 @keyframes sqUp{40%{transform:scale(1.5);color:var(--gold)}}
 .sq-note{margin:12px 0 0;color:var(--dim-text);font-size:12.5px}
@@ -1376,7 +1375,6 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 .bd-t.eq{background:linear-gradient(180deg,rgba(255,210,63,.2),rgba(255,210,63,.06));box-shadow:0 0 0 2px var(--tk),0 0 0 4px var(--gold),0 3px 0 4px var(--tk)}
 .bd-on{position:absolute;top:-9px;right:6px;padding:1px 6px;border-radius:6px;background:var(--gold);color:var(--tk);font:800 10.5px/1.35 var(--display);letter-spacing:.1em;font-style:normal;text-shadow:none;box-shadow:0 0 0 1.5px var(--tk)}
 .bd-t:hover{filter:brightness(1.12)}
-.bd-t.kf,.bd-t:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
 .bd-info{margin:8px 0 0;min-height:2.6em;font:600 12.5px/1.35 var(--ui);color:var(--fg2)}
 .bd-info b{color:var(--fg)}
 .bd-info small{color:var(--muted);font-size:11.5px}
@@ -1606,7 +1604,6 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
 .sh-k .sep-d{margin:-.14em .7em 0 .55em}
 .in-k span span::before{content:none}
 .in-k>span::before{content:"";width:.42em;height:.42em;margin:0 12px 0 2px;display:inline-block;vertical-align:middle;transform:rotate(45deg);background:#ff6a2e;box-shadow:0 0 0 1.5px var(--tk)}
-.live .sep-v{height:.9em;margin:0 .35em;opacity:.55}
 /* pistas de teclas: grupos con raya fina entre ellos */
 .kh{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .kh+.kh::before{content:"";width:2px;height:14px;margin:0 8px 0 7px;border-radius:1px;background:currentColor;opacity:.35}
@@ -1781,7 +1778,6 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .tabs .tab:hover:not(.on){background:rgba(255,255,255,.09);color:#fff;filter:none}
 .tabs .tab:active{transform:none}
 .tabs .tab.on{color:var(--tk);background:linear-gradient(180deg,#ffd23f 0 50%,#ffc21a 50% 100%);box-shadow:inset 0 0 0 2px var(--tk),2px 3px 0 var(--tk)}
-.tabs .tab.kf,.tabs .tab:focus-visible{outline:3px solid #fff;outline-offset:1px}
 .tb-b{font:800 10.5px/1 var(--display);font-style:normal;letter-spacing:.1em;padding:3px 6px;border-radius:6px;background:rgba(75,224,160,.2);color:#8ff0c4}
 .tabs .tab.on .tb-b{background:rgba(29,21,48,.16);color:var(--tk)}
 .tabs .tb-k{flex:0 0 auto;min-width:32px;height:30px;padding:0 7px;border-radius:9px;font:800 13px/1 var(--display);letter-spacing:.04em;color:var(--tk);background:#fff7e8;
@@ -1816,7 +1812,6 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .sq-pk.on .sq-pn small{color:rgba(29,21,48,.8)}
 .sq-pk.on .sq-pp{background:var(--tk);color:#ffd23f}
 .sq-pk.kf,.sq-pk:focus-visible{outline:none;box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffb238,3px 4px 0 var(--tk)}
-.sq-pk.on.kf,.sq-pk.on:focus-visible{box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffb238,inset 0 0 0 6.5px var(--tk),3px 4px 0 var(--tk)} /* sobre el amarillo, el aro con filo de tinta */
 .sq-pp{font:900 14px/1 var(--display);font-style:normal;padding:4px 8px;border-radius:8px;background:#ffd23f;color:var(--tk);box-shadow:0 0 0 2px var(--tk)}
 .sq-attrs{display:flex;flex-direction:column;gap:6px}
 .sq-attrs .sq-r{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 2.2em 46px;min-height:50px;padding:4px 8px 4px 12px;border-radius:12px;background:rgba(29,21,48,.45);box-shadow:inset 0 0 0 2px var(--tk)}
@@ -1853,6 +1848,409 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .sq-sum .sq-pts{display:flex;flex-direction:column;align-items:center;font-size:11px;letter-spacing:.18em;line-height:1}
 .sq-sum .sq-pts b{font:900 24px/1 var(--display);margin-top:2px}
 @media (max-height:420px){.sq-sum{padding:5px 12px;gap:10px}.sq-sum .sq-ovr{font-size:24px}.sq-sum .sq-pts b{font-size:20px}}
+/* =====================================================================
+   DIRECCIÓN TV (12-nov-2026, decisiones de Ferran D1-D5 de notes/ui_main.md): grafismo de TV deportiva encima de la capa de cómic.
+   El cómic completo (contorno de tinta, banda de luz, sombra dura) queda solo en la acción principal de cada pantalla. Mismas medidas.
+   ===================================================================== */
+/* ==== TV D1+D2: secundarios planos y tipografía ==== */
+/* D1: el cómic completo (banda de luz, contorno de tinta, sombra dura y letras con contorno) queda SOLO en la acción principal de
+   cada pantalla (#btnPlay, #btnGo, #btnResume, #btnAgain, «Siguiente» del tutorial, .pri de la Carrera): no se tocan aquí.
+   Todo lo demás pasa a plano: fondo liso, como mucho 0 2px 0 de tinta, sin contorno en las letras, radios de 6-8 px.
+   Foco de teclado/mando = aro ámbar interior #ffb238 (muy visible); hover = solo un fondo algo más claro (distinto del foco).
+   D2: mayúsculas condensadas solo en títulos, banners, nombres, cifras y la acción principal; el resto en var(--ui) 600-700 y en
+   minúscula de frase; antetítulos pequeños con espaciado de .06-.1em; cifras con tabular-nums. Mismas medidas de caja. */
+#app{--flat:rgba(46,39,86,.95);--flat-hi:rgba(66,56,120,.97);--flat-sh:0 2px 0 var(--tk);--ring-f:inset 0 0 0 3px #ffb238}
+/* ---- botones secundarios ---- */
+button.ghost{border-radius:8px;background:var(--flat);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1),var(--flat-sh);text-shadow:none;
+  font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
+button.ghost:hover{background:var(--flat-hi);filter:none}
+button.ghost:active{transform:translateY(1px);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1)}
+button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi);box-shadow:var(--ring-f),var(--flat-sh)}
+.row-btn button.ghost{font-size:16px}
+#btnRestart.arm{background:rgba(255,90,44,.22);box-shadow:inset 0 0 0 2px #ff6a2e;letter-spacing:0}
+/* menú: filas que no son la acción principal */
+#menu .mi:not(.primary){border-radius:8px;background:var(--flat);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08),var(--flat-sh);text-shadow:none;
+  font-family:var(--ui);font-weight:700;font-size:20px;letter-spacing:0;text-transform:none}
+#menu .mi:not(.primary):hover{background:var(--flat-hi)}
+#menu .mi:not(.primary):focus-visible,#menu .mi:not(.primary).kf{background:var(--flat-hi);box-shadow:var(--ring-f),var(--flat-sh)}
+#menu .mi:not(.primary)::before{box-shadow:none}
+#menu .mi-s,.mi-h{text-shadow:none}
+#menu .mi-v{font-family:var(--ui);font-weight:700;font-size:17px;letter-spacing:0;text-transform:none}
+#menu .mi-v b{font-variant-numeric:tabular-nums}
+#mpQuick .mi:not(.primary){font-size:19px}
+/* fila de tres (Cómo se juega · Controles · Ajustes) en el móvil y en 421-820 px de alto: misma caja, letra que quepa */
+@media (max-height:420px){
+  #menu .mlist>#btnTut,#menu .mlist>#btnControls,#menu .mlist>#btnSettings{font-size:15px}
+  #mpQuick .mi:not(.primary){font-size:17px}
+  #menu .mi-v{font-size:15px}
+}
+@media (min-height:421px) and (max-height:820px){#menu .mlist>#btnTut,#menu .mlist>#btnControls,#menu .mlist>#btnSettings{font-size:17px}}
+#app.vs-up #menu .mlist>#btnTut,#app.vs-up #menu .mlist>#btnControls,#app.vs-up #menu .mlist>#btnSettings{font-size:17px}
+@media (min-height:561px) and (max-height:700px){#menu .mlist>.mi:not(.primary){font-size:18px}#mpQuick .mi:not(.primary){font-size:18px}}
+/* Volver de las páginas del menú */
+.mp-back{border-radius:8px;background:var(--flat);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1),var(--flat-sh);text-shadow:none;
+  font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
+.mp-back:hover{background:var(--flat-hi);filter:none}
+.mp-back.kf,.mp-back:focus-visible{background:var(--flat-hi);box-shadow:var(--ring-f),var(--flat-sh)}
+/* ---- hojas y paneles: plano, sin banda de luz ni sombra desplazada ---- */
+.sheet{border-radius:8px;background:rgba(46,39,86,.97);box-shadow:0 0 0 1.5px var(--tk),0 2px 0 1.5px var(--tk)}
+.sheet::before{height:4px;border-radius:8px 8px 0 0;box-shadow:none}
+.sq-card,.sq-sum{border-radius:8px;background:var(--flat);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08),var(--flat-sh)}
+.tut-fig{border-radius:8px;box-shadow:0 0 0 1.5px var(--tk)}
+.tut-rule{border-radius:6px;box-shadow:none}
+.faults li{border-radius:6px;box-shadow:none}
+.faults li b{font:700 15px var(--ui);letter-spacing:0;text-transform:none;text-shadow:none}
+.ctl{border-radius:8px;box-shadow:none}
+.end-sets span{border-radius:6px;box-shadow:none}
+.end-back{border-radius:8px;box-shadow:var(--flat-sh);text-shadow:none;font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
+.fs-btn{border-radius:8px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1),var(--flat-sh);text-shadow:none;font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
+/* ---- Pausa: lista con separadores finos (la acción principal, Seguir jugando, sigue de cómic arriba) ---- */
+#pause .vlist{gap:0}
+#pause .vlist>#btnResume{margin-bottom:10px}
+#pause .vlist>button.ghost{border-radius:6px;background:transparent;box-shadow:inset 0 -1px 0 var(--sep);font-size:17px}
+#pause .vlist>button.ghost:last-child{box-shadow:none}
+#pause .vlist>button.ghost:hover{background:rgba(255,255,255,.06)}
+#pause .vlist>button.ghost:focus-visible,#pause .vlist>button.ghost.kf{background:rgba(255,255,255,.08);box-shadow:var(--ring-f)}
+#pause .vlist>#btnRestart.arm{background:rgba(255,90,44,.18);box-shadow:inset 0 0 0 2px #ff6a2e}
+/* ---- Ajustes: filas en lista con separadores (sin tarjeta por fila) ---- */
+.opts .opt-g{gap:0}
+.opt{border-radius:6px;background:transparent;box-shadow:inset 0 -1px 0 var(--sep);text-shadow:none;font-family:var(--ui);font-weight:700;font-size:17px;letter-spacing:0;text-transform:none}
+.opt-g>.opt:last-child{box-shadow:none}
+.opt:hover{background:rgba(255,255,255,.05)}
+.opt:focus-visible,.opt.kf,.opt-g>.opt:focus-visible,.opt-g>.opt.kf{background:rgba(255,255,255,.08);box-shadow:var(--ring-f)}
+.seg{border-radius:8px}
+.seg span{border-radius:6px;font:700 14px var(--ui);letter-spacing:0;text-transform:none}
+.seg span.on{text-shadow:none;box-shadow:none}
+.seg.kit span.on{box-shadow:inset 0 0 0 2px var(--tk)}
+/* valor elegido en amarillo (mismo color de «elegido» que las pestañas); :not(.kit) respeta las muestras de color */
+.seg:not(.kit) span.on{background:#ffd23f;color:var(--tk)}
+.slider{text-shadow:none}
+.slider .v{font-family:var(--ui);font-weight:700;letter-spacing:0;font-variant-numeric:tabular-nums}
+.slider .trk b{box-shadow:0 0 0 2px var(--tk)}
+.opt-h{letter-spacing:.08em}
+.opt-h::after{height:1px;background:var(--sep);box-shadow:none}
+/* ---- pestañas ---- */
+.tb-row{border-radius:8px}
+.tabs .tab{border-radius:6px;font:700 15px/1 var(--ui);letter-spacing:0;text-transform:none}
+.tabs .tab.on{background:#ffd23f;box-shadow:none}
+.tabs .tab.kf,.tabs .tab:focus-visible{outline:none;box-shadow:var(--ring-f)}
+.tabs .tb-k{box-shadow:inset 0 0 0 1.5px var(--tk),0 2px 0 var(--tk)}
+.tb-b{font:700 11px var(--ui);letter-spacing:.02em}
+@media (max-height:560px){.tabs .tab{font-size:14px}}
+/* ---- Jugadores ---- */
+.sq-pk{border-radius:8px;background:var(--flat);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08),var(--flat-sh)}
+.sq-pk:hover{background:var(--flat-hi);filter:none}
+.sq-pk.on{background:#ffd23f}
+.sq-pk.kf,.sq-pk:focus-visible{box-shadow:var(--ring-f),var(--flat-sh)}
+.sq-num,.sq-ovr{text-shadow:none;font-variant-numeric:tabular-nums}
+.sq-attrs .sq-r{border-radius:6px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.sq-attrs .sq-r>span:first-child{font:700 16px var(--ui);letter-spacing:0;text-transform:none}
+.sq-sum .sq-xl{font:700 13px var(--ui);letter-spacing:0;text-transform:none}
+.sq-ovr small,.sq-sum .sq-pts,.sq-pts{letter-spacing:.08em}
+.sq-pts b,.sq-sum .sq-pts b,.sq-r b{font-variant-numeric:tabular-nums}
+.sq-g{letter-spacing:.1em}
+.bd-t{border-radius:8px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08),var(--flat-sh)}
+/* ---- antetítulos pequeños: espaciado .06-.1em (antes .2-.34em) ---- */
+.kicker,.mp-tt .kicker{letter-spacing:.1em}
+.sh-k{letter-spacing:.1em}
+.mi-n{letter-spacing:.06em}
+.tut-step{letter-spacing:.1em;text-shadow:none}
+.rec{letter-spacing:.08em}
+.p-mid,.end-sets span small,.st-r .mid em,.mvp-cols{letter-spacing:.08em}
+.mvp-h{letter-spacing:.1em}
+/* etiquetas de la tabla de estadísticas (Puntos, Aces…): secundarias; el alto de la fila no cambia */
+.st-r .mid em{font:700 13px var(--ui);letter-spacing:0;text-transform:none}
+@media (max-height:560px) and (min-width:600px){#end .st-r .mid em{font-size:12px;letter-spacing:0}}
+/* cifras alineadas */
+.p-team b,.es-t b,.end-sets span,.mvp strong,.mvp>b,.rec b,.mi-v b{font-variant-numeric:tabular-nums}
+/* ---- Carrera (DOM de career-ui.js): mismas reglas desde aquí, con más especificidad (#app #career) ----
+   cómic solo en .pri (Jugar partido…), .warn y lo elegido (aria-pressed); el resto, plano y en minúscula de frase */
+#app #career button:not(.pri):not(.warn):not([aria-pressed="true"]):not(.tab):not(.tb-k){border-radius:8px;background:var(--flat);
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1),var(--flat-sh);text-shadow:none;font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
+#app #career button:not(.pri):not(.warn):not([aria-pressed="true"]):not(.tab):not(.tb-k):hover{background:var(--flat-hi);transform:none}
+#app #career button:not(.pri):not(.tab):not(.tb-k):focus-visible,#app #career button:not(.pri):not(.tab):not(.tb-k).kf{box-shadow:var(--ring-f),var(--flat-sh)}
+#app #career button[aria-pressed="true"]:not(.tab){border-radius:8px;background:#ffd23f;box-shadow:var(--flat-sh);font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
+/* foco con teclado o mando: la regla plana lleva 5 :not() y ganaba a la de arriba; estas copian su cadena y añaden el estado */
+#app #career button:not(.pri):not(.warn):not([aria-pressed="true"]):not(.tab):not(.tb-k):is(:focus-visible,.kf){background:var(--flat-hi);box-shadow:var(--ring-f),var(--flat-sh)}
+#app #career .card:not(.lf-ch):not(.confirm){border-radius:8px;background:var(--flat);box-shadow:0 0 0 1.5px var(--tk),var(--flat-sh)}
+#app #career .card.lf-ch{border-radius:8px;background:linear-gradient(135deg,rgba(255,210,63,.18),rgba(255,128,64,.12)),var(--flat);box-shadow:0 0 0 1.5px var(--tk),inset 0 0 0 2px rgba(255,210,63,.55),var(--flat-sh)}
+#app #career h3{letter-spacing:.1em;text-shadow:none}
+#app #career .cr-title small,#app #career .cf label{letter-spacing:.1em;text-shadow:none}
+#app #career .cr-ovr small,#app #career .fact small,#app #career th,#app #career .tag{letter-spacing:.08em}
+#app #career td,#app #career .cr-ovr{font-variant-numeric:tabular-nums}
+#app #career .tag.y{font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
+#app #career .tabs .tab{border-radius:6px;font:700 15px/1 var(--ui);letter-spacing:0;text-transform:none}
+#app #career .tabs .tab.on{background:#ffd23f;box-shadow:none}
+#app #career .tabs .tab.kf,#app #career .tabs .tab:focus-visible{outline:none;box-shadow:var(--ring-f)}
+#app #career .cr-sub.tabs .tab{font-size:14px}
+/* ---- barra de toques: plana y recta como el marcador (sin inclinación ni contorno de tinta; borde 1px transparente = misma caja) ---- */
+.tb-lbl::before,.tb-seg{transform:none;border-radius:2px;border-color:transparent;background:var(--tk);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.tb-seg>*{transform:none}
+.tb-seg span,.tb-lbl{text-shadow:none}
+.tb-seg i{border-radius:2px;box-shadow:none}
+.tb-seg.done{color:#fff;background:linear-gradient(0deg,rgba(var(--k0rgb),.42),rgba(var(--k0rgb),.42)),var(--tk);border-color:transparent}
+.tb-seg.done i{text-shadow:none;box-shadow:none}
+.tb-seg.next{color:var(--tk);background:#ffd23f;border-color:transparent;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.tb-seg.next i{background:var(--tk);color:#ffd23f}
+/* balón por detrás (.thru): casi transparente; el paso activo pasa a texto amarillo para leerse sobre la escena */
+#touchbar.thru:not(.off) .tb-seg{background:rgba(29,21,48,.16);border-color:transparent;box-shadow:none}
+#touchbar.thru:not(.off) .tb-seg.next{color:#ffd23f;background:rgba(29,21,48,.22);box-shadow:inset 0 0 0 1px rgba(255,210,63,.55)}
+#touchbar.thru:not(.off) .tb-seg.next i{background:#ffd23f;color:var(--tk)}
+/* ==== fin TV D1+D2 ==== */
+/* ==== TV D3: marcador ==== */
+/* Marcador de TV: bloque recto y plano de tinta, sin banda de luz ni sombra dura (solo una sombra suave). MISMAS MEDIDAS:
+   ui.js mide .sb, .sb-body y las filas; aquí solo cambian fondos, sombras (sin ocupar sitio) y el reparto interior de la fila */
+.sb-venue{border-radius:0;box-shadow:none;background:#fff7e8;color:var(--tk)}
+.sb-set{border-radius:0;box-shadow:none;background:#2b2547;border-color:transparent;color:#ffd23f}
+/* challenges: rótulo «CH» delante de los iconos; la pestaña conserva sus 52 px (es la que fija el ancho del marcador) */
+.sb-chal{box-sizing:border-box;width:52px;justify-content:center;gap:3px;padding:0 3px;border-radius:0;box-shadow:none;background:#2b2547;border-color:transparent}
+.sb-chal::before{content:"CH";font:900 10px/1 var(--display);letter-spacing:.04em;color:#fff7e8;margin-right:1px}
+.sb-chal i{width:9px;height:8px;border-radius:1px;background:rgba(255,255,255,.12);box-shadow:none}
+.sb-chal i.on{background:#ffd23f;box-shadow:none}
+.sb-chal i::after{right:-2px;top:2px;border-width:2px 0 2px 2px}
+.sb-body{background:var(--tk);border-color:var(--tk);border-radius:0 2px 2px 2px;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.sb-row+.sb-row{border-top-color:#2b2547}
+.t0 .sb-chip{background:var(--k0);box-shadow:none} .t1 .sb-chip{background:var(--k1);box-shadow:none}
+.sb-name{text-shadow:0 1px 0 rgba(0,0,0,.45)}
+/* la fila pierde el relleno derecho (12 px) y la columna de sets lo gana (30 → 42 px): la caja del tanteo queda pegada al borde */
+.sb-row{padding-right:0;grid-template-columns:7px 1fr 18px 42px 52px}
+.sb-row.t0{--kc:var(--k0)} .sb-row.t1{--kc:var(--k1)}
+/* tanteo: caja clara propia de 52 px con la cifra oscura */
+.sb-pts{align-self:stretch;display:flex;align-items:center;justify-content:center;background:#fff7e8;color:var(--tk);text-shadow:none;font-size:32px}
+/* sets ganados: cifra (los rombos quedan ocultos; ui.js los sigue marcando) */
+.sb-sets{justify-content:center;align-items:center}
+.sb-sets em{display:none}
+.sb-sn{display:flex;align-items:center;justify-content:center;min-width:24px;height:26px;background:#2b2547;color:#fff7e8;
+  font:900 19px/1 var(--display);font-variant-numeric:tabular-nums}
+/* punto: la caja se enciende del color de la equipación con la cifra blanca y vuelve a la crema (bump sin salirse de la fila) */
+.sb-row.scored .sb-pts{animation:tvPts .7s var(--ease)}
+@keyframes tvPts{0%{background:var(--kc);color:#fff;transform:scale(1.18)}35%{background:var(--kc);color:#fff;transform:scale(1)}100%{background:#fff7e8;color:var(--tk)}}
+/* pestaña del punto de trámite y etiqueta de saque: planas, rectas */
+#pbug{border-radius:0 2px 2px 0;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+#pbug.t0{background:var(--k0d)} #pbug.t1{background:var(--k1d)}
+#pbug b,#pbug span{text-shadow:0 1px 0 rgba(0,0,0,.4)}
+#pbug em{border-radius:0;background:var(--tk);border-color:transparent;box-shadow:none}
+.sb-tag{border-radius:2px;background:#ffd23f;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.sb-tag.cpu{background:var(--k1l);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.sb-chal::before{font-size:11px;letter-spacing:.06em}
+/* teléfono apaisado: sin nombre de pabellón la franja superior va sobrada y el ancho lo fija el cuerpo; «CH» algo mayor */
+@media (max-height:420px){.sb-chal{width:62px;gap:4px}.sb-chal::before{font-size:13px}}
+/* ==== fin TV D3 ==== */
+/* ==== TV D4: tarjetas de modo ==== */
+/* Tarjetas planas (D1): radio 10 px, sin contorno de tinta ni sombra dura; el foco es el aro ámbar interior común (TV D7, capa ::after).
+   Dibujo = fondo plano del color del modo + marca grande tipo dorsal («2v2», «6v6») o copa plana de un solo color (Carrera).
+   La marca escala con su caja (container queries) para caber en todas las variantes responsive. */
+#menu .mode{border-radius:10px;background:rgba(40,33,74,.94);box-shadow:0 6px 18px rgba(10,6,24,.35);
+  transition:transform .2s var(--ease),outline-color .15s,background .2s}
+#menu .mode:hover{background:rgba(54,45,98,.96)}
+#menu .mode:focus-visible,#menu .mode.kf{transform:translateY(-4px);
+  box-shadow:0 10px 24px rgba(10,6,24,.45)}
+#menu .mode:active{transform:translateY(1px)}
+#menu .mode.soon:hover{box-shadow:0 6px 18px rgba(10,6,24,.35)}
+#menu .md-art{display:flex;align-items:center;justify-content:center;border-bottom:0;container-type:size;background:#f2621f}
+#menu .m-career .md-art{background:#6545c2}
+#menu .m-6v6 .md-art{background:#2a8a8a}
+/* marca de dorsal: cifras enormes 900 itálica en crema, la «v» más pequeña */
+.md-num{display:block;font:900 min(76cqh,50cqw)/1 var(--display);font-style:italic;letter-spacing:-.02em;color:#fff8ee;
+  text-shadow:0 .04em 0 rgba(20,12,40,.22);white-space:nowrap;transform:translateY(-.02em)}
+.md-num i{font-style:italic;font-size:.55em;margin:0 .05em 0 .01em;letter-spacing:0;vertical-align:.08em}
+/* copa: silueta plana de un solo color */
+#menu .md-art .md-trophy{position:static;inset:auto;width:auto;height:min(84cqh,58cqw);aspect-ratio:1;fill:#fff8ee;
+  filter:drop-shadow(0 3px 0 rgba(20,12,40,.22))}
+/* animación suave con el foco (las cifras/copa suben un poco y vuelven) */
+#menu .mode:hover .md-num,#menu .mode.kf .md-num,#menu .mode:focus-visible .md-num,
+#menu .mode:hover .md-art .md-trophy,#menu .mode.kf .md-art .md-trophy,#menu .mode:focus-visible .md-art .md-trophy{animation:tvD4Bob 1.8s ease-in-out infinite}
+@keyframes tvD4Bob{0%,100%{transform:none}50%{transform:translateY(-3%) scale(1.03)}}
+/* título de la tarjeta más plano (sin aro de tinta) */
+#menu .md-tx b{text-shadow:0 2px 0 rgba(10,6,24,.35)}
+/* subtítulo reservado a 2 líneas: la franja de Carrera (1 línea) acaba a la misma altura que las de 2v2 y 6v6 */
+#menu .md-tx small{min-height:2lh}
+@media (max-height:420px){#menu .mode{border-radius:9px}}
+@media (max-width:620px){
+  #menu .md-art{border-right:0}
+  #menu .md-tx small{min-height:0}
+  .md-num{font-size:min(60cqh,48cqw)}
+  #menu .md-art .md-trophy{height:min(80cqh,74cqw)}
+}
+/* ==== fin TV D4 ==== */
+/* ==== TV D5: cartel de previa ==== */
+/* Cartel de previa de TV: sin tarjeta violeta ni tinta. Franja oscura plana arriba (sede · formato), dos bloques rectos del color
+   de cada equipo (--k0d/--k1d: tonos oscurecidos que siempre admiten texto blanco) que entran deslizando desde los laterales de la
+   pantalla, «VS» en la unión y placa oscura abajo (nivel, sets, saque, aviso y barra de 2,5 s). Radios 0-2 px. Base = estado final,
+   así .gy (sin animaciones) y el movimiento reducido (ui.js funde con Web Animations) lo enseñan entero. */
+#intro .in-card{width:min(780px,calc(100% - 32px));padding:0;border:0;border-radius:2px;overflow:visible;background:none;box-shadow:none}
+#intro .in-card::before{content:none}
+#intro .in-k{gap:8px;width:max-content;max-width:100%;box-sizing:border-box;margin:0 auto;padding:7px 16px 6px;border-radius:2px 2px 0 0;
+  background:#1d1530;color:#fff;font-size:13px;letter-spacing:.26em;text-shadow:none}
+#intro .in-k svg{color:var(--amber)}
+#intro .in-k>span{color:rgba(255,255,255,.72)}
+#intro .in-k>span::before{box-shadow:none;background:var(--amber)}
+#intro .in-vs{position:relative;grid-template-columns:1fr 1fr;gap:0;margin:0}
+#intro .in-t{justify-content:center;gap:3px;min-height:112px;box-sizing:border-box;padding:12px 40px 14px;border-radius:0;text-shadow:none}
+#intro .in-t.t0{background:var(--k0d,#b8400f);box-shadow:inset 0 -5px 0 var(--k0,#ff6a2e)}
+#intro .in-t.t1{background:var(--k1d,#2459d8);box-shadow:inset 0 -5px 0 var(--k1,#2f7bff)}
+#intro .in-t b{color:#fff;background:none;-webkit-background-clip:border-box;background-clip:border-box;text-shadow:0 2px 0 rgba(0,0,0,.28);letter-spacing:.03em}
+#intro .in-t small{color:rgba(255,255,255,.86);text-shadow:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* «VS»: solo texto, centrado sobre la unión de los dos bloques */
+#intro .in-x{position:absolute;left:50%;top:50%;z-index:1;width:auto;height:auto;margin:-2px 0 0;transform:translate(-50%,-50%);border-radius:0;background:none;box-shadow:none;
+  color:#fff;font-size:36px;line-height:1;letter-spacing:.04em;text-transform:uppercase;text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 14px rgba(0,0,0,.35)}
+/* placa inferior: meta + aviso + barra, todo sobre #1d1530 plano */
+#intro .in-meta{gap:6px 16px;padding:10px 16px 8px;background:#1d1530;color:#fff;font-size:15px;text-shadow:none}
+#intro .in-chip{border-radius:2px;background:var(--amber);color:#1d1530;box-shadow:none;padding:3px 9px}
+#intro .in-srv{color:var(--amber)}
+#intro .in-skip{margin:0;padding:0 16px 13px;background:#1d1530;border-radius:0 0 2px 2px;color:rgba(255,255,255,.55);text-shadow:none}
+/* secundarios de la placa (sets, saque, aviso) en var(--ui) y minúscula de frase; el nivel sigue siendo etiqueta */
+#intro .in-meta{font-family:var(--ui);font-weight:700;letter-spacing:0;text-transform:none}
+#intro .in-chip{font-family:var(--display);letter-spacing:.08em;text-transform:uppercase}
+#intro .in-skip{font:600 12px var(--ui);letter-spacing:.02em;text-transform:none}
+#intro .in-k{letter-spacing:.1em}
+/* subtítulo de equipo en blanco pleno (sobre un --k0d amarillo oscurecido el .86 quedaba por debajo de 4,5:1) */
+#intro .in-t small{color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.35)}
+/* filo claro arriba: separa el bloque de la placa cuando la equipación es negra o gris */
+#intro .in-t.t0{box-shadow:inset 0 -5px 0 var(--k0,#ff6a2e),inset 0 1px 0 rgba(255,255,255,.12)}
+#intro .in-t.t1{box-shadow:inset 0 -5px 0 var(--k1,#2f7bff),inset 0 1px 0 rgba(255,255,255,.12)}
+#intro .in-bar{height:4px;background:rgba(255,255,255,.12);border-radius:0 0 2px 2px;overflow:hidden}
+#intro .in-bar b{background:var(--amber)}
+/* entrada: los bloques llegan desde fuera de la pantalla; las franjas se abren desde el centro; el VS aparece en la unión */
+#intro.show .in-card{animation:none}
+#intro.show .in-t.t0{animation:tvInL .5s .05s var(--ease) both}
+#intro.show .in-t.t1{animation:tvInR .5s .05s var(--ease) both}
+#intro.show .in-x{animation:tvVs .3s .42s var(--ease) both}
+#intro.show .in-k{animation:tvWipe .34s .3s var(--ease) both}
+#intro.show .in-meta{animation:tvWipe .34s .36s var(--ease) both}
+#intro.show .in-skip{animation:fadeUp .3s .55s var(--ease) both}
+#intro.show .in-bar{animation:fadeUp .3s .55s var(--ease) both}
+#intro.out .in-card{animation:bnOut .28s ease-in both}
+#intro.gy *{animation:none!important}
+@keyframes tvInL{from{transform:translateX(-100vw)}to{transform:none}}
+@keyframes tvInR{from{transform:translateX(100vw)}to{transform:none}}
+@keyframes tvVs{from{opacity:0;transform:translate(-50%,-50%) scale(1.6)}to{opacity:1;transform:translate(-50%,-50%)}}
+@keyframes tvWipe{from{clip-path:inset(0 50% 0 50%)}to{clip-path:inset(0 0 0 0)}}
+@media (max-height:420px){
+  #intro .in-card{margin-top:-2vh}
+  #intro .in-k{font-size:11px;padding:5px 12px 4px}
+  #intro .in-t{min-height:84px;padding:8px 32px 11px}
+  #intro .in-t b{font-size:42px}
+  #intro .in-x{font-size:24px}
+  #intro .in-meta{font-size:13px;padding:7px 12px 5px}
+  #intro .in-skip{padding:0 12px 9px}
+}
+/* ==== fin TV D5 ==== */
+/* ==== TV D6: mosca de directo, franja de equipo y dato de portada ==== */
+/* Mosca roja recta «DIRECTO» (sin brillo, sin parpadeo, sin «DEMO»); solo se ve con la demo detrás (ui.js bootBgOut). */
+#menu .live{gap:7px;padding:5px 10px 5px 9px;border:0;border-radius:2px;background:#d4251c;box-shadow:none;color:#fff;
+  font:800 12px/1 var(--display);letter-spacing:.16em;text-shadow:none}
+#menu .live::before{width:7px;height:7px;background:#fff;box-shadow:none;animation:none}
+/* bajo el logo, el dato vivo del último Partido rápido («Última: 2-0 a la CPU | Normal», ui.js renderMenu); sin partidos no sale */
+#menu .tagline{margin-top:10px;font:700 15px/1.3 var(--ui);color:var(--fg2);letter-spacing:0}
+#menu .tagline .sep-v{margin:-.1em .55em 0}
+/* la franja de color de arriba solo en la hoja final, con el color del ganador (equipaciones de kitTick: --k0 tú, --k1 la CPU);
+   la previa ya lleva los colores de equipo en sus bloques (TV D5) */
+.sheet::before{display:none}
+#end .sheet::before{display:block}
+#end.win .sheet::before{background:var(--k0)}
+#end.lose .sheet::before{background:var(--k1)}
+/* ==== fin TV D6 ==== */
+/* ==== TV D7: un solo foco ==== */
+/* Foco de teclado/mando = aro ámbar INTERIOR, igual en todo (botones, pestañas, .sq-pk, listas, tarjetas de modo, Carrera).
+   Va en outline con desfase negativo (no choca con las sombras de cada botón y se pinta encima del contenido); las reglas de D1
+   que usan var(--ring-f) pintan la misma banda. Sobre fondos claros o saturados (amarillo de seleccionado, naranja de la acción
+   principal) el aro lleva filo de tinta por fuera y por dentro (--focus-ring-on) para que se vea. Sin contornos blancos ni dorados. */
+#app{--focus:#ffb238;--focus-ring:inset 0 0 0 3px var(--focus);
+  --focus-ring-on:inset 0 0 0 3px var(--tk),inset 0 0 0 6px var(--focus),inset 0 0 0 7.5px var(--tk);--ring-f:var(--focus-ring)}
+#app :is(button,a,input,select,textarea,[tabindex]):is(:focus-visible,.kf){outline:3px solid var(--focus);outline-offset:-3px}
+/* fondo claro o saturado: el outline pasa a filo de tinta y el ámbar va dentro (box-shadow) */
+#app :is(#btnPlay,#btnGo,#btnResume,#btnAgain,#btnTutNext,#btnFirstTut,.tabs .tab.on,.sq-pk.on,.sq-r button):is(:focus-visible,.kf),
+#app #career button:is(.pri,.warn,[aria-pressed="true"]):is(:focus-visible,.kf){outline-color:var(--tk)}
+#app #menu .mi.primary:is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),5px 6px 0 var(--tk)}
+#app :is(#btnResume,#btnAgain,#btnTutNext,#btnFirstTut):is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),0 4px 0 var(--tk)}
+#app .tabs .tab.on:is(:focus-visible,.kf),#app #career .tabs .tab.on:is(:focus-visible,.kf){box-shadow:var(--focus-ring-on)}
+#app .sq-pk.on:is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),var(--flat-sh)}
+/* «+1» de Jugadores: fondo naranja (--t0), aro con filo de tinta y se conserva el contorno de 2px */
+#app .sq-r button:is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),0 0 0 2px var(--tk)}
+#app #career button:is(.pri,.warn):not(.tab):not(.tb-k):is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),4px 5px 0 var(--tk)}
+#app #career button[aria-pressed="true"]:not(.tab):not(.tb-k):is(:focus-visible,.kf){box-shadow:var(--focus-ring-on),var(--flat-sh)}
+/* tarjetas de modo: el dibujo de color tapa las sombras interiores; el aro va en una capa encima (::after) */
+#menu .mode::after{content:"";position:absolute;inset:0;z-index:2;border-radius:inherit;pointer-events:none}
+#app #menu .mode:is(:focus-visible,.kf){outline:none}
+#app #menu .mode:is(:focus-visible,.kf)::after{box-shadow:var(--focus-ring-on)}
+/* Cuenta cuelga de body (account.js), no de #app: no hereda --focus, va el color literal */
+body #account input:focus{box-shadow:inset 0 0 0 3px #ffb238}
+/* ==== fin TV D7 ==== */
+/* ==== TV D8: seleccionado ==== */
+/* «Seleccionado» = un solo degradado amarillo (--sel) con texto en tinta, en pestañas, segmentados de Ajustes, Jugadores y Carrera.
+   El naranja queda para la acción principal. Las muestras de color de la equipación (.seg.kit) no cambian. */
+#app{--sel:linear-gradient(180deg,#ffd23f,#ffc21a)}
+.tabs .tab.on,#app #career .tabs .tab.on{background:var(--sel)}
+.sq-pk.on{background:var(--sel)}
+.seg:not(.kit) span.on{background:var(--sel);color:var(--tk)}
+#app #career button[aria-pressed="true"]:not(.tab){background:var(--sel);color:var(--tk)}
+/* ==== fin TV D8 ==== */
+/* ==== TV D9: Carrera, jerarquía de navegación y repaso de la Carrera de pista ==== */
+/* Tres niveles que ya no se confunden (antes los tres eran la misma píldora amarilla):
+   1) apartado (primer nivel, #crTabs): píldora amarilla, como en D1+D2 (no se toca aquí);
+   2) sub-pestaña (#crSub): texto sobre una raya fina, la elegida en dorado con subrayado de 3 px, sin píldora;
+   3) filtro de circuito / liga / país / división (.lg-sw de Clasificación): segmentado pequeño plano, sin sombra.
+   Mismo alto de caja en las pestañas (el componente VB.UI.tabs y career-ui.js no se tocan). */
+#app #career .cr-sub.tabs .tb-row{gap:2px;padding:0 2px;border-radius:0;background:transparent;box-shadow:inset 0 -1px 0 rgba(255,255,255,.14)}
+#app #career .cr-sub.tabs .tab{border-radius:0;background:transparent;color:var(--soft);box-shadow:none}
+#app #career .cr-sub.tabs .tab:hover:not(.on){background:rgba(255,255,255,.06);color:#fff}
+#app #career .cr-sub.tabs .tab.on{background:transparent;color:#ffd23f;box-shadow:inset 0 -3px 0 #ffd23f}
+#app #career .cr-sub.tabs .tab.kf,#app #career .cr-sub.tabs .tab:focus-visible{background:rgba(255,255,255,.06);box-shadow:var(--ring-f)}
+#app #career .cr-sub.tabs .tab.on.kf,#app #career .cr-sub.tabs .tab.on:focus-visible{box-shadow:var(--ring-f),inset 0 -3px 0 #ffd23f}
+/* filtros: los de Clasificación cuelgan directos de la tarjeta (#crBody>.card>.lg-sw); el selector de país de «Crea tu jugador»
+   (.cf) es una elección, no un filtro, y sigue con botones planos. #crBody da el tercer id: gana a la regla plana de D1 */
+#app #career #crBody>.card>.lg-sw{display:flex;width:fit-content;max-width:100%;gap:2px;padding:3px;margin-bottom:6px;border-radius:8px;background:rgba(10,6,24,.42)}
+#app #career #crBody>.card>.lg-sw button{flex:0 0 auto;min-width:0;min-height:32px;padding:0 10px;border-radius:6px;background:transparent;box-shadow:none;
+  color:var(--soft);font:700 13px/1 var(--ui);letter-spacing:.02em;text-transform:none;text-shadow:none;transform:none}
+#app #career #crBody>.card>.lg-sw button:hover{background:rgba(255,255,255,.08);color:#fff}
+#app #career #crBody>.card>.lg-sw button[aria-pressed="true"]{background:#ffd23f;color:var(--tk)}
+#app #career #crBody>.card>.lg-sw button:is(:focus-visible,.kf){background:rgba(255,255,255,.1);box-shadow:var(--ring-f)}
+#app #career #crBody>.card>.lg-sw button[aria-pressed="true"]:is(:focus-visible,.kf){background:#ffd23f;box-shadow:inset 0 0 0 3px #ffb238,inset 0 0 0 4.5px var(--tk)}
+#app.is-touch #career #crBody>.card>.lg-sw button{min-height:44px;min-width:44px}
+/* «Ver» de la tabla comparativa de ofertas: 39 px de ancho en el táctil */
+#app.is-touch #career td button{min-width:44px}
+/* ≤900 px: el filtro de país es una sola fila deslizable sin barra; el borde derecho se funde para avisar de que hay más países
+   (y 32 px de relleno al final: al llegar al último país, el fundido cae sobre el hueco y no sobre el botón) */
+@media (max-width:900px){#app #career #crBody>.card>.cc-row{flex-wrap:nowrap;overflow-x:auto;padding-right:32px;
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent)}}
+/* ---- repaso de la Carrera (playa y pista) ---- */
+/* etiquetas de la Carrera (+XP, ¡Nivel!, Entreno, Simulado, Ascenso…): texto secundario en minúscula de frase, planas */
+#app #career .tag{font:700 12px/1.25 var(--ui);letter-spacing:0;text-transform:none}
+#app #career .tag:not(.g):not(.y):not(.r){box-shadow:none}
+/* insignias bloqueadas: antes todo el botón al 60 % (el «Bloqueada» y la ayuda quedaban por debajo de 4,5:1); ahora solo se apagan
+   el icono y el nombre, y el texto se lee entero */
+#app #career .bd.lock{opacity:1}
+#app #career .bd.lock .ic{opacity:.5}
+#app #career .bd.lock strong{color:var(--muted)}
+/* «Bloqueada»: career-ui.js le pone en línea TIER_C[0] (#6b6390, ~2,5:1 sobre la tarjeta); --muted pasa de 4,5:1. El !important gana
+   al estilo en línea (lo limpio, cambiar TIER_C[0], es de la sesión de Carrera). La ayuda va en --soft y sin negrita: que no destaque
+   sobre el nombre */
+#app #career .bd.lock strong+span{color:var(--muted)!important}
+#app #career .bd.lock>span:last-child{color:var(--soft);font-weight:400}
+/* hoja final de un partido de Carrera: «¡NIVEL 7! +4 puntos» (texto de main.js) en minúscula de frase y plano, sin tinta;
+   ::first-letter recoge el «¡» y la N → «¡Nivel 7! +4 puntos» */
+#end .end-xp .lv{display:inline-block;box-shadow:none;font:700 13px/1.3 var(--ui);letter-spacing:0;text-transform:lowercase}
+#end .end-xp .lv::first-letter{text-transform:uppercase}
+/* vista previa de atributos al crear: 5 columnas fijas pegaban «Colocación 35Potencia» en la columna estrecha (844×390, 1280×720) */
+#app #career .prev{grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}
+/* teléfono vertical y ventanas estrechas */
+@media (max-width:560px){
+  /* título de la cabecera: hasta dos líneas en vez de «PISTA PRUEBA / H…» */
+  #app #career .cr-title b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:20px;line-height:1.05}
+  /* previa de partido: los dos clubes uno debajo del otro (lado a lado, los nombres de pista se partían en 4 líneas con «…») */
+  #app #career .vs{grid-template-columns:minmax(0,1fr);gap:6px}
+  #app #career .team.r{flex-direction:row;text-align:left}
+  #app #career .vs-mid{font-size:18px;line-height:1;padding-left:58px}
+  #app #career .team b{font-size:19px}
+  /* segmentados de elección (puesto, duración del contrato): letra algo menor y menos relleno, sin cortes */
+  #app #career .seg{gap:6px}
+  #app #career .seg button{min-width:0;padding:0 4px;font-size:14px;line-height:1.1}
+  /* «Comparar ofertas»: el nombre del club en varias líneas en vez de «Hama…» (solo en las tablas con botón «Ver») */
+  #app #career tr:has(button) td{padding-left:3px;padding-right:3px}
+  #app #career tr:has(button) td.club{white-space:normal;overflow-wrap:break-word;hyphens:auto;font-size:13px;line-height:1.2}
+}
+/* ==== fin TV D9 ==== */
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -1868,23 +2266,24 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .tabs.tabs-ic .tab:not(.on) svg{display:block!important;width:19px;height:19px}
 .tabs.tabs-ic .tb-row{justify-content:space-between}
 /* restablecer el apartado (doble pulsación) */
-.opt-reset{align-self:flex-start;margin-top:4px;padding:8px 12px;border-radius:10px;font:700 13px var(--display);letter-spacing:.12em;color:var(--soft,#cfc8f2);
-  background:transparent;box-shadow:inset 0 0 0 1.5px var(--line2)}
-.opt-reset:hover{background:rgba(255,255,255,.08)}
-.opt-reset.arm{color:var(--tk,#1d1530);background:#ffd23f;box-shadow:inset 0 0 0 2px var(--tk,#1d1530)}
+.opt-reset{align-self:flex-start;margin-top:4px;padding:8px 12px;border-radius:8px;font:700 14px var(--ui);letter-spacing:0;text-transform:none;color:var(--soft,#cfc8f2);
+  background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14);text-shadow:none}
+.opt-reset:hover{background:rgba(255,255,255,.06);color:#fff}
+.opt-reset:focus-visible,.opt-reset.kf{background:rgba(255,255,255,.08);color:#fff}
+/* armado (2ª pulsación borra): el mismo aviso naranja que «Reiniciar partido» de la Pausa (#btnRestart.arm), no el amarillo de elegido */
+.opt-reset.arm{color:#fff;background:rgba(255,90,44,.22);box-shadow:inset 0 0 0 2px #ff6a2e}
 .is-touch .opt-reset{min-height:40px}
 /* fila que abre otro panel (Controles, Novedades, Créditos) */
-.opt-go .go-ic{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:rgba(0,0,0,.28)}
+.opt-go .go-ic{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;background:rgba(0,0,0,.28)}
 .opt-go .go-ic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 /* filas informativas de Info (no se enfocan) */
 .opt.info{cursor:default;box-sizing:border-box}
-.opt.info>span:first-child{text-transform:uppercase}
-.opt.info .iv{font:700 15px var(--ui);letter-spacing:0;text-transform:none;color:var(--fg2);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.opt.info .iv{font:600 15px var(--ui);letter-spacing:0;text-transform:none;color:var(--fg2);font-variant-numeric:tabular-nums;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* versión en la esquina de la portada */
-.menu-foot .ver{pointer-events:auto;align-self:flex-end;margin:0 0 0 auto;padding:5px 9px;border-radius:8px;font:700 11px var(--display);letter-spacing:.14em;
-  text-transform:uppercase;color:var(--muted);background:transparent;box-shadow:none;position:relative}
+.menu-foot .ver{pointer-events:auto;align-self:flex-end;margin:0 0 0 auto;padding:5px 9px;border-radius:6px;font:700 12px var(--ui);letter-spacing:.02em;
+  text-transform:none;font-variant-numeric:tabular-nums;color:var(--muted);background:transparent;box-shadow:none;text-shadow:none;position:relative}
 .menu-foot .ver:hover{color:var(--fg);background:rgba(255,255,255,.08)}
-.menu-foot .ver.new::after{content:"";position:absolute;right:2px;top:3px;width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 1.5px var(--tk,#1d1530)}
+.menu-foot .ver.new::after{content:"";position:absolute;right:2px;top:3px;width:7px;height:7px;border-radius:50%;background:#ffd23f;box-shadow:none}
 .menu-foot .ver+.rec{margin-left:0}
 /* Controles editables */
 .ctl-pane{display:flex;flex-direction:column;gap:8px}
@@ -1893,33 +2292,37 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .ctl .kl{min-width:0;font-size:15px;color:var(--fg2)}
 .ctl .kl small{display:block;font:500 12px var(--ui);color:var(--muted)}
 .ctl .ks{display:flex;gap:6px;flex:0 0 auto}
-.kslot{min-width:58px;height:34px;padding:0 10px;border-radius:9px;font:800 15px/1 var(--display);letter-spacing:.06em;text-transform:none;color:var(--tk,#1d1530);
-  background:#fff7e8;box-shadow:inset 0 0 0 1.5px var(--tk,#1d1530),0 3px 0 var(--tk,#1d1530);text-shadow:none}
-.kslot.empty{color:var(--dim-text);background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1.5px var(--line2)}
-.kslot.cap{color:#1a1100;background:#ffd23f;animation:kcap 1s ease-in-out infinite}
+.kslot{min-width:58px;height:34px;padding:0 10px;border-radius:6px;font:800 15px/1 var(--display);letter-spacing:.04em;text-transform:none;color:var(--tk,#1d1530);
+  background:#fff7e8;box-shadow:inset 0 0 0 1.5px var(--tk,#1d1530),0 2px 0 var(--tk,#1d1530);text-shadow:none}
+.kslot:hover:not(:disabled):not(.cap){background:#fff}
+.kslot.empty{color:var(--muted);background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14)}
+.kslot.empty:hover:not(:disabled){background:rgba(255,255,255,.06)}
+.kslot.cap{color:var(--tk,#1d1530);background:var(--sel,#ffd23f);font:700 14px/1 var(--ui);letter-spacing:0;animation:kcap 1s ease-in-out infinite}
 .kslot.fixed,.kslot:disabled{opacity:.55;cursor:default}
 .rm .kslot.cap{animation:none}
-@keyframes kcap{0%,100%{box-shadow:inset 0 0 0 2px var(--tk,#1d1530),0 0 0 0 rgba(255,210,63,.6)}50%{box-shadow:inset 0 0 0 2px var(--tk,#1d1530),0 0 0 6px rgba(255,210,63,0)}}
+@keyframes kcap{0%,100%{box-shadow:inset 0 0 0 1.5px var(--tk,#1d1530),0 0 0 0 rgba(255,210,63,.55)}50%{box-shadow:inset 0 0 0 1.5px var(--tk,#1d1530),0 0 0 5px rgba(255,210,63,0)}}
 .is-touch .kslot{height:40px}
-.ctl-fixed{margin:0;padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.4;color:var(--muted);background:rgba(29,21,48,.35)}
+.ctl-fixed{margin:0;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.4;color:var(--muted);background:rgba(29,21,48,.35)}
 .ctl-fixed b{color:var(--fg2);font-weight:600}
 .ctl-msg{min-height:1.3em;margin:6px 0 0;font:600 13.5px var(--ui);color:var(--gold)}
 .ctl-msg:empty{min-height:0;margin:0}
 .ctl-msg.bad{color:#ff9a8a}
 /* (sprint 5, arreglo) el aviso de la captura y el resultado se quedan pegados abajo de la hoja: en pantallas bajas quedaban fuera de vista */
-.ctl-msg:not(:empty){position:sticky;bottom:0;z-index:2;margin:6px -10px 0;padding:7px 10px;border-radius:10px;background:rgba(9,14,26,.95);box-shadow:0 -6px 16px rgba(0,0,0,.45)}
+.ctl-msg:not(:empty){position:sticky;bottom:0;z-index:2;margin:6px -10px 0;padding:7px 10px;border-radius:6px;background:var(--tk,#1d1530);box-shadow:0 -6px 16px rgba(0,0,0,.4)}
 .ctl-pane .opt-g{gap:6px}
 /* Acerca de */
 .ab{display:flex;flex-direction:column;gap:10px}
-.ab .ab-k{margin:0;font:700 13px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.ab .card{padding:12px 16px;border-radius:14px;background:rgba(29,21,48,.5);box-shadow:inset 0 0 0 2px var(--tk,#1d1530)}
-.ab .card h3{margin:0 0 6px;font:800 18px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--fg)}
-.ab .card h3 small{margin-left:8px;font:700 12px var(--display);letter-spacing:.12em;color:var(--muted)}
+.ab .ab-k{margin:0;font:700 13px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ab .card{padding:12px 16px;border-radius:8px;background:var(--flat,rgba(46,39,86,.95));box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08),var(--flat-sh,0 2px 0 #1d1530)}
+.ab .card h3{margin:0 0 6px;font:800 18px var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--fg);text-shadow:none}
+.ab .card h3 small{margin-left:8px;font:600 13px var(--ui);letter-spacing:0;text-transform:none;color:var(--muted);font-variant-numeric:tabular-nums}
+.ab .ab-lics{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ab .ab-lics .opt-reset{margin-top:0}
 .ab .card ul{margin:0;padding-left:18px;color:var(--fg2);font-size:14.5px;line-height:1.45}
 .ab .card p{margin:0;color:var(--fg2);font-size:14.5px;line-height:1.45}
 .ab .card p+p{margin-top:4px}
-.ab details{border-radius:12px;background:rgba(29,21,48,.35);padding:8px 14px}
-.ab summary{cursor:pointer;font:700 14px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--soft,#cfc8f2)}
+.ab details{border-radius:8px;background:rgba(29,21,48,.35);padding:8px 14px}
+.ab summary{cursor:pointer;font:700 14px var(--ui);letter-spacing:0;text-transform:none;color:var(--soft,#cfc8f2)}
 .ab .lic{margin:8px 0 2px;max-height:180px;overflow:auto;white-space:pre-wrap;font:500 11px/1.45 ui-monospace,monospace;color:var(--muted)}
 .ab .ab-note{margin:0;font-size:12.5px;color:var(--muted)}
 .ab .ab-build{margin:0;font:600 11px ui-monospace,monospace;color:var(--dim-text)}
@@ -1938,13 +2341,13 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 :root{--brz:#c9824a;--slv:#c9d3de;--gld:#ffc83a}
 #mpPlay{width:min(1060px,100%)}
 @media (min-width:621px){.modes{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.m-gym .md-art{background:radial-gradient(circle at 70% 30%,rgba(255,240,200,.35),transparent 55%),linear-gradient(160deg,#ffa04a,#f0524e 75%)}
-.md-tg ellipse{fill:#fff8ee;stroke:var(--tk);stroke-width:3.4}
-.md-tg ellipse:nth-child(2){fill:#ff6a4d}
-.md-tg .md-tgc{fill:#ffd23f}
-.md-cone{fill:#ff8a1f;stroke:var(--tk);stroke-width:3.6;stroke-linejoin:round}
-.md-cstr{fill:none;stroke:#fff8ee;stroke-width:5;stroke-linecap:round}
-.md-cb{stroke:var(--tk);stroke-width:5;stroke-linecap:round}
+/* tarjeta en el estilo plano de TV D4: fondo de un color y silueta crema de un solo color (cono y balón), como la copa de Carrera */
+#menu .m-gym .md-art{background:#c8433b}
+#menu .md-art .md-flat{position:static;inset:auto;width:auto;height:min(84cqh,58cqw);aspect-ratio:1;fill:#fff8ee;
+  filter:drop-shadow(0 3px 0 rgba(20,12,40,.22))}
+#menu .md-art .md-flat .md-gseam{fill:none;stroke:#c8433b;stroke-width:2.2;stroke-linecap:round}
+#menu .mode:hover .md-art .md-flat,#menu .mode.kf .md-art .md-flat,#menu .mode:focus-visible .md-art .md-flat{animation:tvD4Bob 1.8s ease-in-out infinite}
+@media (max-width:620px){#menu .md-art .md-flat{height:min(80cqh,74cqw)}}
 @media (max-width:900px) and (min-width:621px){.md-tx b{font-size:22px}.md-tx small{font-size:12.5px}}
 @media (max-height:420px){.modes{gap:8px}.md-tx{padding:8px 10px 0}.md-tx b{font-size:19px}}
 /* página Entrenamiento */
@@ -1952,19 +2355,19 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .gy-list .mi{height:58px;grid-template-columns:minmax(0,1fr) auto;padding-right:12px}
 .gy-list .mi-l{font-size:21px}
 .gy-r{display:flex;align-items:center;gap:8px;font:700 13px/1.1 var(--ui);letter-spacing:.01em;text-transform:none;color:var(--soft);white-space:nowrap}
-.gy-r b{font:900 16px/1 var(--display);color:#fff8ee;letter-spacing:.02em}
-.gy-r .gy-rec{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
-.gy-r .gy-rec small{font:600 11.5px/1 var(--ui);color:var(--muted)}
-.gy-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 2px 0;font:600 13px/1.3 var(--ui);color:var(--soft);text-shadow:var(--ring1)}
-.gy-foot b{color:#ffe08a}
+.gy-r b{font:700 16px/1 var(--ui);color:#ffd23f;letter-spacing:0;font-variant-numeric:tabular-nums}
+.gy-r .gy-rec{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.gy-r .gy-rec small{font:600 12px/1 var(--ui);color:var(--muted)}
+.gy-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 2px 0;font:600 13px/1.3 var(--ui);color:var(--soft);text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.gy-foot b{color:#ffd23f;font-variant-numeric:tabular-nums}
 .mdl{display:inline-block;width:30px;height:30px;flex:0 0 auto;vertical-align:middle}
-.mdl .rb{fill:#ff6a4d;stroke:var(--tk);stroke-width:1.6;stroke-linejoin:round}
-.mdl .rb2{fill:#4a8dff}
-.mdl .dk{stroke:var(--tk);stroke-width:2}
+.mdl .rb{fill:#e2553f}
+.mdl .rb2{fill:#3f7be0}
+.mdl .dk{stroke:rgba(20,12,40,.28);stroke-width:1.5}
 .mdl.m0 .dk{fill:none;stroke:rgba(255,255,255,.35);stroke-width:2;stroke-dasharray:3 3}
 .mdl.m0 .rb,.mdl.m0 .st{display:none}
 .mdl.m1 .dk{fill:var(--brz)}.mdl.m2 .dk{fill:var(--slv)}.mdl.m3 .dk{fill:var(--gld)}
-.mdl .st{fill:rgba(255,255,255,.75)}
+.mdl .st{fill:rgba(255,255,255,.8)}
 .mdl.off{opacity:.32;filter:saturate(.3)}
 @media (max-height:420px){#menu[data-page="gym"] #menuRecord{display:none}
   #menu[data-page="gym"] .fs-btn{width:38px;padding:0;justify-content:center;gap:0;right:calc(10px + var(--sr))}
@@ -1972,14 +2375,17 @@ kbd.ms{height:auto;padding:2px 6px 1px}
   .is-touch #menu[data-page="gym"] .fs-btn{width:44px}}
 @media (max-height:420px){.gy-list .mi{height:44px}.gy-list .mi-l{font-size:17px}.gy-list .mi-h{display:none}.mdl{width:24px;height:24px}.gy-foot{margin-top:5px;font-size:11.5px}}
 /* HUD del ejercicio: la pastilla ocupa el sitio del marcador (los avisos cortos de #callout siguen colgando del marcador) */
-#drillBar{display:none;align-items:center;gap:8px;height:38px;padding:0 16px 0 10px;border-radius:12px;background:var(--cel);color:#fff8ee;
-  box-shadow:0 0 0 2px var(--tk),4px 5px 0 2px var(--tk);font:800 17px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-#drillBar .db-ic{width:12px;height:12px;border-radius:50%;background:#ffb238;box-shadow:0 0 0 2px var(--tk),0 0 0 5px rgba(255,178,56,.35)}
-#drillBar b{color:#ffd23f;font-weight:900;font-variant-numeric:tabular-nums}
-#drillBar small{font:700 13px var(--ui);letter-spacing:0;text-transform:none;color:var(--soft)}
+#drillBar{display:none;align-items:center;gap:10px;height:40px;padding:0 6px 0 0;border-radius:0 2px 2px 0;background:var(--tk);color:#fff7e8;
+  box-shadow:0 6px 18px rgba(0,0,0,.35);font:800 18px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 0 rgba(0,0,0,.45)}
+#drillBar .db-ic{align-self:stretch;width:7px;height:auto;border-radius:0;background:var(--k0,#ff6a2e);box-shadow:none}
+#drillBar b{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 6px;margin-left:2px;
+  background:#fff7e8;color:var(--tk);font-weight:900;font-variant-numeric:tabular-nums;text-shadow:none}
+#drillBar small{font:700 13px var(--ui);letter-spacing:0;text-transform:none;color:var(--soft);text-shadow:none}
+#drillBar .sep{opacity:.7}
 #app.drill-on #drillBar{display:flex}
 #app.drill-on #sb>.sb-top,#app.drill-on #sb>.sb-bw,#app.drill-on #sb>.sb-tag,#app.drill-on #sb>.rl,#app.drill-on #chal{display:none}
-.is-touch #drillBar{height:34px;font-size:15px;padding:0 12px 0 9px}
+.is-touch #drillBar{height:36px;font-size:16px;gap:8px}
+.is-touch #drillBar b{height:26px;min-width:26px}
 /* tarjeta de presentación del ejercicio */
 .in-drill{display:none;margin:8px 0 6px}
 #intro.drill .in-vs,#intro.drill .in-meta{display:none}
@@ -2004,18 +2410,18 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .ge-top{display:flex;align-items:center;gap:18px 26px;flex-wrap:wrap;margin:14px 0 8px}
 .ge-total{display:flex;align-items:baseline;gap:8px;font-family:var(--display)}
 .ge-total b{font:900 76px/.9 var(--display);color:#fff8ee;font-variant-numeric:tabular-nums;text-shadow:var(--ring2),3px 4px 0 var(--tk)}
-.ge-total small{font:800 17px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ge-total small{font:700 17px var(--ui);letter-spacing:0;text-transform:none;color:var(--muted)}
 .ge-meds{display:flex;gap:12px}
-.ge-m{display:flex;flex-direction:column;align-items:center;gap:4px;font:800 12px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ge-m{display:flex;flex-direction:column;align-items:center;gap:5px;font:700 13px/1 var(--ui);letter-spacing:0;text-transform:none;color:var(--muted);font-variant-numeric:tabular-nums}
 .ge-m .mdl{width:44px;height:44px}
 .ge-m.on{color:#fff8ee}
 .ge-m.new .mdl{animation:geNew .7s .45s var(--spring) both}
 @keyframes geNew{from{transform:scale(.3) rotate(-25deg);opacity:0}to{transform:none;opacity:1}}
 .ge-reps{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;align-items:end;height:38px;margin:4px 0 6px}
-.ge-reps i{display:block;border-radius:4px 4px 2px 2px;background:#ffb238;box-shadow:0 0 0 1.5px var(--tk)}
+.ge-reps i{display:block;border-radius:2px;background:#ffb238;box-shadow:none}
 .ge-reps i.p0{height:5px;background:rgba(255,255,255,.22)}.ge-reps i.p1{height:33%}.ge-reps i.p2{height:66%}.ge-reps i.p3{height:100%;background:#ffd23f}
 .ge-rec{margin:8px 0 14px}
-.ge-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ge-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
 .ge-btns #btnGeAgain{grid-column:1/-1}
 .ge-btns #btnGeNext[hidden]+#btnGeList{grid-column:1/-1}
 @media (max-height:420px){
@@ -2029,7 +2435,8 @@ kbd.ms{height:auto;padding:2px 6px 1px}
   .ge-rec{margin:4px 0 8px;font-size:13px}
   .ge-btns{grid-template-columns:repeat(3,minmax(0,1fr))}
   .ge-btns #btnGeAgain{grid-column:auto}
-  .ge-btns button{padding:9px 8px;font-size:14px;white-space:normal;line-height:1.1}
+  .ge-btns{align-items:stretch}
+  .ge-btns button{height:auto;min-height:44px;padding:6px 8px;font-size:14px;white-space:normal;line-height:1.1}
 }
 </style>
 
@@ -2051,10 +2458,10 @@ kbd.ms{height:auto;padding:2px 6px 1px}
       <div class="sb-body">
         <div class="sb-row t0" id="sbRow0"><i class="sb-chip"></i><b class="sb-name" id="sbName0">TÚ</b>
           <span class="sb-srv" title="Saca"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" fill="#ffd23f" stroke="#7a5600" stroke-width="1.6"/><g fill="none" stroke="#7a5600" stroke-width="1.9"><g><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(120 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(240 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g></g></svg></span>
-          <span class="sb-sets" id="sbSets0"><em></em><em></em></span><span class="sb-pts" id="sbPts0">0</span><span class="flash"></span></div>
+          <span class="sb-sets" id="sbSets0"><em></em><em></em><b class="sb-sn">0</b></span><span class="sb-pts" id="sbPts0">0</span><span class="flash"></span></div>
         <div class="sb-row t1" id="sbRow1"><i class="sb-chip"></i><b class="sb-name" id="sbName1">CPU</b>
           <span class="sb-srv" title="Saca"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" fill="#ffd23f" stroke="#7a5600" stroke-width="1.6"/><g fill="none" stroke="#7a5600" stroke-width="1.9"><g><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(120 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(240 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g></g></svg></span>
-          <span class="sb-sets" id="sbSets1"><em></em><em></em></span><span class="sb-pts" id="sbPts1">0</span><span class="flash"></span></div>
+          <span class="sb-sets" id="sbSets1"><em></em><em></em><b class="sb-sn">0</b></span><span class="sb-pts" id="sbPts1">0</span><span class="flash"></span></div>
         <div class="sb-hist" id="sbHist" hidden></div>
       </div>
       </div>
@@ -2098,7 +2505,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
   <div id="fsTip" role="status" hidden></div>
   <!-- ================= MENÚ ================= -->
   <div id="menu" class="screen intro" hidden>
-    <div class="live">EN DIRECTO<span class="sep sep-v"><span class="sr">, </span></span>DEMO</div>
+    <div class="live">DIRECTO</div>
     <button class="fs-btn" id="btnFs" data-ui hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Pantalla completa</span></button>
     <div class="menu-col">
       <div class="brand">
@@ -2106,7 +2513,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
         <h1 class="logo" aria-label="Make the Cut">
           <svg class="lg" viewBox="0 0 780 490" aria-hidden="true" focusable="false"><use href="#mtcLogo"/></svg>
         </h1>
-        <p class="tagline">Vóley en pista cubierta, con la cámara detrás de tu jugador: <b>tú y tu pareja contra la CPU</b>.</p>
+        <p class="tagline" id="menuLast" hidden></p>
       </div>
       <!-- Menú principal (menús v2, nov-2026): pocas entradas grandes y sin números. JUGAR abre la página de modos (#mpPlay) y
            Partido rápido su preparación (#mpQuick); pila de páginas en ui.js (menuGo / menuBack: Esc, B o el botón Volver) -->
@@ -2125,10 +2532,10 @@ kbd.ms{height:auto;padding:2px 6px 1px}
         <div class="mp-tt"><h2 class="mp-t">Jugar</h2></div>
       </div>
       <nav class="modes" data-nav aria-label="Modos de juego">
-        <button class="mode m-quick" id="btnQuick"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><g class="md-sp"><path d="M10 30h26M4 44h30M12 58h22"/></g><circle class="md-ball" cx="72" cy="44" r="26"/><path class="md-seam" d="M72 18c-9 8-12 18-10 28M98 42c-11-4-22-3-33 4M54 63c8-6 18-9 30-7M72 44c6 7 9 15 9 24M72 44c-9-2-17-8-22-17"/><path class="md-bolt" d="M101 6l-12 20h9l-7 17 17-24h-9l6-13z"/></svg></span><span class="md-tx"><b>Partido rápido</b><small>Un partido contra la CPU, a tu medida</small></span></button>
-        <button class="mode m-career" id="btnCareer"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><path class="md-sp" d="M18 30l-8-4M16 44H6M102 30l8-4M104 44h10"/><path class="md-ear" d="M40 16H28c0 12 6 19 14 20M80 16h12c0 12-6 19-14 20"/><path class="md-stem" d="M53 50h14v12H53zM42 62h36l3 12H39z"/><path class="md-cup" d="M38 8h44v16c0 16-9 27-22 29-13-2-22-13-22-29z"/><path class="md-star" d="M60 17l3.6 7.3 8 1.1-5.8 5.6 1.4 8L60 35.2l-7.2 3.8 1.4-8-5.8-5.6 8-1.1z"/></svg></span><span class="md-tx"><b>Carrera</b><small class="md-s" id="careerSub">Crea tu jugador: liga, ofertas y fichajes</small></span></button>
-        <button class="mode m-6v6" id="btn6v6"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><path class="md-net" d="M60 6v72"/><g class="md-a"><circle cx="18" cy="22" r="7"/><circle cx="18" cy="62" r="7"/><circle cx="31" cy="42" r="7"/><circle cx="45" cy="18" r="7"/><circle cx="45" cy="66" r="7"/><circle cx="48" cy="42" r="7"/></g><g class="md-b"><circle cx="102" cy="22" r="7"/><circle cx="102" cy="62" r="7"/><circle cx="89" cy="42" r="7"/><circle cx="75" cy="18" r="7"/><circle cx="75" cy="66" r="7"/><circle cx="72" cy="42" r="7"/></g></svg></span><span class="md-tx"><b>6 contra 6</b><small>Equipos completos: elige tu puesto</small></span></button>
-        <button class="mode m-gym" id="btnGym"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><g class="md-tg"><ellipse cx="74" cy="64" rx="40" ry="14"/><ellipse cx="74" cy="64" rx="26" ry="9"/><ellipse class="md-tgc" cx="74" cy="64" rx="11" ry="4"/></g><path class="md-cone" d="M28 16 L42 70 H14 Z"/><path class="md-cstr" d="M22.4 40h11.2M19.4 54h17.2"/><path class="md-cb" d="M8 72h40"/><circle class="md-ball" cx="90" cy="24" r="13"/><path class="md-seam" d="M90 11c-4 4-5 10-4 15M103 23c-5-2-11-1-16 2M82 34c4-3 9-4 14-3"/><g class="md-sp"><path d="M66 14l-10-3M64 27H53"/></g></svg></span><span class="md-tx"><b>Entrenamiento</b><small class="md-s" id="gymSub">Ejercicios con medallas y peloteo libre</small></span></button>
+        <button class="mode m-quick" id="btnQuick"><span class="md-art" aria-hidden="true"><span class="md-num">2<i>v</i>2</span></span><span class="md-tx"><b>Partido rápido</b><small>Un partido contra la CPU, a tu medida</small></span></button>
+        <button class="mode m-career" id="btnCareer"><span class="md-art" aria-hidden="true"><svg class="md-trophy" viewBox="0 0 64 64"><path d="M16 8h32v12c0 12-7 19-16 20-9-1-16-8-16-20zM16 12H8v6c0 7 4 11 9 12l1-4c-4-1-6-4-6-8v-2h4zM48 12h8v6c0 7-4 11-9 12l-1-4c4-1 6-4 6-8v-2h-4zM28 39h8v9h-8zM20 48h24l2 8H18z"/></svg></span><span class="md-tx"><b>Carrera</b><small class="md-s" id="careerSub">Crea tu jugador: liga, ofertas y fichajes</small></span></button>
+        <button class="mode m-6v6" id="btn6v6"><span class="md-art" aria-hidden="true"><span class="md-num">6<i>v</i>6</span></span><span class="md-tx"><b>6 contra 6</b><small>Equipos completos: elige tu puesto</small></span></button>
+        <button class="mode m-gym" id="btnGym"><span class="md-art" aria-hidden="true"><svg class="md-flat" viewBox="0 0 64 64"><path d="M24 12h8l3.1 11H20.9zM19.8 27h16.4l2.5 9H17.3zM16.2 40h23.6l2.2 8H14zM8 50h40v5H8z"/><circle cx="50" cy="17" r="9"/><path class="md-gseam" d="M50 8c-3 3-4 7-3 11M59 16c-4-1.5-8-1-11 1.5M44 24c3-2 6-2.6 9.5-2"/></svg></span><span class="md-tx"><b>Entrenamiento</b><small class="md-s" id="gymSub">Ejercicios con medallas y peloteo libre</small></span></button>
       </nav>
     </div>
     <!-- PARTIDO RÁPIDO: preparación (formato, escenario, dificultad, puntos y control) y ¡A JUGAR! (en 6 contra 6, Controlar queda fijo: .lock; y en
@@ -2299,7 +2706,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
             <button class="opt" data-opt="showHelp"><span>Ayudas en pantalla<small>Avisos del momento de golpear y saltar</small></span><span class="seg" data-seg="showHelp"></span></button>
             <button class="opt" data-opt="coachTips"><span>Consejos<small>Qué hacer en cada toque. Se apagan al ganar tu primer partido</small></span><span class="seg" data-seg="coachTips"></span></button>
             <button class="opt" data-opt="aimSet" data-need="Sim"><span>Colocación dirigida<small>Al colocar, la dirección elige rápida, a un lado o alta</small></span><span class="seg" data-seg="aimSet"></span></button>
-            <button class="opt" data-opt="msTiming"><span>Timing exacto<small>El sello del golpe dice los milisegundos</small></span><span class="seg" data-seg="msTiming"></span></button>
+            <button class="opt" data-opt="msTiming"><span>Golpe al milisegundo<small>El sello dice cuántos ms llegas pronto o tarde</small></span><span class="seg" data-seg="msTiming"></span></button>
             <button class="opt opt-go" data-go="ctl"><span>Controles<small>Ver y cambiar teclas y botones</small></span><span class="go-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></button>
             <button type="button" class="opt-reset" data-reset="game">Restablecer este apartado</button>
           </div>
@@ -2398,6 +2805,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 <script src="js/camera.js"></script>
 <script src="js/input.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/leagues.js"></script>
 <script src="js/career.js"></script>
 <script src="js/career-life.js"></script>
 <script src="js/career-life-ui.js"></script>

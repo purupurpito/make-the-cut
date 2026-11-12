@@ -1,7 +1,9 @@
 /* MAKE THE CUT — js/career-world.js (owner: ui_main)
  * «Mundo» de la Carrera (VB.CareerWorld, sprint 5): Faro, el mentor, con escenas cortas en los hitos (E4, tarea C1); noticias de
  * la liga (roundNews por jornada, seasonNews con los anales al acabar, summerNews en verano) y enciclopedia de clubes (lore,
- * clubRows, clubCard, cara a cara) (E5, tarea C2). Las ligas salen de leaguesOf(c): el lote C solo cambia esa función.
+ * clubRows, clubCard, cara a cara) (E5, tarea C2). Vale para las DOS Carreras: playa (5 circuitos, K().LEAGUES por nivel) y pista
+ * (c.mode 'hall', ligas por país con id 'ES1'/'ES2'): las ligas salen de leaguesOf(c) (pista: las de tu país), los datos del motor de
+ * la carrera concreta (E(c), como career-life.js) y los resultados de resOf (pista: solo los de tu liga, c.myRes).
  * Sin DOM (se carga en node: tools/careertest.js). Estado en c.world (ensure() lo crea al vuelo; sin subir VER).
  * Solo escribe en c.world y, para el mentor, en la bandeja (K()._msg con k 'mentor'). No toca nada que influya en partidos,
  * ofertas, XP ni dinero, y su azar no consume los generadores de career.js. career.js llama a hook(c, tipo, …) desde life(),
@@ -15,9 +17,28 @@
   var root = typeof window !== 'undefined' ? window : globalThis;
   var VB = root.VB = root.VB || {};
   function K() { return VB.Career; }
-  function rngOf() { return K()._rng(K()._hash.apply(null, arguments)); }   // (C2: azar propio de las noticias)
-  function lgOf(k) { return K().league(k.lid != null ? k.lid : k.lvl); }
+  function rngOf() { var C = K().beach || K(); return C._rng(C._hash.apply(null, arguments)); }   // (C2: azar propio de las noticias)
+  // Motor de la carrera c (como career-life.js): la fachada VB.Career va a la Carrera ACTIVA, pero los ganchos reciben una concreta
+  // (la de pista pasa por aquí al crearla, con la playa aún activa). Pista: vista «pista sobre playa» (league(lid, c), table, clubInfo…).
+  var HV = null, HVsrc = null;
+  function isH(c) { return !!(c && c.mode === 'hall'); }
+  function E(c) {
+    var C = K(); if (!c || !C || !C.beach) return C;
+    if (!isH(c) || !C.hall) return C.beach;
+    if (HVsrc !== C.hall) { HVsrc = C.hall; HV = {}; var k; for (k in C.beach) HV[k] = C.beach[k]; for (k in C.hall) HV[k] = C.hall[k]; }
+    return HV;
+  }
   function lvOf(k) { return k.lid != null ? k.lid : k.lvl; }
+  /** Liga por su clave (playa: nivel 0-4; pista: id 'ES1') y la de un club. */
+  function lgBy(c, lv) { return isH(c) ? E(c).league(lv, c) : E(c).league(lv); }
+  function lgOf(c, k) { return lgBy(c, lvOf(k)); }
+  function clubsIn(c, lv) { return isH(c) ? E(c).leagueClubs(c, lv) : E(c).clubsOf(c, lv); }
+  /** Resultados de una liga por jornada ([jornada][partido] {a,b,s,sc}). Pista: solo se guardan los de tu liga (c.myRes). */
+  function resOf(c, lv) { if (isH(c)) return c.myRes && c.myRes.lid === lv && Array.isArray(c.myRes.w) ? c.myRes.w : []; return c.res && c.res[lv] || []; }
+  /** Altura de una liga (mayor = más arriba): playa, el nivel; pista, la división (1ª > 2ª). */
+  function rankOf(c, lv) { if (!isH(c)) return lv; var L = lgBy(c, lv); return L ? -L.lvl : 0; }
+  var ELITE = 84;   // pista: «élite» = 1ª con fuerza ≥ 84 (las de jueces de línea y challenge, ref 'top')
+  function isTop(c, lv) { if (!isH(c)) return lv >= (K().beach || K()).LEAGUES.length - 1; var L = lgBy(c, lv); return !!(L && L.lvl === 1 && L.strength >= ELITE); }
   var Q_MAX = 3, LINE_MAX = 140;
 
   // ------------------------------------------------------------------ estado
@@ -59,8 +80,8 @@
     if ((T.bench | 0) > 0) S.bench1 = 1;
     if (c.life && c.life.rival) S.rival = 1;
     (c.trophies || []).forEach(function (t) { if (t.kind === 'liga' || t.kind === 'copa') S.title = 1; if (t.kind === 'ascenso') S.up = 1; if (t.kind === 'premio') S.award = 1; });
-    (c.history || []).forEach(function (h) { if (h && h.move < 0) S.down = 1; if (h && h.lvl >= K().LEAGUES.length - 1) S.top = 1; });
-    var me = c.myClub >= 0 && K().myClub(c); if (me && lvOf(me) >= K().LEAGUES.length - 1) S.top = 1;
+    (c.history || []).forEach(function (h) { if (h && h.move < 0) S.down = 1; if (h && isTop(c, isH(c) ? h.lid : h.lvl)) S.top = 1; });
+    var me = c.myClub >= 0 && E(c).myClub(c); if (me && isTop(c, lvOf(me))) S.top = 1;
     if (c.player && (c.player.age | 0) >= 30) S.vet = 1;
     if ((c.history || []).some(function (h, i, a) { return i > 0 && h.club !== a[i - 1].club; })) S.move = 1;
   }
@@ -89,6 +110,14 @@
     top: { t: 'En la élite', l: ['El Circuito Mundial. Aquí jugué yo doce años.', 'Ahora entiendes por qué te hacía repetir la recepción.'] },
     vet: { t: 'Treinta años', l: ['Treinta. Las piernas empiezan a hablar, la cabeza va mejor que nunca.', 'Tú decides cuándo parar. Lo verás en Fama › Legado.'], act: 'life:legacy', al: 'Ver legado' }
   };
+  // Carrera de pista: las frases que hablan de arena, pareja o del Circuito Mundial (mismo id, mismo título; el resto, igual).
+  var BEATS_H = {
+    hola: ['Soy Álex Marí, aunque en el pabellón todo el mundo me llama Faro.', 'Doce temporadas en las grandes ligas. Ahora me toca ver cómo empiezas tú.', 'Primer consejo: mira bien el rol que te ofrece cada club. Ser titular o ir a la rotación lo cambia todo.'],
+    slump: ['{n} derrotas seguidas. Todo el mundo pasa por esto, hasta en las grandes ligas.', '{tip}'],
+    streak: ['Cinco seguidas. Disfrútalo, pero no te lo creas: la pista siempre te baja los humos.'],
+    move: ['Club nuevo, vestuario nuevo: la química no se ficha, se juega.'],
+    top: ['{lg}: una de las grandes ligas del mundo. Ahí jugué yo doce años.', 'Ahora entiendes por qué te hacía repetir la recepción.']
+  };
   // (midLow del diseño, recortado por el plan: midWindow del entrenador ya cubre el ecuador)
   var BEAT_ORDER = ['hola', 'debut', 'win1', 'loss1', 'rival', 'bench1', 'slump', 'streak', 'title', 'award', 'up', 'down', 'move', 'top', 'vet'];
   function fill(s, v) { return String(s).replace(/\{(\w+)\}/g, function (a, k) { return v && v[k] != null ? String(v[k]) : ''; }); }
@@ -99,7 +128,7 @@
     var seen = m.seen[id] | 0;
     if (B.max ? seen >= B.max || m.last[id] === (c.season | 0) : seen) return false;
     m.seen[id] = seen + 1; if (B.max) m.last[id] = c.season | 0;
-    var lines = B.l.map(function (s) { return fill(s, v).slice(0, LINE_MAX); }).filter(function (s) { return s; });
+    var lines = (isH(c) && BEATS_H[id] || B.l).map(function (s) { return fill(s, v).slice(0, LINE_MAX); }).filter(function (s) { return s; });
     var q = { id: id, s: c.season | 0, l: lines, act: B.act ? fill(B.act, v) : '', al: B.al ? fill(B.al, v) : '' };
     if (!m.on) { inbox(c, q); return true; }
     m.q.push(q);
@@ -108,6 +137,7 @@
   }
   function slumpTip(c) {
     if ((c.fatigue | 0) > 40) return ['Vas con la fatiga por las nubes. Una semana de Descanso o el fisio y verás otra cosa.', 'player:train', 'Ver entreno'];
+    if (isH(c) && (c.chem | 0) < 30) return ['El equipo aún no se entiende. Jugad los partidos, no los simuléis: la química sale en la pista.', '', ''];
     if (c.mate && (c.mate.chem | 0) < 30) return ['Con ' + c.mate.name + ' aún no os entendéis. Jugad juntos, no simuléis: la química sale en la arena.', '', ''];
     if (c.player && (c.player.pts | 0) > 0) return ['Tienes puntos de mejora sin gastar. Úsalos antes del próximo partido.', 'player:atk', 'Mejorar'];
     return ['Simplifica: saque seguro, recepción alta y remate a la línea. Lo bonito, después.', '', ''];
@@ -133,10 +163,21 @@
   function mentorOn(c) { var w = c && c.world; return !(w && w.mentor && w.mentor.on === 0); }
 
   // ------------------------------------------------------------------ noticias de la liga (E5a, tarea C2)
-  // Ligas del modo: hoy las 5 de la playa (índices de K().LEAGUES, 8 clubes, 14 jornadas, el open solo en tu liga). El lote C
-  // (carrera-pista, ligas por país) solo tiene que cambiar leaguesOf/topLv: el resto de las noticias y los anales van por aquí.
-  function leaguesOf(c) { var out = []; for (var i = 0; i < K().LEAGUES.length; i++) out.push(i); return out; }
+  // Ligas del modo, de abajo arriba. Playa: las 5 (índices de K().LEAGUES, 8 clubes, 14 jornadas, el open solo en tu liga). Pista:
+  // las de tu país ([cc+'2', cc+'1'], o solo la 1ª), las de los anales y los ascensos; los anales guardan sus ids (an.l) por si cambias de país.
+  function leaguesOf(c) {
+    if (isH(c)) { var me = c.myClub >= 0 && E(c).myClub(c), L = me && lgOf(c, me), cc = L ? L.cc : c.cc; return [cc + '2', cc + '1'].filter(function (id) { return !!lgBy(c, id); }); }
+    var out = []; for (var i = 0; i < (K().beach || K()).LEAGUES.length; i++) out.push(i); return out;
+  }
   function topLv(c) { var l = leaguesOf(c); return l[l.length - 1]; }
+  /** «Otra liga» de los titulares: la de arriba de tu país; si ya estás en ella, playa: la de debajo; pista: la 1ª más fuerte del mundo. */
+  function otherLv(c, lv) {
+    var lgs = leaguesOf(c), top = topLv(c);
+    if (lv !== top) return top;
+    if (!isH(c)) return lgs[lgs.indexOf(lv) - 1];
+    var best = (c.leagues || []).filter(function (L) { return L.id !== lv && L.lvl === 1; }).sort(function (a, b) { return b.strength - a.strength || (a.id < b.id ? -1 : 1); })[0];
+    return best ? best.id : null;
+  }
   var NEWS_MAX = 60, ANNALS_MAX = 40, ROUND_MAX = 3, W_SUMMER = 0, W_END = 15;
   var STREAK_AT = { 4: 1, 6: 1, 8: 1, 11: 1, 14: 1 };   // rachas que son noticia (antes 4, 6, 8, 10, 12, 14: el colista salía cada dos jornadas)
   var MKT = true;   // mercado de verano inventado (pura ambientación; plan §3: apagable, lo decide Ferran)
@@ -159,6 +200,7 @@
     mid: ['Ecuador {deL}: {a} manda con {pts} puntos', 'Media temporada {deL}: {a} líder, {b} colista'],
     champs: ['{a} gana {elL} en la temporada {n}'],
     open: ['{a} gana {elCup} ({sc})', '{a} se lleva {elCup} tras vencer a {b}'],
+    cup: ['Título de {cup} para {a} tras ganar a {b} ({sc})', '{a} gana la final de {cup} a {b} ({sc})'],   // (pista: copa nacional e internacionales)
     moves: ['{txt}'],
     mkt: ['Rumor de verano: {nm} deja {b} y ficha por {a}', '{a} ficha a {nm}, una de las promesas {deL}', '{nm} renueva con {a} hasta la temporada {n}']
   };
@@ -181,7 +223,10 @@
   }
   function scTxt(sc) { return (sc || []).map(function (x) { return x[0] + '-' + x[1]; }).join(', '); }
   function flip(sc) { return sc.map(function (x) { return [x[1], x[0]]; }); }
-  function artL(L) { return { deL: (L.art === 'la' ? 'de la ' : 'del ') + L.name, enL: 'en ' + L.art + ' ' + L.name, EnL: 'En ' + L.art + ' ' + L.name, L: L.art + ' ' + L.name }; }
+  function artL(L, cty) {
+    var n = L.name + (cty ? ' (' + cty + ')' : '');   // (pista, liga de otro país: «en la IperLega (Italia)»)
+    return { deL: (L.art === 'la' ? 'de la ' : 'del ') + n, enL: 'en ' + L.art + ' ' + n, EnL: 'En ' + L.art + ' ' + n, L: L.art + ' ' + n };
+  }
   function sedeOf(k) { return k ? k.beach || k.city || k.name : ''; }
   /** «A y B» / «A, B e Ibiza» (y → e delante de i-/hi-). */
   function andList(a) {
@@ -191,7 +236,7 @@
   }
   /** Racha actual de un club en su liga (+ victorias / − derrotas), hasta la jornada wk. */
   function streakOf(c, lvl, id, wk) {
-    var n = 0, sign = 0, R = c.res && c.res[lvl] || [];
+    var n = 0, sign = 0, R = resOf(c, lvl);
     for (var i = Math.min(wk, R.length - 1); i >= 0; i--) {
       var m = (R[i] || []).filter(function (x) { return x && (x.a === id || x.b === id); })[0]; if (!m) break;
       var win = (m.a === id) === (m.s[0] > m.s[1]) ? 1 : -1;
@@ -201,21 +246,22 @@
   }
   /** Titulares de la jornada que acaba de cerrarse: máx. 2 de tu liga (uno por tipo, los de más peso) y, una de cada tres
    *  jornadas, 1 de otra liga. Tu partido solo es noticia si lo has JUGADO y ganado (simulado o en el banquillo, no). */
-  function roundNews(c, sum) {
-    var me = K().myClub(c); if (!me || !sum || sum.phase !== 'league' || !c.res) return;
-    var lvl = lvOf(me), L = lgOf(me), wk = (c.phase === 'league' ? c.week : K().WEEKS) - 1, A = artL(L), r = rngOf(c.seed, 'news', c.season, wk);
+  function roundNews(c, sum, f) {
+    var H = isH(c), X = E(c), me = X.myClub(c); if (!me || !sum || sum.phase !== 'league' || (!H && !c.res)) return;
+    // jornada: playa, la anterior a c.week; pista, la del partido (f.week: tras él, los descansos pueden adelantar c.week)
+    var lvl = lvOf(me), L = lgOf(c, me), wk = H ? (f && f.kind === 'league' ? f.week | 0 : -1) : (c.phase === 'league' ? c.week : X.WEEKS) - 1, A = artL(L), r = rngOf(c.seed, 'news', c.season, wk);
     if (wk < 0) return;
-    var res = (c.res[lvl] && c.res[lvl][wk]) || [], cand = [], w = ensure(c), J = wk + 1;
+    var res = resOf(c, lvl)[wk] || [], cand = [], w = ensure(c), J = wk + 1;
     res.forEach(function (m) {
       if (!m || !m.s || !m.sc) return;
-      var win = m.s[0] > m.s[1], wa = K().club(c, win ? m.a : m.b), lb = K().club(c, win ? m.b : m.a), home = K().club(c, m.a);
+      var win = m.s[0] > m.s[1], wa = X.club(c, win ? m.a : m.b), lb = X.club(c, win ? m.b : m.a), home = X.club(c, m.a);
       if (!wa || !lb) return;
-      var sc = win ? m.sc : flip(m.sc), d = K().clubOvr(lb) - K().clubOvr(wa), mine = m.a === me.id || m.b === me.id;
+      var sc = win ? m.sc : flip(m.sc), d = X.clubOvr(lb) - X.clubOvr(wa), mine = m.a === me.id || m.b === me.id;
       var v = { a: wa.name, b: lb.name, sc: scTxt(sc), sede: sedeOf(home), d: d, L: A.L, pts: sc.reduce(function (s, x) { return s + x[1]; }, 0) };
       if (mine) {
         if (sum.bench || sum.sim || !sum.win || wa.id !== me.id) return;
         v.p = c.player.name; v.k = (sum.me && sum.me.kills) | 0; v.nota = String(sum.nota).replace('.', ','); v.mate = c.mate ? c.mate.name : 'su pareja';
-        cand.push({ sc: 6 + (d >= 4 ? 3 : 0), k: d >= 4 ? 'meUpset' : 'meWin', v: v, ids: [wa.id, lb.id], me: 1 });
+        cand.push({ sc: 6 + (d >= 4 ? 3 : 0), k: d >= 4 ? 'meUpset' : 'meWin', v: v, ids: [wa.id, lb.id], me: 1, okv: H && d >= 4 ? function (i) { return i !== 1; } : null });   // (pista: sin «{p} y {mate}»)
         return;
       }
       var blow = m.s[0] + m.s[1] === 2 && sc.every(function (x) { return x[0] - x[1] >= 8; });
@@ -225,34 +271,37 @@
       else if (blow) cand.push({ sc: 3, k: 'rout', v: v, ids: [wa.id, lb.id] });
     });
     // tabla: cambio de líder (desde la jornada 3, misma liga y temporada) y rachas de 4, 6, 8…
-    var t = K().table(c, lvl); if (!t.length) return;
+    var t = X.table(c, lvl); if (!t.length) return;
     var lead = t[0].id, pl = w.lead[lvl], prev = pl && pl[0] === (c.season | 0) ? pl[1] : null;
-    if (wk >= 2 && prev != null && prev !== lead && K().club(c, prev)) cand.push({ sc: 5.5, k: 'leader', v: { a: K().club(c, lead).name, b: K().club(c, prev).name, deL: A.deL, enL: A.enL, n: J }, ids: [lead, prev] });
+    if (wk >= 2 && prev != null && prev !== lead && X.club(c, prev)) cand.push({ sc: 5.5, k: 'leader', v: { a: X.club(c, lead).name, b: X.club(c, prev).name, deL: A.deL, enL: A.enL, n: J }, ids: [lead, prev] });
     w.lead[lvl] = [c.season | 0, lead];
-    K().clubsOf(c, lvl).forEach(function (k) {
+    clubsIn(c, lvl).forEach(function (k) {
       var s = streakOf(c, lvl, k.id, wk);
       if (!STREAK_AT[Math.abs(s)]) return;
       if (s > 0) cand.push({ sc: 3.5 + s / 4, k: 'streak', v: { a: k.name, n: s }, ids: [k.id] });
       else cand.push({ sc: 3 - s / 4, k: 'skid', v: { a: k.name, n: -s, sede: sedeOf(k) }, ids: [k.id] });
     });
     // tu rival personal: el duelo de CareerLife (sum.life.duel; jugado o simulado, nunca en el banquillo)
-    var rv = c.life && c.life.rival, du = sum.life && sum.life.duel, rk = rv && K().club(c, rv.club);
+    var rv = c.life && c.life.rival, du = sum.life && sum.life.duel, rk = rv && X.club(c, rv.club);
     if (rv && du && rk && !sum.bench) cand.push({ sc: 7, k: du.win ? 'rivalW' : 'rivalL', v: { rv: du.name || rv.name, b: rk.name, a: me.name, p: c.player.name }, ids: [rk.id], me: 2 });
-    if (wk === K().MID_WEEK - 1 && t.length > 1) cand.push({ sc: 6.5, k: 'mid', v: { a: K().club(c, lead).name, b: K().club(c, t[t.length - 1].id).name, pts: t[0].pts, deL: A.deL }, ids: [lead] });
+    var mid = H ? (X.midWeek ? X.midWeek(c) : 0) : X.MID_WEEK;
+    if (wk === mid - 1 && t.length > 1) cand.push({ sc: 6.5, k: 'mid', v: { a: X.club(c, lead).name, b: X.club(c, t[t.length - 1].id).name, pts: t[0].pts, deL: A.deL }, ids: [lead] });
     cand.sort(function (x, y) { return y.sc - x.sc; });
     var used = {}, n = 0;
     cand.forEach(function (x) {
       var g = x.k.indexOf('rival') === 0 ? 'rival' : x.k;
       if (n >= ROUND_MAX - 1 || used[g]) return; used[g] = 1; n++;
-      addNews(c, x.k, tpl(c, x.k, r, x.v), x.ids, x.me, J);
+      addNews(c, x.k, tpl(c, x.k, r, x.v, x.okv), x.ids, x.me, J);
     });
-    // otra liga, una de cada tres jornadas: el líder del Mundial (o, si ya estás en el Mundial, el de la liga de debajo)
+    // otra liga, una de cada tres jornadas: el líder de la de arriba (playa: el Mundial; si ya estás arriba, la de debajo; pista: la 1ª
+    // de tu país o, si ya juegas en ella, la 1ª más fuerte del mundo; de esa no hay partidos guardados: solo su líder)
     if (wk % 3 === 1) {
-      var lgs = leaguesOf(c), top = topLv(c), ol = lvl !== top ? top : lgs[lgs.indexOf(lvl) - 1];
-      if (ol == null || !c.res[ol]) return;
-      var OL = K().league(ol), ot = K().table(c, ol), lk = ot.length && K().club(c, ot[0].id); if (!lk) return;
-      var om = (c.res[ol][wk] || []).filter(function (x) { return x && (x.a === lk.id || x.b === lk.id); })[0], B = artL(OL);
-      var ob = om && K().club(c, om.a === lk.id ? om.b : om.a), won = om && (om.a === lk.id) === (om.s[0] > om.s[1]);
+      var ol = otherLv(c, lvl);
+      if (ol == null || (!H && !c.res[ol])) return;
+      var OL = lgBy(c, ol); if (!OL) return;
+      var ot = X.table(c, ol), lk = ot.length && X.club(c, ot[0].id); if (!lk) return;
+      var om = (resOf(c, ol)[wk] || []).filter(function (x) { return x && (x.a === lk.id || x.b === lk.id); })[0], B = artL(OL, H && OL.cc !== L.cc ? OL.country : '');
+      var ob = om && X.club(c, om.a === lk.id ? om.b : om.a), won = om && (om.a === lk.id) === (om.s[0] > om.s[1]);
       var ov = { a: lk.name, pts: ot[0].pts, enL: B.enL, EnL: B.EnL, deL: B.deL, b: ob ? ob.name : '', sc: om ? scTxt(om.a === lk.id ? om.sc : flip(om.sc)) : '' };
       addNews(c, 'top', tpl(c, 'top', r, ov, function (i) { return i !== 1 || (ob && won); }), [lk.id], 0, J);
     }
@@ -260,54 +309,64 @@
   /** Fin de temporada: anales (clasificación final de cada liga, opens y movimientos) y titulares. Va en el gancho 'season'
    *  (endSeason), ANTES de applyMoves: k.lvl aún es el de la temporada que acaba. */
   function seasonNews(c) {
-    var w = ensure(c), me = K().myClub(c); if (!me || !c.res) return;
+    var H = isH(c), X = E(c), w = ensure(c), me = X.myClub(c); if (!me || (!H && !c.res)) return;
     var r = rngOf(c.seed, 'news-season', c.season), lgs = leaguesOf(c), ml = lvOf(me), an = { s: c.season | 0, lg: [], cup: [], up: [], dn: [] };
+    // pista: la copa nacional de tu país (c.kos, kind 'cup'): su campeón cuenta en la liga en la que juega (an.cn, su nombre)
+    var nko = H ? (c.kos || []).filter(function (ko) { return ko && ko.kind === 'cup'; })[0] : null;
+    if (H) { an.l = lgs.slice(); an.cn = nko ? nko.name : ''; }
     lgs.forEach(function (L) {
-      var ids = K().table(c, L).map(function (x) { return x.id; });
+      var ids = X.table(c, L).map(function (x) { return x.id; });
       an.lg.push(ids);
-      an.cup.push(c.cup && c.cup.lvl === L && c.cup.champion >= 0 ? c.cup.champion : ids.length >= 4 ? simOpen(c, L, ids) : -1);
+      if (H) { var ck = nko && nko.champion >= 0 && X.club(c, nko.champion); an.cup.push(ck && ck.lid === L ? ck.id : -1); }
+      else an.cup.push(c.cup && c.cup.lvl === L && c.cup.champion >= 0 ? c.cup.champion : ids.length >= 4 ? simOpen(c, L, ids) : -1);
     });
     var moves = c.review && Array.isArray(c.review.moves) ? c.review.moves : [];
-    moves.forEach(function (mv) { var k = K().club(c, mv.id); if (k) (mv.to > lvOf(k) ? an.up : an.dn).push(mv.id); });
+    moves.forEach(function (mv) { var k = X.club(c, mv.id); if (k) (rankOf(c, mv.to) > rankOf(c, lvOf(k)) ? an.up : an.dn).push(mv.id); });
     w.annals.push(an); if (w.annals.length > ANNALS_MAX) w.annals = w.annals.slice(-ANNALS_MAX);
     // campeones: el de tu liga con nombre entero y, si es otra, el de la liga más alta («En el Mundial, …»); los ids empiezan por el
     // tuyo (la noticia abre su ficha). (Antes era una lista de códigos cortos, «MA1 (Hiperliga)», que el jugador no ve en ningún sitio)
     var mi = lgs.indexOf(ml), champs = an.lg.map(function (t) { return t[0]; }), ti = lgs.length - 1;
-    var elL = function (L) { return (L.art === 'la' ? 'la ' : 'el ') + L.name; }, kName = function (id) { var k = K().club(c, id); return k ? k.name : '?'; };
+    var elL = function (L) { return (L.art === 'la' ? 'la ' : 'el ') + L.name; }, kName = function (id) { var k = X.club(c, id); return k ? k.name : '?'; };
     if (mi >= 0 && champs[mi] != null) {
-      var cht = fill(TPL.champs[0], { a: kName(champs[mi]), elL: elL(K().league(lgs[mi])), n: c.season });
-      if (ti !== mi && champs[ti] != null) cht += '. En ' + elL(K().league(lgs[ti])) + ', ' + kName(champs[ti]);
+      var cht = fill(TPL.champs[0], { a: kName(champs[mi]), elL: elL(lgBy(c, lgs[mi])), n: c.season });
+      if (ti !== mi && champs[ti] != null) cht += '. En ' + elL(lgBy(c, lgs[ti])) + ', ' + kName(champs[ti]);
       addNews(c, 'champs', { t: cht, v: 0 }, [champs[mi]].concat(champs.filter(function (x, i) { return i !== mi; })), 0, W_END);
     }
-    // la final de tu open
-    var cu = c.cup && c.cup.final && c.cup.res && c.cup.res[1] && c.cup.res[1][0];
+    // la final de tu open (pista: la de cada copa de la temporada, la nacional y las internacionales de tu región)
+    var cu = !H && c.cup && c.cup.final && c.cup.res && c.cup.res[1] && c.cup.res[1][0];
     if (cu && cu.s && cu.sc) {
-      var win = cu.s[0] > cu.s[1], ka = K().club(c, win ? cu.a : cu.b), kb = K().club(c, win ? cu.b : cu.a), cup = lgOf(me).cup;
+      var win = cu.s[0] > cu.s[1], ka = X.club(c, win ? cu.a : cu.b), kb = X.club(c, win ? cu.b : cu.a), cup = lgOf(c, me).cup;
       if (ka && kb) addNews(c, 'open', tpl(c, 'open', r, { a: ka.name, b: kb.name, elCup: (/^(Final|Copa)/.test(cup) ? 'la ' : 'el ') + cup, sc: scTxt(win ? cu.sc : flip(cu.sc)) }), [ka.id, kb.id], 0, W_END);
     }
+    if (H) (c.kos || []).slice(0, 3).forEach(function (ko) {
+      var fr = ko && ko.rounds && ko.rounds.length && ko.res && ko.res[ko.rounds.length - 1], fm = fr && fr[0];
+      if (!fm || !fm.s || !fm.sc || !(ko.champion >= 0)) return;
+      var win = fm.s[0] > fm.s[1], ka = X.club(c, win ? fm.a : fm.b), kb = X.club(c, win ? fm.b : fm.a);
+      if (ka && kb) addNews(c, 'cup', tpl(c, 'cup', r, { a: ka.name, b: kb.name, cup: ko.name, sc: scTxt(win ? fm.sc : flip(fm.sc)) }), [ka.id, kb.id], 0, W_END);
+    });
     // ascensos y descensos: solo los de tu liga, en una frase
-    var nm = function (ids) { return andList(ids.map(function (id) { var k = K().club(c, id); return k ? k.name : '?'; })); };
-    var ups = an.up.filter(function (id) { var k = K().club(c, id); return k && lvOf(k) === ml; }), dns = an.dn.filter(function (id) { var k = K().club(c, id); return k && lvOf(k) === ml; });
-    var upL = lgs.indexOf(ml) < lgs.length - 1 ? K().league(lgs[lgs.indexOf(ml) + 1]) : null, dnL = lgs.indexOf(ml) > 0 ? K().league(lgs[lgs.indexOf(ml) - 1]) : null, parts = [];
-    if (ups.length && upL) parts.push('Suben ' + K().toL(upL) + ': ' + nm(ups));
-    if (dns.length && dnL) parts.push((parts.length ? 'bajan ' : 'Bajan ') + K().toL(dnL) + ': ' + nm(dns));
+    var nm = function (ids) { return andList(ids.map(function (id) { var k = X.club(c, id); return k ? k.name : '?'; })); };
+    var ups = an.up.filter(function (id) { var k = X.club(c, id); return k && lvOf(k) === ml; }), dns = an.dn.filter(function (id) { var k = X.club(c, id); return k && lvOf(k) === ml; });
+    var upL = lgs.indexOf(ml) >= 0 && lgs.indexOf(ml) < lgs.length - 1 ? lgBy(c, lgs[lgs.indexOf(ml) + 1]) : null, dnL = lgs.indexOf(ml) > 0 ? lgBy(c, lgs[lgs.indexOf(ml) - 1]) : null, parts = [];
+    if (ups.length && upL) parts.push('Suben ' + X.toL(upL) + ': ' + nm(ups));
+    if (dns.length && dnL) parts.push((parts.length ? 'bajan ' : 'Bajan ') + X.toL(dnL) + ': ' + nm(dns));
     if (parts.length) addNews(c, 'moves', { t: parts.join('; '), v: 0 }, ups.concat(dns), 0, W_END);
   }
   /** Open de una liga que no es la tuya (career.js solo juega el de tu liga): 1-4 y 2-3, determinista, solo para los anales. */
   function simOpen(c, L, t) {
-    var r = rngOf(c.seed, 'open-w', c.season, L), o = function (id) { var k = K().club(c, id); return (k ? K().clubOvr(k) : 50) + (r() - 0.5) * 4; };
-    var win = function (a, b) { var q = K().quickSim(o(a), o(b), r, K().PTS); return q.sets[0] > q.sets[1] ? a : b; };
+    var r = rngOf(c.seed, 'open-w', c.season, L), X = E(c), o = function (id) { var k = X.club(c, id); return (k ? X.clubOvr(k) : 50) + (r() - 0.5) * 4; };
+    var win = function (a, b) { var q = X.quickSim(o(a), o(b), r, X.PTS); return q.sets[0] > q.sets[1] ? a : b; };
     return win(win(t[0], t[3]), win(t[1], t[2]));
   }
   /** Verano (gancho 'newSeason', ya en la temporada nueva): 2 rumores de mercado con jugadores inventados (ambientación). */
   function summerNews(c) {
     if (!MKT) return;
-    var me = K().myClub(c); if (!me) return;
-    var r = rngOf(c.seed, 'news-mkt', c.season), lvl = lvOf(me), A = artL(lgOf(me));
-    var pool = K().clubsOf(c, lvl).filter(function (k) { return k.id !== me.id; });
+    var X = E(c), me = X.myClub(c); if (!me) return;
+    var r = rngOf(c.seed, 'news-mkt', c.season), lvl = lvOf(me), A = artL(lgOf(c, me));
+    var pool = clubsIn(c, lvl).filter(function (k) { return k.id !== me.id; });
     for (var i = 0; i < 2 && pool.length > 1; i++) {
-      var a = pick(r, pool), b = pick(r, pool.filter(function (k) { return k.id !== a.id; })), m = K()._newMate(c, a, r);
-      addNews(c, 'mkt', tpl(c, 'mkt', r, { a: a.name, b: b.name, nm: m.name, deL: A.deL, n: (c.season | 0) + 1 + Math.floor(r() * 2) }), [a.id, b.id], 0, W_SUMMER);
+      var a = pick(r, pool), b = pick(r, pool.filter(function (k) { return k.id !== a.id; })), nmx = isH(c) ? X._name(r) : X._newMate(c, a, r).name;
+      addNews(c, 'mkt', tpl(c, 'mkt', r, { a: a.name, b: b.name, nm: nmx, deL: A.deL, n: (c.season | 0) + 1 + Math.floor(r() * 2) }), [a.id, b.id], 0, W_SUMMER);
     }
   }
   /** Noticias de la más nueva a la más vieja (temporada, jornada —verano 0, fin 15— y orden de llegada). */
@@ -319,31 +378,35 @@
   function newsUnseen(c) { var w = c && c.world; if (!w || !Array.isArray(w.news)) return 0; var s = w.newsSeen | 0; return w.news.filter(function (x) { return x.id > s; }).length; }
   /** Al abrir Liga › Noticias. Devuelve cuántas había sin ver. */
   function markNewsSeen() { var c = K().load(); if (!c) return 0; var w = ensure(c), n = newsUnseen(c); if (n) { w.newsSeen = w.newsN; K().save(c); } return n; }
-  /** Antetítulo de una noticia: «T3 J5», «T3 Verano», «T3 Open» (la final) o «T3 Cierre» (campeones y movimientos). */
-  function newsWhen(x) { return 'T' + x.s + ' ' + (x.w === W_SUMMER ? 'Verano' : x.w >= W_END ? (x.k === 'open' ? 'Open' : 'Cierre') : 'J' + x.w); }
+  /** Antetítulo de una noticia: «T3 J5», «T3 Verano», «T3 Open» (la final; pista: «T3 Copa») o «T3 Cierre» (campeones y movimientos). */
+  function newsWhen(x) { return 'T' + x.s + ' ' + (x.w === W_SUMMER ? 'Verano' : x.w >= W_END ? (x.k === 'open' ? 'Open' : x.k === 'cup' ? 'Copa' : 'Cierre') : 'J' + x.w); }
 
   // ------------------------------------------------------------------ enciclopedia de clubes (E5b)
   // Apodos de cosas del mar (no de personas): masculinos y femeninos sin marcar género de nadie.
   var NICKS = ['Los Cangrejos', 'La Marea', 'Las Gaviotas', 'Los Delfines', 'La Ola', 'Los Erizos', 'La Brisa', 'Las Medusas', 'Los Pelícanos', 'El Faro', 'La Espuma', 'Los Albatros',
     'Las Caracolas', 'El Oleaje', 'Los Tiburones', 'La Duna', 'Los Corsarios', 'La Resaca', 'Los Salinos', 'Las Mareas Vivas'];
+  // Pista: apodos y lemas de pabellón (sin mar), con el mismo cuidado de no marcar el género de nadie.
+  var NICKS6 = ['Los Halcones', 'La Muralla', 'Los Lobos', 'La Fortaleza', 'Las Águilas', 'El Muro', 'Los Toros', 'La Marea Roja', 'Los Linces', 'La Colmena',
+    'El Vendaval', 'Los Búhos', 'La Forja', 'Los Cometas', 'La Tormenta', 'Los Osos', 'El Trueno', 'Las Panteras', 'Los Zorros', 'La Avalancha'];
+  var MOTTOS6 = ['Ni un balón al suelo', 'La red es nuestra casa', 'Seis como uno', 'Bloqueo y corazón', 'Del barrio al mundo', 'Pabellón lleno, red alta', 'Nunca dejamos de saltar', 'Cada punto, una batalla'];
   var MOTTOS = ['Nacido en la orilla', 'Arena en las venas', 'Ni un balón al suelo', 'De la cala al mundo', 'Sol, sal y bloqueo', 'Siempre de cara al viento', 'La red es nuestra casa', 'Cada punto, una ola'];
   /** Historia inventada (pura, por semilla e id; no se guarda): fundación, apodo, lema y títulos de antes de tu carrera. */
   function lore(c, k) {
     if (!c || !k) return null;
-    var r = rngOf(c.seed, 'lore', k.id), ym = /(\d{4})$/.exec(k.name || ''), lv = lvOf(k) | 0;
+    var H = isH(c), L = H && lgOf(c, k), r = rngOf(c.seed, 'lore', k.id), ym = /(\d{4})$/.exec(k.name || ''), lv = H ? (L ? Math.max(0, Math.min(4, Math.round((L.strength - 50) / 10))) : 0) : lvOf(k) | 0;
     var founded = ym ? +ym[1] : 1962 + Math.floor(r() * 50);
     var old = Math.max(0, Math.min(4, Math.round((k.q != null ? k.q : 0.5) * 3 * r() + lv * 0.6 * r() - 0.6)));
     var cups = Math.max(0, Math.min(4, Math.round(old * 0.8 * r() + r() - 0.4)));
-    return { founded: founded, nick: pick(r, NICKS), motto: pick(r, MOTTOS), oldLg: old, oldCup: cups };
+    return { founded: founded, nick: pick(r, H ? NICKS6 : NICKS), motto: pick(r, H ? MOTTOS6 : MOTTOS), oldLg: old, oldCup: cups };
   }
   /** Filas de Liga › Clubes (orden de tabla): kit, posición, puntos, media, estrellas, cara a cara contigo y marcas. */
   function clubRows(c, lvl) {
     if (!c || !c.clubs) return [];
-    var w = ensure(c), rv = c.life && c.life.rival;
-    return K().table(c, lvl).map(function (row) {
-      var k = K().club(c, row.id); if (!k) return null;
+    var X = E(c), w = ensure(c), rv = c.life && c.life.rival;
+    return X.table(c, lvl).map(function (row) {
+      var k = X.club(c, row.id); if (!k) return null;
       var h = w.h2h[k.id];
-      return { id: k.id, name: k.name, short: k.short, kit: k.kit, pos: row.pos, pts: row.pts, pj: row.pj, ovr: K().clubOvr(k), stars: K().clubInfo(c, k).stars,
+      return { id: k.id, name: k.name, short: k.short, kit: k.kit, pos: row.pos, pts: row.pts, pj: row.pj, ovr: X.clubOvr(k), stars: X.clubInfo(c, k).stars,
         vs: h && h[0] ? { pj: h[0], g: h[1], p: h[2] } : null, mine: k.id === c.myClub, rival: !!(rv && rv.club === k.id) };
     }).filter(function (x) { return x; });
   }
@@ -351,17 +414,18 @@
    *  trayectoria (8 últimas temporadas), forma y cara a cara. null si el id no existe. */
   function clubCard(c, id) {
     if (!c || !c.clubs) return null;
-    var w = ensure(c), k = K().club(c, id); if (!k) return null;
-    var inf = K().clubInfo(c, k), lo = lore(c, k), lvl = lvOf(k), titles = [], path = [], lgs = leaguesOf(c), seenT = {};
+    var X = E(c), w = ensure(c), k = X.club(c, id); if (!k) return null;
+    var inf = X.clubInfo(c, k), lo = lore(c, k), lvl = lvOf(k), titles = [], path = [], lgs0 = leaguesOf(c), seenT = {};
     var addT = function (t) { var key = t.s + ':' + t.kind; if (seenT[key]) return; seenT[key] = 1; titles.push(t); };
     w.annals.forEach(function (a) {
+      var lgs = Array.isArray(a.l) ? a.l : lgs0;   // (pista: los ids de las ligas de esa temporada)
       for (var i = 0; i < a.lg.length; i++) {
         var p = a.lg[i].indexOf(id); if (p < 0) continue;
-        var L = lgs[i] != null ? lgs[i] : i, up = a.up.indexOf(id) >= 0, dn = a.dn.indexOf(id) >= 0;
-        path.push({ s: a.s, lvl: L, league: K().league(L).short, pos: p + 1, move: up ? 1 : dn ? -1 : 0 });
-        if (p === 0) addT({ s: a.s, kind: 'liga', name: K().league(L).name });
-        if (a.cup[i] === id) addT({ s: a.s, kind: 'copa', name: K().league(L).cup });
-        if (up && i < lgs.length - 1) addT({ s: a.s, kind: 'ascenso', name: 'Ascenso ' + K().toL(K().league(lgs[i + 1])) });
+        var L = lgs[i] != null ? lgs[i] : i, LL = lgBy(c, L), up = a.up.indexOf(id) >= 0, dn = a.dn.indexOf(id) >= 0; if (!LL) continue;
+        path.push({ s: a.s, lvl: L, league: LL.short, pos: p + 1, move: up ? 1 : dn ? -1 : 0 });
+        if (p === 0) addT({ s: a.s, kind: 'liga', name: LL.name });
+        if (a.cup[i] === id) addT({ s: a.s, kind: 'copa', name: LL.cup || a.cn || 'Copa' });
+        if (up && i < lgs.length - 1 && lgBy(c, lgs[i + 1])) addT({ s: a.s, kind: 'ascenso', name: 'Ascenso ' + X.toL(lgBy(c, lgs[i + 1])) });
       }
     });
     // temporadas de antes del sprint 5 (antes de w.since): tus trofeos con este club, «(contigo)»
@@ -369,8 +433,8 @@
       if (t && t.club === k.name && t.kind !== 'premio' && (t.season | 0) < (w.since | 0)) addT({ s: t.season | 0, kind: t.kind, name: t.name, you: 1 });
     });
     titles.sort(function (a, b) { return a.s - b.s; });
-    var t = K().table(c, lvl), row = t.filter(function (x) { return x.id === id; })[0], h = w.h2h[id], rv = c.life && c.life.rival;
-    var form = [], R = c.res && c.res[lvl] || [], wk = Math.min(c.phase === 'league' ? c.week - 1 : R.length - 1, R.length - 1);
+    var t = X.table(c, lvl), row = t.filter(function (x) { return x.id === id; })[0], h = w.h2h[id], rv = c.life && c.life.rival;
+    var form = [], R = resOf(c, lvl), wk = Math.min(c.phase === 'league' ? c.week - 1 : R.length - 1, R.length - 1);
     for (var i = wk; i >= 0 && form.length < 5; i--) { var m = (R[i] || []).filter(function (x) { return x && (x.a === id || x.b === id); })[0]; if (m) form.unshift((m.a === id) === (m.s[0] > m.s[1]) ? 1 : 0); }
     var mySeasons = (c.history || []).filter(function (x) { return x && x.club === id; }).map(function (x) { return x.season; });
     if (c.myClub === id && mySeasons.indexOf(c.season) < 0) mySeasons.push(c.season);
@@ -381,11 +445,11 @@
   }
 
   // ------------------------------------------------------------------ ganchos de career.js (después de CareerLife)
-  function afterMatch(c, sum) {
+  function afterMatch(c, sum, f) {
     if (!sum) return;
     var w = ensure(c), T = c.career || {};
     if (!sum.bench && sum.sets) addH2h(w, sum.rival, sum.sets, sum.season);
-    try { roundNews(c, sum); } catch (e) { try { console.error('CareerWorld roundNews', e); } catch (e2) { } }
+    try { roundNews(c, sum, f); } catch (e) { try { console.error('CareerWorld roundNews', e); } catch (e2) { } }
     if (sum.bench) { beat(c, 'bench1'); return; }
     if (sum.win && (T.won | 0) === 1) beat(c, 'win1');
     if (!sum.win && (T.played | 0) - (T.won | 0) === 1) beat(c, 'loss1');
@@ -396,28 +460,30 @@
   }
   function cupTitle(cup) { return 'Título ' + (/^(Final|Copa)/.test(cup) ? 'de la ' : 'del ') + cup; }
   function seasonEnd(c) {
-    var r = c.review || {}, me = K().myClub(c); if (!me) return;
+    var X = E(c), r = c.review || {}, me = X.myClub(c); if (!me) return;
     try { seasonNews(c); } catch (e) { try { console.error('CareerWorld seasonNews', e); } catch (e2) { } }
-    var L = lgOf(me);
-    if (r.champion || r.cup) beat(c, 'title', { title: r.champion ? 'Título ' + (L.art === 'la' ? 'de la ' : 'del ') + L.name : cupTitle(L.cup) });
+    var L = lgOf(c, me), lgs = leaguesOf(c), li = lgs.indexOf(lvOf(me));
+    // pista: r.cups (copa nacional e internacionales) en vez de r.cup; «Título: Copa de la Corona»
+    var myCup = isH(c) ? (r.cups || []).filter(function (x) { return x && x.champion === me.id; })[0] : null;
+    if (r.champion || r.cup || myCup) beat(c, 'title', { title: r.champion ? 'Título ' + (L.art === 'la' ? 'de la ' : 'del ') + L.name : myCup ? 'Título: ' + myCup.name : cupTitle(L.cup) });
     if (r.awards && r.awards.length) beat(c, 'award', { award: r.awards[0] });
-    var up = K().league(lvOf(me) + 1);
-    if (r.move > 0 && up) beat(c, 'up', { toL: K().toL(up) });
+    var up = li >= 0 && li < lgs.length - 1 ? lgBy(c, lgs[li + 1]) : null;
+    if (r.move > 0 && up) beat(c, 'up', { toL: X.toL(up) });
     if (r.move < 0) beat(c, 'down');
   }
   function seasonStart(c) {
     try { summerNews(c); } catch (e) { try { console.error('CareerWorld summerNews', e); } catch (e2) { } }
-    var me = K().myClub(c);
-    if (me && lvOf(me) >= K().LEAGUES.length - 1) beat(c, 'top');
+    var me = E(c).myClub(c);
+    if (me && isTop(c, lvOf(me))) beat(c, 'top', { lg: lgOf(c, me).name });
     if (c.player && (c.player.age | 0) >= 30) beat(c, 'vet');
   }
   function onJoin(c) {
-    var T = c.career || {}, me = K().myClub(c); if (!me) return;
+    var T = c.career || {}, me = E(c).myClub(c); if (!me) return;
     if ((T.played | 0) === 0 && !(T.bench | 0)) beat(c, 'debut', { club: me.name });
     else beat(c, 'move', { mate: c.mate ? c.mate.name : 'tu pareja' });
   }
   function hook(c, kind, a, b) {
-    if (!c) return;
+    if (!c) return;   // (las dos Carreras: playa y pista)
     if (kind === 'match') afterMatch(c, a, b);
     else if (kind === 'season') seasonEnd(c);
     else if (kind === 'newSeason') seasonStart(c);
@@ -432,6 +498,7 @@
     // E5 (C2): noticias y enciclopedia de clubes
     TPL: TPL, NEWS_MAX: NEWS_MAX, ANNALS_MAX: ANNALS_MAX, W_SUMMER: W_SUMMER, W_END: W_END, MKT: MKT,
     news: news, newsUnseen: newsUnseen, markNewsSeen: markNewsSeen, newsWhen: newsWhen,
-    lore: lore, clubRows: clubRows, clubCard: clubCard, leaguesOf: leaguesOf, _andList: andList, _ordn: ordn
+    lore: lore, clubRows: clubRows, clubCard: clubCard, leaguesOf: leaguesOf, topLv: topLv, otherLv: otherLv, isTop: isTop, lgBy: lgBy, lgOf: lgOf, BEATS_H: BEATS_H,
+    _andList: andList, _ordn: ordn
   };
 })();

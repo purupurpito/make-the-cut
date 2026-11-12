@@ -35,7 +35,7 @@
   // recepción y colocación. Antes sumaban 400 (media 40) y, desde que los atributos se notan, el jugador nuevo jugaba con un
   // handicap invisible (revisión de estadísticas, 10-nov-2026): los guardados v1/v2 suben +10 cada atributo al cargarse (UP3).
   var BASE = [
-    { num: 1, role: 'Atacante', st: { jump: 55, speed: 50, react: 50, recv: 46, dig: 48, set: 44, spike: 56, ctl: 51, block: 52, serve: 48 } },
+    { num: 1, role: 'Bloqueador', st: { jump: 55, speed: 50, react: 50, recv: 46, dig: 48, set: 44, spike: 56, ctl: 51, block: 52, serve: 48 } },
     { num: 2, role: 'Universal', st: { jump: 48, speed: 52, react: 52, recv: 55, dig: 52, set: 54, spike: 45, ctl: 48, block: 44, serve: 50 } }
   ];
   var UP3 = 10;

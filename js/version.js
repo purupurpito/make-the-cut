@@ -8,22 +8,23 @@
  * Textos (notes/ui_main.md, «Textos: guía de estilo»): frases cortas, sin el punto medio como pegamento, ordinales «1r» «2º»,
  * género neutro, sin nombres reales ni patrocinadores de verdad. Este fichero no lleva arrobas ni la palabra del programa de
  * navegación web (tools/abouttest.js lo comprueba en todo el fichero, comentarios incluidos).
- * Propuesta para Ferran: pasar a 1.0.0 al cerrar el sprint 5 («juego completo»); su entrada debería contar Entrenamiento,
- * Ajustes nuevos, el mentor de la Carrera y, si llegan, las noticias.
+ * 1.0.0 (12-nov-2026, decisión de Ferran): cierre del sprint 5. Sin créditos a herramientas de IA (Ferran, 12-nov-2026).
  */
 (function () {
   'use strict';
   var VB = window.VB = window.VB || {};
 
-  VB.VERSION = '0.9.0';
+  VB.VERSION = '1.0.0';
   VB.VERSION_DATE = '2026-11-12';
 
   /** Novedades: {v, d:'AAAA-MM-DD', t (título corto), items[] (frases de 90 caracteres como mucho)}. La más nueva primero. */
   VB.CHANGELOG = [
     {
-      v: '0.9.0', d: '2026-11-12', t: 'Carrera con vida propia',
+      v: '1.0.0', d: '2026-11-12', t: 'Juego completo',
       items: [
         'Entrenamiento: 5 ejercicios con medallas y peloteo libre.',
+        'Carrera de pista 6 contra 6 con ligas de 28 países.',
+        'Interfaz nueva con grafismo de tele deportiva.',
         'Teclas y botones reasignables, y más ajustes de cámara e imagen.',
         'Faro, tu mentor, y noticias y fichas de clubes en la Carrera.',
         'Finta, golpe colocado y colocación dirigida para quien quiera más.',
@@ -64,7 +65,6 @@
       'three.js r149 (motor 3D, licencia MIT)',
       'Sonido y gráficos generados por código, sin grabaciones',
       'Guardado en la nube con Firebase'
-      // TODO(Ferran): decidir si se añade «Programado con ayuda de Claude Code (Anthropic)». No se pone hasta que diga que sí.
     ],
     fonts: 'Barlow y Barlow Condensed, de The Barlow Project Authors (SIL Open Font License 1.1). ' +
       'El logotipo usa sus letras pasadas a trazos.',

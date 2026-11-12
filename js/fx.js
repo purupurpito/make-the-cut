@@ -442,7 +442,7 @@
       decTex.push(texs[i]);
     }
     g.fillStyle = '#ffffff'; g.fillRect(2 * DEC_CELL, DEC_CELL, DEC_CELL, DEC_CELL); // celda 6: blanco liso (línea de altura)
-    footAtlas(g); // celdas 9-11: huellas de la playa
+    footAtlas(g); // celdas 9-11: huellas y cráter de la playa (12-15 son del 6v6)
     var at = tex(cv);
     // instancias: marcas (relleno + filo), ondas, las 8 mallas sueltas, línea de altura, las 3 de la pista de posición del 6v6 y huellas
     var N = MARK_N * 2 + RIP_N + 8 + 1 + 3 + 3 + FOOT_N, geo = new THREE.PlaneGeometry(1, 1);
@@ -476,7 +476,7 @@
    * Huellas: pies descalzos al correr (cada ~0,6 m, alternando pie), surco de la plancha y cráter del balón; van en el lote
    * de calcomanías (celdas 9-11 del atlas, debajo de todo lo demás): 0 dibujos nuevos. Se apagan en los últimos 2 s. */
   var FOOT_N = 96, footCap = FOOT_N, fp = [], fpHead = 0, fpLast = [], fpAlive = 0, FOOT_LIFE = 6.5;
-  var FP_CELL = [9, 10, 11]; // 0 = pie, 1 = surco de la plancha, 2 = cráter del balón
+  var FP_CELL = [9, 10, 11]; // 0 = pie, 1 = surco de la plancha (también las lenguas del cráter del remate), 2 = cráter del balón
   function onBeach() { var A = VB.Arena; return !!(A && A.venue && A.venue() === 'beach'); }
   function footAtlas(g) {
     var C0 = DEC_CELL, x, y;
@@ -498,11 +498,16 @@
     g.scale(1, 0.36); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, 120, 0, Math.PI * 2); g.fill();
     g.fillStyle = 'rgba(255,246,224,0.55)'; g.beginPath(); g.ellipse(112, 0, 14, 105, 0, 0, Math.PI * 2); g.fill();
     g.restore();
-    // celda 11: cráter del balón (hoyo redondo con reborde claro)
+    // celda 11: cráter del balón de dibujo (12-nov-2026): reborde claro levantado, hoyo en 2 tonos con filo de tinta marrón y granitos
     x = (11 % 4) * C0; y = Math.floor(11 / 4) * C0;
-    var gc = g.createRadialGradient(x + C0 / 2, y + C0 / 2, 0, x + C0 / 2, y + C0 / 2, C0 / 2);
-    gc.addColorStop(0, 'rgba(110,72,36,0.6)'); gc.addColorStop(0.55, 'rgba(130,88,46,0.45)'); gc.addColorStop(0.72, 'rgba(255,246,224,0.6)'); gc.addColorStop(1, 'rgba(255,246,224,0)');
-    g.fillStyle = gc; g.fillRect(x, y, C0, C0);
+    g.save(); g.translate(x + C0 / 2, y + C0 / 2);
+    g.fillStyle = 'rgba(255,244,214,0.85)'; g.beginPath(); g.arc(0, 0, 118, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(91,53,24,0.75)'; g.beginPath(); g.arc(0, 0, 84, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(176,122,66,0.95)'; g.beginPath(); g.arc(0, 0, 76, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(132,86,42,0.95)'; g.beginPath(); g.arc(-8, 10, 56, 0, Math.PI * 2); g.fill();
+    var gr2 = [[100, -40, 9], [-96, 52, 8], [30, 104, 7], [-60, -92, 7], [92, 62, 6]];
+    for (var q = 0; q < gr2.length; q++) { g.fillStyle = 'rgba(91,53,24,0.7)'; g.beginPath(); g.arc(gr2[q][0], gr2[q][1], gr2[q][2] + 3, 0, Math.PI * 2); g.fill(); g.fillStyle = 'rgba(236,197,138,1)'; g.beginPath(); g.arc(gr2[q][0], gr2[q][1], gr2[q][2], 0, Math.PI * 2); g.fill(); }
+    g.restore();
   }
   /** Huella (coords de sim): kind 0 pie, 1 surco, 2 cráter; yaw en rad de sim; sx, sy = tamaño en m. */
   function footAt(x, y, yaw, kind, sx, sy, op) {
@@ -622,16 +627,19 @@
   /* ---------------------------------------------------------------------
    * FX CARTOON (9-nov-2026): estrellas de impacto, «explosión» de cómic, nubes de polvo de dibujo, líneas de velocidad y
    * onomatopeya («¡PAM!») en el remate perfecto del humano. Todo en UN InstancedMesh con mezcla normal (no aditiva: el
-   * dibujo lleva tinta oscura) y un atlas de lienzo 1024×512 (4×2 celdas de 256 px). 0 dibujos si no hay nada vivo; 1 si hay.
+   * dibujo lleva tinta oscura) y un atlas de lienzo 1024×1024 (4×4 celdas de 256 px: filas v 3-2 el dibujo de siempre, fila v 1 la arena de la
+   * playa —nube ×2, terrón, corona—, fila v 0 libre). 0 dibujos si no hay nada vivo; 1 si hay.
    * Calidad baja: la mitad de estrellas y nubes, sin líneas de velocidad ni onomatopeya. «Destellos suaves» (softFlash):
    * la explosión al 45 % y sin rebote de escala, la onomatopeya más pequeña y translúcida.
    * --------------------------------------------------------------------- */
-  var TB_N = 48, toon = null, tb = [], tbHead = 0, tbAlive = 0, tbAtlas = null, tbM = null, tbP = null, tbS = null, tbQ = null;
-  var TBK = { star: 0, burst: 1, puff: 2, line: 3, ono: 4, spark: 6 };
+  var TB_N = 128, toon = null, tb = [], tbHead = 0, tbAlive = 0, tbAtlas = null, tbM = null, tbP = null, tbS = null, tbQ = null;
+  var TBK = { star: 0, burst: 1, puff: 2, line: 3, ono: 4, spark: 6, sand: 8, sand2: 9, clump: 10, crown: 11 };
   var tbMute = { pop: 1, ox: 0, oy: 0, vx: 0 }; // pieza descartada (calidad baja con el pico de dibujos lleno)
   // tope de tamaño en pantalla por tipo (fracción del alto visible a esa distancia): de cerca no tapan la jugada
-  var TB_MAXF = [0.06, 0.17, 0.13, 0.2, 0.1, 0.05, 0.05, 0.05];
-  var TB_CELL = [[0, 1, 1, 1], [1, 1, 1, 1], [2, 1, 1, 1], [3, 1, 1, 1], [0, 0, 2, 1], [2, 0, 1, 1], [2, 0, 1, 1], [3, 0, 1, 1]]; // [col, fila (v), ancho, alto] en celdas
+  var TB_MAXF = [0.06, 0.17, 0.13, 0.2, 0.1, 0.05, 0.05, 0.05, 0.16, 0.16, 0.04, 0.24];
+  // [col, fila (v), ancho, alto] en celdas del atlas 1024×1024 (4×4; v = 0 abajo). Filas 3-2: el dibujo de siempre; filas 1-0: la playa
+  var TB_CELL = [[0, 3, 1, 1], [1, 3, 1, 1], [2, 3, 1, 1], [3, 3, 1, 1], [0, 2, 2, 1], [2, 2, 1, 1], [2, 2, 1, 1], [3, 2, 1, 1],
+    [0, 1, 1, 1], [1, 1, 1, 1], [2, 1, 1, 1], [3, 1, 1, 1]];
   var tbLow = false, speedT = 0, tbRight = null, tbUp = null, ballVel = null; // ballVel: velocidad del balón en coords three
   var INK = '#1d1530';
   function tbStar(g, cx, cy, R, r, n, rot) {
@@ -679,13 +687,62 @@
     g.save(); g.translate(2 * C2 + 128, C2 + 128);
     tbStar(g, 0, 0, 100, 22, 4, 0); g.fillStyle = '#ffffff'; g.fill(); g.lineWidth = 10; g.strokeStyle = INK; g.stroke();
     g.restore();
+    drawSandAtlas(g, 2 * C2);
+  }
+  /* PLAYA (12-nov-2026): piezas de arena del dibujo en la fila de lienzo y0 (fila v 1): 8 nube de arena, 9 nube de arena (otra
+   * forma), 10 terrón de granos, 11 corona de arena (la salpicadura del remate, con la base abajo). Tinta marrón y 3 tonos (luz,
+   * base, sombra) como el toon: se leen sobre la arena clara de la pista (los granos sueltos del color del suelo no se veían). */
+  var SAND_INK = '#5b3518', SAND_HI = '#fff0cf', SAND_MID = '#ecc58a', SAND_LO = '#c98d4f';
+  function sandCloud(g, P, lw) {
+    g.fillStyle = SAND_INK; for (var k = 0; k < P.length; k++) { g.beginPath(); g.arc(P[k][0], P[k][1], P[k][2] + lw, 0, 6.283); g.fill(); }
+    g.fillStyle = SAND_LO; for (var k1 = 0; k1 < P.length; k1++) { g.beginPath(); g.arc(P[k1][0], P[k1][1], P[k1][2], 0, 6.283); g.fill(); }
+    g.fillStyle = SAND_MID; for (var k2 = 0; k2 < P.length; k2++) { g.beginPath(); g.arc(P[k2][0], P[k2][1] - P[k2][2] * 0.16, P[k2][2] * 0.86, 0, 6.283); g.fill(); }
+    g.fillStyle = SAND_HI; for (var k3 = 0; k3 < P.length; k3++) { g.beginPath(); g.arc(P[k3][0] - P[k3][2] * 0.22, P[k3][1] - P[k3][2] * 0.38, P[k3][2] * 0.42, 0, 6.283); g.fill(); }
+  }
+  function drawSandAtlas(g, y0) {
+    var C2 = 256;
+    g.save(); g.translate(0, y0);
+    sandCloud(g, [[128, 150, 64], [70, 158, 44], [186, 156, 46], [100, 104, 48], [160, 102, 44], [128, 84, 34]], 9);       // 8
+    g.translate(C2, 0);
+    sandCloud(g, [[120, 156, 58], [64, 150, 40], [178, 146, 52], [146, 98, 44], [86, 108, 36], [204, 172, 30]], 9);      // 9
+    g.translate(C2, 0);
+    // 10: terrón (3 granos gordos y 3 pequeños, con tinta y brillo)
+    var G = [[110, 130, 46], [164, 120, 38], [138, 172, 34], [66, 168, 22], [196, 176, 20], [92, 82, 18]];
+    g.fillStyle = SAND_INK; for (var a = 0; a < G.length; a++) { g.beginPath(); g.arc(G[a][0], G[a][1], G[a][2] + 9, 0, 6.283); g.fill(); }
+    for (var b = 0; b < G.length; b++) {
+      g.fillStyle = SAND_LO; g.beginPath(); g.arc(G[b][0], G[b][1], G[b][2], 0, 6.283); g.fill();
+      g.fillStyle = SAND_MID; g.beginPath(); g.arc(G[b][0] - G[b][2] * 0.12, G[b][1] - G[b][2] * 0.14, G[b][2] * 0.8, 0, 6.283); g.fill();
+      g.fillStyle = SAND_HI; g.beginPath(); g.arc(G[b][0] - G[b][2] * 0.32, G[b][1] - G[b][2] * 0.34, G[b][2] * 0.3, 0, 6.283); g.fill();
+    }
+    g.translate(C2, 0);
+    // 11: corona de arena (salpicadura de cómic: lenguas que se abren hacia arriba y gotas sueltas; base plana abajo)
+    var T = [[30, 150, -1.0], [66, 92, -0.55], [108, 54, -0.15], [150, 62, 0.2], [190, 100, 0.55], [226, 156, 1.0]];
+    var tongue = function (fill, grow) {
+      g.beginPath(); g.moveTo(14, 238);
+      for (var t = 0; t < T.length; t++) {
+        var cx = T[t][0] + Math.sin(T[t][2]) * grow * 0.6, cy = T[t][1] - grow, w = 17 + grow * 0.6, base = cy + 70;
+        g.lineTo(cx - w, base);
+        g.quadraticCurveTo(cx - w * 0.5, cy + 4, cx, cy);
+        g.quadraticCurveTo(cx + w * 0.5, cy + 4, cx + w, base);
+      }
+      g.lineTo(242, 238); g.closePath(); g.fillStyle = fill; g.fill();
+    };
+    tongue(SAND_INK, 9); tongue(SAND_LO, 0);
+    g.save(); g.translate(128, 238); g.scale(0.84, 0.8); g.translate(-128, -238); tongue(SAND_MID, 0); g.restore();
+    g.fillStyle = SAND_HI; g.beginPath(); g.ellipse(128, 226, 86, 11, 0, 0, 6.283); g.fill();
+    var D = [[48, 52, 11], [118, 18, 10], [204, 42, 12], [166, 16, 7], [16, 104, 8], [240, 98, 8]];
+    for (var d = 0; d < D.length; d++) {
+      g.fillStyle = SAND_INK; g.beginPath(); g.arc(D[d][0], D[d][1], D[d][2] + 6, 0, 6.283); g.fill();
+      g.fillStyle = SAND_MID; g.beginPath(); g.arc(D[d][0], D[d][1], D[d][2], 0, 6.283); g.fill();
+    }
+    g.restore();
   }
   function buildToonFx() {
-    var cv = canvas(1024, 512); drawToonAtlas(cv); tbAtlas = tex(cv);
+    var cv = canvas(1024, 1024); drawToonAtlas(cv); tbAtlas = tex(cv);
     var inst = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial({
       uniforms: { map: { value: tbAtlas }, uGain: { value: 1 } }, transparent: true, depthWrite: false, toneMapped: false,
       vertexShader: 'attribute vec4 aCol; attribute vec4 aCell; attribute float aRot; varying vec4 vCol; varying vec2 vUv;\n' +
-        'void main(){ vCol = aCol; vUv = (aCell.xy + uv * aCell.zw) * vec2(0.25, 0.5);\n' +
+        'void main(){ vCol = aCol; vUv = (aCell.xy + uv * aCell.zw) * vec2(0.25, 0.25);\n' +
         ' vec2 sc = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz)); vec2 p = position.xy * sc;\n' +
         ' float c = cos(aRot), s = sin(aRot); p = vec2(c * p.x - s * p.y, s * p.x + c * p.y);\n' +
         ' vec4 mv = modelViewMatrix * vec4(instanceMatrix[3].xyz, 1.0); mv.xy += p; gl_Position = projectionMatrix * mv; }',
@@ -747,6 +804,86 @@
         0.5 + Math.random() * 0.2, size * (0.55 + Math.random() * 0.25), size * (1.05 + Math.random() * 0.3), (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 1.2, 1, 0.97, 0.92, 0.95, -0.3);
     }
   }
+  /* ---------- PLAYA: arena de dibujo (12-nov-2026, pedido de Ferran: «efectos de arena cuando alguien se tire o la pelota toque
+   * el suelo») ----------
+   * Antes solo había granos sueltos del pool de polvo (0,24 m, del mismo color que la pista: no se veían desde la cámara de juego).
+   * Ahora, en el MISMO lote del dibujo (toonFx, 0 dibujos nuevos): nubes de arena con tinta y 3 tonos, terrones que saltan en arco
+   * y caen (se quedan un instante en el suelo), corona de salpicadura en los botes fuertes y abanico hacia delante en la plancha.
+   * Todo escala con la fuerza k (0..1): bote suave = un par de nubecitas y 3-4 terrones; remate al suelo = explosión de arena.
+   * Calidad: media 80 %, baja 50 % de piezas (y sin corona en baja salvo golpes muy fuertes). Math.random: solo presentación. */
+  function sandQ(n) { return Math.max(1, Math.round(n * (tbLow ? 0.5 : qScale < 1 ? 0.8 : 1))); }
+  function sandClouds(x, y, n, k, ux, uy, len, rad) {
+    for (var i = 0; i < n; i++) {
+      var u = n > 1 ? (i / (n - 1) - 0.5) * len : 0, a = Math.random() * 6.283, r0 = rad * (0.3 + Math.random() * 0.7);
+      var px = x + ux * u + Math.cos(a) * r0, py = y + uy * u + Math.sin(a) * r0, ov = (0.35 + 0.9 * k) * (0.6 + Math.random() * 0.6);
+      var s0 = (0.32 + 0.36 * k) * (0.75 + Math.random() * 0.4);
+      tbAdd(i % 2 ? TBK.sand2 : TBK.sand, px, py, 0, Math.cos(a) * ov + ux * ov * 0.5, Math.sin(a) * ov + uy * ov * 0.5, 0.25 + 0.5 * k * Math.random(),
+        0.75 + 0.55 * k + Math.random() * 0.25, s0, s0 * (1.7 + 0.5 * Math.random()), (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.8, 1, 1, 1, 1, -0.2);
+    }
+  }
+  function sandClumps(x, y, n, k, ux, uy, fan, rad) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * 6.283, hx = Math.cos(a), hy = Math.sin(a);
+      if (fan > 0) { var b = Math.atan2(uy, ux) + (Math.random() - 0.5) * fan; hx = Math.cos(b); hy = Math.sin(b); }
+      var v = (1.0 + 3.6 * k) * (0.45 + Math.random() * 0.75), r0 = rad * Math.random();
+      tbAdd(TBK.clump, x + hx * r0, y + hy * r0, 0.06, hx * v, hy * v, (1.6 + 3.8 * k) * (0.55 + Math.random() * 0.6), 1.4,
+        (0.1 + 0.08 * k) * (0.7 + Math.random() * 0.6), 0, Math.random() * 6.283, (Math.random() - 0.5) * 14, 1, 1, 1, 1, 9.8);
+    }
+  }
+  /** Arena del balón al tocar el suelo (coords de sim): k = fuerza 0..1, (dx, dy) dirección del vuelo (corona algo hacia delante). */
+  function sandImpact(x, y, k, dx, dy) {
+    if (!toonOn()) return;
+    var dl = Math.sqrt(dx * dx + dy * dy), ux = dl > 0.3 ? dx / dl : 0, uy = dl > 0.3 ? dy / dl : 0;
+    if (k > 0.3 && (!tbLow || k > 0.7)) {
+      var cs = 0.9 + 1.6 * k;
+      tbAdd(TBK.crown, x + ux * 0.1, y + uy * 0.1, 0, 0, 0, 0, 0.5 + 0.35 * k, cs * 0.35, cs, (Math.random() - 0.5) * 0.15, 0, 1, 1, 1, 1, 0);
+    }
+    sandClouds(x + ux * 0.25 * k, y + uy * 0.25 * k, sandQ(1 + 6 * k), 0.15 + 1.05 * k, ux * 0.6, uy * 0.6, 0.5 * k, 0.15 + 0.6 * k);
+    sandClumps(x, y, sandQ(3 + 14 * k), 0.1 + 1.1 * k, ux, uy, dl > 0.3 ? 2.6 : 0, 0.15);
+    if (k > 0.55) { // remate: anillo de nubecitas que sale disparado a ras de suelo (la onda de la explosión de arena)
+      var nr = sandQ(7), a0 = Math.random() * 6.283;
+      for (var i = 0; i < nr; i++) {
+        var a = a0 + i * 6.283 / nr, ca = Math.cos(a), sa = Math.sin(a), v = 2.2 + 1.6 * k, s0 = 0.28 + 0.12 * k;
+        tbAdd(i % 2 ? TBK.sand2 : TBK.sand, x + ca * 0.3, y + sa * 0.3, 0, ca * v, sa * v, 0.15, 0.7 + 0.2 * k, s0, s0 * 2, (Math.random() - 0.5) * 0.6, 0, 1, 1, 1, 1, -0.1);
+      }
+    }
+  }
+  /** Arena de la plancha: abanico de terrones hacia delante, nubes a lo largo del cuerpo (piernas → pecho) y una nube baja delante. */
+  function sandDive(px, py, dx, dy, k) {
+    if (!toonOn()) return;
+    var dl = Math.sqrt(dx * dx + dy * dy), ux = dl > 1e-4 ? dx / dl : 1, uy = dl > 1e-4 ? dy / dl : 0;
+    // nubes a los LADOS del cuerpo (lo que aparta al deslizarse), no encima: el muñeco tiene que seguir viéndose
+    for (var sdS = -1; sdS <= 1; sdS += 2) sandClouds(px + ux * 0.25 - uy * 0.45 * sdS, py + uy * 0.25 + ux * 0.45 * sdS, sandQ(2), 0.35 + 0.15 * k, ux - uy * sdS * 0.8, uy + ux * sdS * 0.8, 1.2, 0.08);
+    sandClouds(px + ux * 1.3, py + uy * 1.3, sandQ(1 + k), 0.5, ux * 1.6, uy * 1.6, 0.3, 0.12);
+    sandClumps(px + ux * 0.9, py + uy * 0.9, sandQ(10 + 6 * k), 0.75 + 0.25 * k, ux, uy, 1.4, 0.25);
+    // sin corona (TBK.crown) en la plancha: de cerca se leía como un cajón marrón delante del tronco; la corona queda para el balón al suelo
+  }
+  /** Arena pegada al muñeco: tras una plancha, durante ~2 s le caen granitos del tronco (sobre todo al levantarse). */
+  var SANDY_N = 4, sandy = [];
+  for (var sdI = 0; sdI < SANDY_N; sdI++) sandy.push({ p: null, t: 0, acc: 0 });
+  function sandyMark(p) {
+    if (!p) return;
+    var slot = sandy[0];
+    for (var i = 0; i < SANDY_N; i++) { if (sandy[i].p === p) { slot = sandy[i]; break; } if (sandy[i].t < slot.t) slot = sandy[i]; }
+    slot.p = p; slot.t = 2.6; slot.acc = 0;
+  }
+  function updateSandy(g, dt) {
+    if (!(dt > 0) || !toonOn()) return;
+    var P = VB.Players, rigs = P && P.rigs;
+    for (var i = 0; i < SANDY_N; i++) {
+      var S2 = sandy[i]; if (S2.t <= 0 || !S2.p) continue;
+      S2.t -= dt; if (S2.t > 2.15) continue;                     // aún deslizando: la arena la ponen la plancha y el surco
+      S2.acc += dt * (tbLow ? 4 : 9) * Math.min(1, S2.t / 0.6);
+      var p = S2.p, x = p.x, y = p.y;
+      if (rigs) for (var j = 0; j < rigs.length; j++) if (rigs[j] && rigs[j].p === p && rigs[j].root) { x = rigs[j].root.position.x; y = -rigs[j].root.position.z; break; }
+      while (S2.acc >= 1) {
+        S2.acc -= 1;
+        var a = Math.random() * 6.283, r0 = 0.08 + Math.random() * 0.14, z0 = (p.down > 0 ? 0.25 : 0.55) + Math.random() * 0.4;
+        tbAdd(TBK.clump, x + Math.cos(a) * r0, y + Math.sin(a) * r0, z0, Math.cos(a) * 0.4, Math.sin(a) * 0.4, 0.3 + Math.random() * 0.5, 0.9,
+          0.06 + Math.random() * 0.04, 0, Math.random() * 6.283, (Math.random() - 0.5) * 10, 1, 1, 1, 1, 9.8);
+      }
+    }
+  }
   /** Líneas de velocidad que siguen al balón durante `dur` s (remates fuertes y saques en salto). */
   function speedLines(n, dur) {
     if (!toonOn() || tbLow) return;
@@ -781,15 +918,24 @@
       if (dt > 0) {
         q.life -= dt; if (q.life <= 0) continue;
         if (q.kind !== TBK.line) {
-          q.vz -= q.grav * dt; var dr = q.kind === TBK.puff ? 1 - 3 * dt : 1 - 1.5 * dt; q.vx *= dr; q.vy *= dr;
+          var cloudy = q.kind === TBK.puff || q.kind === TBK.sand || q.kind === TBK.sand2;
+          q.vz -= q.grav * dt; var dr = cloudy ? 1 - 3 * dt : q.kind === TBK.clump ? 1 - 0.6 * dt : 1 - 1.5 * dt; q.vx *= dr; q.vy *= dr;
           q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; q.rot += q.vr * dt;
           if (q.kind === TBK.puff && q.vz < 0.05) q.vz = 0.05;
+          if (q.kind === TBK.clump && q.z < 0.03 && q.vz < 0) { q.z = 0.03; q.vx = q.vy = q.vz = q.vr = 0; q.grav = 0; if (q.life > 0.35) q.life = 0.35; } // cae y se queda un instante
         }
       }
       var u = 1 - q.life / q.max, s, al = q.a;
       if (q.kind === TBK.star || q.kind === TBK.spark) { s = u < 0.15 ? q.s0 * (0.4 + 4 * u) : q.s0 + (q.s1 - q.s0) * ((u - 0.15) / 0.85); al *= u < 0.7 ? 1 : 1 - (u - 0.7) / 0.3; }
       else if (q.kind === TBK.burst) { s = q.s0 + (q.s1 - q.s0) * Math.sqrt(u); if (q.pop) s *= 1 + 0.25 * Math.sin(Math.min(1, u * 3) * Math.PI); al *= 1 - u * u; }
       else if (q.kind === TBK.puff) { s = q.s0 + (q.s1 - q.s0) * (1 - (1 - u) * (1 - u)); al *= u < 0.55 ? 1 : 1 - (u - 0.55) / 0.45; }
+      else if (q.kind === TBK.sand || q.kind === TBK.sand2) { // nube de arena: crece deprisa, se posa y se deshace; nunca bajo el suelo
+        s = q.s0 + (q.s1 - q.s0) * (1 - (1 - u) * (1 - u) * (1 - u)); al *= u < 0.5 ? 1 : 1 - (u - 0.5) / 0.5;
+        if (q.z < s * 0.36) q.z = s * 0.36;
+      } else if (q.kind === TBK.clump) { s = q.s0 * (u < 0.06 ? 0.5 + u / 0.12 : 1); al *= q.life < 0.25 ? q.life / 0.25 : 1; }
+      else if (q.kind === TBK.crown) { // corona: se abre de golpe desde el suelo (base abajo) y se desmorona
+        s = q.s0 + (q.s1 - q.s0) * (1 - (1 - u) * (1 - u) * (1 - u)); al *= u < 0.4 ? 1 : 1 - (u - 0.4) / 0.6; q.z = s * 0.46 - 0.04;
+      }
       else if (q.kind === TBK.ono) {
         s = q.s0 * (q.pop ? (u < 0.12 ? 0.35 + 0.8 * (u / 0.12) * 1.15 : u < 0.2 ? 1.27 - (u - 0.12) / 0.08 * 0.27 : 1) : 1);
         al *= u < 0.75 ? 1 : 1 - (u - 0.75) / 0.25;
@@ -1394,6 +1540,7 @@
       for (var i = 0; i < SPARK_N; i++) sp[i].life = 0;
       for (var dI = 0; dI < DUST_N; dI++) du[dI].life = 0;
       for (var fI = 0; fI < fp.length; fI++) fp[fI].t = 0; fpLast.length = 0; fpAlive = 0;
+      for (var sI = 0; sI < SANDY_N; sI++) { sandy[sI].t = 0; sandy[sI].p = null; }
       for (var f = 0; f < FLASH_N; f++) { flashPool[f].t = 0; flashPool[f].s.visible = false; }
       for (var w = 0; w < WAVE_N; w++) { wavePool[w].t = 0; wavePool[w].s.visible = false; }
       for (var r = 0; r < RIP_N; r++) { ripPool[r].t = 0; ripPool[r].m.visible = false; }
@@ -1441,7 +1588,11 @@
       VB.toThree(b.x, b.y, b.z, ballPivot.position);
       if (dt > 0) {
         var hs = Math.hypot(b.vx, b.vy);
-        if (b.held) { axis.set(0.3, 1, 0.2).normalize(); tmpQ.setFromAxisAngle(axis, dt * 1.2); spinQ.premultiply(tmpQ); }
+        if (b.held) {
+          // playa: el sacador de la CPU gira el balón en la mano y le da toquecitos (sim 'pre'/'juggle'/'post'): giro rápido
+          var rtB = g.beach && g.ritual && g.ritual.on ? g.ritual.phase : '', fastB = rtB === 'pre' || rtB === 'juggle' || rtB === 'post';
+          axis.set(0.3, 1, 0.2).normalize(); tmpQ.setFromAxisAngle(axis, dt * (fastB ? 9 : 1.2)); spinQ.premultiply(tmpQ);
+        }
         else if (hs > 0.05 || Math.abs(b.vz) > 0.05) {
           // eje = v x abajo (liftado hacia delante); en el suelo, rodadura
           var onFloor = b.z <= C.BR + 0.02 && g.mode !== 'rally';
@@ -1731,8 +1882,8 @@
       }
       // ---- polvo ----
       if (duAlive) {
-        var dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array, dAlive = 0, sandy = onBeach();
-        var dsz = sandy ? 0.24 : 0.42; if (dust.material.size !== dsz) dust.material.size = dsz; // granos de arena más pequeños que el velo de polvo
+        var dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array, dAlive = 0, sandyV = onBeach();
+        var dsz = sandyV ? 0.3 : 0.42; if (dust.material.size !== dsz) dust.material.size = dsz; // granos de arena más pequeños que el velo de polvo
         for (var dI = 0; dI < duCap; dI++) {
           var D = du[dI];
           if (D.life > 0) {
@@ -1750,14 +1901,14 @@
             var lk = Math.max(0, D.life / D.max), al = D.g > 0 ? Math.min(1, (1 - lk) * 12) * Math.min(1, lk * 4) * 0.85 * D.s : Math.min(1, (1 - lk) * 8) * lk * 0.42 * D.s;
             dp[dI * 3] = D.x; dp[dI * 3 + 1] = D.z; dp[dI * 3 + 2] = -D.y;
             // serrín de parquet (tono cálido) o arena seca en la playa
-            if (sandy) { dc[dI * 4] = 0.98; dc[dI * 4 + 1] = 0.87; dc[dI * 4 + 2] = 0.66; } else { dc[dI * 4] = 0.88; dc[dI * 4 + 1] = 0.72; dc[dI * 4 + 2] = 0.52; }
+            if (sandyV) { dc[dI * 4] = 0.82; dc[dI * 4 + 1] = 0.6; dc[dI * 4 + 2] = 0.36; } else { dc[dI * 4] = 0.88; dc[dI * 4 + 1] = 0.72; dc[dI * 4 + 2] = 0.52; }
             dc[dI * 4 + 3] = al; dAlive++;
           } else if (dp[dI * 3 + 1] !== -50) { dp[dI * 3 + 1] = -50; dc[dI * 4 + 3] = 0; }
         }
         dust.geometry.attributes.position.needsUpdate = true; dust.geometry.attributes.color.needsUpdate = true;
         // OJO: hasta el 10-nov-2026 «dAlive++» estaba dentro de un comentario y el polvo NO se veía nunca. Se arregla la cuenta, pero
         // en el pabellón sigue oculto (regla: el pabellón no cambia; encenderlo allí queda como decisión pendiente en TRASPASO.md)
-        dust.visible = dAlive > 0 && sandy; if (!dAlive) duAlive = 0;
+        dust.visible = dAlive > 0 && sandyV; if (!dAlive) duAlive = 0;
       }
       // ---- destellos / ondas / marcas ----
       for (var f = 0; f < FLASH_N; f++) {
@@ -1788,7 +1939,8 @@
         var pin = age < 0.22 ? 1 + 0.7 * (1 - age / 0.22) * (1 - age / 0.22) : 1 + Math.sin(age * 5) * 0.03;
         var rs = Mk.s * 1.55 * pin; Mk.r.scale.set(rs, rs, rs);
       }
-      if (onBeach()) updateFootprints(g, dt); else if (fpAlive) { for (var fz = 0; fz < fp.length; fz++) fp[fz].t = 0; fpAlive = 0; fpLast.length = 0; }
+      if (onBeach()) { updateFootprints(g, dt); updateSandy(g, dt); }
+      else { if (fpAlive) { for (var fz = 0; fz < fp.length; fz++) fp[fz].t = 0; fpAlive = 0; fpLast.length = 0; } for (var sz = 0; sz < SANDY_N; sz++) { sandy[sz].t = 0; sandy[sz].p = null; } }
       writeDecals(); writeBills();
       ballVel.set(b.vx, b.vz, -b.vy); updateToonFx(dt);
       updateConfetti(dt);
@@ -1901,9 +2053,11 @@
           dustAt(px + dx * 0.7, py + dy * 0.7, 22, 0.75, dx, dy, 0.6, 1.5, 0.1); // a lo largo del cuerpo (piernas→pecho)
           rippleAt(px + dx * 0.3, py + dy * 0.3, 1.3, 0.45, 0.95, 0.88, 0.75, 0.3);
           puffsAt(px + dx * 0.8, py + dy * 0.8, 4, dx, dy, 1.4, 0.42); // nubes de dibujo a lo largo del cuerpo
-          if (onBeach()) { // playa: arena que salta hacia delante y surco del cuerpo
+          if (onBeach()) { // playa: abanico de arena hacia delante, nubes a lo largo del cuerpo, surco y arena pegada al muñeco
             sandAt(px + dx * 0.6, py + dy * 0.6, 26, 1.0, dx, dy, 0.5);
-            if (dx || dy) footAt(px + dx * 0.85, py + dy * 0.85, Math.atan2(dy, dx), 1, 1.9, 0.78, 0.85);
+            sandDive(px, py, dx, dy, e.miss ? 0.7 : 1);
+            if (dx || dy) footAt(px + dx * 0.85, py + dy * 0.85, Math.atan2(dy, dx), 1, 2.1, 0.9, 1);
+            sandyMark(e.player);
           }
           break;
         }
@@ -1919,18 +2073,30 @@
           if (!(tbSwap && sp2 > 8)) burstAt(e.x, e.y, 0.05, 10 + Math.min(14, sp2), 1.5 + sp2 * 0.15, 0.95, 0.9, 0.8, 1.2, 9);
           trailA = Math.min(trailA, 0.25);
           if (sp2 > 8) { if (!tbSwap) shockAt(e.x, e.y, 0.15, 1.6, 0.25, 1, 0.9, 0.8); puffsAt(e.x, e.y, 3, 0, 0, 0, 0.4); }
-          if (onBeach()) { // playa: corona de arena y cráter del balón
-            sandAt(e.x, e.y, 14 + Math.min(12, sp2), 0.45 + Math.min(0.5, sp2 * 0.03), g && g.ball ? g.ball.vx : 0, g && g.ball ? g.ball.vy : 0, 0.15);
-            footAt(e.x, e.y, 0, 2, 0.55 + Math.min(0.15, sp2 * 0.01), 0.55 + Math.min(0.15, sp2 * 0.01), 0.85);
+          if (onBeach()) { // playa: arena según la fuerza (velocidad total del balón; remate = explosión) y cráter que dura unos segundos
+            var lvx = g && g.ball ? g.ball.vx : 0, lvy = g && g.ball ? g.ball.vy : 0, ltot = Math.sqrt(lvx * lvx + lvy * lvy + sp2 * sp2);
+            var lk = clampN((ltot - 5) / 15, 0, 1); if (g && g.lastKind === 'spike') lk = Math.max(lk, 0.6);
+            sandAt(e.x, e.y, 14 + Math.min(12, sp2), 0.45 + Math.min(0.5, sp2 * 0.03), lvx, lvy, 0.15);
+            sandImpact(e.x, e.y, lk, lvx, lvy);
+            var cz = 0.6 + 1.1 * lk, cyaw = Math.atan2(lvy, lvx);
+            footAt(e.x, e.y, cyaw, 2, cz * 1.1, cz, 1);
+            if (lk > 0.5) for (var rI = 0; rI < 6; rI++) { // remate: lenguas de arena lanzadas alrededor del hoyo (celda del surco, hacia fuera)
+              var ra = cyaw + rI * 1.047 + 0.3 * Math.sin(rI * 2.3), rr = cz * (0.72 + 0.14 * (rI % 2));
+              footAt(e.x + Math.cos(ra) * rr, e.y + Math.sin(ra) * rr, ra, 1, cz * 0.7, cz * 0.32, 1);
+            }
           }
           break;
         }
         case 'bounce':
           if ((e.speed || 0) > 2.5) { rippleAt(e.x, e.y, 0.9, 0.45, 1, 1, 1, 0.4); if (onBeach()) sandAt(e.x, e.y, 6, 0.35, 0, 0, 0.1); }
+          if (onBeach() && (e.speed || 0) > 1.5) { // playa: el balón muerto que rebota levanta un poco de arena y deja su hoyito
+            var bk = clampN((e.speed - 1.5) / 12, 0, 0.3); sandImpact(e.x, e.y, bk, 0, 0); footAt(e.x, e.y, 0, 2, 0.5, 0.5, 0.7);
+          }
           break;
         case 'landPlayer':
           if (e.player) { rippleAt(e.player.x, e.player.y, 1.0, 0.4, 0.9, 0.9, 0.95, 0.3); dustAt(e.player.x, e.player.y, 5, 0.6, 0, 0, 0); puffsAt(e.player.x, e.player.y, 2, 0, 0, 0, 0.3);
-            if (onBeach()) { sandAt(e.player.x, e.player.y, 10, 0.55, 0, 0, 0.25); footAt(e.player.x, e.player.y, 0, 2, 0.75, 0.6, 0.5); } } // playa: arena al caer del salto
+            if (onBeach()) { sandAt(e.player.x, e.player.y, 10, 0.55, 0, 0, 0.25); footAt(e.player.x, e.player.y, 0, 2, 0.8, 0.65, 0.65); // playa: arena al caer del salto
+              if (toonOn()) { sandClouds(e.player.x, e.player.y, sandQ(2), 0.12, 0, 0, 0, 0.35); sandClumps(e.player.x, e.player.y, sandQ(4), 0.2, 0, 0, 0, 0.2); } } }
           break;
         case 'challenge': // B6: empieza la revisión; las marcas del bote (con la llamada del árbitro) se quitan: manda la huella
           for (var cm = 0; cm < MARK_N; cm++) { markPool[cm].t = 0; markPool[cm].m.visible = false; markPool[cm].r.visible = false; }

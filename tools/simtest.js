@@ -48,7 +48,7 @@ const DT = 1 / C.SIM_HZ;
 let failures = 0;
 const fail = m => { failures++; console.error('FALLO:', m); };
 const KNOWN = ['hit', 'block', 'net', 'land', 'point', 'set', 'match', 'gameOver', 'whistle', 'jump', 'switch', 'serveReady',
-  'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange', 'dribble', 'challenge', 'challengeResult',
+  'sideout', 'newSet', 'bounce', 'swing', 'landPlayer', 'newMatch', 'toss', 'miss', 'dive', 'netTouch', 'courtChange', 'dribble', 'juggle', 'challenge', 'challengeResult',
   'rotation', 'libero', 'blockPress', 'feint', 'drillStage', 'drillRep', 'drillEnd']; // (feint: E1, solo con createGame({mastery:true})) // (rotation y libero, solo 6v6; blockPress = GOLPEAR en el aire en el bloqueo, sim.js blockPress)
 const pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '-';
 // Vocabulario del árbitro (FCVB): cada motivo de punto con sus textos válidos. Un texto nuevo debe pasar por aquí.
@@ -2241,7 +2241,7 @@ if (ONLY !== 'matrix') {
     if (MIN >= 10) {
       const cx = { console, Math, Date, JSON, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } }; cx.globalThis = cx; cx.window = cx; vm.createContext(cx);
       let G = null;
-      try { for (const f of ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/career.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), cx, { filename: f }); G = cx.VB.Career && cx.VB.Career.genSt; } catch (e) { G = null; }
+      try { for (const f of ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/leagues.js', 'js/career.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), cx, { filename: f }); G = cx.VB.Career && cx.VB.Career.genSt; } catch (e) { G = null; }
       if (!G) console.log('Carrera Regional: sin js/career.js (genSt), se salta');
       else {
         const out = [], ev = [];
@@ -2993,6 +2993,26 @@ if (ONLY !== 'matrix') {
       { sideOut: sidePct.toFixed(1) + '%', toques: +(hits / pts).toFixed(2), mediana: +med.toFixed(2) }]);
     res.push(['(i) la IA saca y juega a la pista pequeña: dianas de saque dentro de 16×8, pocos fuera, botes muy largos como en el pabellón (~12-14 %)', srvN > 200 && srvSpot / srvN > 0.97 &&
       outB / pts < 0.3 && deep / pts < 0.18 && dbl / pts < 0.03, { saques: srvN, dianaDentro: pct(srvSpot, srvN), fuera: pct(outB, pts), botesLargos: pct(deep, pts), dobles: dbl }]);
+    // (j) ritual de saque de la CPU en la arena (12-nov-2026): sin botes contra el suelo; un `juggle` por toquecito (tantos como
+    // ritual.bounces), el balón siempre por encima de 0,9 m y el lanzamiento a la misma hora que con el bote del pabellón
+    const rj = { serves: 0, jug: 0, drib: 0, low: 0, late: 0, cnt: 0, minZ: 9 };
+    for (let s = 0; s < 3; s++) {
+      const g = S.createGame(s === 1 ? { seed: 950 + s, venue: 'beach', demo: true } : { seed: 950 + s, venue: 'beach', autopilot: true, difficulty: 'hard' }); S.drainEvents(g);
+      let cur = null;
+      for (let i = 0; i < 120 * 240 && g.mode !== 'over'; i++) {
+        S.step(g, DT, null);
+        for (const e of S.drainEvents(g)) {
+          if (e.type === 'serveReady') cur = g.ritual.on ? { t0: e.t, n: 0, b: g.ritual.bounces, dur: g.ritual.dur } : null;
+          if (e.type === 'dribble') rj.drib++;
+          if (e.type === 'juggle') { rj.jug++; if (cur) cur.n++; }
+          if (e.type === 'toss' && cur) { rj.serves++; if (Math.abs(e.t - cur.t0 - Math.min(VB.RITUAL.tossBy, g.whistleAt + cur.dur)) > 1.5 * DT) rj.late++; if (cur.n !== cur.b) rj.cnt++; cur = null; }
+        }
+        if (cur && g.mode === 'serve' && g.serveState === 'ready' && g.ritual.on) { const z = g.ball.z - g.server.z; if (z < rj.minZ) rj.minZ = z; if (z < 0.9) rj.low++; }
+      }
+    }
+    rj.minZ = +rj.minZ.toFixed(3);
+    res.push(['(j) saque de la CPU en la arena sin bote: toquecitos `juggle`, nunca `dribble`, balón alto y misma hora de lanzamiento', rj.serves > 20 && rj.drib === 0 &&
+      rj.jug > 0 && rj.low === 0 && rj.late === 0 && rj.cnt === 0, rj]);
     const bad = res.filter(r => !r[1]);
     if (bad.length) fail('vóley playa: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
     console.log('\nVóley playa (' + NB + ' partidos, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)' + (failures === f0 ? ' OK' : '') + '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));

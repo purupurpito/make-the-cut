@@ -1,8 +1,331 @@
-# notes/carrera.md — Modo Carrera 2v2 de vóley playa (owner: ui_main)
+# notes/carrera.md — Modo Carrera: vóley playa 2v2 y pista 6v6 (owner: ui_main)
 
 Ficheros: `js/career.js` (VB.Career, datos y reglas, sin DOM; se carga en node), `js/career-ui.js` (VB.CareerUI, pantallas; crea su
-DOM `#career` y su `<style id="careerCss">`), `js/main.js` (arranque de los partidos de Carrera), `index.html` (fila «02 Carrera»
-del menú y los dos `<script>`), `tools/careertest.js` (prueba en node). Guardado: `localStorage['voley3d.career']` (una sola carrera).
+DOM `#career` y su `<style id="careerCss">`), `js/leagues.js` (VB.Leagues, datos de las ligas de pista), `js/main.js` (arranque de
+los partidos de Carrera), `index.html` (fila «02 Carrera» del menú y los `<script>`), `tools/careertest.js` (prueba en node).
+Guardados: `localStorage['voley3d.career']` (playa, igual que siempre), `['voley3d.career6']` (pista) y `['voley3d.career.mode']`
+(cuál de las dos está activa).
+
+## Carrera de pista 6v6 (lote C, 11-nov-2026)
+
+### Diseño
+- **Dos Carreras a la vez, guardadas aparte.** Al crear se elige «Playa (2v2)» o «Pista (6v6)» (`modeSeg`). La de playa no cambia:
+  ni su guardado (`voley3d.career`, v3), ni su migración, ni su API. La pista va en `voley3d.career6` (v1, `mode: 'hall'`). La
+  activa se guarda en `voley3d.career.mode`; sin ese dato, o si la elegida no existe y la otra sí, manda la que exista (por defecto
+  la playa). Palmarés › Opciones lleva a la otra Carrera (o a crearla). Un guardado de pista dañado se copia en
+  `voley3d.career6.bak` y la activa vuelve a la playa, que no se toca.
+- **Fachada (`VB.Career`, final de career.js).** `BEACH` y `HALL` son dos motores con las mismas claves; `VB.Career.<clave>` va
+  al activo (getter) y, si el activo no la tiene, a la playa (constantes comunes). `VB.Career.beach` y `VB.Career.hall` dan acceso
+  directo. `create({mode})` elige; `matchDone(r, st, g)` va al de `g.career.mode` aunque la activa hubiera cambiado.
+- **Mundo.** `buildWorld6` copia en el guardado las ligas (id = código del país + división: `ES1`, `ES2`), los clubes (con su kit
+  ya en números), las copas nacionales (`cups[cc]`) y las internacionales por continente (`intl[region]`). Cambiar js/leagues.js no
+  rompe una Carrera empezada; la nueva coge los datos nuevos.
+  - Región por el código del país (`CONT6`: Europa, América, Asia). Zonas en América (`ZONE6`: sur y norte, cada una con su copa).
+  - Competiciones (`compKind6`): manda `kind` ('intl' | 'cup' | 'skip'), `rank` (1 la grande, 2 la segunda), `zone` ('sur', 'norte' o
+    lista de códigos) y `country` si vienen; si no, se deduce del nombre real (CEV, AVC, CSV, NORCECA → internacional; Cup, Copa,
+    Coppa, Pokal… del país → nacional; supercopas, ligas, selecciones, Mundial de Clubes → fuera). Repetidas en varios ficheros: vale
+    la 1ª.
+- **Inicio.** Eliges país (por defecto España; agrupados por continente) y puesto. Media 45. Ofertas de 3-4 clubes modestos de la
+  2ª (o de la 1ª si el país solo tiene una) y, en la 1ª ronda, quizá una prueba en el más flojo de la 1ª. «Pedir más tiempo» y
+  «Rechazar todas», como en la playa.
+- **Liga por jornadas** (`sched6`, determinista): hasta 8 clubes a doble vuelta (14 jornadas); con más, a una vuelta (11 jornadas con
+  12 clubes, 9 con 9-10). Así una temporada son 11-14 jornadas más 1-3 rondas de cada copa: unas 15-18 partidas, como las 14 de la
+  playa. Liga impar: un club descansa cada jornada (`skipBye6`: entrenas, cobras, descansas). Puntos 3/2/1/0 (2-0, 2-1, 1-2).
+  Sets a 15 por defecto (21 y 25 a elegir), el 3r a 15.
+- **Copas** (al acabar la liga, eliminatoria a un partido, hasta 8 equipos, `buildKOs6`): la nacional (6 primeros de la 1ª + 2
+  primeros de la 2ª; sin 2ª, los 8 primeros) y las internacionales de tu continente y zona (`intlFor6`): la grande con el 1r y el 2º
+  de cada 1ª, la segunda con el 3r y el 4º. Si tu club está clasificado, entra siempre aunque haya más candidatos que plazas.
+- **Ascensos y descensos** en cada país con dos divisiones: 2 y 2 (1 y 1 si las ligas son pequeñas). Las medias de los clubes se
+  mueven cada verano (vuelven un 25 % hacia la base, ±2, y ±2 al subir o bajar).
+- **Tu puesto** (`positions6`): la lista sale de `VB.Sim.CTRL_ROLES6` (hoy solo `['OH']`); cuando el lote A añada colocador, opuesto
+  y central, aparecen solos en crear y en Palmarés › Opciones (`setPosition6`). Si tu puesto deja de estar en sim, juegas de
+  receptor sin perder el tuyo (`ctrlRole6`). Perfiles de atributos por puesto en `POS6` (genSt los entiende como los roles de playa).
+- **Partido** (`matchSetup6`): `format: '6v6'`, `venue: 'hall'`, `ctrlRole` tu puesto, `ctrlIdx` el hueco de tu puesto en
+  `Sim.ROLES6`; atributos de los 12 (compañeros y rivales a la media de su club ±2, química en reacción/colocación/recepción); tu
+  dorsal en tu hueco; IA por la media del rival (`DIFF6_AT`, calibrada con los datos reales: < 56 Fácil, 56-61 Normal suave, 62-75
+  Normal, 76-87 Difícil, ≥ 88 Experto; de los 390 clubes, 18 / 81 / 182 / 87 / 22); arbitraje por la fuerza de la liga; equipaciones de los dos clubes con camiseta, segundo color y líbero. «Simular» da
+  la mitad de XP, como en la playa. Nota con `rating` y un multiplicador por puesto (`RATE6`).
+- **Ojeadores y ofertas** (`scoutCheck6`, `genOffers6`): tras una nota ≥ 7,3, a veces viene un ojeador de un club de una liga más
+  fuerte (también de fuera): +3 de interés esa temporada. Ofertas a mitad (nota media ≥ 7; de fuera o de una liga más fuerte, ≥ 7,5
+  o con ojeador) y a fin de temporada: clubes mejores que el tuyo de ligas como la tuya o más fuertes; umbral = media del club − 5,
+  +2 si es de fuera, + (fuerza − 70) / 5 en las ligas de élite. De los clubes que te quieren llegan los 3 más atractivos
+  (`appeal`: el interés cuenta hasta 5, y pesan la fuerza de la liga ×0,5 y la media del club ×0,25): con 28 países, ordenar solo
+  por interés llenaba la bandeja de un crack de clubes modestos de Irán o Eslovenia; ahora un 90 con notas de 8 recibe Conegliano,
+  Perugia y Trento, y un 70 de la Hiperliga, clubes de la 1ª turca o francesa. La ficha enseña país, liga y su nivel, media, puesto, estilo,
+  objetivo, rol prometido, sueldo (ficticio: 400 €/mes en una liga de 50, ~2.500 en una de 70, ~15.000 en la élite) y años.
+- **Reutilizado de la playa**: atleta y progresión (addXP, bump, insignias), entrenamiento y fatiga (`trainWeek`), contrato, rol
+  prometido y banquillo (`benchFor`, `pay`, `earlyExit`, `promoteCheck6`), negociar, transferible, fisio, bandeja (`msg`), nota
+  (`ingest`, `rating`) y `quickSim`. La química es la del equipo (sube +5 por partido jugado, +3 simulado; −40 % en verano; a 0 al
+  fichar).
+- **UI** (career-ui.js): mismas pestañas EA FC. En la pista, Club › Ficha · Equipo · Contrato · Ofertas (Equipo = plantilla
+  inventada y química) y Liga › Clasificación · Calendario · Copas. Clasificación de cualquier país y división (tu país primero; en
+  el móvil, una fila que se desliza). Capturas en `tools/out/arte/carrera-pista/` (`shots.js`, `REAL=1` con los datos reales).
+
+### Datos reales (integración, 11-nov-2026)
+- **Fuente:** `notes/clubes/*.json` (5 investigaciones verificadas: elite-europa, fra-ale-esp, europa-media, america, asia; detalle en
+  sus .md). **Lista para Ferran:** `notes/clubes-reales.md` (competiciones real → nuestro y una tabla por liga: club real → nuestro
+  nombre, colores con muestra, ovr, nombre oficial, búsqueda y ⚠ en los dudosos, más un resumen «Decisiones para Ferran»).
+- **`tools/build-leagues.js`** genera `js/leagues.js` (NO se edita a mano) y `notes/clubes-reales.md` a partir de los JSON.
+  Comprueba antes de escribir: nombres de club únicos, abreviaturas únicas en TODO el juego (así `uniqueShorts` no renombra nada y
+  las copas internacionales no repiten), colores hex, ovr y fuerza 0-100, ningún «masculino/femenino» y una lista de ~200
+  patrocinadores y marcas de los nombres reales (palabra entera). `--check` solo comprueba. Para corregir un club o una copa: el
+  JSON y volver a ejecutarlo.
+- **js/leagues.js:** 3 regiones (Europa 17 países, América 5, Asia 6), 37 ligas de 8 a 12 clubes, 390 clubes; 1ª y 2ª en Italia,
+  Polonia, Turquía, Rusia, Francia, Alemania, España, Brasil y Japón. Sin `real`, `official` ni `check` (llevan patrocinadores):
+  solo lo que usa el juego. Cada competición lleva `kind`/`rank`/`zone`/`country`, así que ya no se deduce nada por el nombre.
+- **Competiciones unificadas:** Europa «Champions Cup VEC» (CCV, rank 1) + «Copa VEC» (CVC, rank 2) + «Challenge VEC» (CHV, solo
+  nombre); América «Copa del Sur de Clubes» (zona sur) y «Copa Norte de Campeones» (zona norte); Asia «Champions Cup Asia»;
+  «Mundial de Clubes VBF» igual en los tres (antes «World Club Cup» y «Mundial VBC de Clubes»). Copas nacionales en 21 países;
+  nuevas del integrador: Coppa Tricolore (IT), Puchar Orła (PL), Hilal Kupası (TR) y Kubok Volgi (RU), una búsqueda cada una sin
+  coincidencias. Sin copa propia (juegan «Copa Nacional»): EE. UU., Canadá, Perú, China, Irán, Catar y Filipinas.
+- **Cambios del integrador en los JSON** (anotados en el campo `check`/`note` de cada uno, «[Integrador…]»): 29 abreviaturas que se
+  repetían entre países; «Voley Aguere» → «Voley Lagunero» (LAG), porque chocaba con el CV Aguere real de La Laguna; resultados de 20
+  búsquedas entre comillas (sin choque salvo Aguere; Manacor, Capodistria y Verona quedan con ⚠ por casi iguales).
+- **Pruebas:** `tools/careertest.js` usa en las secciones de pista las ligas de prueba inventadas de `tools/leagues-fixture.js` (los
+  antiguos datos provisionales: liga impar de 9, de 8 a doble vuelta, país sin 2ª) y prueba aparte los datos reales («datos reales»:
+  28 países, unicidad, nada de nombres reales en el juego, js/leagues.js al día con los JSON, IA por tramos, copas, 2 temporadas,
+  crear en cada uno de los 28 países). Capturas finales: `tools/out/arte/carrera-pista/final/shots.js` (1280×720 y 844×390 táctil).
+
+### Pendiente
+- **Color del líbero del club (petición al lote A, js/players.js):** `matchSetup6` ya pasa `kit.kitLibero` y `rivalKit.kitLibero`
+  (main.js los deja en `opts.kit` y `opts.kit.rival`), pero `liberoKit(team)` de players.js calcula el color solo. Cambio pedido: en
+  `setKit(st)`, guardar `st.kitLibero` (equipo 0) y `st.rival.kitLibero` (equipo 1) y, en `liberoKit`, usarlos como camiseta si son
+  número y se distinguen de las dos camisetas (`kitDist` ≥ 0,8); si no, el cálculo de ahora. Fuera de la Carrera no cambia nada.
+- **Empezar en un país de élite:** con los tramos nuevos la 2ª italiana (72-82) queda mitad Normal, mitad Difícil (antes, toda
+  Difícil). Si Ferran la quiere más suave, subir la media inicial allí o bajar los ovr de las 2ªs de élite.
+- **Revisión de Ferran** de `notes/clubes-reales.md` (ya está en el juego, pero sin publicar hasta que la revise): ⚠ en 36 clubes y
+  en varias competiciones, búsqueda entre comillas pendiente en 204 clubes y en casi todas las copas.
+- **Choque de equipaciones:** si la camiseta del rival se parece a la tuya, players.js le pone la de la CPU de siempre (roja); con
+  clubes reales sería mejor la 2ª equipación del club (su segundo color). Petición posible al lote A (players.js `setKit`).
+- Ligas de 9-10 clubes: 9 jornadas (a una vuelta), frente a 14 de las de 8 y 11 de las de 12. Si se quiere igualar, la opción es
+  una vuelta + fase final para 9-10.
+- Puestos colocador, opuesto y central: dependen del lote A (la Carrera ya los lee de `CTRL_ROLES6`). Nota y «Simular» de esos
+  puestos calibrados por analogía (`RATE6`, `SIM_SHARE6`), sin medir.
+- Escudos propios: no hay (la ficha enseña los tres colores del club).
+
+## Dificultad de la Carrera (12-nov-2026; pedido de Ferran: «hay que añadir diferentes niveles de dificultad al modo carrera»)
+
+Se elige al crear la Carrera (4 niveles: **Fácil · Normal · Difícil · Experto**, claves `easy/normal/hard/expert` como `VB.DIFF`;
+por defecto Normal) y se puede cambiar entre partidos desde el hub (`setDifficulty(k)`). **Normal es exactamente la Carrera de
+antes** (mismas IA, atributos, XP, entrenador y ofertas): comprobado en careertest (temporada entera con y sin el campo) y, aparte,
+contra el `career.js` anterior (5 semillas × simulado/jugado × 4 temporadas: JSON idéntico quitando los campos nuevos).
+
+Guardado (sin subir `VER`): `c.diff` (nivel actual) y `c.dUse` (`{easy, normal, hard, expert}`: partidos tuyos de la temporada en
+cada nivel, jugados, simulados y banquillos; `newSeason` lo pone a ceros), `c.objective.d` (nivel con el que se fijaron el objetivo
+y, al fichar, la confianza inicial) y `c.coachD` (nivel del `coach0` aplicado al fichar; se borra al seguir en el club en verano).
+`c.history[i].d/dm`, `c.trophies[i].d` y
+`c.review.d/dm`: el nivel MÁS FÁCIL de esa temporada (partidos, banquillos y `objective.d`) y si fue mixta (`seasonDiff(c)`), para que un título no se
+«blanquee» jugando la temporada en Fácil y la final en Experto. Los premios que mete career-life (`kind: 'premio'`) reciben su `d`
+en `endSeason`, justo después de `life(c, 'season')`. `create()` no gasta tiradas del generador: con la misma semilla sale la
+misma carrera en cualquier nivel.
+
+**Migración** (`migrate`, idempotente): sin `diff` → Normal; sin `dUse` → ceros y `dUse.normal = stats.played` (solo la primera
+vez: un `dUse` ya guardado no se pisa; uno dañado se repara a enteros ≥ 0); historial, trofeos y resumen sin `d` → Normal. Sin
+mensaje en la bandeja. También en fase `pick`.
+
+### Palancas (`CDIFF` en career.js; `CDIFF.normal` NO se toca)
+
+| campo | palanca | Fácil | Normal | Difícil | Experto |
+|---|---|---|---|---|---|
+| `shift` | IA rival: peldaños sobre el peldaño base del club | −1 | 0 | +1 | +2 |
+| `regEasy` | Regional toda en Fácil puro | sí | — | — | — |
+| `noSoft` | si cae en «Normal suave», sube a Normal | — | — | sí | sí |
+| `gate.hard` | media mínima para SUBIR a Difícil por desplazamiento | — | — | 46 | 38 |
+| `gate.expert` | media mínima para SUBIR a Experto por desplazamiento | — | — | 76 | 66 |
+| `attr` | suma a la media del rival en TUS partidos (`next().ovrRival`) | −3 | 0 | +3 | +4 |
+| `xp` | × experiencia de tus partidos (`closeMine`) | 1,25 | 1 | 0,9 | 0,75 |
+| `train` | × progreso semanal del entreno (`trainWeek`) | 1,15 | 1 | 0,9 | 0,85 |
+| `coachPivot` | nota desde la que el entrenador gana confianza | 5,8 | 6,2 | 6,3 | 6,5 |
+| `objWin` / `objLose` | confianza al cumplir / no cumplir el objetivo | +15/−10 | ±15 | +15/−18 | +12/−20 |
+| `coach0` | suma a la confianza inicial al fichar | +5 | 0 | −3 | −6 |
+| `objE` | suma a la posición esperada del objetivo (+ más blando) | +1 | 0 | −1 | −2 |
+| `offer` | suma al umbral de interés de las ofertas (+ menos ofertas) | −2 | 0 | +2 | +4 |
+| `midNota` | suma a la nota mínima de las ofertas de mitad de temporada | −0,3 | 0 | 0 | 0 |
+| `attrTop` | `attr` en el Mundial (si falta, `attr`) | — | — | +1 | +2 |
+| `simAttr` | suma a la media del rival al SIMULAR tus partidos y en el banquillo (`next().ovrSim`) | 0 | 0 | +3 | +4 |
+| `topX` | `false`: en el Mundial nadie sube a la IA Experto por desplazamiento | — | — | false | false |
+
+IA rival: escalera de 5 peldaños `STEPS` (Fácil · Normal suave · Normal · Difícil · Experto). `baseStep(rival)` es el peldaño de
+siempre (`difficultyFor` + `softFor`, que no cambian) y `rivalAI(c, rival)` lo desplaza. El gate existe porque el salto Difícil →
+Experto de la sim es enorme (§Calibrado: 27,5 % de puntos contra Experto, ~50 % contra Difícil): sin él, todo el Continental sería
+Experto en Difícil. `topX` (12-nov-2026, revisión) existe porque con 4 u 8 clubes Experto el Circuito Mundial no se ganaba ni con
+el bot bueno y media 85 (Experto 15 %, 0 títulos de 20): en el circuito más alto solo juegan en Experto los clubes que ya lo son en
+Normal. Simular: `simulateNext` y `benchNext` usan `ovrSim` = club + `simAttr` (el simulado no ve la IA; con el `attr` −3 de Fácil
+las carreras simuladas ganaban el Mundial el 57 % de las temporadas). Atributos: `next()` devuelve `ovrRival` = media efectiva (club + `attr`) y `ovrClub` = la real; `matchSetup`,
+`simulateNext` y `benchNext` usan `ovrRival` sin cambios de código (en el partido jugado pesa poco; al simular, mucho). El resto de
+la jornada (quickSim entre otros clubes) no cambia. La ayuda de timing de la sim sigue al perfil del rival (`TIMING[diff]`).
+
+IA resultante con los clubes de la semilla 31337 (la imprime careertest; medias de menor a mayor):
+
+| circuito | Normal (base) | Fácil | Difícil | Experto |
+|---|---|---|---|---|
+| Regional 29-40 | Fácil ×3 · suave ×3 · Normal ×2 | Fácil ×8 | Normal ×8 (gate.hard 46) | Normal ×6 · Difícil ×2 (≥ 38) |
+| Nacional 39-50 | suave ×2 · Normal ×6 | Fácil ×2 · suave ×6 | Normal ×5 · Difícil ×3 (≥ 46) | Difícil ×8 |
+| Hiperliga 49-60 | Normal ×5 · Difícil ×3 | suave ×5 · Normal ×3 | Difícil ×8 | Difícil ×8 |
+| Continental 59-70 | Difícil ×8 | Normal ×8 | Difícil ×8 | Difícil ×5 · Experto ×3 (≥ 66) |
+| Mundial 69-83 | Difícil ×6 · Experto ×2 | Normal ×6 · Difícil ×2 | Difícil ×6 · Experto ×2 (`topX`) | Difícil ×6 · Experto ×2 (`topX`) |
+
+Curva todo simulado (semilla 999, 6 temporadas, gasta en lo más barato y acepta la mejor oferta; careertest):
+
+| nivel | T1 | T2 | T3 | T4 | T5 | T6 | media final |
+|---|---|---|---|---|---|---|---|
+| Fácil | Reg 8º 40 | Reg 1r 47 | Nac 2º 53 | Hip 6º 59 | Hip 1r 63 | Con 3r 66 | 66 |
+| Normal | Reg 8º 39 | Reg 1r 45 | Nac 4º 50 | Hip 8º 54 | Nac 5º 57 | Hip 3r 61 | 61 |
+| Difícil | Reg 8º 38 | Reg 6º 42 | Reg 4º 45 | Nac 8º 48 | Nac 2º 52 | Hip 2º 56 | 56 |
+| Experto | Reg 8º 37 | Reg 7º 40 | Reg 5º 42 | Reg 3r 45 | Reg 2º 49 | Nac 5º 53 | 53 |
+
+(Tablas con los números calibrados; la medida con muchas semillas está en §Calibrado.)
+
+### Calibrado (12-nov-2026; sim en node, bots de `tools/simtest.js` con control «uno»)
+
+Scripts (no son parte del juego) en `tools/out/carrera-playa/`:
+- `dif_bal.js` (M1): partidos sueltos por circuito, nivel y rival (peor, medio y mejor de la semilla 31337), con tu media típica
+  del circuito y 16 partidos por casilla.
+- `dif_grid.js`: rejilla tu media × IA × media del rival.
+- `dif_season.js`: modo «t1» (M2), la temporada 1 JUGADA entera con el motor real (matchSetup → sim → matchDone), gastando
+  puntos; modo «fix» (M4), una temporada entera en un circuito con tu media fija.
+- `dif_curve.js` (M3): carreras SIMULADAS de 12 temporadas, 20 semillas.
+
+Todos aceptan `CDIFF_OVERRIDE` (JSON, p. ej. `{"easy":{"attr":-6}}`) para probar números sin tocar career.js. Los datos están en
+`dif/`. Normal no se ha tocado: `CDIFF.normal` sigue igual y careertest da TODO OK con las mismas expectativas.
+
+**Ajustes** (antes → ahora):
+- Fácil: `attr` −4 → −3, `xp` 1,35 → 1,25, `train` 1,25 → 1,15, `offer` −3 → −2. Simulando llegaba al Mundial en la T6,
+  4 temporadas antes que Normal; ahora en la T7, 3 antes.
+- Fácil, después (12-nov, integración): `shiftTop` −2, la IA dos peldaños abajo solo en el Mundial (élite Normal, resto Normal
+  suave). Con −1 el bot medio con media 85 no ganaba nada allí (la élite jugaba Difícil); con −2 gana el Circuito 16 de 28 temporadas
+  (medida del calibrado con override). Normal, Difícil y Experto no cambian.
+- Difícil: `gate.hard` — → 46 y `xp` 0,85 → 0,9. Los 2 clubes Difícil de la Regional eran un 0 % para el medio; ahora toda
+  la Regional juega en Normal (sin suave).
+- Experto: `gate.hard` — → 38, `attr` +5 → +4, `xp` 0,7 → 0,75, `train` 0,8 → 0,85. En la Regional solo los 1-2 mejores juegan
+  en Difícil (antes 5 de 8). Llegaba a la Hiperliga en la T9; ahora en la T8.
+
+M1, % de victorias contra el rival peor / medio / mejor del circuito (entre paréntesis, la IA efectiva). Bot **medio**:
+
+| circuito (tu media) | Fácil | Normal | Difícil | Experto |
+|---|---|---|---|---|
+| Regional (35) | 100 / 100 / 100 (Fácil) | 100 / 88 / 19 | 44 / 13 / 0 (con 2 Difícil, antes del gate) | Normal 69 / Difícil 0 / 0 |
+| Nacional (45) | 100 / 100 / 100 (Fácil, suave) | 100 / 25 / 0 | 69 / 19 / 0 | 0 / 0 / 0 (Difícil) |
+| Hiperliga (54) | 100 / 94 / 19 | 38 / 38 / 0 | 0 / 0 / 0 | 6 / 0 / 0 |
+| Continental (62) | 69 / 56 / 25 (Normal) | 0 / 0 / 0 (Difícil) | 6 / 0 / 0 | 0 / 0 / 0 |
+| Mundial (72) | 88 / 13 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
+| Mundial (80) | 88 / 50 / 6 (Difícil) | 19 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
+
+Bot **bueno** (con los números finales):
+
+| circuito | Normal | Difícil | Experto |
+|---|---|---|---|
+| Nacional | 100 / 100 / 94 | 100 / 100 / 56 | 94 / 69 / 31 |
+| Hiperliga | 100 / 100 / 63 | 88 / 88 / 75 | 94 / 75 / 56 |
+| Continental | 94 / 88 / 88 | 88 / 81 / 44 | 88 / 94 / 6 (el mejor ya juega en Experto) |
+
+Bot **novato**: en Fácil, en la Regional, 81 / 50 / 25. En Normal, Difícil y Experto gana el 0 % contra cualquier IA Normal o
+superior (solo gana a la IA Fácil).
+
+M2, temporada 1 en la Regional JUGADA (8 carreras por caso). Cada casilla: % de victorias, posiciones, confianza del entrenador al
+acabar y subida de media:
+
+| bot | Fácil | Normal | Difícil | Experto |
+|---|---|---|---|---|
+| novato | 63 %, 1r-4º (asciende 4 de 8), entrenador 80, +9 | 20 %, 6º-8º, 35, +6 | 0 %, 8º, 35, +4 | — |
+| medio | 100 %, campeón 8 de 8, 100, +12 | 75 %, 1r-3r (asciende 4), 98, +9 | 30 %, 4º-8º, 50, +6 | 25 %, 7º-8º, 35, +5 |
+| bueno | 100 %, campeón 8 de 8, +12 | 100 %, campeón 8 de 8, +10 | 98 %, campeón 8 de 8, +9 | 79 %, 1r-3r, asciende 7 de 8, +7 |
+
+Banquillos por temporada: con el medio, 0 en Fácil y Normal, 0,6 en Difícil y 1,3 en Experto; con el bueno, 0. Ofertas de fin de
+temporada: 3 en casi todo; en Experto con el medio, de 1 a 3.
+
+M3, carreras simuladas (20 semillas, 12 temporadas; media y circuito más frecuente):
+
+| nivel | T2 | T4 | T6 | T8 | T10 | T12 | llega al Mundial (mediana) | en el Mundial a la T8 | Circuito Mundial ganado |
+|---|---|---|---|---|---|---|---|---|---|
+| Fácil | 46 Reg | 58 Hip | 66 Con | 71 Mun | 76 Mun | 81 Mun | T7 (20 de 20) | 15 de 20 | 66 de 116 temporadas allí |
+| Normal | 44 Reg | 52 Nac | 60 Hip | 65 Con | 69 Mun | 73 Mun | T10 (20 de 20) | 6 de 20 | 5 de 54 |
+| Difícil | 42 Reg | 48 Nac | 55 Hip | 61 Hip | 65 Con | 69 Con | T12 (5 de 20) | 0 | 0 de 5 |
+| Experto | 41 Reg | 46 Reg | 51 Nac | 57 Nac | 61 Hip | 65 Hip | nunca | 0 | — (Hiperliga en la T8) |
+
+M4, una temporada entera JUGADA en el Circuito Mundial con tu media fija (club medio del Mundial, entrenador 90):
+
+| caso | Fácil | Normal | Difícil | Experto |
+|---|---|---|---|---|
+| bueno, media 85 (20 temporadas) | 96 %, Circuito 20 de 20, Final a Cuatro 17 | 67 %, Circuito 3, Final a Cuatro 1 | 46 %, 0 títulos (contra Experto, 9 %) | 15 %, 0 títulos |
+| bueno, media 78 | 93 %, Circuito 19 de 20, Final a Cuatro 16 | — | — | — |
+| medio, media 85 (28 temporadas) | 44 %, 4º-7º, 0 títulos (contra Normal 62 %, contra Difícil 3 de 120) | 3 %, 8º | — | — |
+
+**Conclusiones.**
+- **Normal**: igual que antes (M2: medio 75 %, novato 20 %, bueno 100 %; curva idéntica).
+- **Fácil**: el Mundial se gana, y de sobra, con un nivel de juego bueno (el bot bueno con media 78-85 es campeón casi siempre).
+  - El bot **medio no lo gana ni con media 85**. En Fácil, los 1-2 clubes de élite del Mundial (base Experto) quedan en Difícil, y
+    contra la IA Difícil el medio gana ~0 % con cualquier media razonable. En la rejilla, con media 85 contra Difícil 65-80 pasa
+    del 31 % al 0 %; con media 90 contra Difícil 75, el 13 %.
+  - Con `attr` −8 tampoco lo gana (contra Difícil, 4 de 139).
+  - Lo que sí lo consigue (medido con `CDIFF_OVERRIDE`) es `shift` −2 en Fácil: la élite pasa a Normal y el resto a Normal suave,
+    y con media 85 gana el Circuito Mundial 16 de 28 temporadas y la Final a Cuatro 7.
+  - No se ha aplicado porque contradice la decisión «Fácil, un escalón abajo» (D5): **decisión pendiente** (ver «Pregunta para
+    Ferran»).
+- **Difícil y Experto**: claramente más duros y no imposibles en la Regional.
+  - En la Regional, el medio gana el 30 % y el 25 %; el bueno, el 98 % y el 79 % (con ascenso en 7 de 8).
+  - A partir de la Nacional, el medio choca con la IA Difícil (0-20 %): estos niveles piden un nivel de juego bueno.
+  - El bueno sigue ganando la mayoría en la Nacional, la Hiperliga y la Continental: el perfil Difícil es el techo hasta que entra
+    el Experto. El salto Difícil → Experto de la sim no deja términos medios; queda como petición a sim/ai un perfil intermedio
+    (no en este lote).
+- **Ofertas**: la palanca `offer` apenas cambia el número (el tope es 3); se deja como está.
+
+**Revisión (12-nov-2026, tarde).** Dos ajustes de equilibrio (Normal intacto: `simAttr` 0 y `topX` no actúa con `shift` 0):
+- `simAttr` (Fácil 0, Difícil +3, Experto +4): M3 Fácil simulando pasa de 66 de 116 temporadas en el Mundial con el Circuito ganado
+  (57 %) a 21 de 90 (23 %); llega al Mundial en la T8 (mediana; antes T7). Normal sigue en 5 de 54. Con `simAttr` +1 en Fácil bajaba a
+  2 de 74, peor que Normal: se queda en 0 (simular en Fácil no da más por partido que en Normal; la ventaja es la XP y el entreno). El
+  bot medio jugando sigue sin ganar el Mundial en Fácil ni en Normal (decisión pendiente de `shift` −2, abajo): simular le sigue
+  rindiendo más que jugar a ese nivel de juego, igual que en Normal.
+- `topX` false en Difícil y Experto. M4, bot bueno, media 85, Circuito Mundial, 20 temporadas:
+
+  | caso | % victorias | contra Experto | posiciones | Circuito / Final a Cuatro |
+  |---|---|---|---|---|
+  | Normal (antes, referencia) | 67 % | — | — | 3 / 1 |
+  | Difícil antes (Experto ×4, attr +3) | 46 % | 9 % | — | 0 / 0 |
+  | Experto antes (Experto ×8, attr +4) | 15 % | — | — | 0 / 0 |
+  | Difícil con `topX` y attr +3 | 62 % | 10 % | 2º-5º | 0 / 0 |
+  | Experto con `topX` y attr +4 | 60 % | 7 % | 2º-4º | 0 / 0 |
+  | **Difícil con `topX` y `attrTop` +1** | 66 % | 13 % | 1r-4º | **2 / 1** |
+  | **Experto con `topX` y `attrTop` +2** | 64 % | 11 % | 1r-5º | **2 / 0** |
+
+  Solo con `topX` seguía en 0 títulos (los 2 clubes de élite en Experto, con el attr entero, quedan por encima). Con `attrTop`
+  (attr en el circuito más alto: Difícil +1, Experto +2) el Circuito Mundial se gana 2 de 20 en Experto: reto real, no imposible
+  (y en Experto llegar al Mundial ya cuesta: en M3 simulando no se llega en 12 temporadas). `simAttr` no cambia en el Mundial.
+
+### Qué es inmediato y qué espera
+- Al cambiar (`setDifficulty`): IA rival, atributos de los rivales, XP, entreno, pivote del entrenador y las ofertas que se generen
+  desde entonces, todo desde el **próximo partido**.
+- Antes de tu primer partido de la temporada (fase `league`, `dUse` a ceros: ni jugados ni banquillos), también se rehacen el
+  **objetivo** del club y, si fichaste para esta temporada (`coachD`), la **confianza inicial** (se suma la diferencia de `coach0`).
+  Así no sirve cambiar de nivel en verano o en la ventana solo para fijarlos y volver antes de jugar.
+- Con partidos ya jugados espera el **objetivo** (la temporada que viene). Si fichas a mitad de temporada, el objetivo y la confianza
+  salen del nivel de ese momento y `objective.d` entra en el sello: `seasonDiff` toma el más fácil entre `dUse` y `objective.d`.
+- `setDifficulty(k)` → `'ok'` (cambia y deja un mensaje `'club'` «Dificultad: X»), `'same'`, `'bad'` (clave mala), `'match'` (hay
+  un partido de Carrera a medias: `M` vivo; main.js llama a `abortMatch` al salir) o `''` (sin carrera). Vale en cualquier fase
+  (`pick`, `league`, `cup`, `off`). Sufijos del mensaje: sin partidos aún, «Aún no has jugado esta temporada: el objetivo del club
+  pasa a ser … / se mantiene.»; con partidos en liga u open, «El objetivo del club no cambia hasta la temporada que viene.»; con la
+  temporada en juego (liga u open, no en `off`: ahí ya está sellada) y un nivel más fácil en el sello, «Esta temporada ya has jugado
+  en X: sus títulos contarán como X.» (o «El objetivo de esta temporada se fijó en X: …» si lo más fácil es el objetivo).
+- Migración: `objective.d` que falta → el nivel más fácil de `dUse` o el actual; `dUse` nuevo cuenta también los banquillos; un
+  `review` sin sello (o rehecho por `saneDeep`) toma `d/dm` de la entrada del historial de esa temporada, si no de `seasonDiff` (si
+  `dUse` venía guardado) y si no, Normal.
+- API nueva en `VB.Career`: `CDIFF, CDIFF_KEYS, STEPS, DIFF_MSG, diffOf, rivalAI, baseStep, seasonDiff, midNota, setDifficulty`;
+  `next()` añade `ovrClub`, `ovrSim` y `cdiff`; `matchSetup()` añade `cdiff` (también en `career.cdiff`).
+- career-life.js no cambia: fama, dinero, retos (y su XP), premios y logros son iguales en todos los niveles (ya dependen del
+  rendimiento).
+
+### Para el integrador
+- main.js, sim.js, ai.js, career-life.js: nada obligatorio (main.js ya pasa `difficulty`, `rookie` y `attrs` de `matchSetup`).
+  Opcional: enseñar `g.career.cdiff` en la hoja final.
+- career-ui.js (otro implementador): fila «Dificultad» al crear, línea en Partido y tarjeta en Palmarés › Opciones, nivel en el
+  palmarés, columna «Dif.» en Temporadas y nivel en el resumen; lee `C().CDIFF[k].name/hint`, `setDifficulty`, `seasonDiff`,
+  `rivalAI`, `midNota`.
+- Rama `carrera-pista` (6v6): copiar `CDIFF`, `CDIFF_KEYS`, `STEPS`, `DIFF_MSG`, `dZeros`, `lowUse`, `diffOf`, `cd`, `attrOf`, `rivalAI`, `seasonDiff`,
+  `midNota`, `setDifficulty` y los cambios de create/migrate/next/matchSetup/closeMine/simulateNext/benchNext/trainWeek/makeObjective/objectiveFor/joinClub/genOffers/
+  endSeason/newSeason. Solo `baseStep(rival)` depende de la rama (envuelve su `difficultyFor`/`softFor`; sin suave, la escalera
+  funciona igual). El calibrado de pista es aparte.
+- Calibrado hecho (§Calibrado; scripts en `tools/out/carrera-playa/dif_*.js`). Queda una decisión: si Fácil debe dejar el Mundial
+  al alcance del jugador medio (`shift` −2) o se deja como está.
 
 ## Vida de la Carrera (12-nov-2026; pedido de Ferran: «que el modo carrera sea más extenso y mejor, más entretenido y "enticing"»)
 
@@ -127,6 +450,15 @@ hay) con «Sí, fichar» y «Cancelar». Cambiar de pestaña lo cancela. Probado
 ### Pregunta para Ferran (sin tocar)
 **Circuito Mundial**: los 1-2 clubes de élite (media ≥ 80, IA Experto) no los gana nadie (bot medio 0 de 20, bueno 0 de 8 con media 85).
 ¿Es el reto final o se suaviza (subir `DIFF_AT` de Experto a ~84, o Experto solo en la Final a Cuatro)? Se ha dejado como estaba.
+Respondida en parte (12-nov-2026, §Dificultad de la Carrera): en Fácil el Mundial se puede ganar (Experto → Difícil y Difícil → Normal);
+Normal se queda como reto final. Medido en §Dificultad › Calibrado (M4):
+- En Fácil, el bot bueno con media 78-85 gana el Circuito Mundial 19-20 de 20 temporadas.
+- En Normal, con media 85, lo gana 3 de 20: ya no es imposible para quien juega bien.
+- En Difícil y Experto (revisión, `topX` y `attrTop`), con media 85, 2 de 20: el reto más alto, pero se puede.
+- El bot medio no lo gana en Fácil ni con media 85 (la élite queda en IA Difícil). Con `shift` −2 en Fácil lo ganaría 16 de 28.
+
+**Pregunta nueva**: ¿Fácil debe dejar el Mundial al alcance de quien juega «normal» (Fácil dos escalones abajo en la élite) o basta
+con que lo gane quien juega bien?
 
 ## Sprint playa (10-nov-2026, v3): la Carrera es de VÓLEY PLAYA
 

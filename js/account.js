@@ -21,7 +21,7 @@
   // Entrenamiento (E6, js/gym.js): 'voley3d.gym' se sincronizará como users/{uid}/saves/gym, uniendo por máximo (mergeGym).
   // APAGADO hasta que Ferran despliegue firebase/firestore.rules con 'gym' en la lista de key: antes, cada subida daría 403.
   // Orden obligatorio: 1) desplegar reglas, 2) GYM_SYNC = true. 'voley3d.seen' y 'voley3d.device' NUNCA van a DOCS (son del dispositivo).
-  var GYM_SYNC = false;
+  var GYM_SYNC = true;   // reglas con 'gym' desplegadas el 12-nov-2026 (firebase deploy --only firestore:rules)
   if (GYM_SYNC) DOCS['voley3d.gym'] = 'gym';
   var LS = null; try { LS = window.localStorage; } catch (e) { }
   var rawSet = Storage.prototype.setItem, rawRemove = Storage.prototype.removeItem;

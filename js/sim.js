@@ -990,10 +990,10 @@
     var spiked = g.lastKind === 'spike' || g.lastKind === 'free', toward = !b.held && b.vx * sd > 0.5;
     // balón ya en nuestro campo: golpe normal (un ataque en vuelo sigue siendo bloqueable mientras esté en la zona de checkBlock, |x| <= 0,6)
     if (b.x * sd > (spiked && toward ? 0.6 : 0.3)) return false;
-    // overpass, balón que cruza sin atacar o saque que viene: golpe normal. En 6v6 esté donde esté (revisión del 12-nov: con
-    // |b.x| >= 0,6 el humano en la red que anticipaba el remate del overpass se comía un toque de red con lead = ∞); en 2v2 solo
-    // cerca de la red, como lo dejó «Bloqueo activo» (cambiarlo mueve la huella 2v2: petición en SIGUIENTE.md)
-    if (!spiked && toward && (g.rot || Math.abs(b.x) < 0.6)) return false;
+    // overpass, balón que cruza sin atacar o saque que viene: golpe normal, esté donde esté, en 2v2 y 6v6 (revisión del 12-nov: con
+    // |b.x| >= 0,6 el humano en la red que anticipaba el remate del overpass se comía un toque de red con lead = ∞). El overpass sigue
+    // existiendo como error de recepción; solo cambia que GOLPEAR en el aire ante él es un golpe (Ferran, 12-nov)
+    if (!spiked && toward) return false;
     return true;
   }
   function blockPress(g, p) {
@@ -1606,10 +1606,45 @@
     return (2 * s3 - 3 * s2 + 1) * a + (s3 - 2 * s2 + s) * ma + (-2 * s3 + 3 * s2) * b + (s3 - s2) * mb;
   }
   var _rH = { x: 0, y: 0, z: 0 };
+  /* PLAYA (12-nov-2026, pedido de Ferran: «quita que el jugador bote el balón antes de sacar en la arena»): en la arena no se bota.
+   * MISMAS fases y MISMOS tiempos que el bote (pre, n ciclos de r.cyc, post, still: silbato → lanzamiento idéntico, sin g.rng),
+   * pero el balón no baja al suelo: en 'pre' pasa de la mano a delante del pecho (J) girándolo, en 'juggle' (en vez de 'dribble')
+   * da n toquecitos hacia arriba con la izquierda y lo recoge en J (cada recogida emite `juggle`, no `dribble`), en 'post' vuelve a
+   * la mano. BJ: punto J (respecto al sacador, hacia la red / izquierda / altura); dw: fracción del ciclo con el balón en la palma. */
+  var BJ = VB.RITUAL_BEACH = { fwd: 0.32, side: 0.12, z: 0.98, dw: 0.1, cush: 0.035 };
+  function beachJ(g, p, out) { var sd = side(p.team); out.x = p.x - sd * BJ.fwd; out.y = p.y - sd * BJ.side; out.z = p.z + BJ.z; return out; }
+  var _rJ = { x: 0, y: 0, z: 0 };
+  /** Vuelo de un toquecito de playa en un ciclo de periodo `cyc`: s en la palma al principio, s de vuelo y velocidad de salida. */
+  function beachFlight(r) { var dw = Math.max(0.03, BJ.dw * r.cyc), tf = r.cyc - dw; return { dw: dw, tf: tf, v: C.G * tf / 2 }; }
+  function ritualBallBeach(g, p, r, out, t, H) {
+    var J = beachJ(g, p, _rJ), s, F = beachFlight(r);
+    if (t < r.pre) {                                  // de la mano a delante del pecho (sube ya con el impulso del primer toque)
+      s = t / r.pre;
+      out.x = herm(H.x, J.x, 0, 0, s); out.y = herm(H.y, J.y, 0, 0, s); out.z = herm(H.z, J.z, 0, 0, s);
+      return out;
+    }
+    var td = t - r.pre, nb = r.bounces * r.cyc;
+    if (td < nb) {
+      var k = Math.floor(td / r.cyc); if (k >= r.bounces) k = r.bounces - 1;
+      var tau = td - k * r.cyc;
+      out.x = J.x; out.y = J.y;
+      if (tau < F.dw) out.z = J.z - BJ.cush * Math.sin(Math.PI * tau / F.dw);    // en la palma: la mano baja un poco y empuja
+      else { var tt = tau - F.dw; out.z = J.z + F.v * tt - C.G * tt * tt / 2; }   // en el aire: vuelve a J al final del ciclo
+      return out;
+    }
+    var tp = td - nb;
+    if (tp < r.post) {
+      s = tp / r.post;
+      out.x = herm(J.x, H.x, 0, 0, s); out.y = herm(J.y, H.y, 0, 0, s); out.z = herm(J.z, H.z, 0, 0, s);
+      return out;
+    }
+    out.x = H.x; out.y = H.y; out.z = H.z; return out;
+  }
   /** Posición del balón durante el ritual: función pura del tiempo del ritual (r.t, o `at` si se pasa: mirar adelante). */
   function ritualBall(g, p, r, out, at) {
     var t = at != null ? at : r.t, H = holdBase(g, p, _rH), R0 = RITUAL.relZ + p.z, s, k;
     if (t <= 0) { out.x = H.x; out.y = H.y; out.z = H.z; return out; }
+    if (g.beach) return ritualBallBeach(g, p, r, out, t, H);
     if (t < r.pre) {                                  // baja el balón: llega al punto del bote ya empujándolo
       s = t / r.pre;
       out.x = herm(H.x, r.rx, 0, 0, s); out.y = herm(H.y, r.ry, 0, 0, s); out.z = herm(H.z, R0, 0, -r.v0 * r.pre, s);
@@ -1637,6 +1672,7 @@
    *  bote, se aparta a un lado (RITUAL.hand m) mientras el balón baja y sube, y vuelve a por él al final del bote. */
   function ritualHand(g, p, r, out) {
     ritualBall(g, p, r, out);
+    if (r.phase === 'juggle') { var bz = out.z; beachJ(g, p, out); if (bz < out.z) out.z = bz; return out; } // playa: palma en J (o bajo el balón)
     if (r.phase !== 'dribble') return out;
     var u = r.u, k = sstep01(u / 0.22) * (1 - sstep01((u - 0.76) / 0.24));
     out.x = r.rx; out.y = r.ry; out.z = RITUAL.relZ + p.z - 0.05 * k;
@@ -1660,11 +1696,18 @@
     if (!g.serveAuth) r.phase = 'wait';
     else if (t < r.pre) r.phase = 'pre';
     else if (td < nb) {
-      r.phase = 'dribble';
+      r.phase = g.beach ? 'juggle' : 'dribble';
       var k = Math.min(r.bounces - 1, Math.floor(td / r.cyc));
       r.u = (td - k * r.cyc) / r.cyc;
-      r.n = (td - k * r.cyc) >= r.td ? k + 1 : k;
+      r.n = (td - k * r.cyc) >= (g.beach ? beachFlight(r).dw : r.td) ? k + 1 : k;
     } else { r.n = r.bounces; r.u = 1; r.phase = td - nb < r.post ? 'post' : 'done'; }
+    if (g.beach) { // playa: sin botes; un `juggle` en cada recogida del toquecito (final de cada ciclo), en la mano del sacador
+      for (var j = 0; j < r.bounces; j++) {
+        var tj = r.pre + (j + 1) * r.cyc;
+        if (t0 < tj && t >= tj) { var Jp = beachJ(g, sv, _rJ); emit(g, { type: 'juggle', player: sv, team: sv.team, x: Jp.x, y: Jp.y, z: Jp.z, n: j + 1, of: r.bounces, last: j === r.bounces - 1 }); }
+      }
+      return;
+    }
     // contactos con el suelo cruzados en este paso
     for (var i = 0; i < r.bounces; i++) {
       var tc = r.pre + i * r.cyc + r.td;

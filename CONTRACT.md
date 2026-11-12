@@ -11,8 +11,10 @@ Proyecto personal. Este documento es la ley para los 6 especialistas que trabaja
 
 `js/prog.js` (estadísticas y progresión de tus jugadores: `VB.Prog`, guardado en `voley3d.squad`) también es de **ui_main**; sim lo recibe ya convertido en `createGame({attrs: [[st7, st11], [st3, st9]]})` (atributos 1-99 con las claves `VB.ATTR_KEYS`; 50 = neutro; sin `attrs` la sim no cambia), que deja `p.st`, `p.prof` (perfil de IA, `Sim.statProf`) y `p.ak` (multiplicadores del humano, `Sim.attrK`; constantes en `VB.ATTR_K`). Integración (10-nov-2026): `p.ak` añade `eRecv/eDig/eSet/eAtk` (precisión del toque: dispersión ×1,5-0,6 y calidad del pase/colocación) y `rRecv/rDig` (alcance del 1r toque ×0,94-1,05); con Velocidad < 50 frenar y girar es al momento (la rampa `accT` solo al arrancar).
 `tools/drive.js`, `tools/eval.js`, `tools/shot.js`, `tools/cdp.js`, `tools/chrome.js`, `tools/chrome-env.sh`, `tools/perf.js`, `tools/touchplay.js` y `tools/padplay.js` también son de **ui_main**.
+`tools/kittest.js` (equipaciones: líbero de club y 2ª equipación del rival en la Carrera de pista; node puro) es de **players**. Equipaciones de club (12-nov-2026): `Players.setKit(st)` acepta `st.kitLibero` y `st.rival.kitLibero` (color del líbero del club; se usa si se distingue de las dos camisetas) y, con `kitLibero` en `st.rival` (solo la Carrera de pista), viste al rival con su 2ª (camiseta = `kitAccent`) cuando su 1ª se parece a la tuya. `Players.rivalKit(st)` (sin aplicar nada) dice qué vestirá: `{kind:'1a'|'2a'|'cpu', …}`; el hub de pista enseña con él la 2ª.
+Vida en la pista (12-nov-2026): los textos de decisiones guardados en `c.life.log` y los logros de `sum.life.ach` salen con el nombre de pabellón; el reto «tidy» de la playa (L0, n = 1) dice ahora «Gana con un error como mucho» (antes «Gana con 1 errores o menos»), único texto de playa que cambia; el objetivo de patrocinio de pista cuenta las jornadas que juegas (sin descansos de una liga impar).
 `tools/audiotest.js` es de **audio**; `tools/touchtest.js`, `tools/padtest.js` y `tools/courttest.js` son de **camera_input**.
-`js/badges.js` (`VB.Badges`, insignias), `js/career.js` (`VB.Career`, datos y lógica de la Carrera, sin DOM) y `js/career-ui.js` (`VB.CareerUI`, pantallas de la Carrera: crea su propio DOM `#career` y su `<style>` desde JS), `js/career-life.js` (`VB.CareerLife`, «vida» de la Carrera: retos, fama, patrocinios, decisiones, rival, tienda, premios, logros y legado; sin DOM) y `js/career-life-ui.js` (`VB.CareerLifeUI`, pestaña «Fama») son de **ui_main**, igual que `tools/badgetest.js` y `tools/careertest.js`. Guardados: `voley3d.squad` (v3: escuadrón inicial a media 50; los v1/v2 suben +10 cada atributo una vez) `voley3d.career` (con `c.life`) y `voley3d.legends` (Salón de la Fama).
+`js/badges.js` (`VB.Badges`, insignias), `js/career.js` (`VB.Career`, datos y lógica de la Carrera, sin DOM), `js/career-ui.js` (`VB.CareerUI`, pantallas de la Carrera: crea su propio DOM `#career` y su `<style>` desde JS), `js/career-life.js` (`VB.CareerLife`, «vida» de la Carrera: retos, fama, patrocinios, decisiones, rival, tienda, premios, logros y legado; sin DOM) y `js/career-life-ui.js` (`VB.CareerLifeUI`, pestaña «Fama») son de **ui_main**, igual que `js/leagues.js` (`VB.Leagues`, datos de las ligas de pista; GENERADO por `tools/build-leagues.js` desde `notes/clubes/*.json`, no se edita a mano), `tools/build-leagues.js`, `tools/leagues-fixture.js`, `tools/badgetest.js` y `tools/careertest.js`. Guardados: `voley3d.squad` (v3: escuadrón inicial a media 50; los v1/v2 suben +10 cada atributo una vez), `voley3d.career` (playa, con `c.life`), `voley3d.career6` (pista, también con `c.life` desde el 12-nov-2026; un guardado sin él lo crea al cargar), `voley3d.career.mode` (cuál está activa) y `voley3d.legends` (Salón de la Fama).
 
 **Sprint 5 (12-nov-2026).** Nuevos de **ui_main**: `js/version.js` (`VB.VERSION/VERSION_DATE/CHANGELOG/CREDITS`), `js/gym.js` (`VB.Gym`,
 guardado `voley3d.gym`), `js/career-world.js` (`VB.CareerWorld`: Faro el mentor, noticias de la liga, anales y fichas de club; sin DOM) y
@@ -162,11 +164,13 @@ acciones), `padDead` (0,1-0,3, por defecto 0,18), `touchSize` (1 \| 1,15 \| 1,3)
   (1,9 / 3,6 / 2,2). `setupServe` coloca el balón en la mano del sacador ya en el paso del `serveReady`.
 - **Pulido ola 2 (SIM-04, ritual del sacador CPU)**: estado nuevo `seed` (int), `serveNo` (saques puestos), `cpuTossIn` (s de juego hasta el lanzamiento
   programado de la CPU; decrece de forma monótona desde el `serveReady`, 0 en el paso del `toss` y hasta que acaba el saque; -1 con sacador humano y fuera
-  de `'serve'`; `g.timer` vale lo mismo en el saque de la CPU), `ritual` (objeto persistente, solo lectura: `{on, phase:'none'|'wait'|'pre'|'dribble'|'post'|'done',
+  de `'serve'`; `g.timer` vale lo mismo en el saque de la CPU), `ritual` (objeto persistente, solo lectura: `{on, phase:'none'|'wait'|'pre'|'dribble'|'juggle'|'post'|'done',
   t (s desde el silbato), dur (0,8-1,6), bounces (1-3), n, u (0..1 del bote en curso), player, rx, ry, cyc, td, tu, v0, vu, vc, vi, pre, post, still, press}`).
   `serveClock` corre también para la CPU tras el silbato (lanza siempre con ≥ 6,3 s; UI y audio solo lo muestran al humano). Durante el ritual `ball.held`
   sigue siendo el sacador, pero en `'dribble'` el balón bota delante de él con velocidad real: una regla que mire `b.z`/`b.vz` en `'serve'` debe usar
-  `g.ritual.on` o la mano. `VB.Sim._holdPos(g, p, out)` = punto de la MANO izquierda (con el balón salvo en los botes). `VB.Sim.ritualAt(g, t, out?)` →
+  `g.ritual.on` o la mano. En la PLAYA (`g.beach`, 12-nov-2026) no hay bote: la fase central es `'juggle'` (toquecitos hacia arriba con la mano
+  delante del pecho, `VB.RITUAL_BEACH`), con los MISMOS tiempos (silbato → lanzamiento idéntico, sin g.rng) y eventos `juggle` en vez de `dribble`.
+  `VB.Sim._holdPos(g, p, out)` = punto de la MANO izquierda (con el balón salvo en los botes). `VB.Sim.ritualAt(g, t, out?)` →
   balón del ritual en el instante `t` sin tocar nada (o null). `VB.RITUAL` (constantes; `tossBy` 4,5 s; demo del menú: `demoBounces` 1, `demoMax` 0,8 s, `demoWhistle` 0,2 s = silbato de la demo, `demoHold` 1,65 s = pausa rutinaria de la demo; solo con `g.demo`: partido humano y autopilot no cambian). `createGame({ritual:false})` = flujo anterior
   byte a byte (pruebas). El estilo (botes, tempo) sale de un hash de `seed` + `player.id`: no gasta `g.rng`, pero desplaza los resultados de cada semilla.
   Lanzamiento de la CPU 1,5-2,3 s tras `serveReady` en partido (demo 1,2-1,5). `VB.HOLD.set` = 4,0 s (antes 3,4: órbita del cierre + grúa, CAM-09).
@@ -264,7 +268,8 @@ Todos llevan `type` y `t` (tiempo de juego). `player` es la referencia al objeto
 | `gameOver` | `{team, sets, setScores}` | fin de partido humano tras la pausa (UI muestra pantalla final) |
 | `newSet` | `{setNo}` | empieza el set siguiente |
 | `switch` | `{from, to, auto, reset?, reason?}` | cambia el jugador controlado (auto = lo decide el juego; `reason:'defense'` = al colocar la CPU, ~1,5 s antes del remate) |
-| `dribble` | `{player, team, x, y, n (1..of), of (botes de este ritual), speed (m/s contra el suelo), last (bool)}` | cada bote del ritual del sacador CPU (SIM-04); en ese paso `ball.z === BR`. Audio: bote controlado |
+| `dribble` | `{player, team, x, y, n (1..of), of (botes de este ritual), speed (m/s contra el suelo), last (bool)}` | cada bote del ritual del sacador CPU (SIM-04); en ese paso `ball.z === BR`. Audio: bote controlado. Solo en el pabellón |
+| `juggle` | `{player, team, x, y, z, n (1..of), of, last (bool)}` | playa: cada recogida de un toquecito del ritual del sacador CPU (en vez del bote; el balón no baja del pecho). Audio: palmada suave |
 | `courtChange` | `{setNo, why:'set'|'eight'|'swap', score, sets, pause, every?}` | cambio de campo (18.2.1 / 18.2.2): al acabar un set que no cierra el partido y a los 8 del 3r set; en la playa (`'swap'`), cada `every` puntos jugados (7; 5 en el 3r). Solo presentación (el humano sigue en x > 0) |
 | `fx:highfive` / `fx:fistbump` / `fx:chestbump` / `fx:clap` | `{team, x, y, z (sim), strength 0..1}` | NO los emite sim: main.js vacía `VB.Players.drainFx()` justo después de `Players.update` y los añade al array del frame (contactos cosméticos de la celebración; FX, cámara, audio y UI los ven). Audio: `highfive` → choque, `fistbump` → puños, `chestbump` → pecho (PLY-15, victoria del partido, strength 1), `clap` → palmada de ánimo; `fx:catch` (players, cada recogida del bote en el ritual del sacador CPU, strength 0,6) → recogida blanda; `fx:call` (players, PLY-20: «¡mía!» del que va a por el balón, un evento por balón, `z` = cabeza, strength 0,6; audio lo ignora por ahora) |
 
@@ -699,3 +704,22 @@ contorno grueso DE COLOR, cara grande dibujada, uniforme de equipo con el «tajo
   marcan con `currentProgram = undefined`, `uniformsList = null` **y `__version = -1`** (sin esto, three r149 reutilizaba el programa
   indefinido tras cambiar la calidad y el partido se pintaba vacío con «reading 'getUniforms'» en cada frame).
 - `tools/perf.js` sin `EXTRA` mide el escenario por defecto (la PLAYA); el pabellón se mide con `EXTRA=map=hall`.
+
+### Carrera de pista 6v6 y ligas reales (lote C, 11-nov-2026)
+- **Dos Carreras guardadas aparte.** `VB.Career` es una fachada sobre dos motores con las mismas claves (`VB.Career.beach`, `VB.Career.hall`):
+  `create({mode:'beach'|'hall', name, num, pos, country, points, seed})`, `mode()`, `setMode(m)`, `has(m)`; el resto de claves van a la activa.
+  `matchDone(r, st, g)` va al motor de `g.career.mode`. La de playa no cambia (guardado, migración y API). Pista: `voley3d.career6` (v1,
+  `mode:'hall'`); dañado → `voley3d.career6.bak` y la activa vuelve a la playa.
+- **`matchSetup()` de pista** → `{format:'6v6', venue:'hall', ctrlRole, ctrlIdx, nums, attrs, difficulty, ref, kit, rivalKit, career}`; `kit` y
+  `rivalKit` llevan `kitLibero` (color del líbero del club, que usa `Players.setKit`). main.js `startCareerMatch`
+  pasa `format`, `ctrlRole` y `nums`, y el escenario sale de `m.venue`.
+- **`VB.Leagues`** (js/leagues.js, se carga antes de career.js en index.html, careertest y simtest): `{provisional:false, regions:[{region,
+  countries:[{country, code, tier, divisions:[{lvl, name, short, strength, clubs:[{name, short, city, gender, colors:{shirt, shirt2, libero},
+  liberoEstimated, ovr}]}]}], competitions:[{name, short, kind:'intl'|'cup'|'skip', rank?, zone?, country?}]}], add(region)}`. 28 países, 37 ligas,
+  390 clubes; nombres y abreviaturas únicos en todo el juego; sin nombres reales ni oficiales (están en notes/clubes/*.json y en la lista de
+  revisión notes/clubes-reales.md). `gender` es un dato interno: ningún texto del juego lo enseña.
+- **IA de la pista** por la media del club rival (`VB.Career.hall.DIFF_AT` / `SOFT`): < 56 Fácil, 56-61 Normal suave, 62-75 Normal, 76-87
+  Difícil, ≥ 88 Experto.
+- Regla de datos: para cambiar un club o una competición se corrige el JSON de `notes/clubes/` y se ejecuta `node tools/build-leagues.js`
+  (comprueba unicidad, colores, patrocinadores conocidos y «masculino/femenino» antes de escribir). `tools/careertest.js` falla si js/leagues.js
+  no está al día con los JSON.

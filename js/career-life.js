@@ -12,23 +12,45 @@
  * Sin DOM (se carga en node: tools/careertest.js). Guarda en c.life dentro de la carrera (sin cambiar su versión: todo tiene valor
  * por defecto y se crea al vuelo con ensure()). career.js llama a hook(c, tipo, …) en sus puntos clave; si este fichero no está,
  * la Carrera funciona igual que antes.
+ * Vale para las DOS Carreras (12-nov-2026): playa (voley3d.career) y pista (voley3d.career6, c.mode 'hall'). En la pista: textos de
+ * pabellón (escalones, legado, logros, eventos, patrocinadores), retos por puesto medidos en partidos 6v6 reales (CH6), premio de mejor
+ * colocador y la química del equipo (c.chem) en lugar de la de la pareja.
  */
 (function () {
   'use strict';
   var root = typeof window !== 'undefined' ? window : globalThis;
   var VB = root.VB = root.VB || {};
-  function K() { return VB.Career; }
+  // Motor de la carrera c: la fachada VB.Career va a la Carrera ACTIVA, pero los ganchos reciben la carrera concreta (una de pista
+  // puede pasar por aquí con la playa activa, p. ej. al crearla). Con c: el motor de playa o una vista «pista sobre playa» (las claves
+  // que la pista redefine —league(lid, c), next, load, save, posOf, weeksOf…— y el resto, comunes, de la playa). Sin c: la fachada.
+  var HV = null, HVsrc = null;
+  function K(c) {
+    var C = VB.Career; if (!c || !C || !C.beach) return C;
+    if (!hall(c) || !C.hall) return C.beach;
+    if (HVsrc !== C.hall) { HVsrc = C.hall; HV = {}; var k; for (k in C.beach) HV[k] = C.beach[k]; for (k in C.hall) HV[k] = C.hall[k]; }
+    return HV;
+  }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function round1(v) { return Math.round(v * 10) / 10; }
   function plural(n, a, b) { return n + ' ' + (n === 1 ? a : b); }
   function eur(v) { return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €'; }
   function num(v) { return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
-  function rngOf() { var a = Array.prototype.slice.call(arguments); return K()._rng(K()._hash.apply(null, a)); }
+  function rngOf() { var a = Array.prototype.slice.call(arguments), C = VB.Career.beach || VB.Career; return C._rng(C._hash.apply(null, a)); }
   function pick(r, a) { return a[Math.floor(r() * a.length) % a.length]; }
   function hall(c) { return !!(c && c.mode === 'hall'); }
-  /** Nivel 0-4 de la liga de tu club (en la pista, si existe, su nivel; si no, 0). */
-  function lvlOf(c) { var k = c && c.myClub >= 0 && K().myClub(c); return k ? clamp(k.lvl | 0, 0, 4) : 0; }
-  function leagueOf(c) { var k = K().myClub(c); return k ? K().league(k.lid != null ? k.lid : k.lvl) : K().league(0); }
+  /** Nivel 0-4 de la liga de tu club. En la pista k.lvl es la división (1 = 1ª), no un nivel: se saca de la fuerza de la liga (54-90). */
+  function lvlOfStrength(s) { return clamp(Math.round(((s || 50) - 50) / 10), 0, 4); }
+  function lvlOf(c) {
+    var k = c && c.myClub >= 0 && K(c).myClub(c); if (!k) return 0;
+    if (hall(c)) { var Lg = K(c).league(k.lid, c); return lvlOfStrength(Lg && Lg.strength); }
+    return clamp(k.lvl | 0, 0, 4);
+  }
+  function leagueOf(c) { var k = K(c).myClub(c); return hall(c) ? (k ? K(c).league(k.lid, c) : null) || c.leagues[0] : K(c).league(k ? k.lvl : 0); }
+  /** Pista: los partidos son a 15, 21 o 25 (el 3r a 15) y los recuentos crecen con los puntos (medido: a 25, ~1,7 veces los de a 15). */
+  function ptsF(c) { return hall(c) ? clamp((+c.points || 15) / 15, 1, 25 / 15) : 1; }
+  /** Puesto que llevas en la pista (S/OPP/MB/OH; el de la ficha si sim aún no deja llevarlo, el que juegas). */
+  function role6(c) { var H = VB.Career.hall; return H && H.ctrlRole ? H.ctrlRole(c) : (c.player && c.player.roleKey) || 'OH'; }
+  function modeOk(d, c) { return !d.only || d.only === (hall(c) ? 'hall' : 'beach'); }
 
   var LV_MULT = [1, 2, 4, 8, 15];   // seguidores por liga: jugar en el Circuito Mundial se ve mucho más
   var SALARY = [600, 1500, 4000, 9000, 20000];
@@ -56,14 +78,16 @@
   }
 
   // ------------------------------------------------------------------ fama
-  var TIERS = [[0, 'Desconocido'], [500, 'Promesa local'], [2000, 'Conocido en el circuito'], [7000, 'Figura'], [20000, 'Estrella'], [50000, 'Ídolo'], [120000, 'Leyenda viva']];
+  // [seguidores, nombre en la playa, nombre en la pista (si cambia)]
+  var TIERS = [[0, 'Desconocido'], [500, 'Promesa local'], [2000, 'Conocido en el circuito', 'Conocido en la liga'], [7000, 'Figura'], [20000, 'Estrella'], [50000, 'Ídolo', 'Ídolo de la grada'], [120000, 'Leyenda viva']];
   function tierIdx(f) { var i = 0; for (var j = 0; j < TIERS.length; j++) if (f >= TIERS[j][0]) i = j; return i; }
   function tierOf(c) { var l = ensure(c); return tierIdx(l.fame); }
-  function tierName(i) { return TIERS[clamp(i | 0, 0, TIERS.length - 1)][1]; }
+  /** Nombre del escalón i (c: con la carrera de pista, el de pabellón). */
+  function tierName(i, c) { var t = TIERS[clamp(i | 0, 0, TIERS.length - 1)]; return hall(c) && t[2] ? t[2] : t[1]; }
   /** Progreso hacia el siguiente escalón: {i, name, next, from, to, p 0..1}. */
   function fameInfo(c) {
     var l = ensure(c), i = tierIdx(l.fame), nx = TIERS[i + 1];
-    return { fans: Math.round(l.fame), i: i, name: TIERS[i][1], next: nx ? nx[1] : '', from: TIERS[i][0], to: nx ? nx[0] : TIERS[i][0], p: nx ? clamp((l.fame - TIERS[i][0]) / (nx[0] - TIERS[i][0]), 0, 1) : 1 };
+    return { fans: Math.round(l.fame), i: i, name: tierName(i, c), next: nx ? tierName(i + 1, c) : '', from: TIERS[i][0], to: nx ? nx[0] : TIERS[i][0], p: nx ? clamp((l.fame - TIERS[i][0]) / (nx[0] - TIERS[i][0]), 0, 1) : 1 };
   }
   /** Suma (o resta) seguidores; avisa al subir de escalón y abre patrocinios. Devuelve lo sumado. */
   function addFame(c, n, why) {
@@ -72,7 +96,8 @@
     l.fame = Math.max(0, l.fame + n); l.fameMax = Math.max(l.fameMax, l.fame);
     var t1 = tierIdx(l.fame);
     if (t1 > t0 && l.fame >= l.fameMax) {
-      K()._msg(c, 'fans', 'Fama: «' + tierName(t1) + '»', 'Ya te siguen ' + num(l.fame) + ' personas. ' + (FAME_LINE[t1] || '') + (t1 >= 1 ? ' Los patrocinadores empiezan a llamar a tu agente.' : ''));
+      var fl = hall(c) && FAME_LINE6[t1] || FAME_LINE[t1] || '';
+      K(c)._msg(c, 'fans', 'Fama: «' + tierName(t1, c) + '»', 'Ya te siguen ' + num(l.fame) + ' personas. ' + fl + (t1 >= 1 ? ' Los patrocinadores empiezan a llamar a tu agente.' : ''));
       if (t1 >= 1) sponsorOffers(c, 'tier');
     }
     celebCheck(c);
@@ -125,6 +150,9 @@
   var FAME_LINE = ['', 'En tu barrio ya te paran por la calle para pedirte una foto.', 'Los comentaristas del circuito saben pronunciar tu apellido. Casi siempre.',
     'Las gradas empiezan a llevar tu dorsal pintado en la cara.', 'Sales en los resúmenes de la tele y tus jugadas dan la vuelta a las redes.',
     'Hay peques que se cortan el pelo como tú. Tu nombre llena gradas.', 'Ya no eres un jugador: eres una referencia. Dentro de veinte años aún hablarán de ti.'];
+  // pista (pabellón): las que cambian
+  var FAME_LINE6 = ['', '', 'Los comentaristas de la liga saben pronunciar tu apellido. Casi siempre.', 'En el pabellón ya hay pancartas con tu dorsal.', '',
+    'Hay peques que se cortan el pelo como tú. Cuando sales a calentar, el pabellón se pone en pie.', ''];
   /** Interés extra de los clubes por tu fama (career.js offerScore): hasta +3. */
   function offerBonus(c) { var l = c && c.life; if (!l) return 0; return round1(Math.min(3, tierIdx(l.fame || 0) * 0.5) + (l.svc && l.svc.agent ? 2 : 0)); }
 
@@ -133,36 +161,70 @@
   // bloqueos 0,5-3, defensas 5-20, asistencias 10-12, errores ~4 y nota 6,5-7,8 por partido. Objetivo: el autopiloto cumple ~50 %
   // (una persona media, algo menos): un reto tiene que costar.
   var CH = {
-    kills: { n: [13, 15, 16, 17, 18], txt: 'Consigue {n} remates punto', stat: 'kills' },
-    aces: { n: [5, 4, 4, 3, 3], txt: 'Haz {n} aces', stat: 'aces' },
-    blocks: { n: [2, 3, 3, 3, 4], txt: 'Haz {n} bloqueos punto', stat: 'blocks', roles: ['atk', 'uni', 'MB', 'OPP', 'OH'] },
-    digs: { n: [8, 12, 15, 18, 20], txt: 'Saca {n} defensas', stat: 'digs', roles: ['cr', 'uni', 'L', 'OH', 'S'] },
-    assists: { n: [12, 13, 13, 14, 14], txt: 'Da {n} asistencias', stat: 'assists', roles: ['cr', 'S'] },
+    kills: { n: [13, 15, 16, 17, 18], txt: 'Consigue {n} remates punto', txt1: 'Consigue un remate punto', stat: 'kills' },
+    aces: { n: [5, 4, 4, 3, 3], txt: 'Haz {n} aces', txt1: 'Haz un ace', stat: 'aces' },
+    blocks: { n: [2, 3, 3, 3, 4], txt: 'Haz {n} bloqueos punto', txt1: 'Haz un bloqueo punto', stat: 'blocks', roles: ['atk', 'uni', 'MB', 'OPP', 'OH'] },
+    digs: { n: [8, 12, 15, 18, 20], txt: 'Saca {n} defensas', txt1: 'Saca una defensa', stat: 'digs', roles: ['cr', 'uni', 'L', 'OH', 'S'] },
+    assists: { n: [12, 13, 13, 14, 14], txt: 'Da {n} asistencias', txt1: 'Da una asistencia', stat: 'assists', roles: ['cr', 'S'] },
     nota: { n: [8.1, 7.9, 7.6, 7.4, 7.2], txt: 'Saca una nota de {n} o más' },
     clean: { txt: 'Gana sin ceder ningún set', minL: 1 },   // (en la Regional, contra la IA Fácil, casi siempre)
-    tidy: { n: [1, 2, 2, 2, 2], txt: 'Gana con {n} errores o menos' },
+    tidy: { n: [1, 2, 2, 2, 2], txt: 'Gana con {n} errores o menos', txt1: 'Gana con un error como mucho', txt0: 'Gana sin cometer ningún error' },
     win: { txt: 'Gana el duelo' }
   };
   var CH_KEYS = ['kills', 'aces', 'blocks', 'digs', 'assists', 'nota', 'clean', 'tidy'];
-  function chKey(season, phase, f) { return (season | 0) * 1000 + (phase === 'cup' ? 500 + (f && f.round | 0) : (f && f.week | 0)); }
-  /** Reto de un partido (determinista por semilla y jornada). f = {week, round}, phase, season, rivalId. */
+  // Pista (6v6): umbrales por PUESTO y nivel 0-4 de la liga (null = ese reto no sale), para partidos a 15; los recuentos se escalan
+  // con ptsF (a 21 y a 25 hay más puntos). Medido el 12-nov-2026 con partidos 6v6 de Carrera reales (js/sim.js + ai6.js, ligas reales,
+  // matchSetup de la pista, tu equipo en autopilot ≈ jugador bueno, tus números contados por VB.Career.ingest como en el juego): 12
+  // partidos a 15 por puesto y nivel (240), y 5 a 25 por nivel para OH y S (×1,6-1,8 los recuentos). Por partido a 15 (L0-L4):
+  //   OH  remates 6,3/5,4/7,7/5,7/4,1 · defensas 6,1/5,7/7,8/6,9/3,6 · aces 0,2-0,3 · nota 7,6/7,7/8,1/6,9/6,0
+  //   OPP remates 5,3/6,0/6,3/5,2/4,2 · defensas 3,3/5,0/6,3/5,8/3,7 · bloqueos 0,2-0,4 · nota 7,4/7,8/7,1/6,6/6,1
+  //   MB  remates 1,6/2,0/1,8/2,8/2,3 · bloqueos 1,1/0,4/0,8/0,7/1,3 · aces 0,2-0,6 · nota 7,5/7,4/7,3/6,7/6,4
+  //   S   asistencias 21,7/20,2/22,3/23,6/16,3 · defensas 0,8-1,8 · bloqueos 0,2-0,5 · remates 0 · nota 8,4/8,1/7,7/7,0/6,5
+  //   errores 0,3-1 por partido; el autopilot gana casi siempre en L0-L2 (por eso «sin ceder un set» solo en L3) y pierde casi
+  //   siempre en L4 (allí no hay retos de ganar, salvo el duelo).
+  // Cada umbral es el que cumple el autopilot en ~33-50 % de los partidos de su nivel (una persona media, algo menos), como en la playa.
+  // Un colocador no remata: sus retos son de asistencias (y defensa, bloqueo, ace, nota y limpieza); un central, de bloqueo y remate.
+  var CH6 = {
+    OH: { kills: [7, 6, 8, 7, 5], digs: [7, 7, 8, 8, 4], aces: [1, 1, 1, 1, 1], nota: [7.9, 7.9, 8.4, 7.0, 6.0], tidy: [0, 0, 0, 1, null], clean: [null, null, null, 1, null] },
+    OPP: { kills: [6, 7, 7, 6, 5], blocks: [1, 1, 1, 1, 1], digs: [4, 6, 6, 7, 4], nota: [7.5, 7.9, 7.4, 6.9, 6.1], tidy: [0, 0, 0, 0, null], clean: [null, null, null, 1, null] },
+    MB: { kills: [2, 3, 2, 4, 3], blocks: [2, 1, 1, 1, 2], aces: [1, 1, 1, 1, 1], nota: [7.6, 7.6, 7.4, 6.9, 6.4], tidy: [null, 0, 0, 0, null], clean: [null, null, null, 1, null] },
+    S: { assists: [24, 21, 22, 24, 17], digs: [2, 2, 2, 2, 2], blocks: [1, 1, 1, 1, 1], aces: [1, 1, 1, 1, 1], nota: [8.6, 8.3, 7.9, 7.7, 6.3], tidy: [null, 0, 0, 1, null], clean: [null, null, null, 1, null] }
+  };
+  var CNT6 = { kills: 1, digs: 1, aces: 1, blocks: 1, assists: 1 };   // los que crecen con los puntos del set
+  /** Retos posibles (id → n) para la carrera c en su nivel L. */
+  function chOptions(c, L) {
+    var out = {};
+    if (hall(c)) {
+      var T = CH6[role6(c)] || CH6.OH, f = ptsF(c);
+      CH_KEYS.forEach(function (k) { var a = T[k]; if (!a || a[L] == null) return; out[k] = CNT6[k] ? Math.max(1, Math.round(a[L] * f)) : a[L]; });
+      return out;
+    }
+    var role = (c.player && c.player.roleKey) || (c.player && c.player.pos) || 'uni';
+    CH_KEYS.forEach(function (k) { var d = CH[k]; if ((!d.roles || d.roles.indexOf(role) >= 0) && !(d.minL > L)) out[k] = d.n ? d.n[L] : 0; });
+    return out;
+  }
+  function chTxt(d, n) { return n === 0 && d.txt0 ? d.txt0 : n === 1 && d.txt1 ? d.txt1 : d.txt.replace('{n}', String(n).replace('.', ',')); }
+  function isKO(phase) { return phase === 'cup' || phase === 'ko'; }
+  // (playa: copa = 500 + ronda; pista: 500 + 10 × copa + ronda, como wkKey6)
+  function chKey(season, phase, f) { return (season | 0) * 1000 + (isKO(phase) ? 500 + (f && f.ko | 0) * 10 + (f && f.round | 0) : (f && f.week | 0)); }
+  /** Reto de un partido (determinista por semilla y jornada). f = {week, round, ko}, phase, season, rivalId. */
   function challengeAt(c, season, phase, f, rivalId) {
     var l = ensure(c), L = lvlOf(c), key = chKey(season, phase, f), r = rngOf(c.seed, 'reto', key);
-    var role = (c.player && c.player.roleKey) || (c.player && c.player.pos) || 'uni';
     var duel = !!(l.rival && l.rival.club === rivalId);
-    var ks = CH_KEYS.filter(function (k) { var d = CH[k]; return (!d.roles || d.roles.indexOf(role) >= 0) && !(d.minL > L); });
+    var opt = chOptions(c, L), ks = CH_KEYS.filter(function (k) { return k in opt; });
     var id = duel ? (r() < 0.5 ? 'win' : pick(r, ks)) : pick(r, ks);
-    var d = CH[id], n = d.n ? d.n[L] : 0;
-    var mult = (duel ? 2 : 1) * (phase === 'cup' ? 1.5 : 1);
-    var Lg = K().league(L);
-    return { key: key, id: id, n: n, duel: duel, txt: d.txt.replace('{n}', String(n).replace('.', ',')),
-      fans: Math.round(60 * LV_MULT[L] * mult), xp: Math.round(45 * (Lg.xp || 1) * mult), money: Math.round(SALARY[L] * 0.4 * mult / 10) * 10 };
+    var d = CH[id], n = id === 'win' ? 0 : opt[id];
+    var mult = (duel ? 2 : 1) * (isKO(phase) ? 1.5 : 1);
+    var Lg = hall(c) ? leagueOf(c) : K(c).league(L);   // (en la pista league() busca por id, no por nivel)
+    var xpm = hall(c) ? (K(c).xpMul ? K(c).xpMul(Lg) : 1) : (Lg && Lg.xp) || 1;
+    return { key: key, id: id, n: n, duel: duel, txt: chTxt(d, n),
+      fans: Math.round(60 * LV_MULT[L] * mult), xp: Math.round(45 * xpm * mult), money: Math.round(SALARY[L] * 0.4 * mult / 10) * 10 };
   }
   /** Reto del próximo partido (para la UI). null si no hay partido o te toca banquillo. */
   function challenge(c) {
     c = c || K().get(); if (!c || c.phase === 'pick' || c.phase === 'off') return null;
-    var n = K().next(c); if (!n || n.bench) return null;
-    return challengeAt(c, c.season, c.phase, { week: n.week, round: n.round }, n.rival.id);
+    var n = K(c).next(c); if (!n || n.bench) return null;
+    return challengeAt(c, c.season, c.phase, { week: n.week, round: n.round, ko: n.ko }, n.rival.id);
   }
   function chOk(ch, me, res, nota) {
     var win = res.sets[0] > res.sets[1];
@@ -193,20 +255,40 @@
     { stat: 'blocks', per: 1.1, txt: '{n} bloqueos punto en la temporada' },
     { stat: 'digs', per: 6, txt: '{n} defensas en la temporada' }
   ];
+  // Pista (pabellón): patrocinadores INVENTADOS con gag de vóley de pabellón (nunca marcas reales; algunos, gags recurrentes del juego)
+  var SPONSORS6 = ['Rodilleras Rodríguez', 'Chanclas Supersónicas', 'Seguros Tie-Break', 'Parqués El Bote', 'Bebidas Tiempo Muerto', 'Fisioterapia El Líbero',
+    'Pizzería La Rotación', 'Talleres Primer Tiempo', 'Cafetería La Pipe', 'Churrería Saque en Salto', 'Ferretería La Antena', 'Academia Zona 4',
+    'Lavandería Camiseta de Líbero', 'Mudanzas Cambio de Saque', 'Clínica Dental Remate Limpio', 'Hamburguesas Bola de Set', 'Zapatillas Suela Pegajosa',
+    'Ópticas Línea de Fondo', 'Colchones El Banquillo', 'Cerrajería Doble Bloqueo'];
+  // objetivos de temporada en la pista, por puesto (por partido a 15, × ptsF): ~3/4 de lo medido jugando (ver CH6), porque los partidos
+  // simulados y las jornadas de descanso o de banquillo suman menos
+  var SP_GOALS6 = {
+    OH: [{ stat: 'kills', per: 4.5, txt: '{n} remates punto en la temporada' }, { stat: 'digs', per: 4.5, txt: '{n} defensas en la temporada' }, { stat: 'won', per: 0.55, txt: '{n} victorias en la temporada' }],
+    OPP: [{ stat: 'kills', per: 4.2, txt: '{n} remates punto en la temporada' }, { stat: 'blocks', per: 0.45, txt: '{n} bloqueos punto en la temporada' }, { stat: 'won', per: 0.55, txt: '{n} victorias en la temporada' }],
+    MB: [{ stat: 'kills', per: 1.7, txt: '{n} remates punto en la temporada' }, { stat: 'blocks', per: 0.65, txt: '{n} bloqueos punto en la temporada' }, { stat: 'won', per: 0.55, txt: '{n} victorias en la temporada' }],
+    S: [{ stat: 'assists', per: 14, txt: '{n} asistencias en la temporada' }, { stat: 'won', per: 0.55, txt: '{n} victorias en la temporada' }]
+  };
+  /** Jornadas de liga que juega tu equipo (pista: según los clubes de tu liga; con un nº impar de clubes se quitan las
+   *  jornadas de descanso, una por vuelta: weeks / n). */
+  function seasonWeeks(c) {
+    if (!hall(c)) return K(c).WEEKS || 14;
+    var k = K(c).myClub(c), w = k && K(c).weeksOf ? K(c).weeksOf(c, k.lid) || 11 : 11, n = k && K(c).leagueClubs ? K(c).leagueClubs(c, k.lid).length : 0;
+    return n > 1 && n % 2 ? w - w / n : w;
+  }
   /** Llegan 2 ofertas de patrocinio (al subir de escalón o al empezar temporada). why: 'tier' | 'season'. */
   function sponsorOffers(c, why) {
     var l = ensure(c), t = tierIdx(l.fame); if (t < 1) return [];
     if (l.sponsor && l.sponsor.tier >= t && why === 'tier') return [];
     var r = rngOf(c.seed, 'spons', c.season, t, l.evN), used = {}; if (l.sponsor) used[l.sponsor.name] = 1;
-    var out = [];
+    var out = [], names = hall(c) ? SPONSORS6 : SPONSORS, goals = hall(c) ? SP_GOALS6[role6(c)] || SP_GOALS6.OH : SP_GOALS, weeks = seasonWeeks(c);
     for (var i = 0; i < 2; i++) {
-      var name; do { name = pick(r, SPONSORS); } while (used[name]); used[name] = 1;
-      var g = pick(r, SP_GOALS), weeks = K().WEEKS || 14, n = Math.max(3, Math.round(g.per * weeks * (0.8 + 0.3 * r())));
+      var name; do { name = pick(r, names); } while (used[name]); used[name] = 1;
+      var g = pick(r, goals), per = g.per * (hall(c) && g.stat !== 'won' ? ptsF(c) : 1), n = Math.max(3, Math.round(per * weeks * (0.8 + 0.3 * r())));
       var pay = Math.round(SP_PAY[t] * (i ? 0.75 : 1) / 10) * 10;
       out.push({ name: name, tier: t, pay: pay, goal: { stat: g.stat, n: n, txt: g.txt.replace('{n}', n), bonus: Math.round(pay * (i ? 14 : 8) / 50) * 50 } });
     }
     l.spOffers = out;
-    K()._msg(c, 'fans', 'Ofertas de patrocinio', out.map(function (o) { return o.name + ' (' + eur(o.pay) + ' por jornada; bonus de ' + eur(o.goal.bonus) + ' si consigues ' + o.goal.txt + ')'; }).join('. ') + '. Míralas en Fama.');
+    K(c)._msg(c, 'fans', 'Ofertas de patrocinio', out.map(function (o) { return o.name + ' (' + eur(o.pay) + ' por jornada; bonus de ' + eur(o.goal.bonus) + ' si consigues ' + o.goal.txt + ')'; }).join('. ') + '. Míralas en Fama.');
     return out;
   }
   function signSponsor(i) {
@@ -214,10 +296,10 @@
     var off = c.phase === 'off';   // firmado en verano: cuenta para la temporada que viene (antes no caducaba nunca)
     l.sponsor = { name: o.name, tier: o.tier, pay: o.pay, goal: o.goal, season: c.season + (off ? 1 : 0), base: off ? 0 : statBase(c, o.goal.stat) };
     l.spOffers = [];
-    K()._msg(c, 'fans', 'Firmas con ' + o.name, 'Tu cara saldrá en sus anuncios. Cobras ' + eur(o.pay) + ' por jornada y ' + eur(o.goal.bonus) + ' más si consigues ' + o.goal.txt + '.');
-    check(c); K().save(c); return true;
+    K(c)._msg(c, 'fans', 'Firmas con ' + o.name, 'Tu cara saldrá en sus anuncios' + (hall(c) ? ' y en las vallas del pabellón' : '') + '. Cobras ' + eur(o.pay) + ' por jornada y ' + eur(o.goal.bonus) + ' más si consigues ' + o.goal.txt + '.');
+    check(c); K(c).save(c); return true;
   }
-  function declineSponsors() { var c = K().load(); if (!c) return false; ensure(c).spOffers = []; K().save(c); return true; }
+  function declineSponsors() { var c = K().load(); if (!c) return false; ensure(c).spOffers = []; K(c).save(c); return true; }
   function statBase(c, stat) { return (c.stats && c.stats[stat]) | 0; }
   function sponsorProgress(c) { var l = ensure(c), s = l.sponsor; if (!s) return 0; return s.season === c.season && c.phase !== 'off' || s.done ? Math.max(0, statBase(c, s.goal.stat) - (s.base | 0)) : 0; }
 
@@ -245,13 +327,13 @@
     if (lv >= GEAR_MAX) return 'max';
     var p = GEAR_PRICE[lv]; if ((+c.money || 0) < p) return 'money';
     c.money = Math.round(c.money - p); l.gear[id] = lv + 1; l.spent += p;
-    check(c); K().save(c); return 'ok';
+    check(c); K(c).save(c); return 'ok';
   }
   function toggleSvc(id) {
     var c = K().load(); if (!c || !SVC[id]) return ''; var l = ensure(c);
-    if (l.svc[id]) { delete l.svc[id]; K().save(c); return 'off'; }
+    if (l.svc[id]) { delete l.svc[id]; K(c).save(c); return 'off'; }
     if ((+c.money || 0) < svcCost(c, id)) return 'money';
-    l.svc[id] = 1; K().save(c); return 'on';
+    l.svc[id] = 1; K(c).save(c); return 'on';
   }
   function gearBonus(c) {
     var l = c && c.life, out = {}; if (!l || !l.gear) return out;
@@ -261,24 +343,30 @@
 
   // ------------------------------------------------------------------ rival personal
   function ensureRival(c) {
-    var l = ensure(c), me = c.myClub >= 0 && K().myClub(c); if (!me) return null;
-    var rv = l.rival, rk = rv && K().club(c, rv.club);
-    if (rk && rk.lvl === me.lvl && rk.id !== me.id) return rv;
-    var pool = K().clubsOf(c, me.lvl).filter(function (k) { return k.id !== me.id; }); if (!pool.length) return null;
+    var E = K(c), l = ensure(c), me = c.myClub >= 0 && E.myClub(c); if (!me) return null;
+    var H6 = hall(c), sameLg = function (k) { return H6 ? k.lid === me.lid : k.lvl === me.lvl; };   // (pista: misma liga por id; los clubes no tienen lvl)
+    var rv = l.rival, rk = rv && E.club(c, rv.club);
+    if (rk && sameLg(rk) && rk.id !== me.id) return rv;
+    var pool = (H6 ? E.leagueClubs(c, me.lid) : E.clubsOf(c, me.lvl)).filter(function (k) { return k.id !== me.id; }); if (!pool.length) return null;
     var r = rngOf(c.seed, 'rival', c.season, me.id, l.evN);
     var k = pick(r, pool);
     if (rv && rk && r() < 0.5) {   // tu rival te persigue: ficha por un club de tu nueva liga
       rv.club = k.id;
-      K()._msg(c, 'fans', rv.name + ' te sigue', 'Tu rival ' + rv.name + ' ha fichado por ' + k.name + '. Dice que viene a por ti. El cara a cara sigue: ' + rv.w + '-' + rv.l + '.');
+      E._msg(c, 'fans', rv.name + ' te sigue', 'Tu rival ' + rv.name + ' ha fichado por ' + k.name + '. Dice que viene a por ti. El cara a cara sigue: ' + rv.w + '-' + rv.l + '.');
       return rv;
     }
-    var m = K()._newMate(c, k, r);
+    var m;
+    if (H6) {   // pista: un jugador de su plantilla, de tu puesto (dorsal sin el tuyo ni el 13 del líbero)
+      var nm = E._name ? E._name(r) : 'Rival', nu; do { nu = 1 + Math.floor(r() * 20); } while (nu === c.player.num || nu === 13);
+      m = { name: nm, num: nu };
+    } else m = E._newMate(c, k, r);
     var off = Math.round(1 + r() * 4);
     l.rival = { name: m.name, num: m.num, club: k.id, off: off, w: 0, l: 0, since: c.season };
-    K()._msg(c, 'fans', 'Tienes un rival: ' + m.name, m.name + ' (' + k.name + ') tiene tu edad, juega en tu liga y no para de decir en las entrevistas que es mejor que tú. Cada partido contra su club es un duelo: el reto vale el doble.');
+    var pos = H6 && E.POS && E.POS[role6(c)] ? E.POS[role6(c)].name.toLowerCase() : '';
+    E._msg(c, 'fans', 'Tienes un rival: ' + m.name, m.name + ' (' + k.name + ') tiene tu edad, juega en tu liga' + (pos ? ', también de ' + pos + ',' : '') + ' y no para de decir en las entrevistas que es mejor que tú. Cada partido contra su club es un duelo: el reto vale el doble.');
     return l.rival;
   }
-  function rivalOvr(c) { var l = c && c.life; return l && l.rival ? clamp(K().playerOvr(c) + (l.rival.off | 0), 1, 99) : 0; }
+  function rivalOvr(c) { var l = c && c.life; return l && l.rival ? clamp(K(c).playerOvr(c) + (l.rival.off | 0), 1, 99) : 0; }
 
   // ------------------------------------------------------------------ decisiones (eventos con elección)
   // efectos: coach, chem, fame (proporción de tus seguidores, con mínimo fameMin), fatigue, money (× sueldo de la liga), form (pareja), tp (progreso de entreno), hurt
@@ -293,10 +381,17 @@
       o: [{ t: 'Ir toda la mañana', e: { fame: 0.06, fameMin: 50, fatigue: 5 } }, { t: 'Mandar una camiseta firmada', e: { fame: 0.02, fameMin: 15 } }, { t: 'Esta vez no puedo', e: {} }] },
     viral: { t: 'Reto viral en redes', x: 'Te retan a meter un saque dentro de una papelera a 9 metros. Medio vestuario ya lo ha intentado.', when: function (c) { return tierOf(c) >= 1; },
       o: [{ t: 'Grabar el vídeo', e: { fame: 0.1, coach: -2, fatigue: 3 } }, { t: 'Pasar', e: { coach: 1 } }] },
-    rivalTalk: { t: 'Tu rival te pica', x: '{rival} ha dicho en una entrevista que «en la arena hay jugadores y luego hay gente que hace fotos». Todo el mundo sabe por quién lo dice.', when: function (c) { return !!(c.life && c.life.rival); },
+    rivalTalk: { t: 'Tu rival te pica', x: '{rival} ha dicho en una entrevista que «en la arena hay jugadores y luego hay gente que hace fotos». Todo el mundo sabe por quién lo dice.',
+      xh: '{rival} ha dicho en una entrevista que «en el pabellón hay jugadores y luego hay gente que sale en los anuncios». Todo el mundo sabe por quién lo dice.', when: function (c) { return !!(c.life && c.life.rival); },
       o: [{ t: 'Responder con humor', e: { fame: 0.05, fameMin: 40 } }, { t: 'Contestar duro', e: { fame: 0.08, fameMin: 60, coach: -3 } }, { t: 'Ignorarle', e: { coach: 3 } }] },
-    mateDown: { t: 'Tu pareja está de bajón', th: 'Un compañero está de bajón', x: '{mate} apenas habla en los entrenos desde hace días.', when: function (c) { return !!c.mate && (c.mate.chem | 0) < 50; },
+    // (pista: sin pareja; la química es la del equipo, c.chem, y {mate} es un compañero de la plantilla)
+    mateDown: { t: 'Tu compañero está de bajón', th: 'Un compañero está de bajón', x: '{mate} apenas habla en los entrenos desde hace días.', when: function (c) { return c.mate ? (c.mate.chem | 0) < 50 : hall(c) && (c.chem | 0) < 50; },
       o: [{ t: 'Invitar a cenar', e: { chem: 10, money: -0.15 } }, { t: 'Entrenar juntos extra', e: { chem: 6, fatigue: 8 } }, { t: '«Espabila, que nos jugamos mucho»', e: { chem: -6, form: 1 } }] },
+    // solo en la pista: el vestuario de un equipo de seis (más el líbero y el banquillo)
+    speech: { only: 'hall', t: 'Charla en el vestuario', x: 'El capitán está lesionado y el entrenador te pide que hables tú al equipo antes del próximo partido.', when: function (c) { return (c.coach | 0) >= 45; },
+      o: [{ t: 'Discurso épico', e: { chem: 8, coach: 2, fame: 0.02, fameMin: 15 } }, { t: 'Cuatro frases y a jugar', e: { chem: 3 } }, { t: '«Que hable otro»', e: { coach: -3 } }] },
+    video: { only: 'hall', t: 'Sesión de vídeo', x: 'El segundo entrenador ha preparado dos horas de vídeo del próximo rival. Tus compañeros ya bostezan.', when: function () { return true; },
+      o: [{ t: 'Tomar apuntes', e: { coach: 3, tp: 20 } }, { t: 'Proponer verlo en la cafetería', e: { chem: 6, coach: -1 } }, { t: 'Dormir con los ojos abiertos', e: { fatigue: -6, coach: -2 } }] },
     tv: { t: 'Te invitan a la tele', x: 'Un programa de deportes quiere entrevistarte en directo esta noche.', when: function (c) { return tierOf(c) >= 2; },
       o: [{ t: 'Ir al plató', e: { fame: 0.12, fatigue: 6, money: 0.3 } }, { t: 'Mejor descansar', e: { fatigue: -10 } }] },
     ankle: { t: 'Molestias en el tobillo', x: 'Al bajar de un bloqueo has notado un pinchazo. No parece grave, pero molesta.', when: function (c) { return (c.fatigue | 0) >= 45; },
@@ -310,17 +405,23 @@
   };
   var EV_KEYS = Object.keys(EVENTS);
   var EV_P = 0.4;   // probabilidad de decisión tras cada jornada (si no hay otra pendiente)
+  /** Un compañero de tu plantilla de pista (determinista por temporada), para los textos con {mate}. */
+  function mate6(c) {
+    try { var ro = (K(c).roster ? K(c).roster(c) : []).filter(function (p) { return !p.me; }); if (ro.length) return ro[rngOf(c.seed, 'mate6', c.season, (c.life && c.life.evN) | 0)() * ro.length | 0].name; } catch (e) { }
+    return 'Un compañero';
+  }
   function evText(c, s) {
     var l = ensure(c), sp = l.sponsor ? l.sponsor.name : 'Tu patrocinador';
-    return String(s).replace('{rival}', l.rival ? l.rival.name : 'Tu rival').replace('{mate}', c.mate ? c.mate.name : 'Un compañero').replace('{sponsor}', sp);
+    return String(s).replace('{rival}', l.rival ? l.rival.name : 'Tu rival').replace('{mate}', c.mate ? c.mate.name : hall(c) ? mate6(c) : 'Un compañero').replace('{sponsor}', sp);
   }
+  function evTitle(c, E) { return hall(c) && E.th ? E.th : E.t; }
   function maybeEvent(c, sum) {
     var l = ensure(c);
-    if (l.ev) { K()._msg(c, 'fans', 'Sin respuesta: ' + EVENTS[l.ev.key].t.toLowerCase(), 'No contestaste a tiempo. La vida sigue.'); l.ev = null; }
+    if (l.ev) { K(c)._msg(c, 'fans', 'Sin respuesta: ' + evTitle(c, EVENTS[l.ev.key]).toLowerCase(), 'No contestaste a tiempo. La vida sigue.'); l.ev = null; }
     if (c.phase === 'off' || c.phase === 'pick') return;
     var r = rngOf(c.seed, 'ev', c.season, c.week, c.phase, l.evN);
     if (r() >= EV_P) return;
-    var ok = EV_KEYS.filter(function (k) { return k !== l.lastEv && EVENTS[k].when(c, sum); });
+    var ok = EV_KEYS.filter(function (k) { return k !== l.lastEv && modeOk(EVENTS[k], c) && EVENTS[k].when(c, sum); });
     if (!ok.length) return;
     var key = pick(r, ok);
     l.ev = { key: key, id: ++l.evN }; l.lastEv = key;
@@ -328,18 +429,18 @@
   /** Evento pendiente para la UI: {key, title, text, opts:[{t, hint}]}. */
   function pendingEvent(c) {
     var l = c && c.life; if (!l || !l.ev) return null;
-    var E = EVENTS[l.ev.key], th = hall(c) && E.th ? E.th : E.t;
-    return { key: l.ev.key, id: l.ev.id, title: evText(c, th), text: evText(c, E.x), opts: E.o.map(function (o) { return { t: evText(c, o.t), hint: effHint(o.e) }; }) };
+    var E = EVENTS[l.ev.key], H6 = hall(c);
+    return { key: l.ev.key, id: l.ev.id, title: evText(c, evTitle(c, E)), text: evText(c, H6 && E.xh ? E.xh : E.x), opts: E.o.map(function (o) { return { t: evText(c, o.t), hint: effHint(o.e, c) }; }) };
   }
-  function effHint(e) {
+  function effHint(e, c) {
     var h = [];
     if (e.coach) h.push(['Entrenador', e.coach > 0]);
-    if (e.chem) h.push(['Química', e.chem > 0]);
+    if (e.chem) h.push([hall(c) ? 'Química del equipo' : 'Química', e.chem > 0]);
     if (e.fame) h.push(['Fama', e.fame > 0]);
     if (e.fatigue) h.push(['Fatiga', e.fatigue < 0]);
     if (e.money) h.push(['Dinero', e.money > 0]);
     if (e.tp) h.push(['Entreno', true]);
-    if (e.form) h.push(['Forma de la pareja', true]);
+    if (e.form && (!c || c.mate)) h.push(['Forma del compañero', true]);
     if (e.hurt) h.push(['Riesgo', false]);
     if (e.scout) h.push(['Ofertas', true]);
     return h;
@@ -348,15 +449,16 @@
     var c = K().load(); if (!c) return null; var l = ensure(c); if (!l.ev) return null;
     var E = EVENTS[l.ev.key], o = E.o[i]; if (!o) return null;
     var res = applyEff(c, o.e);
-    l.log.push({ s: c.season, t: E.t, o: o.t }); if (l.log.length > 30) l.log = l.log.slice(-30);
+    l.log.push({ s: c.season, t: evTitle(c, E), o: evText(c, o.t) }); if (l.log.length > 30) l.log = l.log.slice(-30);
     l.ev = null;
-    check(c); K().save(c);
+    check(c); K(c).save(c);
     return res;
   }
   function applyEff(c, e) {
     var l = ensure(c), out = [];
     if (e.coach) { c.coach = clamp((c.coach | 0) + e.coach, 0, 100); out.push('Entrenador ' + (e.coach > 0 ? '+' : '−') + Math.abs(e.coach)); }
     if (e.chem && c.mate) { c.mate.chem = clamp((c.mate.chem | 0) + e.chem, 0, 100); out.push('Química ' + (e.chem > 0 ? '+' : '−') + Math.abs(e.chem)); }
+    else if (e.chem && hall(c)) { c.chem = clamp((c.chem | 0) + e.chem, 0, 100); out.push('Química del equipo ' + (e.chem > 0 ? '+' : '−') + Math.abs(e.chem)); }   // (pista: la del equipo)
     if (e.fame) { var n = e.fame > 0 ? Math.max(e.fameMin || 10, l.fame * e.fame) : -l.fame * -e.fame; n = addFame(c, n); out.push((n >= 0 ? '+' : '−') + num(Math.abs(n)) + ' seguidores'); }
     if (e.fatigue) { c.fatigue = clamp((c.fatigue | 0) + e.fatigue, 0, 100); out.push('Fatiga ' + (e.fatigue > 0 ? '+' : '−') + Math.abs(e.fatigue)); }
     if (e.money) { var m = Math.round(SALARY[lvlOf(c)] * e.money / 10) * 10; c.money = Math.max(0, Math.round((+c.money || 0) + m)); if (m > 0) l.earned += m; out.push((m >= 0 ? '+' : '−') + eur(Math.abs(m))); }
@@ -374,21 +476,25 @@
   // (≈ jugador bueno) gana 1-2 por temporada jugándolo todo; simulando más de media temporada, ninguno.
   var AWARDS = [
     { id: 'mvp', name: 'MVP', test: function (c, x) { return x.nota != null && x.nota >= 8 + 0.5 * x.r() - 0.15 * x.L && x.pos <= 2; } },
-    { id: 'pts', name: 'Máximo anotador', test: function (c, x) { return x.pp >= 18 + 4 * x.r() - 0.5 * x.L; } },
-    { id: 'ace', name: 'Mejor sacador', test: function (c, x) { return x.per('aces') >= 4 + 1.2 * x.r() - 0.3 * x.L; } },
-    { id: 'blk', name: 'Muro del año', test: function (c, x) { return x.per('blocks') >= 2.4 + 1 * x.r() + 0.1 * x.L; } },
-    { id: 'dig', name: 'Mejor defensa', test: function (c, x) { return x.per('digs') >= 11 + 6 * x.r() + 2.5 * x.L; } },
+    // (h: el mismo premio en la pista, por partido a 15 y × ptsF; con lo medido para los retos —CH6— lo gana una temporada de las
+    //  buenas del autopilot en su puesto: un receptor u opuesto, anotador o defensa; un central, muro; un colocador, mejor colocador)
+    { id: 'pts', name: 'Máximo anotador', test: function (c, x) { return x.pp >= 18 + 4 * x.r() - 0.5 * x.L; }, h: function (c, x) { return x.pp >= (7 + 2 * x.r() - 0.3 * x.L) * x.f; } },
+    { id: 'ace', name: 'Mejor sacador', test: function (c, x) { return x.per('aces') >= 4 + 1.2 * x.r() - 0.3 * x.L; }, h: function (c, x) { return x.per('aces') >= (0.7 + 0.4 * x.r()) * x.f; } },
+    { id: 'blk', name: 'Muro del año', test: function (c, x) { return x.per('blocks') >= 2.4 + 1 * x.r() + 0.1 * x.L; }, h: function (c, x) { return x.per('blocks') >= (1 + 0.5 * x.r() + 0.05 * x.L) * x.f; } },
+    { id: 'dig', name: 'Mejor defensa', test: function (c, x) { return x.per('digs') >= 11 + 6 * x.r() + 2.5 * x.L; }, h: function (c, x) { return x.per('digs') >= (7 + 3 * x.r() + 0.3 * x.L) * x.f; } },
+    { id: 'set', name: 'Mejor colocador', only: 'hall', test: function () { return false; }, h: function (c, x) { return x.per('assists') >= (20 + 4 * x.r() - 0.5 * x.L) * x.f; } },
     { id: 'rook', name: 'Revelación', test: function (c, x) { return x.newLeague && (c.player.age | 0) <= 23 && x.nota != null && x.nota >= 7.5 && !c.life.awards.some(function (a) { return a.id === 'rook'; }); } }   // una vez en la carrera
   ];
   function seasonAwards(c) {
     var l = ensure(c), S = c.stats, n = Math.max(1, S.played | 0), real = (S.played | 0) - (S.sim | 0);
     if ((S.played | 0) < 6) return [];
-    var me = K().myClub(c), L = lvlOf(c), Lg = leagueOf(c), r = rngOf(c.seed, 'awards', c.season);
+    var me = K(c).myClub(c), L = lvlOf(c), Lg = leagueOf(c), r = rngOf(c.seed, 'awards', c.season);
     var prevL = (c.history || []).filter(function (h) { return h.season === c.season - 1; })[0];
-    var x = { r: r, L: L, nota: K().avgNota(c), pos: K().posOf(c, me.id), pp: S.pts / n, per: function (k) { return (S[k] | 0) / n; }, newLeague: !prevL || prevL.lvl !== me.lvl };
+    var x = { r: r, L: L, nota: K(c).avgNota(c), pos: K(c).posOf(c, me.id), pp: S.pts / n, per: function (k) { return (S[k] | 0) / n; }, newLeague: !prevL || (hall(c) ? prevL.lid !== me.lid : prevL.lvl !== me.lvl), f: ptsF(c) };
     var won = [];
     AWARDS.forEach(function (a) {
-      var ok = a.test(c, x);
+      if (!modeOk(a, c)) return;
+      var ok = hall(c) && a.h ? a.h(c, x) : a.test(c, x);
       if (ok && real < (S.played | 0) * 0.5) ok = false;   // simulando más de media temporada no hay premios (no te han visto jugar)
       if (ok) won.push(a);
     });
@@ -398,19 +504,20 @@
       c.trophies.push({ season: c.season, kind: 'premio', name: nm, club: me.name });
       addFame(c, (a.id === 'mvp' ? 400 : 150) * LV_MULT[L]);
     });
-    if (won.length) K()._msg(c, 'fans', won.length === 1 ? 'Premio: ' + won[0].name : plural(won.length, 'premio', 'premios') + ' de la temporada',
+    if (won.length) K(c)._msg(c, 'fans', won.length === 1 ? 'Premio: ' + won[0].name : plural(won.length, 'premio', 'premios') + ' de la temporada',
       'La gala ' + deL(Lg) + ' te ha dado ' + won.map(function (a) { return '«' + a.name + '»'; }).join(', ') + '. Ya están en tu palmarés.');
     return won;
   }
   function deL(L) { return (L.art === 'el' ? 'del ' : 'de la ') + L.name; }
 
   // ------------------------------------------------------------------ logros de carrera
-  // v(c) = valor actual; n = objetivo; premio: pts (puntos de mejora), fans, money
+  // v(c) = valor actual; n = objetivo; premio: pts (puntos de mejora), fans, money. nh/dh: nombre y descripción en la pista (pabellón);
+  // only: 'hall' | 'beach' (solo en esa Carrera)
   function T(c) { return c.career || {}; }
   function trophiesOf(c, k) { return (c.trophies || []).filter(function (t) { return !k || t.kind === k; }).length; }
   var ACH = [
     { id: 'm1', name: 'Debut', d: 'Juega tu primer partido', n: 1, v: function (c) { return T(c).played; }, fans: 30 },
-    { id: 'm50', name: 'Veterano de la arena', d: 'Juega 50 partidos', n: 50, v: function (c) { return T(c).played; }, pts: 2 },
+    { id: 'm50', name: 'Veterano de la arena', nh: 'Veterano del parqué', d: 'Juega 50 partidos', n: 50, v: function (c) { return T(c).played; }, pts: 2 },
     { id: 'm150', name: 'Incombustible', d: 'Juega 150 partidos', n: 150, v: function (c) { return T(c).played; }, pts: 4 },
     { id: 'w1', name: 'Primera victoria', d: 'Gana un partido', n: 1, v: function (c) { return T(c).won; }, fans: 50 },
     { id: 'w50', name: 'Ganador', d: 'Gana 50 partidos', n: 50, v: function (c) { return T(c).won; }, pts: 3 },
@@ -418,6 +525,7 @@
     { id: 'p2000', name: 'Máquina de puntos', d: 'Suma 2.000 puntos', n: 2000, v: function (c) { return T(c).pts; }, pts: 4 },
     { id: 'a50', name: 'Saque bomba', d: 'Haz 50 aces', n: 50, v: function (c) { return T(c).aces; }, pts: 2 },
     { id: 'b50', name: 'Muralla', d: 'Haz 50 bloqueos punto', n: 50, v: function (c) { return T(c).blocks; }, pts: 2 },
+    { id: 'as1k', name: 'Director de orquesta', d: 'Da 1.000 asistencias', n: 1000, v: function (c) { return T(c).assists; }, pts: 3, only: 'hall' },   // (el logro del colocador)
     { id: 'n9', name: 'Partidazo', d: 'Saca un 9 o más en un partido', n: 9, v: function (c) { return c.life.bestNota; }, fans: 150, dec: true },
     { id: 's5', name: 'En racha', d: 'Gana 5 partidos seguidos', n: 5, v: function (c) { return c.life.best; }, pts: 1 },
     { id: 's10', name: 'Imparable', d: 'Gana 10 partidos seguidos', n: 10, v: function (c) { return c.life.best; }, pts: 3 },
@@ -425,12 +533,12 @@
     { id: 'ch40', name: 'Sin miedo a nada', d: 'Cumple 40 retos de jornada', n: 40, v: function (c) { return c.life.chDone; }, pts: 4 },
     { id: 'duel5', name: 'Némesis', d: 'Gana 5 duelos a tu rival', n: 5, v: function (c) { return c.life.duelW; }, pts: 2 },
     { id: 'up', name: 'Subir de categoría', d: 'Consigue un ascenso', n: 1, v: function (c) { return trophiesOf(c, 'ascenso'); }, money: 2000 },
-    { id: 't1', name: 'Campeón', d: 'Gana un título (liga u open)', n: 1, v: function (c) { return trophiesOf(c, 'liga') + trophiesOf(c, 'copa') + trophiesOf(c, 'intl'); }, pts: 2 },
+    { id: 't1', name: 'Campeón', d: 'Gana un título (liga u open)', dh: 'Gana un título (liga o copa)', n: 1, v: function (c) { return trophiesOf(c, 'liga') + trophiesOf(c, 'copa') + trophiesOf(c, 'intl'); }, pts: 2 },
     { id: 't5', name: 'Coleccionista', d: 'Gana 5 títulos', n: 5, v: function (c) { return trophiesOf(c, 'liga') + trophiesOf(c, 'copa') + trophiesOf(c, 'intl'); }, pts: 5 },
     { id: 'aw1', name: 'Gala de premios', d: 'Gana un premio individual', n: 1, v: function (c) { return c.life.awards.length; }, pts: 1 },
     { id: 'mvp', name: 'El mejor de todos', d: 'Gana un MVP', n: 1, v: function (c) { return c.life.awards.filter(function (a) { return a.id === 'mvp'; }).length; }, pts: 3 },
-    { id: 'top', name: 'En la élite', d: 'Juega en la máxima categoría', n: 4, v: function (c) { return c.myClub >= 0 ? lvlOf(c) : 0; }, fans: 2000 },
-    { id: 'f1', name: 'Te conocen', d: 'Llega a «Conocido en el circuito»', n: 2000, v: function (c) { return c.life.fameMax; }, money: 1000 },
+    { id: 'top', name: 'En la élite', d: 'Juega en la máxima categoría', dh: 'Juega en una liga de élite', ph: function (v) { return 'Tu liga: nivel ' + v + ' de 4 (por su fuerza)'; }, n: 4, v: function (c) { return c.myClub >= 0 ? lvlOf(c) : 0; }, fans: 2000 },
+    { id: 'f1', name: 'Te conocen', d: 'Llega a «Conocido en el circuito»', dh: 'Llega a «Conocido en la liga»', n: 2000, v: function (c) { return c.life.fameMax; }, money: 1000 },
     { id: 'f2', name: 'Estrella', d: 'Llega a «Estrella»', n: 20000, v: function (c) { return c.life.fameMax; }, pts: 3 },
     { id: 'f3', name: 'Leyenda viva', d: 'Llega a «Leyenda viva»', n: 120000, v: function (c) { return c.life.fameMax; }, pts: 5 },
     { id: 'l10', name: 'Nivel 10', d: 'Llega al nivel 10', n: 10, v: function (c) { return c.player.lvl; }, money: 1500 },
@@ -438,16 +546,18 @@
     { id: 'sp', name: 'Cara de anuncio', d: 'Firma con un patrocinador', n: 1, v: function (c) { return c.life.sponsor || c.life.spDone ? 1 : 0; }, fans: 100 },
     { id: 'gear', name: 'Equipado hasta arriba', d: 'Todo el material a nivel 3', n: 12, v: function (c) { var s = 0; GEAR_KEYS.forEach(function (k) { s += c.life.gear[k] | 0; }); return s; }, pts: 2 }
   ];
+  function achName(a, c) { return hall(c) && a.nh ? a.nh : a.name; }
+  function achD(a, c) { return hall(c) && a.dh ? a.dh : a.d; }
   function achList(c) {
     ensure(c);
-    return ACH.map(function (a) { var v = +a.v(c) || 0; return { id: a.id, name: a.name, d: a.d, n: a.n, v: Math.min(v, a.n), dec: !!a.dec, done: !!c.life.ach[a.id], reward: rewardTxt(a) }; });
+    return ACH.filter(function (a) { return modeOk(a, c); }).map(function (a) { var v = +a.v(c) || 0; return { id: a.id, name: achName(a, c), d: achD(a, c), n: a.n, v: Math.min(v, a.n), pt: hall(c) && a.ph ? a.ph(Math.min(v, a.n)) : '', dec: !!a.dec, done: !!c.life.ach[a.id], reward: rewardTxt(a) }; });
   }
   function rewardTxt(a) { return a.pts ? '+' + plural(a.pts, 'punto de mejora', 'puntos de mejora') : a.fans ? '+' + num(a.fans) + ' seguidores' : a.money ? '+' + eur(a.money) : ''; }
   /** Comprueba logros nuevos y da sus premios. Devuelve los conseguidos ahora. */
   function check(c) {
     var l = ensure(c), got = [];
     ACH.forEach(function (a) {
-      if (l.ach[a.id]) return;
+      if (l.ach[a.id] || !modeOk(a, c)) return;
       if ((+a.v(c) || 0) >= a.n) {
         l.ach[a.id] = c.season | 0; got.push(a);
         if (a.pts && c.player) c.player.pts = (c.player.pts | 0) + a.pts;
@@ -455,17 +565,27 @@
         if (a.fans) addFame(c, a.fans);
       }
     });
-    if (got.length) K()._msg(c, 'fans', got.length === 1 ? 'Logro: ' + got[0].name : plural(got.length, 'logro nuevo', 'logros nuevos'), got.map(function (a) { return a.name + ' (' + a.d.toLowerCase() + '): ' + rewardTxt(a); }).join('. ') + '.');
+    if (got.length) K(c)._msg(c, 'fans', got.length === 1 ? 'Logro: ' + achName(got[0], c) : plural(got.length, 'logro nuevo', 'logros nuevos'), got.map(function (a) { return achName(a, c) + ' (' + achD(a, c).toLowerCase() + '): ' + rewardTxt(a); }).join('. ') + '.');
     return got;
   }
 
   // ------------------------------------------------------------------ legado y retirada
   var LEG_KEY = 'voley3d.legends';
-  var LEG_TIERS = [[0, 'Jugador de club'], [60, 'Referente'], [150, 'Ídolo del circuito'], [300, 'Leyenda'], [500, 'Mito del vóley']];
+  var LEG_TIERS = [[0, 'Jugador de club'], [60, 'Referente'], [150, 'Ídolo del circuito', 'Ídolo del pabellón'], [300, 'Leyenda'], [500, 'Mito del vóley']];
+  /** Nivel 0-4 de la competición de un título. Playa: por el nombre del circuito. Pista: por la fuerza de la liga que nombra (o, si es
+   *  la copa de un país, la de su 1ª); las internacionales valen fijo. */
+  function trophyLvl(c, t) {
+    var lv = 0, nm = t && t.name || '';
+    if (!hall(c)) { K(c).LEAGUES.forEach(function (L, i) { if (nm.indexOf(L.name) >= 0) lv = i; }); return lv; }
+    var best = '';
+    (c.leagues || []).forEach(function (L) { if (L.name && nm.indexOf(L.name) >= 0 && L.name.length > best.length) { best = L.name; lv = lvlOfStrength(L.strength); } });
+    if (!best && t.kind === 'copa') Object.keys(c.cups || {}).forEach(function (cc) { var L1 = (c.leagues || []).filter(function (L) { return L.id === cc + '1'; })[0]; if (L1 && c.cups[cc].name === nm) lv = lvlOfStrength(L1.strength); });
+    return lv;
+  }
   function legacyScore(c) {
     var l = ensure(c), s = 0;
     (c.trophies || []).forEach(function (t) {
-      var lv = 0; K().LEAGUES.forEach(function (L, i) { if (t.name && t.name.indexOf(L.name) >= 0) lv = i; });
+      var lv = trophyLvl(c, t);
       s += t.kind === 'liga' ? 10 + 6 * lv : t.kind === 'copa' ? 6 + 4 * lv : t.kind === 'intl' ? 25 : t.kind === 'premio' ? (/^MVP/.test(t.name) ? 12 : 5) + 2 * lv : 4;
     });
     s += Math.round(Math.log(1 + l.fameMax) * 4);
@@ -473,20 +593,25 @@
     s += Object.keys(l.ach).length * 2;
     return s;
   }
-  function legacyTier(s) { var i = 0; for (var j = 0; j < LEG_TIERS.length; j++) if (s >= LEG_TIERS[j][0]) i = j; return { i: i, name: LEG_TIERS[i][1], next: LEG_TIERS[i + 1] ? LEG_TIERS[i + 1] : null }; }
+  /** Escalón de legado de s puntos (c: con la carrera de pista, los nombres de pabellón). next = [puntos, nombre] o null. */
+  function legacyTier(s, c) {
+    var i = 0, nmOf = function (t) { return hall(c) && t[2] ? t[2] : t[1]; }; for (var j = 0; j < LEG_TIERS.length; j++) if (s >= LEG_TIERS[j][0]) i = j;
+    var nx = LEG_TIERS[i + 1];
+    return { i: i, name: nmOf(LEG_TIERS[i]), next: nx ? [nx[0], nmOf(nx)] : null };
+  }
   var RETIRE_AGE = 30, DECLINE_AGE = 32;
   function canRetire(c) { return !!(c && c.player && (c.player.age | 0) >= RETIRE_AGE && c.phase !== 'pick'); }
   function legends() { try { var s = root.localStorage && root.localStorage.getItem(LEG_KEY); var a = s ? JSON.parse(s) : []; return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   /** Te retiras: la carrera pasa al Salón de la Fama del dispositivo y se borra (como abandonar, pero con homenaje). */
   function retire() {
     var c = K().load(); if (!canRetire(c)) return null;
-    var l = ensure(c), sc = legacyScore(c), lt = legacyTier(sc), k = K().myClub(c);
+    var l = ensure(c), sc = legacyScore(c), lt = legacyTier(sc, c), k = K(c).myClub(c);
     var rec = { name: c.player.name, num: c.player.num, role: c.player.role, age: c.player.age, seasons: c.season, score: sc, tier: lt.name,
       titles: (c.trophies || []).filter(function (t) { return t.kind === 'liga' || t.kind === 'copa' || t.kind === 'intl'; }).length,
-      awards: l.awards.length, fans: Math.round(l.fameMax), club: k ? k.name : '', ovr: K().playerOvr(c), played: (c.career && c.career.played) | 0, date: Date.now() };
+      awards: l.awards.length, fans: Math.round(l.fameMax), club: k ? k.name : '', ovr: K(c).playerOvr(c), played: (c.career && c.career.played) | 0, mode: hall(c) ? 'hall' : 'beach', date: Date.now() };
     var all = legends(); all.push(rec); all.sort(function (a, b) { return b.score - a.score; }); all = all.slice(0, 20);
     try { root.localStorage.setItem(LEG_KEY, JSON.stringify(all)); } catch (e) { }
-    K().abandon();
+    K(c).abandon();
     return rec;
   }
   /** Bonus de legado para una carrera nueva: la mejor leyenda del dispositivo da seguidores de salida («hijo/a de…» no: tu apellido suena). */
@@ -496,7 +621,7 @@
     var a = c.player, age = a.age | 0; if (age < DECLINE_AGE) return null;
     var r = rngOf(c.seed, 'age', c.season), d = age >= 35 ? 2 : 1, lost = [];
     ['jump', 'speed', 'react'].forEach(function (k) { var x = d + (r() < 0.4 ? 1 : 0) - (r() < 0.3 ? 1 : 0); if (x > 0 && a.st[k] > 20) { a.st[k] = Math.max(20, a.st[k] - x); lost.push(k); } });
-    if (lost.length) K()._msg(c, 'train', 'Los años pesan', 'Con ' + age + ' años el cuerpo ya no responde igual: pierdes algo de físico (' + lost.map(function (k) { return (VB.Prog && VB.Prog.LABEL && VB.Prog.LABEL[k] || k).toLowerCase(); }).join(', ') + '). Tu experiencia sigue intacta.' + (age >= RETIRE_AGE ? ' Puedes retirarte cuando quieras desde Fama › Legado.' : ''));
+    if (lost.length) K(c)._msg(c, 'train', 'Los años pesan', 'Con ' + age + ' años el cuerpo ya no responde igual: pierdes algo de físico (' + lost.map(function (k) { return (VB.Prog && VB.Prog.LABEL && VB.Prog.LABEL[k] || k).toLowerCase(); }).join(', ') + '). Tu experiencia sigue intacta.' + (age >= RETIRE_AGE ? ' Puedes retirarte cuando quieras desde Fama › Legado.' : ''));
     return lost;
   }
 
@@ -513,7 +638,7 @@
       if (sum.win) { l.streak++; l.best = Math.max(l.best, l.streak); } else l.streak = 0;
       if (sum.nota != null && !sum.sim) l.bestNota = Math.max(l.bestNota, sum.nota);
       // seguidores por el partido (simulado: un tercio; nadie lo ha visto)
-      var base = Math.max(0, (sum.nota - 5.5)) * 22 + (sum.win ? 18 : 0) + (sum.phase === 'cup' ? 30 : 0);
+      var base = Math.max(0, (sum.nota - 5.5)) * 22 + (sum.win ? 18 : 0) + (isKO(sum.phase) ? 30 : 0);
       var fans = Math.round(base * LV_MULT[L] * (sum.sim ? 0.33 : 1) * (1 + 0.05 * Math.min(l.streak, 6)));
       if (!sum.sim && sum.nota < 5) fans = -Math.round(l.fame * 0.02);
       out.fans += addFame(c, fans);
@@ -526,7 +651,7 @@
           l.chDone++;
           out.fans += addFame(c, ch.fans);
           c.money = Math.round((+c.money || 0) + ch.money); out.money += ch.money; l.earned += ch.money;
-          var lv = K()._addXP(c.player, ch.xp); out.xp = ch.xp;
+          var lv = K(c)._addXP(c.player, ch.xp); out.xp = ch.xp;
           c.player.matches = Math.max(0, (c.player.matches | 0) - 1);   // (addXP cuenta un partido: el reto no lo es)
           if (lv && lv.lvlUp) { sum.lvlUp = (sum.lvlUp | 0) + lv.lvlUp; sum.lvl = lv.lvl; sum.ptsGained = (sum.ptsGained | 0) + lv.pts; }
           sum.xp = (sum.xp | 0) + ch.xp;
@@ -541,27 +666,28 @@
     SVC_KEYS.forEach(function (id) {
       if (!l.svc[id]) return;
       var cost = svcCost(c, id);
-      if ((+c.money || 0) < cost) { delete l.svc[id]; K()._msg(c, 'fans', 'Sin dinero: ' + SVC[id].name, 'No te llega para pagar ' + SVC[id].name.toLowerCase() + ' (' + eur(cost) + ' por jornada). Se cancela.'); return; }
+      if ((+c.money || 0) < cost) { delete l.svc[id]; K(c)._msg(c, 'fans', 'Sin dinero: ' + SVC[id].name, 'No te llega para pagar ' + SVC[id].name.toLowerCase() + ' (' + eur(cost) + ' por jornada). Se cancela.'); return; }
       c.money = Math.round(c.money - cost); l.spent += cost; out.money -= cost;
       if (id === 'coach' && c.tp) addTp(c, trainGroup(c), c.train === 'rest' ? 0 : c.train === 'bal' ? 8 : 25);
       if (id === 'nutri') c.fatigue = clamp((c.fatigue | 0) - 5, 0, 100);
     });
     maybeEvent(c, sum);
-    out.ach = check(c).map(function (a) { return a.name; });
+    out.ach = check(c).map(function (a) { return achName(a, c); });
     sum.life = out;
   }
   /** Fin de temporada (después de career.js endSeason): premios, objetivo del patrocinador, títulos a fama, logros. */
   function seasonEnd(c) {
     var l = ensure(c), L = lvlOf(c), r = c.review || {};
     if (r.champion) addFame(c, 300 * LV_MULT[L]);
-    if (r.cup) addFame(c, 150 * LV_MULT[L]);
+    if (r.cup === true) addFame(c, 150 * LV_MULT[L]);
+    if (Array.isArray(r.cups)) r.cups.forEach(function (x) { if (x && x.champion === c.myClub) addFame(c, (x.kind === 'intl' ? 300 : 150) * LV_MULT[L]); });   // (pista: copa nacional e internacionales)
     if (r.move > 0) addFame(c, 200 * LV_MULT[L]);
     var aw = seasonAwards(c);
     r.awards = aw.map(function (a) { return a.name; });
     if (l.sponsor && l.sponsor.season <= c.season && !l.sponsor.done) {
       var got = sponsorProgress(c), s = l.sponsor;
-      if (got >= s.goal.n) { c.money = Math.round((+c.money || 0) + s.goal.bonus); l.earned += s.goal.bonus; K()._msg(c, 'fans', 'Bonus de ' + s.name, 'Has cumplido el objetivo (' + s.goal.txt + '): ' + eur(s.goal.bonus) + ' para ti.'); r.spBonus = s.goal.bonus; }
-      else K()._msg(c, 'fans', s.name + ': objetivo no cumplido', 'Te quedaste en ' + got + ' de ' + s.goal.n + ' (' + s.goal.txt + '). Sin bonus esta vez.');
+      if (got >= s.goal.n) { c.money = Math.round((+c.money || 0) + s.goal.bonus); l.earned += s.goal.bonus; K(c)._msg(c, 'fans', 'Bonus de ' + s.name, 'Has cumplido el objetivo (' + s.goal.txt + '): ' + eur(s.goal.bonus) + ' para ti.'); r.spBonus = s.goal.bonus; }
+      else K(c)._msg(c, 'fans', s.name + ': objetivo no cumplido', 'Te quedaste en ' + got + ' de ' + s.goal.n + ' (' + s.goal.txt + '). Sin bonus esta vez.');
       l.spDone = 1; l.sponsor.done = 1;   // los patrocinios son por temporada: se va en verano (seasonStart); el último partido aún cobra
     }
     r.fans = Math.round(l.fame); r.legacy = legacyScore(c);
@@ -578,8 +704,9 @@
   }
   /** matchSetup: material (+ a dos atributos por pieza y nivel) y molestias (−2 a todo). Solo en el partido. */
   function setup(c, m) {
-    var l = c.life; if (!l || !m || !m.attrs || !m.attrs[0] || !m.attrs[0][0]) return;
-    var st = m.attrs[0][0], gb = gearBonus(c), hurt = l.hurt ? 2 : 0;
+    var l = ensure(c), ix = m && m.format === '6v6' ? m.ctrlIdx | 0 : 0;   // (pista: tu jugador va en tu hueco de la rotación, ctrlIdx)
+    if (!l || !m || !m.attrs || !m.attrs[0] || !m.attrs[0][ix]) return;
+    var st = m.attrs[0][ix], gb = gearBonus(c), hurt = l.hurt ? 2 : 0;
     Object.keys(st).forEach(function (k) { st[k] = clamp(Math.round(st[k] + (gb[k] | 0) - hurt), 1, 99); });
     m.gear = gb; m.hurt = hurt;
     var ch = challenge(c); if (ch && m.career) { m.career.goal = ch.txt; m.career.duel = ch.duel; }
@@ -598,8 +725,8 @@
 
   VB.CareerLife = {
     hook: hook, ensure: ensure, TIERS: TIERS, fameInfo: fameInfo, tierName: tierName, offerBonus: offerBonus, addFame: addFame,
-    challenge: challenge, challengeAt: challengeAt, CH: CH,
-    sponsorOffers: sponsorOffers, signSponsor: signSponsor, declineSponsors: declineSponsors, sponsorProgress: sponsorProgress, SPONSORS: SPONSORS,
+    challenge: challenge, challengeAt: challengeAt, CH: CH, CH6: CH6, ptsF: ptsF, lvlOf: lvlOf,
+    sponsorOffers: sponsorOffers, signSponsor: signSponsor, declineSponsors: declineSponsors, sponsorProgress: sponsorProgress, SPONSORS: SPONSORS, SPONSORS6: SPONSORS6, SP_GOALS6: SP_GOALS6, seasonWeeks: seasonWeeks,
     GEAR: GEAR, GEAR_KEYS: GEAR_KEYS, GEAR_MAX: GEAR_MAX, gearName: gearName, gearPrice: gearPrice, buyGear: buyGear, gearBonus: gearBonus,
     SVC: SVC, SVC_KEYS: SVC_KEYS, svcCost: svcCost, toggleSvc: toggleSvc,
     rivalOvr: rivalOvr, pendingEvent: pendingEvent, answer: answer, EVENTS: EVENTS,

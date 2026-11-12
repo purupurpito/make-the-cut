@@ -8,8 +8,7 @@
  *   { v:1, d:{ serve:{b,m,n,t}, recv:{…}, set:{…}, atk:{…}, block:{…} }, free:{rally}, xp:{ serve:2, … } }
  *   b = récord (0-40), m = medalla 0-3, n = intentos, t = fecha del récord (ms), rally = peloteo más largo (toques),
  *   xp = nivel de medalla ya cobrado (evita cobrar dos veces, también tras unir con la cuenta).
- * Cuentas: NO se sincroniza en este sprint (account.js lo tiene detrás de GYM_SYNC = false hasta que Ferran despliegue las
- * reglas de Firestore con 'gym'; la fusión por máximo ya está escrita allí).
+ * Cuentas: se sincroniza con la cuenta (account.js GYM_SYNC = true desde el 12-nov-2026, reglas de Firestore ya desplegadas).
  *
  * API (VB.Gym):
  *   DRILLS [{id, name, short, help}] en el orden de la página (5 con medallas + 'free'), IDS (los 5 con medallas),

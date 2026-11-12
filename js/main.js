@@ -426,7 +426,8 @@
     // ?format=6v6 sigue siendo el MODO ESPECTADOR del sprint 2 (CPU contra CPU con HUD y pausas de partido: autopilot + present,
     // g.watch para ui.js; tv6test y perf lo usan); ?format=6v6&human=1 = partido humano desde la URL (pruebas).
     var qWatch = Q.format === '6v6' && Q.human !== '1';
-    var fmt = !cs && (opts.format === '6v6' || (opts.format == null && (Q.format === '6v6' || ctx.settings.format === '6v6'))) ? '6v6' : undefined; if (fmt) own = false;
+    // (Carrera de pista, lote C: opts.career con opts.format '6v6' = partido 6v6 de Carrera en el pabellón, en tu puesto, opts.ctrlRole)
+    var fmt = cs ? (opts.format === '6v6' ? '6v6' : undefined) : (opts.format === '6v6' || (opts.format == null && (Q.format === '6v6' || ctx.settings.format === '6v6'))) ? '6v6' : undefined; if (fmt) own = false;
     var watch6 = !!fmt && qWatch && opts.format == null;
     var auto = !!opts.autopilot || watch6;
     applyVenuePend();
@@ -437,7 +438,7 @@
     if (cv) forceVenue(cv);
     if (!auto) animHooks(cs);
     var g = Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: auto, rookie: cs ? !!opts.rookie : isRookie(), present: !opts.autopilot,
-      points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: fmt ? 'one' : (opts.ctrl || Q.ctrl || ctx.settings.ctrlMode), ctrlRole: fmt ? 'OH' : undefined, // (6v6: siempre 'one', el receptor; espectador sin eventos switch)
+      points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: fmt ? 'one' : (opts.ctrl || Q.ctrl || ctx.settings.ctrlMode), ctrlRole: fmt ? (cs && opts.ctrlRole) || 'OH' : undefined, // (6v6: siempre 'one'; el receptor, o tu puesto en la Carrera de pista; espectador sin eventos switch)
       ctrlIdx: ctrlIdxOf(opts),
       attrs: opts.attrs || (own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null),
       badges: cs ? (opts.badges || null) : (own && !Q.nobadges ? squadBadges() : null),
@@ -514,11 +515,14 @@
     if (!m) { if (VB.CareerUI && VB.CareerUI.open) VB.CareerUI.open(); return false; }
     if (K.abortMatch) K.abortMatch();
     ctx.actions.startMatch({ career: m.career, attrs: m.attrs, badges: m.badges, points: m.points, difficulty: m.difficulty, rookie: !!m.rookie, ctrl: 'one', ctrlIdx: 0, ref: m.ref, // en la Carrera solo llevas a tu jugador (menús v2: ni las carreras guardadas con «los dos»)
-      venue: m.venue || 'beach', // vóley playa: Platja Llarga y sus reglas (VB.Career.matchSetup().venue)
-      kit: m.kit ? Object.assign({}, m.kit, { rival: m.rivalKit || null }) : null, // + equipación del club rival (Players.setKit st.rival)
-      // tus dorsales (sim: opts.nums) y, en el duelo con tu rival personal (career-life setup → m.career.rivalNum), su dorsal en el
-      // n.º 1 rival (E2: players lo reconoce con setRival; cambia su aspecto porque el hash del muñeco usa el dorsal)
-      nums: m.career ? [[m.career.num | 0 || null, m.career.mateNum | 0 || null], m.career.rivalNum != null && (m.career.rivalNum | 0) > 0 ? [m.career.rivalNum | 0, (m.career.rivalNum | 0) === 9 ? 3 : null] : null] : undefined });
+      venue: m.venue || 'beach', // vóley playa: Platja Llarga y sus reglas (VB.Career.matchSetup().venue); la Carrera de pista, 'hall'
+      format: m.format === '6v6' ? '6v6' : undefined, ctrlRole: m.ctrlRole || undefined, // Carrera de pista (lote C): 6v6 en tu puesto
+      // equipación del club rival (Players.setKit st.rival); en la pista también kitLibero (color del líbero del club, que usa setKit, y con él la 2ª del rival si choca)
+      kit: m.kit ? Object.assign({}, m.kit, { rival: m.rivalKit || null }) : null,
+      // tus dorsales (sim: opts.nums; la pista los trae hechos en m.nums) y, en la playa, en el duelo con tu rival personal (career-life
+      // setup → m.career.rivalNum), su dorsal en el n.º 1 rival (E2: players lo reconoce con setRival; cambia su aspecto porque el hash
+      // del muñeco usa el dorsal)
+      nums: m.nums || (m.career ? [[m.career.num | 0 || null, m.career.mateNum | 0 || null], m.career.rivalNum != null && (m.career.rivalNum | 0) > 0 ? [m.career.rivalNum | 0, (m.career.rivalNum | 0) === 9 ? 3 : null] : null] : undefined) });
     // (si el rival lleva el 9, el 2º CPU, que es el 9 por defecto, pasa al 3: si no, los dos harían de rival en players.js)
     return true;
   };

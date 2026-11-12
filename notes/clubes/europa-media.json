@@ -1,0 +1,1860 @@
+{
+  "region": "Europa media: Bélgica, Países Bajos, Grecia, Portugal, Suiza, Austria, Chequia, Serbia, Eslovenia y Rumanía",
+  "countries": [
+    {
+      "country": "Bélgica",
+      "code": "BE",
+      "tier": 3,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Volley League hombres + Volley League mujeres 2025-26 (mezcla)",
+          "name": "Ligue Volley Belga",
+          "short": "LVB",
+          "strength": 64,
+          "clubs": [
+            {
+              "real": "Greenyard Maaseik",
+              "official": "Volleybalclub Greenyard Maaseik (VC Maaseik)",
+              "name": "Voley Maaseik",
+              "short": "MAA",
+              "city": "Maaseik",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E2001A",
+                "shirt2": "#FFFFFF",
+                "libero": "#007A33"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Voley Maaseik» no existe como club oficial. Método: WebSearch \"Voley Maaseik\" OR \"Volley Maaseik\". Resultado: Solo sale VC (Greenyard) Maaseik, cuyo nombre oficial es Volleybalclub Maaseik o Greenyard Maaseik. No hay ningún club llamado «Volley/Voley Maaseik». Sigue el patrón genérico «Voley [Ciudad]». Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Voley Maaseik\" OR \"Volley Maaseik\". Resultado: El club real figura como VC Maaseik / Volleybalclub Maaseik (Greenyard Maaseik). No sale nada que se llame exactamente «Volley Maaseik» ni «Voley Maaseik», pero el nombre es casi una traducción literal de «Volleybalclub Maaseik». Si se quiere ir sobre seguro, conviene cambiarlo por algo como el pabellón (Steengoed Arena). No coincide con ningún club de las listas 2025-26 de la Volley League de hombres y de mujeres (Sporza, TopVolley Belgium, BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Se quita el patrocinador Greenyard.",
+              "realSponsor": true,
+              "sponsor": "Bakkerij Den Ace",
+              "sponsorCheck": "Panadería «El Ace» (ace = punto directo de saque). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Knack Roeselare",
+              "official": "Knack Volley Roeselare",
+              "name": "Voley Mandel",
+              "short": "MDL",
+              "city": "Roeselare",
+              "gender": "M",
+              "colors": {
+                "shirt": "#151B54",
+                "shirt2": "#FFFFFF",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Voley Mandel» no existe como club ni competición oficial. Método: WebSearch \"Mandel Roeselare\" OR \"Voley Mandel\" OR \"Volley Mandel\": ningún club de vóley con ese nombre (Mandel es el río de Roeselare); solo existe el KFC Mandel United Izegem-Ingelmunster, de fútbol, con otro nombre. Se cambió porque el nombre anterior, «Voley Roeselare», chocaba: El club real se llama Knack Volley Roeselare, y la VRT titula «Volley Roeselare gehuldigd op stadhuis» (2025). «Voley Roeselare» solo cambia una letra respecto a «Volley Roeselare», que es el nombre real sin el patrocinador. (WebSearch \"Volley Roeselare\" club.) Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Voley Roeselare\" OR \"Volley Roeselare\". Resultado: El club real es Knack Volley Roeselare / Volleyteam Roeselare (it.wikipedia «Volleyteam Roeselare»), y la prensa lo llama a menudo «Volley Roeselare» (VRT 2025: «Volley Roeselare gehuldigd op stadhuis»). Además existe un club aparte, «Polonia Volley Roeselare» (Sport Vlaanderen). Ninguno se llama exactamente «Voley Roeselare», pero está a una letra del nombre corto que usa la prensa. No coincide con ningún club de las listas 2025-26 de la Volley League de hombres y de mujeres (Sporza, TopVolley Belgium, BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Se quita el patrocinador Knack; se evita «Volley Roeselare», que la prensa usa como nombre. Verificación: Knack es un club solo de hombres (en.wikipedia); el equipo de mujeres de Roeselare es otro club (Darta Bevo Roeselare), así que la fuente pasa de MW a M. [Abreviatura ROE → MDL.]",
+              "realSponsor": true,
+              "sponsor": "Rodilleras Rodríguez",
+              "sponsorCheck": "Marca recurrente del gag (inventada, común a todo el juego). Recurrente, no se comprueba por separado."
+            },
+            {
+              "real": "Decospan Menen",
+              "official": "Decospan Volley Team Menen (Volley Menen)",
+              "name": "Menen Vauban",
+              "short": "MEN",
+              "city": "Menen",
+              "gender": "M",
+              "colors": {
+                "shirt": "#6BC048",
+                "shirt2": "#000000",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 64,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Menen Vauban» no existe como club ni competición oficial. Método: WebSearch \"Menen Vauban\" volley OR volleybal: ningún club (guiño a su pabellón, el Sporthal Vauban). Se cambió porque el nombre anterior, «Voley Menen», chocaba: El nombre oficial del club en la Wikipedia inglesa es «Volley Menen» (en.wikipedia.org/wiki/Volley_Menen; con patrocinador, Decospan Volley Team Menen). Solo cambia una letra (Voley/Volley), así que es prácticamente igual. Nota anterior: No coincide con ningún club de las listas 2025-26 de la Volley League de hombres y de mujeres (Sporza, TopVolley Belgium, BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Se quita el patrocinador Decospan; se evita «Volley Menen», que es su nombre de club.",
+              "realSponsor": true,
+              "sponsor": "Mosselhuis De Muur",
+              "sponsorCheck": "Marisquería «El Muro» (muur = bloqueo/muro). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Lindemans Aalst",
+              "official": "Lindemans Aalst (Volley Aalst)",
+              "name": "Ajuin Aalst",
+              "short": "AAL",
+              "city": "Aalst",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#000000",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Ajuin Aalst» no existe como club ni competición oficial. Método: WebSearch \"Ajuin Aalst\": ningún club; «De Ajuinen» es solo el apodo de la ciudad y del SC Eendracht Aalst de fútbol. Se cambió porque el nombre anterior, «Voley Aalst», chocaba: «Volley Aalst» es el nombre oficial del club (artículo en en.wikipedia.org/wiki/Volley_Aalst; ahora juega como Lindemans Aalst). Solo cambia una letra (Volley/Voley). Nota anterior: No coincide con ningún club de las listas 2025-26 de la Volley League de hombres y de mujeres (Sporza, TopVolley Belgium, BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Se quita el patrocinador Lindemans; se evita «Volley Aalst», que es su nombre de club.",
+              "realSponsor": true,
+              "sponsor": "Frituur De Smash",
+              "sponsorCheck": "Freiduría «El Remate». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Haasrode Leuven",
+              "official": "Volley Haasrode Leuven",
+              "name": "Voley Leuven",
+              "short": "LEU",
+              "city": "Lovaina (Heverlee)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#1D4E9E",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Voley Leuven» no existe como club oficial. Método: WebSearch \"Volley Leuven\" club. Resultado: No hay ningún «Volley Leuven». El club real es Volley Haasrode Leuven (VHL), con «Haasrode» en medio: se parece, pero no es igual. Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Volley Leuven\" OR \"Voley Leuven\". Resultado: No hay ningún club que se llame exactamente así. El real es «Volley Haasrode Leuven» (VHL), así que se parece pero no es igual (le falta Haasrode). Se puede dejar. No coincide con ningún club de las listas 2025-26 de la Volley League de hombres y de mujeres (Sporza, TopVolley Belgium, BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Verificación: jugó la Champions League 2025-26 (TopVolley Belgium), sube de 62 a 66.",
+              "realSponsor": false
+            },
+            {
+              "real": "Asterix Avo Beveren",
+              "official": "Asterix Avo Beveren (antes Asterix Kieldrecht)",
+              "name": "Voley Beveren",
+              "short": "BEV",
+              "city": "Beveren (Kieldrecht)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#000000",
+                "libero": "#FFD200"
+              },
+              "liberoEstimated": true,
+              "ovr": 64,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Beveren\" OR \"Voley Beveren\". Resultado: Solo sale Asterix Avo Beveren y una asociación sin ánimo de lucro llamada «VOLLEY+» (Beveren-Kruibeke-Zwijndrecht), que no es igual. No coincide con ningún club de las listas 2025-26 de la Volley League de hombres y de mujeres (Sporza, TopVolley Belgium, BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Se quita el patrocinador Avo y no se usa «Asterix» (marca de cómic).",
+              "realSponsor": false,
+              "sponsorCheck": "Sin patrocinador: «Asterix» es el nombre del club desde 1969 y «Avo» viene de la fusión con AVO Melsele (Wikipedia, WebSearch 11-nov)."
+            },
+            {
+              "real": "VC Oudegem",
+              "official": "Volleybalclub Oudegem",
+              "name": "Voley Oudegem",
+              "short": "OUD",
+              "city": "Oudegem (Dendermonde)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1C0060",
+                "shirt2": "#FF0FBB",
+                "libero": "#FFD200"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Oudegem\" OR \"Voley Oudegem\". Resultado: El real es VC Oudegem / Volleybalclub Oudegem. No aparece ningún «Volley Oudegem». No coincide con ningún club de las listas 2025-26 de la Volley League de hombres y de mujeres (Sporza, TopVolley Belgium, BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es.",
+              "realSponsor": false
+            },
+            {
+              "real": "Charleroi Volley",
+              "official": "Charleroi Volley",
+              "name": "Voley Carolo",
+              "short": "CRL",
+              "city": "Charleroi",
+              "gender": "W",
+              "colors": {
+                "shirt": "#000000",
+                "shirt2": "#FFFFFF",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Voley Carolo» no existe como club ni competición oficial. Método: WebSearch \"Volley Carolo\" OR \"Voley Carolo\": sin resultados (carolo = gentilicio de Charleroi; descartado «Carolo Charleroi» por la ASBL «Carolo Team Charleroi»). Se cambió porque el nombre anterior, «Voley Charleroi», chocaba: Existe «Charleroi Volley» (en.wikipedia.org/wiki/Charleroi_Volley; ASBL «Charleroi Volley 2021»): las mismas palabras en otro orden, con Volley/Voley. Nota anterior: No coincide con ningún club de las listas 2025-26 de la Volley League de hombres y de mujeres (Sporza, TopVolley Belgium, BetExplorer); no hay artículo con ese título en Wikipedia en/fr/es. Se evita «Volley Charleroi» (el oficial es Charleroi Volley).",
+              "realSponsor": false
+            },
+            {
+              "real": "Tchalou Volley",
+              "official": "Tchalou Volley (Chapelle-lez-Herlaimont)",
+              "name": "Voley Chapelle",
+              "short": "CHP",
+              "city": "Chapelle-lez-Herlaimont",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1E3A8A",
+                "shirt2": "#FFFFFF",
+                "libero": "#F59E0B"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Voley Chapelle» no existe como club oficial. Método: WebSearch \"Volley Chapelle\" club volleyball. Resultado: No existe ningún club llamado «Volley Chapelle». Salen Tchalou Volley (Chapelle-lez-Herlaimont), ACC Volley La Chapelle-sur-Erdre y La Chapelle Volley Ball (Francia), todos con nombres distintos. Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Volley Chapelle\" OR \"Voley Chapelle\" club. Resultado: No hay ningún club que se llame exactamente así. Hay parecidos: «La Chapelle Volley Ball» (La Chapelle-d'Armentières, Francia), «ACC Volley La Chapelle-sur-Erdre» y el real Tchalou Chapelle-lez-Herlaimont. Lleva palabras de más, así que en principio se puede usar. No coincide con ningún club de las listas 2025-26 de la Volley League de hombres y de mujeres (Sporza, TopVolley Belgium, BetExplorer); no hay artículo con ese título en Wikipedia en/fr/es. Guiño a la localidad del club.",
+              "realSponsor": true,
+              "sponsor": "Fromagerie Le Contre",
+              "sponsorCheck": "Quesería «El Bloqueo» (contre = bloqueo en francés). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres. Nombre real 2025-26 con patrocinador: «CapitalatWork BAO Tchalou Volley» (guías de competición Lotto Volley League 25-26)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Países Bajos",
+      "code": "NL",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Eredivisie hombres + Eredivisie mujeres 2025-26 (mezcla)",
+          "name": "Eredivisión",
+          "short": "ERD",
+          "strength": 59,
+          "clubs": [
+            {
+              "real": "Orion Stars (Doetinchem)",
+              "official": "Orion Stars (Volleybalvereniging Orion, Doetinchem)",
+              "name": "Sirius Doetinchem",
+              "short": "SIR",
+              "city": "Doetinchem",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00843D",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD200"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Sirius Doetinchem\" volleybal OR club. Resultado: No hay ningún club Sirius en Doetinchem, solo Orion Stars. No coincide con ningún club de las listas de la Eredivisie de hombres (Wikipedia) y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Guiño: Orión → Sirio, otra estrella.",
+              "realSponsor": false,
+              "sponsorCheck": "Sin patrocinador en 2025-26 según la búsqueda (el club añadió «Stars» al nombre; «Langhenkel Orion» era un patrocinador antiguo)."
+            },
+            {
+              "real": "Lycurgus (Groningen)",
+              "official": "Lycurgus Groningen (Abiant / Nova-Tech Lycurgus)",
+              "name": "Wetgevers Groningen",
+              "short": "WTG",
+              "city": "Groninga",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0D57FF",
+                "shirt2": "#FFFFFF",
+                "libero": "#F97316"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Wetgevers Groningen» no existe como club ni competición oficial. Método: WebSearch \"Wetgevers Groningen\": ningún club, solo textos legales («los legisladores»: Licurgo fue el legislador de Esparta). Se cambió porque el nombre anterior, «Lykurgos Groningen», chocaba: El buscador lo resuelve como Lycurgus Groningen, el club real (betexplorer, Olympedia «Lycurgus, Groningen»). «Lykurgos» es solo la forma griega del mismo nombre: transliteración o traducción. (WebSearch \"Lykurgos Groningen\".) Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Lykurgos Groningen\". Resultado: El real es «Lycurgus Groningen». «Lykurgos» es la transliteración griega del mismo nombre: no es idéntico, pero suena casi igual. Si el dueño lo quiere aún más estricto, cambiarlo. No coincide con ningún club de las listas de la Eredivisie de hombres (Wikipedia) y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Se quitan los patrocinadores; guiño con la forma griega del nombre. [Abreviatura LYK → WTG.]",
+              "realSponsor": true,
+              "sponsor": "Bakkerij Bovenhands",
+              "sponsorCheck": "Panadería «De Dedos» (bovenhands = toque de colocación). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres. Dudoso: los resultados 2025-26 lo listan como «Lycurgus Groningen» a secas; se mantiene por los patrocinadores de nombre (Abiant / Nova-Tech) de temporadas recientes."
+            },
+            {
+              "real": "Dynamo Apeldoorn",
+              "official": "Sportvereniging Dynamo (Draisma Dynamo Apeldoorn)",
+              "name": "Magneto Apeldoorn",
+              "short": "MAG",
+              "city": "Apeldoorn",
+              "gender": "M",
+              "colors": {
+                "shirt": "#F5C400",
+                "shirt2": "#000000",
+                "libero": "#1E40AF"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Magneto Apeldoorn» no existe como club ni competición oficial. Método: WebSearch \"Magneto Apeldoorn\": ningún club (magneto = generador, como la dinamo). Se cambió porque el nombre anterior, «Dinamo Apeldoorn», chocaba: El real es «Dynamo Apeldoorn» (SV Dynamo; Draisma Dynamo Apeldoorn). Solo cambia una letra (y/i), y «Dinamo» es la misma palabra en muchos idiomas, así que es prácticamente igual. Nota anterior: No coincide con ningún club de las listas de la Eredivisie de hombres (Wikipedia) y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Se quita el patrocinador Draisma. Verificación: el equipo de mujeres llega en 2026-27, no en 2025-26; la fuente pasa de MW a M.",
+              "realSponsor": true,
+              "sponsor": "Matrassen Duikbal",
+              "sponsorCheck": "Colchones «Plancha» (duikbal = balón en plancha). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Advisie SSS (Barneveld)",
+              "official": "SSS Barneveld (Advisie SSS)",
+              "name": "Voley Barneveld",
+              "short": "BAR",
+              "city": "Barneveld",
+              "gender": "M",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#FFFFFF",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Barneveld\" OR \"Voley Barneveld\". Resultado: Solo salen Simplex/Advisie SSS y el SDV Barneveld de fútbol. Ninguno se llama «Volley Barneveld». No coincide con ningún club de las listas de la Eredivisie de hombres (Wikipedia) y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Se quita el patrocinador Advisie.",
+              "realSponsor": true,
+              "sponsor": "Eierhandel De Opslag",
+              "sponsorCheck": "Huevería «El Saque» (Barneveld es el pueblo del huevo; opslag = saque). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Sliedrecht Sport",
+              "official": "Sliedrecht Sport",
+              "name": "Voley Sliedrecht",
+              "short": "SLI",
+              "city": "Sliedrecht",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#000040",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Sliedrecht\" OR \"Voley Sliedrecht\". Resultado: Solo sale Sliedrecht Sport. No coincide con ningún club de las listas de la Eredivisie de hombres (Wikipedia) y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es.",
+              "realSponsor": false
+            },
+            {
+              "real": "Apollo 8 (Borne)",
+              "official": "Apollo 8 Borne",
+              "name": "Artemis 8 Borne",
+              "short": "ART",
+              "city": "Borne",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1E3A8A",
+                "shirt2": "#FFFFFF",
+                "libero": "#F59E0B"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Artemis 8\" Borne volleybal. Resultado: Sin resultados con «Artemis 8», solo Apollo 8 Borne. No coincide con ningún club de las listas de la Eredivisie de hombres (Wikipedia) y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Guiño: misión Apolo → misión Artemis.",
+              "realSponsor": false
+            },
+            {
+              "real": "VC Sneek",
+              "official": "Volleybalclub Sneek",
+              "name": "Voley Sneek",
+              "short": "SNE",
+              "city": "Sneek",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Sneek\" OR \"Volley Sneek\". Resultado: Salen VC Sneek (también llamado Friso Sneek) y ZV Sneek (zitvolleybal). Ninguno se llama «Volley Sneek». No coincide con ningún club de las listas de la Eredivisie de hombres (Wikipedia) y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es.",
+              "realSponsor": true,
+              "sponsor": "Haringkar Het Blok",
+              "sponsorCheck": "Puesto de arenques «El Bloqueo». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres. Dudoso: en 2024-25 jugaba como «Friso Sneek»; para 2025-26 no se confirmó el nombre con patrocinador."
+            },
+            {
+              "real": "Peelpush (Meijel)",
+              "official": "VC Peelpush (Summa Peelpush, Meijel)",
+              "name": "Peelpower Meijel",
+              "short": "PPW",
+              "city": "Meijel",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Peelpower Meijel\". Resultado: Sin resultados. El real es Peelpush. No coincide con ningún club de las listas de la Eredivisie de hombres (Wikipedia) y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia en/nl/es. Se quita el patrocinador Summa; guiño: Peel«push» → Peel«power».",
+              "realSponsor": true,
+              "sponsor": "Seguros Tie-Break",
+              "sponsorCheck": "Marca recurrente del gag (inventada, común a todo el juego). Recurrente, no se comprueba por separado."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Grecia",
+      "code": "GR",
+      "tier": 3,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Volley League hombres + A1 mujeres 2025-26 (mezcla)",
+          "name": "Liga Helénica",
+          "short": "LHE",
+          "strength": 65,
+          "clubs": [
+            {
+              "real": "Panathinaikos",
+              "official": "Panathinaikos A.O. (sección de voleibol)",
+              "name": "Panatenea Atenas",
+              "short": "PNT",
+              "city": "Atenas",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#134A29",
+                "shirt2": "#FFFFFF",
+                "libero": "#FFD200"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Panatenea Atenas\" OR \"Panathenaea Athens\" club. Resultado: Solo salen Panathinaikos A.O. y la fiesta antigua de las Panateneas. Ningún club se llama así. No coincide con ningún club de las lista oficial de la A1 de mujeres 2025-26 (the-sports.org) y equipos de la Volley League de hombres (Sofascore/Sportradar); no hay artículo con ese título en Wikipedia en/el/es. Guiño: «Panathinaikos» (todo-ateniense) → Panateneas, la fiesta de Atenas.",
+              "realSponsor": false
+            },
+            {
+              "real": "Olympiacos",
+              "official": "Olympiacos S.F.P. (Olympiacos Syndesmos Filathlon Peiraios)",
+              "name": "Thrylos Pireo",
+              "short": "THR",
+              "city": "El Pireo",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#1A1A1A"
+              },
+              "liberoEstimated": true,
+              "ovr": 70,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Thrylos Pireo\" OR \"Thrylos Piraeus\" club. Resultado: «Thrylos» es solo el apodo de Olympiacos. No existe ningún club con ese nombre. No coincide con ningún club de las lista oficial de la A1 de mujeres 2025-26 (the-sports.org) y equipos de la Volley League de hombres (Sofascore/Sportradar); no hay artículo con ese título en Wikipedia en/el/es. Guiño: «Thrylos» (la leyenda) es su apodo.",
+              "realSponsor": false
+            },
+            {
+              "real": "PAOK",
+              "official": "PAOK Thessaloniki (sección de voleibol)",
+              "name": "Dikéfalos Salónica",
+              "short": "DKS",
+              "city": "Salónica",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#000000",
+                "shirt2": "#FFFFFF",
+                "libero": "#D4AF37"
+              },
+              "liberoEstimated": true,
+              "ovr": 68,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Dikefalos Thessaloniki\" OR \"Dikéfalos Salónica\" club. Resultado: Es el apodo de PAOK. Existió «Dikefalos Asteras» (DIKE.AS.) en Nea Ionia, un club de balonmano disuelto en 2017, que no es igual. No coincide con ningún club de las lista oficial de la A1 de mujeres 2025-26 (the-sports.org) y equipos de la Volley League de hombres (Sofascore/Sportradar); no hay artículo con ese título en Wikipedia en/el/es. Guiño: el águila bicéfala de su escudo.",
+              "realSponsor": false
+            },
+            {
+              "real": "Milon",
+              "official": "A.O.N.S. Milon (Nea Smyrni)",
+              "name": "Prosfyges Nea Smirni",
+              "short": "MNS",
+              "city": "Nea Smyrni (Atenas)",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F59E0B"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Milo Nea Smirni». Nota anterior: […] como libre (oleada final 12-nov): DUDOSO. Método: WebSearch \"Milo Nea Smirni\" volley. Resultado: El real figura en la CEV como «AONS Milon Nea Smyrni Athens». «Milo Nea Smirni» cambia dos letras (Milon→Milo, Smyrni→Smirni) y quita AONS: no es igual, pero se parece mucho. Alternativas sin buscar: «Smyrni Prosfyges», «Milon Alexandreia». Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Milo Nea Smirni\" OR \"Milo Nea Smyrni\". Resultado: El real es «AONS Milon» (Nea Smyrni) y la CEV lo inscribe como «AONS Milon Nea Smyrni». «Milo Nea Smirni» se queda a una letra (Milon/Milo) y a una transliteración (Smyrni/Smirni): muy cerca, casi un choque. Propuesta: Prosfyges Nea Smirni (prosfyges = «refugiados», guiño a la fundación del Milon por refugiados en 1928; WebSearch \"Prosfyges Nea Smirni\": sin ningún club). No coincide con ningún club de las lista oficial de la A1 de mujeres 2025-26 (the-sports.org) y equipos de la Volley League de hombres (Sofascore/Sportradar); no hay artículo con ese título en Wikipedia en/el/es. Guiño: Milón → Milo.",
+              "realSponsor": false
+            },
+            {
+              "real": "Foinikas Syros",
+              "official": "A.O. Foinikas Syrou",
+              "name": "Fénix Syros",
+              "short": "FNX",
+              "city": "Ermúpoli (Siros)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FF0000",
+                "shirt2": "#000080",
+                "libero": "#FFD200"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Fenix Syros\" OR \"Fénix Syros\". Resultado: Sin ningún club. El real es Foinikas Syros (traducido, no transliterado). No coincide con ningún club de las lista oficial de la A1 de mujeres 2025-26 (the-sports.org) y equipos de la Volley League de hombres (Sofascore/Sportradar); no hay artículo con ese título en Wikipedia en/el/es. Guiño: «Foinikas» significa fénix.",
+              "realSponsor": false
+            },
+            {
+              "real": "Kifisia",
+              "official": "A.O. Kifisias / Z.A.O.N. Kifisias",
+              "name": "Voley Kefalari",
+              "short": "KEF",
+              "city": "Kifisiá (Atenas)",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#0B3D91",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Voley Kefalari» no existe como club ni competición oficial. Método: WebSearch \"Kefalari Kifisia\" OR \"Voley Kefalari\": ningún club (Kefalari es un barrio de Kifisia). Se cambió porque el nombre anterior, «Voley Kifisia», chocaba: El real es Kifissia V.C. (A.O.P. Kifisias), cuya marca y web es «Kifissia Volley» (kifissiavolley.gr): las mismas palabras en otro orden y una s de diferencia. Nota anterior: No coincide con ningún club de las lista oficial de la A1 de mujeres 2025-26 (the-sports.org) y equipos de la Volley League de hombres (Sofascore/Sportradar); no hay artículo con ese título en Wikipedia en/el/es.",
+              "realSponsor": false
+            },
+            {
+              "real": "AEK Athens",
+              "official": "AEK (Athlitiki Enosis Konstantinoupoleos) Atenas",
+              "name": "Enosis Atenas",
+              "short": "ENO",
+              "city": "Atenas",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFD200",
+                "shirt2": "#000000",
+                "libero": "#6B21A8"
+              },
+              "liberoEstimated": true,
+              "ovr": 64,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Enosis Athens\" OR \"Enosis Atenas\" club. Resultado: «Enosis» es el apodo de AEK. Ningún club se llama «Enosis Athens/Atenas» (hay Enosis Aspropyrgos, Peiraiki Enosis y Enosis Neon Paralimni, que no son iguales). No coincide con ningún club de las lista oficial de la A1 de mujeres 2025-26 (the-sports.org) y equipos de la Volley League de hombres (Sofascore/Sportradar); no hay artículo con ese título en Wikipedia en/el/es. Guiño: «Enosis» (la unión) es la E de AEK.",
+              "realSponsor": false
+            },
+            {
+              "real": "AO Thiras",
+              "official": "A.O. Thiras (Santorini)",
+              "name": "Voley Santorini",
+              "short": "SAN",
+              "city": "Fira (Santorini)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0EA5E9",
+                "shirt2": "#FFFFFF",
+                "libero": "#F97316"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Santorini\" OR \"Voley Santorini\". Resultado: Solo sale AO Thiras Santorini. Ningún club se llama «Volley Santorini». No coincide con ningún club de las lista oficial de la A1 de mujeres 2025-26 (the-sports.org) y equipos de la Volley League de hombres (Sofascore/Sportradar); no hay artículo con ese título en Wikipedia en/el/es.",
+              "realSponsor": false
+            },
+            {
+              "real": "Thetis",
+              "official": "A.S.P. Thetis Voulas",
+              "name": "Nereida Voula",
+              "short": "NER",
+              "city": "Voula (Atenas)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1E3A8A",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Nereida Voula\". Resultado: No sale ningún club ni competición; solo el nombre de pila Voula, el barrio de Atenas y las nereidas. No coincide con ningún club de las lista oficial de la A1 de mujeres 2025-26 (the-sports.org) y equipos de la Volley League de hombres (Sofascore/Sportradar); no hay artículo con ese título en Wikipedia en/el/es. Guiño: Tetis era una nereida.",
+              "realSponsor": false
+            },
+            {
+              "real": "Aris Thessaloniki",
+              "official": "Aris Thessaloniki V.C.",
+              "name": "Ares Tesalónica",
+              "short": "ARE",
+              "city": "Salónica",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFD200",
+                "shirt2": "#000000",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Ares Tesalónica\". Resultado: Solo aparece Aris Thessaloniki (Ares es el dios de su escudo). No hay ningún club que se llame oficialmente «Ares Tesalónica». No coincide con ningún club de las lista oficial de la A1 de mujeres 2025-26 (the-sports.org) y equipos de la Volley League de hombres (Sofascore/Sportradar); no hay artículo con ese título en Wikipedia en/el/es. Guiño: Aris = el dios Ares.",
+              "realSponsor": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Portugal",
+      "code": "PT",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Campeonato Nacional I Divisão hombres (Liga UNA Seguros) + mujeres (Liga Solverde) 2025-26 (mezcla)",
+          "name": "Liga Lusa de Vólei",
+          "short": "LLV",
+          "strength": 60,
+          "clubs": [
+            {
+              "real": "Sporting CP",
+              "official": "Sporting Clube de Portugal (voleibol)",
+              "name": "Leão Lisboa",
+              "short": "LEA",
+              "city": "Lisboa",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#008057",
+                "shirt2": "#FFFFFF",
+                "libero": "#1A1A1A"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Leão Lisboa\" clube. Resultado: No hay ningún club con ese nombre. Hay cosas parecidas: Leões de Porto Salvo (futsal, Oeiras), «Leões» es el apodo del Sporting y Léo Lisboa es un futbolista. No coincide con ningún club de las clasificaciones oficiales 2025-26 de la FPV (dataproject: Liga UNA Seguros y Liga Solverde); no hay artículo con ese título en Wikipedia en/pt/es. Guiño: el león de su escudo.",
+              "realSponsor": false
+            },
+            {
+              "real": "SL Benfica",
+              "official": "Sport Lisboa e Benfica (voleibol)",
+              "name": "Águia Lisboa",
+              "short": "AGL",
+              "city": "Lisboa",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#1A1A1A"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Águia Lisboa\" clube. Resultado: No hay ningún club deportivo con ese nombre. Se parecen: un bar de snooker de Lisboa que antes se llamaba «Snooker Águia Club», el GD Águias de Camarate y el apodo «Águias» del Benfica. Ninguno es igual. No coincide con ningún club de las clasificaciones oficiales 2025-26 de la FPV (dataproject: Liga UNA Seguros y Liga Solverde); no hay artículo con ese título en Wikipedia en/pt/es. Guiño: el águila, su símbolo.",
+              "realSponsor": false
+            },
+            {
+              "real": "FC Porto",
+              "official": "Futebol Clube do Porto (voleibol)",
+              "name": "Dragão Porto",
+              "short": "DRA",
+              "city": "Oporto",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0122EB",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Dragão Porto\" clube. Resultado: Solo salen el FC Porto (apodo «Dragões») y el Estádio do Dragão. No hay ningún club oficial que se llame «Dragão Porto». No coincide con ningún club de las clasificaciones oficiales 2025-26 de la FPV (dataproject: Liga UNA Seguros y Liga Solverde); no hay artículo con ese título en Wikipedia en/pt/es. Guiño: los «Dragões».",
+              "realSponsor": false
+            },
+            {
+              "real": "SC Braga",
+              "official": "Sporting Clube de Braga (voleibol)",
+              "name": "Arsenalistas Braga",
+              "short": "ARS",
+              "city": "Braga",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#1A1A1A"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Arsenalistas Braga\". Resultado: «Arsenalistas» es el apodo del SC Braga, no su nombre oficial. No existe ningún club ni competición con ese nombre. No coincide con ningún club de las clasificaciones oficiales 2025-26 de la FPV (dataproject: Liga UNA Seguros y Liga Solverde); no hay artículo con ese título en Wikipedia en/pt/es. Guiño: el apodo «Arsenalistas».",
+              "realSponsor": false
+            },
+            {
+              "real": "Leixões SC",
+              "official": "Leixões Sport Club (voleibol)",
+              "name": "Vólei Matosinhos",
+              "short": "MAT",
+              "city": "Matosinhos",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#FF0000",
+                "shirt2": "#FFFFFF",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "No coincide con ningún club de las clasificaciones oficiales 2025-26 de la FPV (dataproject: Liga UNA Seguros y Liga Solverde); no hay artículo con ese título en Wikipedia en/pt/es. Búsqueda web PENDIENTE (cupo agotado). [Integrador, búsqueda web 11-nov-2026: sin club con ese nombre.]",
+              "realSponsor": false
+            },
+            {
+              "real": "AA Espinho",
+              "official": "Associação Académica de Espinho",
+              "name": "Vólei Espinho",
+              "short": "ESP",
+              "city": "Espinho",
+              "gender": "M",
+              "colors": {
+                "shirt": "#000000",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "No coincide con ningún club de las clasificaciones oficiales 2025-26 de la FPV (dataproject: Liga UNA Seguros y Liga Solverde); no hay artículo con ese título en Wikipedia en/pt/es. Búsqueda web PENDIENTE (cupo agotado). [Integrador, búsqueda web 11-nov-2026: sin club con ese nombre (están SC Espinho, AA Espinho y la asociación «Clube Voleibol Espinho»).]",
+              "realSponsor": false
+            },
+            {
+              "real": "SC Espinho",
+              "official": "Sporting Clube de Espinho",
+              "name": "Tigres Espinho",
+              "short": "TIG",
+              "city": "Espinho",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#000000",
+                "libero": "#F59E0B"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "No comprobado por búsqueda como libre (oleada final 12-nov): DUDOSO. Método: WebSearch \"Tigres Espinho\" OR \"Tigres de Espinho\". Resultado: No existe ningún club oficial con ese nombre exacto, pero «Os Tigres (da Costa Verde)» es el apodo del SC Espinho, y el club de balonmano playa «Escola de Formação de Espinho – Os Tigres» (EHF) lleva Espinho y Os Tigres en el nombre oficial. Alternativa sin buscar: «Costa Verde Espinho». Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Tigres Espinho\". Resultado: «Tigres da Costa Verde» es el apodo del SC Espinho. Además existe un club de balonmano playa cuyo nombre oficial es «Escola de Formação de Espinho - Os Tigres» (campeón del European Beach Tour 2024). Comparte las palabras Tigres y Espinho, pero el nombre no es igual. Lo dejo marcado por si el dueño lo quiere evitar. No coincide con ningún club de las clasificaciones oficiales 2025-26 de la FPV (dataproject: Liga UNA Seguros y Liga Solverde); no hay artículo con ese título en Wikipedia en/pt/es. Guiño: el apodo «Tigres».",
+              "realSponsor": false
+            },
+            {
+              "real": "Vitória SC",
+              "official": "Vitória Sport Clube (Guimarães)",
+              "name": "Conquistadores Guimarães",
+              "short": "GUI",
+              "city": "Guimarães",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#000000",
+                "libero": "#D4AF37"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Conquistadores Guimarães\". Resultado: «Conquistadores» es el apodo del Vitória SC y además hay un hotel Conquistador Palace. No hay ningún club oficial con ese nombre. No coincide con ningún club de las clasificaciones oficiales 2025-26 de la FPV (dataproject: Liga UNA Seguros y Liga Solverde); no hay artículo con ese título en Wikipedia en/pt/es. Guiño: el apodo «Conquistadores».",
+              "realSponsor": false
+            },
+            {
+              "real": "Castêlo da Maia GC",
+              "official": "Castêlo da Maia Ginásio Clube",
+              "name": "Vólei Maia",
+              "short": "MAI",
+              "city": "Maia",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F59E0B"
+              },
+              "liberoEstimated": true,
+              "ovr": 54,
+              "check": "No coincide con ningún club de las clasificaciones oficiales 2025-26 de la FPV (dataproject: Liga UNA Seguros y Liga Solverde); no hay artículo con ese título en Wikipedia en/pt/es. Búsqueda web PENDIENTE (cupo agotado). [Integrador, búsqueda web 11-nov-2026: sin club con ese nombre.]",
+              "realSponsor": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Suiza",
+      "code": "CH",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "NLA Men + NLA Women 2025-26 (mezcla)",
+          "name": "Liga Helvética",
+          "short": "LHV",
+          "strength": 57,
+          "clubs": [
+            {
+              "real": "Volley Amriswil",
+              "official": "Volley Amriswil (Lindaren Volley Amriswil)",
+              "name": "Thurgovia Amriswil",
+              "short": "AMR",
+              "city": "Amriswil",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Thurgovia Amriswil» no existe como club ni competición oficial. Método: WebSearch \"Thurgovia Amriswil\": ningún club, solo el cantón y empresas. Se cambió porque el nombre anterior, «Voley Amriswil», chocaba: Existe Volley Amriswil (NLA masculina, perfiles en CEV y Wikipedia). La única diferencia con nuestro nombre es una letra (Voley/Volley), así que es prácticamente igual. Nota anterior: No coincide con ningún club de las listas oficiales 2025-26 de Swiss Volley (dataproject: NLA Men y NLA Women); no hay artículo con ese título en Wikipedia en/de/es. Se quita el patrocinador Lindaren; se evita «Volley Amriswil», que es el oficial.",
+              "realSponsor": true,
+              "sponsor": "Käserei Blockstark",
+              "sponsorCheck": "Quesería «Fuerte en el Bloqueo». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Volley Näfels",
+              "official": "Volley Näfels",
+              "name": "Linth Näfels",
+              "short": "NAF",
+              "city": "Näfels",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00843D",
+                "shirt2": "#FFD200",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Linth Näfels» no existe como club ni competición oficial. Método: WebSearch \"Linth Näfels\": ningún club (guiño al río y a la Lintharena). Se cambió porque el nombre anterior, «Voley Näfels», chocaba: Existe Volley Näfels (NLA masculina, antes Biogas Volley Näfels, perfil en CEV). Solo cambia una letra. Nota anterior: No coincide con ningún club de las listas oficiales 2025-26 de Swiss Volley (dataproject: NLA Men y NLA Women); no hay artículo con ese título en Wikipedia en/de/es. Se evita «Volley Näfels», que es el oficial.",
+              "realSponsor": false
+            },
+            {
+              "real": "Volley Schönenwerd",
+              "official": "Volley Schönenwerd",
+              "name": "Aare Schönenwerd",
+              "short": "SWD",
+              "city": "Schönenwerd",
+              "gender": "M",
+              "colors": {
+                "shirt": "#000000",
+                "shirt2": "#FFD200",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Aare Schönenwerd» no existe como club ni competición oficial. Método: WebSearch \"Aare Schönenwerd\": solo rutas y el río, ningún club. Se cambió porque el nombre anterior, «Voley Schönenwerd», chocaba: Existe Volley Schönenwerd (NLA masculina, BetoncoupeArena). Solo cambia una letra. Nota anterior: No coincide con ningún club de las listas oficiales 2025-26 de Swiss Volley (dataproject: NLA Men y NLA Women); no hay artículo con ese título en Wikipedia en/de/es. Se evita «Volley Schönenwerd», que es el oficial.",
+              "realSponsor": false
+            },
+            {
+              "real": "TSV Jona Volleyball",
+              "official": "TSV Jona Volleyball",
+              "name": "Obersee Jona",
+              "short": "JON",
+              "city": "Rapperswil-Jona",
+              "gender": "M",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#FFFFFF",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Obersee Jona» no existe como club ni competición oficial. Método: WebSearch \"Obersee Jona\": solo geografía, ningún club (guiño al lago de Rapperswil-Jona). Se cambió porque el nombre anterior, «Voley Jona», chocaba: El club real aparece en Sofascore como «Burgerstein Volley Jona» (oficialmente TSV Jona Volleyball). Quitando el patrocinador queda «Volley Jona», que se diferencia del nuestro en una sola letra. Nota anterior: No coincide con ningún club de las listas oficiales 2025-26 de Swiss Volley (dataproject: NLA Men y NLA Women); no hay artículo con ese título en Wikipedia en/de/es.",
+              "realSponsor": false
+            },
+            {
+              "real": "Chênois Genève Volleyball",
+              "official": "Chênois Genève Volleyball",
+              "name": "Chênaie Genève",
+              "short": "CHN",
+              "city": "Chêne-Bourg (Ginebra)",
+              "gender": "M",
+              "colors": {
+                "shirt": "#7A1F2B",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 55,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Chênaie Genève\". Resultado: Solo salen robledales («chênaie») de Ginebra y la comuna de Chêne-Bougeries. Se parece al club real Chênois Genève, pero no es igual. No coincide con ningún club de las listas oficiales 2025-26 de Swiss Volley (dataproject: NLA Men y NLA Women); no hay artículo con ese título en Wikipedia en/fr/es. Guiño: Chênois (de Chêne, roble) → Chênaie (robledal).",
+              "realSponsor": false
+            },
+            {
+              "real": "Viteos NUC",
+              "official": "Neuchâtel Université Club (Viteos NUC)",
+              "name": "Voley Neuchâtel",
+              "short": "NEU",
+              "city": "Neuchâtel",
+              "gender": "W",
+              "colors": {
+                "shirt": "#F07D00",
+                "shirt2": "#000000",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Neuchâtel\". Resultado: No existe ningún club llamado «Volley Neuchâtel». El de la ciudad es Neuchâtel Université Club (Viteos NUC), y también está Colombier Volley. No coincide con ningún club de las listas oficiales 2025-26 de Swiss Volley (dataproject: NLA Men y NLA Women); no hay artículo con ese título en Wikipedia en/fr/es. Se quita el patrocinador Viteos.",
+              "realSponsor": true,
+              "sponsor": "Fondue Le Bloc",
+              "sponsorCheck": "Fondue «El Bloqueo». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Sm'Aesch Pfeffingen",
+              "official": "Sm'Aesch Pfeffingen",
+              "name": "Voley Aesch",
+              "short": "AES",
+              "city": "Aesch (Basilea-Campiña)",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FF69B4",
+                "shirt2": "#FFFFFF",
+                "libero": "#1A1A1A"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Aesch\". Resultado: Solo sale Sm'Aesch Pfeffingen. No hay ningún club llamado «Volley Aesch». No coincide con ningún club de las listas oficiales 2025-26 de Swiss Volley (dataproject: NLA Men y NLA Women); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es.",
+              "realSponsor": false
+            },
+            {
+              "real": "Volley Düdingen",
+              "official": "Volley Düdingen (Power Cats)",
+              "name": "Panteras Düdingen",
+              "short": "DUD",
+              "city": "Düdingen",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1A1A1A",
+                "shirt2": "#E5007D",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Panteras Düdingen» no existe como club ni competición oficial. Método: WebSearch \"Panteras Düdingen\": ningún club (guiño a sus «Power Cats»). Se cambió porque el nombre anterior, «Voley Düdingen», chocaba: Existe Volley Düdingen (NLA femenina, perfil en CEV 14234; antes FKB Power Cats Düdingen y TS Volley Düdingen). Solo cambia una letra. Nota anterior: No coincide con ningún club de las listas oficiales 2025-26 de Swiss Volley (dataproject: NLA Men y NLA Women); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es. Se evita «Volley Düdingen», que es el oficial.",
+              "realSponsor": false
+            },
+            {
+              "real": "VC Kanti Schaffhausen",
+              "official": "VC Kanti Schaffhausen",
+              "name": "Voley Schaffhausen",
+              "short": "SHF",
+              "city": "Schaffhausen",
+              "gender": "W",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#1A1A1A"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Schaffhausen\". Resultado: No hay ningún club llamado «Volley Schaffhausen». El de la ciudad es VC Kanti Schaffhausen. No coincide con ningún club de las listas oficiales 2025-26 de Swiss Volley (dataproject: NLA Men y NLA Women); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es.",
+              "realSponsor": false
+            },
+            {
+              "real": "Genève Volley",
+              "official": "Genève Volley (Infomaniak Genève Volley)",
+              "name": "Voley Lemán",
+              "short": "GIN",
+              "city": "Ginebra",
+              "gender": "W",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#F2C200",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Voley Ginebra». Nota anterior: […] como libre (oleada final 12-nov): DUDOSO. Método: WebSearch \"Volley Ginebra\" OR \"Voley Ginebra\". Resultado: No existe ningún club «Voley/Volley Ginebra» (solo el Ginebra San Miguel, de baloncesto filipino). Pero es la traducción al español, con el orden cambiado, de «Genève Volley», el real; es el patrón genérico «Voley [Ciudad]». Alternativa buscada (libre): «Voley Lemán». Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Voley Ginebra\" OR \"Volley Genève\" club. Resultado: El club real es Genève Volley (ahora con patrocinador: Infomaniak Genève Volley). «Voley Ginebra» es casi su traducción al castellano con el orden cambiado. No es igual porque cambia el idioma, pero se parece mucho. No coincide con ningún club de las listas oficiales 2025-26 de Swiss Volley (dataproject: NLA Men y NLA Women); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia fr/es. Se quita el patrocinador Infomaniak.",
+              "realSponsor": true,
+              "sponsor": "Fromagerie La Manchette",
+              "sponsorCheck": "Quesería «La Recepción» (manchette = toque de antebrazos). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Austria",
+      "code": "AT",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Austrian Volley League Men + Women 2025-26 (mezcla)",
+          "name": "Liga Austrovolley",
+          "short": "LAV",
+          "strength": 54,
+          "clubs": [
+            {
+              "real": "TSV Hartberg",
+              "official": "TSV Hartberg (sección de voleibol)",
+              "name": "Voley Hartberg",
+              "short": "HAR",
+              "city": "Hartberg",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0033A0",
+                "shirt2": "#FF6600",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 61,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Hartberg\" OR \"Voley Hartberg\". Resultado: Solo sale TSV Hartberg (Volleyball). No hay ningún club llamado «Volley Hartberg». No coincide con ningún club de las tablas 2025-26 de la AVL de hombres y de mujeres (Sportradar, 365Scores); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es. Verificación: campeón de la AVL 2025-26 (de.wikipedia) y Hypo Tirol se disolvió en 2025; sube de 58 a 61, el mejor de Austria.",
+              "realSponsor": false
+            },
+            {
+              "real": "SK Aich/Dob",
+              "official": "SK Aich/Dob (Zadruga Aich/Dob)",
+              "name": "Voley Aich-Dob",
+              "short": "AID",
+              "city": "Bleiburg",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFD200",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Aich-Dob\" OR \"Volley Aich-Dob\" OR \"Volley Aich/Dob\". Resultado: El club se llama oficialmente SK (Zadruga) Aich/Dob. No hay ninguno llamado «Volley Aich-Dob». No coincide con ningún club de las tablas 2025-26 de la AVL de hombres y de mujeres (Sportradar, 365Scores); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es. Se quita el patrocinador.",
+              "realSponsor": true,
+              "sponsor": "Bäckerei Aufschlag",
+              "sponsorCheck": "Panadería «El Saque». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Union Volleyball Waldviertel",
+              "official": "Union Volleyball Waldviertel",
+              "name": "Voley Waldviertel",
+              "short": "WAL",
+              "city": "Zwettl",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#000000",
+                "libero": "#FFD200"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Waldviertel\" OR \"Voley Waldviertel\". Resultado: El club se llama oficialmente Union (Raiffeisen) Volleyball Waldviertel, y Sofascore lo muestra como «Waldviertel Volleyball». No hay ninguno llamado «Volley Waldviertel». No coincide con ningún club de las tablas 2025-26 de la AVL de hombres y de mujeres (Sportradar, 365Scores); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es.",
+              "realSponsor": true,
+              "sponsor": "Erdäpfel Netzroller",
+              "sponsorCheck": "Patatas «La Cinta» (Netzroller = balón que toca la red; el Waldviertel es tierra de patatas). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres. Dudoso: suele jugar como «Union Raiffeisen Waldviertel»; no confirmado para 2025-26."
+            },
+            {
+              "real": "UVC Ried",
+              "official": "Union Volleyballclub Ried (Raiffeisen)",
+              "name": "Voley Ried",
+              "short": "RIE",
+              "city": "Ried im Innkreis",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00843D",
+                "shirt2": "#000000",
+                "libero": "#FFD200"
+              },
+              "liberoEstimated": true,
+              "ovr": 55,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Volley Ried\" OR \"Voley Ried\" Volleyball. Resultado: Solo sale UVC Ried (UVC Weberzeile Ried / UVC McDonald's Ried). No hay ningún club llamado «Volley Ried». No coincide con ningún club de las tablas 2025-26 de la AVL de hombres y de mujeres (Sportradar, 365Scores); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es. Se quita el patrocinador.",
+              "realSponsor": true,
+              "sponsor": "Wirtshaus Zum Ass",
+              "sponsorCheck": "Taberna «El Ace». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres. Dudoso: patrocinador de nombre (Raiffeisen / Weberzeile) no confirmado para 2025-26."
+            },
+            {
+              "real": "ASKÖ Linz-Steg",
+              "official": "ASKÖ Linz-Steg (Steelvolleys)",
+              "name": "Voley Linz",
+              "short": "LIN",
+              "city": "Linz",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFD200",
+                "shirt2": "#000000",
+                "libero": "#1E40AF"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Linz\" volleyball. Resultado: Sin resultados con ese nombre exacto; solo ASKÖ Linz-Steg / Steelvolleys Linz-Steg. No coincide con ningún club de las tablas 2025-26 de la AVL de hombres y de mujeres (Sportradar, 365Scores); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es.",
+              "realSponsor": false
+            },
+            {
+              "real": "Sokol/Post",
+              "official": "SG Sokol/Post (Niederösterreich/Viena)",
+              "name": "Falke Wien",
+              "short": "FAL",
+              "city": "Viena",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#0033A0",
+                "shirt2": "#FFD200",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Falke Wien\". Resultado: Sin clubes ni competiciones con ese nombre; solo halcones, Falkestraße, Café Falk. No coincide con ningún club de las tablas 2025-26 de la AVL de hombres y de mujeres (Sportradar, 365Scores); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es. Guiño: «sokol» es halcón (Falke).",
+              "realSponsor": false
+            },
+            {
+              "real": "Trofaiach/Eisenerz",
+              "official": "VBC Trofaiach-Eisenerz (Erzbergmadln)",
+              "name": "Voley Erzberg",
+              "short": "ERZ",
+              "city": "Trofaiach",
+              "gender": "W",
+              "colors": {
+                "shirt": "#7A1F2B",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 55,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Erzberg\". Resultado: Solo la mina Erzberg y VA Erzberg GmbH (empresa minera, no club). El club real se anuncia como «Erzbergmadln», nombre distinto. No coincide con ningún club de las tablas 2025-26 de la AVL de hombres y de mujeres (Sportradar, 365Scores); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es. Guiño: el monte Erzberg, de su apodo.",
+              "realSponsor": false
+            },
+            {
+              "real": "UVC Graz",
+              "official": "Union Volleyballclub Graz (UVC Holding Graz)",
+              "name": "Voley Graz",
+              "short": "GRA",
+              "city": "Graz",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#000000",
+                "shirt2": "#FFFFFF",
+                "libero": "#22C55E"
+              },
+              "liberoEstimated": true,
+              "ovr": 54,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Graz\" volleyball. Resultado: Solo UVC (Holding) Graz y Volleyballakademie Graz; ningún «Voley Graz». No coincide con ningún club de las tablas 2025-26 de la AVL de hombres y de mujeres (Sportradar, 365Scores); no hay artículo con ese título en Wikipedia en; sin respuesta de Wikipedia de/es. Se quita el patrocinador.",
+              "realSponsor": true,
+              "sponsor": "Chanclas Supersónicas",
+              "sponsorCheck": "Marca recurrente del gag (inventada, común a todo el juego). Recurrente, no se comprueba por separado."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Chequia",
+      "code": "CZ",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Extraliga muži + Extraliga ženy 2025-26 (mezcla)",
+          "name": "Extravolej",
+          "short": "EXV",
+          "strength": 59,
+          "clubs": [
+            {
+              "real": "ČEZ Karlovarsko",
+              "official": "Volejbalový klub ČEZ Karlovarsko",
+              "name": "Voley Carlsbad",
+              "short": "CAR",
+              "city": "Karlovy Vary",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFD200",
+                "shirt2": "#000000",
+                "libero": "#1E40AF"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Carlsbad\". Resultado: Sin club con ese nombre; solo instituto Carlsbad (California) y resultados sueltos. No coincide con ningún club de las listas 2025-26 de la Extraliga de hombres y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia en/es; sin respuesta de Wikipedia cs. Se quita el patrocinador ČEZ; guiño: Carlsbad, nombre alemán de Karlovy Vary.",
+              "realSponsor": true,
+              "sponsor": "Oplatky Smeč",
+              "sponsorCheck": "Obleas de balneario «Remate» (smeč = remate). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "VK Lvi Praha",
+              "official": "VK Lvi Praha",
+              "name": "Leones de Praga",
+              "short": "LEO",
+              "city": "Praga",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 61,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Leones de Praga\". Resultado: Sin resultados de club. Es la traducción al español de «Lvi Praha» (guiño), no el nombre oficial. No coincide con ningún club de las listas 2025-26 de la Extraliga de hombres y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/cs. Guiño: «Lvi» significa leones.",
+              "realSponsor": false
+            },
+            {
+              "real": "Jihostroj České Budějovice",
+              "official": "VK Jihostroj České Budějovice",
+              "name": "Voley Budějovice",
+              "short": "BUD",
+              "city": "České Budějovice",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F59E0B"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Budějovice\" OR \"Voley Budejovice\". Resultado: Sin coincidencia exacta; existen VK Jihostroj České Budějovice y «Volejbalový klub České Budějovice, z.s.», nombres distintos. No coincide con ningún club de las listas 2025-26 de la Extraliga de hombres y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/cs. Se quita «Jihostroj» (empresa que lo patrocina).",
+              "realSponsor": true,
+              "sponsor": "Knedlíkárna Blok",
+              "sponsorCheck": "Casa de knedlíky «Bloqueo». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Volejbal Kladno",
+              "official": "Volejbal Kladno",
+              "name": "Voley Kladensko",
+              "short": "KLA",
+              "city": "Kladno",
+              "gender": "M",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#0033A0",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Voley Kladno». Nota anterior: […] como libre (oleada final 12-nov): DUDOSO. Método: WebSearch \"Volley Kladno\" OR \"Volejbal Kladno\" club. Resultado: El real se llama oficialmente «Kladno volejbal cz» (antes VK Kladno). «Voley Kladno» es casi su traducción, en otro orden y sin el «cz»: patrón genérico, pero roza la regla de las traducciones. Alternativa buscada (libre): «Voley Kladensko» (la comarca). Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch \"Voley Kladno\" + segunda consulta \"Volejbal Kladno\" OR \"Kladno volejbal\". Resultado: El nombre oficial del club real es «Kladno volejbal cz, z.s.» (perfil CEV y Wikipedia «Kladno volejbal cz»). «Voley Kladno» usa las mismas dos ideas en orden inverso, con «Voley» en lugar de «volejbal»: no es idéntico, pero se parece mucho. Propuesta: Si se quiere evitar el riesgo: «Mineros de Kladno» (guiño al pasado minero y siderúrgico de Kladno; no comprobado por separado). No coincide con ningún club de las listas 2025-26 de la Extraliga de hombres y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/cs.",
+              "realSponsor": false
+            },
+            {
+              "real": "VK Dukla Liberec",
+              "official": "Volejbalový Klub Dukla Liberec",
+              "name": "Voley Liberec",
+              "short": "LIB",
+              "city": "Liberec",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#FFD200",
+                "shirt2": "#800000",
+                "libero": "#1E40AF"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Liberec\". Resultado: Solo VK Dukla Liberec (y Bílí Tygři en hockey); ningún «Voley Liberec». No coincide con ningún club de las listas 2025-26 de la Extraliga de hombres y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/cs.",
+              "realSponsor": false
+            },
+            {
+              "real": "VK Šelmy Brno",
+              "official": "VK Šelmy Brno",
+              "name": "Fieras Brno",
+              "short": "FIE",
+              "city": "Brno",
+              "gender": "W",
+              "colors": {
+                "shirt": "#6B21A8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Fieras Brno\". Resultado: Sin club con ese nombre; solo el zoo y la feria de Brno. Traducción libre de «Šelmy». No coincide con ningún club de las listas 2025-26 de la Extraliga de hombres y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/cs. Guiño: «šelmy» significa fieras.",
+              "realSponsor": false
+            },
+            {
+              "real": "VK Prostějov",
+              "official": "VK Prostějov",
+              "name": "Voley Prostějov",
+              "short": "PRO",
+              "city": "Prostějov",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Prostějov\" OR \"Voley Prostejov\". Resultado: Solo VK Prostějov (nombre oficial distinto). No coincide con ningún club de las listas 2025-26 de la Extraliga de hombres y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/cs.",
+              "realSponsor": false
+            },
+            {
+              "real": "VK UP Olomouc",
+              "official": "VK UP Olomouc (Univerzita Palackého)",
+              "name": "Voley Olomouc",
+              "short": "OLO",
+              "city": "Olomouc",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1D4ED8",
+                "shirt2": "#FF6600",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Olomouc\". Resultado: Solo VK UP Olomouc; ningún «Voley Olomouc». No coincide con ningún club de las listas 2025-26 de la Extraliga de hombres y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/cs.",
+              "realSponsor": false
+            },
+            {
+              "real": "VK Královo Pole Brno",
+              "official": "VK Královo Pole Brno",
+              "name": "Campo Real Brno",
+              "short": "CRB",
+              "city": "Brno",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0B3D91",
+                "shirt2": "#F2C200",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Campo Real Brno\". Resultado: Sin club con ese nombre; solo Campus Brno, campings, río Campo Real (Brasil). Es la traducción de «Královo Pole». No coincide con ningún club de las listas 2025-26 de la Extraliga de hombres y de mujeres (BetExplorer); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/cs. Guiño: «Královo Pole» significa campo del rey.",
+              "realSponsor": false
+            }
+          ],
+          "note": "[Integrador, búsqueda «\"Extravolej\" volejbal» 11-nov-2026: sin coincidencias.]"
+        }
+      ]
+    },
+    {
+      "country": "Serbia",
+      "code": "RS",
+      "tier": 3,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Superliga hombres + Superliga mujeres 2025-26 (mezcla)",
+          "name": "Hiperliga Srbija",
+          "short": "HLS",
+          "strength": 62,
+          "clubs": [
+            {
+              "real": "OK Vojvodina",
+              "official": "Odbojkaški klub Vojvodina (Vojvodina Mozzart)",
+              "name": "Panonia Novi Sad",
+              "short": "PNS",
+              "city": "Novi Sad",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#E31937",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Panonia Novi Sad\". Resultado: Sin club con ese nombre; solo un apartamento «Panonija», un taller y la aldea Panonija (Bačka Topola). No coincide con ningún club de las listas oficiales 2025-26 de la OSS (dataproject: Superliga hombres ID 91 y mujeres ID 92); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sr. Se quita el patrocinador; guiño: Voivodina está en la llanura panonia.",
+              "realSponsor": true,
+              "sponsor": "Pekara Smeč",
+              "sponsorCheck": "Panadería «Remate». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "OK Partizan",
+              "official": "Odbojkaški klub Partizan",
+              "name": "Crno-Beli Beograd",
+              "short": "CBB",
+              "city": "Belgrado",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#000000",
+                "shirt2": "#FFFFFF",
+                "libero": "#D4AF37"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Crno-Beli Beograd» no existe como club ni competición oficial. Método: WebSearch \"Crno-Beli Beograd\" klub: ningún club ni competición, solo el apodo «blanquinegros» de Partizan. Se cambió porque el nombre anterior, «Partisan Beograd», chocaba: Los resultados llevan directamente a FK/OK/KK Partizan Beograd (nombre oficial «Partizan Beograd»). Solo cambia z→s, y «Partisan» es la grafía alemana o inglesa habitual del mismo club, así que es prácticamente el mismo nombre. Nota anterior: No coincide con ningún club de las listas oficiales 2025-26 de la OSS (dataproject: Superliga hombres ID 91 y mujeres ID 92); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sr. Se quitan los patrocinadores; el guiño es mínimo (z → s).",
+              "realSponsor": false
+            },
+            {
+              "real": "OK Crvena Zvezda",
+              "official": "Odbojkaški klub / Ženski odbojkaški klub Crvena zvezda",
+              "name": "Crvena Zora",
+              "short": "CZO",
+              "city": "Belgrado",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Crvena Zora\" klub. Resultado: Todos los resultados son clubes «Crvena Zvezda»; ningún club «Crvena Zora». No coincide con ningún club de las listas oficiales 2025-26 de la OSS (dataproject: Superliga hombres ID 91 y mujeres ID 92); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sr. Guiño: «estrella roja» → «aurora roja».",
+              "realSponsor": false
+            },
+            {
+              "real": "OK Radnički Kragujevac",
+              "official": "Odbojkaški klub Radnički Kragujevac",
+              "name": "Voley Kragujevac",
+              "short": "KRA",
+              "city": "Kragujevac",
+              "gender": "M",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#FFFFFF",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Kragujevac\". Resultado: Solo OK Radnički Kragujevac y otros Radnički; ningún «Voley Kragujevac». No coincide con ningún club de las listas oficiales 2025-26 de la OSS (dataproject: Superliga hombres ID 91 y mujeres ID 92); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sr.",
+              "realSponsor": false
+            },
+            {
+              "real": "OK Novi Pazar",
+              "official": "Odbojkaški klub Novi Pazar",
+              "name": "Voley Novi Pazar",
+              "short": "NPZ",
+              "city": "Novi Pazar",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00843D",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Novi Pazar\". Resultado: Sin club de vóley con ese nombre; solo la ciudad y el FK Novi Pazar (fútbol, nombre distinto). No coincide con ningún club de las listas oficiales 2025-26 de la OSS (dataproject: Superliga hombres ID 91 y mujeres ID 92); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sr.",
+              "realSponsor": false
+            },
+            {
+              "real": "ŽOK TENT",
+              "official": "Ženski odbojkaški klub TENT (Obrenovac)",
+              "name": "Voley Obrenovac",
+              "short": "OBR",
+              "city": "Obrenovac",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F59E0B"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Obrenovac\". Resultado: Solo ŽOK Tent Obrenovac y un antiguo «Odbojkaški klub Obrenovac» citado en una tesis; ningún «Voley Obrenovac» exacto. No coincide con ningún club de las listas oficiales 2025-26 de la OSS (dataproject: Superliga hombres ID 91 y mujeres ID 92); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sr. Se quita «TENT» (central térmica que lo patrocina).",
+              "realSponsor": true,
+              "sponsor": "Ćevapi Kod Bloka",
+              "sponsorCheck": "Ćevapi «Junto al Bloqueo». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "ŽOK Ub",
+              "official": "Ženski odbojkaški klub Ub",
+              "name": "Voley Ub",
+              "short": "UBB",
+              "city": "Ub",
+              "gender": "W",
+              "colors": {
+                "shirt": "#C8102E",
+                "shirt2": "#FFFFFF",
+                "libero": "#1A1A1A"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Ub\" Serbia volleyball. Resultado: Solo ŽOK Ub (nombre oficial distinto). No coincide con ningún club de las listas oficiales 2025-26 de la OSS (dataproject: Superliga hombres ID 91 y mujeres ID 92); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sr.",
+              "realSponsor": false
+            },
+            {
+              "real": "ŽOK Železničar Lajkovac",
+              "official": "Ženski odbojkaški klub Železničar Lajkovac",
+              "name": "Ferroviario Lajkovac",
+              "short": "FER",
+              "city": "Lajkovac",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0033A0",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Ferroviario Lajkovac\". Resultado: Sin club con ese nombre; solo FK/ŽOK Železničar Lajkovac (traducción como guiño, nombre distinto). No coincide con ningún club de las listas oficiales 2025-26 de la OSS (dataproject: Superliga hombres ID 91 y mujeres ID 92); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sr. Guiño: «železničar» significa ferroviario.",
+              "realSponsor": false
+            },
+            {
+              "real": "ŽOK Jedinstvo Užice",
+              "official": "Ženski odbojkaški klub Jedinstvo Užice",
+              "name": "Voley Užice",
+              "short": "UZI",
+              "city": "Užice",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0033A0",
+                "shirt2": "#C8102E",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Voley Užice\" OR \"Voley Uzice\". Resultado: Solo OK Jedinstvo Užice y KK Sloboda Užice; ningún «Voley Užice». No coincide con ningún club de las listas oficiales 2025-26 de la OSS (dataproject: Superliga hombres ID 91 y mujeres ID 92); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sr.",
+              "realSponsor": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Eslovenia",
+      "code": "SI",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "1A. DOL moški + 1A. DOL ženske 2025-26 (mezcla)",
+          "name": "Odbojka Liga 1",
+          "short": "OL1",
+          "strength": 58,
+          "clubs": [
+            {
+              "real": "ACH Volley Ljubljana",
+              "official": "Odbojkarski klub ACH Volley",
+              "name": "Zmaji Ljubljana",
+              "short": "ZMA",
+              "city": "Liubliana",
+              "gender": "M",
+              "colors": {
+                "shirt": "#FF8A00",
+                "shirt2": "#1E3C94",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 66,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch con el nombre exacto entre comillas. Resultado: Ningún club ni competición se llama oficialmente así. «Zmaji» (dragones) es solo el apodo de equipos de Olimpija (fútbol, KK y HK Olimpija), y Mladi zmaji es un instituto juvenil municipal. No coincide con ningún club de las clasificaciones oficiales 2025-26 de la OZS (dataproject: 1A. DOL hombres y mujeres); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sl. Se quita ACH (patrocinador); guiño: su apodo «Oranžni zmaji» y el dragón de Liubliana.",
+              "realSponsor": true,
+              "sponsor": "Mesnica Bloker",
+              "sponsorCheck": "Carnicería «El Bloqueador». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Calcit Volley",
+              "official": "OK Calcit Volley (Kamnik)",
+              "name": "Voley Kamnik",
+              "short": "KAM",
+              "city": "Kamnik",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch: \"Voley Kamnik\" OR \"Volley Kamnik\" odbojka. Resultado: Solo sale OK Kamnik / Calcit Volley. No hay ningún club llamado «Voley/Volley Kamnik». No coincide con ningún club de las clasificaciones oficiales 2025-26 de la OZS (dataproject: 1A. DOL hombres y mujeres); no hay artículo con ese título en Wikipedia sl; sin respuesta de Wikipedia en/es. Se quita el patrocinador Calcit.",
+              "realSponsor": true,
+              "sponsor": "Mlekarna Sprejem",
+              "sponsorCheck": "Lechería «Recepción» (sprejem = recepción). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Alpacem Kanal",
+              "official": "OK Alpacem Kanal (antes Salonit Anhovo)",
+              "name": "Voley Kanal",
+              "short": "KNL",
+              "city": "Kanal ob Soči",
+              "gender": "M",
+              "colors": {
+                "shirt": "#1E3A8A",
+                "shirt2": "#FFFFFF",
+                "libero": "#F97316"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch: \"Voley Kanal\" OR \"Volley Kanal\" odbojka. Resultado: Sin coincidencia exacta; solo existe OK Alpacem Kanal. No coincide con ningún club de las clasificaciones oficiales 2025-26 de la OZS (dataproject: 1A. DOL hombres y mujeres); no hay artículo con ese título en Wikipedia sl; sin respuesta de Wikipedia en/es. Se quita el patrocinador Alpacem.",
+              "realSponsor": true,
+              "sponsor": "Vodoinštalater Servis",
+              "sponsorCheck": "Fontanería «Saque» (servis = saque). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "OK i-Vent Maribor",
+              "official": "Odbojkarski klub i-Vent Maribor",
+              "name": "Voley Maribor",
+              "short": "MBR",
+              "city": "Maribor",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0047AB",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch: \"Voley Maribor\" OR \"Volley Maribor\" odbojka. Resultado: Solo existen OK Maribor (i-Vent / Merkur Maribor) y OK OTP Banka Branik. No hay ningún «Volley Maribor». No coincide con ningún club de las clasificaciones oficiales 2025-26 de la OZS (dataproject: 1A. DOL hombres y mujeres); no hay artículo con ese título en Wikipedia sl; sin respuesta de Wikipedia en/es. Se quita el patrocinador i-Vent.",
+              "realSponsor": true,
+              "sponsor": "Vinoteka Visoka Žoga",
+              "sponsorCheck": "Vinoteca «Bola Alta» (Maribor, tierra de vino). WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Panvita Pomgrad",
+              "official": "OK Panvita Pomgrad (Murska Sobota)",
+              "name": "Voley Mura",
+              "short": "MRA",
+              "city": "Murska Sobota",
+              "gender": "M",
+              "colors": {
+                "shirt": "#00843D",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 55,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch: \"Voley Mura\" OR \"Volley Mura\" odbojka. Resultado: Sin coincidencia. Lo más cercano es Volley Muri Bern (Suiza, nombre distinto) y NK Mura (fútbol, nombre distinto). No coincide con ningún club de las clasificaciones oficiales 2025-26 de la OZS (dataproject: 1A. DOL hombres y mujeres); no hay artículo con ese título en Wikipedia sl/es; sin respuesta de Wikipedia en. Se quitan los patrocinadores; guiño: el río Mura.",
+              "realSponsor": true,
+              "sponsor": "Chanclas Supersónicas",
+              "sponsorCheck": "Marca recurrente del gag (inventada, común a todo el juego). Recurrente, no se comprueba por separado."
+            },
+            {
+              "real": "OTP banka Branik",
+              "official": "ŽOK Branik Maribor (OTP banka Branik)",
+              "name": "Pohorje Maribor",
+              "short": "VIJ",
+              "city": "Maribor",
+              "gender": "W",
+              "colors": {
+                "shirt": "#5B2C83",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 60,
+              "check": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Vijolice Maribor». Nota anterior: […] entre comillas (oleada final 12-nov): «Vijolice Maribor» no existe como club ni competición oficial. Método: WebSearch \"Vijolice Maribor\": no es el nombre oficial de ningún club, aunque varios clubes de Maribor (NK Maribor, RK Maribor Branik) lo usan como apodo («las violetas», por el morado de la ciudad). Se descartó «Bastion Maribor» por ser la traducción literal de Branik. Se cambió porque el nombre anterior, «Branič Maribor», chocaba: Existen AVK Branik Maribor (waterpolo), RK Maribor Branik (balonmano), NK Branik Maribor (fútbol) y NK Maribor, registrado como NK Maribor Branik. «Branič» solo cambia una letra respecto a «Branik»; además Soccerway (hr) pone «Branič (Maribor)». (WebSearch \"Branič Maribor\" OR \"Branic Maribor\".) Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch: \"Branič Maribor\" OR \"Branic Maribor\". Resultado: Hay muchos clubes «Branik Maribor» (AVK waterpolo, AKK baloncesto, RK Maribor Branik balonmano, NK Branik fútbol histórico, OK Branik vóley), que se distinguen solo por k/č. Además, Soccerway (hr) muestra a un jugador en un club «Branič (Maribor)», que podría ser una grafía de Branik o un club real. Propuesta: Mejor cambiarlo por un nombre sin «Branik/Branič», por ejemplo «Pohorje Maribor» (no comprobado: se acabó el cupo de búsquedas). No coincide con ningún club de las clasificaciones oficiales 2025-26 de la OZS (dataproject: 1A. DOL hombres y mujeres); no hay artículo con ese título en Wikipedia sl; sin respuesta de Wikipedia en/es. Se quita el patrocinador OTP banka; guiño de una letra (k → č). [Abreviatura BRA → VIJ.]",
+              "realSponsor": true,
+              "sponsor": "Pekarna Pri Mreži",
+              "sponsorCheck": "Panadería «Junto a la Red». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "GEN-I Volley",
+              "official": "ŽOK GEN-I Volley (Nova Gorica)",
+              "name": "Voley Nova Gorica",
+              "short": "NGO",
+              "city": "Nova Gorica",
+              "gender": "W",
+              "colors": {
+                "shirt": "#1E3A8A",
+                "shirt2": "#FFFFFF",
+                "libero": "#E5007D"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch: \"Volley Nova Gorica\" OR \"Voley Nova Gorica\". Resultado: Solo sale el nombre completo GEN-I Volley Nova Gorica. Sin el patrocinador no hay ningún club que se llame «Volley Nova Gorica». Ojo: nuestro nombre queda muy cerca de quitarle el patrocinador al real. No coincide con ningún club de las clasificaciones oficiales 2025-26 de la OZS (dataproject: 1A. DOL hombres y mujeres); no hay artículo con ese título en Wikipedia en/es; sin respuesta de Wikipedia sl. Se quita el patrocinador GEN-I.",
+              "realSponsor": true,
+              "sponsor": "Pršutarna Pri Bloku",
+              "sponsorCheck": "Jamonería «Junto al Bloqueo». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            },
+            {
+              "real": "Luka Koper Volley",
+              "official": "ŽOK Luka Koper",
+              "name": "Capodistria Volley",
+              "short": "CAP",
+              "city": "Koper",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0EA5E9",
+                "shirt2": "#FFFFFF",
+                "libero": "#F97316"
+              },
+              "liberoEstimated": true,
+              "ovr": 56,
+              "check": "No coincide con ningún club de las clasificaciones oficiales 2025-26 de la OZS (dataproject: 1A. DOL hombres y mujeres); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/sl. Se quita Luka (puerto que lo patrocina); guiño: Capodistria, nombre italiano de Koper. Búsqueda web PENDIENTE (cupo agotado). [Integrador, búsqueda web 11-nov-2026: sin club con ese nombre exacto, pero el club real de Koper se llama en el registro «Club di pallavolo Koper-Capodistria». ⚠ Muy cerca.]",
+              "realSponsor": true,
+              "sponsor": "Ribarnica Blok",
+              "sponsorCheck": "Pescadería «Bloqueo». WebSearch 11-nov-2026 con la frase exacta entre comillas (búsqueda agrupada con OR): sin resultados que coincidan con ninguna empresa o marca real; solo salen negocios genéricos con otros nombres."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "country": "Rumanía",
+      "code": "RO",
+      "tier": 4,
+      "divisions": [
+        {
+          "lvl": 1,
+          "real": "Divizia A1 masculin + Divizia A1 feminin 2025-26 (mezcla)",
+          "name": "Divizia Alfa",
+          "short": "DAL",
+          "strength": 60,
+          "clubs": [
+            {
+              "real": "CSM Arcada Galați",
+              "official": "Clubul Sportiv Municipal Arcada Galați",
+              "name": "Voley Galați",
+              "short": "GLT",
+              "city": "Galați",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 61,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch: \"Volei Galați\" OR \"Voley Galați\" OR \"Volley Galati\". Resultado: Solo salen CSM Arcada Galați y CSU (Metal) Galați. No hay ningún club «Volei Galați». No coincide con ningún club de las listas oficiales 2025-26 de la FRV (dataproject: Divizia A1 hombres y mujeres); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/ro. Antes «Arcadia Galați»: Arcada es la empresa patrocinadora, así que el guiño era al patrocinador; pasa a «Voley Galați» (ciudad).",
+              "realSponsor": false,
+              "sponsorCheck": "Dudoso: no se encontró que «Arcada» sea un patrocinador; se trata como nombre del club."
+            },
+            {
+              "real": "CSA Steaua București",
+              "official": "Clubul Sportiv al Armatei Steaua București (voleibol)",
+              "name": "Stelele București",
+              "short": "STE",
+              "city": "Bucarest",
+              "gender": "M",
+              "colors": {
+                "shirt": "#D2001F",
+                "shirt2": "#0033A0",
+                "libero": "#FFD200"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch: \"Stelele București\" club sportiv. Resultado: Sin coincidencia exacta; solo sale CSA Steaua București (el singular). «Stelele» en plural no es el nombre de ningún club. No coincide con ningún club de las listas oficiales 2025-26 de la FRV (dataproject: Divizia A1 hombres y mujeres); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/ro. Guiño: «steaua» (la estrella) → «stelele» (las estrellas).",
+              "realSponsor": false
+            },
+            {
+              "real": "SCM Zalău",
+              "official": "Sport Club Municipal Zalău",
+              "name": "Voley Zalău",
+              "short": "ZAL",
+              "city": "Zalău",
+              "gender": "M",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#FFFFFF",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 58,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleada final 12-nov): «Voley Zalău» no existe como club oficial. Método: WebSearch \"Volley Zalău\" OR \"Volei Zalău\" club. Resultado: El real es VM Zalău (Volei Municipal Zalău), antes Remat Zalău; también existe SCM Zalău (fútbol). No hay ningún «Volei/Voley Zalău» exacto: al nuestro le falta «Municipal». Se parece, pero no es igual. Nota anterior: Oleadas 11-nov: dudoso. Método: WebSearch: \"Volei Zalău\" OR \"Voley Zalau\" OR \"Volley Zalau\" club. Resultado: El club real se llama oficialmente (CS) Volei Municipal Zalău, abreviado VM Zalău, y hoy aparece como SCM Zalău. «Volei Zalău» se usa en la prensa como forma corta y solo se diferencia del nuestro por la traducción de Voley/Volei. No es el nombre oficial (le falta «Municipal»), pero está muy cerca. Propuesta: Si se quiere ir sobre seguro: «Sălaj Zalău» (no comprobado: se acabó el cupo). No coincide con ningún club de las listas oficiales 2025-26 de la FRV (dataproject: Divizia A1 hombres y mujeres); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/ro.",
+              "realSponsor": false
+            },
+            {
+              "real": "CS Unirea Dej",
+              "official": "Clubul Sportiv Unirea Dej",
+              "name": "Voley Dej",
+              "short": "DEJ",
+              "city": "Dej",
+              "gender": "M",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch: \"Volei Dej\" OR \"Voley Dej\" OR \"Volley Dej\" club. Resultado: Sin coincidencia; solo existe Unirea Dej. No coincide con ningún club de las listas oficiales 2025-26 de la FRV (dataproject: Divizia A1 hombres y mujeres); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/ro.",
+              "realSponsor": false
+            },
+            {
+              "real": "CSM Volei Alba Blaj",
+              "official": "Clubul Sportiv Municipal Volei Alba Blaj",
+              "name": "Voley Blaj",
+              "short": "BLA",
+              "city": "Blaj",
+              "gender": "W",
+              "colors": {
+                "shirt": "#FFFFFF",
+                "shirt2": "#FF0000",
+                "libero": "#1A1A1A"
+              },
+              "liberoEstimated": true,
+              "ovr": 63,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch: \"Volei Blaj\" OR \"Voley Blaj\" OR \"Volley Blaj\" club. Resultado: El club real es CSM Volei Alba Blaj (antes CS Volei Alba-Blaj y Volei Club Alba Blaj). Lleva «Alba» y no se llama «Volei Blaj» a secas, pero el parecido es notable. No coincide con ningún club de las listas oficiales 2025-26 de la FRV (dataproject: Divizia A1 hombres y mujeres); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/ro.",
+              "realSponsor": false
+            },
+            {
+              "real": "CSO Voluntari 2005",
+              "official": "Clubul Sportiv Orășenesc Voluntari 2005",
+              "name": "Voley Voluntari",
+              "short": "VOL",
+              "city": "Voluntari",
+              "gender": "W",
+              "colors": {
+                "shirt": "#0057B8",
+                "shirt2": "#F2C200",
+                "libero": "#FFFFFF"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebSearch agotado; se usó WebFetch sobre la búsqueda de ro.wikipedia \"Volei Voluntari\". Resultado: 0 resultados en ro.wikipedia. No se ha consultado volleybox. No coincide con ningún club de las listas oficiales 2025-26 de la FRV (dataproject: Divizia A1 hombres y mujeres); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/ro.",
+              "realSponsor": false
+            },
+            {
+              "real": "CS Dinamo București",
+              "official": "Clubul Sportiv Dinamo București (voleibol)",
+              "name": "Câinii Bucarest",
+              "short": "CAI",
+              "city": "Bucarest",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#E30613",
+                "shirt2": "#FFFFFF",
+                "libero": "#1E3A8A"
+              },
+              "liberoEstimated": true,
+              "ovr": 62,
+              "check": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Câinii Bucarest» no existe como club ni competición oficial. Método: WebSearch \"Câinii Bucarest\" OR \"Cainii Bucarest\" club y WebFetch a la búsqueda de ro.wikipedia «Câinii București»: ningún club; solo el apodo «Câinii roșii» de Dinamo. Se cambió porque el nombre anterior, «Dínamo Bucarest», chocaba: En es.wikipedia, «Dinamo Bucarest» redirige a FC Dinamo de Bucarest, y las tablas de la Divizia A1 de vóley de ro.wikipedia listan el equipo como «Dinamo Bucarest». Es el nombre real (CS/FC Dinamo București) traducido; solo cambia la tilde. Nota anterior: No coincide con ningún club de las listas oficiales 2025-26 de la FRV (dataproject: Divizia A1 hombres y mujeres); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/ro. El guiño es mínimo (forma española).",
+              "realSponsor": false
+            },
+            {
+              "real": "CSM Corona Brașov",
+              "official": "Clubul Sportiv Municipal Corona Brașov",
+              "name": "Voley Brașov",
+              "short": "BRS",
+              "city": "Brașov",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#FFD200",
+                "shirt2": "#000000",
+                "libero": "#E30613"
+              },
+              "liberoEstimated": true,
+              "ovr": 59,
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch sobre la búsqueda de ro.wikipedia \"Volei Brașov\". Resultado: 0 resultados. No se ha consultado volleybox.",
+              "realSponsor": false
+            },
+            {
+              "real": "CSM București",
+              "official": "Clubul Sportiv Municipal București",
+              "name": "Voley Bucarest",
+              "short": "VBU",
+              "city": "Bucarest",
+              "gender": "MW",
+              "colors": {
+                "shirt": "#0EA5E9",
+                "shirt2": "#1A1A1A",
+                "libero": "#F2C200"
+              },
+              "liberoEstimated": true,
+              "ovr": 57,
+              "check": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch sobre la búsqueda de ro.wikipedia \"Volei București\". Resultado: 0 resultados. No se ha consultado volleybox. No coincide con ningún club de las listas oficiales 2025-26 de la FRV (dataproject: Divizia A1 hombres y mujeres); no hay artículo con ese título en Wikipedia es; sin respuesta de Wikipedia en/ro.",
+              "realSponsor": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "competitions": [
+    {
+      "real": "CEV Champions League (las dos)",
+      "name": "Champions Cup VEC",
+      "short": "CCV",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Champions Cup VEC\" volleyball. Resultado: No sale nada exacto. La CEV Champions League se llamó «CEV European Champions Cup» entre 1959 y 2000, pero lleva CEV y no VEC, y el orden es otro. Unificado por el integrador (11-nov-2026): mismo nombre y sigla en todos los ficheros. Antes «Champions Cup» (CHC).",
+      "kind": "intl",
+      "rank": 1
+    },
+    {
+      "real": "CEV Cup (las dos)",
+      "name": "Copa VEC",
+      "short": "CVC",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Copa VEC\" voleibol. Resultado: Ningún resultado menciona «Copa VEC». Igual que en los otros ficheros.",
+      "kind": "intl",
+      "rank": 2
+    },
+    {
+      "real": "CEV Challenge Cup (las dos)",
+      "name": "Challenge VEC",
+      "short": "CHV",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Challenge VEC\" volleyball. Resultado: No sale nada exacto. Solo aparece la CEV Challenge Cup. Igual que elite-europa.json (fra-ale-esp.json usa «Challenge Trophy»: hay que unificar).",
+      "kind": "intl",
+      "rank": 3
+    },
+    {
+      "real": "BeNe Conference (Bélgica + Países Bajos, los 4 mejores de cada liga)",
+      "name": "Copa BeNeVol",
+      "short": "BNV",
+      "note": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch sobre la búsqueda de en.wikipedia \"BeNeVol\". Resultado: No hay ninguna competición con ese nombre. «Benevol» solo aparece como nombre de asociaciones de voluntariado suizas y como abreviatura latina. Fase conjunta de Bélgica y Países Bajos antes de los play-offs.",
+      "kind": "skip"
+    },
+    {
+      "real": "MEVZA (liga regional de Europa Central: Austria, Eslovenia, Croacia, Hungría...)",
+      "name": "Liga Alpes-Panonia",
+      "short": "LAP",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): «Liga Alpes-Panonia» no existe como club ni competición oficial. Método: WebSearch \"Liga Alpes-Panonia\" OR \"Alpine-Pannonian League\" y WebFetch a la búsqueda de en.wikipedia: ninguna liga con ese nombre (solo la Alpe Adria Cup de baloncesto y la Panonian League de hockey, nombres distintos). Se cambió porque el nombre anterior, «Liga Centroeuropea», chocaba: es.wikipedia usa literalmente «Liga Centroeuropea - MEVZA» como nombre en español de la competición real (palmarés de Jan Kozamernik y Roosa Koskelo). También se usa en hípica (Copa del Mundo de Salto). Es la traducción directa del nombre oficial (Middle European League). Nota anterior: Opcional: cruza clubes de Austria y Eslovenia.",
+      "kind": "skip"
+    },
+    {
+      "real": "Copa de Bélgica (Beker van België / Coupe de Belgique)",
+      "name": "Copa Belvolley",
+      "short": "CBV",
+      "note": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch sobre la búsqueda de en.wikipedia \"Belvolley\". Resultado: 0 resultados. No se ha podido comprobar con WebSearch ni con volleybox porque se agotó el cupo.",
+      "kind": "cup",
+      "country": "BE"
+    },
+    {
+      "real": "Copa de los Países Bajos (Nationale Bekerfinale)",
+      "name": "Copa Tulipán",
+      "short": "CTU",
+      "note": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch sobre la búsqueda de es.wikipedia \"Copa Tulipán\" y de en.wikipedia \"Tulip Cup\". Resultado: Solo aparece como tipo de copa de vidrio o como la empresa Lily-Tulip Cup. No existe ninguna competición deportiva con ese nombre.",
+      "kind": "cup",
+      "country": "NL"
+    },
+    {
+      "real": "Copa de Grecia",
+      "name": "Copa Helénica",
+      "short": "CHE",
+      "note": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch sobre la búsqueda de es.wikipedia \"Copa Helénica\". Resultado: 0 resultados.",
+      "kind": "cup",
+      "country": "GR"
+    },
+    {
+      "real": "Taça de Portugal",
+      "name": "Taça Lusa",
+      "short": "TLU",
+      "note": "Búsqueda entre comillas sin coincidencias (oleadas 11-nov), solo en Wikipedia (sin cupo de búsqueda web; confianza menor). Método: WebFetch sobre la búsqueda de pt.wikipedia \"Taça Lusa\". Resultado: 0 resultados.",
+      "kind": "cup",
+      "country": "PT"
+    },
+    {
+      "real": "Swiss Volley Cup",
+      "name": "Copa Helvética",
+      "short": "CHL",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Copa Helvética\" + volleyball/football/sport. Resultado: Sin coincidencia exacta. Lo más cercano: International Helvetia U16 Cup, un torneo juvenil de fútbol, y la Swiss Cup. Ojo: Helvetia también es una aseguradora suiza que patrocina, pero aquí «Helvética» va como adjetivo geográfico.",
+      "kind": "cup",
+      "country": "CH"
+    },
+    {
+      "real": "ÖVV-Cup / Austrian Cup",
+      "name": "Copa Austrovolley",
+      "short": "CAV",
+      "note": "Búsqueda web del nombre exacto entre comillas (oleadas 11-nov): no existe ningún club ni competición oficial con ese nombre. Método: WebSearch \"Copa Austrovolley\". Resultado: Sin resultados exactos; solo salen Austrian Volley Cup y Austrian Volley League.",
+      "kind": "cup",
+      "country": "AT"
+    },
+    {
+      "real": "Český pohár",
+      "name": "Copa Vltava",
+      "short": "CBO",
+      "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Copa Bohemia».",
+      "kind": "cup",
+      "country": "CZ"
+    },
+    {
+      "real": "Kup Srbije",
+      "name": "Copa Šumadija",
+      "short": "CSR",
+      "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Copa Srbija».",
+      "kind": "cup",
+      "country": "RS"
+    },
+    {
+      "real": "Pokal Slovenije",
+      "name": "Copa Alpes Julianos",
+      "short": "CTR",
+      "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Copa Triglav».",
+      "kind": "cup",
+      "country": "SI"
+    },
+    {
+      "real": "Cupa României",
+      "name": "Copa Transilvania",
+      "short": "CCP",
+      "note": "Búsqueda web del nombre exacto entre comillas (decisión 12-nov): no existe ningún club ni competición con ese nombre. Nombre anterior: «Copa Carpatos».",
+      "kind": "cup",
+      "country": "RO"
+    }
+  ]
+}

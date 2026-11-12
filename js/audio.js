@@ -2423,6 +2423,8 @@
         if (playPooled('dribble', (demo ? 0.4 : 0.75) * (0.7 + 0.3 * dsp), dx, dy, jit(0.06) * (0.97 + 0.04 * dsp), 0.16, 0)) stats.dribOut++;
         break;
       }
+      // playa (12-nov-2026): el sacador de la CPU no bota en la arena; da toquecitos al balón con la mano: palmada suave, sin bote de parqué
+      case 'juggle': playPooled('set', (demo ? 0.12 : 0.24) * (e.last ? 1 : 0.8), isFinite(e.x) ? e.x : evx(e), isFinite(e.y) ? e.y : evy(e), jit(0.06) * 0.85, 0.06, 0); break;
       case 'swing': playGap('whoosh', 0.15, 0.4, evx(e), evy(e), jit(0.15), 0); break;
       case 'jump': playGap('scuff', 0.08, demo ? 0.15 : 0.32, evx(e), evy(e), jit(0.15), 0.05); break;
       case 'landPlayer': {

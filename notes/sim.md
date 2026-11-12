@@ -1337,7 +1337,9 @@ de que llegue la pelota), puedes tocar la red y que sea falta, pero si no lo apr
   con un overpass, donde GOLPEAR es golpe normal; (2) salía durante el saque rival (touches 3 tras el saque) e invitaba a un toque de red;
   ahora `blkP` = `blockPressCase` y ataque rival pendiente o en vuelo, nunca con `lastKind 'serve'`. (3) En 6v6, un overpass que aún está a
   ≥ 0,6 m en el campo rival hacía que el humano en la red se comiera un toque de red al anticipar el remate (`lead = ∞`): ahora
-  `!spiked && toward` es golpe normal esté donde esté (solo con `g.rot`; en 2v2 cambia la huella: petición en SIGUIENTE.md). simtest (n).
+  `!spiked && toward` es golpe normal esté donde esté en 2v2 y 6v6. simtest (n).
+  En 2v2 se hizo después, a petición de Ferran («el overpass no está mal como error de recepción»: la IA los sigue haciendo): huella 2v2
+  regenerada con `--write` (7 de 150 partidas human/attrs cambian, CPU contra CPU idéntica; 1592 puntos, 573 026 llamadas a `g.rng`).
 
 ## 6v6, lote A: posiciones jugables, rotaciones reales y pistas en el campo (11-nov-2026) — sim / ai6 / fx / players / ui
 Pedido de Ferran en SIGUIENTE.md (lote A). Todo detrás de `g.rot`: la huella 2v2 sigue idéntica (150 partidas, 1591 puntos, 572 632

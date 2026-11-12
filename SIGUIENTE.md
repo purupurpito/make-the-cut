@@ -160,6 +160,18 @@ terminado.
 sus colores (camiseta y líbero), y proponer los nombres cambiados según las reglas. Déjalo en notes/clubes-reales.md para que
 Ferran lo revise. Usa búsqueda web.
 
+**Estado (11-nov-2026, integración del workflow; SIN COMMIT):** hecho y probado, falta la revisión de Ferran.
+- **Motor y UI:** Carrera de pista completa (js/career.js, js/career-ui.js; main.js `startCareerMatch` con 6v6; index.html carga
+  js/leagues.js). Diseño en notes/carrera.md «Carrera de pista 6v6»; API en CONTRACT.md «Carrera de pista 6v6 y ligas reales».
+- **Datos reales ya en el juego:** js/leagues.js con 28 países, 37 ligas y 390 clubes, GENERADO por `node tools/build-leagues.js` desde
+  notes/clubes/*.json (no se edita a mano). Competiciones unificadas (Champions Cup VEC, Copa VEC, Mundial de Clubes VBF…).
+- **Lista para Ferran: notes/clubes-reales.md** (club real → nuestro nombre, colores, ovr, nombre oficial, búsqueda, ⚠). Su regla era
+  revisarla «antes de meter las ligas en el juego»: los datos ya están en js/leagues.js porque así lo pidió el workflow, pero **no se
+  publica (push) hasta que Ferran la revise**. Si cambia algo: el JSON de notes/clubes/ y `node tools/build-leagues.js`.
+- **Pendiente:** búsqueda entre comillas de 204 clubes y de casi todas las copas (se agotó el cupo de los investigadores); 36 clubes
+  con ⚠; color del líbero del club y 2ª equipación en los choques (petición al lote A, abajo); colocador, opuesto y central (lote A);
+  editor local de clubes (opcional, sin empezar); escudos propios (la ficha enseña los tres colores).
+
 ## Preguntas abiertas para Ferran (no decidir sin él)
 1. **Circuito Mundial de la Carrera de playa:** los clubes de élite no los gana nadie. ¿Reto final o se suaviza?
 2. **«Cerrar sesión»:** ¿borra el progreso local del dispositivo? Hoy no lo borra.
@@ -168,6 +180,10 @@ Ferran lo revise. Usa búsqueda web.
 5. **Equilibrio de Fácil en el 6v6:** el equipo humano gana mucho.
 6. **«N.º 1 / N.º 2»** en Jugadores (dorsales).
 7. **Su revisión de textos**, lista A–D del 9-nov-2026.
+8. **Lista de clubes y competiciones de la Carrera de pista** (notes/clubes-reales.md, sección «Decisiones para Ferran»): los ⚠
+   (nombres casi iguales al real como «Volley Verona», «Vòlei Manacor», «Partisan Beograd»; colores de Jastrzębie; «Champions Cup» a
+   secas, que es oficial en rugby y fútbol, frente a «Champions Cup VEC»; clubes que faltan o que no jugaron la 2025-26) y los niveles
+   de Catar e Irán.
 
 ## Peticiones entre lotes
 (Escribe aquí: lote que pide → fichero, función y cambio exacto.)
@@ -207,7 +223,8 @@ Ferran lo revise. Usa búsqueda web.
   12-nov. Un overpass o un balón que cruza sin atacar (`!spiked && toward`) con el balón aún a más de 0,6 m en el campo rival hace que
   GOLPEAR en el aire sea pulsación de bloqueo con `lead = ∞`, y eso acaba en toque de red (prob. NET_PRESS) en vez de golpe. En 6v6 ya va
   arreglado (`g.rot ||`); en 2v2 basta quitar `(g.rot || Math.abs(b.x) < 0.6)` y dejar `if (!spiked && toward) return false;`. Cambia 7 de 150
-  partidas de la huella (variantes human/attrs del bot).
+  partidas de la huella (variantes human/attrs del bot). **Hecho (12-nov-2026, pedido de Ferran)**: en 2v2 también, huella regenerada. El overpass sigue existiendo como
+  error de recepción; solo cambia que GOLPEAR en el aire ante él es un golpe.
 - **Lote A → tools/console.sh (ui_main)**: la línea 9 `EXTRA="${4:-}"` pisa la variable de entorno `EXTRA`, así que
   `EXTRA=format=6v6 bash tools/console.sh all` prueba el 2v2 normal. Cambio: `EXTRA="${4:-${EXTRA:-}}"`. Mientras tanto, pásalo como
   4º argumento: `bash tools/console.sh all 1280 720 format=6v6`.
@@ -225,7 +242,26 @@ Ferran lo revise. Usa búsqueda web.
   `setup()` deja `m.career.rivalNum = l.rival.num` solo en los duelos (main.js lo pasa como `nums[1]` y a `VB.Players.setRival`). Las ligas
   de las noticias y los anales salen de `leaguesOf(c)` / `topLv(c)` en career-world.js (hoy los 5 circuitos de playa, 8 clubes, 14
   jornadas): con las ligas por país, cambia solo esas dos. Detalle en notes/carrera.md «Mundo de la Carrera (C1/C2)».
+- **Merge sprint 5 + main (12-nov-2026): Mundo de la Carrera en la pista HECHO.** Faro, Noticias y Clubes funcionan también en la
+  Carrera de pista (career-world.js con las ligas por país: `leaguesOf`/`topLv`/`otherLv` por `lid`, `BEATS_H`; career-ui.js `SUBS6.league`,
+  `lgSw6`, botones de club en `renderTable6`, mentor y Titulares en `renderMatch6`; careertest «Mundo de la Carrera en la pista»). Queda:
+  en la pista `m.nums` manda (main.js) y el dorsal del rival personal (`m.career.rivalNum`) no se coloca en el equipo rival; y la ficha
+  de un club de otra liga no enseña la forma reciente («Esta temporada»), porque la pista solo guarda los resultados de tu liga (`c.myRes`).
 - **Sprint 5 → Ferran (decisiones)**: `MKT = true` en career-world.js (rumores de verano con jugadores inventados; false para quitarlos);
   línea «Claude Code» en los créditos (TODO en version.js); salto a 1.0.0; desplegar firebase/firestore.rules (con 'gym') y DESPUÉS poner
   `GYM_SYNC = true` en account.js; probar el oro del bloqueo (16) con humanos; la recompensa de la finta (tirada «batida» por hash en vez
   del retraso puro de la spec).
+- **HECHO (12-nov-2026) · Lote C → lote A, js/players.js (color del líbero del club):** `matchSetup()` de la Carrera de pista ya pasa `kit.kitLibero` y
+  `rivalKit.kitLibero` (main.js los deja en `opts.kit` y `opts.kit.rival`). En `setKit(st)`, guardar `st.kitLibero` (equipo 0) y
+  `st.rival.kitLibero` (equipo 1); en `liberoKit(team)`, usarlos como camiseta del líbero si son número y se distinguen de las dos
+  camisetas (`kitDist` ≥ 0,8); si no, el cálculo de ahora. Fuera de la Carrera no cambia nada.
+- **HECHO (12-nov-2026) · Lote C → lote A, js/players.js (choque de equipaciones):** cuando la camiseta del rival se parece a la tuya, `setKit` le pone la
+  de la CPU (roja). En la Carrera sería mejor su 2ª equipación: camiseta = `rival.kitAccent` (su segundo color) si se distingue.
+  *Hecho:* `setKit` guarda `kitLibero` (tuyo; el del rival solo si viste de su club) y `liberoKit` lo usa si `kitDist` ≥ 0,8 con las
+  dos camisetas (y el rival, con tu líbero); si la 1ª del rival choca y su setup trae `kitLibero` (solo la pista), 2ª = camiseta
+  `kitAccent`, detalles = su 1ª, pantalón el suyo (o su 1ª si se funde); si también choca, la CPU. Playa, Carrera de playa, 2v2/6v6
+  normales: igual que antes. Prueba: `node tools/kittest.js` (16 comprobaciones + huella de 400 casos sin Carrera); capturas en
+  tools/out/kits/. El comentario viejo de main.js `startCareerMatch` ya está corregido. Revisión: el hub de pista enseña la 2ª del rival («2ª equipación») con `Players.rivalKit`.
+- **Para Ferran (datos, build-leagues):** solo hay 5 colores de líbero en las ligas de pista (#f2c200 el 39 %, blanco, #f39200, #e4002b, #111111); el negro casi nunca pasa el umbral (mkKit lo aclara a pizarra). Variar más los `libero` o no dar negros. Y detrás del hub de pista se ve la playa: es la demo del menú con el escenario de Ajustes (ya pasaba antes); forzar el pabellón con la pista activa sería cosa de main.js/ui.
+- **Lote C (hecho, aviso):** main.js `startMatch`/`startCareerMatch` pasan `format: '6v6'`, `ctrlRole` y `nums` en la Carrera de pista,
+  y tools/simtest.js carga js/leagues.js (una línea). No eran ficheros del lote C.
