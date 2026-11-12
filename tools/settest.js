@@ -65,7 +65,7 @@ const PAD = fs.readFileSync(path.join(__dirname, 'padplay.js'), 'utf8').match(/c
       }
       await tab('info');
       const info = await J(`[document.getElementById('optVer').textContent, document.getElementById('optSave').textContent, [].map.call(document.querySelectorAll('.opt-g[data-tab="info"] [data-go]'), function (b) { return b.getAttribute('data-go'); })]`);
-      check('Info: versión, progreso, Novedades y Créditos', /^0\.9\.\d+ \(\d+ [a-z]{3} \d{4}\)$/.test(info[0]) && /Guardado en/.test(info[1]) && info[2].join() === 'news,credits', info);
+      check('Info: versión, progreso, Novedades y Créditos', /^\d+\.\d+\.\d+ \(\d+ [a-z]{3} \d{4}\)$/.test(info[0]) && /Guardado en/.test(info[1]) && info[2].join() === 'news,credits', info);
       await tab('cam');
       await E(`window.__o = VB.CameraRig.OPTS; VB.CameraRig.OPTS = []; window.__f = VB.FX.OPTS; VB.FX.OPTS = ['cbColors']; VB.ctx.actions.setSetting('camSens', 1.1); 1`);
       await sleep(200);
