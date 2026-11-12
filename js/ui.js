@@ -747,8 +747,8 @@
           break;
         case 'set':
           // nivel 3, tras el momento del héroe: espera al corte al plano de reacción; acaba antes de la grúa del cambio de campo
-          if (!e.sets || e.sets[e.team] < 2) queuePres({ t1: e.team === 0 ? 'Set para ti' : 'Set para la CPU', t2: 'Set ' + e.setNo + ' | ' + e.score[0] + '-' + e.score[1],
-            t3: '', chip: 'SETS ' + e.sets[0] + '-' + e.sets[1], cls: (e.team === 0 ? 'win' : 'lose') + ' t3', dur: BAN.set, kind: 'set', gate: 'cut' });
+          if (!e.sets || e.sets[e.team] < 2) queuePres({ t1: e.team === 0 ? 'Set para ti' : 'Set para la CPU', t2: (SET_ORD[e.setNo - 1] || e.setNo + 'º') + ' set ' + e.score[0] + '-' + e.score[1] + ' | ' + e.sets[0] + '-' + e.sets[1] + ' en sets',
+            t3: '', cls: (e.team === 0 ? 'win' : 'lose') + ' t3', dur: BAN.set, kind: 'set', gate: 'cut' });
           break;
         case 'match':
           queuePres({ t1: e.team === 0 ? '¡Ganas el partido!' : 'Gana la CPU', t2: 'Sets ' + e.sets[0] + '-' + e.sets[1], t3: '', cls: (e.team === 0 ? 'ace' : 'lose') + ' t3', dur: BAN.match, kind: 'match', gate: 'cut' });
@@ -788,6 +788,7 @@
   }
   var missT = -9999;
   // (en frases de aviso: «Un punto para ganar el primer set», «Fin del segundo set»; las abreviaturas se quedan en etiquetas)
+  var SET_ORD = ['1r', '2º', '3r', '4º', '5º']; // etiquetas («1r set»), regla de SIGUIENTE.md
   var ORD = ['', 'primer', 'segundo', 'tercer'], pendCourt = null, courtNext = null, newSetShown = 0, bodyTipT = 0, lastBn2 = '', lastSub = '', held = null;
   var OUTK = { serve: 'Saque fuera', pass: 'Recepción fuera', set: 'Colocación fuera', spike: 'Remate fuera', free: 'Balón fuera' };
   // sin 'free': un balón libre (3r toque sin saltar) es la opción floja y no se celebra
@@ -1236,7 +1237,7 @@
     else t1 = me ? (tier > 1 ? '¡Punto!' : 'Punto') : 'Punto de la CPU';
     // ace con roce de recepción: dice por qué (sim lo acredita al saque); el ace limpio no necesita subtítulo. Si el árbitro
     // pita algo («Balón a la red» de la recepción que acaba en la red…), manda su texto, tal cual
-    if (k === 'ace' && (e.rallyHits | 0) > 0 && !ref) sub = me ? 'La CPU no controla la recepción' : 'No controlas la recepción';
+    if (k === 'ace' && (e.rallyHits | 0) > 0 && !ref) sub = me ? 'Recepción forzada' : 'Recepción fallida';
     // ace en el que la RECEPCIÓN acaba en la red: «Balón a la red» junto a «¡Ace!» se leía como saque a la red (falta del que
     // saca); se cuenta desde el lado del que recibe (verificación ola 2). Las faltas de red/antena/dobles/8 s siguen tal cual.
     if (k === 'ace' && /^Balón a la red$/.test(txt)) sub = me ? 'La recepción de la CPU va a la red' : 'Tu recepción va a la red';
@@ -1581,8 +1582,8 @@
     var e;
     if ((e = q('.in-t.t0 b'))) e.textContent = a;
     if ((e = q('.in-t.t1 b'))) e.textContent = b;
-    if ((e = q('.in-t.t0 small'))) e.textContent = cr && cr.meName ? cr.meName : p6 ? 'N.º ' + p6.num + ', ' + r6 : '+ compañero';
-    if ((e = q('.in-t.t1 small'))) e.textContent = cr && cr.rivalName ? cr.rivalName : g6 ? 'Equipo rival' : 'Pareja rival';
+    if ((e = q('.in-t.t0 small'))) e.textContent = cr && cr.meName ? cr.meName : p6 ? 'N.º ' + p6.num + ', ' + r6 : ''; if (e) e.hidden = !e.textContent;
+    if ((e = q('.in-t.t1 small'))) e.textContent = cr && cr.rivalName ? cr.rivalName : g6 ? 'Equipo rival' : ''; if (e) e.hidden = !e.textContent;
     txt(q('.p-team.t0'), true, a + ' '); txt(q('.p-team.t1'), false, ' ' + b);
     txt(q('.es-t.t0'), true, a + ' '); txt(q('.es-t.t1'), false, ' ' + b);
   }
@@ -1743,7 +1744,7 @@
         // balón en el aire: sin consejo arriba (tapaba el balón y el marcador colgado justo al golpear);
         // basta el aviso "¡Golpea ahora!" junto al jugador. Con el saque dirigible, mientras el balón SUBE, una línea corta
         // para la diana (se quita al bajar, antes de golpear)
-        coach = tips && svAim(g) && b.vz > 0 && !(down && wp < HINT_ON) ? (touchDev ? 'Apunta la diana con ' + gl.aim : '<b>Apunta la diana</b> con ' + gl.aim + ': con buen timing el saque va exacto') : '';
+        coach = tips && svAim(g) && b.vz > 0 && !(down && wp < HINT_ON) ? (touchDev ? 'Apunta la diana con ' + gl.aim : '<b>Apunta la diana</b> con ' + gl.aim + ': en el momento justo el saque va exacto') : '';
       } else if (g.mode === 'serve') {
         coach = !tips ? '' : g.size === 6 && (g.serveNo <= 3 || p.role === 'L') ? (touchDev ? 'Llevas al <b>n.º ' + p.num + '</b>, el ' + mateRole(p) : 'Llevas al <b>n.º ' + p.num + '</b>, el ' + mateRole(p) + ': la IA mueve al resto') // 6v6: a quién llevas (primeros saques; y siempre al entrar el líbero por ti)
           : sv && sv.team === 0 ? (g.size === 6 ? 'Saca ' + mate6(sv) : 'Saca tu compañero') // modo uno: saca la IA de tu equipo (6v6: por su puesto)
@@ -2142,8 +2143,9 @@
       : d === 'touch' ? '' : kh(pg === 'play' ? lr : ud, 'elegir') + kh('<span class="key">Intro</span>', 'aceptar') + (pg === 'quick' ? kh(lr, 'cambiar') : '') + (pg === 'main' ? '' : kh('<span class="key">Esc</span>', 'volver'));
     setHTML(el.navHint, 'navh', h);
     setText(el.ctlSub, 'ctls', d === 'gamepad' ? 'Mando conectado' : d === 'touch' ? 'Táctil' : 'Teclado y mando');
-    var rec = record.played ? '<span><b>' + record.wins + '/' + record.played + '</b>Victorias</span>' + (record.bestStreak ? '<span><b>' + record.bestStreak + '</b>Mejor racha</span>' : '') : '<span><b>Estreno</b>Primer partido</span>';
+    var rec = record.played ? '<span><b>' + record.wins + '/' + record.played + '</b>Victorias</span>' + (record.bestStreak ? '<span><b>' + record.bestStreak + '</b>Mejor racha</span>' : '') : '';
     setHTML(el.menuRecord, 'rec', rec);
+    if (el.menuRecord) el.menuRecord.style.display = rec ? '' : 'none';
     if (el.squadSub && VB.Prog) {
       var sq = VB.Prog.get().a, pt = sq[0].pts + sq[1].pts;
       // sin puntos: una pastilla por jugador con su dorsal en círculo («(1) Nv 3  (2) Nv 2»)
@@ -2295,10 +2297,10 @@
     }
     el.end.classList.toggle('win', win); el.end.classList.toggle('lose', !win);
     // (UI-18) antetítulo con contexto, sin repetir el título: «Palau del Mar · Nivel Normal · 3 sets»
-    var nSets = (e.setScores || []).length || ((e.sets ? e.sets[0] + e.sets[1] : 0) | 0), dn = VB.DIFF && ctx.game && VB.DIFF[ctx.game.difficulty] && VB.DIFF[ctx.game.difficulty].name;
-    // «Palau del Mar ◆ Nivel Normal | 3 sets»: la sede tras el rombo del antetítulo; nivel y sets, datos con la barra fina
-    setSep(el.endKicker, [venueName(), { h: 'Nivel ' + escT(dn || OPT.difficulty.labels[optIndex('difficulty')]) + SEP_V + nSets + (nSets === 1 ? ' set' : ' sets') }], 'd');
-    el.endTitle.textContent = watch ? (win ? 'Gana el equipo local' : 'Gana el visitante') : win ? '¡Victoria!' : 'Gana la CPU';
+    var endPts = (ctx.game && ctx.game.points) || 25, dn = VB.DIFF && ctx.game && VB.DIFF[ctx.game.difficulty] && VB.DIFF[ctx.game.difficulty].name;
+    // «Palau del Mar ◆ Nivel Normal | Sets a 25»: la sede tras el rombo del antetítulo; nivel y puntos por set, datos con la barra fina
+    setSep(el.endKicker, [venueName(), { h: 'Nivel ' + escT(dn || OPT.difficulty.labels[optIndex('difficulty')]) + SEP_V + 'Sets a ' + endPts }], 'd');
+    el.endTitle.textContent = watch ? (win ? 'Gana el local' : 'Gana el visitante') : win ? '¡Victoria!' : 'Gana la CPU';
     el.endS0.textContent = e.sets[0]; el.endS1.textContent = e.sets[1];
     el.endSets.innerHTML = (e.setScores || []).map(function (s, i) {
       return '<span class="w' + (s[0] > s[1] ? 0 : 1) + '"><small>SET ' + (i + 1) + '</small>' + s[0] + '-' + s[1] + '</span>';
@@ -2332,7 +2334,7 @@
       var dfk = ctx.game.difficulty, perP = [stats.p[0], stats.p[1]];
       var aw = VB.Prog.award(perP, { win: win, setsWon: e.sets ? e.sets[0] : 0, difficulty: dfk }), sqa = VB.Prog.get().a, xh = '';
       aw.forEach(function (r, i) {
-        xh += '<span>N.º ' + sqa[i].num + ': <b>+' + r.xp + ' XP</b>' + (r.lvlUp ? ' <span class="lv">¡NIVEL ' + r.lvl + '! +' + r.pts + ' PT</span>' : '') + '</span>';
+        xh += '<span>N.º ' + sqa[i].num + ': <b>+' + r.xp + ' XP</b>' + (r.lvlUp ? ' <span class="lv">¡NIVEL ' + r.lvl + '! +' + r.pts + ' puntos</span>' : '') + '</span>';
       });
       rec += '<div class="end-xp">' + xh + '</div>';
       if (VB.Badges) rec += endBadgesHTML(VB.Badges.endMatch(ctx.game, win));
@@ -2443,7 +2445,7 @@
     // Ajustes
     audio: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
     image: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-3z"/><circle cx="8.5" cy="9" r="1.6"/></svg>',
-    game: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3c-2.4 2.4-3.4 5.6-3 9M21 12c-3.2-1-6.4-.6-9 1.2M6.4 19c2.2-2 5-3 8.4-2.6" fill="none" stroke="#1d1530" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    game: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3c-2.4 2.4-3.4 5.6-3 9M21 12c-3.2-1-6.4-.6-9 1.2M6.4 19c2.2-2 5-3 8.4-2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
     kit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6l2 5 2.2-1V21h9.6V10l2.2 1 2-5-5.5-3c-.5 1.6-1.8 2.6-3.5 2.6S9 4.6 8.5 3z"/></svg>',
     a11y: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2.2"/><path d="M4 8.2l8 1.6 8-1.6.5 2-5.5 1.4V15l2 6.5-2 .6-3-6.1-3 6.1-2-.6 2-6.5v-3.4L3.5 10.2z"/></svg>'
   };
@@ -2590,7 +2592,7 @@
   //  PANELES: tutorial, controles, ajustes
   // =====================================================================
   // (UI-18: el antetítulo da contexto, nunca repite el título ni las pestañas)
-  var PANELS = { tut: ['pnTut', 'Tutorial', 'Cómo se juega'], ctl: ['pnCtl', 'Botones y gestos', 'Controles'], set: ['pnSet', 'Se guardan en este navegador', 'Ajustes'], first: ['pnFirst', 'Antes de empezar', 'Primer partido'], squad: ['pnSquad', 'Estadísticas y mejoras', 'Jugadores'] };
+  var PANELS = { tut: ['pnTut', '', 'Cómo se juega'], ctl: ['pnCtl', '', 'Controles'], set: ['pnSet', '', 'Ajustes'], first: ['pnFirst', '', 'Primer partido'], squad: ['pnSquad', '', 'Jugadores'] };
   var firstAsked = false;
   /** JUGAR desde el menú: la primera vez (sin partidos ni tutorial) ofrece ver el tutorial o jugar ya. */
   function play() {
@@ -2632,7 +2634,7 @@
   function openPanel(name, from) {
     panel = name; panelFrom = from || ctx.state;
     for (var k in PANELS) $(PANELS[k][0]).hidden = k !== name;
-    el.pnKick.textContent = PANELS[name][1]; el.pnTitle.textContent = PANELS[name][2];
+    el.pnKick.textContent = PANELS[name][1]; el.pnKick.hidden = !PANELS[name][1]; el.pnTitle.textContent = PANELS[name][2];
     if (name === 'tut') { tutGo(0); }
     if (name === 'ctl') { ctlView = device(); renderCtl(); }
     if (name === 'set') { renderOpts(); setTab(setTabs ? setTabs.get() : 'audio'); }
@@ -2690,13 +2692,13 @@
   function ctlRowsAll(dv) {
     if (dv === 'gamepad') {
       var P = padSet();
-      return [[S('Stick') + S('Cruceta'), 'Moverse'], [padKey('a'), 'Golpear y sacar <small>(stick: diana del saque)</small>'], [padKey('b'), 'Saltar <small>(en el aire: dejada)</small>'], [padKey('x'), 'Colocar en salto <small>(en el aire, 1r o 2º toque; en el 3r, dejada; en el suelo salta)</small>'],
+      return [[S('Stick') + S('Cruceta'), 'Moverse'], [padKey('a'), 'Golpear y sacar <small>(stick: diana del saque)</small>'], [padKey('b'), 'Saltar <small>(en el aire: dejada)</small>'], [padKey('x'), 'Colocar en salto <small>(en el aire; en el 3r toque, dejada)</small>'],
         [padKey('y') + S(P.lb) + S(P.rb), 'Cambiar jugador'], [S(P.start), 'Pausa'], [S(P.select), 'Sonido'], [S(padFam() === 'ps' ? 'L2' : 'LT'), 'Challenge <small>(7 s tras el punto)</small>'], [padKey('a') + padKey('b'), 'Menús: aceptar y volver']];
     }
     if (dv === 'touch') return [[S('Joystick') + '<small>mitad izquierda</small>', 'Moverse'], [T('Golpear'), 'Golpear y sacar <small>(joystick: diana del saque)</small>'],
       [T('Saltar', 1), 'Saltar <small>(en el aire: dejada)</small>'], [T('Colocar', 's'), 'Colocar en salto <small>(sale en el aire, junto a Saltar)</small>'], [S('⇄'), 'Cambiar jugador'], [S('CHALLENGE'), 'Challenge <small>(7 s tras el punto)</small>'], [S('II'), 'Pausa']];
     return [[K('W') + K('A') + K('S') + K('D') + '<small>o</small>' + K('↑') + K('←') + K('↓') + K('→'), 'Moverse'], [K('J') + K('X') + '<small>o</small>' + M('l'), 'Golpear y sacar <small>(flechas: diana)</small>'],
-      [K('Espacio') + '<small>o</small>' + M('r'), 'Saltar <small>(en el aire: dejada)</small>'], [K('K') + '<small>o</small>' + M('c'), 'Colocar en salto <small>(en el aire, 1r o 2º toque; en el 3r, dejada; en el suelo salta)</small>'], [K('C'), 'Cambiar jugador'], [K('V'), 'Challenge <small>(7 s tras el punto)</small>'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
+      [K('Espacio') + '<small>o</small>' + M('r'), 'Saltar <small>(en el aire: dejada)</small>'], [K('K') + '<small>o</small>' + M('c'), 'Colocar en salto <small>(en el aire; en el 3r toque, dejada)</small>'], [K('C'), 'Cambiar jugador'], [K('V'), 'Challenge <small>(7 s tras el punto)</small>'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
   }
   function renderCtl() {
     var cur = device();
@@ -2944,7 +2946,7 @@
       el.venueVal.textContent = OPT.arena.labels[vi];
       if (lastVenueI >= 0) { var vv = el.venueVal.parentNode; vv.classList.remove('sl-l', 'sl-r'); void vv.offsetWidth; vv.classList.add(vi > lastVenueI ? 'sl-r' : 'sl-l'); }
       el.optVenue.setAttribute('aria-label', 'Escenario: ' + OPT.arena.labels[vi] + ' (' + venueName(OPT.arena.vals[vi]) + (vb ? ', reglas de vóley playa' : six ? ', el 6 contra 6 es de pabellón' : '') + ')');
-      el.optVenue.title = vb ? 'Platja Llarga, vóley playa: pista de 16 × 8, sets a 21 (el 3r a 15) y cambio de campo cada 7 puntos' : 'Palau del Mar, pista cubierta de 18 × 9';
+      el.optVenue.title = vb ? 'Platja Llarga, vóley playa: pista de 16 × 8, sets a 21 y el tercero a 15, y cambio de campo cada 7 puntos' : 'Palau del Mar, pista cubierta de 18 × 9';
     }
     lastVenueI = vi;
     var vas = el.optVenue ? el.optVenue.querySelectorAll('.arr') : [];
@@ -2967,7 +2969,7 @@
     var pi = optIndex('setPoints'), ptxt = vb ? BEACH_PTS : OPT.setPoints.labels[pi];
     el.optPts.classList.toggle('lock', vb);
     var ptl = vb ? 'Puntos por set: 21, y el tercer set a 15 (reglas de vóley playa; se elige en Pabellón)' : 'Puntos por set: ' + OPT.setPoints.labels[pi];
-    if (el.optPts.getAttribute('aria-label') !== ptl) { el.optPts.setAttribute('aria-label', ptl); el.optPts.title = vb ? 'En la playa los sets van a 21 y el 3r a 15' : ''; }
+    if (el.optPts.getAttribute('aria-label') !== ptl) { el.optPts.setAttribute('aria-label', ptl); el.optPts.title = vb ? 'En la playa los sets van a 21 y el tercero a 15' : ''; }
     if (el.ptsVal.textContent !== ptxt) {
       el.ptsVal.textContent = ptxt;
       if (lastPtsI >= 0) { var pv = el.ptsVal.parentNode; pv.classList.remove('sl-l', 'sl-r'); void pv.offsetWidth; pv.classList.add(pi > lastPtsI ? 'sl-r' : 'sl-l'); }
@@ -3003,11 +3005,11 @@
     setText(el.fmtHelp, 'fh', six ? 'Equipos completos: llevas al ' + roleName().toLowerCase() : 'Tú y tu compañero contra la CPU');
     setText(el.venueHelp, 'vh', six ? 'El 6 contra 6 se juega en el pabellón' : vb ? 'Platja Llarga, vóley playa en pista de 16 × 8' : 'Palau del Mar, pista cubierta de 18 × 9');
     setText(el.diffHelp, 'dh', DIFF_HELP[di] || 'Nivel de la CPU');
-    setText(el.ptsHelp, 'ph', vb ? 'Reglas de playa: sets a 21 y el 3r a 15' : 'Al mejor de 3 sets; el 3r, a ' + Math.min(15, OPT.setPoints.vals[pi]));
+    setText(el.ptsHelp, 'ph', vb ? 'Reglas de playa: sets a 21 y el tercero a 15' : 'Al mejor de 3 sets; el tercero, a ' + Math.min(15, OPT.setPoints.vals[pi]));
     setText(el.ctrlHelp, 'ch', six ? (ROLE_HELP[role6] || 'Llevas al ' + roleName().toLowerCase() + ' (n.º ' + sixNum() + '); la IA mueve al resto') : ci > 0 ? 'Llevas al n.º ' + tn[0] + '; la IA lleva al n.º ' + tn[1] : 'El control pasa a quien va a tocar');
   }
   /** Una línea por nivel de dificultad (fila Dificultad de Partido rápido). */
-  var DIFF_HELP = ['Para empezar: la CPU saca suave y falla más', 'Un rival equilibrado', 'Ataca fuerte y defiende casi todo', 'Casi no falla: solo para expertos'];
+  var DIFF_HELP = ['La CPU saca suave', 'Ataca y defiende a medio gas', 'Defiende casi todo', 'Casi no falla'];
 
   // ---------- Tutorial ----------
   // Diagramas con proyección en perspectiva de la pista vista desde detrás del
@@ -3100,7 +3102,7 @@
     { step: 'Paso 1 de 6', title: 'El saque', fig: {
         players: [{ t: 0, x: 10.3, y: -1.5, you: 1, lbl: 'TÚ' }, { t: 0, x: 3.5, y: 2 }, { t: 1, x: -6.5, y: -2.2 }, { t: 1, x: -6.5, y: 2.2 }],
         segs: [{ a: [10.0, -1.5, 2.7], b: [-6.2, 1.6, 0.2], apex: 4.3, dur: 1.5, who: 0 }], ring: [-6.2, 1.6], swing: [[0, 0, 0.3]] },
-      text: function (g) { return 'Con ' + g.move + ' te desplazas por el fondo. ' + g.serve + ' lanza el balón para un saque flotante; ' + g.jump + ', para un <b>saque en salto</b>. Mientras sube, mueve la <b>diana</b> del campo rival con ' + g.aim + ' y vuelve a pulsar ' + g.serve + ' cuando baje a tu mano: con <b>timing perfecto</b>, el saque va exacto a la diana.'; },
+      text: function (g) { return 'Con ' + g.move + ' te desplazas por el fondo. ' + g.serve + ' lanza el balón para un saque flotante; ' + g.jump + ', para un <b>saque en salto</b>. Mientras sube, mueve la <b>diana</b> del campo rival con ' + g.aim + ' y vuelve a pulsar ' + g.serve + ' cuando baje a tu mano: en el <b>momento justo</b>, el saque va exacto a la diana.'; },
       rule: '<b>Ace</b> (punto directo de saque): el balón cae en el campo rival o la recepción no se controla. Tienes <b>8 segundos</b> para sacar; si sale fuera o pasa por fuera de las antenas, punto para el rival.' },
     { step: 'Paso 2 de 6', title: '1r toque · Recepción', fig: {
         players: [{ t: 0, x: 6, y: -1.5, you: 1, lbl: '1' }, { t: 0, x: 1.8, y: 1.2, lbl: '2' }, { t: 1, x: -9.8, y: 1 }, { t: 1, x: -3.5, y: -2 }],
@@ -3114,15 +3116,15 @@
       figOne: { players: [{ t: 0, x: 4.2, y: -2.4, you: 1, lbl: '1' }, { t: 0, x: 1.8, y: 1.2, lbl: '2' }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }] },
       text: function (g) {
         if (oneMode()) return 'Llevas siempre al mismo jugador: tu compañero (la IA) hace la <b>colocación</b>, un balón alto junto a la red, y tú te preparas para rematar. Si el 1r toque lo da él, la colocación es tuya: ponte bajo el balón y pulsa ' + g.hit + ', o salta y pulsa ' + g.jset + ' en el aire (<b>colocación en salto</b>).';
-        return 'El control pasa solo a tu compañero (la cámara se desliza hacia él). Ponte bajo el balón y pulsa ' + g.hit + ': es la <b>colocación</b>, un balón alto junto a la red. Si saltas, en el aire ' + g.hit + ' remata y ' + g.jset + ' hace una <b>colocación en salto</b>: más rápida, con menos margen de timing.';
+        return 'El control pasa solo a tu compañero (la cámara se desliza hacia él). Ponte bajo el balón y pulsa ' + g.hit + ': es la <b>colocación</b>, un balón alto junto a la red. Si saltas, en el aire ' + g.hit + ' remata y ' + g.jset + ' hace una <b>colocación en salto</b>: más rápida, con menos margen.';
       },
       rule: 'Cada equipo tiene <b>3 toques</b>. Un jugador no puede tocar dos veces seguidas: eso son <b>dobles</b>.',
-      ruleBeach: 'Cada equipo tiene <b>3 toques</b>. En la playa la <b>colocación de dedos</b> se pita más: con mal timing pueden pitarte <b>dobles</b>.' },
+      ruleBeach: 'Cada equipo tiene <b>3 toques</b>. En la playa la <b>colocación de dedos</b> se pita más: a destiempo pueden pitarte <b>dobles</b>.' },
     { step: 'Paso 4 de 6', title: '3r toque · Remate', fig: {
         players: [{ t: 0, x: 1.3, y: -2.4, you: 1, lbl: '3' }, { t: 0, x: 1.8, y: 1.2 }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }],
         segs: [{ a: [1.8, 1.2, 2.3], b: [1.05, -2.4, 3.15], apex: 5.3, dur: 1.15 }, { a: [1.05, -2.4, 3.15], b: [-6.2, 2.8, 0.2], dur: 0.38, who: 0, spike: 1 }],
         ring: [1.3, -2.4], jump: [[0, 0.62, 1.05]], swing: [[0, 1.05, 0.25]] },
-      text: function (g) { return 'En el 3r toque ponte bajo la colocación, pulsa ' + g.jump + ' para <b>saltar</b> y ' + g.hit + ' en lo alto: <b>remate</b>. En el aire, mueve la <b>diana</b> por el campo rival con ' + g.aim + '; con <b>timing perfecto</b>, el remate va exacto a ella.'; },
+      text: function (g) { return 'En el 3r toque ponte bajo la colocación, pulsa ' + g.jump + ' para <b>saltar</b> y ' + g.hit + ' en lo alto: <b>remate</b>. En el aire, mueve la <b>diana</b> por el campo rival con ' + g.aim + '; en el <b>momento justo</b>, el remate va exacto a ella.'; },
       rule: 'En el aire, ' + '<b>Saltar</b> otra vez hace una <b>dejada</b>. Si golpeas el 3r toque sin saltar, el balón pasa en globo (<b>balón libre</b>).',
       ruleBeach: 'En el aire, <b>Saltar</b> otra vez hace una dejada <b>de nudillos</b> (<b>pokey</b>): en la playa, con la yema de los dedos sería falta. Sin saltar, el 3r toque pasa en globo (<b>balón libre</b>).' },
     { step: 'Paso 5 de 6', title: 'El bloqueo', fig: {
@@ -3146,10 +3148,10 @@
     '<li><b>Dobles</b>El mismo jugador toca el balón dos veces seguidas.</li>' +
     '<li><b>Falta de saque: 8 segundos</b>Tras el silbato del árbitro tienes 8 segundos para sacar.</li>' +
     '<li><b>Ataque sobre el saque</b>No se puede rematar ni bloquear el saque rival por encima de la red.</li>' +
-    '<li><b>Challenge</b>¿Bote justo mal cantado? Pide revisión en 7 s. 2 por set; si fallas, gastas uno.</li>' +
+    '<li><b>Challenge</b>Si dudas de un bote, pide revisión en los 7 s siguientes. Tienes 2 por set y pierdes uno si fallas.</li>' +
     '<li><b>Cambio de campo</b>Al acabar cada set y a los 8 puntos del set decisivo.</li>' +
-    '<li><b>Sets</b>A 25 puntos con 2 de diferencia; el 3r, a 15. Gana quien se lleva 2 sets.</li>' +
-    '</ul><p class="tut-rule">Cada jugada da un punto (sistema de punto por jugada). Si la ganas recibiendo, recuperas el saque (<b>cambio de saque</b>) y sacáis por turnos: saca el jugador de tu equipo que no sacó la última vez <span class="fl-who">(y lo controlas tú)</span>.</p>';
+    '<li><b>Sets</b>A 25 puntos con 2 de diferencia; el tercero, a 15. Gana quien se lleva 2 sets.</li>' +
+    '</ul><p class="tut-rule">Cada jugada da un punto. Si la ganas recibiendo, recuperas el saque (<b>cambio de saque</b>) y sacáis por turnos: saca el jugador de tu equipo que no sacó la última vez <span class="fl-who">(y lo controlas tú)</span>.</p>';
   /** Paso 6: en modo Uno, el saque de tu compañero lo hace la IA. */
   function faultsHtml() {
     var f = oneMode() ? FAULTS.replace('(y lo controlas tú)', '(si le toca a tu compañero, saca la IA)') : FAULTS;
@@ -3157,9 +3159,9 @@
     // vóley playa (sim g.beach): pista 16×8, el bloqueo es toque, pokey, cambio de campo cada 7, sets a 21 / 15
     return f.replace('<b>Falta de saque: 8 segundos</b>Tras el silbato del árbitro tienes 8 segundos para sacar.', '<b>Falta de saque: 5 segundos</b>Tras el silbato del árbitro tienes 5 segundos para sacar.')
       .replace('Un equipo toca el balón más de 3 veces (el bloqueo no cuenta).', 'Un equipo toca el balón más de 3 veces. En la playa el bloqueo cuenta como toque.')
-      .replace('El mismo jugador toca el balón dos veces seguidas.', 'El mismo jugador toca el balón dos veces seguidas, o una colocación de dedos mal hecha. Dejar el balón con la yema de los dedos también es falta: en la playa se hace de nudillos (pokey).')
-      .replace('Al acabar cada set y a los 8 puntos del set decisivo.', 'En la playa, cada 7 puntos jugados (cada 5 en el 3r set) y al acabar cada set.')
-      .replace('A 25 puntos con 2 de diferencia; el 3r, a 15. Gana quien se lleva 2 sets.', 'En la playa, a 21 puntos con 2 de diferencia; el 3r, a 15. Gana quien se lleva 2 sets. La pista mide 16 × 8 m.');
+      .replace('El mismo jugador toca el balón dos veces seguidas.', 'El mismo jugador toca dos veces seguidas o coloca de dedos mal.')
+      .replace('Al acabar cada set y a los 8 puntos del set decisivo.', 'En la playa, cada 7 puntos jugados (cada 5 en el tercer set) y al acabar cada set.')
+      .replace('A 25 puntos con 2 de diferencia; el tercero, a 15. Gana quien se lleva 2 sets.', 'En la playa, a 21 puntos con 2 de diferencia; el tercero, a 15. Gana quien se lleva 2 sets. La pista mide 16 × 8 m.');
   }
   /** El tutorial explica las reglas del escenario: las del partido en curso o, desde el menú, las del escenario elegido. */
   function tutBeach() { var g = ctx.game; return g && !g.demo ? !!g.beach : menuVenue() === 'beach'; }

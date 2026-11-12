@@ -60,11 +60,11 @@
   var LEAGUES = [
     { lvl: 0, name: 'Circuito Regional', art: 'el', short: 'Regional', cup: 'Open Regional', diff: 'easy', ovr: [28, 40], xp: 1, ref: 'low' },
     { lvl: 1, name: 'Circuito Nacional', art: 'el', short: 'Nacional', cup: 'Open Nacional', diff: 'normal', ovr: [38, 50], xp: 1.5, ref: 'mid' },
-    { lvl: 2, name: 'Superliga de Playa', art: 'la', short: 'Superliga', cup: 'Open de la Superliga', diff: 'normal', ovr: [48, 61], xp: 2.1, ref: 'mid' },
+    { lvl: 2, name: 'Hiperliga de Playa', art: 'la', short: 'Hiperliga', cup: 'Open de la Hiperliga', diff: 'normal', ovr: [48, 61], xp: 2.1, ref: 'mid' },
     { lvl: 3, name: 'Circuito Continental', art: 'el', short: 'Continental', cup: 'Open Continental', diff: 'hard', ovr: [58, 71], xp: 2.8, ref: 'high' },
     { lvl: 4, name: 'Circuito Mundial', art: 'el', short: 'Mundial', cup: 'Final a Cuatro Mundial', diff: 'hard', ovr: [68, 84], xp: 3.6, ref: 'top' }
   ];
-  /** «el Circuito Regional» / «la Superliga de Playa» (art = artículo); toL: «al Circuito…» / «a la Superliga…». */
+  /** «el Circuito Regional» / «la Hiperliga de Playa» (art = artículo); toL: «al Circuito…» / «a la Hiperliga…». */
   function lname(L) { return L.art + ' ' + L.name; }
   function toL(L) { return (L.art === 'el' ? 'al ' : 'a la ') + L.name; }
   var POINTS = [PTS];   // (v1/v2 elegían 11/15/21/25; en la playa siempre a 21 y el 3r a 15)
@@ -368,14 +368,17 @@
     if (o.last && ren[o.last.rivalName]) o.last.rivalName = ren[o.last.rivalName];
   }
   /** Palmarés de los guardados v1/v2: las competiciones de pabellón («Liga Regional», «Copa Nacional», «Ascenso a Superliga»…)
-   *  pasan al circuito de playa del mismo nivel («Circuito Regional», «Open Nacional», «Ascenso a la Superliga de Playa»). El club
+   *  pasan al circuito de playa del mismo nivel («Circuito Regional», «Open Nacional», «Ascenso a la Hiperliga de Playa»). El club
    *  ya lo renombra beachify. Idempotente (también arregla los guardados que ya migraron a v3 con el nombre viejo). */
   var OLD_LG = ['Liga Regional', 'Liga Nacional', 'Superliga', 'Liga Continental', 'Circuito Mundial'];
   var OLD_CUP = ['Copa Regional', 'Copa Nacional', 'Copa de la Superliga', 'Copa Continental', 'Final a Cuatro Mundial'];
+  // (v3 llamaba «Superliga de Playa» al nivel 2; ahora es la Hiperliga: «Superliga de Playa» → «Hiperliga de Playa», «Open de la Superliga» → «Open de la Hiperliga»)
+  var OLD_LG3 = { 'Superliga de Playa': 2 }, OLD_CUP3 = { 'Open de la Superliga': 2 };
+  function oldIdx(arr, map, n) { var i = arr.indexOf(n); return i >= 0 ? i : Object.prototype.hasOwnProperty.call(map, n) ? map[n] : -1; }
   function beachTrophies(o) {
     (Array.isArray(o.trophies) ? o.trophies : []).forEach(function (t) {
       if (!t || typeof t.name !== 'string') return;
-      var i = t.kind === 'liga' ? OLD_LG.indexOf(t.name) : t.kind === 'copa' ? OLD_CUP.indexOf(t.name) : t.kind === 'ascenso' ? OLD_LG.indexOf(t.name.replace(/^Ascenso a (la )?/, '')) : -1;
+      var i = t.kind === 'liga' ? oldIdx(OLD_LG, OLD_LG3, t.name) : t.kind === 'copa' ? oldIdx(OLD_CUP, OLD_CUP3, t.name) : t.kind === 'ascenso' ? oldIdx(OLD_LG, OLD_LG3, t.name.replace(/^Ascenso a (la )?/, '')) : -1;
       if (i < 0) return;
       t.name = t.kind === 'liga' ? LEAGUES[i].name : t.kind === 'copa' ? LEAGUES[i].cup : 'Ascenso ' + toL(LEAGUES[i]);
     });
@@ -554,7 +557,7 @@
   function objectiveFor(c, k) {
     var e = expectedPos(c, k), top = k.lvl === LEAGUES.length - 1, low = k.lvl === 0;
     if (e <= 2) return top ? { pos: 1, text: 'Ganar el ' + league(k.lvl).name } : { pos: 2, text: 'Subir de categoría (quedar entre los 2 primeros)' };
-    if (e <= 4) return { pos: 4, text: 'Quedar entre los 4 primeros (y jugar el open)' };
+    if (e <= 4) return { pos: 4, text: 'Quedar entre los 4 primeros (y jugar el Open)' };
     if (e <= 6) return { pos: 6, text: 'Terminar en mitad de tabla (entre los 6 primeros)' };
     return low ? { pos: 7, text: 'No acabar último' } : { pos: 6, text: 'Evitar el descenso' };
   }
@@ -908,7 +911,7 @@
     });
     c.notes.push({ nota: nota, win: win ? 1 : 0, sim: sim ? 1 : 0, kind: f.kind, wk: f.kind === 'league' ? f.week : f.round, rival: rival.id, s: res.sets.slice() });
     var badges = extra && extra.badges || [];
-    var label = f.kind === 'league' ? 'Jornada ' + (f.week + 1) : (f.round === 0 ? 'Semifinal del open' : 'Final del open');
+    var label = f.kind === 'league' ? 'Jornada ' + (f.week + 1) : (f.round === 0 ? 'Semifinal del Open' : 'Final del Open');
     var phase0 = c.phase, season0 = c.season;
     recordMine(c, f, res.sets, res.setScores);
     var round = finishRound(c);

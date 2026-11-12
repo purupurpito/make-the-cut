@@ -217,16 +217,15 @@
     '#account .ac-tabs{display:flex;gap:6px;margin:4px 0 12px;padding:4px;border-radius:12px;background:rgba(0,0,0,.22)}' +
     '#account .ac-tabs button{flex:1;min-height:40px;border:0;border-radius:9px;background:transparent;color:var(--fg2,#dfe6ef);font:800 15px var(--display,sans-serif);letter-spacing:.08em;text-transform:uppercase;cursor:pointer}' +
     '#account .ac-tabs button[aria-selected=true]{background:var(--gold,#ffd23f);color:var(--tk,#1d1530);box-shadow:0 0 0 2px var(--tk,#1d1530)}' +
-    '#account label{display:block;margin:0 0 4px;font:800 11px var(--display,sans-serif);letter-spacing:.24em;text-transform:uppercase;color:var(--amber,#ffb238)}' +
+    '#account label{display:block;margin:0 0 4px;font:800 11px var(--display,sans-serif);letter-spacing:.24em;text-transform:uppercase;color:var(--gold,#ffd23f)}' +
     '#account input{width:100%;box-sizing:border-box;height:46px;margin:0 0 10px;padding:0 12px;border:0;border-radius:11px;background:rgba(0,0,0,.3);color:#fff;font:600 17px var(--ui,system-ui,sans-serif);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12)}' +
     '#account input:focus{outline:none;box-shadow:inset 0 0 0 2.5px var(--gold,#ffd23f)}' +
     '#account .ac-warn{padding:8px 10px;border-radius:10px;background:rgba(255,178,56,.12);box-shadow:inset 0 0 0 1.5px rgba(255,178,56,.4);font-size:13px}' +
     '#account .ac-err{color:#ff9b8a;font-weight:700;min-height:1em}' +
     '#account .ac-acts{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:6px}' +
     '#account .ac-acts button,#account .ac-row button{min-height:44px;padding:0 16px;border:0;border-radius:12px;font:800 16px var(--display,sans-serif);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:#fff;background:var(--tp2,#352d5c);box-shadow:inset 0 0 0 2px var(--tk,#1d1530),3px 4px 0 var(--tk,#1d1530)}' +
-    '#account .pri{background:linear-gradient(180deg,#ff8040 0 50%,#f65d1d 50% 100%)!important}' +
-    '#account .dan{background:#a3263a!important}' +
-    '#account button:disabled{opacity:.55;cursor:default}' +
+    '#account .pri{background:var(--pri,linear-gradient(180deg,#ff8040 0 50%,#f65d1d 50% 100%))!important}' +
+    '#account .dan{background:var(--bad-d,#a8283a)!important}' +
     '#account .ac-x{position:absolute;top:10px;right:10px;width:44px;height:44px;border:0;border-radius:12px;background:transparent;color:var(--fg,#fff);font-size:26px;line-height:1;cursor:pointer}' +
     '#account .ac-user{display:flex;align-items:center;gap:12px;margin:6px 0 12px;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.2)}' +
     '#account .ac-av{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:#1cc4b4;color:var(--tk,#1d1530);font:900 24px var(--display,sans-serif);box-shadow:0 0 0 2.5px var(--tk,#1d1530)}' +
@@ -237,7 +236,7 @@
     '#account .ac-choice button{text-align:left;min-height:56px;padding:8px 14px;border:0;border-radius:12px;color:#fff;background:var(--tp2,#352d5c);box-shadow:inset 0 0 0 2px var(--tk,#1d1530),3px 4px 0 var(--tk,#1d1530);font:600 14px var(--ui,system-ui,sans-serif);cursor:pointer}' +
     '#account .ac-choice b{display:block;font:900 17px var(--display,sans-serif);letter-spacing:.05em;text-transform:uppercase;color:var(--gold,#ffd23f)}' +
     '#btnAcc .ac-dot{width:9px;height:9px;border-radius:50%;background:var(--muted,#93a4b9);box-shadow:0 0 0 1.5px var(--tk,#1d1530)}' +
-    '#btnAcc.on .ac-dot{background:#1cc4b4}#btnAcc.busy .ac-dot{background:var(--gold,#ffd23f)}#btnAcc.err .ac-dot{background:#ff6a5a}' +
+    '#btnAcc.on .ac-dot{background:#1cc4b4}#btnAcc.busy .ac-dot{background:var(--gold,#ffd23f)}#btnAcc.err .ac-dot{background:#ff6a5a}#btnAcc:not(.on):not(.busy):not(.err) .ac-dot{display:none}' +
     '@media (max-height:460px){#account .ac-sheet{padding:10px 16px 12px}#account h2{font-size:22px}#account .ac-intro{display:none}#account .ac-tabs{margin:2px 0 8px}#account .ac-tabs button{min-height:36px}#account input{height:40px;margin-bottom:6px}#account .ac-warn{font-size:12px;padding:6px 8px;margin-bottom:4px}}' +
     '#accToast{position:fixed;left:50%;bottom:calc(18px + var(--sbm,0px));transform:translateX(-50%);z-index:195;max-width:calc(100% - 32px);padding:10px 16px;border-radius:12px;background:var(--tp,#2b2547);color:var(--fg,#fff);font:700 14px var(--ui,system-ui,sans-serif);box-shadow:inset 0 0 0 2px var(--tk,#1d1530),4px 5px 0 var(--tk,#1d1530);pointer-events:none}';
   var root = null, view = 'enter', tab = 'in', busy = false, msg = '', pending = null, lastFocus = null;
@@ -356,6 +355,7 @@
     btn.querySelector('span').textContent = acc ? acc.user : 'Cuenta';
     btn.classList.toggle('on', !!acc); btn.classList.toggle('busy', status === 'busy'); btn.classList.toggle('err', status === 'error');
     btn.setAttribute('aria-label', acc ? 'Cuenta: ' + acc.user : 'Cuenta: guarda tu progreso');
+    btn.title = acc ? 'Sesión iniciada' : 'Sin sesión';
   }
   function placeBtn() {
     if (!btn) return;

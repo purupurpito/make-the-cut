@@ -36,7 +36,7 @@
   var HLP = { esc: function (s) { return esc(s); }, sp: function (a, k) { return sp(a, k); } };
   var tabsApi = null, subApi = null, rejArm = 0, stayArm = 0, offArm = -1;   // offArm: oferta de mitad de temporada pendiente de confirmar
   var GROUP_OF = { atk: 'Ataque', def: 'Defensa', phys: 'Físico' };
-  var TIER_C = ['#6b6390', '#d58a4a', '#c9d3de', '#ffd23f'];
+  var TIER_C = ['var(--tier0,#6b6390)', 'var(--tier1,#e08a45)', 'var(--tier2,#cfdbe9)', 'var(--tier3,#ffd23f)'];   // (los tonos de .bd-t de Jugadores)
   var TIER_N = ['Bloqueada', 'Bronce', 'Plata', 'Oro'];
 
   function C() { return VB.Career; }
@@ -61,7 +61,7 @@
     return '<i class="cr-kit' + (big ? ' big' : '') + '" style="background:' + bg + '" aria-hidden="true"></i>';
   }
   function notaCls(n) { return n >= 8 ? 'n-top' : n >= 7 ? 'n-good' : n >= 6 ? 'n-ok' : n >= 5 ? 'n-meh' : 'n-bad'; }
-  /** «del Circuito Regional» / «de la Superliga de Playa». */
+  /** «del Circuito Regional» / «de la Hiperliga de Playa». */
   function deL(L) { return (L.art === 'el' ? 'del ' : 'de la ') + L.name; }
   function lab(k) { var LB = VB.Prog && VB.Prog.LABEL; return (LB && LB[k] || k).toLowerCase(); }
   /** «+4 sobre el club» / «−3 bajo el club» / «al nivel del club» (desvío de la media del compañero respecto a la del club). */
@@ -114,80 +114,83 @@
     '#career button:active{transform:translateY(2px);box-shadow:inset 0 0 0 2.5px var(--tk),1px 1px 0 var(--tk)}',
     '#career button:focus{outline:none}',
     '#career button:focus-visible,#career button.kf,#career input:focus-visible{outline:none;box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffb238,3px 4px 0 var(--tk)}',
-    '#career button.pri{background:linear-gradient(180deg,#ff8040 0 50%,#f65d1d 50% 100%);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 4px 0 rgba(255,255,255,.25),4px 5px 0 var(--tk)}',
+    '#career button.pri{background:var(--pri);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 4px 0 rgba(255,255,255,.25),4px 5px 0 var(--tk)}',
     '#career button.pri:focus-visible,#career button.pri.kf{box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #fff,4px 5px 0 var(--tk)}',
-    '#career button.warn{background:linear-gradient(180deg,#d8364a 0 50%,#b51f33 50% 100%)}',
-    '#career button[disabled]{opacity:.45;cursor:default;transform:none}',
-    '#career button[aria-pressed="true"]{background:linear-gradient(180deg,#ffd23f 0 50%,#f2b51c 50% 100%);color:var(--tk);text-shadow:none}',
+    '#career button.warn{background:linear-gradient(180deg,var(--bad) 0 50%,#e0384f 50% 100%)}',
+    '#career button[aria-pressed="true"]{background:linear-gradient(180deg,var(--gold) 0 50%,#f2b51c 50% 100%);color:var(--tk);text-shadow:none}',
     '#career .cr-head{display:flex;align-items:center;gap:12px;flex:none}',
     '#career .cr-title{flex:1;min-width:0}',
-    '#career .cr-title small{display:block;font:800 12px var(--display);letter-spacing:.3em;text-transform:uppercase;color:#ffd23f;text-shadow:var(--ring1)}',
+    '#career .cr-title small{display:block;font:800 12px var(--display);letter-spacing:.3em;text-transform:uppercase;color:var(--gold);text-shadow:var(--ring1)}',
     '#career .cr-title b{display:block;font:900 26px/1.05 var(--display);letter-spacing:.04em;text-transform:uppercase;text-shadow:var(--ring2),2px 3px 0 var(--tk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '#career .cr-ovr{text-align:center;font:900 30px/1 var(--display);color:var(--gold);text-shadow:var(--ring2),2px 3px 0 var(--tk)}',
-    '#career .cr-ovr small{display:block;font:800 10px var(--display);letter-spacing:.24em;color:#d6d0f5;text-shadow:var(--ring1)}',
+    '#career .cr-ovr small{display:block;font:800 10px var(--display);letter-spacing:.24em;color:var(--soft);text-shadow:var(--ring1)}',
     '#career .cr-tabs{display:flex;gap:6px;overflow-x:auto;flex:none;padding:2px 4px 6px 2px;scrollbar-width:none}',
     '#career .cr-tabs[hidden]{display:none}',
+    // (aviso de que hay más a los lados: desvanecido en los bordes de la fila que se desplaza, solo si no cabe —clase ovf, la pone fitBar—)
+    '#career .ovf:not(.tabs),#career .ovf .tb-row{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 24px),transparent)}',
     '#career .cr-tabs::-webkit-scrollbar{display:none}',
     // (sin ui.js —pruebas—: botones sueltos; con ui.js las barras son el componente común VB.UI.tabs, estilos más abajo)
     '#career .cr-tabs:not(.tabs) button{flex:none;font-size:16px;padding:0 14px}',
-    '#career .cr-tabs:not(.tabs) button[aria-selected="true"]{background:linear-gradient(180deg,#ff8040 0 50%,#f65d1d 50% 100%)}',
+    '#career .cr-tabs:not(.tabs) button[aria-selected="true"]{background:var(--pri)}',
     '#career .cr-tabs .dot,#career .cr-sub .dot{display:inline-block;width:9px;height:9px;margin-left:2px;border-radius:50%;background:#ff8040;box-shadow:0 0 0 1.5px var(--tk);vertical-align:2px}',
     // pestañas con el componente común (index.html «MENÚS v2»: .tabs/.tb-row/.tab/.tb-k); #career button pesa más (id): se rehace aquí
     '#career .tabs{margin:0;padding:0;overflow:visible}',
-    '#career .tabs .tab{flex:1 0 auto;min-height:40px;padding:6px 12px;border-radius:11px;font:800 15px/1 var(--display);letter-spacing:.08em;color:#cfc8f2;background:transparent;box-shadow:none;text-shadow:none;transform:none;gap:6px}',
+    '#career .tabs .tab{flex:1 0 auto;min-height:40px;padding:6px 12px;border-radius:11px;font:800 15px/1 var(--display);letter-spacing:.08em;color:var(--soft);background:transparent;box-shadow:none;text-shadow:none;transform:none;gap:6px}',
     '#career .tabs .tab:hover:not(.on){background:rgba(255,255,255,.09);color:#fff}',
-    '#career .tabs .tab.on{color:var(--tk);background:linear-gradient(180deg,#ffd23f 0 50%,#ffc21a 50% 100%);box-shadow:inset 0 0 0 2px var(--tk),2px 3px 0 var(--tk)}',
+    '#career .tabs .tab.on{color:var(--tk);background:linear-gradient(180deg,var(--gold) 0 50%,#ffc21a 50% 100%);box-shadow:inset 0 0 0 2px var(--tk),2px 3px 0 var(--tk)}',
     '#career .tabs .tab.kf,#career .tabs .tab:focus-visible{outline:3px solid #fff;outline-offset:1px}',
     '#career .tabs .tb-k{min-height:0;height:30px;min-width:32px;padding:0 7px;border-radius:9px;font:800 13px/1 var(--display);letter-spacing:.04em;color:var(--tk);background:#fff7e8;box-shadow:inset 0 0 0 1.5px var(--tk),0 3px 0 var(--tk);text-shadow:none}',
     '#career .tabs .tb-k:empty,#career .tabs.tb-touch .tb-k{display:none}',
     // segundo nivel (sub-pestañas): la misma barra, más baja y sin pistas de tecla (Q/E cambian el primer nivel; RePág/AvPág y LT/RT el segundo)
-    '#career .cr-sub.tabs .tb-row{background:rgba(29,21,48,.35);box-shadow:inset 0 0 0 1.5px rgba(29,21,48,.9)}',
-    '#career .cr-sub.tabs .tab{min-height:36px;font-size:13.5px;padding:5px 10px}',
+    '#career .cr-sub.tabs .tb-row{flex:0 1 auto;max-width:100%;background:rgba(29,21,48,.85);box-shadow:inset 0 0 0 1.5px rgba(29,21,48,.9)}',
+    '#career .cr-sub.tabs .tab{flex:0 1 auto;min-width:120px;min-height:36px;font-size:15px;padding:5px 10px}',
     '#career .cr-sub.tabs .tb-k{display:none}',
     '.is-touch #career .tabs .tab,.is-touch #career .cr-sub.tabs .tab{min-height:44px}',
-    '#career .cr-body{flex:1;min-height:0;overflow:auto;padding:4px 6px 14px 2px;overscroll-behavior:contain}',
+    '#career .cr-body{flex:1;min-height:0;overflow:auto;padding:4px 6px 28px 2px;overscroll-behavior:contain;-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(180deg,#000 calc(100% - 28px),transparent)}',
     '#app.cr-on #menu,#app.cr-on .hud-btns{visibility:hidden}',
-    '#career .bd-msg{min-height:1.4em;margin:6px 0 0;font:700 13.5px var(--ui);color:#ffd23f}',
+    '#career .bd-msg{min-height:1.4em;margin:6px 0 0;font:700 13.5px var(--ui);color:var(--gold)}',
     '#career .card{background:linear-gradient(180deg,rgba(58,49,104,.97),rgba(46,39,86,.97) 90px);border-radius:14px;box-shadow:0 0 0 2.5px var(--tk),4px 5px 0 var(--tk);padding:12px 14px;margin:0 0 12px}',
-    '#career h3{margin:0 0 8px;font:800 13px var(--display);letter-spacing:.3em;text-transform:uppercase;color:var(--amber,#ffb238);text-shadow:var(--ring1)}',
-    '#career p{margin:4px 0;line-height:1.4;color:#e8e3fb}',
-    '#career .muted{color:#b9b0e6;font-size:13.5px}',
+    '#career h3{margin:0 0 8px;font:800 13px var(--display);letter-spacing:.3em;text-transform:uppercase;color:var(--gold);text-shadow:var(--ring1)}',
+    '#career p{margin:4px 0;line-height:1.4;color:var(--fg2)}',
+    '#career .muted{color:var(--muted);font-size:13.5px}',
     '#career .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
     '#career .grow{flex:1}',
     '#career .vs{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center}',
     '#career .team{display:flex;align-items:center;gap:10px;min-width:0}',
     '#career .team.r{flex-direction:row-reverse;text-align:right}',
     '#career .team b{display:block;font:900 22px/1.05 var(--display);text-transform:uppercase;letter-spacing:.03em;text-shadow:var(--ring1),2px 2px 0 var(--tk);overflow:hidden;text-overflow:ellipsis}',
-    '#career .team small{display:block;font:600 13px var(--ui);color:#cfc8f2}',
-    '#career .vs-mid{font:900 26px var(--display);color:#ffd23f;text-shadow:var(--ring2)}',
-    '#career .cr-kit{flex:none;display:inline-block;width:34px;height:40px;border-radius:9px 9px 6px 6px;box-shadow:0 0 0 2px var(--tk),2px 3px 0 var(--tk)}',
+    '#career .team small{display:block;font:600 13px var(--ui);color:var(--soft)}',
+    '#career .vs-mid{font:900 26px var(--display);color:var(--gold);text-shadow:var(--ring2)}',
+    '#career .cr-kit{flex:none;display:inline-block;width:34px;height:40px;border-radius:9px 9px 6px 6px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 0 0 2px var(--tk),2px 3px 0 var(--tk)}',
     '#career .cr-kit.big{width:48px;height:56px}',
-    '#career .kit-mini{width:16px;height:18px;border-radius:5px 5px 3px 3px;box-shadow:0 0 0 1.5px var(--tk);vertical-align:-3px;margin-right:6px}',
+    '#career .kit-mini{width:16px;height:18px;border-radius:5px 5px 3px 3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),0 0 0 1.5px var(--tk);vertical-align:-3px;margin-right:6px}',
     '#career .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}',
     '#career .acts button{flex:1 1 180px}',
     '#career .nota{flex:none;display:grid;place-items:center;width:64px;height:64px;border-radius:50%;font:900 28px var(--display);color:#fff;text-shadow:var(--ring2);box-shadow:0 0 0 2.5px var(--tk),3px 4px 0 var(--tk)}',
     '#career .nota span{display:block;text-align:center;line-height:.9}',
-    '#career .nota small{display:block;font:800 9px var(--display);letter-spacing:.2em;margin-top:3px}',
+    '#career .nota small{display:block;font:800 11px var(--display);letter-spacing:.1em;margin-top:3px}',
     '#career .n-top{background:#2fbf71}#career .n-good{background:#6cc24a}#career .n-ok{background:#d9a520}#career .n-meh{background:#e07b2b}#career .n-bad{background:#d8364a}',
     '#career .tag{display:inline-block;padding:3px 9px;border-radius:999px;font:800 12px var(--display);letter-spacing:.12em;text-transform:uppercase;background:var(--tp2);box-shadow:0 0 0 1.5px var(--tk);margin:2px 4px 2px 0}',
-    '#career .tag.g{background:#2f8f5a}#career .tag.r{background:#a8283a}#career .tag.y{background:#b8860b}',
-    '#career .chip.dv.g{background:#2f8f5a;color:#fff}#career .chip.dv.r{background:#a8283a;color:#fff}',
+    // (leyenda de la Liga en contorno, con el mismo tono que el borde de la fila: verde asciende, amarillo Open, rojo desciende)
+    '#career .tag.g{background:rgba(75,224,160,.18);box-shadow:inset 0 0 0 2px var(--ok);color:#fff}#career .tag.y{background:rgba(255,210,63,.18);box-shadow:inset 0 0 0 2px var(--gold);color:#fff}#career .tag.r{background:rgba(255,90,110,.18);box-shadow:inset 0 0 0 2px var(--bad);color:#fff}',
+    '#career .chip.dv.g{background:#2f8f5a;color:#fff}#career .chip.dv.r{background:var(--bad-d);color:#fff}',
     '#career table{width:100%;border-collapse:collapse;font:600 14px var(--ui)}',
-    '#career th{font:800 11px var(--display);letter-spacing:.18em;text-transform:uppercase;color:#b9b0e6;text-align:right;padding:4px 6px}',
-    '#career td{padding:7px 6px;text-align:right;border-top:1px solid rgba(255,255,255,.08);font-variant-numeric:tabular-nums}',
+    '#career th{font:800 11px var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--muted);text-align:right;padding:4px 6px}',
+    '#career td{padding:7px 6px;text-align:right;border-top:1px solid var(--sep);font-variant-numeric:tabular-nums}',
     '#career th.l,#career td.l{text-align:left}',
+    '#career .nw{white-space:nowrap}',
     '#career td.club{text-align:left;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0;width:50%}',
     '#career tr.me td{background:rgba(255,128,64,.22)}',
-    '#career tr.up td:first-child{box-shadow:inset 4px 0 0 #4be0a0}',
-    '#career tr.cup td:first-child{box-shadow:inset 4px 0 0 #ffd23f}',
-    '#career tr.down td:first-child{box-shadow:inset 4px 0 0 #ff5a6e}',
-    '#career td.pts{font:900 17px var(--display);color:#ffd23f}',
+    '#career tr.up td:first-child{box-shadow:inset 4px 0 0 var(--ok)}',
+    '#career tr.cup td:first-child{box-shadow:inset 4px 0 0 var(--gold)}',
+    '#career tr.down td:first-child{box-shadow:inset 4px 0 0 var(--bad)}',
+    '#career td.pts{font:900 17px var(--display);color:var(--gold)}',
     '#career .lg-sw{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}',
     '#career .lg-sw button{font-size:14px;min-height:44px;padding:0 10px}',
     '#career .cal{display:grid;gap:6px}',
     '#career .cal-r{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 8px;border-radius:10px;background:rgba(0,0,0,.18)}',
     '#career .cal-r.next{background:rgba(255,128,64,.25);box-shadow:inset 0 0 0 2px #ff8040}',
-    '#career .cal-r b{font:900 15px var(--display);letter-spacing:.06em;color:#b9b0e6}',
+    '#career .cal-r b{font:900 15px var(--display);letter-spacing:.06em;color:var(--muted)}',
     '#career .cal-r .res{font:800 15px var(--display);letter-spacing:.06em}',
     '#career span.w{color:#4be0a0}#career span.l{color:#ff7a8a}',   // (span: th.l / td.l son «alineado a la izquierda», no derrota)
     '#career .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}',
@@ -197,20 +200,20 @@
     '#career .attr b{font:900 18px var(--display);text-align:right}',
     '#career .attr button{min-height:44px;padding:0 6px;font:800 18px/1 var(--ui);letter-spacing:0;text-shadow:none;text-transform:uppercase}',
     '#career .xp{height:10px;border-radius:6px;background:rgba(0,0,0,.4);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);margin:6px 0}',
-    '#career .xp i{display:block;height:100%;background:linear-gradient(90deg,#ffd23f,#ff8040)}',
+    '#career .xp i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#ff8040)}',
     '#career .bdg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}',
     '#career .bd{display:grid;grid-template-columns:42px minmax(0,1fr);gap:8px;align-items:center;text-align:left;text-transform:none;letter-spacing:0;font:600 13px/1.25 var(--ui);padding:8px 10px;min-height:64px}',
     '#career .bd .ic{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:rgba(0,0,0,.35);box-shadow:0 0 0 2px var(--tk)}',
     '#career .bd .ic svg{width:28px;height:28px}',
     '#career .bd strong{display:block;font:800 16px var(--display);letter-spacing:.04em;text-transform:uppercase}',
     '#career .bd .pg{display:block;height:6px;border-radius:4px;background:rgba(0,0,0,.4);overflow:hidden;margin-top:4px}',
-    '#career .bd .pg i{display:block;height:100%;background:#ffd23f}',
+    '#career .bd .pg i{display:block;height:100%;background:var(--gold)}',
     '#career .bd.lock{opacity:.6}',
     '#career .bd[aria-pressed="true"]{background:linear-gradient(180deg,rgba(255,210,63,.32),rgba(255,160,40,.22));color:#fff;text-shadow:var(--ring1)}',
-    '#career .bd[aria-pressed="true"] strong::after{content:"equipada";margin-left:6px;padding:1px 6px;border-radius:999px;font:800 10.5px var(--ui);background:#ffd23f;color:var(--tk);box-shadow:0 0 0 1.5px var(--tk);vertical-align:.1em}',
+    '#career .bd[aria-pressed="true"] strong::after{content:"equipada";margin-left:6px;padding:1px 6px;border-radius:999px;font:800 10.5px var(--ui);background:var(--gold);color:var(--tk);box-shadow:0 0 0 1.5px var(--tk);vertical-align:.1em}',
     '#career .new{animation:crPop .5s cubic-bezier(.2,1.4,.4,1) both}',
     '@keyframes crPop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}',
-    '#career .offer{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid rgba(255,255,255,.1)}',
+    '#career .offer{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--sep)}',
     '#career .offer:first-of-type{border-top:0}',
     '#career .meter{height:12px;border-radius:7px;background:rgba(0,0,0,.4);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}',
     '#career .meter i{display:block;height:100%}',
@@ -218,7 +221,7 @@
     '#career .cf{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:12px 18px;align-items:start}',
     '#career .cf>.card{grid-column:1/-1;margin:0}',
     '#career .cf-col{display:grid;gap:12px;min-width:0}',
-    '#career .cf label{display:block;font:800 13px var(--display);letter-spacing:.24em;text-transform:uppercase;color:#ffd23f;text-shadow:var(--ring1);margin-bottom:6px}',
+    '#career .cf label{display:block;font:800 13px var(--display);letter-spacing:.24em;text-transform:uppercase;color:var(--gold);text-shadow:var(--ring1);margin-bottom:6px}',
     '#career .cf input{width:100%;min-height:48px;border-radius:12px;border:0;padding:0 14px;font:700 20px var(--ui);color:#fff;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 4px rgba(255,255,255,.08)}',
     '#career .seg{display:flex;gap:8px;flex-wrap:wrap}',
     '#career .seg button{flex:1 1 0;min-width:64px}',
@@ -226,35 +229,35 @@
     '#career .roles button{display:block;text-align:left;padding:10px 12px;min-height:84px}',
     '#career .roles button small{display:block;margin-top:4px;font:600 12.5px var(--ui);letter-spacing:0;text-transform:none;color:inherit;opacity:.9}',
     '#career .stp{display:flex;align-items:center;gap:10px}',
-    '#career .stp b{min-width:2.4em;text-align:center;font:900 32px var(--display);color:#ffd23f;text-shadow:var(--ring2)}',
+    '#career .stp b{min-width:2.4em;text-align:center;font:900 32px var(--display);color:var(--gold);text-shadow:var(--ring2)}',
     '#career .stp button{width:52px;padding:0;font-size:26px}',
     // (auto-fill con 128 px por casilla: con 5 columnas fijas, en columnas estrechas quedaba «Colocación25» pegado)
-    '#career .prev{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:4px 14px;font:600 12.5px var(--ui);color:#cfc8f2}',
+    '#career .prev{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px 14px;font:600 12.5px var(--ui);color:var(--soft)}',
     '#career .prev span{display:flex;justify-content:space-between;gap:10px;min-width:0}',
     '#career .prev b{flex:none}',
     '#career .prev b{color:#fff}',
     '#career .bench{margin-top:8px;padding:8px 10px;border-radius:12px;background:rgba(224,123,43,.18);box-shadow:inset 0 0 0 2px #e07b2b}',
     '#career .bench p{margin:0}',
     '#career .fact b .mline{display:block;margin-top:3px}',
-    '#career .confirm{margin-top:10px;padding:10px;border-radius:12px;background:rgba(168,40,58,.25);box-shadow:inset 0 0 0 2px #d8364a}',
+    '#career .confirm{margin-top:10px;padding:10px;border-radius:12px;background:rgba(168,40,58,.25);box-shadow:inset 0 0 0 2px var(--bad)}',
     // gestión (v2): sub-pestañas, fichas de oferta, bandeja, entrenamiento
     '#career .cr-sub{display:flex;gap:6px;overflow-x:auto;flex:none;padding:0 4px 4px 2px;scrollbar-width:none}',
     '#career .cr-sub::-webkit-scrollbar{display:none}',
     '#career .cr-sub[hidden]{display:none}',
     '#career .cr-sub:not(.tabs) button{flex:none;font-size:14px;min-height:44px;padding:0 12px;border-radius:999px;background:rgba(58,49,104,.97);text-shadow:var(--ring1)}',
-    '#career .cr-sub:not(.tabs) button[aria-selected="true"]{background:linear-gradient(180deg,#ffd23f 0 50%,#f2b51c 50% 100%);color:var(--tk);text-shadow:none}',
-    '#career .stars{color:#ffd23f;letter-spacing:.08em;text-shadow:var(--ring1);white-space:nowrap}',
+    '#career .cr-sub:not(.tabs) button[aria-selected="true"]{background:linear-gradient(180deg,var(--gold) 0 50%,#f2b51c 50% 100%);color:var(--tk);text-shadow:none}',
+    '#career .stars{color:var(--gold);letter-spacing:.08em;text-shadow:var(--ring1);white-space:nowrap}',
     '#career .stars .off{color:rgba(255,255,255,.22)}',
     '#career .fact{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0}',
     '#career .fact div{padding:7px 10px;border-radius:10px;background:rgba(0,0,0,.2);min-width:0}',
-    '#career .fact small{display:block;font:800 10.5px var(--display);letter-spacing:.2em;text-transform:uppercase;color:#b9b0e6}',
+    '#career .fact small{display:block;font:800 10.5px var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}',
     '#career .fact b{display:block;font:700 15px/1.25 var(--ui);color:#fff;overflow-wrap:anywhere}',
     '#career .bigname{font:900 24px/1.05 var(--display);text-transform:uppercase;letter-spacing:.03em;margin:0;text-shadow:var(--ring1),2px 2px 0 var(--tk)}',
     '#career .msg{padding:9px 10px;border-radius:10px;background:rgba(0,0,0,.18);margin:0 0 8px}',
     '#career .msg.unread{background:rgba(255,128,64,.18);box-shadow:inset 3px 0 0 #ff8040}',
     '#career .msg b{display:block;font:800 15.5px var(--display);letter-spacing:.03em;text-transform:uppercase}',
     '#career .msg p{margin:3px 0 0}',
-    '#career .msg small{font:700 11.5px var(--ui);color:#b9b0e6}',
+    '#career .msg small{font:700 11.5px var(--ui);color:var(--muted)}',
     '#career .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}',
     '#career .tgrid button{display:block;text-align:left;padding:8px 12px;min-height:64px}',
     '#career .tgrid button small{display:block;margin-top:4px;font:600 12.5px var(--ui);letter-spacing:0;text-transform:none;opacity:.9}',
@@ -262,11 +265,11 @@
     '#career .pbar .bar{height:10px;border-radius:6px;background:rgba(0,0,0,.4);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}',
     '#career .pbar .bar i{display:block;height:100%;background:#4be0a0}',
     '#career .pbar b{font:800 14px var(--display);text-align:right}',
-    '#career .mate{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid rgba(255,255,255,.1)}',
+    '#career .mate{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--sep)}',
     '#career .mate:first-of-type{border-top:0}',
     '#career .pick-acts{display:flex;gap:10px;flex-wrap:wrap}',
     '#career .pick-acts button{flex:1 1 200px}',
-    '#career .note{min-height:1.4em;margin:6px 0 0;font:700 13.5px var(--ui);color:#ffd23f}',
+    '#career .note{min-height:1.4em;margin:6px 0 0;font:700 13.5px var(--ui);color:var(--gold)}',
     '#career td button{min-height:40px;font-size:13px;padding:0 10px}',
     // pantallas bajas (teléfono apaisado)
     '@media (max-height:520px){',
@@ -295,7 +298,7 @@
     ' #career .cr-head{grid-column:1;grid-row:1;gap:8px}',
     ' #career .cr-head .cr-title{display:none}',
     ' #career .cr-head .cr-ovr{font-size:20px}',
-    ' #career .cr-head .cr-ovr small{font-size:8.5px;letter-spacing:.16em}',
+    ' #career .cr-head .cr-ovr small{font-size:11px;letter-spacing:.08em}',
     ' #career .cr-tabs{grid-column:2;grid-row:1;padding:0}',
     ' #career .cr-sub{grid-column:1/-1;grid-row:2;padding:0}',
     ' #career .cr-body{grid-column:1/-1;grid-row:3}',
@@ -304,6 +307,9 @@
     ' #career .card.offer-full{display:flex;flex-direction:column}',
     ' #career .card.offer-full>.row{order:-2}',
     ' #career .card.offer-full>.acts{order:-1;margin:8px 0 4px}',
+    ' #career .offer-x{display:flex;flex-direction:column}',
+    ' #career .offer-x>.row{order:-2}',
+    ' #career .offer-x>.acts{order:-1;margin:6px 0 4px}',
     '}',
     '.is-touch #career td button{min-height:44px}',
     '@media (max-width:700px){',
@@ -419,7 +425,7 @@
    *  refresh (la pestaña elegida la manda career-ui: api.cur). Sin VB.UI.tabs (pruebas sin ui.js): botones sueltos (tabsBar). */
   function drawBar(which, items, sel) {
     var host = which === 'sub' ? subEl : tabsEl;
-    if (!(VB.UI && VB.UI.tabs)) { host.innerHTML = tabsBar(items, sel, which === 'sub' || pickView() ? 'sub' : 'tab'); return; }
+    if (!(VB.UI && VB.UI.tabs)) { host.innerHTML = tabsBar(items, sel, which === 'sub' || pickView() ? 'sub' : 'tab'); fitBar(host); return; }
     var list = items.map(function (t) { return { id: String(t[0]), label: t[1] + (t[2] ? ' <i class="dot" aria-hidden="true"></i>' : '') }; });
     var api = which === 'sub' ? subApi : tabsApi;
     if (!api) {
@@ -427,7 +433,10 @@
         onChange: function (id, dir, how) { snd('click'); if (which === 'tab' && !pickView()) setTab(id); else setSub(id); } });
       if (which === 'sub') subApi = api; else tabsApi = api;
     } else { api.cur = String(sel); api.refresh(list); }
+    fitBar(host);
   }
+  /** Marca la barra con ovf si sus pestañas no caben (para el desvanecido de los bordes). */
+  function fitBar(host) { var row = host && (host.querySelector('.tb-row') || host); if (row) host.classList.toggle('ovf', row.scrollWidth > row.clientWidth + 2); }
   function pickView() { var c = C() && C().get(); return !!(c && c.phase === 'pick' && view !== 'create'); }
   /** Barra visible del nivel pedido ('sub' cae al primer nivel si no hay sub-pestañas), o null. */
   function barApi(which) {
@@ -483,12 +492,11 @@
     if (n) {
       // posiciones solo con la liga empezada (en la jornada 1 la tabla vacía daba «6º» contra «3r»)
       var pm = C().posOf(c, n.me.id), pr = C().posOf(c, n.rival.id), lg = c.phase === 'league' && c.week > 0;
-      h += '<div class="card"><h3>' + sp(esc(n.label).split(' · '), 'v') + '</h3><div class="vs">' +
+      h += '<div class="card"><h3>' + sp(esc(n.label).split(' · ').concat(['Sets a ' + C().PTS]), 'v') + '</h3><div class="vs">' +
         // («Pareja»: la fuerza de los dos —teamOvr— y la del rival; la media de la cabecera es solo la tuya)
         teamBlock(c, n.me, false, sp([lg ? ordn(pm) : '', 'Pareja ' + n.ovrMe, n.atHome ? 'En casa' : 'Fuera'], 'c')) +
         '<div class="vs-mid">VS</div>' +
         teamBlock(c, n.rival, true, sp([lg ? ordn(pr) : '', 'Pareja ' + n.ovrRival, 'IA ' + esc(n.diffName || diffName(n.diff))], 'c')) + '</div>' +
-        '<p class="muted" style="margin-top:8px">Vóley playa en la arena de Platja Llarga: al mejor de 3 sets a ' + C().PTS + ', el tercero a ' + C().PTS3 + '. Tú llevas a ' + esc(c.player.name) + ' (dorsal ' + c.player.num + ') y a tu pareja la lleva la IA.</p>' +
         // (la pareja, en pastillas: antes era una lista metida en un paréntesis)
         '<p class="muted" style="margin-top:4px">' + (function () {
           var mo = C().mateOvr(c), dd = mo - C().clubOvr(n.me), tg = dd >= 3 ? 'g' : dd <= -3 ? 'r' : '';
@@ -541,7 +549,7 @@
    *  sueldo y contrato. full = ficha grande (una por pestaña al elegir club). */
   function offerCard(c, o, i, full) {
     var k = C().club(c, o.club), f = C().clubInfo(c, k, o.lvl != null ? o.lvl : k.lvl, o.q), mp = o.mateP, y = yrs[o.club] || o.years || 1;
-    var h = '<div class="' + (full ? 'card offer-full' : 'offer-x') + '"' + (full ? '' : ' style="padding:8px 0;border-top:1px solid rgba(255,255,255,.1)"') + '><div class="row">' + kitSw(k.kit, full) +
+    var h = '<div class="' + (full ? 'card offer-full' : 'offer-x') + '"' + (full ? '' : ' style="padding:8px 0;border-top:1px solid var(--sep)"') + '><div class="row">' + kitSw(k.kit, full) +
       '<div class="grow" style="min-width:0"><p class="bigname"' + (full ? '' : ' style="font-size:18px"') + '>' + esc(k.name) + '</p><p class="muted" style="margin:2px 0 0">' +
       sp([stars(f.stars), esc(f.league), esc(f.beach || k.city)], 'v') + '</p></div></div>';
     var rl = Math.max(0, C().ROLE_LV.indexOf(o.role)), early = !o.trial && C().earlyExit && C().earlyExit(c), cov = o.ovr != null ? o.ovr : f.ovr;
@@ -566,7 +574,7 @@
         '<div class="acts"><button class="pri" data-act="offer" data-i="' + i + '">Sí, fichar</button><button data-act="offno">Cancelar</button></div></div></div>';
     }
     h += '<div class="acts"><button class="pri" data-act="offer" data-i="' + i + '">' + (o.trial ? 'Hacer la prueba' : 'Firmar') + '</button>' +
-      (canNeg ? '<button data-act="neg" data-i="' + i + '" title="Si no sale, el entrenador empieza con menos confianza">Pedir más rol</button>' : '') + '</div></div>';
+      (canNeg ? '<button data-act="neg" data-i="' + i + '" title="Si no sale, el entrenador empieza con menos confianza">' + (o.role === 'Titular' ? 'Pedir ser indiscutible' : 'Pedir ser titular') + '</button>' : '') + '</div></div>';
     return h;
   }
   /** «(entrenos +6 por semana en defensa)»: lo que suman los entrenamientos del club con ese estilo (VB.Career.STYLE_TRAIN). */
@@ -585,7 +593,7 @@
     var h = '<div class="card"><div class="lg-sw" role="group" aria-label="Liga">' + C().LEAGUES.map(function (x) {
       return '<button data-act="lvl" data-l="' + x.lvl + '" aria-pressed="' + (x.lvl === lvl) + '">' + esc(x.short) + '</button>';
     }).join('') + '</div><h3>' + sp([esc(L.name), c.phase === 'league' ? 'Jornada ' + Math.min(c.week, C().WEEKS) + ' de ' + C().WEEKS : 'Temporada regular acabada'], 'd') + '</h3>' +
-      '<table><thead><tr><th class="l">#</th><th class="l">Club</th><th>PJ</th><th>G</th><th>P</th><th class="hide-s">Sets</th><th class="hide-s">Puntos</th><th>Pts</th></tr></thead><tbody>';
+      '<table><thead><tr><th class="l">#</th><th class="l">Club</th><th>PJ</th><th>G</th><th>P</th><th class="hide-s">Sets</th><th class="hide-s">Tantos</th><th>Pts</th></tr></thead><tbody>';
     t.forEach(function (r) {
       var cl = C().club(c, r.id), cls = [];
       if (r.id === c.myClub) cls.push('me');
@@ -593,7 +601,7 @@
       if (!low && r.pos >= 7) cls.push('down');
       h += '<tr class="' + cls.join(' ') + '"><td class="l">' + r.pos + '</td><td class="club">' + kitSw(cl.kit).replace('cr-kit', 'cr-kit kit-mini') + esc(cl.name) + '</td><td>' + r.pj + '</td><td>' + r.g + '</td><td>' + r.p + '</td><td class="hide-s">' + r.sf + '-' + r.sc + '</td><td class="hide-s">' + r.pf + '-' + r.pc + '</td><td class="pts">' + r.pts + '</td></tr>';
     });
-    h += '</tbody></table><p class="muted" style="margin-top:8px">' + (top ? '' : '<span class="tag g">1-2 ascienden</span>') + '<span class="tag y">1-4 juegan el open</span>' + (low ? '' : '<span class="tag r">7-8 descienden</span>') +
+    h += '</tbody></table><p class="muted" style="margin-top:8px">' + (top ? '' : '<span class="tag g">1-2 ascienden</span>') + '<span class="tag y">1-4 juegan el Open</span>' + (low ? '' : '<span class="tag r">7-8 descienden</span>') +
       ' Puntos: 3 por ganar 2-0, 2 por ganar 2-1 y 1 por perder 1-2.</p></div>';
     return h;
   }
@@ -622,7 +630,7 @@
     var a = c.player, P = VB.Prog, need = C().need(a.lvl), h = '<div class="card"><div class="row">' + kitSw(C().myClub(c).kit) +
       '<div class="grow" style="min-width:0"><p class="bigname" style="font-size:20px">' + sp([esc(a.name), 'n.º ' + a.num], 's') + '</p><p class="muted" style="margin:0">' + sp([esc(a.role), a.age + ' años', 'Nivel ' + a.lvl, plural(a.matches | 0, 'partido', 'partidos')], 'c') + '</p></div></div>' +
       '<div class="xp" role="progressbar" aria-valuemin="0" aria-valuemax="' + need + '" aria-valuenow="' + a.xp + '" aria-label="Experiencia"><i style="width:' + Math.round(100 * a.xp / need) + '%"></i></div>' +
-      '<p class="muted">' + sp([a.xp + ' / ' + need + ' XP para el nivel ' + (a.lvl + 1), 'Puntos de mejora: <b style="color:#ffd23f">' + a.pts + '</b>'], 'v') + '</p>';
+      '<p class="muted">' + sp([a.xp + ' / ' + need + ' XP para el nivel ' + (a.lvl + 1), 'Puntos de mejora: <b style="color:var(--gold)">' + a.pts + '</b>'], 'v') + '</p>';
     // solo el grupo de la sub-pestaña (Ataque / Defensa / Físico; los de VB.Prog.GROUPS)
     var groups = (P && P.GROUPS ? P.GROUPS : [['Ataque', ['set', 'spike', 'ctl', 'serve']], ['Defensa', ['recv', 'dig', 'block']], ['Físico', ['jump', 'speed', 'react']]]).filter(function (g) { return g[0] === GROUP_OF[s]; });
     groups.forEach(function (g) {
@@ -660,7 +668,7 @@
   /** Jugador › Entreno: enfoque de la semana, progreso por grupo y fatiga. */
   function renderTrain(c) {
     var T = C().TRAIN, f = c.fatigue | 0, fm = C().fatigueMalus(c), fc = f > 60 ? '#d8364a' : f > C().FAT_FREE ? '#e07b2b' : '#2fbf71';
-    var h = '<div class="card"><h3>Enfoque de la semana</h3><p class="muted">Se aplica tras cada partido (jugado o simulado). Cada ' + C().TRAIN_NEED + ' de progreso, +1 gratis en el atributo más bajo de ese grupo. Los enfoques cansan; Equilibrado no. Descansar recupera y en verano la fatiga vuelve a 0.' + (C().STYLE_TRAIN && C().STYLE_TRAIN[C().clubInfo(c, C().myClub(c)).style] ? ' Los entrenos de tu club suman +' + C().STYLE_PROG + ' por semana en ' + esc(GROUP_OF[C().STYLE_TRAIN[C().clubInfo(c, C().myClub(c)).style]]).toLowerCase() + '.' : '') + '</p><div class="tgrid" role="group" aria-label="Enfoque de entrenamiento">' +
+    var h = '<div class="card"><h3>Enfoque de la semana</h3><p class="muted">Cada ' + C().TRAIN_NEED + ' de progreso, +1 al atributo más bajo del grupo. Equilibrado no cansa.' + (C().STYLE_TRAIN && C().STYLE_TRAIN[C().clubInfo(c, C().myClub(c)).style] ? ' Los entrenos de tu club suman +' + C().STYLE_PROG + ' por semana en ' + esc(GROUP_OF[C().STYLE_TRAIN[C().clubInfo(c, C().myClub(c)).style]]).toLowerCase() + '.' : '') + '</p><div class="tgrid" role="group" aria-label="Enfoque de entrenamiento">' +
       C().TRAIN_KEYS.map(function (k) {
         var t = T[k], gs = Object.keys(t.prog), pr = gs.length > 1 ? '+' + t.prog[gs[0]] + ' a cada grupo' : gs.length ? '+' + t.prog[gs[0]] + ' por semana' : '';
         // «Salto, velocidad y reacción (cansa). +60 por semana, fatiga +12»
@@ -674,7 +682,7 @@
       '<h3 style="margin-top:10px">' + sp(['Fatiga', f + ' de 100'], 'd') + '</h3>' + meter(f, 'Fatiga', fc) +
       '<p class="muted">' + (fm ? 'Rindes menos: −' + fm + ' en todos tus atributos en el próximo partido. Una semana de Descanso la baja ' + (-T.rest.fat) + '.' : 'Por debajo de ' + C().FAT_FREE + ' no afecta al juego.') + '</p>' +
       // fisio: lo pagas con lo que ahorras del sueldo (una vez por jornada)
-      (C().physio && c.phase !== 'off' ? '<div class="acts"><button data-act="physio"' + (f > 0 ? '' : ' disabled') + '>Fisio <small style="font:600 12px var(--ui);text-transform:none;letter-spacing:0">(−' + C().PHYSIO_FAT + ' de fatiga, ' + eur(C().physioCost(c)) + ')</small></button></div>' +
+      (C().physio && c.phase !== 'off' ? '<div class="acts"><button data-act="physio"' + (f > 0 ? '' : ' disabled title="No tienes fatiga que recuperar"') + '>Fisio <small style="font:600 12px var(--ui);text-transform:none;letter-spacing:0">' + (f > 0 ? '(−' + C().PHYSIO_FAT + ' de fatiga, ' + eur(C().physioCost(c)) + ')' : '(sin fatiga)') + '</small></button></div>' +
         '<p class="muted">' + sp(['Ahorros ' + eur(c.money || 0), 'una sesión por jornada'], 'v') + '</p><p class="note" role="status" aria-live="polite">' + esc(note) + '</p>' : '') + '</div>';
     note = '';
     return h;
@@ -724,8 +732,8 @@
   function renderContract(c) {
     var ct = c.contract || {};
     var rl = C().roleIdx ? C().roleIdx(c) : 1, brk = c.broken === c.season;
-    var h = '<div class="card"><h3>Contrato</h3><div class="fact">' + fact('Rol', esc(ct.role || '—')) + fact('Quedan', plural(ct.left | 0, 'temporada', 'temporadas') + ' (con esta)') +
-      fact('Sueldo (ficticio)', ct.salary ? money(ct.salary) : '—') + fact('Ahorros', eur(c.money || 0)) + fact('Firmado', 'Temporada ' + (ct.since || 1) + ', ' + plural(ct.years | 0, 'temporada', 'temporadas')) + '</div>' +
+    var h = '<div class="card"><h3>Contrato</h3><div class="fact">' + fact('Rol', esc(ct.role || '—')) + fact((ct.left | 0) === 1 ? 'Queda' : 'Quedan', plural(ct.left | 0, 'temporada', 'temporadas') + ((ct.left | 0) === 1 ? ' (esta)' : ', con esta')) +
+      fact('Sueldo (ficticio)', ct.salary ? money(ct.salary) : '—') + fact('Ahorros', eur(c.money || 0)) + fact('Firmado', 'T' + (ct.since || 1) + ' por ' + plural(ct.years | 0, 'temporada', 'temporadas')) + '</div>' +
       (C().ROLE_HINT ? '<p><b>' + esc(ct.role || '') + ':</b> ' + esc(C().ROLE_HINT[rl]) + ((c.stats.bench | 0) ? ' Esta temporada, ' + plural(c.stats.bench | 0, 'jornada', 'jornadas') + ' en el banquillo.' : '') + '</p>' : '') +
       (brk ? '<p class="bench" style="margin:6px 0"><b>Promesa incumplida.</b> Te fichó como titular y te ha sentado: hasta final de temporada puedes irte sin pegas y los clubes se interesan más por ti.</p>' : '') +
       '<p class="muted">Cobras el sueldo cada jornada (la mitad del mensual) y lo ahorras: sirve para el fisio (Jugador › Entreno). Al acabar la última temporada del contrato, el club te propone renovar (el rol depende de la confianza del entrenador) y eliges la duración.</p></div>';
@@ -748,7 +756,7 @@
     if (s === 'titles') {
       h = '<div class="card"><h3>Palmarés</h3>';
       h += c.trophies.length ? c.trophies.map(function (t) { return '<p><span class="tag ' + (t.kind === 'ascenso' ? 'g' : 'y') + '">' + (t.kind === 'liga' ? 'Campeón' : t.kind === 'copa' ? 'Open' : t.kind === 'premio' ? 'Premio' : 'Ascenso') + '</span> ' + sp([esc(t.name), 'T' + t.season, esc(t.club)], 'v') + '</p>'; }).join('') : '<p class="muted">Aún sin títulos.</p>';
-      h += '<h3 style="margin-top:10px">Totales de la carrera</h3><p>' + sp([plural(T.played, 'partido', 'partidos') + ' (' + plural(T.won, 'ganado', 'ganados') + ', ' + plural(T.sim, 'simulado', 'simulados') + ((T.bench | 0) ? ', ' + (T.bench | 0) + ' en el banquillo' : '') + ')', plural(T.pts, 'punto', 'puntos'), T.kills + ' remates punto', plural(T.aces, 'ace', 'aces'), T.blocks + ' bloqueos', plural(T.assists, 'asistencia', 'asistencias')], 'v') + '</p></div>';
+      h += '<h3 style="margin-top:10px">Totales de la carrera</h3><p>' + sp([plural(T.played, 'partido', 'partidos') + ' (' + plural(T.won, 'ganado', 'ganados') + ', ' + plural(T.sim, 'simulado', 'simulados') + ((T.bench | 0) ? ', ' + (T.bench | 0) + ' en el banquillo' : '') + ')', plural(T.pts, 'punto', 'puntos'), T.kills + ' remates ganadores', plural(T.aces, 'ace', 'aces'), T.blocks + ' bloqueos', plural(T.assists, 'asistencia', 'asistencias')], 'v') + '</p></div>';
       return h;
     }
     if (s === 'seasons') {
@@ -782,8 +790,8 @@
       h += '<div class="card"><h3>Comparar ofertas</h3><table><thead><tr><th class="l">Club</th><th class="hide-s">Liga</th><th>Media</th><th>Compañero</th><th class="hide-s">Rol</th><th class="hide-s">Objetivo</th><th>Sueldo</th><th class="hide-s">Años</th><th></th></tr></thead><tbody>' +
         offs.map(function (o, i) {
           var k = C().club(c, o.club), f = C().clubInfo(c, k);
-          return '<tr><td class="club">' + kitSw(k.kit).replace('cr-kit', 'cr-kit kit-mini') + esc(k.name) + '<br><span class="muted">' + stars(f.stars) + '</span></td><td class="hide-s">' + esc(C().league(o.lvl).short) + (o.trial ? ' (prueba)' : '') + '</td><td>' + o.ovr + '</td><td>' + o.mate + (o.ovr != null && o.mate != null ? ' <span class="muted">(' + sgn(o.mate - o.ovr) + ')</span>' : '') +
-            '</td><td class="hide-s">' + esc(o.role) + '</td><td class="hide-s l">' + esc(objShort(o.objective)) + '</td><td>' + Math.round(o.salary) + ' €/mes</td><td class="hide-s">' + (o.trial ? 1 : (yrs[o.club] || o.years || 1)) +
+          return '<tr><td class="club">' + kitSw(k.kit).replace('cr-kit', 'cr-kit kit-mini') + esc(k.name) + '<br><span class="muted">' + stars(f.stars) + '</span></td><td class="hide-s nw">' + esc(C().league(o.lvl).short) + (o.trial ? '&nbsp;(prueba)' : '') + '</td><td>' + o.ovr + '</td><td>' + o.mate + (o.ovr != null && o.mate != null ? ' <span class="muted">(' + sgn(o.mate - o.ovr) + ')</span>' : '') +
+            '</td><td class="hide-s">' + esc(o.role) + '</td><td class="hide-s l">' + esc(objShort(o.objective)) + '</td><td class="nw">' + Math.round(o.salary) + '&nbsp;€/mes</td><td class="hide-s">' + (o.trial ? 1 : (yrs[o.club] || o.years || 1)) +
             '</td><td><button data-sub="' + i + '" aria-label="Ver ' + esc(k.name) + '">Ver</button></td></tr>';
         }).join('') + '</tbody></table><p class="muted">Sueldo ficticio, en euros al mes. Los años del contrato los eliges al firmar.</p></div>';
     } else if (offs.length) h += offerCard(c, offs[+sub.pick], +sub.pick, true);
@@ -805,13 +813,13 @@
     head.innerHTML = '<button data-act="' + (c ? 'hub' : 'close') + '" aria-label="Volver">‹ Volver</button><div class="cr-title"><small>' + sp(['Carrera', 'Vóley playa 2 contra 2'], 'd') + '</small><b>Crea tu jugador</b></div>';
     tabsEl.hidden = true; tabsEl.innerHTML = ''; subEl.hidden = true; subEl.innerHTML = '';
     var h = '<div class="cf">' + (!c && C().lost && C().lost() ? '<div class="card confirm"><p><b>Tu carrera guardada estaba dañada</b> y no se ha podido recuperar. Hay una copia aparte en este navegador (voley3d.career.bak).</p></div>' : '') +
-      '<div class="card"><p>Vóley playa en la arena de Platja Llarga. Empiezas con una media de ' + C().START_OVR + ' y sin pareja: al crear tu jugador te llegan ofertas de clubes de playa del <b>' + esc(C().league(0).name) + '</b> y eliges tú. Juega (o simula) cada jornada, entrena, sube de nivel, desbloquea insignias y gánate ofertas de clubes mejores hasta el <b>' + esc(C().league(4).name) + '</b>. Controlas solo a tu jugador; a tu pareja la lleva la IA, y cada club te ofrece una distinta: mírala bien antes de firmar.</p></div>' +
+      '<div class="card"><p>Empiezas con media ' + C().START_OVR + ' y sin club. Los clubes del <b>' + esc(C().league(0).name) + '</b> te harán ofertas: cada uno te da un compañero distinto.</p></div>' +
       '<div class="cf-col"><div><label for="crName">Nombre</label><input id="crName" maxlength="18" autocomplete="off" spellcheck="false" placeholder="Tu nombre" value="' + esc(form.name) + '"></div>' +
       '<div><label>Dorsal</label><div class="stp"><button data-act="num" data-d="-1" aria-label="Dorsal anterior">−</button><b aria-live="polite">' + form.num + '</b><button data-act="num" data-d="1" aria-label="Dorsal siguiente">+</button></div></div>' +
       '<div><label>Rol</label><div class="roles" role="group" aria-label="Rol">' + ['atk', 'uni', 'cr'].map(function (k) {
         return '<button data-act="role" data-r="' + k + '" aria-pressed="' + (form.role === k) + '">' + esc(R[k].name) + '<small>' + esc(R[k].hint) + '</small></button>';
-      }).join('') + '</div><div class="prev" style="margin-top:8px">' + C().KEYS.map(function (k) { return '<span>' + esc(P && P.LABEL ? P.LABEL[k] : k) + ' <b>' + st[k] + '</b></span>'; }).join('') + '</div></div></div>' +
-      '<div class="cf-col"><div><label>Reglas de playa</label><p class="muted" style="margin:0">' + sp(['Sets a ' + C().PTS, 'el 3r a ' + C().PTS3], 'v') + '. Pista de 16 × 8, cambio de campo cada 7 puntos (5 en el tercero), el bloqueo cuenta como toque y la dejada va de nudillos. ' + C().WEEKS + ' jornadas a doble vuelta y el open de los 4 primeros.</p></div>' +
+      }).join('') + '</div><div class="card prev-box" style="margin:8px 0 0"><h3>' + sp(['Tus atributos', esc(R[form.role].name)], 'v') + '</h3><div class="prev">' + C().KEYS.map(function (k) { return '<span>' + esc(P && P.LABEL ? P.LABEL[k] : k) + ' <b>' + st[k] + '</b></span>'; }).join('') + '</div></div></div></div>' +
+      '<div class="cf-col"><div><label>Reglas de playa</label><p class="muted" style="margin:0">' + 'Sets a ' + C().PTS + ' y el tercero a ' + C().PTS3 + '. Pista de 16 × 8, cambio de campo cada 7 puntos (5 en el tercero), el bloqueo cuenta como toque y la dejada va de nudillos. ' + C().WEEKS + ' jornadas a doble vuelta y el Open de los 4 primeros.</p></div>' +
       (c ? '<div class="card confirm"><p>Ya tienes una carrera guardada. Para empezar otra, abandónala antes en Palmarés › Opciones.</p></div>' :
         '<div class="acts"><button class="pri" data-act="create">Crear y ver ofertas</button></div>') +
       '</div></div>';
@@ -936,7 +944,7 @@
   function setTab(t, s) {
     tab = t; confirmStep = 0; offArm = -1; if (t !== 'league') tblLvl = -1;
     if (s && SUBS[t] && SUBS[t].some(function (x) { return x[0] === s; })) sub[t] = s;
-    render(); var tb = tabsEl.querySelector('[data-tab="' + t + '"]'); if (tb) { focusEl(tb, kbNav); try { tb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { } } body.scrollTop = 0;
+    render(); var tb = tabsEl.querySelector('[data-tab="' + t + '"]'); if (tb) { focusEl(tb, kbNav); try { tb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { } } else showOn(tabsEl); body.scrollTop = 0;
   }
   /** Sub-pestaña del apartado actual (o la oferta al elegir club: un índice o 'cmp'). */
   function setSub(v) {
@@ -945,9 +953,11 @@
     else if (SUBS[tab]) { sub[tab] = v; confirmStep = 0; offArm = -1; if (v !== 'table') tblLvl = -1; }
     render();
     var id = pk ? sub.pick : v, bar = pk ? tabsEl : subEl, sb = bar.querySelector('[data-sub="' + id + '"],[data-tab="' + id + '"]');
-    if (sb) { focusEl(sb, kbNav); try { sb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { } }
+    if (sb) { focusEl(sb, kbNav); try { sb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { } } else showOn(bar);
     body.scrollTop = 0;
   }
+  /** Con el componente común (sin data-tab): la pestaña activa de la barra, a la vista (Q/E, LT/RT). */
+  function showOn(bar) { var on = bar && bar.querySelector('.tab.on,[aria-selected="true"]'); if (on) try { on.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch (e) { } }
   /** ←/→ con el foco en una pestaña: la siguiente de su barra (apartados o sub-pestañas). Devuelve true si lo ha hecho. */
   function cycleTab(a, d) {
     if (!a || !a.getAttribute) return false;

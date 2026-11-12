@@ -1433,3 +1433,23 @@ Lo que cantaba no era abreviar, sino pegar TODO con el mismo « · ». Reglas pa
   aro celeste» (antes «: a tu sitio»; el aro es fx `posMark`) y, en Controles del 6v6, «Moverse (sin balón, al aro celeste)».
 - padplay.js con `EXTRA='format=6v6&human=1'`: «saque con A» solo si saca tu jugador (`g.server === g.ctrl`; en el 1r punto saca el n.º 1:
   se salta con un aviso) y sin «RB cambia de jugador» (en 6v6 RB es «¡Pídela!»).
+
+## Revisión de menús y «menos IA» (12-nov-2026, pedido de Ferran)
+Revisión con capturas de todas las pantallas a 1280×720 y 844×390 táctil, y unos 45 arreglos claros. Lo principal:
+- **Bugs y móvil:** hoja final que no cabía a 844×390, ajustes compactos, faltas del tutorial en 3 columnas, botones táctiles de
+  44 px (pausa, pantalla completa, cuenta), letra mínima de 11 px, pausa táctil legible en reposo.
+- **Menos adornos:** fuera el «Estreno / Primer partido», las pastillas que repetían las opciones bajo «¡A jugar!» y «Jugar», los
+  antetítulos que repetían el título de los paneles, las flechas en círculo de las tarjetas de modo y los text-shadow del texto de lectura.
+- **Sistema visual:** tokens nuevos en #app (--pri, --muted, --fg2, --bad…), regla común de botón deshabilitado, hover separado del
+  foco de teclado/mando, seleccionado en amarillo con texto en tinta.
+- **Textos:** sin «timing» visible («en el momento justo»), «1r set» con setSep, «el tercero» en frase, ayudas de dificultad cortas,
+  «+N puntos» en vez de «+N PT», «Gana el local/visitante».
+- **Carrera:** «Superliga de Playa» → «Hiperliga de Playa» (regla de nombres de Ferran; los guardados viejos migran en beachTrophies),
+  escudos con aro claro, sub-pestañas de ancho natural, tabla de ofertas sin cortes, «Pedir ser titular».
+
+**Decisiones de gusto pendientes de Ferran** (no aplicadas): D1 tratamiento cómic solo en la acción principal; D2 mayúsculas
+condensadas solo en títulos y cifras; D3 marcador del HUD recto tipo TV; D4 tarjetas de modo con dorsal grande o recortes del juego;
+D5 intro de partido como cartel de previa de TV; D6 mosca «DIRECTO» sin «DEMO» ni parpadeo; D7 un solo estilo de foco (aro ámbar);
+D8 seleccionado amarillo también en los segmentados; D9 jerarquía de pestañas en Carrera; D10 unificar atributos e insignias de
+Jugadores y Carrera; D11 cabecera y «Volver» comunes en Carrera, Cuenta e Instalar; D12 «compañero» y «Bloqueador»; D13 previa de
+partido de Carrera en mini-tabla; D14 generador de nombres de club sin redundancias («Dunes … Dunes»); D15 escalas de letra y radios.

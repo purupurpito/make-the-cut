@@ -564,7 +564,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
 #app.hud-in .hud-btns{animation:fadeUp .4s .08s var(--ease) both}
 @media (max-height:420px){
   .in-card{padding:12px 24px 0;margin-top:-4vh}
-  .in-k{font-size:12px}.in-vs{margin:6px 0 6px}.in-t b{font-size:44px}.in-t small{font-size:13px}.in-x{width:38px;height:38px;font-size:17px}
+  .in-k{font-size:12px}.in-vs{margin:6px 0 6px}.in-t b{font-size:44px}.in-t small{font-size:13px}.in-x{width:44px;height:44px;font-size:17px}
   .in-meta{font-size:13px}.in-skip{margin-top:8px;padding-bottom:10px}
 }
 
@@ -646,8 +646,8 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
   border-radius:12px;background:rgba(10,16,30,.55);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg);font:800 24px/1 var(--display);letter-spacing:.06em;
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);overflow:hidden;transition:background .2s,box-shadow .2s,transform .2s var(--ease),padding .2s var(--ease)}
 .mi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--t0);transform:scaleY(0);transition:transform .25s var(--ease)}
-.mi:hover,.mi:focus-visible,.mi.kf{background:rgba(22,32,56,.85);box-shadow:inset 0 0 0 1px rgba(255,150,90,.55),0 10px 30px rgba(0,0,0,.35);outline:none;padding-left:20px}
-.mi:hover::before,.mi:focus-visible::before,.mi.kf::before{transform:none}
+.mi:focus-visible,.mi.kf{background:rgba(22,32,56,.85);box-shadow:inset 0 0 0 1px rgba(255,150,90,.55),0 10px 30px rgba(0,0,0,.35);outline:none;padding-left:20px}
+.mi:focus-visible::before,.mi.kf::before{transform:none}
 .mi-n{font:700 14px var(--display);letter-spacing:.1em;color:var(--dim-text)}
 .mi:focus-visible .mi-n,.mi.kf .mi-n,.mi:hover .mi-n{color:var(--amber)}
 .mi-s{font:600 13px var(--ui);letter-spacing:.02em;text-transform:none;color:var(--muted)}
@@ -706,7 +706,7 @@ kbd,.key{display:inline-flex;align-items:center;justify-content:center;min-width
   scrollbar-width:thin;scrollbar-color:#33465c transparent;animation:sheetIn .45s var(--ease) both}
 .sheet::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--t0);border-radius:20px 20px 0 0}
 @keyframes sheetIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
-.sh-k{font:800 12px var(--display);letter-spacing:.3em;color:var(--amber);margin:0 0 6px;text-transform:uppercase}
+.sh-k{font:800 12px var(--display);letter-spacing:.3em;color:var(--gold);margin:0 0 6px;text-transform:uppercase}
 h2{font:900 italic 52px/0.95 var(--display);margin:0;text-transform:uppercase;letter-spacing:.01em}
 h2 span{color:var(--hot)}
 .sh-sub{color:var(--muted);margin:10px 0 0;font-size:15px;line-height:1.45}
@@ -758,6 +758,7 @@ h2 span{color:var(--hot)}
 .end-rec{display:flex;flex-wrap:wrap;gap:6px 18px;margin:12px 0 18px;color:var(--muted);font-size:14px}
 .end-rec b{color:var(--fg);font-weight:600}
 .end-rec .new{color:var(--gold);font-weight:700}
+#end .new b{color:inherit}
 .row-btn{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .row-btn button{padding:14px 20px}
 .st-r.tot{padding-bottom:7px;border-bottom:1px solid var(--line)}
@@ -797,8 +798,8 @@ h2 span{color:var(--hot)}
 @media (min-width:1000px){
   #end.dock{justify-content:flex-start;padding-left:calc(clamp(24px,5vw,80px) + var(--sl));-webkit-backdrop-filter:none;backdrop-filter:none;
     background:linear-gradient(90deg,rgba(5,8,15,.9) 0%,rgba(5,8,15,.72) 34%,rgba(5,8,15,.18) 56%,rgba(5,8,15,0) 72%)}
-  #end.dock .sheet{width:min(540px,44vw);max-width:none;padding:22px 28px 20px}
-  #end.dock .end-title{font-size:clamp(48px,5vw,64px)}
+  #end.dock .sheet{width:min(540px,44vw);max-width:none;padding:22px 28px 20px;max-height:calc(100vh - 24px);overflow:auto}
+  #end.dock .end-title{white-space:nowrap;font-size:clamp(34px,4.2vw,64px)}
   #end.dock .end-score{display:inline-flex;margin:8px 18px 0 0;vertical-align:middle}
   #end.dock .es-t b{font-size:44px}
   #end.dock .end-sets{display:inline-flex;margin:8px 0 0;vertical-align:middle}
@@ -902,7 +903,7 @@ h2 span{color:var(--hot)}
 .opt-g{display:flex;flex-direction:column;gap:6px}
 .opt{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;width:100%;text-align:left;padding:11px 16px;height:auto;border-radius:12px;
   background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg);font:800 20px/1.1 var(--display);letter-spacing:.06em}
-.opt:hover,.opt:focus-visible,.opt.kf{background:rgba(22,32,56,.95);box-shadow:inset 0 0 0 1px rgba(255,150,90,.6);outline:none}
+.opt:focus-visible,.opt.kf{background:rgba(22,32,56,.95);box-shadow:inset 0 0 0 1px rgba(255,150,90,.6);outline:none}
 .opt small{display:block;margin-top:3px;font:500 13px/1.3 var(--ui);letter-spacing:0;text-transform:none;color:var(--muted)}
 .seg{display:flex;gap:3px;padding:3px;border-radius:10px;background:rgba(0,0,0,.35)}
 .seg span{padding:7px 11px;border-radius:7px;font:800 14px var(--display);letter-spacing:.1em;color:var(--muted);transition:background .2s,color .2s}
@@ -913,6 +914,8 @@ h2 span{color:var(--hot)}
 .seg.kit .sw{display:block;width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.25)}
 .seg.kit span.on{background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 2px #fff}
 @media (max-width:900px){.seg.kit{gap:1px}.seg.kit span{padding:3px}.seg.kit .sw{width:15px;height:15px}}
+/* táctil: la zona de toque de cada segmento crece 5 px arriba y abajo (medían 31 px de alto) */
+.is-touch .seg span{position:relative} .is-touch .seg span::after{content:"";position:absolute;inset:-5px 0} .is-touch .seg.kit{gap:4px}
 .slider .v{min-width:3.2em;text-align:right;font-variant-numeric:tabular-nums}
 .slider{display:flex;align-items:center;gap:10px;font:800 15px var(--display);color:var(--gold);letter-spacing:.06em;transition:opacity .2s}
 .slider .trk{position:relative;width:150px;height:8px;border-radius:5px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px var(--line)}
@@ -1009,14 +1012,14 @@ h2 span{color:var(--hot)}
   .ctl-note{margin-top:8px;font-size:12.5px}
   .opt{padding:8px 12px;font-size:17px}
   /* ajustes en el móvil apaisado: filas compactas (dos columnas, sin desplazar a 844×390; a 667×375 con el desvanecido si hiciera falta) */
-  .sheet.wide .opts{row-gap:6px}
-  .sheet.wide .opt-g{gap:5px}
-  .sheet.wide .opt{padding:5px 8px 5px 12px;font-size:16px;gap:10px;border-radius:10px}
-  .sheet.wide .opt-h{font-size:12px;letter-spacing:.24em;margin-top:2px}
-  .sheet.wide .seg span{padding:4px 8px;font-size:13px;line-height:1;letter-spacing:.06em}
-  .sheet.wide .slider{gap:8px;font-size:14px}
-  .sheet.wide .slider .trk{width:92px}
-  .sheet.wide .snd{gap:8px}.sheet.wide .snd .mute{width:32px;height:27px}
+  #panel .sheet.tabbed .opts{row-gap:6px}
+  #panel .sheet.tabbed .opt-g{gap:5px}
+  #panel .sheet.tabbed .opt{padding:5px 8px 5px 12px;font-size:16px;gap:10px;border-radius:10px}
+  #panel .sheet.tabbed .opt-h{font-size:12px;letter-spacing:.24em;margin-top:2px}
+  #panel .sheet.tabbed .seg span{padding:4px 8px;font-size:13px;line-height:1;letter-spacing:.06em}
+  #panel .sheet.tabbed .slider{gap:8px;font-size:14px}
+  #panel .sheet.tabbed .slider .trk{width:92px}
+  #panel .sheet.tabbed .snd{gap:8px}#panel .sheet.tabbed .snd .mute{width:32px;height:27px}
   .vlist{margin-top:12px;gap:6px}
   .vlist button{padding:11px 18px;font-size:16px}
   .es-t b{font-size:40px}
@@ -1055,7 +1058,7 @@ h2 span{color:var(--hot)}
 }
 /* teléfonos apaisados: botones de menú y pausa de ≥ 44 px con 6 px de separación (dedo); sin la frase de presentación */
 @media (max-height:420px){
-  .sheet.wide .opt small{display:none}
+  #panel .sheet.tabbed .opt small{font-size:12px;margin-top:1px}
   /* UI-19: en el teléfono apaisado el marcador pierde el nombre del pabellón (queda el balón): la franja sigue a 12 px sin ensancharse */
   /* (letter-spacing 0: la de .sb-top se hereda ya resuelta a px y los 13 caracteres invisibles ensanchaban la pestaña ~30 px en blanco) */
   .sb-venue{font-size:0;letter-spacing:0;gap:0;padding:0 6px}
@@ -1080,7 +1083,7 @@ h2 span{color:var(--hot)}
   .tut-rule{font-size:12px;line-height:1.36;margin-top:7px;padding:6px 10px}
   #panel .tut-nav{position:sticky;bottom:-16px;z-index:2;margin:5px -20px -16px;padding:8px 20px 13px;
     background:linear-gradient(180deg,rgba(9,14,26,0),rgba(9,14,26,.98) 26%);border-radius:0 0 20px 20px}
-  #panel .sheet:has(#pnTut:not([hidden])).has-more::after{display:none}
+  #panel .sheet:has(#pnTut:not([hidden])).has-more::after{bottom:52px}
   .faults li{padding:5px 10px 6px;font-size:12px;line-height:1.3}
   .faults li b{font-size:13.5px}
 }
@@ -1091,6 +1094,11 @@ h2 span{color:var(--hot)}
   .tut-title{font-size:22px;margin:1px 0 4px}
   .tut-text{font-size:12.5px;line-height:1.36}
   .tut-rule{font-size:11.5px;line-height:1.3;margin-top:6px;padding:5px 9px}
+}
+/* teléfono apaisado: las 6 faltas del paso «Reglas y faltas» en tres columnas */
+@media (max-height:420px) and (min-width:600px){
+  .faults{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px 6px}
+  .faults li{font-size:11.5px;padding:4px 8px 5px}
 }
 @media (max-height:560px) and (min-width:600px){
   #end .sheet{max-width:820px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);column-gap:28px;align-items:start}
@@ -1113,15 +1121,15 @@ h2 span{color:var(--hot)}
   #end .end-peek{display:block;position:absolute;right:16px;bottom:14px}
   #end .end-peek button{display:flex;align-items:center;gap:6px;padding:7px 11px;font-size:12px;letter-spacing:.12em;border-radius:9px}
   #end .end-peek svg{width:15px;height:15px;fill:currentColor}
-  #end .end-title{font-size:42px}
+  #end .end-title{font-size:36px}
   #end .end-score{margin-top:6px}
   #end .es-t{font-size:18px}#end .es-t b{font-size:34px}#end .es-sep{font-size:28px}
   /* estadísticas juntas: con las tarjetas MVP en filas, «Ver celebración» pisaba la última fila */
   #end .stats{gap:2px;margin-top:4px}
   #end .st-r{gap:8px}#end .st-r b{font-size:16px;line-height:1.05}
   #end .st-r .mid{gap:2px 4px}#end .st-r .mid em{font-size:12px;letter-spacing:.1em}#end .st-r .bar{height:4px}
-  #end .end-sets{margin:8px 0 2px;gap:6px}#end .end-sets span{font-size:15px;padding:4px 9px}
-  #end .end-rec{margin:6px 0 10px;gap:2px 12px}
+  #end .end-sets{margin:5px 0 0;gap:6px}#end .end-sets span{font-size:15px;padding:4px 9px}
+  #end .end-rec{margin:3px 0 6px;font-size:12px;gap:2px 12px}
   #end .row-btn{gap:8px}
   #end .row-btn button{padding:11px 14px;font-size:15px}
   /* Pausa: marcador a la izquierda, opciones a la derecha (antes "Salir al menú" quedaba cortado a 844x390) */
@@ -1181,7 +1189,7 @@ h2 span{color:var(--hot)}
   .is-touch #coach.thru.aimtip:not(.off){opacity:.82}
   /* tarjeta guiada compacta: etiqueta y orden en una sola pastilla baja (antes ocupaba de y≈36 a 100 de 390) */
   .is-touch #guide{top:calc(38px + var(--st));display:flex;align-items:stretch;white-space:nowrap}
-  .is-touch #guide .gd-k{display:flex;align-items:center;border-radius:10px 0 0 10px;padding:0 9px;font-size:10px;letter-spacing:.14em}
+  .is-touch #guide .gd-k{display:flex;align-items:center;border-radius:10px 0 0 10px;padding:0 9px;font-size:11px;letter-spacing:.1em}
   .is-touch #guide .gd-t{border-radius:0 10px 10px 0;border-left:0;padding:4px 12px 4px 10px;font-size:15px;gap:6px}
   .is-touch #guide .key{font-size:11px}
   .is-touch #guide.thru .gd-k,.is-touch #guide.thru .gd-t{opacity:.3}
@@ -1224,14 +1232,20 @@ h2 span{color:var(--hot)}
   --ring1:1.3px 0 0 var(--tk),-1.3px 0 0 var(--tk),0 1.3px 0 var(--tk),0 -1.3px 0 var(--tk);
   --k0:#ff6a2e;--k0d:#b8400f;--k0l:#ffb07a;--k0rgb:255,106,46;
   --k1:#2f7bff;--k1d:#2459d8;--k1l:#8fc0ff;--k1rgb:47,123,255;
-  --glass:rgba(43,37,71,.9);--glass2:rgba(53,45,92,.95);--line:rgba(29,21,48,.85);--line2:rgba(255,255,255,.16)
+  --glass:rgba(43,37,71,.9);--glass2:rgba(53,45,92,.95);--line:rgba(29,21,48,.85);--line2:rgba(255,255,255,.16);
+  /* un color, un significado: naranja = acción principal; amarillo = elegido y antetítulos; lavanda = texto secundario (≥ 4,5:1 sobre #2e2756) */
+  --pri:linear-gradient(180deg,#ff8040 0 50%,#f65d1d 50% 100%);--pri-hi:linear-gradient(180deg,#ff8a4a 0 50%,#ff6626 50% 100%);
+  --cel-hi:linear-gradient(180deg,rgba(78,64,140,.97) 0 46%,rgba(62,51,116,.97) 46% 100%);
+  --fg2:#e8e3fb;--muted:#b9b0e6;--dim-text:#a49bd6;--soft:#cfc8f2;--bad:#ff5a6e;--bad-d:#a8283a;--sep:rgba(255,255,255,.1)
 }
 /* ---- botones base: color plano, contorno de tinta y sombra dura que se «aprieta» al pulsar ---- */
-button{border-radius:14px;background:linear-gradient(180deg,#ff7d3b 0 50%,#f8601f 50% 100%);text-shadow:var(--ring1),1.5px 2px 0 var(--tk);
+button{border-radius:14px;background:var(--pri);text-shadow:var(--ring1),1.5px 2px 0 var(--tk);
   box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 4px 0 rgba(255,255,255,.22),0 4px 0 var(--tk)}
 button:active{transform:translateY(3px);box-shadow:inset 0 0 0 2.5px var(--tk),0 1px 0 var(--tk)}
+/* un único estado deshabilitado para todos los botones */
+button:disabled,button[aria-disabled=true]{opacity:.5;filter:saturate(.4);cursor:default;transform:none!important} button:disabled:hover{filter:saturate(.4)}
 button.ghost{background:var(--cel-a);color:var(--fg);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 4px rgba(255,255,255,.12),0 4px 0 var(--tk)}
-button.ghost:hover{background:linear-gradient(180deg,#463c7c 0 46%,#3a3168 46% 100%)}
+button.ghost:hover{background:var(--cel-hi)}
 kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-bottom-width:3px;text-shadow:none}
 .key.pad,.key.tch{border-color:var(--tk)}
 #prompt.go .key:not(.pad):not(.tch){border-color:var(--tk);border-bottom-color:var(--tk)}
@@ -1244,22 +1258,24 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 
 /* ---- menú ---- */
 #menu{background:linear-gradient(90deg,rgba(29,21,48,.9) 0%,rgba(29,21,48,.72) 30%,rgba(29,21,48,.2) 58%,rgba(29,21,48,0) 75%),linear-gradient(0deg,rgba(29,21,48,.62) 0%,rgba(29,21,48,0) 30%)}
-.kicker{color:#ffd23f;text-shadow:var(--ring1)}
+.kicker{color:var(--gold);text-shadow:none}
 .kicker::before{height:4px;border-radius:2px;background:#ff6a2e;box-shadow:0 0 0 1.5px var(--tk)}
-.tagline{text-shadow:var(--ring1),1px 2px 0 var(--tk)}
+.tagline{text-shadow:none}
 #menu .mi{border-radius:14px;background:var(--cel-a);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 4px rgba(255,255,255,.07),3px 4px 0 var(--tk);
   text-shadow:var(--ring1),2px 2px 0 var(--tk);-webkit-backdrop-filter:none;backdrop-filter:none}
-#menu .mi:hover,#menu .mi:focus-visible,#menu .mi.kf{background:linear-gradient(180deg,rgba(78,64,140,.97) 0 46%,rgba(62,51,116,.97) 46% 100%);
+#menu .mi:hover{background:var(--cel-hi)}
+#menu .mi:focus-visible,#menu .mi.kf{background:var(--cel-hi);
   box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffb238,4px 5px 0 var(--tk)}
 #menu .mi::before{width:6px;background:#ffb238;box-shadow:1.5px 0 0 var(--tk)}
-#menu .mi.primary{background:linear-gradient(180deg,#ff8040 0 50%,#f65d1d 50% 100%);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 4px 0 rgba(255,255,255,.25),4px 5px 0 var(--tk)}
-#menu .mi.primary:hover,#menu .mi.primary:focus-visible,#menu .mi.primary.kf{background:linear-gradient(180deg,#ff8a4a 0 50%,#ff6626 50% 100%);
+#menu .mi.primary{background:var(--pri);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 4px 0 rgba(255,255,255,.25),4px 5px 0 var(--tk)}
+#menu .mi.primary:hover{background:var(--pri-hi)}
+#menu .mi.primary:focus-visible,#menu .mi.primary.kf{background:var(--pri-hi);
   box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #fff,5px 6px 0 var(--tk)}
 #menu .mlist:has(.mi.kf) .mi.primary:not(.kf){background:var(--cel-a);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px rgba(255,106,46,.85),3px 4px 0 var(--tk)}
 .mi.primary .go{background:#fff;box-shadow:0 0 0 2px var(--tk)}
 .mi.primary .go svg{fill:#f65d1d}
-.mi-n{color:#b9b0e6}
-.mi-s{color:#d6d0f5;text-shadow:var(--ring1)}
+.mi-n{color:var(--muted)}
+.mi-s{color:var(--soft);text-shadow:var(--ring1)}
 .mi-v{color:#ffd23f}
 .mi-v .arr svg{stroke:#c9c1f0}
 .lvl em{background:rgba(29,21,48,.7);box-shadow:0 0 0 1px rgba(255,255,255,.16)}
@@ -1325,7 +1341,7 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 .sq-r .bar i{display:block;height:100%;background:var(--t1)}
 .sq-r b{text-align:right;font:900 17px var(--display);color:var(--fg);font-variant-numeric:tabular-nums}
 .sq-r button{height:30px;padding:0;border-radius:9px;font:800 16px/1 var(--ui);letter-spacing:0;text-shadow:none;text-transform:uppercase;background:var(--t0);color:#fff;box-shadow:0 0 0 2px var(--tk)}
-.sq-r button:disabled{background:rgba(255,255,255,.08);color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
+.sq-r button:disabled{opacity:.6;filter:none;background:rgba(255,255,255,.08);color:var(--dim-text);box-shadow:inset 0 0 0 1px var(--line2)}
 .sq-r button.kf,.sq-r button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
 .sq-r.up b{animation:sqUp .5s var(--spring)}
 @keyframes sqUp{40%{transform:scale(1.5);color:var(--gold)}}
@@ -1337,7 +1353,7 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 /* táctil: botones de la hoja final de al menos 44 px (a 844×390 los secundarios medían 37 px y «Ver celebración» 29 px) */
 #app.is-touch #end .row-btn button,#app.is-touch #end .end-peek button{min-height:44px}
 /* ---- Jugadores: insignias (js/badges.js). Nivel: l0 bloqueada (gris), l1 bronce, l2 plata, l3 oro ---- */
-.bd-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:10px}
+.bd-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:10px 0 6px}
 .bd-h span{font:700 12px var(--ui);letter-spacing:0;text-transform:none;color:var(--muted)}
 .bd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:8px}
 .bd-t{--bt:#6b7488;position:relative;display:grid;grid-template-columns:34px minmax(0,1fr);grid-template-rows:auto 6px;column-gap:7px;row-gap:5px;align-items:center;
@@ -1350,9 +1366,9 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 .bd-t.l0 .bd-ic{filter:grayscale(1);opacity:.55}
 .bd-tx{min-width:0}
 .bd-tx b{display:block;font:800 15px/1.02 var(--display);letter-spacing:.02em;text-transform:uppercase;color:var(--fg);overflow-wrap:anywhere}
-.bd-tx small{display:block;margin-top:2px;font:600 11.5px/1.2 var(--ui);letter-spacing:0;text-transform:none;color:var(--muted)}
+.bd-tx small{display:block;margin-top:2px;font:600 12px/1.2 var(--ui);letter-spacing:0;text-transform:none;color:var(--fg2)}
 .bd-t:not(.l0) .bd-tx small{color:var(--bt);font-weight:800}
-.bd-t.l0 .bd-tx b{color:var(--dim-text)}
+.bd-t.l0 .bd-tx b{color:var(--fg2)}
 .bd-pb{height:6px;border-radius:4px;background:rgba(0,0,0,.45);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
 .bd-pb i{display:block;height:100%;background:var(--bt)}
 .bd-t.l0 .bd-pb i{background:var(--dim-text)}
@@ -1360,7 +1376,7 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
 .bd-on{position:absolute;top:-9px;right:6px;padding:1px 6px;border-radius:6px;background:var(--gold);color:var(--tk);font:800 10.5px/1.35 var(--display);letter-spacing:.1em;font-style:normal;text-shadow:none;box-shadow:0 0 0 1.5px var(--tk)}
 .bd-t:hover{filter:brightness(1.12)}
 .bd-t.kf,.bd-t:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
-.bd-info{margin:2px 0 0;min-height:2.6em;font:600 12.5px/1.35 var(--ui);color:var(--fg2)}
+.bd-info{margin:8px 0 0;min-height:2.6em;font:600 12.5px/1.35 var(--ui);color:var(--fg2)}
 .bd-info b{color:var(--fg)}
 .bd-info small{color:var(--muted);font-size:11.5px}
 .bd-info .t1{color:#e08a45;font-weight:800}.bd-info .t2{color:#cfdbe9;font-weight:800}.bd-info .t3{color:var(--gold);font-weight:800}
@@ -1484,7 +1500,7 @@ kbd,.key{background:#fff7e8;color:var(--tk);border:1.5px solid var(--tk);border-
   box-shadow:0 0 0 3px var(--tk),9px 10px 0 3px var(--tk);scrollbar-color:#5a4f94 transparent}
 .sheet::before{height:7px;background:#ff6a2e;box-shadow:0 2.5px 0 var(--tk)}
 h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
-.sh-k,.tut-step,.opt-h{text-shadow:var(--ring1)}
+.tut-step{text-shadow:var(--ring1)}
 #end.win .sheet::before{background:linear-gradient(90deg,#ffd23f 0 50%,var(--k0) 50%)}
 #end.lose .sheet::before{background:var(--k1)}
 #end.win .end-title{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#ffd23f}
@@ -1508,10 +1524,11 @@ h2{text-shadow:var(--ring3),4px 5px 0 var(--tk)}
 .end-back{background:var(--tp);box-shadow:inset 0 0 0 2px var(--tk),4px 5px 0 var(--tk)}
 /* ajustes */
 .opt{background:rgba(29,21,48,.55);box-shadow:inset 0 0 0 2px var(--tk),inset 0 0 0 3.5px rgba(255,255,255,.07);text-shadow:var(--ring1)}
-.opt:hover,.opt:focus-visible,.opt.kf{background:rgba(78,64,140,.9);box-shadow:inset 0 0 0 2px var(--tk),inset 0 0 0 4.5px #ffb238}
-.opt small{color:#cfc8f0}
+.opt:hover{background:var(--cel-hi)}
+.opt:focus-visible,.opt.kf{background:rgba(78,64,140,.9);box-shadow:inset 0 0 0 2px var(--tk),inset 0 0 0 4.5px #ffb238}
+.opt small{color:var(--soft)}
 .seg{background:var(--tk)}
-.seg span{color:#b9b0e6}
+.seg span{color:var(--muted)}
 .seg span.on{background:#ff6a2e;color:#fff;text-shadow:var(--ring1);box-shadow:inset 0 0 0 2px var(--tk)}
 .seg.kit span.on{background:#fff7e8;box-shadow:inset 0 0 0 2px var(--tk)}
 .seg.kit .sw{box-shadow:0 0 0 2px var(--tk),inset 0 0 0 1px rgba(255,255,255,.35)}
@@ -1638,7 +1655,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
    pestañas reutilizables (.tabs, ui.js VB.UI.tabs) en Jugadores, Ajustes y Controles.
    ===================================================================== */
 #menu .mi{grid-template-columns:minmax(0,1fr) auto;padding-left:18px}
-#menu .mi:hover,#menu .mi:focus-visible,#menu .mi.kf{padding-left:24px}
+#menu .mi:focus-visible,#menu .mi.kf{padding-left:24px}
 #menu .mlist>#btnPlay{height:74px;font-size:36px}
 #menu .mlist>#btnPlay .go{width:38px;height:38px}
 #menu .mlist>#btnPlay .go svg{width:18px;height:18px}
@@ -1659,14 +1676,16 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .mp-back{flex:0 0 auto;display:flex;align-items:center;gap:6px;height:46px;padding:0 16px 0 10px;font-size:16px;letter-spacing:.12em;color:var(--fg);
   background:var(--cel-a);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 4px rgba(255,255,255,.08),3px 4px 0 var(--tk)}
 .mp-back svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
-.mp-back:hover,.mp-back.kf,.mp-back:focus-visible{background:linear-gradient(180deg,rgba(78,64,140,.97) 0 46%,rgba(62,51,116,.97) 46% 100%);
+.mp-back:hover{background:var(--cel-hi)}
+.mp-back.kf,.mp-back:focus-visible{background:var(--cel-hi);
   box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffb238,3px 4px 0 var(--tk);outline:none}
 /* ---- JUGAR: tarjetas de modos ---- */
 .modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .mode{position:relative;display:flex;flex-direction:column;align-items:stretch;min-height:clamp(250px,44vh,340px);padding:0 0 16px;text-align:left;overflow:hidden;
   border-radius:20px;color:var(--fg);background:var(--cel-a);text-shadow:none;letter-spacing:0;text-transform:none;
   box-shadow:inset 0 0 0 3px var(--tk),inset 0 0 0 5px rgba(255,255,255,.07),5px 7px 0 var(--tk);transition:transform .2s var(--ease),box-shadow .2s,filter .2s}
-.mode:hover,.mode:focus-visible,.mode.kf{transform:translateY(-5px);outline:none;filter:none;
+.mode:hover{background:var(--cel-hi)}
+.mode:focus-visible,.mode.kf{transform:translateY(-5px);outline:none;filter:none;
   box-shadow:inset 0 0 0 3px var(--tk),inset 0 0 0 7px #ffb238,6px 11px 0 var(--tk)}
 .mode:active{transform:translateY(1px)}
 .md-art{position:relative;display:block;flex:1 1 56%;min-height:96px;border-bottom:3px solid var(--tk);
@@ -1689,11 +1708,8 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 @keyframes mdBob{0%,100%{transform:none}50%{transform:translateY(-4px) rotate(-1.5deg)}}
 .md-tx{display:flex;flex-direction:column;gap:6px;padding:14px 18px 0}
 .md-tx b{font:900 28px/.95 var(--display);font-style:italic;letter-spacing:.02em;text-transform:uppercase;color:#fff8ee;text-shadow:var(--ring1),2px 3px 0 var(--tk)}
-.md-tx small{font:600 14px/1.3 var(--ui);color:#d6d0f5;text-shadow:var(--ring1)}
+.md-tx small{font:600 14px/1.3 var(--ui);color:var(--soft)}
 .md-tx small .chip{font-size:12px;color:#e6e0ff;margin-top:2px}
-.md-go{position:absolute;right:12px;top:12px;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;background:#fff;box-shadow:0 0 0 2.5px var(--tk),2px 3px 0 var(--tk)}
-.md-go svg{width:20px;height:20px;fill:none;stroke:#f65d1d;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
-.m-career .md-go svg{stroke:#5a3fb0}
 .mode.soon,.mode:disabled{cursor:default;filter:saturate(.45) brightness(.82);transform:none}
 .mode.soon:hover{filter:saturate(.45) brightness(.82);transform:none;box-shadow:inset 0 0 0 3px var(--tk),inset 0 0 0 5px rgba(255,255,255,.07),5px 7px 0 var(--tk)}
 .md-soon{position:absolute;left:12px;top:14px;padding:5px 10px 6px;border-radius:9px;background:#ffd23f;color:var(--tk);font:800 12.5px/1 var(--display);font-style:normal;
@@ -1702,12 +1718,12 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .qlist{display:flex;flex-direction:column;gap:8px}
 #mpQuick .mi{height:62px}
 .mi-l{display:flex;flex-direction:column;min-width:0}
-.mi-h{display:block;margin-top:5px;font:600 13px/1.15 var(--ui);letter-spacing:.01em;text-transform:none;color:#cfc8f2;text-shadow:var(--ring1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mi-h{display:block;margin-top:5px;font:600 13px/1.15 var(--ui);letter-spacing:.01em;text-transform:none;color:var(--soft);text-shadow:var(--ring1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #optPts.lock .mi-h,#optVenue.lock .mi-h,#optCtrl.lock .mi-h{color:#ffe08a}
-.m-6v6 .md-go svg{stroke:#246a77}
 #mpQuick #btnGo{height:72px;margin-top:6px;font-size:34px}
 #mpQuick #btnGo .go{width:38px;height:38px}
 #mpQuick #btnGo .go svg{width:18px;height:18px}
+#playSub{display:none} /* la línea de chips repetía lo elegido justo encima */
 #menu .qlist:has(.mi.kf) .mi.primary:not(.kf){background:var(--cel-a);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px rgba(255,106,46,.85),3px 4px 0 var(--tk)}
 .qlist:has(.mi.kf) .mi.primary:not(.kf) .mi-s .chip{background:rgba(29,21,48,.5);color:var(--fg2)}
 /* poco alto (portátiles, 1366×625, 1024×600) */
@@ -1734,15 +1750,13 @@ kbd.ms{height:auto;padding:2px 6px 1px}
   .md-tx{gap:3px;padding:8px 12px 0}
   .md-tx b{font-size:21px}
   .md-tx small{font-size:12px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .md-tx small .chip{font-size:10.5px;margin-top:1px}
-  .md-go{width:30px;height:30px;right:9px;top:9px}
-  .md-go svg{width:16px;height:16px}
-  .md-soon{font-size:10.5px;left:9px;top:10px}
+  .md-tx small .chip{font-size:11px;margin-top:1px}
+  .md-soon{font-size:11px;left:9px;top:10px}
   .qlist{gap:5px}
   #mpQuick .mi{height:46px;font-size:18px}
   .mi-h{font-size:11px;margin-top:2px}
   #mpQuick #btnGo{height:52px;margin-top:3px;font-size:26px}
-  #mpQuick #btnGo .mi-s{font-size:10.5px}
+  #mpQuick #btnGo .mi-s{font-size:11.5px}
 }
 @media (max-height:380px){
   .mp-head{margin-bottom:6px}
@@ -1754,14 +1768,14 @@ kbd.ms{height:auto;padding:2px 6px 1px}
   .modes{grid-template-columns:minmax(0,1fr);gap:10px}
   .mode{flex-direction:row;min-height:0;height:auto;max-height:none;padding:0}
   .md-art{flex:0 0 112px;min-height:104px;border-bottom:0;border-right:3px solid var(--tk)}
-  .md-tx{padding:12px 50px 12px 14px;justify-content:center}
+  .md-tx{padding:12px 14px;justify-content:center}
 }
 /* ---- PESTAÑAS (VB.UI.tabs) ---- */
 .tabs{display:flex;align-items:center;gap:6px;margin:0 0 12px;min-width:0}
 .tb-row{flex:1;min-width:0;display:flex;gap:4px;padding:4px;overflow-x:auto;scrollbar-width:none;border-radius:15px;background:rgba(29,21,48,.6);box-shadow:inset 0 0 0 2px var(--tk)}
 .tb-row::-webkit-scrollbar{display:none}
 .tabs .tab{flex:1 0 auto;display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:6px 10px;border-radius:11px;
-  font:800 15px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;color:#cfc8f2;background:transparent;box-shadow:none;text-shadow:none}
+  font:800 15px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;color:var(--soft);background:transparent;box-shadow:none;text-shadow:none}
 .tabs .tab svg{flex:0 0 auto;width:17px;height:17px;fill:currentColor}
 .tabs .tab:hover:not(.on){background:rgba(255,255,255,.09);color:#fff;filter:none}
 .tabs .tab:active{transform:none}
@@ -1778,7 +1792,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 @keyframes tpN{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
 @keyframes tpP{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
 .is-touch .tabs .tab{min-height:44px}
-@media (max-height:560px){.tabs{margin-bottom:8px}.tabs .tab{min-height:36px;padding:5px 11px;font-size:13.5px}.is-touch .tabs .tab{min-height:44px}}
+@media (max-height:560px){.tabs{margin-bottom:8px}.tabs .tab{min-height:36px;padding:5px 11px;font-size:13.5px}.is-touch .tabs .tab{min-height:44px}.tabs .tb-b{font-size:11px}}
 @media (max-width:700px){.tabs .tab{padding:5px 10px;gap:5px;letter-spacing:.08em}}
 @media (max-width:560px){.tabs .tab svg{display:none}}
 /* paneles con pestañas: una columna, el grupo elegido */
@@ -1795,8 +1809,13 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 .sq-pk:not(.on) .sq-num{background:#5b4f99}
 .sq-pn{min-width:0;font:800 18px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
 .sq-pn small{display:block;margin-top:3px;font:600 12.5px var(--ui);letter-spacing:0;text-transform:none;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sq-pk.on{background:linear-gradient(180deg,rgba(78,64,140,.97) 0 46%,rgba(62,51,116,.97) 46% 100%);box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffd23f,3px 4px 0 var(--tk)}
-.sq-pk.kf,.sq-pk:focus-visible{outline:3px solid #fff;outline-offset:2px}
+/* elegido = relleno amarillo; el aro ámbar interior queda solo para el foco */
+.sq-pk.on{background:linear-gradient(180deg,#ffd23f 0 50%,#ffc21a 50% 100%);color:var(--tk)}
+.sq-pk.on .sq-num{background:var(--tk);color:#ffd23f;text-shadow:none}
+.sq-pk.on .sq-pn small{color:rgba(29,21,48,.8)}
+.sq-pk.on .sq-pp{background:var(--tk);color:#ffd23f}
+.sq-pk.kf,.sq-pk:focus-visible{outline:none;box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffb238,3px 4px 0 var(--tk)}
+.sq-pk.on.kf,.sq-pk.on:focus-visible{box-shadow:inset 0 0 0 2.5px var(--tk),inset 0 0 0 5px #ffb238,inset 0 0 0 6.5px var(--tk),3px 4px 0 var(--tk)} /* sobre el amarillo, el aro con filo de tinta */
 .sq-pp{font:900 14px/1 var(--display);font-style:normal;padding:4px 8px;border-radius:8px;background:#ffd23f;color:var(--tk);box-shadow:0 0 0 2px var(--tk)}
 .sq-attrs{display:flex;flex-direction:column;gap:6px}
 .sq-attrs .sq-r{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 2.2em 46px;min-height:50px;padding:4px 8px 4px 12px;border-radius:12px;background:rgba(29,21,48,.45);box-shadow:inset 0 0 0 2px var(--tk)}
@@ -1820,8 +1839,11 @@ kbd.ms{height:auto;padding:2px 6px 1px}
 @media (max-height:420px){#menu[data-page="play"] #menuRecord,#menu[data-page="quick"] #menuRecord{display:none}}
 /* móvil apaisado (alto <= 420), preparación del Partido rápido: el botón de pantalla completa se queda en el icono (38 × 38),
    en el margen de la derecha; con el texto tapaba el valor y las flechas de la 1ª fila (Formato) a 667×375 y 740×360 */
-@media (max-height:420px){#menu[data-page="quick"] .fs-btn{width:38px;padding:0;justify-content:center;gap:0;right:calc(10px + var(--sr))}
-  #menu[data-page="quick"] .fs-btn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
+@media (max-height:420px){#menu[data-page="quick"] .fs-btn,#menu[data-page="play"] .fs-btn{width:38px;padding:0;justify-content:center;gap:0;right:calc(10px + var(--sr))}
+  #menu[data-page="quick"] .fs-btn span,#menu[data-page="play"] .fs-btn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .is-touch #menu[data-page="quick"] .fs-btn,.is-touch #menu[data-page="play"] .fs-btn{width:44px}}
+/* táctil: Pantalla completa y Cuenta de 44 px de alto como mínimo */
+.is-touch .fs-btn,.is-touch #btnAcc{min-height:44px}
 /* «Volver» de los paneles con el dedo: 44 px como mínimo (medía 74×30) */
 .is-touch .pn-close{min-height:44px;min-width:64px}
 .sq-sum{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:8px 14px;border-radius:14px;background:var(--cel-a);box-shadow:inset 0 0 0 2.5px var(--tk),3px 4px 0 var(--tk)}
@@ -1911,7 +1933,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
       <!-- Menú principal (menús v2, nov-2026): pocas entradas grandes y sin números. JUGAR abre la página de modos (#mpPlay) y
            Partido rápido su preparación (#mpQuick); pila de páginas en ui.js (menuGo / menuBack: Esc, B o el botón Volver) -->
       <nav class="mlist" data-nav aria-label="Menú principal">
-        <button class="mi primary" id="btnPlay"><span>Jugar<br><span class="mi-s" id="playModes"><span class="chip">Partido rápido</span><span class="chip">Carrera</span></span></span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
+        <button class="mi primary" id="btnPlay"><span>Jugar</span><span class="go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
         <button class="mi" id="btnSquad"><span>Jugadores</span><span class="mi-s" id="squadSub">Estadísticas y mejoras</span></button>
         <button class="mi" id="btnTut"><span>Cómo se juega</span><span class="mi-s">Tutorial</span></button>
         <button class="mi" id="btnControls"><span>Controles</span><span class="mi-s" id="ctlSub">Teclado</span></button>
@@ -1922,12 +1944,12 @@ kbd.ms{height:auto;padding:2px 6px 1px}
     <div class="mpage" id="mpPlay" data-page="play" hidden>
       <div class="mp-head">
         <button class="mp-back" id="btnPlayBack" aria-label="Volver al menú principal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg><span>Volver</span></button>
-        <div class="mp-tt"><p class="kicker">Make the Cut<span class="sep sep-d"><span class="sr">, </span></span>Elige modo</p><h2 class="mp-t">Jugar</h2></div>
+        <div class="mp-tt"><h2 class="mp-t">Jugar</h2></div>
       </div>
       <nav class="modes" data-nav aria-label="Modos de juego">
-        <button class="mode m-quick" id="btnQuick"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><g class="md-sp"><path d="M10 30h26M4 44h30M12 58h22"/></g><circle class="md-ball" cx="72" cy="44" r="26"/><path class="md-seam" d="M72 18c-9 8-12 18-10 28M98 42c-11-4-22-3-33 4M54 63c8-6 18-9 30-7M72 44c6 7 9 15 9 24M72 44c-9-2-17-8-22-17"/><path class="md-bolt" d="M101 6l-12 20h9l-7 17 17-24h-9l6-13z"/></svg></span><span class="md-tx"><b>Partido rápido</b><small>Un partido contra la CPU, a tu medida</small></span><span class="md-go" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></button>
-        <button class="mode m-career" id="btnCareer"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><path class="md-sp" d="M18 30l-8-4M16 44H6M102 30l8-4M104 44h10"/><path class="md-ear" d="M40 16H28c0 12 6 19 14 20M80 16h12c0 12-6 19-14 20"/><path class="md-stem" d="M53 50h14v12H53zM42 62h36l3 12H39z"/><path class="md-cup" d="M38 8h44v16c0 16-9 27-22 29-13-2-22-13-22-29z"/><path class="md-star" d="M60 17l3.6 7.3 8 1.1-5.8 5.6 1.4 8L60 35.2l-7.2 3.8 1.4-8-5.8-5.6 8-1.1z"/></svg></span><span class="md-tx"><b>Carrera</b><small class="md-s" id="careerSub">Crea tu jugador: liga, ofertas y fichajes</small></span><span class="md-go" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></button>
-        <button class="mode m-6v6" id="btn6v6"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><path class="md-net" d="M60 6v72"/><g class="md-a"><circle cx="18" cy="22" r="7"/><circle cx="18" cy="62" r="7"/><circle cx="31" cy="42" r="7"/><circle cx="45" cy="18" r="7"/><circle cx="45" cy="66" r="7"/><circle cx="48" cy="42" r="7"/></g><g class="md-b"><circle cx="102" cy="22" r="7"/><circle cx="102" cy="62" r="7"/><circle cx="89" cy="42" r="7"/><circle cx="75" cy="18" r="7"/><circle cx="75" cy="66" r="7"/><circle cx="72" cy="42" r="7"/></g></svg></span><span class="md-tx"><b>6 contra 6</b><small>Equipos completos: llevas al receptor</small></span><span class="md-go" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></button>
+        <button class="mode m-quick" id="btnQuick"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><g class="md-sp"><path d="M10 30h26M4 44h30M12 58h22"/></g><circle class="md-ball" cx="72" cy="44" r="26"/><path class="md-seam" d="M72 18c-9 8-12 18-10 28M98 42c-11-4-22-3-33 4M54 63c8-6 18-9 30-7M72 44c6 7 9 15 9 24M72 44c-9-2-17-8-22-17"/><path class="md-bolt" d="M101 6l-12 20h9l-7 17 17-24h-9l6-13z"/></svg></span><span class="md-tx"><b>Partido rápido</b><small>Un partido contra la CPU, a tu medida</small></span></button>
+        <button class="mode m-career" id="btnCareer"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><path class="md-sp" d="M18 30l-8-4M16 44H6M102 30l8-4M104 44h10"/><path class="md-ear" d="M40 16H28c0 12 6 19 14 20M80 16h12c0 12-6 19-14 20"/><path class="md-stem" d="M53 50h14v12H53zM42 62h36l3 12H39z"/><path class="md-cup" d="M38 8h44v16c0 16-9 27-22 29-13-2-22-13-22-29z"/><path class="md-star" d="M60 17l3.6 7.3 8 1.1-5.8 5.6 1.4 8L60 35.2l-7.2 3.8 1.4-8-5.8-5.6 8-1.1z"/></svg></span><span class="md-tx"><b>Carrera</b><small class="md-s" id="careerSub">Crea tu jugador: liga, ofertas y fichajes</small></span></button>
+        <button class="mode m-6v6" id="btn6v6"><span class="md-art" aria-hidden="true"><svg viewBox="0 0 120 84"><path class="md-net" d="M60 6v72"/><g class="md-a"><circle cx="18" cy="22" r="7"/><circle cx="18" cy="62" r="7"/><circle cx="31" cy="42" r="7"/><circle cx="45" cy="18" r="7"/><circle cx="45" cy="66" r="7"/><circle cx="48" cy="42" r="7"/></g><g class="md-b"><circle cx="102" cy="22" r="7"/><circle cx="102" cy="62" r="7"/><circle cx="89" cy="42" r="7"/><circle cx="75" cy="18" r="7"/><circle cx="75" cy="66" r="7"/><circle cx="72" cy="42" r="7"/></g></svg></span><span class="md-tx"><b>6 contra 6</b><small>Equipos completos: elige tu puesto</small></span></button>
       </nav>
     </div>
     <!-- PARTIDO RÁPIDO: preparación (formato, escenario, dificultad, puntos y control) y ¡A JUGAR! (en 6 contra 6, Controlar queda fijo: .lock; y en
@@ -1935,7 +1957,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
     <div class="mpage" id="mpQuick" data-page="quick" hidden>
       <div class="mp-head">
         <button class="mp-back" id="btnQuickBack" aria-label="Volver a los modos de juego"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg><span>Volver</span></button>
-        <div class="mp-tt"><p class="kicker">Jugar<span class="sep sep-d"><span class="sr">, </span></span>Prepara el partido</p><h2 class="mp-t">Partido rápido</h2></div>
+        <div class="mp-tt"><p class="kicker">Jugar</p><h2 class="mp-t">Partido rápido</h2></div>
       </div>
       <div class="qlist" data-nav aria-label="Opciones del partido">
         <button class="mi" id="optFmt" data-opt="format" aria-label="Formato: 2 contra 2"><span class="mi-l">Formato<small class="mi-h" id="fmtHelp">Tú y tu compañero contra la CPU</small></span><span class="mi-v"><span class="arr" data-d="-1" aria-label="2 contra 2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span><span class="mv-val"><b id="fmtVal">2 contra 2</b></span><span class="arr" data-d="1" aria-label="6 contra 6"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span></span></button>
@@ -2015,10 +2037,10 @@ kbd.ms{height:auto;padding:2px 6px 1px}
         </div>
       </div>
       <div id="pnFirst" hidden>
-        <p class="first-lead">¿Quieres ver antes cómo se juega? Son 6 pasos cortos con dibujos: saque, recepción, colocación, remate, bloqueo y reglas.</p>
+        <p class="first-lead">6 pasos, 1 minuto.</p>
         <div class="first-opts" data-nav>
-          <button id="btnFirstTut"><span>Ver cómo se juega<small>1 minuto y luego empieza el partido</small></span><span class="ic">▶</span></button>
-          <button class="ghost" id="btnFirstPlay"><span>Jugar ya<small id="firstDiff">Nivel Fácil. Se cambia en Partido rápido</small></span><span class="ic">›</span></button>
+          <button id="btnFirstTut"><span>Ver cómo se juega<small>6 pasos y al partido</small></span><span class="ic">▶</span></button>
+          <button class="ghost" id="btnFirstPlay"><span>Jugar ya<small id="firstDiff">Nivel Fácil</small></span><span class="ic">›</span></button>
         </div>
       </div>
       <div id="pnCtl" hidden>
@@ -2054,7 +2076,7 @@ kbd.ms{height:auto;padding:2px 6px 1px}
           </div>
           <div class="opt-g" data-tab="game">
             <p class="opt-h">Juego</p>
-            <button class="opt" data-opt="showHelp"><span>Ayudas en pantalla<small>Avisos de «¡Golpea!» y «¡Salta!»</small></span><span class="seg" data-seg="showHelp"></span></button>
+            <button class="opt" data-opt="showHelp"><span>Ayudas en pantalla<small>Avisos del momento de golpear y saltar</small></span><span class="seg" data-seg="showHelp"></span></button>
             <button class="opt" data-opt="coachTips"><span>Consejos<small>Qué hacer en cada toque. Se apagan al ganar tu primer partido</small></span><span class="seg" data-seg="coachTips"></span></button>
           </div>
           <div class="opt-g" id="optKit" data-tab="kit">

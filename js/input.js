@@ -289,6 +289,8 @@
     // ⇄ es pequeño: en reposo se queda legible (disco oscuro >= 3:1 sobre un suelo gris medio)
     '#touch.idle .vt-btn.vt-sw:not(.dn):not(.ready):not(.cue):not(.off):not(.see){opacity:.82}' +
     '#touch.idle .vt-btn.see:not(.dn):not(.ready):not(.cue):not(.off){opacity:.26}' +
+    // ❚❚ (pausa) se queda legible en reposo y con jugador detrás: sobre fondos claros a .3 casi no se veía (mismos :not() que las reglas de arriba para ganarles en especificidad)
+    '#touch.idle .vt-btn.vt-pause:not(.dn):not(.ready):not(.cue):not(.off),#touch .vt-btn.vt-pause.see:not(.dn):not(.ready):not(.cue):not(.off),#touch.idle .vt-btn.vt-pause.see:not(.dn):not(.ready):not(.cue):not(.off){opacity:.85;transform:none}' +
     '.vt-hit{width:104px;height:104px;right:calc(22px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));' +
       // (UI-19: paradas más oscuras; rótulo blanco de 15 px >= 4,5:1 en el centro del botón)
       'background:radial-gradient(circle at 40% 30%,#ec7444,#c9441a 55%,#a8300e)}' +
@@ -327,7 +329,7 @@
       '.vt-jump{width:68px;height:68px;right:calc(134px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom))}' +
       '.vt-sw{width:44px;height:44px;right:calc(14px + env(safe-area-inset-right));bottom:calc(128px + env(safe-area-inset-bottom))}' +
       '.vt-set{width:56px;height:56px;right:calc(140px + env(safe-area-inset-right));bottom:calc(92px + env(safe-area-inset-bottom))}' +
-      '.vt-pause{width:40px;height:40px}}' +
+      '.vt-pause{width:44px;height:44px}}' +
     '@media (max-height:340px){.vt-hit{width:78px;height:78px}.vt-jump{width:60px;height:60px;right:calc(120px + env(safe-area-inset-right))}' +
       '.vt-sw{right:calc(12px + env(safe-area-inset-right));bottom:calc(118px + env(safe-area-inset-bottom))}' +
       '.vt-set{width:52px;height:52px;right:calc(124px + env(safe-area-inset-right));bottom:calc(84px + env(safe-area-inset-bottom))}}';

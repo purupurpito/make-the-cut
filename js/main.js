@@ -434,7 +434,7 @@
     if (k && cs.label) { if (VB.UI && VB.UI.sep) k.innerHTML = VB.UI.sep(cs.label, 'd'); else k.textContent = cs.label.split(' · ').join(', '); }
     if (rec && s) {
       var d = document.createElement('div'); d.className = 'end-xp';
-      var html = '<span>Nota: <b>' + fmt1(s.nota || 0) + '</b></span><span>' + (cs.player ? escHtml(cs.player) + ': ' : '') + '<b>+' + (s.xp | 0) + ' XP</b>' + (s.lvlUp ? ' <span class="lv">¡NIVEL ' + s.lvl + '! +' + s.ptsGained + ' PT</span>' : '') + '</span>';
+      var html = '<span>Nota: <b>' + fmt1(s.nota || 0) + '</b></span><span>' + (cs.player ? escHtml(cs.player) + ': ' : '') + '<b>+' + (s.xp | 0) + ' XP</b>' + (s.lvlUp ? ' <span class="lv">¡NIVEL ' + s.lvl + '! +' + s.ptsGained + ' puntos</span>' : '') + '</span>';
       d.innerHTML = html; rec.appendChild(d);
       // insignias nuevas o que suben: en una fila compacta con su icono (el mismo estilo .end-bd que la hoja de Partido rápido);
       // con el texto largo («¡Insignia nueva: …!») cada una ocupaba una línea y a 844×390 «Menú principal» quedaba fuera

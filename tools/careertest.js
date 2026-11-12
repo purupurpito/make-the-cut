@@ -31,8 +31,8 @@ let c = C.create({ name: 'Ferran Prueba', num: 14, role: 'cr', points: 15, seed:
 ok(C.exists(), 'existe tras crear');
 ok(c.ctrl === 'one', 'Carrera: siempre control «uno» aunque se pida «both»');
 ok(c.points === 21 && C.PTS === 21 && C.PTS3 === 15 && C.VENUE === 'beach', 'vóley playa: sets a 21, el 3.º a 15, aunque se pidan 15 (' + c.points + ')');
-ok(C.LEAGUES.every(L => /Circuito|Superliga/.test(L.name) && L.art && L.cup) && C.LEAGUES[0].name === 'Circuito Regional', 'circuitos de playa: ' + C.LEAGUES.map(L => L.name).join(', '));
-ok(C.lname(C.LEAGUES[0]) === 'el Circuito Regional' && C.lname(C.LEAGUES[2]) === 'la Superliga de Playa' && C.toL(C.LEAGUES[1]) === 'al Circuito Nacional', 'artículos de los circuitos');
+ok(C.LEAGUES.every(L => /Circuito|Hiperliga/.test(L.name) && L.art && L.cup) && C.LEAGUES[0].name === 'Circuito Regional', 'circuitos de playa: ' + C.LEAGUES.map(L => L.name).join(', '));
+ok(C.lname(C.LEAGUES[0]) === 'el Circuito Regional' && C.lname(C.LEAGUES[2]) === 'la Hiperliga de Playa' && C.toL(C.LEAGUES[1]) === 'al Circuito Nacional', 'artículos de los circuitos');
 ok(c.clubs.every(k => /^(CV Platja|Arena|Platja|Club Platja|Vóley Playa|Beach Vòlei|Sorra|Dunes|Litoral|Costa) /.test(k.name) && typeof k.beach === 'string' && k.beach.indexOf(k.city) >= 0), 'clubes de vóley playa con sede en una playa (' + c.clubs[0].name + ', ' + c.clubs[0].beach + ')');
 ok(C.ROLES.atk.name === 'Bloqueador' && C.ROLES.cr.name === 'Defensor' && c.player.role === 'Defensor', 'roles de playa: bloqueador y defensor (' + c.player.role + ')');
 ok(c.clubs.length === 40, '40 clubes (' + c.clubs.length + ')');
@@ -275,7 +275,7 @@ section('Dificultad, ofertas y guardados dañados');
   ok(C.clubsOf(c, 0).every(k => C.clubOvr(k) < C.SOFT.reg ? C.difficultyFor(k) === 'easy' && !C.softFor(k) : C.difficultyFor(k) === 'normal' && C.softFor(k) === (C.clubOvr(k) < C.SOFT.regNormal)), 'Circuito Regional: Fácil, Normal suave y Normal según la media (' + regD.join(', ') + ')');
   ok(regD.some(d => d === 'easy') && regD.some(d => d === 'normal+suave'), 'Circuito Regional con clubes en Fácil y en Normal suave');
   ok(C.clubsOf(c, 1).every(k => C.difficultyFor(k) === 'normal' && C.softFor(k) === (C.clubOvr(k) < C.SOFT.nat)), 'Circuito Nacional: IA Normal (suave en los más flojos)');
-  ok(C.clubsOf(c, 2).every(k => !C.softFor(k) && C.difficultyFor(k) === (C.clubOvr(k) >= C.DIFF_AT[1][0] ? 'hard' : 'normal')), 'Superliga: Normal y Difícil desde ' + C.DIFF_AT[1][0]);
+  ok(C.clubsOf(c, 2).every(k => !C.softFor(k) && C.difficultyFor(k) === (C.clubOvr(k) >= C.DIFF_AT[1][0] ? 'hard' : 'normal')), 'Hiperliga: Normal y Difícil desde ' + C.DIFF_AT[1][0]);
   { const sk = C.clubsOf(c, 0).filter(k => C.softFor(k))[0]; ok(!sk || C.diffLabel(sk) === 'Normal suave', 'etiqueta «Normal suave» (' + (sk ? C.diffLabel(sk) : '-') + ')'); }
   // mitad de temporada: sin nota media >= 7 no hay ofertas
   c.notes = [{ nota: 6.4 }, { nota: 6.8 }]; ok(C._genOffers(c, true).length === 0, 'mitad de temporada con nota 6,6: sin ofertas');
@@ -577,7 +577,7 @@ section('Palmarés migrado: nombres de playa');
   const o = { trophies: [{ season: 1, kind: 'liga', name: 'Liga Regional', club: 'X' }, { season: 2, kind: 'copa', name: 'Copa Nacional', club: 'X' }, { season: 2, kind: 'ascenso', name: 'Ascenso a Superliga', club: 'X' },
     { season: 3, kind: 'ascenso', name: 'Ascenso a Circuito Mundial', club: 'X' }, { season: 4, kind: 'liga', name: 'Superliga de Playa', club: 'X' }, { season: 5, kind: 'ascenso', name: 'Ascenso al Circuito Nacional', club: 'X' }] };
   C._beachTrophies(o); const nm = o.trophies.map(t => t.name);
-  ok(nm.join('|') === 'Circuito Regional|Open Nacional|Ascenso a la Superliga de Playa|Ascenso al Circuito Mundial|Superliga de Playa|Ascenso al Circuito Nacional', 'competiciones de pabellón → circuitos de playa (' + nm.join(', ') + ')');
+  ok(nm.join('|') === 'Circuito Regional|Open Nacional|Ascenso a la Hiperliga de Playa|Ascenso al Circuito Mundial|Hiperliga de Playa|Ascenso al Circuito Nacional', 'competiciones de pabellón → circuitos de playa (' + nm.join(', ') + ')');
   C._beachTrophies(o); ok(o.trophies.map(t => t.name).join('|') === nm.join('|'), 'idempotente');
 }
 

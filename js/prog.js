@@ -23,10 +23,10 @@
   var KEYS = ['jump', 'speed', 'react', 'recv', 'dig', 'set', 'spike', 'ctl', 'block', 'serve'];
   var LABEL = { jump: 'Salto', speed: 'Velocidad', react: 'Reacción', recv: 'Recepción', dig: 'Defensa', set: 'Colocación',
     spike: 'Potencia', ctl: 'Control', block: 'Bloqueo', serve: 'Saque' };
-  var HINT = { jump: 'Altura del salto y margen de timing al rematar y bloquear', speed: 'Velocidad punta y aceleración al correr',
+  var HINT = { jump: 'Altura del salto y margen al rematar y bloquear', speed: 'Velocidad punta y aceleración al correr',
     react: 'Recuperación tras plancha o fallo; la IA lee antes la jugada',
     recv: 'Margen y precisión al recibir el saque', dig: 'Margen y precisión al defender un remate', set: 'Margen y precisión al colocar',
-    spike: 'Velocidad del remate', ctl: 'Margen y precisión del remate', block: 'Margen de timing, anchura de manos y acierto en el bloqueo',
+    spike: 'Velocidad del remate', ctl: 'Margen y precisión del remate', block: 'Margen, anchura de manos y acierto en el bloqueo',
     serve: 'Margen, fuerza y precisión del saque' };
   // Grupos para el panel
   var GROUPS = [['Físico', ['jump', 'speed', 'react']], ['Defensa', ['recv', 'dig', 'block']], ['Ataque', ['set', 'spike', 'ctl', 'serve']]];
