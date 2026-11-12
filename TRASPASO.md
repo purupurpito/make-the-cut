@@ -234,6 +234,12 @@ Entre sprints no se empieza nada: solo se apunta aquí. Lo de abajo está apunta
     Carrera son solo de Carrera), D2 perfil y álbum con huecos (nivel de cuenta nuevo), D3 cosméticos que lucen, D4 sincronizar
     cada guardado nuevo en account.js con migraciones, D5 playa nocturna.
   - Preguntas para Ferran: música en ogg dentro de index.html o procedural; moneda única o ninguna; ¿6v6 visible en JUGAR?
+  - **Después del sprint 5: entrenamientos de la Carrera al estilo NBA 2K** (idea de Ferran, 12-nov-2026: «que nos entrenen y nos
+    hagan hacer ejercicios»). Entre jornadas, sesión de entrenamiento con el club: Faro (el mentor del E4) o el entrenador del club
+    elige 1-3 ejercicios del gimnasio (E6, `g.drill`) según tus puntos flojos o el rival siguiente. La nota de la sesión (bronce,
+    plata u oro) da progreso de atributos (`c.train`/`c.tp`), confianza del entrenador, química con la pareja y minutos o titularidad.
+    Saltarla o simularla da menos progreso, sin castigo grande. Variantes: entrenamiento específico antes de un duelo o una final, y
+    sesión de pretemporada. Depende de E4 y E6 (sprint 5). Ojo: no duplicar el entreno automático actual: sustituirlo o mejorarlo.
 - **Pendiente del muñeco y la Carrera de playa** (11-nov-2026, tras las revisiones; nada roto). Fusionado en main y publicado
   el 11-nov-2026 (9a4f10c).
   - ~~Oficiales y público sin muñeco~~ HECHO 11-nov (arena; notes/arena.md «Muñeco oficial») (~~cabezas que se cruzan en el ace~~ HECHO 11-nov): ver «Mapa de playa» abajo.

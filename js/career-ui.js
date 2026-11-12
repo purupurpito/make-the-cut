@@ -27,13 +27,15 @@
   var SUBS = {   // (Jugador: el mismo orden que Jugadores del menú, Físico · Defensa · Ataque, que sale de VB.Prog.GROUPS)
     player: [['phys', 'Físico'], ['def', 'Defensa'], ['atk', 'Ataque'], ['badges', 'Insignias'], ['train', 'Entreno']],
     club: [['info', 'Ficha'], ['mate', 'Compañero'], ['contract', 'Contrato'], ['offers', 'Ofertas']],
-    league: [['table', 'Clasificación'], ['cal', 'Calendario']],
+    league: [['table', 'Clasificación'], ['cal', 'Calendario'], ['news', 'Noticias'], ['clubs', 'Clubes']],   // (Noticias y Clubes: career-world-ui.js; sin él no salen)
     honors: [['titles', 'Palmarés'], ['seasons', 'Temporadas'], ['opts', 'Opciones']],
     life: [['fame', 'Fama'], ['shop', 'Tienda'], ['goals', 'Logros'], ['legacy', 'Legado']]
   };
   var sub = { player: 'phys', club: 'info', league: 'table', honors: 'titles', life: 'fame', pick: 0 };
   function LUI() { return VB.CareerLife && VB.CareerLifeUI || null; }
-  var HLP = { esc: function (s) { return esc(s); }, sp: function (a, k) { return sp(a, k); } };
+  /** Mundo de la Carrera (career-world-ui.js, sprint 5): Faro; noticias y clubes en C2. Sin los dos ficheros, null. */
+  function WUI() { return VB.CareerWorld && VB.CareerWorldUI || null; }
+  var HLP = { esc: function (s) { return esc(s); }, sp: function (a, k) { return sp(a, k); }, kitSw: function (k, big) { return kitSw(k, big); } };
   var tabsApi = null, subApi = null, rejArm = 0, stayArm = 0, offArm = -1;   // offArm: oferta de mitad de temporada pendiente de confirmar
   var GROUP_OF = { atk: 'Ataque', def: 'Defensa', phys: 'Físico' };
   var TIER_C = ['var(--tier0,#6b6390)', 'var(--tier1,#e08a45)', 'var(--tier2,#cfdbe9)', 'var(--tier3,#ffd23f)'];   // (los tonos de .bd-t de Jugadores)
@@ -180,6 +182,7 @@
     '#career th.l,#career td.l{text-align:left}',
     '#career .nw{white-space:nowrap}',
     '#career td.club{text-align:left;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0;width:50%}',
+    '#career button.cw-tl-b{all:unset;cursor:pointer;font:inherit;color:inherit;min-height:32px;line-height:32px;border-radius:6px;padding:0 2px}#career button.cw-tl-b:hover{text-decoration:underline}#career button.cw-tl-b:focus-visible,#career button.cw-tl-b.kf{box-shadow:inset 0 0 0 2px #ffb238}',
     '#career tr.me td{background:rgba(255,128,64,.22)}',
     '#career tr.up td:first-child{box-shadow:inset 4px 0 0 var(--ok)}',
     '#career tr.cup td:first-child{box-shadow:inset 4px 0 0 var(--gold)}',
@@ -378,7 +381,7 @@
   function renderBroken() {
     head.innerHTML = '<button data-act="close" aria-label="Volver a Jugar">‹ Jugar</button><div class="cr-title"><small>Carrera</small><b>Guardado dañado</b></div>';
     tabsEl.hidden = true; tabsEl.innerHTML = ''; subEl.hidden = true; subEl.innerHTML = '';
-    body.innerHTML = '<div class="card"><h3>No se puede abrir la carrera</h3><p>La carrera guardada en este navegador está dañada y no se ha podido reparar.</p>' +
+    body.innerHTML = '<div class="card"><h3>No se puede abrir la carrera</h3><p>La carrera guardada en este dispositivo está dañada y no se ha podido reparar.</p>' +
       '<p class="muted">Puedes borrarla y empezar otra.</p><div class="acts"><button class="warn" data-act="broken">' +
       (confirmStep === 2 ? (device() === 'touch' ? 'Toca otra vez para borrar' : 'Pulsa otra vez para borrar') : 'Borrar la carrera dañada') + '</button><button data-act="close">Volver al menú</button></div></div>';
   }
@@ -396,17 +399,22 @@
     var freshIds = {};
     if (tab === 'inbox' && C().readAll) { (c.inbox || []).forEach(function (m) { if (!m.r) freshIds[m.id] = 1; }); if (C().unread(c)) C().readAll(); }
     var un = C().unread ? C().unread(c) : 0, offN = c.offers && c.offers.length;
+    // noticias de la liga (career-world.js): se marcan como vistas al abrir Liga › Noticias; las nuevas se resaltan en ese pintado
+    var CW = WUI() && VB.CareerWorld, newsSeen0 = c.world ? c.world.newsSeen | 0 : 0;
+    if (CW && tab === 'league' && sub.league === 'news' && CW.newsUnseen(c)) CW.markNewsSeen();
+    var newsN = CW ? CW.newsUnseen(c) : 0;
     tabsEl.hidden = false;
     drawBar('tab', TABS.filter(function (t) { return t[0] !== 'life' || LUI(); }).map(function (t) {
       var dot = (t[0] === 'player' && c.player.pts > 0) || (t[0] === 'club' && (c.window === 'mid' || c.phase === 'off') && offN) || (t[0] === 'match' && c.phase === 'off') ||
-        (t[0] === 'life' && !!(c.life && c.life.spOffers && c.life.spOffers.length));
+        (t[0] === 'life' && !!(c.life && c.life.spOffers && c.life.spOffers.length)) || (t[0] === 'league' && newsN > 0);
       return [t[0], t[1] + (t[0] === 'inbox' && un ? ' (' + un + ')' : ''), dot];
     }), tab);
-    var sl = SUBS[tab];
+    var sl = SUBS[tab] && SUBS[tab].filter(function (s) { return WUI() || (s[0] !== 'news' && s[0] !== 'clubs'); });
+    if (tab === 'league' && !WUI() && (sub.league === 'news' || sub.league === 'clubs')) sub.league = 'table';
     if (sl) {
       subEl.hidden = false;
       drawBar('sub', sl.map(function (s) {
-        var dot = (s[0] === 'offers' && (offN || c.phase === 'off')) || (tab === 'player' && GROUP_OF[s[0]] && c.player.pts > 0);
+        var dot = (s[0] === 'offers' && (offN || c.phase === 'off')) || (tab === 'player' && GROUP_OF[s[0]] && c.player.pts > 0) || (s[0] === 'news' && newsN > 0);
         return [s[0], s[1], dot];
       }), sub[tab]);
     } else { subEl.hidden = true; }
@@ -415,7 +423,8 @@
     else if (tab === 'inbox') h = renderInbox(c, freshIds);
     else if (tab === 'player') h = renderPlayer(c);
     else if (tab === 'club') h = renderClub(c);
-    else if (tab === 'league') h = sub.league === 'cal' ? renderCal(c) : renderTable(c);
+    else if (tab === 'league') h = sub.league === 'cal' ? renderCal(c) : sub.league === 'news' && WUI() ? WUI().newsHTML(c, HLP, newsSeen0)
+      : sub.league === 'clubs' && WUI() ? WUI().clubsHTML(c, tblLvl >= 0 ? tblLvl : k.lvl, HLP) : renderTable(c);
     else if (tab === 'life') h = LUI() ? LUI().render(c, sub.life, HLP) : '';
     else h = renderHonors(c);
     body.innerHTML = h;
@@ -486,8 +495,9 @@
     return h + '</div>';
   }
   function renderMatch(c) {
-    var h = '';
-    if (c.phase === 'off') return renderSeasonEnd(c);
+    // Faro (career-world-ui.js): la escena va arriba del todo, también en el resumen de fin de temporada (ascenso, título…)
+    var h = WUI() && WUI().mentorCard ? WUI().mentorCard(c, HLP) : '';
+    if (c.phase === 'off') return h + renderSeasonEnd(c) + (WUI() && WUI().headlines ? WUI().headlines(c, HLP) : '');
     var n = C().next(c);
     if (n) {
       // posiciones solo con la liga empezada (en la jornada 1 la tabla vacía daba «6º» contra «3r»)
@@ -515,6 +525,7 @@
     if (lastUn) h += '<div class="card"><h3>Mensajes <span class="muted">(' + plural(C().unread(c), 'sin leer', 'sin leer') + ')</span></h3>' + msgHTML(lastUn) + '<div class="acts"><button data-tab="inbox">Ver mensajes</button></div></div>';
     if (c.window === 'mid' && c.offers && c.offers.length) h += '<div class="card new"><h3>Ventana de fichajes</h3><p>' + plural(c.offers.length, 'club quiere', 'clubes quieren') + ' ficharte ya. Las ofertas caducan al jugar o simular el siguiente partido.</p><div class="acts"><button data-tab="club" data-s="offers">Ver ofertas</button></div></div>';
     h += lastCard(c);
+    if (WUI() && WUI().headlines) h += WUI().headlines(c, HLP);   // «Titulares» de la liga (solo con noticias sin ver)
     if (!c.last) h += '<div class="card"><h3>Objetivo del club</h3><p>' + esc(c.objective.text) + '</p><p class="muted">El entrenador valora tus notas y los resultados. Al final de la temporada llegan ofertas de clubes mejores si juegas bien.</p></div>';
     freshLast = false;
     return h;
@@ -599,7 +610,7 @@
       if (r.id === c.myClub) cls.push('me');
       if (!top && r.pos <= 2) cls.push('up'); else if (r.pos <= 4) cls.push('cup');
       if (!low && r.pos >= 7) cls.push('down');
-      h += '<tr class="' + cls.join(' ') + '"><td class="l">' + r.pos + '</td><td class="club">' + kitSw(cl.kit).replace('cr-kit', 'cr-kit kit-mini') + esc(cl.name) + '</td><td>' + r.pj + '</td><td>' + r.g + '</td><td>' + r.p + '</td><td class="hide-s">' + r.sf + '-' + r.sc + '</td><td class="hide-s">' + r.pf + '-' + r.pc + '</td><td class="pts">' + r.pts + '</td></tr>';
+      h += '<tr class="' + cls.join(' ') + '"><td class="l">' + r.pos + '</td><td class="club">' + kitSw(cl.kit).replace('cr-kit', 'cr-kit kit-mini') + (WUI() ? '<button class="cw-tl-b" data-act="cw-club" data-id="' + r.id + '" aria-label="Ficha de ' + esc(cl.name) + '">' + esc(cl.name) + '</button>' : esc(cl.name)) + '</td><td>' + r.pj + '</td><td>' + r.g + '</td><td>' + r.p + '</td><td class="hide-s">' + r.sf + '-' + r.sc + '</td><td class="hide-s">' + r.pf + '-' + r.pc + '</td><td class="pts">' + r.pts + '</td></tr>';
     });
     h += '</tbody></table><p class="muted" style="margin-top:8px">' + (top ? '' : '<span class="tag g">1-2 ascienden</span>') + '<span class="tag y">1-4 juegan el Open</span>' + (low ? '' : '<span class="tag r">7-8 descienden</span>') +
       ' Puntos: 3 por ganar 2-0, 2 por ganar 2-1 y 1 por perder 1-2.</p></div>';
@@ -743,7 +754,7 @@
     return h;
   }
   /** Mensajes: entrenador, agente, ofertas, objetivos. Lo nuevo resaltado (se marca como leído al verlo). */
-  var MSG_K = { coach: 'Entrenador', agent: 'Agente', offer: 'Ofertas', obj: 'Objetivo', club: 'Club', train: 'Preparador físico', fans: 'Fama' };
+  var MSG_K = { coach: 'Entrenador', agent: 'Agente', offer: 'Ofertas', obj: 'Objetivo', club: 'Club', train: 'Preparador físico', fans: 'Fama', mentor: 'Mentor' };
   function msgHTML(m, fresh) {
     return '<div class="msg' + (m.r && !(fresh && fresh[m.id]) ? '' : ' unread') + '"><small>' + sp([esc(MSG_K[m.k] || 'Club'), 'T' + m.s + (m.ph === 'pick' ? '' : ' J' + Math.min(m.w, C().WEEKS))], 'v') + '</small><b>' + esc(m.t) + '</b><p>' + esc(m.x) + '</p></div>';
   }
@@ -766,6 +777,7 @@
     }
     // abandonar (doble confirmación, sin confirm())
     h += '<div class="card"><h3>Opciones</h3>';
+    if (WUI() && WUI().optsHTML) h += WUI().optsHTML(c, HLP);   // escenas del mentor: Sí | No
     if (!confirmStep) h += '<button class="warn" data-act="quit1">Abandonar carrera</button>';
     else h += '<div class="confirm"><p><b>¿Seguro?</b> Se borra la carrera entera: jugador, insignias, temporadas y palmarés. No se puede deshacer.</p><div class="acts">' +
       '<button class="warn" data-act="quit2">' + (confirmStep === 2 ? (device() === 'touch' ? 'Toca otra vez para borrar' : 'Pulsa otra vez para borrar') : 'Sí, abandonar') + '</button><button data-act="quit0">Cancelar</button></div></div>';
@@ -812,7 +824,7 @@
     var R = C().ROLES, st = C().genSt(C().START_OVR, form.role, null), P = VB.Prog;
     head.innerHTML = '<button data-act="' + (c ? 'hub' : 'close') + '" aria-label="Volver">‹ Volver</button><div class="cr-title"><small>' + sp(['Carrera', 'Vóley playa 2 contra 2'], 'd') + '</small><b>Crea tu jugador</b></div>';
     tabsEl.hidden = true; tabsEl.innerHTML = ''; subEl.hidden = true; subEl.innerHTML = '';
-    var h = '<div class="cf">' + (!c && C().lost && C().lost() ? '<div class="card confirm"><p><b>Tu carrera guardada estaba dañada</b> y no se ha podido recuperar. Hay una copia aparte en este navegador (voley3d.career.bak).</p></div>' : '') +
+    var h = '<div class="cf">' + (!c && C().lost && C().lost() ? '<div class="card confirm"><p><b>Tu carrera guardada estaba dañada</b> y no se ha podido recuperar. Hay una copia aparte en este dispositivo (voley3d.career.bak).</p></div>' : '') +
       '<div class="card"><p>Empiezas con media ' + C().START_OVR + ' y sin club. Los clubes del <b>' + esc(C().league(0).name) + '</b> te harán ofertas: cada uno te da un compañero distinto.</p></div>' +
       '<div class="cf-col"><div><label for="crName">Nombre</label><input id="crName" maxlength="18" autocomplete="off" spellcheck="false" placeholder="Tu nombre" value="' + esc(form.name) + '"></div>' +
       '<div><label>Dorsal</label><div class="stp"><button data-act="num" data-d="-1" aria-label="Dorsal anterior">−</button><b aria-live="polite">' + form.num + '</b><button data-act="num" data-d="1" aria-label="Dorsal siguiente">+</button></div></div>' +
@@ -838,6 +850,21 @@
       var lr = LUI().act(act, b);
       if (lr === 'retired') { snd('start'); form.name = ''; view = 'create'; tab = 'match'; render(); focusFirst(); syncMenu(); return; }
       if (lr) { snd('click'); keepFocus(b, render); syncMenu(); }
+      return;
+    }
+    if (act && act.indexOf('cw-') === 0 && WUI()) {   // mundo de la Carrera (career-world-ui.js): Faro
+      var wr = WUI().act(act, b);
+      if (wr && wr.tab) {   // (ficha de club: a Liga › Clubes, con el foco en «‹ Clubes»)
+        snd('click'); setTab(wr.tab, wr.s);
+        var ft = wr.focus ? root.querySelector(wr.focus) : null; if (ft) focusEl(ft, kbNav);
+        syncMenu(); return;
+      }
+      if (wr && wr.render) {
+        snd('click'); render();
+        var fb = wr.focus ? root.querySelector(wr.focus) : null;
+        if (fb) focusEl(fb, kbNav); else focusFirst();
+        syncMenu();
+      }
       return;
     }
     switch (act) {
@@ -950,7 +977,10 @@
   function setSub(v) {
     var c = C() && C().get(), pk = c && c.phase === 'pick' && view !== 'create';
     if (pk) sub.pick = v === 'cmp' ? 'cmp' : +v;
-    else if (SUBS[tab]) { sub[tab] = v; confirmStep = 0; offArm = -1; if (v !== 'table') tblLvl = -1; }
+    else if (SUBS[tab]) {
+      sub[tab] = v; confirmStep = 0; offArm = -1; if (v !== 'table' && v !== 'clubs') tblLvl = -1;   // (Clubes comparte el selector de liga)
+      if (v === 'clubs' && WUI() && WUI().reset) WUI().reset();   // desde la barra, Clubes abre la lista (no la última ficha)
+    }
     render();
     var id = pk ? sub.pick : v, bar = pk ? tabsEl : subEl, sb = bar.querySelector('[data-sub="' + id + '"],[data-tab="' + id + '"]');
     if (sb) { focusEl(sb, kbNav); try { sb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { } } else showOn(bar);
@@ -1013,7 +1043,7 @@
       var c = null; try { c = C() && C().get(); } catch (e) { c = null; }
       if (c && view === 'hub' && c.phase === 'off' && !root.querySelector('[data-act="play"]')) { focusTab(); return; }
       if (c && view === 'hub' && c.phase === 'pick') { focusTab(); return; }   // eligiendo club: la pestaña de la oferta (no «Firmar» de golpe)
-      var pref = root.querySelector('[data-act="play"]') || root.querySelector('[data-act="stay"]') || root.querySelector('#crName') || root.querySelector('[data-act="create"]');
+      var pref = root.querySelector('[data-act="cw-next"]') || root.querySelector('[data-act="play"]') || root.querySelector('[data-act="stay"]') || root.querySelector('#crName') || root.querySelector('[data-act="create"]');
       if (!pref && view === 'hub') { focusTab(); return; }   // (p. ej. reabrir en Mensajes: la pestaña, no «‹ Jugar»)
       focusEl(pref || focusables()[0], kbNav);
     }, 60);
@@ -1031,6 +1061,11 @@
     try { if (VB.Audio && VB.Audio.hover) VB.Audio.hover(); } catch (e) { }
   }
   function back() {
+    if (view === 'hub' && tab === 'league' && sub.league === 'clubs' && WUI() && WUI().back && WUI().back()) {   // ficha de club → lista (foco en su fila)
+      render(); var fr = WUI().focusSel && WUI().focusSel() ? root.querySelector(WUI().focusSel()) : null;
+      if (fr) focusEl(fr, kbNav); else focusFirst();
+      snd('back'); return true;
+    }
     if (confirmStep) { confirmStep = 0; render(); focusSel('[data-act="quit1"]'); snd('back'); return true; }
     var c = C() && C().get();
     if (view === 'create' && c) { view = 'hub'; render(); focusFirst(); snd('back'); return true; }

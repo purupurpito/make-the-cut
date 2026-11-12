@@ -1453,3 +1453,132 @@ D5 intro de partido como cartel de previa de TV; D6 mosca «DIRECTO» sin «DEMO
 D8 seleccionado amarillo también en los segmentados; D9 jerarquía de pestañas en Carrera; D10 unificar atributos e insignias de
 Jugadores y Carrera; D11 cabecera y «Volver» comunes en Carrera, Cuenta e Instalar; D12 «compañero» y «Bloqueador»; D13 previa de
 partido de Carrera en mini-tabla; D14 generador de nombres de club sin redundancias («Dunes … Dunes»); D15 escalas de letra y radios.
+
+## Sprint 5, tarea D: datos y herramientas de E6/E7 (12-nov-2026, agente D-data)
+- **js/version.js (nuevo):** `VB.VERSION '0.9.0'`, `VB.VERSION_DATE`, `VB.CHANGELOG [{v,d,t,items}]` (la más nueva primero) y
+  `VB.CREDITS {by:'Ferran', tools[], fonts, licenses:{three (MIT completo), threeLine, ofl}, note}`. El año de three.js es
+  **2010-2023** (cabecera real de three.min.js 0.149.0 en cdnjs; la spec decía 2022). La línea «Claude Code» NO está: TODO de Ferran.
+  **Regla:** cada publicación con un cambio visible sube VERSION y añade su entrada arriba; build-pages falla si no cuadra.
+- **js/gym.js (nuevo, `VB.Gym`, sin DOM, sobre `voley3d.gym` v1):** `DRILLS [{id,name,short,help}]`, `IDS`, `MEDALS`, `XP [30,50,80]`,
+  `MAX 30`, `MEDAL_NAMES`, `load/save/clean/get/drill/medalOf/record/recordRally/count/nextOf/bestRally/reset`. `record` paga la XP
+  (VB.Prog.addXP a los dos jugadores) una vez por nivel no cobrado (`xp[id]` en el guardado) y devuelve `{best, prev, isBest, medal,
+  newMedal, xp, n}`. `load` valida (topes b 0-40, m 0-3, rally 999; claves desconocidas fuera; JSON roto → vacío).
+- **js/account.js:** `mergeGym` (unión por máximo de récord/medalla/intentos/xp cobrado y peloteo) escrita y conectada en `merge`,
+  pero `voley3d.gym` NO entra en `DOCS` hasta `GYM_SYNC = true` (después de que Ferran despliegue las reglas). `VB.Account._mergeGym`,
+  `_gymSync` para pruebas. `voley3d.seen` y `voley3d.device` nunca van a DOCS.
+- **firebase/firestore.rules:** `'gym'` en la lista de `key` (sin desplegar).
+- **tools/build-pages.js:** versión por vm, guardas (semver, CHANGELOG[0].v, pages/og.png, un solo rel="icon"), metadatos
+  description/OG/Twitter/canonical/application-name, `window.__vbBuild = {v, sha (GITHUB_SHA, 7), date}` sin llamar a git, quita el
+  favicon con data URI de index.html, manifest con `id`, `description`, `categories`. `PAGES_URL=` cambia la dirección.
+- **tools/og-image.js + pages/og.png (1200×630, 386 KB):** logo #mtcLogo de index.html sobre degradado con red diagonal y
+  «VÓLEY 2 CONTRA 2 ◆ CARRERA». Se regenera a mano si cambia el logotipo.
+- **tools/abouttest.js:** parte sin navegador (version.js + build-pages en carpeta temporal + guardas en una copia mínima) y parte
+  cdp (a-e de E7 §6.2), que se salta con aviso mientras ui.js no tenga `VB.UI.openAbout/_about` (STRICT=1 → fallo). NOCDP=1 la salta.
+- **tools/gymtest.js:** parte sin navegador (gym.js en vm) y parte cdp (5 ejercicios con gymauto, hoja .drill, voley3d.gym, XP exacta
+  sin cobro doble con 2ª pasada de serve, peloteo libre, `_mergeGym`, navegación con teclado/táctil/mando). Se salta con aviso
+  mientras main.js no cree `g.drill` con `?drill=`.
+
+## Sprint 5, tarea U1: Ajustes de PC (E3) y Acerca de (E7) en index.html, ui.js y main.js (12-nov-2026, agente U1-settings-about)
+- **main.js:** `DEFAULTS()` (todos los ajustes; loadSettings y reset), claves nuevas validadas `volume, crowdVol, resScale (0 auto |
+  1 | .85 | .7 | .5), fpsCap (0 | 30), showFps, camDist, camCuts, lessMotion, cbColors, ballStyle, keys, padKeys (objeto plano ≤ 12
+  acciones; si no, {}), padDead (0,1-0,3; si no, 0,18), touchSize, aimSet, msTiming`. `DEVICE_KEYS = resScale, fpsCap, showFps,
+  touchSize, padDead` → **`voley3d.device`** (no se sincroniza) y fuera de `voley3d.settings`. Migración única: sin `crowdVol`
+  guardado → `0,85 × sfxVol`. `applyQuality`: resolución fija = pixelRatio × resScale y la adaptativa ya no escala (`aq.noScale`).
+  Tope de 30 fps en `frame()` antes del poll (paso fijo `capNext`, sin deriva a 144 Hz) y `adaptQuality` con umbrales de 30 (baja si
+  < 26, nunca sube). `#fps` con «60 fps | Media» (Ver FPS; `?fps=1` sigue con la línea de depuración). **`ctx.reduceMotion`** (bool,
+  propiedad propia: lessMotion + matchMedia, se recalcula al cambiar el ajuste o el sistema), **`ctx.renderScale`**,
+  **`ctx.actions.resetSettings(keys[])`** (nunca dificultad ni escenario), `ctx.bootInfo.version` + `console.info` de la versión,
+  textos «Vuelve a abrir el juego» (E7 §2.9). E1: `mastery: !6v6 && !autopilot, aimSet` en startMatch (Partido rápido y Carrera).
+- **index.html:** favicon con data URI; scripts `version.js` (tras three), `gym.js` (tras prog), `career-world.js` y
+  `career-world-ui.js` (tras career-life-ui); Ajustes con 7 pestañas (audio, image, cam, game, a11y, kit, info) y las filas de E3
+  (`data-need` en las de otros módulos), «Restablecer este apartado» al pie de cada una, fila «Controles ›» en Juego; Info (Versión,
+  Progreso, Novedades ›, Créditos ›); `#pnAbout` (pestañas Novedades / Créditos y «Entendido»); `#ctlGrid` editable + `#ctlMsg`;
+  `#btnVer` en la esquina de la portada; bloque CSS «E3 (sprint 5) · E7» al final del estilo.
+- **ui.js:**
+  - Pestañas compactas `fitTabs` (.tabs-ic: icono y la etiqueta de la elegida) cuando no caben; a ≥ 1000 px la hoja de Ajustes mide
+    940 px y caben las 7 etiquetas.
+  - **Una sola pila de vuelta** `openPanel(name, {from, tab, focus})`: Ajustes › Controles / Novedades / Créditos y Volver, Esc, B o
+    «Entendido» vuelven a la misma pestaña con el foco en la fila que lo abrió. `openPanel(name, 'menu'|'paused')` sigue igual.
+  - Controles: Teclado y Mando con `button.kslot` (VB.Input.bindings/rebind/captureNext/keyName/padName); captura con la bandera
+    `capturing` (nav y onKey no hacen nada), mensajes en `#ctlMsg` («Cambiadas: …», reservada, sin tecla, la 1ª no se quita),
+    «Restablecer teclas / botones» (doble pulsación), Zona muerta y Vibración en Mando, Tamaño de botones en Táctil. Sin captureNext,
+    la tabla de lectura de antes.
+  - `GLYPH.keyboard` / `GLYPH.gamepad` se rehacen en `onSettings('keys'|'padKeys')` (rebuildGlyph); «las flechas» solo si siguen
+    asignadas. `nav()` usa `navOk / navBack / navTab` (botones fijos) si existen. `rm()` = `ctx.reduceMotion` (17 usos).
+  - Sliders con `step` (padDead de 5 en 5); volumen movido = quita el silencio y suena su muestra (`VB.Audio.preview('crowd'|
+    'master')`, con guarda). Ayuda de Resolución dinámica. `data-need` esconde las filas que su módulo no soporta (OPTS).
+  - E7: `renderAbout` (Novedades desde VB.CHANGELOG, Créditos desde VB.CREDITS; licencias tras un botón), `#btnVer` con punto si la
+    versión no se ha visto, novedades solas una vez por versión (`voley3d.seen`, solo a quien vuelve), `tabTitle` (menú, Carrera,
+    «Set 2 | 12-10», «¡A jugar!», pausa, «¡Victoria! 2-1» / «Derrota 1-2», «Entrenamiento» con g.drill).
+  - E1: «Timing exacto» → el sello dice «23 ms pronto/tarde».
+  - Arreglo: con un panel abierto desde el arranque (`?panel=`, Novedades) el telón ya se releva (antes la navegación con mando
+    quedaba bloqueada hasta los 9 s de `bootBusy`).
+- **API nueva:** `VB.UI.openAbout(tab)`, `VB.UI._about()` → `{seen, returning, auto}`, `VB.UI._settings()` (pruebas).
+- **tools/console.sh:** `EXTRA="${4:-${EXTRA:-}}"` (la variable ya no se pisa). **tools/settest.js (nuevo):** a-m (81 comprobaciones).
+- **Fuera (U2 / fase B):** `gameSpeed` (fase B), interfaz del gimnasio, rótulos de E1 por `point.move` y resumen de maestría,
+  firma/rival de la Carrera en main.js.
+
+## Sprint 5, tarea U2 (12-nov-2026): interfaz del Entrenamiento (E6), ganchos de E1 y de E2 — index.html, js/ui.js, js/main.js
+- **Entrenamiento (E6):**
+  - Jugar tiene 4 tarjetas (`#btnGym` `.m-gym`, cono y diana en SVG; `.modes` a 4 columnas desde 621 px de ancho, `#mpPlay` hasta
+    1060 px). La página `#mpGym` (`data-page="gym"`, `menuGo('gym')`) pinta con `renderGym()` una fila `.mi[data-drill]` por
+    ejercicio de `VB.Gym.DRILLS` con medalla en SVG (`medalSVG(m)`: bronce/plata/oro, hueco sin medalla) y «Récord N», y el pie
+    «Medallas: N de 15 | Cada medalla nueva da experiencia a tus jugadores». La tarjeta de Jugar enseña «Medallas N/15» si hay alguna.
+  - `goGym(id)` → cortinilla → `ctx.actions.startMatch({drill})`. main.js `startDrill`: siempre 2v2 en el escenario del ajuste,
+    Normal y control Uno (el peloteo libre usa dificultad y control del Partido rápido), sin `present` ni `rookie`, `mastery` sí
+    (la maestría se practica en Remate y Colocación), atributos e insignias como el Partido rápido; `g.gym = id`. `drillEnd` →
+    `setState('over')` (no hay `gameOver`). `restart()` y «Reiniciar ejercicio» repiten el mismo ejercicio.
+  - HUD: `#app.drill-on` esconde el marcador (salvo `#callout`) y el botón de challenge; `#drillBar` dentro de `#sb`:
+    «Saque 4/10 ◆ 11 pts ◆ Récord 21» / «Peloteo ◆ Toques 5 ◆ Récord 14» (`drillHud`, solo reescribe si cambia).
+  - `drillRep` → sello en el mundo (`stampAt`, el `#stamp` de UI-09; `.pf` 3 puntos, `.gd` 1-2, `.ms` 0) con
+    `text + ' +' + pts`; peloteo: «Peloteo de 9 toques» / «¡Récord de peloteo!» (y `VB.Gym.recordRally`). Con 0 puntos, el consejo
+    `GYM_TIPS` 2,5 s en `#coach` (saque fuera, bloqueo sin salto, `miss` late/early/far, `hit.timing` ±0,03, red, remate bloqueado).
+    Los consejos de partido, la tarjeta guiada (`guideOn` → false) y `Badges.ingest` están apagados con `g.drill`.
+  - Tarjeta de presentación (`introStart` con `g.drill`, `#intro.drill`): «Entrenamiento», nombre, objetivo, teclas del dispositivo
+    y «Bronce 12 | Plata 18 | Oro 24» (umbrales de `VB.Gym.medalsOf(id)` si existe, si no `VB.Gym.MEDALS`).
+  - Hoja final `#gymEnd .sheet.drill`: total «de 30», 3 medallas (la nueva salta), barras de las 10 repeticiones, «¡Nuevo récord!»,
+    «¡Medalla de plata!», «+80 de experiencia (a cada jugador)», lo que falta para la siguiente; «Repetir», «Siguiente: Recepción»
+    (`VB.Gym.nextOf`) y «Entrenamiento». Se abre 0,75 s después del último sello, bajo la cortinilla. B / Esc = «Entrenamiento».
+    `VB.Gym.record` se llama una vez por ejercicio (no en depuración; ahí la hoja enseña lo que pasaría sin guardar).
+  - Pausa con `g.drill`: sin marcador, antetítulo «Entrenamiento ◆ Saque | 4/10 | 11 pts», «Reiniciar ejercicio» y
+    «Salir al entrenamiento» (`goGymList`: al menú, en la página Entrenamiento con el foco en la fila del ejercicio).
+  - URL: `&drill=<id>` empieza el ejercicio sin relevo del telón (`&gymauto=1` = la IA juega por ti). Escenas
+    `debug=drill_serve|drill_recv|drill_set|drill_atk|drill_block|drill_free|drill_end` (`&n=` repetición, `&t=` s; `drill_end` con
+    `&drill=<id>`).
+- **E1:** rótulos por `point.move` (solo tuyos): «¡Finta!», «Colocado», «¡Al filo!» («¡Manos fuera!» con `point.tool`), «Rápida».
+  Sello «¡Jugada perfecta!» con «Recepción | Colocación | Remate» (o «Colocación en salto | Remate») en el remate perfecto con
+  `hit.chain >= 3`. Aviso «Rematar | Colocado» con `VB.Sim.altReady` (táctil: «colocado»). Un consejo de maestría por partido como
+  mucho (`e1Tip`: golpe colocado en el aire, finta antes de saltar, colocación dirigida en el 2º toque, al filo con la mira), cada uno
+  2 veces en total (`voley3d.e1tips`, solo este dispositivo); sale aunque los consejos de partido estén apagados, no sin las ayudas.
+  Hoja final: «Fintas 3 | Colocados 5 | Al filo 4 | Rápidas 2» (usos, solo si hay alguno). Controles: «Colocar en salto (en el 3r
+  toque: golpe colocado)» y la fila «Finta». Tutorial pasos 3 y 4: colocación dirigida, finta, golpe colocado y al filo.
+- **E2 (main.js `animHooks`):** en cada partido humano `VB.Players.setSignature(VB.CareerLife.signatureNow())` (también en el
+  Partido rápido) y `setRival(m.career.rivalNum | -1)`; en el duelo de la Carrera `nums[1] = [rivalNum, null]`. Todo con guardas.
+- **Almacenamiento nuevo:** `voley3d.e1tips` ({air, feint, aim, edge}: veces vistas). Nunca en DOCS.
+- **API nueva:** `VB.UI.menuGo('gym')`, `menuPage()` puede dar 'gym'.
+- **tools/gymtest.js:** el «Jugar» del recorrido táctil busca solo `button,.mode` (el `[data-nav]` del menú también empieza por
+  «Jugar» y tocar su centro abría «Cómo se juega») y el arranque marca `voley3d.install` = '1' (el aviso de instalar del móvil
+  podía abrirse justo antes del toque: la navegación táctil fallaba 1 de cada 2 pasadas completas).
+- **Fuera:** `gameSpeed` (fase B). Las escenas `drill_*` no están en `ALL` de tools/shot.js (petición).
+
+## Sprint 5, integración (12-nov-2026)
+- Peticiones pendientes aplicadas: js/gym.js `MEDALS` con los umbrales recalibrados por simtest «Gimnasio» (serve 12/18/24, recv 18/24/28,
+  set 16/22/27, atk 12/18/23, block 6/11/16) y `VB.Gym.medalsOf(id)` nuevo (lee `VB.DRILL.kinds[id].medals` de forma perezosa; la copia
+  de gym.js es la reserva); tools/gymtest.js ajustado a esos valores; tools/touchplay.js: tras Equipación la pestaña siguiente es «info»;
+  tools/shot.js `ALL` incluye `drill_serve … drill_free, drill_end` (y por tanto `console.sh all`).
+- CONTRACT.md §1, §2 (orden de carga y regla de versión), §4.1-§4.4 al día con el sprint 5; SIGUIENTE.md: reglas de versión y pruebas
+  nuevas, avisos al lote B (camera.js) y al lote C (career.js/career-ui.js/career-life.js) y decisiones pendientes de Ferran.
+- Integración: audiotest b/c fallaban con `missed {handclap:1}` (palmadas del gesto «muslos» antes del 1r saque); arreglado en js/audio.js subiendo `handclap` en `CORE` (ver notes/audio.md).
+
+## Arreglos tras revisión (fixer, sprint 5, 12-nov-2026)
+- Controles: `#ctlMsg` (aviso de la captura y resultado de reasignar) queda `position:sticky; bottom:0` con fondo cuando no está vacío:
+  a 667×375 y 844×390 salía 94 px por debajo de la hoja y no se veía. Comprobado con capturas a las 3 medidas.
+- Pausa del Entrenamiento: antetítulo «Entrenamiento ◆ Remate 3/10 | 6 pts»; el grupo «3/10 | 6 pts» va en `white-space:nowrap` y se
+  separa del nombre por un espacio, así parte de línea entero y sin separador colgando.
+- version.js: la entrada 0.9.0 cuenta también lo del sprint 5 (Entrenamiento, teclas reasignables y ajustes, Faro y noticias, maestría).
+  Si Ferran decide 1.0.0, mover esos 4 puntos a la entrada nueva.
+- tools/fingerprint6.js: el fallo de la variante mastery dice «huella de la maestría distinta».
+- Repaso final del checklist (fixer, 12-nov-2026 noche): simtest TODO OK (huella 2v2 idéntica, maestría 13 OK, Gimnasio 7 OK),
+  fp-mastery idéntica, careertest (con y sin NOWORLD), badgetest, animtest, console.sh all: OK. padplay falla 1 de cada 2 pasadas
+  («el mando pasa a ser el dispositivo activo» o «3 toques con A»), igual en la copia de HEAD: es inestable, no regresión. perf 6v6
+  medium < 55 fps también en la copia de HEAD con Medal abierto; 2v2 baja 31/34 draw calls.

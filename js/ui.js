@@ -64,7 +64,9 @@
     var now = performance.now(), cap = ctx.params && ctx.params.bootcap ? +ctx.params.bootcap : BOOT_CAP;   // &bootcap=ms (pruebas)
     var ready = !!bootWant;                  // programas enlazados y escena ya pintada (sus primeros frames, los caros, pasaron)
     if (bootStage === 0) {
-      if (!el.menu || el.menu.hidden || ctx.state !== 'menu') return;
+      // (con un panel abierto desde el arranque —?panel=, Novedades— el menú está oculto pero el telón se releva igual: si no, la
+      //  navegación con mando quedaba bloqueada hasta los 9 s de bootBusy)
+      if (!el.menu || (el.menu.hidden && !panel) || ctx.state !== 'menu') return;
       if (!ready && now < cap) return;
       if (ready && !fontsReady && now - bootT0 < 600 && now < cap) return;
       var full = ready && gym.done;          // todo hecho: un solo relevo (el fondo se funde con el vuelo)
@@ -301,8 +303,15 @@
   }
 
   // ---------- Capa de pantalla (UI-12): viñeta de media/baja y pulso de impacto ----------
-  var reduceMotion = false;
-  try { reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { }
+  // E3 (sprint 5): «Menos movimiento» = ctx.reduceMotion (main.js: ajuste lessMotion + lo que pida el sistema). Sin él (main.js
+  // antiguo), el ajuste y la consulta del sistema aquí mismo
+  var mqRM = null;
+  try { mqRM = matchMedia('(prefers-reduced-motion: reduce)'); } catch (e) { }
+  function rm() {
+    if (ctx && typeof ctx.reduceMotion === 'boolean') return ctx.reduceMotion;
+    var lm = ctx && ctx.settings && ctx.settings.lessMotion;
+    return lm === 'on' ? true : lm === 'off' ? false : !!(mqRM && mqRM.matches);
+  }
   /** Viñeta CSS solo sin el post de arena (alta ya la lleva en su composición: nunca dos). */
   function vigTick() {
     var post = false; try { post = !!(VB.Arena && VB.Arena.postActive && VB.Arena.postActive()); } catch (e) { }
@@ -312,7 +321,7 @@
   /** Pulso del color del equipo en los bordes (0 → 0,35 → 0 en 120 ms; opacidad con Web Animations: sin maquetación).
    *  Remate perfecto o bloqueo directo del humano y punto que gana el partido. No con movimiento reducido ni destellos suaves. */
   function pulse(team, gold) {
-    if (reduceMotion || (ctx.settings && ctx.settings.softFlash) || !el.vp) return;
+    if (rm() || (ctx.settings && ctx.settings.softFlash) || !el.vp) return;
     el.vp.className = 'vp' + (gold ? ' gold' : team === 1 ? ' t1' : '');
     pulseT = performance.now();
     if (el.vp.animate) { try { el.vp.animate([{ opacity: 0 }, { opacity: 0.35, offset: 0.15 }, { opacity: 0.31, offset: 0.45 }, { opacity: 0 }], { duration: 120, easing: 'linear' }); return; } catch (e) { } }
@@ -374,7 +383,11 @@
       'btnAgain', 'btnMenu', 'btnPanelBack', 'btnTutPrev', 'btnTutNext', 'btnHudPause', 'btnHudMute', 'icoSound',
       'pnKick', 'pnTitle', 'tutBody', 'tutFig', 'tutStep', 'tutTitle', 'tutText', 'tutDots', 'ctlGrid', 'ctlSub', 'navHint', 'menuRecord',
       'btnQuick', 'btnGo', 'btnPlayBack', 'btnQuickBack', 'mpPlay', 'mpQuick', 'venueHelp', 'ptsHelp', 'ctrlHelp', 'diffHelp', 'optFmt', 'fmtVal', 'fmtHelp', 'optCam6', 'cam6Val', 'cam6Help', 'btn6v6', 'sqPick', 'ctlTabs', 'sqTabs', 'setTabs', 'optList',
-      'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack', 'btnEndOpts'].forEach(function (k) { el[k] = $(k); });
+      'diffVal', 'diffLvl', 'playSub', 'qualNote', 'tb1t', 'btnFirstTut', 'btnFirstPlay', 'firstDiff', 'guide', 'guideK', 'guideT', 'skip', 'btnAgainAlt', 'endMvp', 'btnPeek', 'btnEndBack', 'btnEndOpts',
+      'btnVer', 'abTabs', 'abBody', 'btnAbOk', 'optVer', 'optSave', 'resNote', 'ctlMsg',
+      // E6: Entrenamiento (tarjeta, página, pastilla del HUD, tarjeta de presentación y hoja final)
+      'btnGym', 'mpGym', 'gymList', 'gymFoot', 'btnGymBack', 'gymSub', 'drillBar', 'drillTxt', 'introDrill', 'idTitle', 'idGoal', 'idKeys', 'idMed',
+      'gymEnd', 'geKick', 'geTitle', 'geTotal', 'geMax', 'geMeds', 'geReps', 'geRec', 'btnGeAgain', 'btnGeNext', 'btnGeList'].forEach(function (k) { el[k] = $(k); });
     el.bn1 = $('bn1'); el.bn2 = $('bn2'); el.bn3 = $('bn3'); el.pbug = $('pbug'); el.pbT = $('pbT'); el.pbS = $('pbS'); el.pbX = $('pbX'); el.sbBody = document.querySelector('.sb-body'); el.sb = $('sb'); el.sbSet = $('sbSet'); el.tag = $('sbTag'); el.hist = $('sbHist');
     el.row0 = $('sbRow0'); el.row1 = $('sbRow1'); el.name0 = $('sbName0'); el.name1 = $('sbName1');
     el.pts0 = $('sbPts0'); el.pts1 = $('sbPts1');
@@ -463,10 +476,45 @@
   function G() {
     var d = device();
     if (d === 'gamepad' && padFam() === 'ps') {
-      if (!GLYPH_PS) GLYPH_PS = { serve: padKey('a'), hit: padKey('a'), jump: padKey('b'), move: GLYPH.gamepad.move, aim: GLYPH.gamepad.aim, hitT: '✕', jumpT: '○', sw: padKey('y'), jset: padKey('x'), jsetT: '□' };
+      if (!GLYPH_PS) GLYPH_PS = { serve: padIdxKey(padIx.hit, 'ps'), hit: padIdxKey(padIx.hit, 'ps'), jump: padIdxKey(padIx.jump, 'ps'), move: GLYPH.gamepad.move, aim: GLYPH.gamepad.aim,
+        hitT: padIdxName(padIx.hit, 'ps'), jumpT: padIdxName(padIx.jump, 'ps'), sw: padIdxKey(padIx.sw, 'ps'), jset: padIdxKey(padIx.jset, 'ps'), jsetT: padIdxName(padIx.jset, 'ps') };
       return GLYPH_PS;
     }
     return GLYPH[d] || GLYPH.keyboard;
+  }
+  // E3 (sprint 5): teclas y botones reasignables (VB.Input.bindings). GLYPH.keyboard / GLYPH.gamepad se rehacen con las teclas
+  // efectivas al recibir onSettings('keys' | 'padKeys') (avisos, ensayo del arranque, tutorial). Sin VB.Input.bindings, los de fábrica.
+  var padIx = { hit: 0, jump: 1, jset: 2, sw: 3 };
+  var PAD_CLS = ['pa', 'pb', 'px', 'py'];
+  function padIdxName(i, fam) { var I = VB.Input; return I && I.padName ? I.padName(i, fam === 'ps' ? 'ps' : 'xbox') : (['A', 'B', 'X', 'Y'][i] || '?'); }
+  function padIdxKey(i, fam) {
+    var n = padIdxName(i, fam), ps = fam === 'ps';
+    return '<span class="key pad' + (ps && i < 4 ? ' ps' : '') + (i >= 0 && i < 4 ? ' ' + PAD_CLS[i] : '') + '"' + (PADN[n] ? ' aria-label="' + PADN[n] + '"' : '') + '>' + escT(n) + '</span>';
+  }
+  function rebuildGlyph() {
+    var I = VB.Input; if (!I || !I.bindings) return;
+    var b = null; try { b = I.bindings(); } catch (e) { b = null; }
+    if (!b || !b.keys) return;
+    var K = b.keys, nm = function (a) { var c = K[a] && K[a][0]; return c ? (I.keyName ? I.keyName(c) : c) : '—'; };
+    var ks = function (t) { return '<span class="key">' + escT(t) + '</span>'; };
+    var has = function (a, c) { return !!K[a] && (K[a][0] === c || K[a][1] === c); };
+    var kb = GLYPH.keyboard;
+    kb.hit = kb.serve = ks(nm('hit')); kb.hitT = nm('hit').toUpperCase();
+    kb.jump = ks(nm('jump')); kb.jumpT = nm('jump').toUpperCase();
+    kb.jset = ks(nm('jset')); kb.jsetT = nm('jset').toUpperCase();
+    kb.sw = ks(nm('switch'));
+    var lr = has('left', 'ArrowLeft') && has('right', 'ArrowRight');
+    kb.move = lr ? '<span class="key">←</span><span class="key">→</span>' : ks(nm('left')) + ks(nm('right'));
+    kb.aim = lr && has('up', 'ArrowUp') && has('down', 'ArrowDown') ? 'las flechas' : 'las teclas de dirección';
+    if (b.pad) {
+      ['hit', 'jump', 'jset', 'sw'].forEach(function (a) { var v = b.pad[a] && b.pad[a][0]; padIx[a] = typeof v === 'number' && v >= 0 ? v : padIx[a]; });
+      var gp = GLYPH.gamepad;
+      gp.hit = gp.serve = padIdxKey(padIx.hit); gp.hitT = padIdxName(padIx.hit);
+      gp.jump = padIdxKey(padIx.jump); gp.jumpT = padIdxName(padIx.jump);
+      gp.jset = padIdxKey(padIx.jset); gp.jsetT = padIdxName(padIx.jset);
+      gp.sw = padIdxKey(padIx.sw);
+    }
+    GLYPH_PS = null; last.navh = null; promptCur = '';
   }
 
   // =====================================================================
@@ -665,8 +713,12 @@
       if (g.demo) continue;
       if (ovr && e.type === 'point') { untally(); e._ovr = true; }
       tally(e);
-      if (VB.Badges) VB.Badges.ingest(e, g); // insignias: cuenta remates, aces, recepciones… del equipo 0 (js/badges.js)
+      if (VB.Badges && !g.drill) VB.Badges.ingest(e, g); // insignias: cuenta remates, aces, recepciones… del equipo 0 (js/badges.js; los ejercicios no cuentan)
       switch (e.type) {
+        // E6: Entrenamiento (sim: sin point/whistle/gameOver con g.drill)
+        case 'drillStage': gymLast.t = NaN; gymLast.miss = ''; break;
+        case 'drillRep': gymRep(e, g); break;
+        case 'drillEnd': gymEndShow(e, g); break;
         case 'newMatch':
           if (ctx.introLeft > 0 || introUI.on) break;           // la tarjeta de presentación ya lo dice (UI-14)
           banner('Set 1', 'Al mejor de 3 sets a ' + (g.points || 25) + (g.serving === 0 ? ', sacas tú' : ', saca la CPU'), '', 'neutral', BAN.info, 'newSet');
@@ -681,6 +733,11 @@
           last.coach = null; el.coach.classList.add('off');
           if (e._ovr && !e.setWon && !e.matchWon) { hideBug(false); atSP = false; }  // lo dice el banner del challenge
           else { presentPoint(e, me, k, g); srScore(e, g); }
+          // E1 (maestría): rótulo de la jugada que ha dado el punto (solo los tuyos; la CPU también marca 'roll')
+          if (me && e.move && !e._ovr && E1_MOVE[e.move]) {
+            var mv = e.move === 'edge' && e.tool ? '¡Manos fuera!' : E1_MOVE[e.move];
+            callout(mv, 0, 'good', 1.3); srSay(mv.replace(/¡|!/g, ''));
+          }
           break;
         }
         case 'block':
@@ -691,6 +748,8 @@
           break;
         case 'hit':
           if (e.team === 0) { clearPrompt(); if (guideT > 0) guideHide(); } // el aviso del que acaba de golpear no pasa al compañero
+          if (e.team === 0 && (e.kind === 'set' || e.touch === 2)) lastSetJ = e.shot === 'jset';   // E1: «Colocación en salto | Remate»
+          if (e.human && g.drill && typeof e.timing === 'number' && isFinite(e.timing)) gymLast.t = e.timing;   // E6: consejo del fallo
           if (!e.human) { if (stampDbg(g) && e.team === 0 && e.player === g.ctrl) stampHit(e, g); break; }
           if (e.kind === 'spike' && e.grade === 'perfect' && e.shot !== 'tip') pulse(e.team, false);
           if (e.shot === 'body') { // sin gesto: el balón le da en el cuerpo (cuenta como toque)
@@ -724,6 +783,7 @@
         case 'miss':
           // UI-17: respuesta personal (no del equipo rival): blanco con filo rojo-naranja; con pronto/tarde, el medidor dice hacia dónde
           // corregir (t2 = s que faltaban para el instante bueno: > 0 pronto, < 0 tarde). Marca a ±(0,27…1) de la pista según el desfase.
+          if (e.player === g.ctrl && g.drill) gymLast.miss = e.reason || 'far';
           if (e.player === g.ctrl) {
             var t2 = typeof e.t2 === 'number' && isFinite(e.t2) ? e.t2 : (e.reason === 'early' ? 0.15 : -0.15);
             var gz = e.reason === 'early' || e.reason === 'late' ? (e.reason === 'early' ? -1 : 1) * (0.27 + 0.73 * Math.min(1, Math.abs(t2) / 0.35)) : null;
@@ -787,6 +847,8 @@
     }
   }
   var missT = -9999;
+  // E1 (sprint 5): rótulos por point.move y la última colocación de tu equipo (¿en salto?) para el sello de la jugada perfecta
+  var E1_MOVE = { feint: '¡Finta!', roll: 'Colocado', edge: '¡Al filo!', quick: 'Rápida' }, lastSetJ = false;
   // (en frases de aviso: «Un punto para ganar el primer set», «Fin del segundo set»; las abreviaturas se quedan en etiquetas)
   var SET_ORD = ['1r', '2º', '3r', '4º', '5º']; // etiquetas («1r set»), regla de SIGUIENTE.md
   var ORD = ['', 'primer', 'segundo', 'tercer'], pendCourt = null, courtNext = null, newSetShown = 0, bodyTipT = 0, lastBn2 = '', lastSub = '', held = null;
@@ -828,19 +890,21 @@
     if (el.introFmt) el.introFmt.textContent = 'Al mejor de 3 sets a ' + ((g && g.points) || 25) + '';
     // antetítulo «Palau del Mar ◆ 2 contra 2» (texto fijo del HTML): el formato del partido (6v6, sprint 3)
     var ik = el.intro.querySelector('.in-k > span'), it = ik && ik.lastChild;
-    if (it && it.nodeType === 3) it.nodeValue = six ? '6 contra 6' : '2 contra 2';
+    var dr = !!(g && g.drill && !g.demo); introUI.drill = dr;
+    if (it && it.nodeType === 3) it.nodeValue = dr ? 'Entrenamiento' : six ? '6 contra 6' : '2 contra 2';
+    if (dr) gymIntro(g);
     var d = device();
     el.introHint.innerHTML = d === 'touch' ? 'Toca para empezar ya' : d === 'gamepad' ? padKey('a') + 'para empezar ya' : 'Pulsa cualquier tecla para empezar ya';
-    el.intro.className = ''; void el.intro.offsetWidth; el.intro.className = 'show';
+    el.intro.className = ''; void el.intro.offsetWidth; el.intro.className = 'show' + (dr ? ' drill' : '');
     el.app.classList.add('intro-on'); el.app.classList.remove('hud-in');
     hideBanner(); clearPrompt();
-    if (reduceMotion && el.intro.animate) { try { el.intro.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' }); } catch (e) { } }
+    if (rm() && el.intro.animate) { try { el.intro.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' }); } catch (e) { } }
   }
   function introEndUI(skipped) {
     if (!introUI.on) return;
     introUI.on = false; introUI.skipped = !!skipped;
-    el.intro.className = 'out' + (skipped ? ' fast' : '');
-    if (reduceMotion && el.intro.animate) { try { el.intro.animate([{ opacity: 1 }, { opacity: 0 }], { duration: skipped ? 120 : 200, easing: 'ease-in', fill: 'forwards' }); } catch (e) { } }
+    el.intro.className = 'out' + (skipped ? ' fast' : '') + (introUI.drill ? ' drill' : '');
+    if (rm() && el.intro.animate) { try { el.intro.animate([{ opacity: 1 }, { opacity: 0 }], { duration: skipped ? 120 : 200, easing: 'ease-in', fill: 'forwards' }); } catch (e) { } }
     introUI.outT = skipped ? 0.16 : 0.3;
     introUI.hudT = skipped ? 0.08 : 0.25;
     if (skipped) { try { if (VB.Audio && VB.Audio.ui) VB.Audio.ui('introSkip'); } catch (e) { } }
@@ -867,12 +931,12 @@
   var WIPE_IN = 0.075, WIPE_OUT = 0.085, WIPE_AUDIO = 0.15;
   var wp = { ph: 0, p: 0, t: 0, x: 1, team: 0, cut: false, aud: false, cb: null, dur: 0, hold: 0, last: '', log: null, armCut: -1 };
   function wipeCls(team) {
-    var c = 'on' + (team === 1 ? ' t1' : team === 2 ? ' brand' : '') + (reduceMotion ? ' fade' : '') + (wp.cb || wp.lock ? ' lock' : '') + (wp.cut ? ' cutw' : '');
+    var c = 'on' + (team === 1 ? ' t1' : team === 2 ? ' brand' : '') + (rm() ? ' fade' : '') + (wp.cb || wp.lock ? ' lock' : '') + (wp.cut ? ' cutw' : '');
     if (wp.last !== c) { wp.last = c; el.wipe.className = c; }
   }
   /** Coloca la cinta: c = cobertura 0..1 (entrando desde la izquierda) o, con out, saliendo por la derecha. */
   function wipeDraw(c, out) {
-    if (reduceMotion) { el.wpBand.style.opacity = c.toFixed(3); return; }
+    if (rm()) { el.wpBand.style.opacity = c.toFixed(3); return; }
     var W = ctx.width || innerWidth, H = ctx.height || innerHeight, off = W + 0.62 * H;
     var e = out ? c * c * (3 - 2 * c) : 1 - (1 - c) * (1 - c);           // entra frenando, sale acelerando
     var x = out ? e * off : -(1 - e) * off;
@@ -884,7 +948,7 @@
   function wipeRun(team, cb) {
     if (wp.ph && wp.cb) return false;                                   // ya hay una en marcha: un solo cambio de pantalla
     wp.cb = cb || null; wp.team = team; wp.cut = false; wp.ph = 1; wp.t = 0;
-    wp.dur = reduceMotion ? 0.075 : 0.2; wp.hold = reduceMotion ? 0 : 0.05;
+    wp.dur = rm() ? 0.075 : 0.2; wp.hold = rm() ? 0 : 0.05;
     wipeSound(); wipeCls(team); wipeDraw(0, false);
     if (wp.log) wp.log.push(['run', performance.now()]);
     return true;
@@ -895,7 +959,7 @@
     wp.t += Math.min(rdt, 0.034);
     if (wp.ph === 1) { var c = Math.min(1, wp.t / wp.dur); wipeDraw(c, false); if (c >= 1 && bootBusy()) return; if (c >= 1) { wp.ph = 2; wp.t = 0; var f = wp.cb; wp.cb = null; wipeCls(wp.team); if (f) { try { f(); } catch (e) { console.error('[VB][ERROR] UI.wipe: ' + (e && e.stack || e)); } } } }
     else if (wp.ph === 2) { wipeDraw(1, false); if (wp.t >= wp.hold) { wp.ph = 3; wp.t = 0; } }
-    else if (wp.ph === 3) { var r = Math.min(1, wp.t / wp.dur); wipeDraw(reduceMotion ? 1 - r : r, !reduceMotion); if (r >= 1) wipeOff(); }
+    else if (wp.ph === 3) { var r = Math.min(1, wp.t / wp.dur); wipeDraw(rm() ? 1 - r : r, !rm()); if (r >= 1) wipeOff(); }
   }
   /** Cortes de cámara del punto (presUpdate): d = getDebug(), reacted = ya pasó el corte al plano de reacción. */
   function wipeTickCut(g, d, reacted, cutNow) {
@@ -907,7 +971,7 @@
     var masked = cutNow && lc && (lc.kind === 'serve' || lc.kind === 'court' || lc.kind === 'cutaway') && (lc.from === 'point' || lc.from === 'clinch' || lc.kind === 'court');
     if (wp.ph === 3) {                                                  // saliendo
       wp.t += Math.min(rdt, 0.022);                     // un frame largo no se come la salida (se ve entera)
-      var r = Math.min(1, wp.t / (reduceMotion ? 0.075 : wp.outDur || WIPE_OUT)); wipeDraw(reduceMotion ? 1 - r : r, !reduceMotion);
+      var r = Math.min(1, wp.t / (rm() ? 0.075 : wp.outDur || WIPE_OUT)); wipeDraw(rm() ? 1 - r : r, !rm());
       if (wp.log) wp.log.push(['out', performance.now(), +r.toFixed(3)]);
       if (r >= 1) wipeOff();
       return;
@@ -926,9 +990,9 @@
     var after = !!(lc && (lc.kind === 'point' || lc.kind === 'clinch') && lc.t >= cam.pointRt - 0.05 && (!clp || clp === 'hero'));
     var armed = !cutNow && g.mode === 'point' && nci >= 0 && ctx.state === 'playing' && !ctx.frozen && (cam.shot === 'court' || after || (pfc === false && !clp && ctx.time - cam.pointRt > 0.05));
     if (armed && nci <= WIPE_AUDIO && !wp.aud) { wp.aud = true; wipeSound(); }
-    if (armed && nci <= (reduceMotion ? 0.075 : WIPE_IN)) {
+    if (armed && nci <= (rm() ? 0.075 : WIPE_IN)) {
       if (!wp.ph) { wp.ph = 1; wp.cut = true; wp.team = lastScorer; wipeCls(wp.team); wp.inT = 0; } else wp.inT = (wp.inT || 0) + rdt;
-      var c = 1 - nci / (reduceMotion ? 0.075 : WIPE_IN); wipeDraw(Math.max(0, Math.min(1, c)), false);
+      var c = 1 - nci / (rm() ? 0.075 : WIPE_IN); wipeDraw(Math.max(0, Math.min(1, c)), false);
       if (wp.log) wp.log.push(['in', performance.now(), +c.toFixed(3), +nci.toFixed(3)]);
     } else if (wp.ph === 1 && wp.cut) { wp.ph = 3; wp.t = WIPE_OUT * 0.5; }   // el corte se anuló: se retira
     if (!armed && wp.aud && !wp.ph) wp.aud = false;
@@ -1107,10 +1171,14 @@
     ctx.camera.updateMatrixWorld();
     var pf = e.grade === 'perfect', hint = '';
     if (!pf && typeof e.timing === 'number' && Math.abs(e.timing) > 0.03) hint = e.timing < 0 ? 'un pelín pronto' : 'un pelín tarde';
+    // E1: Ajustes · Juego · Timing exacto: los milisegundos (siempre, también en el perfecto)
+    if (ctx.settings && ctx.settings.msTiming && typeof e.timing === 'number') { var ms = Math.round(Math.abs(e.timing) * 1000); hint = ms < 5 ? 'justo a tiempo' : ms + ' ms ' + (e.timing < 0 ? 'pronto' : 'tarde'); }
+    // E1 (M7): remate perfecto que cierra 3 toques perfectos seguidos de tu equipo: «¡Jugada perfecta!» y la cadena debajo
+    var chainOk = pf && e.kind === 'spike' && (e.chain | 0) >= 3;
     var C = sproj(e.x, e.y, e.z, _sp); if (!C.ok) return;
     var cx = C.x, cy = C.y;
     // tamaño aproximado del sello (px CSS; sin medir el DOM)
-    var k = hudScale * (ctx.isTouch ? 0.82 : 1), bw = (pf ? 160 : hint ? 132 : 84) * k, bh = (pf ? 42 : hint ? 52 : 30) * k;
+    var k = hudScale * (ctx.isTouch ? 0.82 : 1), bw = (chainOk ? 250 : pf ? 160 : hint ? 132 : 84) * k, bh = (pf ? (chainOk ? 56 : 42) : hint ? 52 : 30) * k;
     // vuelo del balón en los próximos 0,1/0,2/0,3 s, en pantalla (tras el golpe ya lleva su velocidad nueva)
     var b = g.ball, Gv = (VB.C && VB.C.G) || 9.81, BP = _bp3;
     for (var i = 0; i < 3; i++) { var t = (i + 1) * 0.1, q = sproj(b.x + b.vx * t, b.y + b.vy * t, Math.max(0.1, b.z + b.vz * t - 0.5 * Gv * t * t), _sq); BP[i * 3] = q.x; BP[i * 3 + 1] = q.y; BP[i * 3 + 2] = q.ok ? 1 : 0; }
@@ -1134,12 +1202,13 @@
     }
     stp.ox = STAMP_DIRS[best][0] * STAMP_R; stp.oy = STAMP_DIRS[best][1] * STAMP_R * 0.8;
     stp.pl = null; stp.wx = e.x; stp.wy = e.y; stp.wz = e.z; stp.t = 0.62; stp.born = performance.now(); stp.cost = bc; stp.dir = best;
-    el.stampT.textContent = pf ? 'Perfecto' : 'Bien';
-    el.stampS.textContent = hint; el.stampS.hidden = !hint;
+    el.stampT.textContent = chainOk ? '¡Jugada perfecta!' : pf ? 'Perfecto' : 'Bien';
+    if (chainOk) { el.stampS.innerHTML = sepHTML(lastSetJ ? ['Colocación en salto', 'Remate'] : ['Recepción', 'Colocación', 'Remate'], 'v'); el.stampS.hidden = false; srSay('Jugada perfecta'); }
+    else { el.stampS.textContent = hint; el.stampS.hidden = !hint; }
     el.stamp.className = 'on ' + (pf ? 'pf' : 'gd');
     stampPlace();
     stampKF();
-    try { if (el.stampIn.animate) el.stampIn.animate(reduceMotion ? STAMP_KF_RM : STAMP_KF, { duration: 600, easing: 'linear', fill: 'both' }); } catch (er) { }
+    try { if (el.stampIn.animate) el.stampIn.animate(rm() ? STAMP_KF_RM : STAMP_KF, { duration: 600, easing: 'linear', fill: 'both' }); } catch (er) { }
   }
   /** 6v6 «¡Pídela!» (sim evento 'ask'): el mismo sello, sobre la cabeza del humano. Aceptado: «¡Aquí!» (el colocador te busca);
    *  fuera de su ventana (sim askOk): «Ahora no» y por qué (zaguero, colocación ya hecha o saque). */
@@ -1157,7 +1226,7 @@
     el.stamp.className = 'on gd';
     stampPlace();
     stampKF();
-    try { if (el.stampIn.animate) el.stampIn.animate(reduceMotion ? STAMP_KF_RM : STAMP_KF, { duration: e.ok ? 600 : 780, easing: 'linear', fill: 'both' }); } catch (er) { }
+    try { if (el.stampIn.animate) el.stampIn.animate(rm() ? STAMP_KF_RM : STAMP_KF, { duration: e.ok ? 600 : 780, easing: 'linear', fill: 'both' }); } catch (er) { }
   }
   var _bp3 = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   /** Cada frame mientras vive: sigue al punto del mundo (la cámara se mueve) con su desplazamiento. */
@@ -1171,7 +1240,7 @@
   function stampTick(rdt) {
     if (!(stp.t > 0)) return;
     stp.t -= rdt;
-    if (stp.t <= 0 || ctx.state !== 'playing') { stp.t = 0; el.stamp.className = ''; return; }
+    if (stp.t <= 0 || (ctx.state !== 'playing' && !(ctx.state === 'over' && ctx.game && ctx.game.drill && geGate))) { stp.t = 0; el.stamp.className = ''; return; }
     stampPlace();
   }
 
@@ -1466,6 +1535,7 @@
   function guidedLoad() { if (guidedN < 0) { guidedN = 0; try { guidedN = Math.max(0, +localStorage.getItem('voley3d.guided') | 0); } catch (e) { } } return guidedN; }
   function guidedBump() { guidedLoad(); guidedN++; try { localStorage.setItem('voley3d.guided', String(guidedN)); } catch (e) { } }
   function guideOn(g) {
+    if (g.drill) return false;                                 // E6: los ejercicios ya dicen qué hacer (tarjeta y consejo del fallo)
     if (g.demo || (g.autopilot && ctx.params.guide !== '1') || ctx.settings.showHelp === false) return false;
     if (ctx.params.guide === '1') return true;                 // (pruebas y capturas: siempre)
     if (ctx.debug || record.played !== 0) return false;        // novato = sin partidos en el récord
@@ -1590,6 +1660,9 @@
   function hud(g, dt) {
     var demo = g.demo;
     chalTick(g);
+    var drOn = !!(g.drill && !demo); e1.on = false;
+    if (last.drOn !== drOn) { last.drOn = drOn; el.app.classList.toggle('drill-on', drOn); }
+    if (drOn) drillHud(g);
     setHTML(el.sbSet, 'set', demo ? 'DEMO' : sepHTML(['SET ' + g.setNo, g.setNo === 3 ? 'A 15' : ''], 's'));
     // partido de Carrera (g.career, main.js): abreviaturas de los dos clubes en vez de TÚ / CPU
     var cr = !demo && (g.career || (g.watch && WATCH_CR));
@@ -1762,9 +1835,11 @@
         var blkP = bpc && (g.touches >= 2 || g.lastKind === 'spike' || g.lastKind === 'free') && g.lastKind !== 'serve';
         // en el aire con colocación en salto posible (sim jsetReady): las dos opciones en el aviso, en rejilla 2×2 (.two):
         // tecla de GOLPEAR + «Rematar» / tecla de COLOCAR + «Colocar»; con la ventana abierta, encendido (go)
-        var jr = p.z > 0.05 && !!(VB.Sim && VB.Sim.jsetReady && VB.Sim.jsetReady(g));
+        // E1: VB.Sim.altReady → '' | 'jset' | 'roll' (en el 3r toque, COLOCAR hace el golpe colocado: «Rematar | Colocado»)
+        var ar = p.z > 0.05 && VB.Sim ? (VB.Sim.altReady ? altR(g) : (VB.Sim.jsetReady && VB.Sim.jsetReady(g) ? 'jset' : '')) : '';
+        var jr = !!ar;
         // (táctil: los glifos ya son los nombres de los botones; «COLOCAR Colocar» repetía la palabra → «en salto»)
-        if (jr && help) { pk = 'hit'; ptext = '<span>' + (Math.abs(g.ball.x) < 3.8 && g.ball.z > 2.53 ? 'Rematar' : 'Golpear') + '</span>' + gl.jset + '<span>' + (touchDev ? 'en salto' : 'Colocar') + '</span>'; pcls = reach ? 'hit go two' : 'hit two'; }
+        if (jr && help) { pk = 'hit'; ptext = '<span>' + (Math.abs(g.ball.x) < 3.8 && g.ball.z > 2.53 ? 'Rematar' : 'Golpear') + '</span>' + gl.jset + '<span>' + (ar === 'roll' ? (touchDev ? 'colocado' : 'Colocado') : touchDev ? 'en salto' : 'Colocar') + '</span>'; pcls = reach ? 'hit go two' : 'hit two'; }
         else if (reach) { pk = 'hit'; ptext = '¡Golpea ahora!'; pcls = 'hit go'; }
         else if (blkP && help) { pk = 'hit'; ptext = 'Al remate: ¡muro!'; pcls = 'hit'; }
         else if (p.z <= 0.01 && g.pr3) {
@@ -1792,7 +1867,11 @@
             : 'La CPU va a atacar: <b>defiende</b> el círculo, tu compañero bloquea' + (one ? '' : ' (' + gl.sw + ' para bloquear tú)');
         }
         // (táctil con ayudas: el aviso de dos opciones ya lo dice; la línea de arriba repetía lo mismo a la vez)
-        if (tips && jr) coach = touchDev ? (help ? '' : gl.hit + ' remata, ' + gl.jset + ' coloca') : 'En el aire, ' + gl.hit + ' <b>remata</b> y ' + gl.jset + ' <b>coloca en salto</b> a tu compañero';
+        if (tips && jr) coach = touchDev ? (help ? '' : gl.hit + ' remata, ' + gl.jset + (ar === 'roll' ? ' coloca al fondo' : ' coloca'))
+          : ar === 'roll' ? 'En el aire, ' + gl.hit + ' <b>remata</b>, ' + gl.jump + ' deja caer y ' + gl.jset + ' <b>coloca al fondo</b>' : 'En el aire, ' + gl.hit + ' <b>remata</b> y ' + gl.jset + ' <b>coloca en salto</b> a tu compañero';
+        // E1: un consejo de maestría por partido como mucho (finta, golpe colocado, colocación dirigida o al filo), con las ayudas puestas
+        var e1c = help && g.mastery && !g.drill ? e1Tip(g, p, nt, w, ar, gl, touchDev, one, dt) : '';
+        if (e1c) coach = e1c;
         // modo uno: el siguiente toque es del compañero IA (no del humano): solo prepararse
         if (tips && one && nt > 0 && g.jobs && g.jobs[0] && g.jobs[0] !== p) coach = g.size === 6 ? coach6(g, p, nt, gl, touchDev)
           : nt === 2 ? 'Coloca tu compañero: prepárate para atacar' : 'Juega tu compañero: colócate';
@@ -1856,9 +1935,12 @@
       last.csec = csec;
     }
     // el consejo espera a que no haya banner (punto, SET n, punto de set) ni tarjeta guiada, y es la capa que antes cede
-    var showCoach = coach && !(ctx.introLeft > 0) && !introUI.quiet && !Lban && !(guideT > 0) && g.mode !== 'point' && (nLay + (promptOk ? 1 : 0)) < 2 && tips;
+    var showCoach = coach && !(ctx.introLeft > 0) && !introUI.quiet && !Lban && !(guideT > 0) && g.mode !== 'point' && (nLay + (promptOk ? 1 : 0)) < 2 && (tips || e1.on);
+    // E6: en los ejercicios no hay consejos de partido; solo el del fallo (GYM_TIPS, 2,5 s), también durante la pausa entre repeticiones
+    var gymC = drOn && gymTipT > 0 && (!g.autopilot || ctx.debug) && !(ctx.introLeft > 0);
+    if (drOn) { showCoach = gymC && !Lban; if (gymC) coach = gymTip; }
     // táctil: cada tipo de consejo se ve 3 s como mucho por partido (luego estorba más que ayuda)
-    if (showCoach && touchDev) {
+    if (showCoach && touchDev && !gymC && !e1.on) {
       var ckey = g.mode === 'serve' ? 's' + (myServe ? 1 : 0) : 'r' + nt + (g.touchTeam === 1 && g.touches === 2 ? 'b' : '');
       coachSeen[ckey] = (coachSeen[ckey] || 0) + (dt || 0); // tiempo de juego: congelado o en pausa no cuenta
       if (coachSeen[ckey] > 3) showCoach = false;
@@ -2075,12 +2157,15 @@
     } else { node.hidden = true; node.classList.remove('in'); }
   }
   function syncScreens(g) {
-    var s = ctx.state, key = s + (ctx.portraitBlock ? 'P' : '') + (ctx.endHold ? 'H' : '') + (endGate ? 'G' : '') + (panel || '');
+    var s = ctx.state, key = s + (ctx.portraitBlock ? 'P' : '') + (ctx.endHold ? 'H' : '') + (endGate ? 'G' : '') + (geGate ? 'Q' : '') + (panel || '');
     if (key === shown) return;
     shown = key;
     showNode(el.menu, s === 'menu' && !panel);
     showNode(el.pause, s === 'paused' && !panel);
-    var endOn = s === 'over' && !!g.finished && !panel && !ctx.endHold && !endGate;
+    var endOn = s === 'over' && !!g.finished && !g.drill && !panel && !ctx.endHold && !endGate;
+    // E6: hoja final del ejercicio (sin gameOver: g.drill.done), tras el sello de la última repetición y la cortinilla
+    var geOn = s === 'over' && !!(g.drill && g.drill.done && !g.demo) && !panel && !geGate;
+    if (el.gymEnd) showNode(el.gymEnd, geOn);
     if (endOn && el.end.hidden) { el.end.classList.toggle('dock', endDocked()); countUp(el.end); }
     showNode(el.end, endOn);
     el.app.classList.toggle('end-on', s === 'over' && !!g.finished);
@@ -2091,16 +2176,18 @@
     el.hud.hidden = false; el.hud.classList.toggle('warm', s === 'menu');
     el.rotate.hidden = !ctx.portraitBlock;
     // la viñeta no se suma al velo de las hojas (pausa, final, paneles)
-    el.veil.classList.toggle('under', (s === 'paused' || (s === 'over' && !!g.finished && !ctx.endHold && !endGate && !el.end.classList.contains('dock')) || !!panel));
+    el.veil.classList.toggle('under', (s === 'paused' || geOn || (s === 'over' && !!g.finished && !ctx.endHold && !endGate && !el.end.classList.contains('dock')) || !!panel));
     if (s === 'menu') { hideBanner(); renderMenu(); }
     if (s === 'paused') renderPause(g);
     focusLayer();
+    tabTitle(g);
   }
   function activeLayer() {
     if (panel) return el.panel;
     if (ctx.state === 'menu') return el.menu;
     if (ctx.state === 'paused') return el.pause;
     if (ctx.state === 'over' && !el.end.hidden) return el.end;
+    if (ctx.state === 'over' && el.gymEnd && !el.gymEnd.hidden) return el.gymEnd;
     return null;
   }
   function focusables(layer) {
@@ -2146,6 +2233,16 @@
     var rec = record.played ? '<span><b>' + record.wins + '/' + record.played + '</b>Victorias</span>' + (record.bestStreak ? '<span><b>' + record.bestStreak + '</b>Mejor racha</span>' : '') : '';
     setHTML(el.menuRecord, 'rec', rec);
     if (el.menuRecord) el.menuRecord.style.display = rec ? '' : 'none';
+    // E7: versión en la esquina (abre Novedades); punto dorado si hay una versión nueva sin ver
+    if (el.btnVer && VB.VERSION) {
+      if (el.btnVer.hidden) { el.btnVer.hidden = false; el.btnVer.textContent = 'v' + VB.VERSION; }
+      var nw = seenGet() !== VB.VERSION; if (el.btnVer.classList.contains('new') !== nw) el.btnVer.classList.toggle('new', nw);
+    }
+    // E6: tarjeta Entrenamiento de Jugar: las medallas conseguidas (si hay alguna)
+    if (el.gymSub && VB.Gym && VB.Gym.count) {
+      var gc = safe(VB.Gym.count) | 0;
+      setHTML(el.gymSub, 'gyms', gc ? 'Ejercicios con medallas y peloteo libre <span class="chip">Medallas ' + gc + '/15</span>' : 'Ejercicios con medallas y peloteo libre');
+    }
     if (el.squadSub && VB.Prog) {
       var sq = VB.Prog.get().a, pt = sq[0].pts + sq[1].pts;
       // sin puntos: una pastilla por jugador con su dorsal en círculo («(1) Nv 3  (2) Nv 2»)
@@ -2257,19 +2354,25 @@
   var restartArm = 0, restartTo = 0;
   function disarmRestart() {
     restartArm = 0; clearTimeout(restartTo);
-    if (el.btnRestart && el.btnRestart.classList.contains('arm')) { el.btnRestart.classList.remove('arm'); el.btnRestart.textContent = 'Reiniciar partido'; }
+    if (el.btnRestart && el.btnRestart.classList.contains('arm')) { el.btnRestart.classList.remove('arm'); el.btnRestart.textContent = isDrill() ? 'Reiniciar ejercicio' : 'Reiniciar partido'; }
   }
   /** Pausa (UI-18): el antetítulo da el contexto («Set 1 · 24-10 · Normal»; «Mando desconectado» si se fue el mando) y en medio
    *  solo los sets (el set y el tanteo ya están arriba: nada repetido). */
   var padGone = false;
   function pauseKicker(g) {
     if (padGone) return 'Mando desconectado';
+    if (g && g.drill && !g.demo) return gymKicker(g);   // E6: «Entrenamiento ◆ Saque 4/10 | 11 pts»
     var nm = VB.DIFF && g && VB.DIFF[g.difficulty] && VB.DIFF[g.difficulty].name;
     // «Set 1 | 24-10 ◆ Normal»: el set y el tanteo van juntos con la barra fina (datos del HUD) y el nivel tras el rombo
     return [{ h: 'Set ' + g.setNo + SEP_V + g.score[0] + '-' + g.score[1] }, nm || OPT.difficulty.labels[optIndex('difficulty')]];
   }
   var SEP_V = '<span class="sep sep-v"><span class="sr">, </span></span>'; // barra vertical fina suelta (entre trozos ya en HTML)
   function renderPause(g) {
+    // E6: en un ejercicio no hay marcador; «Reiniciar ejercicio» y «Salir al entrenamiento»
+    var dr = !!(g && g.drill && !g.demo);
+    el.pause.classList.toggle('drill', dr);
+    el.btnRestart.textContent = dr ? 'Reiniciar ejercicio' : 'Reiniciar partido';
+    el.btnQuit.textContent = dr ? 'Salir al entrenamiento' : 'Salir al menú';
     disarmRestart();
     el.pS0.textContent = g.score[0]; el.pS1.textContent = g.score[1];
     el.pMid.innerHTML = 'SETS<b>' + g.sets[0] + '-' + g.sets[1] + '</b>';
@@ -2315,6 +2418,8 @@
     });
     el.endStats.innerHTML = html;
     var rec = '<span>Jugada más larga: <b>' + stats.longest + ' toques</b></span>';
+    // E1: lo que has usado de la maestría (usos), en una línea y solo si hay algo que contar
+    var e1l = masteryLine(ctx.game); if (e1l && !watch) rec += '<span class="e1">' + e1l + '</span>';
     if (!ctx.debug && !career && !six) rec += '<span>Partidos ganados: <b>' + record.wins + ' de ' + record.played + '</b></span>';
     var bs = record.bestStreak;
     if (isNew) rec += '<span class="new">¡Nueva mejor racha: ' + (bs === 1 ? '1 punto seguido' : bs + ' puntos seguidos') + '!</span>';
@@ -2366,7 +2471,7 @@
     cancelAnimationFrame(cuRaf);
     // AUD-08: revelación del MVP (el acento cae a 0,6 s, cuando se posan las cifras; con movimiento reducido, 0,6 s tras aparecer)
     if (el.endMvp && el.endMvp.firstChild) { try { if (VB.Audio && VB.Audio.ui) VB.Audio.ui('mvp', root.classList.contains('win')); } catch (e) { } }
-    if (reduceMotion || !items.length) return;
+    if (rm() || !items.length) return;
     for (var k = 0; k < items.length; k++) items[k][0].textContent = '0';
     // un solo reloj: t0 = sello del PRIMER frame de rAF (mezclar performance.now() con los sellos de rAF daba cifras negativas)
     var t0 = -1;
@@ -2447,7 +2552,12 @@
     image: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-3z"/><circle cx="8.5" cy="9" r="1.6"/></svg>',
     game: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3c-2.4 2.4-3.4 5.6-3 9M21 12c-3.2-1-6.4-.6-9 1.2M6.4 19c2.2-2 5-3 8.4-2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
     kit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6l2 5 2.2-1V21h9.6V10l2.2 1 2-5-5.5-3c-.5 1.6-1.8 2.6-3.5 2.6S9 4.6 8.5 3z"/></svg>',
-    a11y: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2.2"/><path d="M4 8.2l8 1.6 8-1.6.5 2-5.5 1.4V15l2 6.5-2 .6-3-6.1-3 6.1-2-.6 2-6.5v-3.4L3.5 10.2z"/></svg>'
+    a11y: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2.2"/><path d="M4 8.2l8 1.6 8-1.6.5 2-5.5 1.4V15l2 6.5-2 .6-3-6.1-3 6.1-2-.6 2-6.5v-3.4L3.5 10.2z"/></svg>',
+    // E3 / E7: Cámara, Info (una «i» en círculo); Acerca de: Novedades (estrella) y Créditos (hoja)
+    cam: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M4 7h3l2-2.5h6L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm8 2.2a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2z"/></svg>',
+    info: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-1.4 8.2V18h2.8v-7.8zM12 5.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4z"/></svg>',
+    news: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.6 6.1 6.6.6-5 4.4 1.5 6.5L12 16.7l-5.7 3.4 1.5-6.5-5-4.4 6.6-.6z"/></svg>',
+    credits: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M6 2h9l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm2 9v2h8v-2zm0 4v2h8v-2zm0-8v2h5V7z"/></svg>'
   };
   function makeTabs(host, items, o) {
     if (!host) return null;
@@ -2497,6 +2607,7 @@
       if (o.pane) { o.pane.setAttribute('aria-labelledby', hid + '-' + id); restartAnim(o.pane, i > j ? 'tp-n' : 'tp-p'); }
       if (o.sound !== false && how !== 'api') click();
       if (o.onChange) o.onChange(id, i > j ? 1 : -1, how || 'api');
+      if (host.classList.contains('tabs-ic')) fitTabs(api);
       return true;
     };
     api.step = function (d, how) {
@@ -2531,6 +2642,16 @@
     tabReg.push(api);
     return api;
   }
+  /** E3: modo compacto de una barra de pestañas (.tabs-ic: solo el icono, salvo la elegida, que lleva su etiqueta) cuando no caben
+   *  enteras. Se mide al abrir el panel, al cambiar de pestaña y al cambiar el tamaño (nunca por frame). */
+  function fitTabs(api) {
+    if (!api || !api.el || api.el.offsetParent === null) return;
+    var row = api.el.querySelector('.tb-row'); if (!row) return;
+    api.el.classList.remove('tabs-ic');
+    if (row.scrollWidth > row.clientWidth + 2) api.el.classList.add('tabs-ic');
+    var nb = row.querySelector('.tab.on'); if (nb && nb.scrollIntoView && row.scrollWidth > row.clientWidth + 2) try { nb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { }
+  }
+  function fitAllTabs() { for (var i = 0; i < tabReg.length; i++) fitTabs(tabReg[i]); }
   /** Barra de pestañas visible en la capa activa de ui.js (panel abierto), o null. */
   function activeTabs() {
     var L = activeLayer(); if (!L) return null;
@@ -2558,11 +2679,12 @@
   // qué botón se vino, para volver con Esc / B / «Volver» al mismo sitio. La Carrera (career-ui.js) se abre desde la tarjeta
   // #btnCareer de Jugar: mientras está abierta, el menú se queda en Jugar (al cerrarla, el foco vuelve a esa tarjeta).
   var mpage = 'main', mstack = [];
-  function pageEl(p) { return p === 'play' ? el.mpPlay : p === 'quick' ? el.mpQuick : el.menuCol; }
-  function pageFocus() { return mpage === 'play' ? el.btnQuick : mpage === 'quick' ? el.btnGo : el.btnPlay; }
+  function pageEl(p) { return p === 'play' ? el.mpPlay : p === 'quick' ? el.mpQuick : p === 'gym' ? el.mpGym : el.menuCol; }
+  function pageFocus() { return mpage === 'play' ? el.btnQuick : mpage === 'quick' ? el.btnGo : mpage === 'gym' ? gymRowEl(gymSel) : el.btnPlay; }
   function setPage(p, anim) {
     mpage = p;
-    ['main', 'play', 'quick'].forEach(function (k) { var n = pageEl(k); if (n) n.hidden = k !== p; });
+    ['main', 'play', 'quick', 'gym'].forEach(function (k) { var n = pageEl(k); if (n) n.hidden = k !== p; });
+    if (p === 'gym') renderGym();
     el.menu.setAttribute('data-page', p);
     var n = pageEl(p);
     if (anim && n) { n.classList.remove('pg-in', 'pg-back'); void n.offsetWidth; n.classList.add(anim === 'back' ? 'pg-back' : 'pg-in'); }
@@ -2592,7 +2714,11 @@
   //  PANELES: tutorial, controles, ajustes
   // =====================================================================
   // (UI-18: el antetítulo da contexto, nunca repite el título ni las pestañas)
-  var PANELS = { tut: ['pnTut', '', 'Cómo se juega'], ctl: ['pnCtl', '', 'Controles'], set: ['pnSet', '', 'Ajustes'], first: ['pnFirst', '', 'Primer partido'], squad: ['pnSquad', '', 'Jugadores'] };
+  var PANELS = { tut: ['pnTut', '', 'Cómo se juega'], ctl: ['pnCtl', '', 'Controles'], set: ['pnSet', '', 'Ajustes'], first: ['pnFirst', '', 'Primer partido'], squad: ['pnSquad', '', 'Jugadores'], about: ['pnAbout', '', 'Acerca de'] };
+  // E3/E7: UNA sola pila de vuelta entre paneles. openPanel(name, {from, tab}) abierto con otro panel delante (Ajustes › Controles,
+  // Ajustes › Info › Créditos) apila el de delante; «Volver» / Esc / B / «Entendido» vuelven a él, en la misma pestaña y con el
+  // foco en la fila que lo abrió. openPanel(name, 'menu' | 'paused') (forma antigua) empieza una pila nueva.
+  var pstack = [];
   var firstAsked = false;
   /** JUGAR desde el menú: la primera vez (sin partidos ni tutorial) ofrece ver el tutorial o jugar ya. */
   function play() {
@@ -2632,14 +2758,25 @@
     if (!wipeRun(2, f) && !wp.cb) f();
   }
   function openPanel(name, from) {
-    panel = name; panelFrom = from || ctx.state;
+    if (!PANELS[name]) return;
+    var o = from && typeof from === 'object' ? from : null;
+    if (capCancel) capCancel();
+    if (o && !o.back && panel && panel !== name) {
+      var a = document.activeElement;
+      pstack.push({ name: panel, tab: panel === 'set' && setTabs ? setTabs.get() : panel === 'ctl' ? ctlView : panel === 'about' && abTabs ? abTabs.get() : null,
+        f: a && a.getAttribute && el.panel.contains(a) ? (a.getAttribute('data-go') ? '[data-go="' + a.getAttribute('data-go') + '"]' : a.id ? '#' + a.id : '') : '', kb: kbNow() || ctx.inputDevice === 'gamepad' });
+      if (pstack.length > 4) pstack.shift();
+    } else if (!o || (!o.back && !panel)) pstack.length = 0;   // (reabrir el mismo panel en otra pestaña conserva la pila)
+    if (!panel || !o || !o.back) panelFrom = (o ? o.from : from) || (panel ? panelFrom : ctx.state);
+    panel = name;
     for (var k in PANELS) $(PANELS[k][0]).hidden = k !== name;
     el.pnKick.textContent = PANELS[name][1]; el.pnKick.hidden = !PANELS[name][1]; el.pnTitle.textContent = PANELS[name][2];
     if (name === 'tut') { tutGo(0); }
-    if (name === 'ctl') { ctlView = device(); renderCtl(); }
-    if (name === 'set') { renderOpts(); setTab(setTabs ? setTabs.get() : 'audio'); }
+    if (name === 'ctl') { ctlView = o && o.tab && CTL_IDS[o.tab] ? o.tab : device(); renderCtl(); }
+    if (name === 'set') { renderOpts(); if (o && o.tab && setTabs) setTabs.set(o.tab, 'api'); setTab(setTabs ? setTabs.get() : 'audio'); }
     if (name === 'squad') renderSquad();
-    var tb = name === 'set' ? setTabs : name === 'squad' ? sqTabs : name === 'ctl' ? ctlTabs : null;
+    if (name === 'about') { if (abTabs && o && o.tab) abTabs.set(o.tab, 'api'); renderAbout(); }
+    var tb = name === 'set' ? setTabs : name === 'squad' ? sqTabs : name === 'ctl' ? ctlTabs : name === 'about' ? abTabs : null;
     if (tb) { tb.hint(); if (ctx.params.tab && !openPanel._t) { openPanel._t = 1; tb.set(ctx.params.tab, 'api'); } }
     var psh = el.panel.querySelector('.sheet');
     psh.classList.toggle('first', name === 'first');
@@ -2648,17 +2785,125 @@
     psh.scrollTop = 0;
     shown = '';
     syncScreens(ctx.game);
-    fitSheet(el.panel); checkMore(el.panel);
-    focusLayer(name === 'tut' ? el.btnTutNext : name === 'first' ? el.btnFirstTut : null);
+    fitSheet(el.panel); fitAllTabs(); checkMore(el.panel);
+    var pf = o && o.focus ? el.panel.querySelector(o.focus) : null;
+    focusLayer(pf || (name === 'tut' ? el.btnTutNext : name === 'first' ? el.btnFirstTut : name === 'about' ? el.btnAbOk : null));
+    if (pf && o.kb) setTimeout(function () { if (panel === name && !pf.closest('[hidden]')) focusEl(pf, true); }, 45);
   }
   function closePanel() {
     if (!panel) return false;
+    if (capCancel) capCancel();
+    if (pstack.length) {   // abierto desde otro panel: vuelve a él (misma pestaña, foco en la fila que lo abrió)
+      var pv = pstack.pop();
+      openPanel(pv.name, { back: true, tab: pv.tab, focus: pv.f, kb: pv.kb });
+      return true;
+    }
     var was = panel; panel = null; tutStop();
     shown = ''; syncScreens(ctx.game);
     // en pausa, el foco vuelve al botón que abrió el panel (antes caía en «Seguir jugando»)
-    focusLayer(ctx.state === 'menu' ? (was === 'squad' ? el.btnSquad : was === 'tut' ? el.btnTut : was === 'ctl' ? el.btnControls : was === 'first' ? el.btnGo : el.btnSettings)
+    focusLayer(ctx.state === 'menu' ? (was === 'squad' ? el.btnSquad : was === 'tut' ? el.btnTut : was === 'ctl' ? el.btnControls : was === 'first' ? el.btnGo : was === 'about' ? null : el.btnSettings)
       : ctx.state === 'paused' ? (was === 'ctl' ? $('btnPControls') : was === 'set' ? $('btnPSettings') : null) : null);
     return true;
+  }
+
+  // ---------- Acerca de (E7): Novedades y Créditos (datos en js/version.js) ----------
+  var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  /** «2026-11-12» → «12 nov 2026». */
+  function fmtDate(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? (+m[3]) + ' ' + MESES[+m[2] - 1] + ' ' + m[1] : String(iso || ''); }
+  var abOld = false, abLic = '';
+  function verCard(e, open) {
+    var h = '<div class="card"><h3>' + escT(e.t || ('Versión ' + e.v)) + '<small>' + sepHTML(['v' + e.v, fmtDate(e.d)], 's') + '</small></h3>';
+    if (open && e.items && e.items.length) h += '<ul>' + e.items.map(function (x) { return '<li>' + escT(x) + '</li>'; }).join('') + '</ul>';
+    else if (e.items) h += '<ul>' + e.items.map(function (x) { return '<li>' + escT(x) + '</li>'; }).join('') + '</ul>';
+    return h + '</div>';
+  }
+  function aboutNewsHTML() {
+    var L = VB.CHANGELOG || [], h = '<p class="ab-k">' + sepHTML(['Versión ' + (VB.VERSION || '—'), VB.VERSION_DATE ? fmtDate(VB.VERSION_DATE) : ''], 'd') + '</p>';
+    if (!L.length) return h + '<div class="card"><p>Sin novedades.</p></div>';
+    h += verCard(L[0], true);
+    if (L.length > 1) {
+      h += '<button type="button" class="opt-reset ab-tg" data-ab="old" aria-expanded="' + abOld + '">' + (abOld ? 'Ocultar versiones anteriores' : 'Versiones anteriores') + '</button>';
+      if (abOld) for (var i = 1; i < L.length; i++) h += verCard(L[i], false);
+    }
+    return h;
+  }
+  function aboutCreditsHTML() {
+    var C = VB.CREDITS || {}, Lc = C.licenses || {}, h = '';
+    h += '<div class="card"><h3>Creado por</h3><p>' + escT(C.by || 'Ferran') + '</p></div>';
+    if (C.tools && C.tools.length) h += '<div class="card"><h3>Hecho con</h3><ul>' + C.tools.map(function (t) { return '<li>' + escT(t) + '</li>'; }).join('') + '</ul></div>';
+    if (C.fonts) h += '<div class="card"><h3>Tipografía</h3><p>' + escT(C.fonts) + '</p></div>';
+    var lic = function (id, label, txt) {
+      if (!txt) return '';
+      var on = abLic === id;
+      return '<button type="button" class="opt-reset ab-tg" data-ab="' + id + '" aria-expanded="' + on + '">' + label + '</button>' + (on ? '<pre class="lic">' + escT(txt) + '</pre>' : '');
+    };
+    h += '<div class="card"><h3>Licencias</h3>' + (Lc.threeLine ? '<p>' + escT(Lc.threeLine) + '</p>' : '') + '<div class="ab-lics" data-nav>' + lic('three', 'Licencia de three.js', Lc.three) + lic('ofl', 'Licencia de las fuentes', Lc.ofl) + '</div></div>';
+    if (C.note) h += '<p class="ab-note">' + escT(C.note) + '</p>';
+    var bd = window.__vbBuild;
+    h += '<p class="ab-build">v' + escT(VB.VERSION || '—') + (bd && bd.sha ? ' (' + escT(bd.sha) + ')' : '') + '</p>';
+    return h;
+  }
+  function renderAbout() {
+    if (!el.abBody) return;
+    var tab = abTabs ? abTabs.get() : 'news';
+    el.abBody.innerHTML = tab === 'credits' ? aboutCreditsHTML() : aboutNewsHTML();
+    if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
+  }
+  /** Abre Acerca de en una pestaña ('news' | 'credits'); desde Ajustes se apila (Volver regresa a Ajustes › Info). */
+  function openAbout(tab, from) {
+    tab = tab === 'credits' ? 'credits' : 'news';
+    if (tab === 'news' && VB.VERSION) { seenSet(VB.VERSION); if (el.btnVer) el.btnVer.classList.remove('new'); }
+    abLic = '';
+    openPanel('about', { tab: tab, from: from || (panel ? panelFrom : ctx.state) });
+  }
+  // Novedades que salen solas, una vez por versión (voley3d.seen = {v}; solo de este dispositivo: account.js no la sube).
+  // Jugador nuevo: se marca la versión sin enseñar nada. Jugador que vuelve: en la portada libre 1,5 s seguidos y ≥ 2,2 s
+  // desde la carga, sin el aviso de instalar, la cuenta ni la Carrera abiertos; nunca con ?debug, autopilot ni nonews.
+  function seenGet() { try { var o = JSON.parse(localStorage.getItem('voley3d.seen') || 'null'); return o && typeof o.v === 'string' ? o.v : ''; } catch (e) { return ''; } }
+  function seenSet(v) { try { localStorage.setItem('voley3d.seen', JSON.stringify({ v: v })); } catch (e) { } }
+  /** ¿Jugador que vuelve? (ajustes guardados, partidos jugados, una Carrera o el escuadrón). Se mira al cargar ui.js, antes de que
+   *  nada escriba en el almacenamiento. */
+  function isReturning() {
+    try {
+      var ls = localStorage;
+      if (ls.getItem('voley3d.settings') !== null || ls.getItem('voley3d.career') || ls.getItem('voley3d.squad')) return true;
+      var r = JSON.parse(ls.getItem('voley3d.record') || 'null'); return !!(r && r.played > 0);
+    } catch (e) { return false; }
+  }
+  var wasReturning = isReturning(), aboutAuto = 'off', aboutIv = 0;
+  function newsAuto() {
+    var V = VB.VERSION; aboutAuto = 'off';
+    if (!V || seenGet() === V) return;
+    if (!wasReturning) { seenSet(V); return; }
+    if (ctx.debug || ctx.params.autopilot || ctx.params.nonews) return;
+    aboutAuto = 'waiting';
+    var idle = 0;
+    aboutIv = setInterval(function () {
+      if (seenGet() === V) { clearInterval(aboutIv); if (aboutAuto === 'waiting') aboutAuto = 'off'; return; }
+      var ok = VB.UI.menuIdle() && !document.hidden && !(VB.Install && VB.Install.isOpen && safe(VB.Install.isOpen)) &&
+        !(VB.Account && VB.Account.isOpen && safe(VB.Account.isOpen)) && !(VB.CareerUI && VB.CareerUI.isOpen && safe(VB.CareerUI.isOpen));
+      idle = ok ? idle + 250 : 0;
+      if (idle >= 1500 && performance.now() >= 2200) { clearInterval(aboutIv); aboutAuto = 'shown'; openAbout('news', 'menu'); }
+    }, 250);
+  }
+  // Título de la pestaña (E7 §2.5): solo se escribe cuando cambia la clave numérica (estado, set y tanteo, Carrera abierta)
+  var ttKey = -1;
+  function tabTitle(g) {
+    if (ctx.portraitBlock) return;
+    var s = ctx.state, st = s === 'playing' ? 1 : s === 'paused' ? 2 : s === 'over' ? 3 : 0, live = !!(g && !g.demo && st > 0);
+    var car = !live && !!(VB.CareerUI && VB.CareerUI.isOpen && safe(VB.CareerUI.isOpen));
+    var drill = live && !!g.drill, intro = live && st === 1 && ctx.introLeft > 0, fin = live && st === 3 && !!g.finished;
+    var key = !live ? (car ? 1 : 0) : drill ? (st === 2 ? 3 : 2) : 10 + st * 1e7 + (intro ? 5e6 : 0) + (fin ? 4e6 + g.sets[0] * 10 + g.sets[1] : (g.setNo || 1) * 1e4 + Math.min(99, g.score[0]) * 100 + Math.min(99, g.score[1]));
+    if (key === ttKey) return;
+    ttKey = key;
+    var T = 'Make the Cut', t;
+    if (!live) t = car ? 'Carrera — ' + T : T;
+    else if (st === 2) t = 'Pausa — ' + T;
+    else if (drill) t = 'Entrenamiento — ' + T;
+    else if (fin) t = (g.sets[0] > g.sets[1] ? '¡Victoria! ' : 'Derrota ') + g.sets[0] + '-' + g.sets[1] + ' — ' + T;
+    else if (intro) t = '¡A jugar! — ' + T;
+    else t = 'Set ' + (g.setNo || 1) + ' | ' + g.score[0] + '-' + g.score[1] + ' — ' + T;
+    try { document.title = t; } catch (e) { }
   }
 
   // ---------- Controles (UI-21 / UI-22) ----------
@@ -2692,13 +2937,13 @@
   function ctlRowsAll(dv) {
     if (dv === 'gamepad') {
       var P = padSet();
-      return [[S('Stick') + S('Cruceta'), 'Moverse'], [padKey('a'), 'Golpear y sacar <small>(stick: diana del saque)</small>'], [padKey('b'), 'Saltar <small>(en el aire: dejada)</small>'], [padKey('x'), 'Colocar en salto <small>(en el aire; en el 3r toque, dejada)</small>'],
+      return [[S('Stick') + S('Cruceta'), 'Moverse'], [padKey('a'), 'Golpear y sacar <small>(stick: diana del saque)</small>'], [padKey('b'), 'Saltar <small>(en el aire: dejada)</small>'], [padKey('x'), 'Colocar en salto <small>(en el 3r toque: golpe colocado)</small>'], [padKey('a') + '<small>y</small>' + padKey('b'), 'Finta <small>(golpear y, antes del golpe, saltar o colocar)</small>'],
         [padKey('y') + S(P.lb) + S(P.rb), 'Cambiar jugador'], [S(P.start), 'Pausa'], [S(P.select), 'Sonido'], [S(padFam() === 'ps' ? 'L2' : 'LT'), 'Challenge <small>(7 s tras el punto)</small>'], [padKey('a') + padKey('b'), 'Menús: aceptar y volver']];
     }
     if (dv === 'touch') return [[S('Joystick') + '<small>mitad izquierda</small>', 'Moverse'], [T('Golpear'), 'Golpear y sacar <small>(joystick: diana del saque)</small>'],
-      [T('Saltar', 1), 'Saltar <small>(en el aire: dejada)</small>'], [T('Colocar', 's'), 'Colocar en salto <small>(sale en el aire, junto a Saltar)</small>'], [S('⇄'), 'Cambiar jugador'], [S('CHALLENGE'), 'Challenge <small>(7 s tras el punto)</small>'], [S('II'), 'Pausa']];
+      [T('Saltar', 1), 'Saltar <small>(en el aire: dejada)</small>'], [T('Colocar', 's'), 'Colocar en salto <small>(en el 3r toque: golpe colocado)</small>'], [T('Golpear') + '<small>→</small>' + T('Saltar', 1), 'Finta <small>(desliza de Golpear a Saltar antes del golpe)</small>'], [S('⇄'), 'Cambiar jugador'], [S('CHALLENGE'), 'Challenge <small>(7 s tras el punto)</small>'], [S('II'), 'Pausa']];
     return [[K('W') + K('A') + K('S') + K('D') + '<small>o</small>' + K('↑') + K('←') + K('↓') + K('→'), 'Moverse'], [K('J') + K('X') + '<small>o</small>' + M('l'), 'Golpear y sacar <small>(flechas: diana)</small>'],
-      [K('Espacio') + '<small>o</small>' + M('r'), 'Saltar <small>(en el aire: dejada)</small>'], [K('K') + '<small>o</small>' + M('c'), 'Colocar en salto <small>(en el aire; en el 3r toque, dejada)</small>'], [K('C'), 'Cambiar jugador'], [K('V'), 'Challenge <small>(7 s tras el punto)</small>'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
+      [K('Espacio') + '<small>o</small>' + M('r'), 'Saltar <small>(en el aire: dejada)</small>'], [K('K') + '<small>o</small>' + M('c'), 'Colocar en salto <small>(en el 3r toque: golpe colocado)</small>'], [K('J') + '<small>y</small>' + K('Espacio'), 'Finta <small>(golpear y, antes del golpe, saltar o colocar)</small>'], [K('C'), 'Cambiar jugador'], [K('V'), 'Challenge <small>(7 s tras el punto)</small>'], [K('P') + K('Esc'), 'Pausa'], [K('M'), 'Sonido']];
   }
   function renderCtl() {
     var cur = device();
@@ -2708,9 +2953,19 @@
       var key = cur + '|' + ctlView;
       if (ctlTabs._k !== key) { ctlTabs._k = key; ctlTabs.cur = ctlView; ctlTabs.refresh(items); }
     }
-    var R = ctlRows(ctlView), h = '';
-    for (var j = 0; j < R.length; j++) h += '<div><dt>' + R[j][0] + '</dt><dd>' + R[j][1] + '</dd></div>';
+    var I = VB.Input, edit = !!(I && I.captureNext && I.rebind && I.bindings && I.keyName), h = '';
+    if (edit && ctlView === 'keyboard') h = ctlKeysHTML(I);
+    else if (edit && ctlView === 'gamepad') h = ctlPadHTML(I);
+    else {
+      var R = ctlRows(ctlView);
+      if (ctlView === 'touch') h += '<div class="opt-g"><button class="opt" data-opt="touchSize" data-need="Input"><span>Tamaño de botones<small>Golpear, Saltar y Colocar</small></span><span class="seg" data-seg="touchSize"></span></button></div>';
+      h += '<dl class="ctl">';
+      for (var j = 0; j < R.length; j++) h += '<div><dt>' + R[j][0] + '</dt><dd>' + R[j][1] + '</dd></div>';
+      h += '</dl>';
+    }
     el.ctlGrid.innerHTML = h;
+    if (!capturing && el.ctlMsg && ctlMsgFor !== ctlView) ctlMsgSet('');
+    renderOpts();
     var note = el.pnCtl.querySelector('.ctl-note');
     if (note) note.innerHTML = fmt6() ? '<b>Arriba</b> es siempre hacia la red. En el 6 contra 6 llevas al <b>' + roleName().toLowerCase() + '</b> (n.º ' + sixNum() + ') y la IA al resto. Sin balón, la marca del suelo es tu sitio. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.'
       : oneMode() ? '<b>Arriba</b> es siempre hacia la red. Llevas siempre al <b>n.º ' + oneNum() + '</b> y la IA a tu compañero. Mantén una dirección al golpear para apuntar; en el saque y el remate, mueve la diana.'
@@ -2718,9 +2973,90 @@
     if (!el.panel.hidden) { fitSheet(el.panel); checkMore(el.panel); }
   }
   function ctlStep(d, how) { if (ctlTabs) ctlTabs.step(d, how || 'key'); }
+  // ---------- E3: teclas y botones reasignables (VB.Input: bindings, rebind, captureNext, keyName, padName) ----------
+  var CTL_IDS = { keyboard: 1, gamepad: 1, touch: 1 };
+  var KEY_ACTS = ['up', 'down', 'left', 'right', 'hit', 'jump', 'jset', 'switch', 'challenge', 'pause', 'mute'];
+  function actLabel(a) {
+    return ({ up: 'Arriba', down: 'Abajo', left: 'Izquierda', right: 'Derecha', hit: 'Golpear y sacar', jump: 'Saltar', jset: 'Colocar en salto',
+      'switch': fmt6() ? 'Pedir el balón' : 'Cambiar jugador', sw: fmt6() ? 'Pedir el balón' : 'Cambiar jugador', challenge: 'Challenge', chal: 'Challenge', pause: 'Pausa', mute: 'Sonido' })[a] || a;
+  }
+  var capturing = false, capCancel = null, ctlMsgFor = '';
+  function ctlMsgSet(h, bad) {
+    if (!el.ctlMsg) return;
+    if (el.ctlMsg.innerHTML !== h) el.ctlMsg.innerHTML = h;
+    el.ctlMsg.classList.toggle('bad', !!bad); ctlMsgFor = h ? ctlView : '';
+  }
+  function slotHTML(kind, act, slot, label, name, empty, dis) {
+    return '<button type="button" class="kslot' + (empty ? ' empty' : '') + (dis ? ' fixed' : '') + '" data-kind="' + kind + '" data-act="' + act + '" data-slot="' + slot + '"' + (dis ? ' disabled' : '') +
+      ' aria-label="' + escT(label + (kind === 'pad' ? ', botón: ' : ', tecla ' + (slot + 1) + ': ') + (empty ? 'ninguna' : name)) + '">' + escT(empty ? '—' : name) + '</button>';
+  }
+  function ctlKeysHTML(I) {
+    var B = I.bindings(), K = B.keys || {}, one = oneMode() && !fmt6(), h = '<div class="ctl kb">';
+    KEY_ACTS.forEach(function (a) {
+      var k = K[a] || ['', ''], L = actLabel(a), sub = a === 'up' ? 'hacia la red' : a === 'switch' && one ? '(modo Un jugador)' : a === 'pause' ? 'y Esc' : '';
+      h += '<div' + (a === 'switch' && one ? ' class="dim"' : '') + '><span class="kl">' + L + (sub ? '<small>' + sub + '</small>' : '') + '</span><span class="ks">' +
+        slotHTML('key', a, 0, L, k[0] ? I.keyName(k[0]) : '', !k[0]) + slotHTML('key', a, 1, L, k[1] ? I.keyName(k[1]) : '', !k[1]) + '</span></div>';
+    });
+    return h + '</div><p class="ctl-fixed"><b>Fijas:</b> Esc pausa y vuelve, Intro acepta, Q / E cambian de apartado. <b>Ratón:</b> clic izq. golpea, der. salta, central coloca.</p>' +
+      '<button type="button" class="opt-reset" data-reset="keys">Restablecer teclas</button>';
+  }
+  function ctlPadHTML(I) {
+    var B = I.bindings(), P = B.pad || {}, std = B.padStd !== false, fam = B.padFam === 'ps' ? 'ps' : 'xbox', ex = B.fixed && B.fixed.pad && B.fixed.pad.swExtra || [];
+    var acts = B.padActs || ['hit', 'jump', 'jset', 'sw', 'chal'], h = '<div class="ctl kb">';
+    acts.forEach(function (a) {
+      var i = P[a] ? P[a][0] : -1, L = actLabel(a), sub = a === 'sw' && ex.length ? 'y ' + ex.map(function (b) { return I.padName(b, fam); }).join(' / ') : a === 'jset' ? 'en el suelo, salta' : '';
+      h += '<div><span class="kl">' + L + (sub ? '<small>' + escT(sub) + '</small>' : '') + '</span><span class="ks">' + slotHTML('pad', a, 0, L, i >= 0 ? I.padName(i, fam) : '', i < 0, !std) + '</span></div>';
+    });
+    h += '</div>';
+    if (!std) h += '<p class="ctl-fixed">Este mando no usa la distribución estándar: botones fijos.</p>';
+    h += '<div class="opt-g"><button class="opt" data-opt="padDead" data-need="Input"><span>Zona muerta<small>Para mandos con el stick que se mueve solo</small></span><span class="slider" data-sl="padDead"><span class="trk"><i></i><b></b></span><span class="v">18%</span></span></button>' +
+      '<button class="opt" data-opt="rumble"><span>Vibración<small>Del mando y del móvil en los golpes</small></span><span class="seg" data-seg="rumble"></span></button></div>';
+    h += '<p class="ctl-fixed">' + (fam === 'ps' ? 'En los menús, ✕ acepta, ○ vuelve y L1 / R1 cambian de apartado.' : 'En los menús, A acepta, B vuelve y LB / RB cambian de apartado.') + '</p>';
+    return h + (std ? '<button type="button" class="opt-reset" data-reset="pad">Restablecer botones</button>' : '');
+  }
+  /** Reasignar: Intro / clic / toque / A sobre una tecla → la siguiente tecla (o botón) pulsada. Mientras dura, ni nav() ni
+   *  onKey hacen nada (input.js además se traga esa pulsación). Esc cancela, Retroceso borra la 2ª tecla, 6 s → sin cambios. */
+  function ctlSlot(b) {
+    var I = VB.Input; if (!I || !I.captureNext || !I.rebind || b.disabled) return;
+    if (capturing) { if (b.classList.contains('cap') && capCancel) capCancel(); return; }
+    var kind = b.getAttribute('data-kind') === 'pad' ? 'pad' : 'key', act = b.getAttribute('data-act'), slot = +b.getAttribute('data-slot') || 0;
+    var kb = kbNow() || ctx.inputDevice === 'gamepad', fam = padFam() === 'ps' ? 'ps' : 'xbox';
+    capturing = true; b.classList.add('cap'); b.textContent = kind === 'pad' ? 'Pulsa un botón…' : 'Pulsa una tecla…';
+    ctlMsgSet(sepHTML(kind === 'pad' ? ['Start cancela'] : ['Esc cancela', 'Retroceso borra'], 'v'));
+    uiSound('click');
+    var nm = function (v) { return kind === 'pad' ? I.padName(v, fam) : I.keyName(v); };
+    var cancel = I.captureNext(kind, function (v, why) {
+      capturing = false; capCancel = null;
+      var msg = '', bad = false;
+      if (v == null || why === 'cancel' || why === 'timeout') msg = why === 'timeout' ? 'Sin cambios: se acabó el tiempo' : 'Sin cambios';
+      else {
+        var holder = '';
+        try { var B0 = I.bindings(), M0 = kind === 'pad' ? B0.pad : B0.keys; for (var a in M0) if (a !== act && M0[a][0] === v) holder = a; } catch (e) { }
+        var r = I.rebind(kind, act, slot, v);
+        if (r.err) {
+          bad = true;
+          msg = r.err === 'reserved' ? (kind === 'pad' ? 'Ese botón no se puede asignar' : 'Esa tecla está reservada')
+            : r.err === 'empty' ? actLabel(holder || act) + (kind === 'pad' ? ' se quedaría sin botón' : ' se quedaría sin tecla')
+            : r.err === 'primary' ? (kind === 'pad' ? 'El botón no se puede quitar' : 'La primera tecla no se puede quitar') : 'Sin cambios';
+        } else {
+          ctx.actions.setSetting(kind === 'pad' ? 'padKeys' : 'keys', kind === 'pad' ? r.pad : r.keys);
+          msg = r.swap ? 'Cambiadas: ' + nm(v) + ' para ' + actLabel(act) + ', ' + nm(r.swap.code) + ' para ' + actLabel(r.swap.act)
+            : v === '' ? 'Sin 2ª tecla para ' + actLabel(act) : nm(v) + ' para ' + actLabel(act);
+        }
+      }
+      if (panel === 'ctl') {
+        renderCtl(); ctlMsgSet(escT(msg), bad);
+        var nb = el.ctlGrid.querySelector('.kslot[data-kind="' + kind + '"][data-act="' + act + '"][data-slot="' + slot + '"]');
+        if (nb) focusEl(nb, kb);
+        if (bad) uiSound2('arrowEdge', 1); else uiSound(why === 'cancel' || why === 'timeout' ? 'back' : 'click');
+      }
+    });
+    capCancel = typeof cancel === 'function' ? cancel : null;
+  }
   var CTL_TABS = [['keyboard', 'Teclado'], ['gamepad', 'Mando'], ['touch', 'Táctil']];
-  var ctlTabs = null, sqTabs = null, setTabs = null;
-  /** Ajustes: solo se ve el grupo de la pestaña elegida (Audio · Imagen · Juego · Equipación · Accesibilidad). */
+  var ctlTabs = null, sqTabs = null, setTabs = null, abTabs = null;
+  var SET_TABS = [['audio', 'Audio'], ['image', 'Imagen'], ['cam', 'Cámara'], ['game', 'Juego'], ['a11y', 'Accesibilidad'], ['kit', 'Equipación'], ['info', 'Info']];
+  /** Ajustes: solo se ve el grupo de la pestaña elegida (Audio · Imagen · Cámara · Juego · Accesibilidad · Equipación · Info). */
   function setTab(id) {
     var gs = el.optList ? el.optList.querySelectorAll('.opt-g[data-tab]') : [];
     for (var i = 0; i < gs.length; i++) gs[i].hidden = gs[i].getAttribute('data-tab') !== id;
@@ -2729,9 +3065,12 @@
   /** Crea las barras de pestañas de los paneles (una vez, en init). */
   function buildTabs() {
     ctlTabs = makeTabs(el.ctlTabs, CTL_TABS.map(function (t) { return { id: t[0], label: t[1], icon: TAB_IC[t[0]] }; }),
-      { value: 'keyboard', label: 'Dispositivo', pane: el.ctlGrid, swipe: el.pnCtl, onChange: function (id) { ctlView = id; renderCtl(); } });
-    setTabs = makeTabs(el.setTabs, [['audio', 'Audio'], ['image', 'Imagen'], ['game', 'Juego'], ['kit', 'Equipación'], ['a11y', 'Accesibilidad']].map(function (t) { return { id: t[0], label: t[1], icon: TAB_IC[t[0]] }; }),
+      { value: 'keyboard', label: 'Dispositivo', pane: el.ctlGrid, swipe: el.pnCtl, onChange: function (id) { if (capCancel) capCancel(); ctlView = id; renderCtl(); } });
+    // E3/E7: 7 pestañas (Info siempre la última); si no caben, modo compacto (fitTabs)
+    setTabs = makeTabs(el.setTabs, SET_TABS.map(function (t) { return { id: t[0], label: t[1], icon: TAB_IC[t[0]] }; }),
       { value: 'audio', label: 'Apartado de ajustes', pane: el.optList, onChange: function (id) { setTab(id); } });
+    if (el.abTabs) abTabs = makeTabs(el.abTabs, [{ id: 'news', label: 'Novedades', icon: TAB_IC.news }, { id: 'credits', label: 'Créditos', icon: TAB_IC.credits }],
+      { value: 'news', label: 'Acerca de', pane: el.abBody, onChange: function () { renderAbout(); } });
     sqTabs = makeTabs(el.sqTabs, sqItems(), { value: 'g0', label: 'Apartado', pane: el.sqBody, onChange: function () { renderSquad(); } });
   }
 
@@ -2769,8 +3108,65 @@
     // sede (Ajustes · Imagen): arena.js la cambia en vivo, también con la demo del menú de fondo
     arena: { vals: ['hall', 'beach'], labels: ['Pabellón', 'Playa'] },
     // luz de la playa (Ajustes · Imagen): arena.js la cambia en vivo (VB.Arena.beachLight, onSettings 'beachLight'); en el pabellón no se nota
-    beachLight: { vals: ['dia', 'tarde'], labels: ['Día', 'Tarde'] }
+    beachLight: { vals: ['dia', 'tarde'], labels: ['Día', 'Tarde'] },
+    // E3 (sprint 5). Imagen: resolución (0 = auto) y tope de fotogramas, contador de FPS (main.js)
+    resScale: { vals: [0, 1, 0.85, 0.7, 0.5], labels: ['Auto', '100%', '85%', '70%', '50%'] },
+    fpsCap: { vals: [0, 30], labels: ['Máx.', '30'] },
+    showFps: { vals: [true, false], labels: ['Sí', 'No'] },
+    // Cámara (camera.js: VB.CameraRig.OPTS)
+    camDist: { vals: ['near', 'normal', 'far'], labels: ['Cerca', 'Normal', 'Lejos'] },
+    camCuts: { vals: ['all', 'less'], labels: ['Todos', 'Menos'] },
+    // Accesibilidad: menos movimiento (main.js → ctx.reduceMotion), colores para daltonismo y balón de contraste (fx.js: VB.FX.OPTS)
+    lessMotion: { vals: ['auto', 'on', 'off'], labels: ['Auto', 'Sí', 'No'] },
+    cbColors: { vals: [true, false], labels: ['Sí', 'No'] },
+    ballStyle: { vals: ['clasico', 'contraste'], labels: ['Clásico', 'Contraste'] },
+    // Controles · Táctil (input.js: VB.Input.OPTS)
+    touchSize: { vals: [1, 1.15, 1.3], labels: ['100%', '115%', '130%'] },
+    // Juego, E1: colocación dirigida (sim opts.aimSet) y timing exacto en ms (solo el sello de ui.js)
+    aimSet: { vals: [true, false], labels: ['Sí', 'No'] },
+    msTiming: { vals: [true, false], labels: ['Sí', 'No'] }
   };
+  /** E3: filas ★ con data-need="Módulo": solo se ven si ese módulo ya soporta la clave (VB[mod].OPTS; Audio: volume y crowdVol
+   *  ya los lee su onSettings; Sim: la maestría de E1). Así cada dueño integra por separado sin filas que no hacen nada. */
+  function supports(mod, key) {
+    var m = VB[mod]; if (!m) return false;
+    if (mod === 'Sim') return !!(m.setPreview || VB.MASTERY);
+    if (m.OPTS) return m.OPTS.indexOf(key) >= 0;
+    return mod === 'Audio';
+  }
+  /** E3: claves de cada apartado para «Restablecer este apartado» (ctx.actions.resetSettings). keys / pad: los de Controles. */
+  var TAB_KEYS = { audio: ['volume', 'sfxVol', 'crowdVol', 'musicVol'], image: ['quality', 'resScale', 'fpsCap', 'showFps', 'beachLight'], cam: ['camSens', 'camDist', 'camCuts', 'cam6'],
+    game: ['showHelp', 'coachTips', 'aimSet', 'msTiming'], a11y: ['camStable', 'rumble', 'hudScale', 'softFlash', 'lessMotion', 'cbColors', 'ballStyle'],
+    kit: ['kitShirt', 'kitAccent', 'kitShorts', 'kitPattern'], keys: ['keys'], pad: ['padKeys', 'padDead'] };
+  var resetArm = { b: null, t: 0, to: 0 };
+  function resetDisarm() {
+    var b = resetArm.b; resetArm.b = null; clearTimeout(resetArm.to);
+    if (b) { b.classList.remove('arm'); if (b.getAttribute('data-lbl')) b.textContent = b.getAttribute('data-lbl'); }
+  }
+  /** Doble pulsación (sin confirm()): la 1ª cambia el texto 3 s, la 2ª restablece. */
+  function resetClick(b) {
+    var id = b.getAttribute('data-reset'), now = performance.now();
+    if (resetArm.b === b && now - resetArm.t < 3000) {
+      resetDisarm();
+      if (ctx.actions.resetSettings && TAB_KEYS[id]) ctx.actions.resetSettings(TAB_KEYS[id]);
+      uiSound('back');
+      if (panel === 'ctl') { renderCtl(); ctlMsgSet(id === 'keys' ? 'Teclas de fábrica' : 'Botones de fábrica'); var nb = el.ctlGrid.querySelector('.opt-reset'); if (nb) focusEl(nb, kbNow() || ctx.inputDevice === 'gamepad'); }
+      else { renderOpts(); b.textContent = 'Restablecido'; setTimeout(function () { if (resetArm.b !== b && b.getAttribute('data-lbl')) b.textContent = b.getAttribute('data-lbl'); }, 1600); }
+      return;
+    }
+    resetDisarm();
+    if (!b.getAttribute('data-lbl')) b.setAttribute('data-lbl', b.textContent);
+    resetArm.b = b; resetArm.t = now;
+    b.textContent = device() === 'touch' ? 'Toca otra vez para restablecer' : 'Pulsa otra vez para restablecer';
+    b.classList.add('arm'); uiSound('click');
+    resetArm.to = setTimeout(resetDisarm, 3000);
+  }
+  /** Fila que abre otro panel: Controles (en la pestaña del dispositivo en uso), Novedades y Créditos (E7). Se apila Ajustes. */
+  function goRow(b) {
+    var g = b.getAttribute('data-go');
+    if (g === 'ctl') openPanel('ctl', { tab: device() });
+    else if (g === 'news' || g === 'credits') openAbout(g);
+  }
   /** Nombre de la sede (arena.js: ajuste `arena` o ?map=): Palau del Mar / Platja Llarga. */
   function venueName() { return VB.Arena && VB.Arena.venueName ? VB.Arena.venueName() : 'Palau del Mar'; }
   /** Pone el nombre de la sede en los textos fijos del HTML (antetítulo del menú, tarjeta de presentación, cortinilla,
@@ -2837,7 +3233,23 @@
   function phase6(g, p) { var A = VB.AI6; if (!A || !A.spot || !p) return ''; try { var s = A.spot(g, p); return (s && s.phase) || ''; } catch (e) { return ''; } }
   function optIndex(k) {
     var o = OPT[k], v = ctx.settings[k]; for (var i = 0; i < o.vals.length; i++) if (o.vals[i] === v) return i; return k === 'difficulty' ? 1 : 0; }
-  var SLIDERS = { camSens: { min: 0.5, max: 1.5, def: 1 }, sfxVol: { min: 0, max: 1, def: 1 }, musicVol: { min: 0, max: 1, def: 0.75 } };
+  // (E3: step = paso de ←/→ y del clic en la pista; 0,1 por defecto. padDead en %: 10 %-30 % de 5 en 5)
+  var SLIDERS = { camSens: { min: 0.5, max: 1.5, def: 1 }, sfxVol: { min: 0, max: 1, def: 1 }, musicVol: { min: 0, max: 1, def: 0.75 },
+    volume: { min: 0, max: 1, def: 1 }, crowdVol: { min: 0, max: 1, def: 0.85 }, padDead: { min: 0.1, max: 0.3, def: 0.18, step: 0.05 } };
+  var VOLS = { volume: 1, sfxVol: 1, crowdVol: 1, musicVol: 1 };
+  function slSnap(k, v) { var c = SLIDERS[k], st = c.step || 0.1; v = Math.round((v - c.min) / st) * st + c.min; return Math.round(Math.max(c.min, Math.min(c.max, v)) * 100) / 100; }
+  /** Volumen movido: quita el silencio y da una muestra (efectos: un pase; público: oleada corta; general: un clic). true si sonó algo. */
+  function volFeedback(k) {
+    if (!VOLS[k]) return false;
+    if (ctx.settings.muted) ctx.actions.setSetting('muted', false);
+    var A = VB.Audio; if (!A) return false;
+    try {
+      if (k === 'sfxVol' && A.play) { A.play('pass', 0.8); return true; }
+      if (k === 'crowdVol' && A.preview) return A.preview('crowd') !== false;
+      if (k === 'volume' && A.preview) return A.preview('master') !== false;
+    } catch (e) { }
+    return false;
+  }
   function slVal(k) { var c = SLIDERS[k], v = +ctx.settings[k]; return isFinite(v) ? Math.max(c.min, Math.min(c.max, v)) : c.def; }
   function changeOpt(k, d, absIdx, arrowDir) {
     if (k === 'ctrlMode' && fmt6()) { // 6v6: la fila Controlar recorre los puestos jugables (role6, no el ajuste ctrlMode)
@@ -2857,11 +3269,11 @@
     }
     if (k === 'arena' && absIdx == null && OPT.arena.vals.indexOf(menuVenue()) >= 0) absIdx = (OPT.arena.vals.indexOf(menuVenue()) + d + 2) % 2; // desde el que se ve (?map=)
     if (SLIDERS[k]) {
-      var c = SLIDERS[k], v = Math.round((slVal(k) + d * 0.1) * 10) / 10;
-      if (v > c.max + 1e-6) v = d > 0 && absIdx === 'wrap' ? c.min : c.max; if (v < c.min - 1e-6) v = c.min;
+      var c = SLIDERS[k], st = c.step || 0.1, v0 = slVal(k), v = Math.round((v0 + d * st) * 100) / 100;
+      if (v > c.max + 1e-6) v = d > 0 && absIdx === 'wrap' && v0 >= c.max - 1e-6 ? c.min : c.max; if (v < c.min - 1e-6) v = c.min;
+      v = slSnap(k, v);
       ctx.actions.setSetting(k, v);
-      if (k === 'sfxVol' && ctx.settings.muted) ctx.actions.setSetting('muted', false);   // mover el volumen quita el silencio
-      if (k === 'sfxVol' && VB.Audio && VB.Audio.play) try { VB.Audio.play('pass', 0.8); } catch (e) { }
+      if (volFeedback(k)) return;   // mover un volumen quita el silencio y suena su muestra (en vez del sonido del deslizador)
     } else {
       var o = OPT[k], i = absIdx != null ? absIdx : (optIndex(k) + d + o.vals.length) % o.vals.length;
       ctx.actions.setSetting(k, o.vals[i]);
@@ -2872,7 +3284,7 @@
   function optSound(k, arrowDir) {
     var A = VB.Audio; if (!A || !A.ui) return click();
     try {
-      if (SLIDERS[k]) { if (k !== 'sfxVol') A.ui('slide', (slVal(k) - SLIDERS[k].min) / (SLIDERS[k].max - SLIDERS[k].min)); return; }
+      if (SLIDERS[k]) { A.ui('slide', (slVal(k) - SLIDERS[k].min) / (SLIDERS[k].max - SLIDERS[k].min)); return; }
       var o = OPT[k], i = optIndex(k);
       if (arrowDir) A.ui('arrow', arrowDir, i, o.vals.length);
       else if (o.labels.length === 2 && o.labels[0] === 'Sí') A.ui('toggle', i === 0);
@@ -2911,6 +3323,23 @@
       var key = sls[m].getAttribute('data-sl'), c = SLIDERS[key], v = slVal(key), f = (v - c.min) / (c.max - c.min) * 100;
       sls[m].querySelector('i').style.width = f + '%'; sls[m].querySelector('b').style.left = f + '%';
       sls[m].querySelector('.v').textContent = Math.round(v * 100) + '%';
+    }
+    // E3: filas ★ que su módulo aún no soporta, ocultas
+    var nd = document.querySelectorAll('[data-need]');
+    for (var ni = 0; ni < nd.length; ni++) { var hid = !supports(nd[ni].getAttribute('data-need'), nd[ni].getAttribute('data-opt')); if (nd[ni].hidden !== hid) nd[ni].hidden = hid; }
+    // E3: ayuda de Resolución (Auto con la escala de ahora / Fija con los píxeles del lienzo)
+    if (el.resNote) {
+      var rsv = +ctx.settings.resScale || 0, rn;
+      if (!rsv) rn = 'Auto: la baja sola si va lento (ahora ' + Math.round((ctx.renderScale || 1) * 100) + ' %)';
+      else { var gl = null; try { gl = ctx.renderer && ctx.renderer.getContext ? ctx.renderer.getContext() : null; } catch (e) { gl = null; } rn = gl ? 'Fija: ' + gl.drawingBufferWidth + ' × ' + gl.drawingBufferHeight + ' píxeles' : 'Fija: ' + Math.round(rsv * 100) + ' %'; }
+      if (el.resNote.textContent !== rn) el.resNote.textContent = rn;
+    }
+    // E7: Ajustes · Info (versión y dónde se guarda el progreso)
+    if (el.optVer) { var vt = VB.VERSION ? VB.VERSION + (VB.VERSION_DATE ? ' (' + fmtDate(VB.VERSION_DATE) + ')' : '') : '—'; if (el.optVer.textContent !== vt) el.optVer.textContent = vt; }
+    if (el.optSave) {
+      var au = null; try { au = VB.Account && VB.Account.user ? VB.Account.user() : null; } catch (e) { au = null; }
+      var sv = au ? 'Guardado en tu cuenta (' + au + ')' : 'Guardado en este dispositivo';
+      if (el.optSave.textContent !== sv) el.optSave.textContent = sv;
     }
     var snd = document.querySelector('.opt-snd');
     if (snd) { snd.classList.toggle('muted', !!ctx.settings.muted); var mb = snd.querySelector('[data-mute]'); if (mb) mb.setAttribute('aria-checked', ctx.settings.muted ? 'true' : 'false'); }
@@ -3116,7 +3545,7 @@
       figOne: { players: [{ t: 0, x: 4.2, y: -2.4, you: 1, lbl: '1' }, { t: 0, x: 1.8, y: 1.2, lbl: '2' }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }] },
       text: function (g) {
         if (oneMode()) return 'Llevas siempre al mismo jugador: tu compañero (la IA) hace la <b>colocación</b>, un balón alto junto a la red, y tú te preparas para rematar. Si el 1r toque lo da él, la colocación es tuya: ponte bajo el balón y pulsa ' + g.hit + ', o salta y pulsa ' + g.jset + ' en el aire (<b>colocación en salto</b>).';
-        return 'El control pasa solo a tu compañero (la cámara se desliza hacia él). Ponte bajo el balón y pulsa ' + g.hit + ': es la <b>colocación</b>, un balón alto junto a la red. Si saltas, en el aire ' + g.hit + ' remata y ' + g.jset + ' hace una <b>colocación en salto</b>: más rápida, con menos margen.';
+        return 'El control pasa solo a tu compañero (la cámara se desliza hacia él). Ponte bajo el balón y pulsa ' + g.hit + ': es la <b>colocación</b>, un balón alto junto a la red. Si saltas, en el aire ' + g.hit + ' remata y ' + g.jset + ' hace una <b>colocación en salto</b>: más rápida, con menos margen. Al colocar, la dirección elige la zona: ↑ rápida, ← → a un lado, ↓ alta.';
       },
       rule: 'Cada equipo tiene <b>3 toques</b>. Un jugador no puede tocar dos veces seguidas: eso son <b>dobles</b>.',
       ruleBeach: 'Cada equipo tiene <b>3 toques</b>. En la playa la <b>colocación de dedos</b> se pita más: a destiempo pueden pitarte <b>dobles</b>.' },
@@ -3124,7 +3553,7 @@
         players: [{ t: 0, x: 1.3, y: -2.4, you: 1, lbl: '3' }, { t: 0, x: 1.8, y: 1.2 }, { t: 1, x: -5.5, y: -2 }, { t: 1, x: -5.5, y: 2 }],
         segs: [{ a: [1.8, 1.2, 2.3], b: [1.05, -2.4, 3.15], apex: 5.3, dur: 1.15 }, { a: [1.05, -2.4, 3.15], b: [-6.2, 2.8, 0.2], dur: 0.38, who: 0, spike: 1 }],
         ring: [1.3, -2.4], jump: [[0, 0.62, 1.05]], swing: [[0, 1.05, 0.25]] },
-      text: function (g) { return 'En el 3r toque ponte bajo la colocación, pulsa ' + g.jump + ' para <b>saltar</b> y ' + g.hit + ' en lo alto: <b>remate</b>. En el aire, mueve la <b>diana</b> por el campo rival con ' + g.aim + '; en el <b>momento justo</b>, el remate va exacto a ella.'; },
+      text: function (g) { return 'En el 3r toque ponte bajo la colocación, pulsa ' + g.jump + ' para <b>saltar</b> y ' + g.hit + ' en lo alto: <b>remate</b>. En el aire, mueve la <b>diana</b> por el campo rival con ' + g.aim + '; en el <b>momento justo</b>, el remate va exacto a ella. Para engañar al bloqueo: ' + g.hit + ' y, antes del golpe, ' + g.jump + ' (<b>finta</b>), o ' + g.jset + ' en el aire (<b>golpe colocado</b>). La diana pegada a la línea va <b>al filo</b>.'; },
       rule: 'En el aire, ' + '<b>Saltar</b> otra vez hace una <b>dejada</b>. Si golpeas el 3r toque sin saltar, el balón pasa en globo (<b>balón libre</b>).',
       ruleBeach: 'En el aire, <b>Saltar</b> otra vez hace una dejada <b>de nudillos</b> (<b>pokey</b>): en la playa, con la yema de los dedos sería falta. Sin saltar, el 3r toque pasa en globo (<b>balón libre</b>).' },
     { step: 'Paso 5 de 6', title: 'El bloqueo', fig: {
@@ -3255,6 +3684,240 @@
   }
 
   // =====================================================================
+  //  ENTRENAMIENTO (E6, sprint 5): página #mpGym, HUD #drillBar, sellos, consejos del fallo y hoja final .drill
+  // =====================================================================
+  // Datos y guardado en js/gym.js (VB.Gym: DRILLS, MEDALS, record, recordRally…); la mecánica y los puntos son de la sim (g.drill,
+  // eventos drillStage / drillRep / drillEnd; sin point / whistle / gameOver). main.js: startMatch({drill}), drillEnd → 'over',
+  // restart repite el ejercicio. Aquí no se reparte XP de partido ni se toca voley3d.record (showEnd no llega), y las insignias
+  // (Badges.ingest) quedan fuera con g.drill. La XP de las medallas la da VB.Gym.record (una sola vez por nivel).
+  var GYM_TIPS = {
+    early: 'Un pelín pronto: espera a que baje',
+    lateHit: 'Un pelín tarde: pulsa antes',
+    late: 'Tarde: pulsa antes',
+    far: 'No llegas: muévete antes de pulsar',
+    out: 'Apunta un poco más dentro: la diana manda el saque',
+    jump: 'Salta cuando el atacante arma el brazo',
+    net: 'A la red: golpea más arriba, en lo alto del salto',
+    blocked: 'Bloqueado: apunta lejos de las manos o prueba un golpe colocado'
+  };
+  var MEDAL_N = ['', 'Bronce', 'Plata', 'Oro'];
+  var gymLast = { t: NaN, miss: '' }, gymTip = '', gymTipT = 0, gymSel = 'serve', gymHov = null, gymBestV = 0;
+  var geGate = false, geWait = false, geT0 = 0;
+  function isDrill() { var g = ctx && ctx.game; return !!(g && g.drill && !g.demo); }
+  function altR(g) { try { return VB.Sim.altReady(g) || ''; } catch (e) { return ''; } }
+  function gymRow(id) { var Gm = VB.Gym; return Gm && Gm.drill ? Gm.drill(id) : null; }
+  function drillName(id, short) { var d = gymRow(id); return d ? (short ? d.short : d.name) : id === 'free' ? 'Peloteo libre' : 'Entrenamiento'; }
+  /** Umbrales de medalla [bronce, plata, oro] de un ejercicio: los de js/gym.js (los que dan la medalla), null en 'free'. */
+  function gymMedals(id) {
+    var Gm = VB.Gym; if (!Gm) return null;
+    if (Gm.medalsOf) { try { var m = Gm.medalsOf(id); if (m) return m; } catch (e) { } }
+    return Gm.MEDALS && Gm.MEDALS[id] || null;
+  }
+  function gymBestOf(id) { var Gm = VB.Gym; if (!Gm) return 0; try { if (id === 'free') return Gm.bestRally ? Gm.bestRally() | 0 : 0; var r = Gm.get(id); return r ? r.b | 0 : 0; } catch (e) { return 0; } }
+  /** Medalla en SVG (sin emoji): m 0 = círculo hueco, 1 bronce, 2 plata, 3 oro; extra: clase («off» = apagada). */
+  function medalSVG(m, extra) {
+    return '<svg class="mdl m' + (m | 0) + (extra ? ' ' + extra : '') + '" viewBox="0 0 32 32" aria-hidden="true"><path class="rb" d="M8.5 1.5h6.5l3.2 9.5h-6.6z"/><path class="rb rb2" d="M23.5 1.5H17l-3.2 9.5h6.6z"/>' +
+      '<circle class="dk" cx="16" cy="20.5" r="9"/><path class="st" d="M16 15.2l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z"/></svg>';
+  }
+  function gymRowEl(id) { return el.gymList ? (el.gymList.querySelector('[data-drill="' + id + '"]') || el.gymList.querySelector('[data-drill]')) : null; }
+  /** Página Entrenamiento: una fila por ejercicio con su medalla y su récord; pie con las medallas conseguidas. */
+  function renderGym() {
+    var Gm = VB.Gym; if (!el.gymList) return;
+    var h = '';
+    (Gm ? Gm.DRILLS : []).forEach(function (d) {
+      var right, aria = d.name;
+      if (d.id === 'free') {
+        var br = gymBestOf('free');
+        right = '<span class="gy-rec"><b>' + (br ? br + (br === 1 ? ' toque' : ' toques') : '—') + '</b><small>Mejor peloteo</small></span>';
+        aria += br ? ', mejor peloteo ' + br + ' toques' : '';
+      } else {
+        var r = Gm.get(d.id), m = r ? r.m | 0 : 0;
+        right = medalSVG(m) + '<span class="gy-rec"><b>' + (r && r.n ? 'Récord ' + r.b : 'Nuevo') + '</b><small>' + (m ? MEDAL_N[m] : r && r.n ? 'Sin medalla' : 'Sin jugar') + '</small></span>';
+        aria += r && r.n ? ', récord ' + r.b + (m ? ', medalla de ' + MEDAL_N[m].toLowerCase() : '') : ', sin jugar';
+      }
+      h += '<button class="mi" data-drill="' + d.id + '" aria-label="' + escT(aria + '. ' + d.help) + '"><span class="mi-l">' + escT(d.name) + '<small class="mi-h">' + escT(d.help) + '</small></span><span class="gy-r">' + right + '</span></button>';
+    });
+    if (el.gymList._h !== h) { el.gymList._h = h; el.gymList.innerHTML = h; gymHov = null; }
+    if (el.gymFoot && Gm) setSep(el.gymFoot, [{ h: 'Medallas: <b>' + Gm.count() + ' de ' + (Gm.IDS ? Gm.IDS.length * 3 : 15) + '</b>' }, 'Cada medalla nueva da experiencia a tus jugadores'], 'v');
+  }
+  /** Fila → ejercicio, bajo la cortinilla de pantalla. */
+  function goGym(id) {
+    if (!id) return;
+    gymSel = id;
+    var f = function () { ctx.actions.startMatch({ drill: id }); };
+    if (!wipeRun(2, f) && !wp.cb) f();
+  }
+  /** Pausa «Salir al entrenamiento» / hoja final «Entrenamiento»: al menú, en la página Entrenamiento con la fila del ejercicio. */
+  function goGymList(id) {
+    var kb = kbNow() || ctx.inputDevice === 'gamepad';
+    var f = function () {
+      ctx.actions.toMenu();
+      if (ctx.state !== 'menu') return;
+      if (id) gymSel = id;
+      mstack.length = 0; mstack.push({ p: 'main', f: 'btnPlay' }); mstack.push({ p: 'play', f: 'btnGym' });
+      setPage('gym');
+      setTimeout(function () { if (mpage === 'gym' && !panel && ctx.state === 'menu') focusEl(pageFocus(), kb); }, 250);
+    };
+    if (!wipeRun(2, f) && !wp.cb) f();
+  }
+  /** Antetítulo de la pausa: «Entrenamiento ◆ Saque 4/10 | 11 pts» (peloteo: «Entrenamiento ◆ Récord 14 toques»). */
+  function gymKicker(g) {
+    var d = g.drill;
+    if (d.kind === 'free') return ['Entrenamiento', gymBestV ? 'Récord ' + gymBestV + ' toques' : 'Peloteo libre'];
+    return ['Entrenamiento', { h: escT(drillName(d.kind, true)) + ' <span style="white-space:nowrap">' + Math.min(d.of, d.n + 1) + '/' + d.of + SEP_V + (d.total | 0) + '&nbsp;pts</span>' }]; // («Remate 3/10 | 6 pts»: el grupo salta de línea entero por el espacio, sin separador colgando)
+  }
+  /** Pastilla del HUD en el sitio del marcador: «Saque 4/10 ◆ 11 pts ◆ Récord 21» (solo reescribe si cambia algo). */
+  function drillHud(g) {
+    var d = g.drill, free = d.kind === 'free', n = Math.min(d.of, d.n + 1);
+    var k = free ? 1e7 + (d.cnt | 0) * 1000 + gymBestV : n * 1e6 + (d.total | 0) * 1000 + gymBestV;
+    if (last.db === k && last.dbK === d.kind) return;
+    last.db = k; last.dbK = d.kind;
+    el.drillTxt.innerHTML = free
+      ? sepHTML([{ h: 'Peloteo' }, { h: 'Toques <b>' + (d.cnt | 0) + '</b>' }, gymBestV ? { h: '<small>Récord</small> <b>' + gymBestV + '</b>' } : ''], 'd')
+      : sepHTML([{ h: escT(drillName(d.kind, true)) + ' <b>' + n + '/' + d.of + '</b>' }, { h: '<b>' + (d.total | 0) + '</b> pts' }, gymBestV ? { h: '<small>Récord</small> <b>' + gymBestV + '</b>' } : ''], 'd');
+  }
+  /** Tarjeta de presentación del ejercicio (introStart con g.drill): nombre, objetivo, teclas del dispositivo y medallas. */
+  function gymIntro(g) {
+    var id = g.drill.kind, gl = G(), ik = function (k, t) { return '<span class="ik">' + k + (k ? ' ' : '') + t + '</span>'; };
+    el.idTitle.textContent = drillName(id);
+    var row = gymRow(id); el.idGoal.textContent = row ? row.help : '';
+    var keys = id === 'serve' ? ik(gl.serve, 'flotante') + ik(gl.jump, 'en salto') + ik('', 'Apunta con ' + gl.aim)
+      : id === 'recv' ? ik(gl.move, 'te mueves') + ik(gl.hit, 'recibes')
+      : id === 'set' ? ik(gl.hit, 'de dedos') + ik(gl.jump + gl.jset, 'en salto') + (g.mastery && g.aimSet !== false ? ik('', 'La dirección elige la zona') : '')
+      : id === 'atk' ? ik(gl.jump, 'saltas') + ik(gl.hit, 'rematas') + ik('', 'Apunta con ' + gl.aim)
+      : id === 'block' ? ik(gl.jump, 'saltas') + ik(gl.hit, 'cierras al remate')
+      : ik(gl.hit, 'golpeas') + ik(gl.jump, 'saltas') + ik(gl.jset, 'colocas');
+    el.idKeys.innerHTML = keys;
+    var M = gymMedals(id);
+    if (M) el.idMed.innerHTML = M.map(function (v, i) { return '<span class="im">' + medalSVG(i + 1) + MEDAL_N[i + 1] + ' ' + v + '</span>'; }).join('<span class="sep sep-v"><span class="sr">, </span></span>');
+    else { var b = gymBestOf('free'); el.idMed.textContent = b ? 'Mejor peloteo: ' + b + ' toques' : 'Sin marcador ni sets'; }
+  }
+  /** Sello del ejercicio en un punto del mundo (bote, zona del colocador, red): sube y se funde como el del golpe (UI-09). */
+  function stampAt(x, y, z, title, sub, cls, dur) {
+    if (!ctx.camera || !VB.toThree || !ctx.THREE || !el.stamp) return;
+    if (!_sv) _sv = new ctx.THREE.Vector3();
+    ctx.camera.updateMatrixWorld();
+    if (!sproj(x, y, z, _sp).ok) return;
+    stp.pl = null; stp.ox = 0; stp.oy = -46; stp.wx = x; stp.wy = y; stp.wz = z; stp.t = dur; stp.born = performance.now(); stp.cost = 0; stp.dir = 2;
+    el.stampT.textContent = title; el.stampS.textContent = sub || ''; el.stampS.hidden = !sub;
+    el.stamp.className = 'on ' + cls;
+    stampPlace();
+    stampKF();
+    try { if (el.stampIn.animate) el.stampIn.animate(rm() ? STAMP_KF_RM : STAMP_KF, { duration: Math.round(dur * 1000), easing: 'linear', fill: 'both' }); } catch (er) { }
+  }
+  /** drillRep: sello con el resultado («¡Diana! +3», «Fuera»…) y, con 0 puntos, el consejo concreto del fallo (GYM_TIPS). */
+  function gymRep(e, g) {
+    var p = g.ctrl || (g.teams && g.teams[0][0]), x = isFinite(e.x) ? e.x : p ? p.x : 0, y = isFinite(e.y) ? e.y : p ? p.y : 0;
+    var z = isFinite(e.x) ? 0.5 : 2.4, title, sub = '', cls;
+    if (e.kind === 'free') {
+      var hits = e.hits | 0, rb = null;
+      if (!ctx.debug && hits > 0 && VB.Gym && VB.Gym.recordRally) { try { rb = VB.Gym.recordRally(hits); } catch (er) { rb = null; } }
+      var isB = (rb ? rb.isBest : !!e.isBest) && hits > 1;
+      if (rb) gymBestV = rb.best | 0; else if (e.best > gymBestV) gymBestV = e.best | 0;
+      if (hits < 1 || !p) return;
+      title = isB ? '¡Récord de peloteo!' : 'Peloteo de ' + hits + (hits === 1 ? ' toque' : ' toques');
+      sub = isB ? hits + ' toques' : ''; cls = isB ? 'pf' : 'gd';
+      x = p.x; y = p.y; z = 2.4;
+    } else {
+      var pts = e.pts | 0;
+      title = (e.text || (pts ? 'Bien' : 'Fallo')) + (pts ? ' +' + pts : '');
+      cls = pts >= 3 ? 'pf' : pts > 0 ? 'gd' : 'ms';
+      if (!pts && (!g.autopilot || ctx.debug)) { var tp = gymTipFor(e, g); if (tp) { gymTip = tp; gymTipT = 2.5; } }
+    }
+    stampAt(x, y, z, title, sub, cls, 1.1);
+    srSay(title + (sub ? ', ' + sub : ''));
+  }
+  function gymTipFor(e, g) {
+    var k = e.kind, r = e.res, L = gymLast;
+    if (k === 'serve' && r === 'out') return GYM_TIPS.out;
+    if (k === 'block' && r === 'none' && !(g.drill && g.drill.jumped)) return GYM_TIPS.jump;
+    if (L.miss === 'late') return GYM_TIPS.late;
+    if (L.miss === 'early' || L.t < -0.03) return GYM_TIPS.early;
+    if (L.miss === 'far') return GYM_TIPS.far;
+    if (L.t > 0.03) return GYM_TIPS.lateHit;
+    if (r === 'net') return GYM_TIPS.net;
+    if (k === 'atk' && (r === 'stuff' || r === 'soft')) return GYM_TIPS.blocked;
+    return '';
+  }
+  /** drillEnd: apunta el total (VB.Gym.record, que da la XP de las medallas nuevas) y prepara la hoja final; se abre tras el sello. */
+  function gymEndShow(e, g) {
+    var Gm = VB.Gym, id = e.kind, total = e.total | 0, res = null, M = gymMedals(id) || [99, 99, 99];
+    if (Gm && Gm.record && !ctx.debug) { try { res = Gm.record(id, total); } catch (er) { res = null; } }
+    if (!res) {   // depuración (o sin gym.js): lo que pasaría, sin guardar nada
+      var pv = Gm && Gm.get ? Gm.get(id) : null, pm = pv ? pv.m | 0 : 0, mm = Gm && Gm.medalOf ? Gm.medalOf(id, total) : 0, xp = 0, XP = (Gm && Gm.XP) || [30, 50, 80];
+      for (var lv = pm + 1; lv <= mm; lv++) xp += XP[lv - 1] || 0;
+      res = { best: Math.max(pv ? pv.b : 0, total), prev: pv ? pv.b : 0, isBest: !pv || total > pv.b, medal: mm, newMedal: mm > pm, xp: xp };
+    }
+    var best = Math.max(res.best | 0, total); gymBestV = best;
+    setSep(el.geKick, ['Entrenamiento', venueName()], 'd');
+    el.geTitle.textContent = drillName(id);
+    el.geTotal.textContent = total; el.geTotal.setAttribute('data-cu', total);
+    el.geMax.textContent = (Gm && Gm.MAX) || 30;
+    var mh = '';
+    for (var i = 1; i <= 3; i++) {
+      var on = res.medal >= i;
+      mh += '<span class="ge-m' + (on ? ' on' : '') + (on && res.newMedal && i === res.medal ? ' new' : '') + '">' + medalSVG(i, on ? '' : 'off') + '<span>' + MEDAL_N[i] + ' ' + M[i - 1] + '</span></span>';
+    }
+    el.geMeds.innerHTML = mh;
+    el.geReps.innerHTML = (e.reps || []).map(function (p) { return '<i class="p' + Math.max(0, Math.min(3, p | 0)) + '"></i>'; }).join('');
+    var rec = '';
+    if (total > 0 && res.isBest) rec += '<span class="new">¡Nuevo récord!' + (res.prev ? ' Antes: ' + res.prev : '') + '</span>';
+    else rec += '<span>Récord: <b>' + best + '</b></span>';
+    if (res.newMedal && res.medal) rec += '<span class="new">¡Medalla de ' + MEDAL_N[res.medal].toLowerCase() + '!</span>';
+    if (res.xp > 0) rec += '<span><b>+' + res.xp + ' de experiencia</b> (a cada jugador)</span>';
+    if (res.medal < 3 && M[res.medal] < 99) rec += '<span>' + MEDAL_N[res.medal + 1] + ': ' + M[res.medal] + ' puntos</span>';
+    el.geRec.innerHTML = rec;
+    var nx = Gm && Gm.nextOf ? Gm.nextOf(id) : null;
+    el.btnGeNext.hidden = !nx;
+    if (nx) el.btnGeNext.textContent = 'Siguiente: ' + drillName(nx, true);
+    srSay(drillName(id) + ': ' + total + ' puntos' + (res.medal ? ', medalla de ' + MEDAL_N[res.medal].toLowerCase() : '') + (total > 0 && res.isBest ? ', nuevo récord' : ''));
+    // depuración: la hoja al momento; si no, tras el sello de la última repetición (0,75 s) y la cortinilla
+    geGate = !(ctx.debug && ctx.params.hold !== '1'); geWait = geGate; geT0 = ctx.time; shown = '';
+  }
+  function geTick() {
+    if (ctx.state !== 'over' || !isDrill()) { geWait = false; geGate = false; return; }
+    if (ctx.time - geT0 < 0.75) return;
+    geWait = false;
+    if (!wipeRun(2, geOpen)) geOpen();
+  }
+  function geOpen() { geGate = false; shown = ''; if (ctx.game) syncScreens(ctx.game); }
+  /** E1: línea de la hoja final con los usos de la maestría («Fintas 3 | Colocados 5 | Al filo 4 | Rápidas 2»), '' sin nada. */
+  function masteryLine(g) {
+    var m = g && !g.demo && g.mastery && g.stats && g.stats.mastery; if (!m) return '';
+    var u = function (k) { return m[k] && m[k][0] | 0; }, out = [];
+    var f = u('feint'), r = u('roll'), e = u('edge'), q = u('quick');
+    if (f) out.push((f === 1 ? 'Finta ' : 'Fintas ') + '<b>' + f + '</b>');
+    if (r) out.push((r === 1 ? 'Colocado ' : 'Colocados ') + '<b>' + r + '</b>');
+    if (e) out.push('Al filo <b>' + e + '</b>');
+    if (q) out.push((q === 1 ? 'Rápida ' : 'Rápidas ') + '<b>' + q + '</b>');
+    return out.length ? sepHTML(out, 'v', true) : '';
+  }
+  // E1: consejos de maestría en la franja de arriba, uno por partido como mucho (≤ 3,5 s de juego) y cada uno 2 veces en total
+  // (voley3d.e1tips, solo este dispositivo). Salen aunque los consejos de partido estén apagados (se apagan solos al ganar el 1r
+  // partido, y la maestría es justo para quien ya gana), pero no sin las ayudas (Ajustes ◆ Juego ◆ Ayudas).
+  var e1 = { k: '', t: 0, on: false, seen: null };
+  var E1_KEYS = ['air', 'feint', 'aim', 'edge'];
+  function e1Seen() { if (!e1.seen) { e1.seen = {}; try { var o = JSON.parse(localStorage.getItem('voley3d.e1tips') || 'null'); if (o && typeof o === 'object') E1_KEYS.forEach(function (k) { e1.seen[k] = Math.max(0, Math.min(9, +o[k] | 0)); }); } catch (er) { } } return e1.seen; }
+  function e1Tip(g, p, nt, w, ar, gl, touchDev, one, dt) {
+    if (e1.k === 'done') return '';
+    var S = e1Seen(), k = '', txt = '';
+    var mine = !(one && g.jobs && g.jobs[0] && g.jobs[0] !== p);
+    if (ar === 'roll') { k = 'air'; txt = 'En el aire, ' + gl.hit + ' remata, ' + gl.jump + ' deja caer y ' + gl.jset + ' coloca al fondo'; }
+    else if (nt === 3 && mine && p.z <= 0.01 && w && w.attack && w.jumpT > 0.12) { k = 'feint'; txt = touchDev ? 'Desliza de GOLPEAR a SALTAR: ¡finta!' : 'Arma con ' + gl.hit + ' y cambia a ' + gl.jump + ' antes del golpe: ¡finta!'; }
+    else if (nt === 2 && mine && g.aimSet !== false && g.size !== 6) { k = 'aim'; txt = 'Al colocar, con ' + gl.aim + ' eliges: ↑ rápida, ← → a un lado, ↓ alta'; }
+    else if (nt === 3 && aim3(g, p)) { k = 'edge'; txt = 'Al filo: más difícil de defender, más fácil de fallar'; }
+    if (!k || (S[k] | 0) >= 2 || (e1.k && e1.k !== k)) return '';
+    if (!e1.k) {
+      // el consejo de este partido: el primero cuyo momento llega (y que no se haya visto ya 2 veces)
+      e1.k = k; S[k] = (S[k] | 0) + 1; try { localStorage.setItem('voley3d.e1tips', JSON.stringify(S)); } catch (er) { }
+    }
+    e1.t += dt || 0;
+    if (e1.t > 3.5) { e1.k = 'done'; return ''; }
+    e1.on = true;
+    return txt;
+  }
+
+  // =====================================================================
   //  ENTRADA DE MENÚS
   // =====================================================================
   function adjustFocused(d) {
@@ -3263,12 +3926,15 @@
     // «Volver», y ← se quedaba allí); desde «Volver» de Jugar, ←/→ vuelven a una tarjeta
     if (a && a.classList && a.classList.contains('mode') && !panel) { modeStep(a, d); return true; }
     if (a && a.classList && a.classList.contains('mp-back') && !panel && mpage === 'play') { focusEl(el.btnQuick, true); hoverSound(); return true; }
+    if (a && a.classList && a.classList.contains('mp-back') && !panel && mpage === 'gym') { focusEl(gymRowEl(gymSel), true); hoverSound(); return true; }
     if (a && a.getAttribute && a.getAttribute('role') === 'tab') { var tb = activeTabs(); if (tb) { tb.step(d, 'key'); return true; } }
     if (a && a.getAttribute && a.getAttribute('data-pick') != null && panel === 'squad') { sqPick(sqSel + (d > 0 ? 1 : -1), true); return true; }
-    if (panel === 'ctl') { ctlStep(d > 0 ? 1 : -1); return true; }
+    // (E3: en Controles, ←/→ cambian de pestaña salvo sobre una fila con valor —Zona muerta, Tamaño de botones— o una tecla)
+    if (panel === 'ctl' && !(a && a.classList && (a.classList.contains('kslot') || (a.getAttribute('data-opt') && el.ctlGrid.contains(a))))) { ctlStep(d > 0 ? 1 : -1); return true; }
     if (panel === 'tut' && (!a || !a.getAttribute || !a.getAttribute('data-opt'))) { if (d > 0) { if (tut.i < TUT.length - 1) tutGo(tut.i + 1); } else tutGo(tut.i - 1); click(); return true; }
     if (a && a.getAttribute && a.getAttribute('data-opt') && !a.closest('[hidden]')) { changeOpt(a.getAttribute('data-opt'), d); return true; }
     if (panel === 'squad' && a && a.getAttribute && a.getAttribute('data-bd')) { navMove(d > 0 ? 1 : -1); return true; } // rejilla de insignias: ←/→ = vecina
+    if (a && a.classList && a.classList.contains('kslot')) { navMove(d > 0 ? 1 : -1); return true; }                        // E3: ←/→ entre las teclas de Controles
     return false;
   }
   /** ←/→ entre las tarjetas de Jugar: la vecina activa (las deshabilitadas se saltan); en el borde, se queda. */
@@ -3280,6 +3946,7 @@
   }
   function onKey(e) {
     ctx.lastKeyT = ctx.time;
+    if (capturing || (VB.Input && VB.Input.capturing && safe(VB.Input.capturing))) return;   // E3: reasignando una tecla
     if (ctx.introLeft > 0 && ctx.state === 'playing') { if (!e.repeat) ctx.introSkipReq = true; return; }   // UI-14: cualquier tecla salta la tarjeta
     if (ctx.state === 'playing' && !panel) return;
     var k = e.key;
@@ -3347,15 +4014,21 @@
     /** Pruebas (UI-20): última caja del aviso anclado {x, y, w, h} (px CSS), solo la tecla (konly) y zonas de los botones táctiles. */
     _prompt: function () { return { x: prLast.x, y: prLast.y, w: prLast.w, h: prLast.h, konly: prKonly, side: prSide, tb: tbx.L.slice() }; },
     isPanelOpen: function () { return !!panel; },
+    /** E7: abre Acerca de ('news' | 'credits'). */
+    openAbout: function (tab) { openAbout(tab, panel ? panelFrom : ctx.state); },
+    /** Pruebas (E7): {seen, returning, auto: 'off' | 'waiting' | 'shown'}. */
+    _about: function () { return { seen: seenGet(), returning: wasReturning, auto: aboutAuto }; },
+    /** Pruebas (E3): panel abierto, pila de vuelta, pestaña de Ajustes, pestañas compactas y captura en curso. */
+    _settings: function () { return { panel: panel, stack: pstack.map(function (x) { return x.name; }), tab: setTabs ? setTabs.get() : '', compact: !!(el.setTabs && el.setTabs.classList.contains('tabs-ic')), capturing: capturing, ctl: ctlView, glyph: { hit: GLYPH.keyboard.hitT, jump: GLYPH.keyboard.jumpT, padHit: GLYPH.gamepad.hitT } }; },
     /** Portada del menú libre (sin panel, sin cortinilla, sin telón): install.js espera a esto para su aviso (nunca encima de «Primer partido»). */
     menuIdle: function () { return ctx.state === 'menu' && !panel && !wp.ph && mpage === 'main' && !(bootStage < 2 && bootBusy()); },
     /** Pestañas reutilizables (ver «PESTAÑAS» arriba): VB.UI.tabs(host, items, opts) → api {get, set, step, refresh, hint, focus}. */
     tabs: makeTabs,
     /** Mando: −1 con LB/L1 pulsado, +1 con RB/R1 (o Y). Para cambiar de pestaña con it.switchPlayer fuera de ui.js. */
     padTabDir: padTabDir,
-    /** Página del menú visible: 'main' | 'play' | 'quick'; menuGo(p) abre una (apilando la actual), menuBack() vuelve. */
+    /** Página del menú visible: 'main' | 'play' | 'quick' | 'gym'; menuGo(p) abre una (apilando la actual), menuBack() vuelve. */
     menuPage: function () { return mpage; },
-    menuGo: function (p) { if (p === 'play' || p === 'quick') menuGo(p); },
+    menuGo: function (p) { if (p === 'play' || p === 'quick' || p === 'gym') menuGo(p); },
     menuBack: function () { return menuBack(); },
     /** Mando conectado / desconectado (main.js con Input.poll().padEvent). Al desconectarse jugando con él, input.js pausa:
      *  la hoja de pausa lo dice ("Mando desconectado") en el antetítulo, en vez del set y el tanteo. */
@@ -3384,7 +4057,14 @@
       // esa tarjeta y volver dejaba el Partido rápido en 6v6). Dentro, la fila Formato se puede cambiar igual
       if (el.btnQuick) el.btnQuick.addEventListener('click', function () { if (ctx.settings.format !== '2v2') ctx.actions.setSetting('format', '2v2'); menuGo('quick'); });
       if (el.btnGo) el.btnGo.addEventListener('click', play);
-      [el.btnPlayBack, el.btnQuickBack].forEach(function (b) { if (b) b.addEventListener('click', function () { menuBack(); }); });
+      [el.btnPlayBack, el.btnQuickBack, el.btnGymBack].forEach(function (b) { if (b) b.addEventListener('click', function () { menuBack(); }); });
+      // E6: Entrenamiento (tarjeta de Jugar → página; fila → ejercicio; botones de la hoja final)
+      if (el.btnGym) el.btnGym.addEventListener('click', function () { menuGo('gym'); });
+      if (el.gymList) el.gymList.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-drill]') : null; if (b) { uiSound('start'); goGym(b.getAttribute('data-drill')); } });
+      if (el.gymList) el.gymList.addEventListener('pointerover', function (ev) { if (ev.pointerType !== 'mouse') return; var b = ev.target && ev.target.closest ? ev.target.closest('[data-drill]') : null; if (b && b !== gymHov) { gymHov = b; hoverSound(); } });
+      if (el.btnGeAgain) el.btnGeAgain.addEventListener('click', function () { uiSound('start'); if (isDrill()) goGym(ctx.game.drill.kind); });
+      if (el.btnGeNext) el.btnGeNext.addEventListener('click', function () { var g = ctx.game, n = g && g.drill && VB.Gym && VB.Gym.nextOf ? VB.Gym.nextOf(g.drill.kind) : null; uiSound('start'); if (n) goGym(n); });
+      if (el.btnGeList) el.btnGeList.addEventListener('click', function () { uiSound('back'); goGymList(ctx.game && ctx.game.drill ? ctx.game.drill.kind : null); });
       if (el.sqPick) el.sqPick.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-pick]') : null; if (b) sqPick(+b.getAttribute('data-pick'), b.classList.contains('kf') ? true : null); });
       buildTabs();
       el.btnFirstTut.addEventListener('click', function () { click(); openPanel('tut', 'menu'); });
@@ -3452,13 +4132,13 @@
       on(el.btnPSettings, function () { openPanel('set', 'paused'); });
       // Reiniciar en dos pasos (un dedo que se escapa no tira el partido): 1r toque arma 2 s, el 2º reinicia. Sin confirm().
       on(el.btnRestart, function () {
-        if (restartArm > 0 && performance.now() - restartArm < 2000) { disarmRestart(); goMatch(); return; }
+        if (restartArm > 0 && performance.now() - restartArm < 2000) { disarmRestart(); if (isDrill()) goGym(ctx.game.drill.kind); else goMatch(); return; }
         restartArm = performance.now();
         el.btnRestart.textContent = device() === 'touch' ? 'Toca otra vez para reiniciar' : 'Pulsa otra vez para reiniciar';
         el.btnRestart.classList.add('arm');
         clearTimeout(restartTo); restartTo = setTimeout(disarmRestart, 2000);
       });
-      on(el.btnQuit, function () { goMenu(); });
+      on(el.btnQuit, function () { if (isDrill()) goGymList(ctx.game.drill.kind); else goMenu(); });
       el.btnAgain.addEventListener('click', function () { uiSound('start'); goMatch(); });
       el.btnMenu.addEventListener('click', function () { uiSound('back'); goMenu(); });
       if (el.btnEndOpts) el.btnEndOpts.addEventListener('click', function () { uiSound('click'); goOptions(); });
@@ -3480,33 +4160,47 @@
       el.btnTutNext.addEventListener('click', tutNext);
       on(el.btnHudPause, function () { ctx.actions.pause(); });
       on(el.btnHudMute, function () { ctx.actions.toggleMute(); });
-      // opciones: clic en un valor concreto o en la fila (siguiente valor)
-      var opts = document.querySelectorAll('#optList .opt');
-      for (var i = 0; i < opts.length; i++) (function (b) {
-        b.addEventListener('click', function (ev) {
-          var k = b.getAttribute('data-opt'), sp = ev.target && ev.target.closest ? ev.target.closest('[data-i]') : null;
-          if (SLIDERS[k] && ev.target.closest && ev.target.closest('.trk')) {
-            var r = ev.target.closest('.trk').getBoundingClientRect(), f = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)), c = SLIDERS[k];
-            ctx.actions.setSetting(k, Math.round((c.min + f * (c.max - c.min)) * 10) / 10);
-            if (k === 'sfxVol' && ctx.settings.muted) ctx.actions.setSetting('muted', false);
-            click(); return;
-          }
-          // fila de Sonido: el altavoz (o la fila entera, con Intro) es el silencio general; ←/→ y la pista, el volumen
-          if (b.classList.contains('opt-snd')) { ctx.actions.toggleMute(); click(); return; }
-          if (sp && OPT[k]) changeOpt(k, 0, +sp.getAttribute('data-i')); else changeOpt(k, 1, SLIDERS[k] ? 'wrap' : null);
-        });
-      })(opts[i]);
+      // opciones: clic en un valor concreto o en la fila (siguiente valor). E3: delegado en el panel (Ajustes y las filas que
+      // pinta renderCtl en Controles), más «Restablecer», las teclas reasignables y las filas que abren otro panel
+      el.panel.addEventListener('click', function (ev) {
+        var t = ev.target && ev.target.closest ? ev.target : null; if (!t) return;
+        var rb = t.closest('.opt-reset[data-reset]'); if (rb && el.panel.contains(rb)) { resetClick(rb); return; }
+        var ks = t.closest('.kslot'); if (ks && el.panel.contains(ks)) { ctlSlot(ks); return; }
+        var ab = t.closest('[data-ab]');
+        if (ab && el.panel.contains(ab)) {
+          var w = ab.getAttribute('data-ab'); if (w === 'old') abOld = !abOld; else abLic = abLic === w ? '' : w;
+          click(); renderAbout(); var nb = el.abBody.querySelector('[data-ab="' + w + '"]'); if (nb) focusEl(nb, kbNow() || ctx.inputDevice === 'gamepad'); return;
+        }
+        var b = t.closest('.opt'); if (!b || !el.panel.contains(b) || b.classList.contains('info')) return;
+        if (b.hasAttribute('data-go')) { click(); goRow(b); return; }
+        var k = b.getAttribute('data-opt'), sp = t.closest('[data-i]'); if (!k) return;
+        if (SLIDERS[k] && t.closest('.trk')) {
+          var r = t.closest('.trk').getBoundingClientRect(), f = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)), c = SLIDERS[k];
+          ctx.actions.setSetting(k, slSnap(k, c.min + f * (c.max - c.min)));
+          if (!volFeedback(k)) click();
+          return;
+        }
+        // fila General (antes Sonido): el altavoz (o la fila entera, con Intro) es el silencio general; ←/→ y la pista, el volumen
+        if (b.classList.contains('opt-snd')) { ctx.actions.toggleMute(); click(); return; }
+        if (sp && OPT[k]) changeOpt(k, 0, +sp.getAttribute('data-i')); else changeOpt(k, 1, SLIDERS[k] ? 'wrap' : null);
+      });
+      if (el.btnAbOk) el.btnAbOk.addEventListener('click', function () { uiSound('back'); closePanel(); });
+      if (el.btnVer) el.btnVer.addEventListener('click', function () { if (ctx.state !== 'menu' || panel) return; click(); openAbout('news', 'menu'); });
       window.addEventListener('keydown', onKey);
-      [el.pause, el.end, el.panel].forEach(function (n) { var sh = n.querySelector('.sheet'); if (sh) sh.addEventListener('scroll', function () { checkMore(n); }, { passive: true }); });
+      [el.pause, el.end, el.panel, el.gymEnd].forEach(function (n) { var sh = n && n.querySelector('.sheet'); if (sh) sh.addEventListener('scroll', function () { checkMore(n); }, { passive: true }); });
       window.addEventListener('pointerdown', function () { var p = document.querySelectorAll('.kf'); for (var i = 0; i < p.length; i++) p[i].classList.remove('kf'); }, { passive: true });
       document.addEventListener('focusout', function (e) { if (e.target && e.target.classList) e.target.classList.remove('kf'); });
       window.addEventListener('gamepadconnected', function () { last.navh = null; last.ctls = null; padFamF = -999; GLYPH_PS = null; if (ctx.state === 'menu') renderMenu(); if (panel === 'ctl') { ctlView = 'gamepad'; renderCtl(); } });
       this.onSettings(ctx.settings);
+      newsAuto();   // E7: novedades una vez por versión (jugador que vuelve)
       var pn = ctx.params.panel || (ctx.debug === 'tutorial' ? 'tut' : ctx.debug === 'controls' ? 'ctl' : ctx.debug === 'settings' ? 'set' : '');
       if (ctx.params.menu === 'play' || ctx.params.menu === 'quick') setTimeout(function () { mstack.push({ p: 'main', f: 'btnPlay' }); if (ctx.params.menu === 'quick') { mstack.push({ p: 'play', f: 'btnQuick' }); } setPage(ctx.params.menu); focusLayer(); }, 0);
-      if (pn && PANELS[pn]) setTimeout(function () { openPanel(pn, 'menu'); if (ctx.params.step) tutGo(+ctx.params.step - 1); }, 0);
+      if (pn && PANELS[pn]) setTimeout(function () { if (pn === 'about') openAbout(ctx.params.tab === 'credits' ? 'credits' : 'news', 'menu'); else openPanel(pn, 'menu'); if (ctx.params.step) tutGo(+ctx.params.step - 1); }, 0);
     },
-    onSettings: function (s) {
+    onSettings: function (s, k) {
+      // E3: teclas y botones reasignados → glifos de los avisos y, con Controles abierto, sus filas
+      if (k == null || k === 'keys' || k === 'padKeys') { rebuildGlyph(); if (k && panel === 'ctl' && !capturing) renderCtl(); }
+      if (k == null || k === 'lessMotion') el.app.classList.toggle('rm', rm());
       el.btnHudMute.classList.toggle('muted', !!s.muted);
       el.icoSound.innerHTML = s.muted ? '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 6M21 9l-5 6" stroke="#f7f2ea" stroke-width="2" stroke-linecap="round"/>'
         : '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="#f7f2ea" stroke-width="2" stroke-linecap="round"/>';
@@ -3521,7 +4215,7 @@
       [el.pause, el.end, el.panel].forEach(function (n) { if (n && !n.hidden) { fitSheet(n); checkMore(n); } });
     },
     setQuality: function () { if (panel === 'set') renderOpts(); vigTick(); },
-    resize: function () { vpFit(); offA.obsF = -999; tbx.ok = false; tbx.f = -9999; hudFit(); [el.pause, el.end, el.panel].forEach(function (n) { if (n && !n.hidden) { fitSheet(n); checkMore(n); } }); tbRect = coachRect = guideRect = null; joyR = null; promptW = 0; },
+    resize: function () { vpFit(); offA.obsF = -999; tbx.ok = false; tbx.f = -9999; hudFit(); [el.pause, el.end, el.panel].forEach(function (n) { if (n && !n.hidden) { fitSheet(n); checkMore(n); } }); if (panel) fitAllTabs(); tbRect = coachRect = guideRect = null; joyR = null; promptW = 0; },
     onState: function (s, prev) {
       shown = '';
       // UI-04: la pausa aparta banner, pestaña y aviso corto; al volver solo reaparecen si les quedaban > 0,4 s
@@ -3539,9 +4233,10 @@
       if (s === 'playing') {
         if (prev !== 'paused') hideBanner();
         if (panel) { panel = null; tutStop(); }
+        pstack.length = 0; if (capCancel) capCancel();
         var a = document.activeElement; if (a && a.blur && a.tagName === 'BUTTON') a.blur(); // que el Espacio no pulse un botón oculto
       }
-      if (s === 'menu') { panel = null; tutStop(); if (prev && prev !== 'menu') menuReset(); } // (al volver de un partido; no en los setState('menu') del arranque)
+      if (s === 'menu') { panel = null; pstack.length = 0; tutStop(); if (prev && prev !== 'menu') menuReset(); } // (al volver de un partido; no en los setState('menu') del arranque)
     },
     onGameStart: function (g) {
       if (role6Pend && g && !g.demo) applyRole6();   // 6v6: goMatch llegó antes de que empezara el partido (telón de arranque)
@@ -3554,6 +4249,10 @@
       if (introUI.on && !(ctx.introLeft > 0)) introEndUI(true);
       if (!(ctx.introLeft > 0)) { el.app.classList.remove('intro-on'); introUI.hudT = 0; introUI.quiet = false; }
       el.end.classList.remove('win', 'lose');
+      // E6 / E1: estado del ejercicio y del consejo de maestría de este partido
+      geGate = false; geWait = false; gymTip = ''; gymTipT = 0; gymLast.t = NaN; gymLast.miss = ''; e1.k = ''; e1.t = 0; e1.on = false; lastSetJ = false;
+      gymBestV = g && g.drill && !g.demo ? gymBestOf(g.drill.kind) : 0;
+      el.app.classList.toggle('drill-on', !!(g && g.drill && !g.demo)); last.drOn = !!(g && g.drill && !g.demo);
       kitTick();
     },
     /** Estadísticas sin banners (escenas de depuración que avanzan la sim sin pintar). */
@@ -3561,21 +4260,28 @@
     /** Cierra el panel abierto. true si se ha consumido (Esc / B / Start). */
     back: function () {
       if (panel) { uiSound('back'); return closePanel(); }
+      // E6: B / Esc en la hoja final del ejercicio = «Entrenamiento» (vuelve a la lista)
+      if (ctx.state === 'over' && el.gymEnd && !el.gymEnd.hidden && ctx.game && ctx.game.drill) { uiSound('back'); goGymList(ctx.game.drill.kind); return true; }
       return menuBack();
     },
     /** Navegación con mando fuera del partido (main.js la llama con las intenciones del frame). */
     nav: function (it, dt) {
       if (bootStage === 0 && bootBusy()) return;               // telón entero: el menú aún no se ve
-      if (endWait) { if (it && (it.hit || it.jump || it.confirm || it.switchPlayer)) endSkip(); return; }
-      if (endPeek && it && (it.hit || it.jump || it.confirm)) { setPeek(false); return; }
+      if (capturing) { navRep.y = navRep.x = 0; return; }      // E3: reasignando un botón (input.js se traga los flancos)
+      // E3: en los menús A acepta, B vuelve y LB / RB cambian de apartado SIEMPRE (botones fijos de poll: navOk / navBack / navTab),
+      // se reasigne lo que se reasigne; con un input.js antiguo, GOLPEAR / SALTAR / CAMBIAR como antes
+      var nOk = it && it.navOk != null ? it.navOk : it && it.hit, nBack = it && it.navBack != null ? it.navBack : it && it.jump && !it.jset;
+      if (endWait) { if (it && (nOk || nBack || it.hit || it.jump || it.confirm || it.switchPlayer)) endSkip(); return; }
+      if (endPeek && it && (nOk || nBack || it.hit || it.jump || it.confirm)) { setPeek(false); return; }
       if (!it || it.device !== 'gamepad') { navRep.y = navRep.x = 0; return; }
       if (!activeLayer()) return;
       var dy = axisRepeat(it.my || 0, 'y', 'ty', dt), dx = axisRepeat(it.mx || 0, 'x', 'tx', dt);
       if (dy) navMove(-dy);
       if (dx) adjustFocused(dx);
-      if (it.switchPlayer) { var tp = activeTabs(); if (tp) tp.step(padTabDir(), 'pad'); }
-      if (it.hit) { var a = document.activeElement; if (a && a.tagName === 'BUTTON' && !a.closest('[hidden]')) a.click(); else focusLayer(); }
-      if (it.jump && !it.jset) { if (!this.back() && ctx.state === 'paused') ctx.actions.resume(); } // volver: B/○, no X/□ (COLOCAR)
+      var td = it.navTab || 0; if (!td && it.switchPlayer) td = padTabDir();
+      if (td) { var tp = activeTabs(); if (tp) tp.step(td, 'pad'); }
+      if (nOk) { var a = document.activeElement; if (a && a.tagName === 'BUTTON' && !a.closest('[hidden]')) a.click(); else focusLayer(); }
+      if (nBack) { if (!this.back() && ctx.state === 'paused') ctx.actions.resume(); } // volver: B/○ (fijo), no X/□ (COLOCAR)
       if (ctx.state === 'menu' && last.navDev !== 'gamepad') { last.navDev = 'gamepad'; last.navh = null; renderMenu(); }
     },
     /** dt = tiempo de juego (0 en pausa/congelado: los banners se quedan). */
@@ -3612,12 +4318,15 @@
       if (wp.ph && wp.cut && ctx.state !== 'playing' && ctx.state !== 'over') wipeOff();   // pausa a mitad de cortinilla
       if (guideT > 0) { guideT -= rdt; if (guideT <= 0.3 && el.guide.className === 'show') el.guide.className = 'out'; if (guideT <= 0) el.guide.className = ''; }
       endHoldTick();
+      if (gymTipT > 0) gymTipT -= rdt;
+      if (geWait) geTick();
       if ((ctx.frame & 7) === 3) dockTick();
       // la hoja puede cambiar de alto tras abrirse (fuentes, cifras, celebración que se aparta): el desvanecido se revisa a menudo
       if ((ctx.frame & 15) === 5) { if (!el.panel.hidden) checkMore(el.panel); if (!el.end.hidden) checkMore(el.end); if (!el.pause.hidden) checkMore(el.pause); }
       if (ctx.state === 'menu' && (ctx.frame & 63) === 0) renderMenu();
       if (ctx.state === 'menu' && (ctx.frame & 7) === 2 && mpage !== 'play' && VB.CareerUI && VB.CareerUI.isOpen && safe(VB.CareerUI.isOpen)) { mstack.length = 0; mstack.push({ p: 'main', f: 'btnPlay' }); setPage('play'); }
       if ((ctx.frame & 7) === 0) sbDimTick(g);
+      if (ctx.frame % 15 === 4) tabTitle(g);   // E7: título de la pestaña (solo escribe si cambia el tanteo o el estado)
       if ((ctx.frame & 31) === 1) vigTick();
       if ((ctx.frame & 31) === 0 && !el.app.classList.contains('is-touch') && VB.Input && VB.Input.isTouchActive && safe(VB.Input.isTouchActive)) el.app.classList.add('is-touch');
     }

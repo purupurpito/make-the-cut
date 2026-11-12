@@ -4,6 +4,7 @@
  * clasificación coherente, copa, ofertas, cambio de club, ascensos/descensos, guardar/cargar, partido jugado (eventos falsos →
  * estadísticas y nota) y curva de progresión de varias temporadas.
  * Uso: node tools/careertest.js [temporadas=8]   Sale con 1 si algo falla; acaba en «TODO OK».
+ * NOWORLD=1: sin js/career-world.js (Faro, noticias y clubes); la prueba debe pasar igual con y sin él.
  */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -17,7 +18,10 @@ const mem = {};
 const fakeLS = { getItem: k => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
 const ctx = { console, Math, Date, JSON, localStorage: fakeLS }; ctx.globalThis = ctx; ctx.window = ctx;
 vm.createContext(ctx);
-for (const f of ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/career.js', 'js/career-life.js']) {
+const NOWORLD = !!process.env.NOWORLD;
+const FILES = ['js/sim.js', 'js/prog.js', 'js/badges.js', 'js/career.js', 'js/career-life.js', 'js/career-world.js'];
+for (const f of FILES) {
+  if (NOWORLD && f === 'js/career-world.js') continue;
   if (!fs.existsSync(path.join(ROOT, f))) { console.log('(sin ' + f + ')'); continue; }
   vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
 }
@@ -681,6 +685,284 @@ else {
   // guardado viejo sin c.life: se crea solo
   { c = C.load(); delete c.life; C.save(c); ok(Lf.challenge(C.load()) !== undefined && Lf.fameInfo(C.load()).fans === 0, 'guardado sin c.life: funciona'); }
   C.abandon(); C._reset();
+}
+
+// ------------------------------------------------------------------ sprint 5: celebración de firma y rival (E2, career-life.js)
+section('Celebración de firma y dorsal del rival (E2)');
+{
+  const Lf = VB.CareerLife;
+  ok(Lf && Lf.celebs && Lf.setCeleb && Lf.signatureNow, 'API de celebraciones en CareerLife');
+  C.abandon(); C._reset(); C.create({ name: 'Celeb', num: 9, seed: 777, autoClub: true });
+  // carrera v3 sin l.celeb (anterior al sprint 5): se crea al cargar
+  c = C.load(); delete c.life.celeb; delete c.life.celebAnn; C.save(c); C._reset(); c = C.load(); Lf.ensure(c);
+  ok(c.life.celeb === '' && c.life.celebAnn === 0, 'carrera v3 sin l.celeb: se crea vacía (' + JSON.stringify(c.life.celeb) + ')');
+  const L0 = Lf.celebs(c);
+  ok(L0.length >= 6 && L0.every(x => x.id && x.name && x.tierName && x.open === (x.tier <= 0)), 'catálogo de 6+ celebraciones, todas bloqueadas sin fama (' + L0.map(x => x.id).join(',') + ')');
+  ok(L0.some(x => x.id === 'bailecito') && !L0.some(x => x.id === 'baile'), 'la firma del baile es «bailecito» (conflicto 9)');
+  ok(Lf.setCeleb('saludo') === false && C.load().life.celeb === '', 'setCeleb rechaza una celebración bloqueada');
+  ok(Lf.setCeleb('noexiste') === false, 'setCeleb rechaza un id desconocido');
+  ok(Lf.signatureNow() === '', 'sin firma elegida: signatureNow() = «»');
+  const nMsg = id => C.load().inbox.filter(m => m.k === 'fans' && m.t === 'Celebración nueva: ' + id).length;
+  c = C.load(); Lf.addFame(c, 600 - c.life.fame); C.save(c);
+  ok(nMsg('Saludo') === 1, 'aviso de «Saludo» al llegar a Promesa local');
+  ok(Lf.setCeleb('saludo') === true && C.load().life.celeb === 'saludo' && Lf.signatureNow() === 'saludo', 'elegir «Saludo» ya desbloqueada → signatureNow()');
+  c = C.load(); Lf.addFame(c, 7100 - c.life.fame); C.save(c);
+  ok(nMsg('Avioncito') === 1 && nMsg('Bailecito') === 1, 'al cruzar «Figura»: aviso de Avioncito (y del Bailecito que se saltó)');
+  c = C.load(); Lf.addFame(c, -3000); Lf.addFame(c, 3500); C.save(c);
+  ok(nMsg('Avioncito') === 1, 'el aviso de «Figura» sale una sola vez aunque la fama baje y vuelva a subir (' + nMsg('Avioncito') + ')');
+  ok(Lf.celebs(C.load()).filter(x => x.open).length === 3, 'desbloqueo por fameMax: 3 abiertas');
+  ok(Lf.setCeleb('') === true && Lf.signatureNow() === '', '«Ninguna» vuelve a la reacción normal');
+  // rivalNum: solo en los duelos, con el dorsal del rival personal
+  let duels = 0, plain = 0, bad = 0;
+  for (let i = 0; i < 60 && C.load().phase !== 'off'; i++) {
+    c = C.load(); const n = C.next(c);
+    if (!n || n.bench) { C.benchNext(); continue; }
+    const ms = C.matchSetup(c), rv = c.life.rival;
+    if (ms && ms.career) {
+      if (ms.career.duel) { duels++; if (!(rv && ms.career.rivalNum === rv.num)) bad++; }
+      else { plain++; if (ms.career.rivalNum != null) bad++; }
+    }
+    C.simulateNext();
+  }
+  ok(duels > 0 && plain > 0 && bad === 0, 'rivalNum solo en los duelos y con el dorsal del rival (duelos ' + duels + ', normales ' + plain + ', mal ' + bad + ')');
+  C.abandon(); C._reset();
+}
+
+// ------------------------------------------------------------------ sprint 5: mundo de la Carrera (career-world.js): Faro
+if (!VB.CareerWorld) console.log('\n(sin career-world.js: se salta Faro)');   // (y las noticias y los clubes)
+else {
+  section('Mundo de la Carrera: Faro, el mentor (E4)');
+  const W = VB.CareerWorld;
+  const boot = (withWorld) => {
+    const m2 = {}; const LS = { getItem: k => (k in m2 ? m2[k] : null), setItem: (k, v) => { m2[k] = String(v); }, removeItem: k => { delete m2[k]; } };
+    const cx = { console, Math, Date, JSON, localStorage: LS }; cx.globalThis = cx; cx.window = cx; vm.createContext(cx);
+    for (const f of FILES) { if (f === 'js/career-world.js' && !withWorld) continue; const fp = path.join(ROOT, f); if (fs.existsSync(fp)) vm.runInContext(fs.readFileSync(fp, 'utf8'), cx, { filename: f }); }
+    return { VB: cx.VB, mem: m2 };
+  };
+  // carrera de prueba: 1 de cada 3 partidos «jugado» (estadísticas falsas deterministas), el resto simulado; banquillos y decisiones
+  const run = (withWorld, seasons, seed, each) => {
+    const B = boot(withWorld), K = B.VB.Career, L = B.VB.CareerLife;
+    K.create({ name: 'Mundo', num: 7, role: 'atk', seed });
+    K.acceptOffer(0, 2);
+    let played = 0;
+    for (let s = 0; s < seasons; s++) {
+      let guard = 0;
+      while (K.load().phase !== 'off' && guard++ < 40) {
+        const cc = K.load(), n = K.next(cc);
+        if (n && n.bench) { K.benchNext(); continue; }
+        const i = played++;
+        if (i % 3 === 0) {
+          const win = (i % 5) !== 0, g = { career: { season: cc.season }, teams: [[{}, {}], [{}, {}]], demo: false };
+          K.matchDone({ sets: win ? [2, 1] : [0, 2], setScores: win ? [[21, 17], [18, 21], [15, 12]] : [[17, 21], [19, 21]], win }, { kills: 12, aces: 2, blocks: 1, digs: 8, assists: 3, errors: 3 }, g);
+        } else K.simulateNext();
+        if (L) { const ev = L.pendingEvent(K.load()); if (ev) L.answer(0); }
+      }
+      if (each) each(K.load(), s);
+      K.stay(1);
+    }
+    return { VB: B.VB, K, c: K.load(), mem: B.mem };
+  };
+  const strip = x => { const o = JSON.parse(JSON.stringify(x)); delete o.world; delete o.created; delete o.inbox; delete o.msgN; return JSON.stringify(o); };
+  // 1) determinismo
+  let same = 0;
+  for (const sd of [97, 1234, 50001]) if (strip(run(false, 6, sd).c) === strip(run(true, 6, sd).c)) same++;
+  ok(same === 3, 'misma carrera con y sin career-world.js fuera de world/inbox/msgN/created (' + same + ' de 3 semillas, 6 temporadas)');
+  // 2) mentor en una carrera larga sin mirar ninguna escena (la cola se desborda a la bandeja)
+  const lines = [], perSeason = [];
+  let slumpJump = 0;
+  const R = run(true, 8, 4242, (cc) => { perSeason.push(cc.world.mentor.seen.slump | 0); });
+  for (let i = 0; i < perSeason.length; i++) if (perSeason[i] - (i ? perSeason[i - 1] : 0) > 1) slumpJump++;
+  const mw = R.c.world.mentor;
+  ok(Object.keys(mw.seen).every(id => (mw.seen[id] | 0) <= (id === 'slump' ? 3 : 1)), 'cada escena una vez en la carrera y slump ≤ 3 (' + JSON.stringify(mw.seen) + ')');
+  ok(slumpJump === 0, 'slump como mucho 1 por temporada (acumulado: ' + perSeason.join(',') + ')');
+  ok(mw.seen.hola && mw.seen.debut && mw.seen.win1 && mw.seen.loss1, 'hola, debut, primera victoria y primera derrota han salido');
+  ok(mw.q.length <= 3, 'cola de escenas ≤ 3 (' + mw.q.length + ')');
+  R.c.inbox.filter(m => m.k === 'mentor').forEach(m => { ok(/^Faro: /.test(m.t), 'mensaje del mentor con título «Faro: …» (' + m.t + ')'); lines.push(m.x); });
+  mw.q.forEach(q => q.l.forEach(l => lines.push(l)));
+  // 3) bandeja solo si la escena no se ve; Seguir/Saltar/apagar
+  C.abandon(); C._reset(); C.create({ name: 'Faro', num: 5, seed: 31 });
+  c = C.load();
+  const mIn = () => C.load().inbox.filter(m => m.k === 'mentor').length;
+  ok(c.world && c.world.mentor.q.length === 1 && c.world.mentor.q[0].id === 'hola' && mIn() === 0, '«hola» al crear: en la cola y no en la bandeja');
+  ok(W.mentorScene(c) && W.mentorScene(c).title === 'Faro se presenta' && W.mentorScene(c).lines.length === 3, 'mentorScene da la escena con sus 3 frases');
+  C.acceptOffer(0, 1); c = C.load();
+  ok(c.world.mentor.q.map(q => q.id).join() === 'hola,debut' && c.world.mentor.q[1].l[0].indexOf(C.myClub(c).name) >= 0, '«debut» al firmar, con el nombre del club (' + c.world.mentor.q.map(q => q.id) + ')');
+  ok(W.mentorDone() && mIn() === 0, 'vista entera (Vale): sale de la cola sin ir a la bandeja');
+  ok(W.mentorSkip() && mIn() === 1 && C.load().world.mentor.q.length === 0 && W.mentorScene(C.load()) === null, 'Saltar: a la bandeja y cola vacía');
+  ok(W.mentorDone() === false, 'mentorDone con la cola vacía no hace nada');
+  ok(W.setMentor(false) && !W.mentorOn(C.load()), 'escenas apagadas');
+  c = C.load(); c.review = { champion: true, cup: false, move: 1, awards: ['MVP del Circuito Regional'] }; W.hook(c, 'season'); C.save(c);
+  ok(c.world.mentor.q.length === 0 && mIn() === 4 && W.mentorScene(c) === null, 'apagadas: no se encolan y van a la bandeja (title, award, up) (' + mIn() + ')');
+  const tMsg = c.inbox.filter(m => m.k === 'mentor' && m.t === 'Faro: primer título')[0];
+  ok(tMsg && tMsg.x.indexOf('Título del Circuito Regional.') === 0 && !/Campe[oó]n/.test(tMsg.x), 'título en género neutro: «Título del Circuito Regional» (' + (tMsg && tMsg.x.slice(0, 40)) + ')');
+  ok(c.inbox.some(m => m.t === 'Faro: ascenso' && m.x.indexOf('al Circuito Nacional') >= 0), '«up» con el circuito al que se sube');
+  W.hook(c, 'season'); ok(mIn() === 4, 'title, up y award no se repiten');
+  W.setMentor(true); c = C.load();
+  // slump: 3 derrotas seguidas, como mucho una por temporada y 3 en total
+  c.notes = [{ win: 0 }, { win: 0 }, { win: 0 }]; W.hook(c, 'match', { win: false, sets: [0, 2], rival: 1, season: c.season });
+  const q1 = c.world.mentor.q.filter(q => q.id === 'slump').length;
+  W.hook(c, 'match', { win: false, sets: [0, 2], rival: 1, season: c.season });
+  ok(q1 === 1 && c.world.mentor.q.filter(q => q.id === 'slump').length === 1, 'slump encolado una sola vez en la temporada');
+  for (let k = 0; k < 3; k++) { c.season++; W.hook(c, 'match', { win: false, sets: [0, 2], rival: 1, season: c.season }); }
+  ok((c.world.mentor.seen.slump | 0) === 3, 'slump hasta 3 en total (' + c.world.mentor.seen.slump + ')');
+  c.world.mentor.q.forEach(q => q.l.forEach(l => lines.push(l)));
+  // consejos de la mala racha (los 4) con un nombre largo
+  const fake = { fatigue: 0, mate: { name: 'Nombre Larguísimo De Compañía', chem: 50 }, player: { pts: 0 } };
+  [[{ fatigue: 50 }, 'player:train'], [{ mate: { name: fake.mate.name, chem: 10 } }, ''], [{ player: { pts: 3 } }, 'player:atk'], [{}, '']].forEach(([o, act]) => {
+    const t = W._slumpTip(Object.assign({}, fake, o)); lines.push(t[0]); ok(t[1] === act, 'consejo de mala racha → ' + (act || 'sin botón'));
+  });
+  // todas las escenas, con valores largos
+  W.BEAT_ORDER.forEach(id => { ok(W.BEATS[id], 'BEATS.' + id); W.BEATS[id].l.forEach(l => { if (l !== '{tip}') lines.push(l.replace(/\{\w+\}/g, 'Club Platja Peñaclara 1998')); }); });
+  ok(!W.BEATS.midLow, 'midLow recortado (plan §3)');
+  const longL = lines.filter(l => l.length > 140), brace = lines.filter(l => /[{}]/.test(l) || /undefined/.test(l));
+  ok(lines.length > 20 && !longL.length, 'frases del mentor ≤ 140 caracteres (' + lines.length + ' revisadas' + (longL.length ? '; larga: ' + longL[0] : '') + ')');
+  ok(!brace.length, 'ninguna frase con «{» ni «undefined»' + (brace.length ? ': ' + brace[0] : ''));
+  C.abandon(); C._reset();
+  // ---------------------------------------------------------------- E5 (tarea C2): noticias, anales, cara a cara y fichas
+  section('Mundo de la Carrera: noticias de la liga y enciclopedia de clubes (E5)');
+  {
+    const B = boot(true), K = B.VB.Career, L = B.VB.CareerLife, Wn = B.VB.CareerWorld;
+    K.create({ name: 'Noticia Prueba', num: 9, role: 'cr', seed: 777 });
+    K.acceptOffer(0, 2);
+    const all = [], kinds = {}, MY = ['upset', 'thriller', 'rout', 'meWin', 'meUpset'];
+    let lastId = 0, played = 0, maxRound = 0, badMine = 0, badMineEx = '', meOnSim = 0, simN = 0, benchN = 0, annOk = 0, annBad = '', champsOk = 0, movesBad = 0, seasonsDone = 0, unseenOk = true;
+    const grab = (sum) => {   // noticias nuevas tras una jornada tuya
+      const w = K.load().world, fresh = w.news.filter(x => x.id > lastId);
+      lastId = w.newsN;
+      fresh.forEach(x => { all.push(x); kinds[x.k] = (kinds[x.k] | 0) + 1; });
+      const perW = {}; fresh.filter(x => x.w >= 1 && x.w <= 14).forEach(x => { perW[x.s + ':' + x.w] = (perW[x.s + ':' + x.w] | 0) + 1; });
+      Object.keys(perW).forEach(k => { maxRound = Math.max(maxRound, perW[k]); });
+      if (sum && (sum.sim || sum.bench)) {
+        if (sum.bench) benchN++; else simN++;
+        const me = K.load().myClub;
+        fresh.forEach(x => {
+          if (x.k === 'meWin' || x.k === 'meUpset') meOnSim++;
+          if (MY.indexOf(x.k) >= 0 && x.c.indexOf(me) >= 0 && x.c.indexOf(sum.rival) >= 0) { badMine++; badMineEx = x.t; }
+        });
+      }
+    };
+    for (let s = 0; s < 12; s++) {
+      let guard = 0;
+      while (K.load().phase !== 'off' && guard++ < 40) {
+        const cc = K.load(), n = K.next(cc);
+        let sum;
+        if (n && n.bench) sum = K.benchNext();
+        else {
+          const i = played++;
+          if (i % 3 === 0) {
+            const win = (i % 5) !== 0, g = { career: { season: cc.season }, teams: [[{}, {}], [{}, {}]], demo: false };
+            sum = K.matchDone({ sets: win ? [2, 1] : [0, 2], setScores: win ? [[21, 17], [18, 21], [15, 12]] : [[17, 21], [19, 21]], win }, { kills: 12, aces: 2, blocks: 1, digs: 8, assists: 3, errors: 3 }, g);
+          } else sum = K.simulateNext();
+        }
+        grab(sum);
+        if (L) { const ev = L.pendingEvent(K.load()); if (ev) L.answer(0); }
+      }
+      // fin de temporada (fase off, antes de applyMoves): anales de esta temporada
+      const cc = K.load(), w = cc.world, an = w.annals[w.annals.length - 1], me = K.myClub(cc);
+      seasonsDone++;
+      if (an && an.s === cc.season && an.lg.length === K.LEAGUES.length && an.lg.every((ids, Lv) => ids.slice().sort((a, b) => a - b).join() === K.clubsOf(cc, Lv).map(k => k.id).sort((a, b) => a - b).join()) &&
+        an.cup[me.lvl] === cc.cup.champion && an.cup.every((id, Lv) => an.lg[Lv].indexOf(id) >= 0) &&
+        an.up.slice().sort().join() === cc.review.moves.filter(m => m.to > K.club(cc, m.id).lvl).map(m => m.id).sort().join() &&
+        an.dn.slice().sort().join() === cc.review.moves.filter(m => m.to < K.club(cc, m.id).lvl).map(m => m.id).sort().join()) annOk++;
+      else if (!annBad) annBad = 'T' + cc.season + ' ' + JSON.stringify(an).slice(0, 120);
+      const ch = w.news.filter(x => x.k === 'champs' && x.s === cc.season);
+      // (frase corta con nombres enteros: el campeón de tu liga y, si es otra, el de la más alta; sin códigos cortos)
+      const topLv = K.LEAGUES.length - 1, chT = ch.length === 1 ? ch[0].t : '';
+      if (ch.length === 1 && ch[0].c.length === K.LEAGUES.length && ch[0].c[0] === an.lg[me.lvl][0] && chT.indexOf(K.club(cc, an.lg[me.lvl][0]).name) === 0 &&
+        (me.lvl === topLv || chT.indexOf(K.club(cc, an.lg[topLv][0]).name) > 0) && chT.indexOf('(') < 0 && chT.length <= 140) champsOk++;
+      else if (ch.length === 1 && !annBad) annBad = 'champs T' + cc.season + ' ' + chT.slice(0, 120);
+      w.news.filter(x => x.k === 'moves' && x.s === cc.season).forEach(x => { if (!x.c.every(id => K.club(cc, id).lvl === me.lvl)) movesBad++; });
+      // sin ver / vistas
+      const un = Wn.newsUnseen(cc); if (!(un > 0) || Wn.markNewsSeen() !== un || Wn.newsUnseen(K.load()) !== 0 || Wn.markNewsSeen() !== 0) unseenOk = false;
+      if (s === 11) break;
+      K.stay(1); grab(null);
+    }
+    const c3 = K.load(), w3 = c3.world;
+    console.log('  noticias en 12 temporadas: ' + all.length + ' — ' + Object.keys(kinds).sort((a, b) => kinds[b] - kinds[a]).map(k => k + ' ' + kinds[k]).join(', '));
+    ok(maxRound >= 1 && maxRound <= 3, 'como mucho 3 noticias por jornada (máx. ' + maxRound + ')');
+    ok(w3.news.length <= Wn.NEWS_MAX && w3.news.length === 60, 'tope de 60 noticias guardadas (' + w3.news.length + ')');
+    const bad = all.filter(x => /[{}]|undefined|NaN|\(\)|\s{2}|^\s|\s$|null/.test(x.t));
+    ok(!bad.length, 'ninguna noticia con «{», «undefined», «NaN», «()» ni espacios de más' + (bad.length ? ': ' + bad[0].t : ''));
+    ok(!/Campe[oó]n|campe[oó]n/.test(all.map(x => x.t).join('|')), 'género neutro: ninguna noticia dice «campeón»');
+    ok(simN > 10 && meOnSim === 0 && badMine === 0, 'ninguna noticia de tu partido simulado ni del banquillo (' + simN + ' simulados, ' + benchN + ' banquillos' + (badMineEx ? '; ' + badMineEx : '') + ')');
+    ok((kinds.meWin | 0) + (kinds.meUpset | 0) > 0, 'tus partidos jugados y ganados sí son noticia (meWin/meUpset: ' + ((kinds.meWin | 0) + (kinds.meUpset | 0)) + ')');
+    ['upset', 'thriller', 'rout', 'leader', 'streak', 'skid', 'top', 'mid', 'champs', 'open', 'moves', 'mkt'].forEach(k => ok(kinds[k] > 0, 'sale algún titular «' + k + '»'));
+    // variantes: nunca la misma dos veces seguidas en un tipo
+    const lastV = {}; let rep = 0, repEx = '';
+    all.slice().sort((a, b) => a.id - b.id).forEach(x => { if (Wn.TPL[x.k] && Wn.TPL[x.k].length > 1) { if (lastV[x.k] === x.v) { rep++; repEx = x.k; } lastV[x.k] = x.v; } });
+    ok(rep === 0, 'ninguna variante repetida seguida en el mismo tipo' + (rep ? ' (' + rep + ', ' + repEx + ')' : ''));
+    ok(Object.keys(Wn.TPL).every(k => Wn.TPL[k].every(t => !/Campe[oó]n/i.test(t))), 'plantillas sin «campeón»');
+    // anales
+    ok(annOk === seasonsDone && w3.annals.length === seasonsDone, 'anales: uno por temporada, permutaciones de cada liga, open y movimientos cuadran (' + annOk + '/' + seasonsDone + (annBad ? '; ' + annBad : '') + ')');
+    ok(champsOk === seasonsDone, '«champs» con los ' + K.LEAGUES.length + ' campeones en ids, tu liga primero y con nombres enteros (' + champsOk + '/' + seasonsDone + ')');
+    ok(movesBad === 0, 'ascensos y descensos: solo los de tu liga');
+    ok(unseenOk, 'newsUnseen / markNewsSeen');
+    // cara a cara
+    const H2 = Object.keys(w3.h2h).map(id => w3.h2h[id]);
+    ok(H2.reduce((s, h) => s + h[0], 0) === (c3.career.played | 0), 'cara a cara: suma de PJ = partidos jugados (sin banquillos) desde since (' + H2.reduce((s, h) => s + h[0], 0) + ' = ' + c3.career.played + ')');
+    ok(H2.length > 0 && H2.every(h => h[1] + h[2] === h[0] && h[3] >= 0 && h[4] >= 0 && h[5] >= 1), 'cara a cara: G + P = PJ en todos los clubes');
+    // fichas de los 40 clubes
+    let cardErr = '', yearOk = 0, yearN = 0, dupT = 0, rowsOk = true;
+    c3.clubs.forEach(k => {
+      try {
+        const f = Wn.clubCard(c3, k.id);
+        if (!f || f.name !== k.name || !f.lore || !(f.lore.founded >= 1962 && f.lore.founded <= 2026) || !f.lore.nick || !f.lore.motto) cardErr = cardErr || 'ficha incompleta: ' + k.name;
+        const ym = /(\d{4})$/.exec(k.name); if (ym) { yearN++; if (f.lore.founded === +ym[1]) yearOk++; }
+        const seen = {}; f.titles.forEach(t => { const kk = t.s + ':' + t.kind; if (seen[kk]) dupT++; seen[kk] = 1; });
+        if (f.path.length > 8 || f.form.length > 5) cardErr = cardErr || 'trayectoria/forma de más: ' + k.name;
+      } catch (e) { cardErr = cardErr || String(e); }
+    });
+    ok(!cardErr, 'clubCard de los 40 clubes sin errores, fundación entre 1962 y 2026' + (cardErr ? ' (' + cardErr + ')' : ''));
+    ok(yearOk === yearN, 'el año del nombre se respeta («… 1998» → 1998) (' + yearOk + '/' + yearN + ')');
+    ok(dupT === 0, 'ningún título duplicado (misma temporada y tipo)');
+    ok(Wn.clubCard(c3, 999) === null, 'clubCard de un id que no existe → null');
+    K.LEAGUES.forEach((Lg, Lv) => { const r = Wn.clubRows(c3, Lv); if (r.length !== 8 || r.some((x, i) => x.pos !== i + 1)) rowsOk = false; });
+    ok(rowsOk, 'clubRows: los 8 clubes de cada liga en orden de tabla');
+    const sz = JSON.stringify(w3).length;
+    ok(sz < 20000, 'c.world < 20 KB a las 12 temporadas (' + sz + ' bytes)');
+    // la ficha usa tus trofeos de antes del sprint («contigo»)
+    {
+      const cc = JSON.parse(JSON.stringify(c3)), me = K.myClub(cc);
+      cc.world.since = 99; cc.world.annals = [];
+      cc.trophies = [{ season: 3, kind: 'liga', name: 'Circuito Regional', club: me.name }, { season: 3, kind: 'premio', name: 'MVP', club: me.name }];
+      const f = Wn.clubCard(cc, me.id);
+      ok(f.titles.length === 1 && f.titles[0].you === 1 && f.titles[0].s === 3, 'palmarés de antes del sprint: tus trofeos con el club, «(contigo)», sin premios');
+    }
+    // interfaz (sin DOM): HTML sin «undefined» ni «{»
+    const uiF = path.join(ROOT, 'js/career-world-ui.js');
+    const UIc = (() => { const cx = { console, Math, Date, JSON, VB: B.VB }; cx.globalThis = cx; cx.window = cx; vm.createContext(cx); if (fs.existsSync(uiF)) vm.runInContext(fs.readFileSync(uiF, 'utf8'), cx, { filename: 'js/career-world-ui.js' }); return cx.VB.CareerWorldUI; })();
+    ok(UIc, 'career-world-ui.js se carga sin DOM');
+    if (UIc) {
+      const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => '&#' + ch.charCodeAt(0) + ';');
+      const HLP = { esc, sp: (a, k) => a.filter(p => p !== '' && p != null).map(p => typeof p === 'object' ? p.h : p).join(' | '), kitSw: () => '<i class="cr-kit"></i>' };
+      const cu = K.load(); cu.world.newsSeen = 0;
+      const htmls = [UIc.headlines(cu, HLP), UIc.newsHTML(cu, HLP, 0), UIc.clubsHTML(cu, 0, HLP), UIc.clubsHTML(cu, 4, HLP)];
+      const ar = UIc.act('cw-club', { getAttribute: k => (k === 'data-id' ? String(cu.myClub) : null) });
+      ok(ar && ar.tab === 'league' && ar.s === 'clubs', 'cw-club lleva a Liga › Clubes');
+      htmls.push(UIc.clubsHTML(cu, 0, HLP));
+      ok(/‹ Clubes/.test(htmls[4]) && /Contra ti/.test(htmls[4]) && /Palmarés/.test(htmls[4]), 'clubsHTML con un club elegido pinta la ficha');
+      ok(UIc.back() === true && UIc.back() === false, 'back() cierra la ficha y luego no hace nada');
+      ok(/Titulares/.test(htmls[0]) && /data-act="cw-club"/.test(htmls[1]) && (htmls[2].match(/class="cw-row/g) || []).length === 8, 'Titulares, Noticias (abren ficha) y Clubes (8 filas)');
+      const bh = htmls.filter(h => /undefined|NaN|\{\w+\}|null/.test(h.replace(/<svg[\s\S]*?<\/svg>/g, '')));
+      ok(!bh.length, 'HTML de noticias y clubes sin «undefined», «NaN» ni «{x}»');
+      ok(!/1\.er|·/.test(htmls.join('')), 'sin «1.er» ni «·» en la interfaz del mundo');
+      cu.world.newsSeen = cu.world.newsN;
+      ok(UIc.headlines(cu, HLP) === '', 'sin noticias nuevas no hay Titulares');
+    }
+  }
+  // 4) migración: carrera de 2 temporadas sin c.world
+  {
+    const old = run(false, 2, 555), B2 = boot(true);
+    B2.mem['voley3d.career'] = old.mem['voley3d.career'];
+    const c2 = B2.VB.Career.load(); ok(!c2.world, 'guardado viejo sin c.world');
+    const w2 = B2.VB.CareerWorld.ensure(c2), sn = w2.mentor.seen;
+    ok(w2.since === c2.season, 'migración: since = temporada actual (' + w2.since + ' = ' + c2.season + ')');
+    ok(sn.hola && sn.debut && sn.win1 && sn.loss1, 'migración: hitos pasados vistos (' + JSON.stringify(sn) + ')');
+    ok(w2.mentor.q.length === 0 && B2.VB.CareerWorld.mentorScene(c2) === null, 'migración: cola vacía (Faro no saluda a mitad de carrera)');
+    ok(Array.isArray(w2.news) && !w2.news.length && Array.isArray(w2.annals) && !w2.annals.length && w2.newsSeen === w2.newsN, 'migración: sin noticias ni anales viejos (empiezan ahora)');
+    const n2 = B2.VB.Career.simulateNext(); ok(n2 && B2.VB.Career.load().world, 'tras migrar, la carrera sigue y guarda c.world');
+    ok(JSON.stringify(R.c.world).length < 20000, 'c.world pequeño a las 8 temporadas (' + JSON.stringify(R.c.world).length + ' bytes)');
+  }
 }
 
 console.log(fails ? '\n' + fails + ' FALLOS' : '\nTODO OK');

@@ -649,3 +649,29 @@ sonar más seco que la yema de los dedos.
 
 ### Playa (revisión final, 10-nov-2026)
 - `courtChange why:'swap'`: silbato corto a 1,0 s (como `'eight'`), no a 2,7 s. Pendiente: sonido propio del pokey.
+
+## Sprint 5 · tarea AU (12-nov-2026)
+Todo con sonidos que ya están en el banco: ninguna entrada nueva en el catálogo, en `LEVEL` ni en `PRIORITY` (la parte 1 y el plan de
+mezcla de audiotest no cambian). Eventos desconocidos o con campos que faltan: se ignoran / valores por defecto (sin errores).
+- **E3 · `VB.Audio.preview(kind)`** (opcional, con guarda en ui.js): `'crowd'` = oleada de la grada (`roar` 0,6) por el bus `crowd`,
+  cortada a 0,75 s (meseta 0,38 s + caída tc 0,07), anti-repetición 0,45 s y sin aplazar si el buffer aún no existe; `'sfx'` = toque de
+  recepción (`pass`, gap 0,08 s); `'music'` / `'master'` / `'volume'` = clic (gap 0,06 s). Antes del primer gesto o en silencio: `false`,
+  sin errores. Volumen por canal: ya existía (`setVolume/getVolume`, `onSettings` lee `volume` y `crowdVol`); sin cambios.
+- **E2 · `fx:floor`** `{team,x,y,strength}`: pabellón → choque de puños grave (`fist` ×0,66-0,74); playa (`g.beach`) → «puf» de arena
+  (`scuff` ×0,62). Por el pool de tiras, ganancia 0,45 + 0,55·strength.
+- **E6 · gimnasio**: `drillRep` → tantas notas `optSel` como `pts` (1-3, tríada que sube cada 85 ms; con 3, destello `perfect` arriba);
+  0 puntos → `tglOff` grave. `kind 'free'`: solo suena `isBest` (`stepUp`). `drillEnd` → medalla por `VB.Gym.medalOf` (con guarda; si
+  no, tabla `MEDALS` de la spec): oro `setWin` 0,7 · plata `mvpWin` · bronce `cntLock` · sin medalla `mvpLose` suave, 0,4 s tras el
+  último «ding». Sin `point` no hay silbato ni ovación. En demo, nada.
+- **E1**: `hit.shot 'roll'` (kind 'spike') → «tump» medio (`free` ×0,9 + `set` grave + `toonPop`), sin crack, sin «¡zas!», sin «¡PAM!»
+  (el destello perfecto sí); cuenta como remate para el «uuuh» de la defensa. Evento `feint` → roce de aire (`whoosh` ×1,5, gap 0,15).
+  `hit.style 'jfloat'` → flotante + `scuff` de batida. `hit.chain === 3` del equipo 0 → tres `perfect` en tríada (1 · 1,26 · 1,5) por el
+  bus de música en lugar del destello; si suena el «¡PAM!», las campanas van de cola a 0,55 s. `stats.chain` cuenta las cadenas.
+- **Recortado**: `call` («¡eh!» procedural, E1-timing): pide un sonido nuevo en el catálogo con su objetivo de LUFS y ya se descartó en
+  el pulido (sonaba a juguete). `edge` / «al filo» y `tell` / `cpuRead`: sin sonido (las specs no piden nada). Sonido propio del pokey:
+  sigue pendiente.
+- Comprobación: script de la sesión (mock de AudioContext) con 32 casos OK (preview antes de desbloquear, `crowdVol 0` → bus a 0 y los
+  efectos siguen, cada evento nuevo, guardas). Si se quiere en audiotest, añadir una parte «Sprint 5» con esos casos.
+
+## Integración sprint 5 (12-nov-2026)
+- `CORE`: `handclap` sube justo detrás de `dribble`. El gesto de espera «muslos» de players (E2) da palmadas (`fx:clap`) antes del 1r saque, y sin Worker con el PC cargado llegaba sin buffer (audiotest b/c: `missed {handclap:1}`). Con el cambio: missed {} en a/b/c y «TODO OK».

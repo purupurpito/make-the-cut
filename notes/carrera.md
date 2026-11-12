@@ -445,3 +445,74 @@ Resuelto en la integración del 9-nov-2026 (ver notes/ui_main.md, «Integración
 - Pendiente: escalón a la Liga Nacional (IA Normal; con la prueba superada a media 35 el bot medio gana 0 de 8), rol prometido sin
   efecto en minutos, sueldo solo texto, química de suplentes que se pierde cada verano, sin confirmación al firmar en mitad de
   temporada; mando y táctil reales sin probar.
+
+## Mundo de la Carrera (sprint 5, tarea C1, 12-nov-2026): Faro, celebración de firma y rival
+- **career.js** (solo ganchos): `life()` reparte entre CareerLife y CareerWorld (Life primero); `life(c,'join',o)` al final de
+  `joinClub`; una línea en la cabecera.
+- **career-world.js** (`VB.CareerWorld`, sin DOM): Faro (Álex Marí). `hook` atiende create/join/match/season/newSeason; `ensure(c)`
+  crea `c.world = {mentor:{on, seen{id:n}, last{id:temporada}, q[≤3]}, h2h{id:[pj,g,p,sf,sc,últimaT]}, since}` (sin subir VER).
+  15 escenas (`BEATS`, `BEAT_ORDER`; `midLow` recortado por el plan), cada una una vez; `slump` hasta 3, una por temporada.
+  **Bandeja solo si la escena no se ve** (k 'mentor', «Faro: …»): al saltarla, con las escenas apagadas o si se cae de la cola.
+  API: `mentorScene(c)` → `{id,title,lines,act,actLabel,who,left}`, `mentorDone()` (vista, sin bandeja), `mentorSkip()`,
+  `mentorSkipAll()`, `setMentor(on)`, `mentorOn(c)`. Título en neutro: «Título del Circuito Regional» / «Título del Open …».
+  Guardado viejo: `backfill` marca los hitos pasados y rehace el cara a cara de la temporada (cola vacía).
+  **Stubs de C2**: `news()`/`clubRows()` → [], `newsUnseen()`/`markNewsSeen()` → 0, `lore()`/`clubCard()` → null, `TPL` {}.
+- **career-world-ui.js** (`VB.CareerWorldUI`): `mentorCard(c,H)` (retrato SVG inline, «FARO ◆ Tu mentor», frase n/N, «Seguir»/«Vale»
+  y «Saltar», o el botón de la escena en la última frase), `optsHTML` («Escenas del mentor: Sí | No»), `act` (cw-next, cw-skip,
+  cw-go, cw-mentor-on/off; cw-club/cw-list para C2) → `{render, focus}` o `{tab, s}`, `back()`, `css()`; stubs `headlines`,
+  `newsHTML`, `clubsHTML`. A ≤ 420 px de alto: retrato de 40 px, botones a la derecha, sin la línea «FARO»: la tarjeta mide 56-65 px y
+  «Jugar partido» queda a la vista a 667×375 (botón en 275-319 px, medido con tools/eval.js).
+- **career-ui.js**: `WUI()`, `HLP.kitSw`, tarjeta de Faro arriba en Partido (también en el resumen de fin de temporada), foco
+  por defecto en «Seguir», `MSG_K.mentor = 'Mentor'`, reparto de `cw-` en onClick, `optsHTML` en Palmarés › Opciones,
+  `WUI().back()` en `back()`. E7: «guardada en este dispositivo» y «copia aparte en este dispositivo».
+- **career-life.js** (E2): `l.celeb` ('' = ninguna) y `l.celebAnn` (último escalón avisado; las carreras viejas no reciben avisos
+  atrasados). `celebs(c)` → `[{id,name,tier,tierName,open,on}]` (cruza `VB.Players.CELEBS` si existe; si no, `CELEB_DEF`: saludo,
+  bailecito, avion, arquero, silencio, rodillazo, por fameMax), `setCeleb(id)` (rechaza bloqueadas y desconocidas),
+  `signatureNow()` (lee el guardado, '' si no vale). Aviso «Celebración nueva: …» una sola vez por escalón (desde `addFame`).
+  `setup()`: en el duelo, `m.career.rivalNum = l.rival.num` (main.js lo pasa a `nums[1]` y a `Players.setRival`; petición a U).
+- **career-life-ui.js**: bloque «Celebración» en Fama (Ninguna + una fila por celebración: Elegida / Elegir / «Fama: Figura»).
+- **careertest**: secciones «Celebración de firma y dorsal del rival (E2)» y «Mundo de la Carrera: Faro» (determinismo con y sin el
+  mundo en 3 semillas × 6 temporadas, escenas únicas, slump ≤ 1 por temporada y ≤ 3, bandeja solo al saltar/apagar, frases ≤ 140
+  sin «{», migración sin `c.world`, tamaño). `NOWORLD=1` carga sin career-world.js; la salida es idéntica salvo la línea de Faro.
+
+## Mundo de la Carrera (sprint 5, tarea C2, 12-nov-2026): noticias de la liga y enciclopedia de clubes (E5)
+- **career-world.js**: `c.world` gana `news[≤60]{id,s,w,k,v,t,c[ids],me}` (w: 1-14 jornada, 0 verano, 15 cierre/Open; `me` 1 = tu club,
+  2 = el de tu rival), `newsN`, `newsSeen`, `annals[≤40]{s, lg[liga][ids por puesto], cup[liga], up[], dn[]}`, `lead{liga:[T,id]}`
+  y `tpl{tipo:variante}`. `ensure` repara tipos; un guardado viejo empieza sin noticias ni anales (since = temporada actual).
+  - `roundNews` (gancho 'match', todas tus jornadas de liga): candidatos puntuados (upset ≥ 6 de media, thriller 2-1 con el 3r
+    set por ≤ 2, rout 2-0 por ≥ 8, leader desde J3, streak/skid a 4-6-8-11-14, meWin/meUpset solo si JUGASTE y ganaste, rivalW/
+    rivalL con `sum.life.duel` (no en el banquillo), mid en J7) → los 2 mejores de tipos distintos + 1 de otra liga (el Mundial,
+    o la de debajo si estás en él) en J2, J5, J8, J11 y J14. Máx. 3 por jornada.
+  - `seasonNews` (gancho 'season', antes de applyMoves): anales de todas las ligas (open de las otras: `simOpen`, azar propio),
+    «X gana el Circuito Regional en la temporada N. En el Circuito Mundial, Y» (nombres enteros; ver arreglo abajo), la final de tu open («X gana el Open…» / «X se lleva la Final a Cuatro…») y una
+    frase con los movimientos SOLO de tu liga («Suben al Circuito Nacional: A y B; bajan al Circuito Regional: C y D»).
+  - `summerNews` (gancho 'newSeason'): 2 rumores de mercado con jugadores inventados (`_newMate` con azar propio). `MKT` los apaga.
+  - Ligas detrás de `leaguesOf(c)`/`topLv(c)` (lote C: cambiar solo eso). Género neutro: ninguna plantilla dice «campeón».
+  - API: `TPL`, `news(c,n)` (nueva → vieja), `newsUnseen(c)`, `markNewsSeen()`, `newsWhen(x)` («T3 J5» / «T3 Verano» / «T3 Open» /
+    «T3 Cierre»), `lore(c,k)` (pura: fundación —el año del nombre si lo lleva—, apodo de 20, lema de 8, títulos de antes 0-4),
+    `clubRows(c,lvl)`, `clubCard(c,id)` (palmarés de los anales + tus trofeos de antes de `since` «(contigo)», sin duplicados;
+    trayectoria ≤ 8; forma ≤ 5; `vs` del cara a cara; rival), `leaguesOf`, `NEWS_MAX`, `ANNALS_MAX`, `W_SUMMER`, `W_END`, `MKT`.
+  - Medido (careertest, 12 temporadas): 358 noticias (top 60, streak 42, meWin 32, skid 32, leader 29, thriller 26, mkt 22,
+    upset 18, rivalW 14, rout 13…), `c.world` ≈ 13 KB.
+- **career-world-ui.js**: `headlines(c,H)` («Titulares | N nuevas», 2 noticias y «Ver noticias», solo con noticias sin ver),
+  `newsHTML(c,H,seen0)` (antetítulo, titular, resaltado `.me`/`.rv`, punto en las que eran nuevas, toca → ficha), `clubsHTML(c,lvl,H)`
+  (selector `lg-sw` + 8 filas-botón con kit, «1r», «Media N», ★, «Tú 3-1» en verde/rojo, «Tu club» / «Tu rival juega aquí»; o la
+  ficha: cabecera, Esta temporada, Palmarés, Trayectoria, Contra ti, con «‹ Clubes»). `act('cw-club')` → `{tab:'league', s:'clubs',
+  focus}`; `cw-list`; `back()` + `focusSel()` (Escape devuelve el foco a la fila); `reset()` (entrar en Clubes por la barra = lista).
+- **career-ui.js**: `SUBS.league` + Noticias y Clubes (se ocultan sin career-world-ui.js); punto en Liga y en Noticias con
+  `newsUnseen`; se marcan vistas al abrir Noticias (resaltado de las nuevas en ese pintado); Titulares tras `lastCard` (y tras el
+  resumen de fin de temporada); en Clasificación el nombre del club es un botón `data-act="cw-club"` que abre la ficha; Clubes
+  comparte `tblLvl` con Clasificación; Escape cierra la ficha solo con Liga › Clubes a la vista.
+- **careertest**: sección «noticias de la liga y enciclopedia de clubes (E5)» (≤ 3 por jornada, tope 60, sin «{»/«undefined»/«()»,
+  sin «campeón», nada de tu partido simulado ni del banquillo, todos los tipos salen, variantes nunca repetidas seguidas, anales =
+  permutaciones + open + movimientos, «champs» con 5 ligas, movimientos solo de tu liga, sin ver/vistas, cara a cara G + P = PJ y
+  suma = partidos jugados, `clubCard` de los 40, año del nombre, títulos sin duplicar, «(contigo)», < 20 KB a 12 temporadas, y la UI
+  sin DOM). Migración: sin noticias ni anales viejos.
+
+## Arreglo tras revisión (fixer, sprint 5, 12-nov-2026)
+- Noticia «champs» (career-world.js `seasonNews`): antes era una lista de códigos cortos («MA1 (Hiperliga), AL1 (Mundial)») que el
+  jugador no ve en ningún sitio (`uniqueShorts` les pone dígito). Ahora es una frase: «{campeón de tu liga} gana el/la {liga} en la
+  temporada N» y, si tu liga no es la más alta, «. En el Circuito Mundial, {campeón}». Los ids siguen siendo los 5 campeones, el tuyo
+  primero. careertest comprueba nombre entero al principio, el de la liga alta, sin «(» y ≤ 140 caracteres.
+- main.js `startCareerMatch`: si el rival personal lleva el 9, el 2º CPU (9 por defecto) pasa al 3; antes los dos hacían de rival
+  (players.js marca por dorsal).

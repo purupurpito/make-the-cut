@@ -1108,3 +1108,49 @@ partidas. Hace el juego demasiado fácil». Vale para el 2v2 y el 6v6. Solo pres
   sembrados en localStorage): Normal con `guided = 3` → ni tarjeta ni `slowmo`, `timeScale` nunca < 0,9 antes del 1r toque humano;
   Normal con `guided = 0` → tarjeta y cámara lenta, `guided` pasa a 1; Fácil con `guided = 99` → tarjeta y cámara lenta; Normal con 5
   partidos en el récord → nada; Difícil sin guiar → primeros partidos, entra (y cuenta). Sin errores de página.
+
+## Sprint 5, E3 + E6 + peticiones de E1 (12-nov-2026, camera_input; tarea CI del workflow)
+Solo input.js, camera.js, tools/keytest.js (nuevo) y tools/padtest.js. Huella 2v2 de simtest idéntica (no toca la sim).
+- **Teclas reasignables (input.js).** `DEFAULT_KEYS` = las de siempre (W/↑, S/↓, A/←, D/→, J/X golpear, Espacio saltar, K colocar,
+  C cambiar, V challenge, P pausa, M sonido), dos casillas por acción. E1 no añade acciones (la finta es GOLPEAR y, antes del golpe,
+  SALTAR o COLOCAR; el golpe colocado es COLOCAR en el 3r toque) y nada se mantiene: sin `holdMode`. `ctx.settings.keys` = SOLO
+  diferencias `{acción:[c1,c2]}`; `effKeys` sanea (primero lo guardado, luego lo de fábrica sin repetir; lo inválido o reservado vuelve
+  a la de fábrica de su casilla; una 2ª casilla guardada vacía se respeta). `buildCode()` rehace `CODE` (e.code) y `KEY` (e.key, solo
+  para eventos sin código y para lo fijo). Fijas: Esc pausa, Intro/NumpadEnter aceptan. Reservadas: esas, Tab, F1-F24, Ctrl/Alt/Meta,
+  ContextMenu, Retroceso/Supr (borran en la captura) y **F** (pantalla completa de main.js).
+- **Mando.** `DEFAULT_PAD = {hit:[0], jump:[1], jset:[2], sw:[3], chal:[6]}` (+ LB/RB fijos de cambiar mientras nadie los use), solo
+  en el mapeo estándar (PB se rehace en su sitio; PB_X/PB_D no cambian). Valen 0-7, 10, 11. `ctx.settings.padKeys` = diferencias.
+  `poll()` añade `navOk` (botón 0), `navBack` (1), `navTab` (-1/+1 con 4/5): FIJOS aunque se reasigne; `confirm` del mando sale de
+  `navOk || Start` (antes, de golpear).
+- **API** (`VB.Input`): `OPTS ['keys','padKeys','padDead','touchSize']`, `DEFAULT_KEYS`, `DEFAULT_PAD`, `onSettings(s,k)`,
+  `bindings()` → `{keys, pad, padStd, padFam, acts, padActs, fixed}` (copias), `rebind(kind, act, slot, code)` → `{keys|pad, swap, err}`
+  (pura; err '' | 'reserved' | 'empty' | 'primary' | 'bad'), `captureNext(kind, cb)` → `cancel()` (cb(v, why): why 'key' | 'pad' |
+  'clear' | 'cancel' | 'timeout'), `capturing()`, `keyName(code)` (getLayoutMap en caché + tabla española: «Espacio», «↑», «Num 4»,
+  «Mayús der.», «Ñ»…), `padName(i, fam)` ('A','LB','RT' / '✕','L1','R2'). `glyph()`/`glyphs()` salen de las teclas efectivas y
+  ahora tienen también `hit` y `jump`. `_debug()` añade `dz, padSoft, cap, hush, touchK, setRoll, code, pb` y `stats.out` añade
+  `mute, navOk, navBack, navTab`.
+- **Captura.** keydown/keyup en window, fase de captura, registrados en `init` (antes que career-ui): solo actúan con una captura viva,
+  `stopImmediatePropagation` + `preventDefault` (ni el partido, ni ui.onKey, ni la F de main.js la ven) y se traga su keyup. Esc
+  cancela, Retroceso/Supr → `''`, 6 s → 'timeout', blur / pestaña oculta → 'cancel'. La limpieza va antes del callback (una excepción
+  en cb no deja el teclado muerto). Mando: en `poll`, primer flanco válido desde que empezó (lo que ya estaba pulsado no cuenta;
+  Start cancela); durante la captura y hasta soltar todo, `poll` no da ningún flanco (`CAP.hush`).
+- **padDead** (0,1-0,3, def. 0,18) → `DZ`, `PAD_SOFT = max(0,26, DZ + 0,08)`. **touchSize** (1-1,3) → variable CSS `--vts` en
+  `#touch`: tamaño, letra y huecos de GOLPEAR, SALTAR y COLOCAR (⇄ solo sube con ellos; joystick y pausa igual). Medido a 1,3 en
+  844×390 y 667×375: GOLPEAR r 60 px, huecos GOLPEAR-SALTAR 36 px y GOLPEAR-⇄ 39 px (a 1: 22 / 25).
+- **E1:** el botón táctil COLOCAR usa `VB.Sim.altReady(g)` (con respaldo a `jsetReady`): con `'roll'` dice «COLOCADO» (aria «Golpe
+  colocado»). M8 (flotante en salto) no se hizo en E1: `jumpOff` sigue con `tossing`.
+- **Cámara (camera.js).** `VB.CameraRig.OPTS = ['camDist','camCuts','lessMotion']`. `readComfort` (una vez por frame) lee
+  `distK` ('near' 0,86 | 'far' 1,18: `back`/`h` de rally/defend/attack en `gameplayShot` y `touchFitPlan`; medido en `debug=rally`:
+  cámara a 4,34 / 5,15 / 6,20 m del jugador, altura 3,44 / 4 / 4,72), `cutsLess` (`camCuts 'less'`) y `reduceMotion` = `ctx.reduceMotion`
+  si main.js lo publica (booleano propio de ctx); si no, `lessMotion` 'on'/'off'/'auto' (+ matchMedia en vivo).
+  **Punto «tranquilo»** (`quietPoint(g)` = `cutsLess || g.drill`): en 'point' `pickShot` da 'rally' (la cámara de juego se queda; sin
+  plano de reacción ni héroe) y al saque se va por corte asentado (`QP.on` → `PF.backCut` + `backPending`, `lastCut.kind 'serve'`);
+  `cutawayNext` y el arranque del plano del sacador rival, false; `heroShot()` null. Presentación, cierre de set/partido y grúa del cambio
+  de campo no cambian. **Gimnasio (E6):** además sin `clinchDetect`; el evento `drillStage` corta a la cámara asentada en el plano
+  de juego (`settle`, `lastCut.kind 'drill'`, nuevo) y apaga cámara lenta, hit-stop, cutaway, cierre y seguimiento. El 6v6 no cambia.
+- **Medido** (autopilot, `debug=rally&live=1`, 60 s): 'all' → 691 frames de cutaway, 1222 con héroe, cortes point 4 / serve 4 / cutaway 3;
+  'less' → **0 cutaway, 0 héroe**, solo 4 cortes 'serve', salto máximo sin corte 0,57 m. Gimnasio `drill:'atk'` con autopilot (40 s):
+  10 cortes 'drill', sin planos de punto, salto máximo sin corte 0,15 m. camtest 40 s con los valores por defecto: los mismos fallos que
+  la copia de antes del cambio (spiker, clutter, wide, fovpump: preexistentes y de ruido); heroAll 3/4 en una pasada (86 % en 844×390t,
+  7 puntos), 4/4 en la de antes: ruido, el código por defecto no cambia (distK 1, sin punto tranquilo).
+- **Pruebas:** `node tools/keytest.js` (nuevo, 38 ok) y `node tools/padtest.js` (ampliado: 9-12, 52 ok).

@@ -8,6 +8,7 @@
  *    apunta la hora y sube el cambio a los ~1,5 s (y al ocultar la pestaña). Sin cuenta o sin red, todo sigue en local.
  *  - Al entrar se une lo del dispositivo con lo de la cuenta: gana lo más reciente; si las dos Carreras son distintas, se pregunta.
  *    Si llega algo de la cuenta, la página se recarga para que el juego lo lea.
+ *  - 'voley3d.gym' (Entrenamiento) tiene la fusión por máximo escrita (mergeGym) pero NO se sincroniza hasta GYM_SYNC = true.
  *  - Panel propio (#account) que se abre con el botón «Cuenta» del menú principal (#btnAcc, lo crea este módulo).
  */
 (function () {
@@ -17,6 +18,11 @@
   var FS = 'https://firestore.googleapis.com/v1/projects/' + FB.project + '/databases/(default)/documents/';
   var SES = 'voley3d.account', META = 'voley3d.account.meta';
   var DOCS = { 'voley3d.squad': 'squad', 'voley3d.career': 'career', 'voley3d.settings': 'settings', 'voley3d.record': 'record' };
+  // Entrenamiento (E6, js/gym.js): 'voley3d.gym' se sincronizará como users/{uid}/saves/gym, uniendo por máximo (mergeGym).
+  // APAGADO hasta que Ferran despliegue firebase/firestore.rules con 'gym' en la lista de key: antes, cada subida daría 403.
+  // Orden obligatorio: 1) desplegar reglas, 2) GYM_SYNC = true. 'voley3d.seen' y 'voley3d.device' NUNCA van a DOCS (son del dispositivo).
+  var GYM_SYNC = false;
+  if (GYM_SYNC) DOCS['voley3d.gym'] = 'gym';
   var LS = null; try { LS = window.localStorage; } catch (e) { }
   var rawSet = Storage.prototype.setItem, rawRemove = Storage.prototype.removeItem;
 
@@ -136,11 +142,39 @@
       if (L == null) { apply(k, Rd); meta[k] = R.at; synced[k] = R.at; changed = true; return; }
       if (Rd == null) { if (first || Lt > R.at) dirty[k] = 1; else { apply(k, null); meta[k] = R.at; changed = true; } return; }
       if (k === 'voley3d.career' && first) { conflict = { k: k, remote: Rd, local: L, at: R.at }; return; }
+      if (k === 'voley3d.gym') { // récords del Entrenamiento: nunca se pierde uno, se une por máximo en cualquier entrada
+        var Mg = mergeGym(L, Rd);
+        if (Mg !== L) { apply(k, Mg); changed = true; }
+        meta[k] = Math.max(Lt, R.at); synced[k] = R.at;
+        if (Mg !== Rd) dirty[k] = 1;
+        return;
+      }
       var remoteWins = first ? (k === 'voley3d.squad' ? score(Rd) >= score(L) : k !== 'voley3d.record' || recPlayed(Rd) >= recPlayed(L)) : R.at > Lt;
       if (remoteWins) { apply(k, Rd); meta[k] = R.at; synced[k] = R.at; changed = true; } else dirty[k] = 1;
     });
     jset(META, meta); jset(META + '.up', synced);
     return { changed: changed, conflict: conflict };
+  }
+  /** Une dos guardados de 'voley3d.gym' (texto JSON) por máximo: por ejercicio b (récord, con su fecha t), m (medalla),
+   *  n (intentos) y xp (nivel ya cobrado); free.rally. Devuelve texto JSON (el local tal cual si no cambia nada). */
+  function mergeGym(Lraw, Rraw) {
+    function p(r) { try { var o = JSON.parse(r); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } }
+    function n(v) { v = +v; return isFinite(v) && v > 0 ? v : 0; }
+    var A = p(Lraw), B = p(Rraw), out = { v: Math.max(n(A.v), n(B.v), 1), d: {}, free: { rally: 0 }, xp: {} };
+    var Ad = A.d || {}, Bd = B.d || {}, Ax = A.xp || {}, Bx = B.xp || {};
+    ['serve', 'recv', 'set', 'atk', 'block'].forEach(function (id) {
+      var a = Ad[id], b = Bd[id];
+      if (a || b) {
+        a = a || {}; b = b || {};
+        var ab = n(a.b), bb = n(b.b);
+        out.d[id] = { b: Math.max(ab, bb), m: Math.max(n(a.m), n(b.m)), n: Math.max(n(a.n), n(b.n)),
+          t: ab > bb ? n(a.t) : bb > ab ? n(b.t) : Math.min(n(a.t) || n(b.t), n(b.t) || n(a.t)) };
+      }
+      var x = Math.max(n(Ax[id]), n(Bx[id])); if (x) out.xp[id] = x;
+    });
+    out.free.rally = Math.max(n(A.free && A.free.rally), n(B.free && B.free.rally));
+    var txt = JSON.stringify(out);
+    return Lraw != null && txt === JSON.stringify(p(Lraw)) ? Lraw : txt;
   }
   function recPlayed(raw) { try { return +(JSON.parse(raw).played) || 0; } catch (e) { return 0; } }
   function reloadSoon(msg) {
@@ -385,6 +419,6 @@
     open: open, close: close, isOpen: isOpen, user: function () { return acc ? acc.user : null; }, status: function () { return status; },
     sync: function () { return syncDown(false); }, signOut: signOut, onChange: function (f) { listeners.push(f); },
     // pruebas (tools/cuentatest.js): entrar sin la interfaz y borrar la cuenta al acabar
-    _enter: enter, _delete: deleteAccount, _push: function () { for (var k in DOCS) if ((meta[k] || 0) > (synced[k] || 0)) dirty[k] = 1; return push(); }
+    _enter: enter, _delete: deleteAccount, _mergeGym: mergeGym, _gymSync: GYM_SYNC, _push: function () { for (var k in DOCS) if ((meta[k] || 0) > (synced[k] || 0)) dirty[k] = 1; return push(); }
   };
 })();

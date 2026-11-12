@@ -68,7 +68,7 @@
   // Los planos miden 1 m: el aro de outlinedRingTex(104) mide 0,8125 m de diámetro y la diana de targetTex 0,875 m.
   var FR_D0 = 0.8, FR_D1 = 2.6, FR_T = 0.9, FR_RING = 0.8125, FR_TGT = 0.875, FR_ON = 0.24, FR_OFF = -0.15;
   var ballBs = 1, ballRim = null; // escala del balón por legibilidad (ARN-06) y uniforme del brillo de borde
-  var aimRet, aimMat, aim = { a: 0, x: -6, y: 0, tx: -6, ty: 0, on: false, live: false, kill: 0 }, aimOut = { x: 0, y: 0, spreadNow: -1 };
+  var aimRet, aimMat, aim = { a: 0, x: -6, y: 0, tx: -6, ty: 0, on: false, live: false, kill: 0 }, aimOut = dblFields({ x: 0, y: 0, spreadNow: -1, edge: 0, kind: '' });
   var hwOut = { t: 0, press: 0 }, focusVis = false;
   // A4 (remate apuntado): la retícula del remate mide lo que dice Sim.aimPoint().spreadNow (dispersión si pulsaras AHORA).
   // AIM_R1 = radio (m) del aro de aimTex con escala 1 (88/128 de un plano de 1,7 m); mínimo visible AIM_RMIN, tope AIM_RMAX.
@@ -117,6 +117,52 @@
   var qScale = 1; // factor de partículas por calidad
 
   var TEAM_LIN = null; // colores lineales por equipo
+
+  /* ---------- Sprint 5: opciones de accesibilidad (E3), diana del ejercicio (E6) y lecturas de la maestría (E1) ----------
+   * VB.FX.OPTS = ['cbColors', 'ballStyle'] (ajustes que lee este módulo; ui.js esconde la fila si falta FX).
+   * cbColors: dentro azul / fuera naranja (marcas del bote, onda de FUERA y huella del challenge) y diana ámbar → azul
+   * (perfecto), saque blanco. Las DOS paletas se crean al arrancar (PAL[0] clásica, PAL[1] daltonismo) y applyPal copia una en
+   * los colores activos: nada por frame. La X de FUERA (forma) se queda. Las pistas de fase del 6v6 se distinguen por forma
+   * (celda, punto, chevrón, barra; aro con filo en set/attack/block) y no usan estos colores.
+   * ballStyle 'contraste': textura del balón amarilla / azul oscuro / crema; se rehace UNA vez al cambiar y se libera la vieja. */
+  var PAL = null, PAL_I = -1, BALL_ST = '', mqRM = false;
+  var RIM_IN = null, RIM_OUT = null, AIM_ROLL = null, AIM_EDGE = null, RIP_OUT = null, REV_IN = null, REV_OUT = null, aimTc = null;
+  // E6: diana del ejercicio (g.drill.target {x, y, r}) = 2 instancias del lote de calcomanías (celda 8 + aro con filo de la celda 2), tinte cálido.
+  // E1: marcador de la colocación dirigida (Sim.setPreview) = 1 instancia más (aro de las ondas), un color por tempo. 0 dibujos nuevos.
+  var drillTgt = null, drillRing = null, drA = 0, drX = 0, drY = 0, drR = 0.8, drR2 = 0, drPop = 0, setMk = null, spA = 0, spT = '';
+  var spOut = { x: 0.5, y: 0.5, tempo: '' }, DR_TGT_R = 95 / 256, DR_RING_R = 100 / 256; // radio (m, escala 1) del filo blanco de aimSvTex y del centro del aro de markRimTex
+  var SP_COL = null, SP_SZ = { '': 0.95, quick: 0.72, lane: 0.95, high: 1.25 };
+  function calmNow() { return ctx && ctx.reduceMotion != null ? !!ctx.reduceMotion : mqRM; } // U calcula ctx.reduceMotion (lessMotion + matchMedia)
+  function buildPalettes() {
+    var hx = function (h) { return new THREE.Color(h); }, ln = function (r, g, b) { return new THREE.Color().setRGB(r, g, b); };
+    PAL = [
+      { mIn: ln(0.12, 0.9, 0.24), mOut: ln(1, 0.17, 0.11), rIn: ln(0.12, 0.9, 0.24), rOut: ln(1, 0.05, 0.03), ripOut: ln(1, 0.25, 0.18),
+        revIn: ln(0.2, 1, 0.35), revOut: ln(1, 0.25, 0.18), aOr: hx('#ff6326'), aOk: hx('#ffe23a'), aSv: hx('#1fe0d0'), aRoll: hx('#3fd6a4'), aEdge: hx('#ff6a4d') },
+      // daltonismo: sin rojo ni verde. El aro «al filo» pasa a magenta (el coral se confunde con el ámbar de la diana)
+      { mIn: hx('#4a9cff'), mOut: hx('#ff9a2a'), rIn: hx('#2f8cff'), rOut: hx('#ff8a00'), ripOut: hx('#ff8a00'),
+        revIn: hx('#2f8cff'), revOut: hx('#ff8a00'), aOr: hx('#ff9f1c'), aOk: hx('#38a3ff'), aSv: hx('#ffffff'), aRoll: hx('#3fd6a4'), aEdge: hx('#ff4fc8') }
+    ];
+    var P = PAL[0];
+    MARK_IN = P.mIn.clone(); MARK_OUT = P.mOut.clone(); RIM_IN = P.rIn.clone(); RIM_OUT = P.rOut.clone(); RIP_OUT = P.ripOut.clone();
+    REV_IN = P.revIn.clone(); REV_OUT = P.revOut.clone(); AIM_OR = P.aOr.clone(); AIM_OK = P.aOk.clone(); AIM_SV = P.aSv.clone();
+    AIM_ROLL = P.aRoll.clone(); AIM_EDGE = P.aEdge.clone(); aimTc = new THREE.Color();
+    SP_COL = { '': ln(0.95, 0.97, 1), quick: hx('#ff9a3c'), lane: hx('#3fd6a4'), high: hx('#8fc4ff') };
+    PAL_I = 0;
+  }
+  function applyPal(i) {
+    var P = PAL[i]; PAL_I = i;
+    MARK_IN.copy(P.mIn); MARK_OUT.copy(P.mOut); RIM_IN.copy(P.rIn); RIM_OUT.copy(P.rOut); RIP_OUT.copy(P.ripOut);
+    REV_IN.copy(P.revIn); REV_OUT.copy(P.revOut); AIM_OR.copy(P.aOr); AIM_OK.copy(P.aOk); AIM_SV.copy(P.aSv); AIM_ROLL.copy(P.aRoll); AIM_EDGE.copy(P.aEdge);
+  }
+  /** Aplica cbColors y ballStyle de los ajustes s (al arrancar, al empezar partida y en onSettings). Solo trabaja si cambian. */
+  function applyOpts(s) {
+    if (!PAL || !ballMat) return;
+    s = s || {};
+    var ci = s.cbColors === true ? 1 : 0;
+    if (ci !== PAL_I) applyPal(ci);
+    var bs = s.ballStyle === 'contraste' ? 'contraste' : 'clasico';
+    if (bs !== BALL_ST) { var old = ballMat.map; ballMat.map = ballTexture(bs); BALL_ST = bs; if (old) old.dispose(); }
+  }
 
   // ---------- Texturas ----------
   function canvas(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
@@ -248,10 +294,11 @@
     gr.addColorStop(0.88, 'rgba(255,255,255,1)'); gr.addColorStop(0.93, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = gr; g.fillRect(0, 0, 256, 256); return tex(cv);
   }
-  /** Balón: cada cara de la esfera-cubo es un grupo de 3 paneles. Teal (decisión de Ferran, 10-nov-2026): teal, crema y teal oscuro. */
-  function ballTexture() {
-    var S = 256, cv = canvas(S, S), g = cv.getContext('2d');
-    var cols = ['#1cc4b4', '#fffaf0', '#0b8a86'];
+  /** Balón: cada cara de la esfera-cubo es un grupo de 3 paneles. Teal (decisión de Ferran, 10-nov-2026): teal, crema y teal oscuro.
+   *  style 'contraste' (ajuste ballStyle, E3): amarillo, azul oscuro y crema (el panel del medio, oscuro, lleva el logotipo claro). */
+  function ballTexture(style) {
+    var S = 256, cv = canvas(S, S), g = cv.getContext('2d'), hc = style === 'contraste';
+    var cols = hc ? ['#ffd21f', '#13235a', '#fff6c8'] : ['#1cc4b4', '#fffaf0', '#0b8a86'];
     for (var i = 0; i < 3; i++) {
       var x0 = i * S / 3; // CARTOON: paneles planos (el sombreado lo ponen las bandas del toon)
       g.fillStyle = cols[i]; g.fillRect(x0, 0, S / 3 + 1, S);
@@ -261,7 +308,7 @@
     g.fillRect(S / 3 - 3, 0, 6, S); g.fillRect(2 * S / 3 - 3, 0, 6, S);
     g.fillStyle = 'rgba(29,21,48,0.9)'; g.fillRect(0, 0, S, 5); g.fillRect(0, S - 5, S, 5); g.fillRect(0, 0, 5, S); g.fillRect(S - 5, 0, 5, S);
     // logotipo diminuto en el panel blanco
-    g.save(); g.translate(S / 2, S / 2); g.rotate(-Math.PI / 2); g.fillStyle = 'rgba(8,92,90,0.55)';
+    g.save(); g.translate(S / 2, S / 2); g.rotate(-Math.PI / 2); g.fillStyle = hc ? 'rgba(255,246,200,0.6)' : 'rgba(8,92,90,0.55)';
     g.font = '900 22px "Barlow Condensed", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('SALT·9', 0, 0); g.restore();
     var t = tex(cv); t.anisotropy = 4; return t;
   }
@@ -372,8 +419,8 @@
     m.m.rotation.z = hs > 0.1 ? Math.atan2(vy, vx) : 0;
     m.m.scale.set(s * 1.24 * m.stretch, s * 1.24, 1);
     // DENTRO = disco claro verde + aro; FUERA = disco claro rojo + aro con X (forma = llamada; el color es secundario)
-    if (inside) { m.r.material.color.setRGB(0.12, 0.9, 0.24); m.m.material.color.copy(MARK_IN); m.r.material.map = rimInTex; }
-    else { m.r.material.color.setRGB(1, 0.05, 0.03); m.m.material.color.copy(MARK_OUT); m.r.material.map = rimOutTex; }
+    if (inside) { m.r.material.color.copy(RIM_IN); m.m.material.color.copy(MARK_IN); m.r.material.map = rimInTex; } // (paleta activa: cbColors)
+    else { m.r.material.color.copy(RIM_OUT); m.m.material.color.copy(MARK_OUT); m.r.material.map = rimOutTex; }
     m.inside = !!inside;
     m.m.visible = true; m.r.visible = true;
   }
@@ -398,7 +445,7 @@
     footAtlas(g); // celdas 9-11: huellas de la playa
     var at = tex(cv);
     // instancias: marcas (relleno + filo), ondas, las 8 mallas sueltas, línea de altura, las 3 de la pista de posición del 6v6 y huellas
-    var N = MARK_N * 2 + RIP_N + 8 + 1 + 3 + FOOT_N, geo = new THREE.PlaneGeometry(1, 1);
+    var N = MARK_N * 2 + RIP_N + 8 + 1 + 3 + 3 + FOOT_N, geo = new THREE.PlaneGeometry(1, 1);
     for (var fI = 0; fI < FOOT_N; fI++) fp.push(dblFields({ x: 0.5, y: 0.5, yaw: 0.5, k: 0, sx: 0.5, sy: 0.5, op: 0.5, t: 0.5 })); for (var fJ = 0; fJ < FOOT_N; fJ++) fp[fJ].t = 0;
     var inst = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({
       uniforms: { map: { value: at } }, transparent: true, depthWrite: false, toneMapped: false,
@@ -415,6 +462,7 @@
     if (posMark2) decOrder.push(posMark2); // pista de posición del 6v6 (debajo de todo lo demás): forma de la fase, aro, chevrón
     if (posMark) decOrder.push(posMark);
     if (posArrow) decOrder.push(posArrow);
+    if (drillRing) decOrder.push(drillRing, drillTgt, setMk); // E6/E1: diana del ejercicio y marcador de colocación (debajo de marcas y ondas)
     for (var m = 0; m < MARK_N; m++) decOrder.push(markPool[m].m);
     for (var r = 0; r < MARK_N; r++) decOrder.push(markPool[r].r);
     for (var p = 0; p < RIP_N; p++) decOrder.push(ripPool[p].m);
@@ -920,8 +968,8 @@
     var k = rv.k, pop = k < 1 ? 1 + 0.35 * (1 - k) : 1;
     revFill.scale.set(rv.sx * pop, rv.sy * pop, 1);
     revFill.material.opacity = rv.a * 0.95 * k;
-    if (rv.res === 1) revFill.material.color.setRGB(0.2, 1, 0.35);
-    else if (rv.res === 0) revFill.material.color.setRGB(1, 0.25, 0.18);
+    if (rv.res === 1) revFill.material.color.copy(REV_IN);
+    else if (rv.res === 0) revFill.material.color.copy(REV_OUT);
     else revFill.material.color.setRGB(0.95, 0.95, 1);
   }
   /** Arco punteado del balón al objetivo, pasando por encima de la red (vista previa de la dirección, no física). */
@@ -1138,7 +1186,9 @@
       // Balón: pivote (aplastamiento orientado) + malla (giro)
       ballPivot = new THREE.Group(); root.add(ballPivot);
       // CARTOON: toon de 3 bandas (VB.TOON de arena.js) con los paneles planos; el brillo de borde y el «calor» siguen igual
-      ballMat = new THREE.MeshToonMaterial({ map: ballTexture(), emissive: new THREE.Color(0xff5a20), emissiveIntensity: 0 });
+      buildPalettes(); BALL_ST = 'clasico';
+      try { mqRM = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (eRM) { mqRM = false; }
+      ballMat = new THREE.MeshToonMaterial({ map: ballTexture('clasico'), emissive: new THREE.Color(0xff5a20), emissiveIntensity: 0 });
       if (VB.TOON && VB.TOON.gradientMap) ballMat.gradientMap = VB.TOON.gradientMap;
       // castShadow = false: la sombra del mapa de sombras y la de contacto eran DOS manchas separadas en el
       // suelo; la buena para jugar es la de contacto (siempre en vertical bajo el balón).
@@ -1208,7 +1258,7 @@
       // retícula de apuntado en el campo rival (saque y remate del humano)
       aimMat = new THREE.MeshBasicMaterial({ map: aimTex(), transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
       aimMat.color.set('#ff6326'); // (setRGB es LINEAL con ColorManagement: (1,0.5,0.24) salía color melocotón pálido)
-      AIM_OR = aimMat.color.clone(); AIM_OK = new THREE.Color('#ffe23a'); AIM_SV = new THREE.Color('#1fe0d0'); // naranja → amarillo dorado cuando el timing va a ser perfecto
+      // AIM_OR (#ff6326) / AIM_OK (#ffe23a) / AIM_SV (#1fe0d0) salen de la paleta activa (buildPalettes; cbColors: ámbar → azul, saque blanco)
       aimRet = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), aimMat);
       aimRet.rotation.x = -Math.PI / 2; aimRet.position.y = 0.019; aimRet.renderOrder = 4; aimRet.visible = false; aimRet.name = 'aimRet'; // (decals)
       // puntos opacos con filo oscuro (mezcla normal: el aditivo desaparecía sobre la tarima clara)
@@ -1260,7 +1310,7 @@
       // marcas del balón en el suelo
       // marcas del bote: huella oscura + filo de color dentro/fuera
       var markTex = fillTex(); rimInTex = markRimTex(false); rimOutTex = markRimTex(true);
-      MARK_IN = new THREE.Color().setRGB(0.12, 0.9, 0.24); MARK_OUT = new THREE.Color().setRGB(1, 0.17, 0.11); // lineal: el del aro (rojo algo más claro para no oscurecer)
+      // MARK_IN / MARK_OUT: paleta activa (buildPalettes; lineales, el rojo algo más claro que el del aro para no oscurecer)
       for (var mI = 0; mI < MARK_N; mI++) {
         var mm = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: markTex, transparent: true, depthWrite: false, opacity: 0.9, toneMapped: false }));
         mm.rotation.x = -Math.PI / 2; mm.position.y = 0.015; mm.visible = false; mm.renderOrder = 2; mm.name = 'mark'; // (decals)
@@ -1293,6 +1343,14 @@
       posMark2.rotation.x = -Math.PI / 2; posMark2.position.y = 0.0143; posMark2.visible = false; posMark2.renderOrder = 2; posMark2.name = 'posMark2'; // (decals)
       posArrow = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: posTexs.arrow, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }));
       posArrow.rotation.x = -Math.PI / 2; posArrow.position.y = 0.0147; posArrow.visible = false; posArrow.renderOrder = 2; posArrow.name = 'posArrow'; // (decals)
+      // E6: diana del ejercicio (celda 8 = diana del saque dirigible, tinte cálido) y su aro exterior (aro de las ondas). E1: marcador de la
+      // colocación dirigida (aro de las ondas, color por tempo). Mallas de ESTADO fuera de la escena, como las demás: las pinta el lote decals
+      var dMk = function (map, y, name) {
+        var o = new THREE.Mesh(ripGeo, new THREE.MeshBasicMaterial({ map: map, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }));
+        o.rotation.x = -Math.PI / 2; o.position.y = y; o.visible = false; o.renderOrder = 2; o.name = name; return o; // (decals)
+      };
+      drillRing = dMk(rimInTex, 0.0138, 'drillRing'); drillTgt = dMk(aimSvMap, 0.0141, 'drillTarget'); setMk = dMk(ripTex, 0.0144, 'setPreview');
+      drillRing.material.color.set('#ffd27a'); drillTgt.material.color.set('#ffb238');
       buildDecals([ripTex, markTex, rimInTex, rimOutTex, markerMat.map, aimMat.map, whiteTex, revFill.material.map, aimSvMap,
         null, null, null, posTexs.zone, posTexs.dot, posTexs.arrow, posTexs.bar]);
       // polvo de parquet (plancha, aterrizajes): Points con alfa por vértice y mezcla normal
@@ -1307,6 +1365,7 @@
       for (var q = 0; q < CONF_N; q++) { confD.push(dblFields({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, ax: 1, ay: 0, az: 0, ang: 0, spin: 0, ph: 0, life: 0, sc: 1 })); conf.setColorAt(q, tv.set(1, 1, 1)); }
       conf.instanceMatrix.setUsage(THREE.DynamicDrawUsage); conf.count = 0; conf.visible = false; conf.frustumCulled = false; conf.name = 'confetti'; root.add(conf);
       this.setQuality(c.quality);
+      applyOpts(c.settings);
     },
     setQuality: function (q) {
       var r = !q ? 2 : q.rank;
@@ -1344,7 +1403,13 @@
       confAlive = 0; conf.count = 0; conf.visible = false;
       for (var tI = 0; tI < TB_N; tI++) tb[tI].life = 0;
       speedT = 0; tbAlive = 1;
+      drA = 0; drPop = 0; spA = 0; drillTgt.visible = drillRing.visible = setMk.visible = false;
+      applyOpts(ctx.settings);
     },
+    /** Sprint 5 (E3): ajustes que lee FX (ui.js esconde las filas con data-need="FX" si falta). */
+    OPTS: ['cbColors', 'ballStyle'],
+    /** main.js: onSettings(s, k) al cambiar un ajuste (k = clave) y al arrancar (k = null). */
+    onSettings: function (s, k) { if (s && (k == null || k === 'cbColors' || k === 'ballStyle')) applyOpts(s); },
     /** Partículas en coordenadas de simulación (interfaz del contrato). */
     burst: function (x, y, z, n, power) { burstAt(x, y, z, n, power, 1, 0.92, 0.7, 1, 9); },
     /** Polvo de la tarima (coords de sim), p. ej. planchas cosméticas de players.js. */
@@ -1501,6 +1566,43 @@
           }
         }
       }
+      // ---- E6: diana del ejercicio (g.drill.target {x, y, r}; null fuera del modo o sin diana) ----
+      // Diana de radio r (el filo blanco = r) y aro exterior: saque 2·r (≤ 1,6 m → 2 puntos), recepción 2,2·r; target.r2 manda si viene.
+      // Al cambiar de repetición entra con un pequeño «pop»; pulso de escala 0,95-1,05 a 2 Hz. Con ctx.reduceMotion, quieta.
+      if (drillTgt) {
+        var drl = g.drill, dtg = drl ? drl.target : null, ddt = ctx.realDt || 0, calm = calmNow();
+        var dOn = !!(dtg && isFinite(dtg.x) && isFinite(dtg.y)) && !g.demo;
+        if (dOn) {
+          if (drA > 0.01 && (dtg.x - drX) * (dtg.x - drX) + (dtg.y - drY) * (dtg.y - drY) > 0.25) drA = 0; // diana nueva: entra de cero
+          if (drA <= 0.01) drPop = 1;
+          drX = dtg.x; drY = dtg.y; drR = dtg.r > 0 ? dtg.r : 0.8;
+          drR2 = dtg.r2 > 0 ? dtg.r2 : drl.kind === 'serve' ? drR * 2 : drl.kind === 'recv' ? drR * 2.2 : 0;
+        }
+        drA += ((dOn ? 1 : 0) - drA) * (1 - Math.exp(-10 * ddt)); if (!dOn && drA < 0.01) drA = 0;
+        drPop = Math.max(0, drPop - ddt * 3.5);
+        var dV = drA > 0.01;
+        drillTgt.visible = dV; drillRing.visible = dV && drR2 > 0;
+        if (dV) {
+          var dpu = calm ? 1 : (1 + 0.05 * Math.sin(ctx.time * 4 * Math.PI)) * (1 + 0.3 * drPop * drPop), dts = drR / DR_TGT_R * dpu;
+          drillTgt.position.x = drX; drillTgt.position.z = -drY; drillTgt.scale.set(dts, dts, 1); drillTgt.material.opacity = 0.95 * drA;
+          if (drillRing.visible) {
+            var drs = drR2 / DR_RING_R * (calm ? 1 : 1 + 0.02 * Math.sin(ctx.time * 4 * Math.PI + 1.6));
+            drillRing.position.x = drX; drillRing.position.z = -drY; drillRing.scale.set(drs, drs, 1); drillRing.material.opacity = 0.75 * drA;
+          }
+        }
+        // ---- E1: marcador de la colocación dirigida (Sim.setPreview: destino sin error de la colocación con el stick de ahora) ----
+        var spv = Sim.setPreview && !g.demo && !g.autopilot && g.mastery ? Sim.setPreview(g, spOut) : null;
+        if (spv && isFinite(spv.x) && isFinite(spv.y)) {
+          var stp = SP_COL[spv.tempo] ? spv.tempo : '';
+          if (spA < 0.02 || stp !== spT) { spT = stp; setMk.material.color.copy(SP_COL[stp]); }
+          setMk.position.x = spv.x; setMk.position.z = -spv.y; spA = Math.min(1, spA + ddt * 8);
+        } else spA = Math.max(0, spA - ddt * 6);
+        setMk.visible = spA > 0.01;
+        if (setMk.visible) {
+          var sps = SP_SZ[spT] * (calm ? 1 : 1 + 0.06 * Math.sin(ctx.time * 9));
+          setMk.scale.set(sps, sps, 1); setMk.material.opacity = 0.85 * spA;
+        }
+      }
       // ---- marcador de caída (secundario si el aro amarillo está activo) ----
       marker.visible = inPlay && b.vz < 6 && b.z > 0.5;
       if (marker.visible) {
@@ -1557,8 +1659,17 @@
         var asz;
         if (aimR.on) { // remate apuntado: tamaño = dispersión; dorado y latido rápido cuando va a ir exacto
           asz = aimR.r / AIM_R1 * (1 + Math.sin(ctx.time * (aimR.p ? 14 : 5)) * (aimR.p ? 0.05 : 0.025));
-          if (aimSv) aimMat.color.copy(AIM_SV).lerp(AIM_OK, clampN((0.45 - spr) / 0.2, 0, 1));
-          else aimMat.color.copy(AIM_OR).lerp(AIM_OK, clampN((0.45 - aimR.r) / 0.2, 0, 1));
+          // E1: golpe colocado (kind 'roll') con el verde de COLOCAR; «al filo» (edge > 0,5) con el aro coral y el relleno con el color
+          // del timing. El dorado del timing se mide sin los factores de la maestría (roll ×0,6, filo ×(1 + 0,35·e)) del radio.
+          var aRoll = !aimSv && aimOut.kind === 'roll', aEdge = !aimSv && aimOut.edge > 0.5, arr = aimR.r;
+          if (!aimSv && (aRoll || aimOut.edge > 0)) {
+            var MS = VB.MASTERY || (Sim && Sim.MASTERY);
+            if (aRoll && MS && MS.roll && MS.roll.spread > 0) arr /= MS.roll.spread;
+            if (MS && MS.edge && MS.edge.spr > 0) arr /= 1 + MS.edge.spr * aimOut.edge;
+          }
+          if (aimSv) aimTc.copy(AIM_SV).lerp(AIM_OK, clampN((0.45 - spr) / 0.2, 0, 1));
+          else aimTc.copy(aRoll ? AIM_ROLL : AIM_OR).lerp(AIM_OK, clampN((0.45 - arr) / 0.2, 0, 1));
+          aimMat.color.copy(aEdge ? AIM_EDGE : aimTc);
           aimMat.opacity = 0.97 * aim.a;
         } else {
           asz = 1 + (1 - Math.min(1, aim.a * 2)) * 0.35 + Math.sin(ctx.time * 5) * 0.03;
@@ -1574,7 +1685,7 @@
           // (saque dirigible: el aro tiene un radio mínimo legible; el disco es la dispersión REAL, que se encoge con el buen timing)
           var fz = 2 * (aimSv ? Math.min(aimR.f, aimR.r) : aimR.r) / 0.9; aimFill.position.x = aim.x; aimFill.position.z = -aim.y;
           aimFill.scale.set(fz, aimSv ? fz * aimSt : fz, 1); aimFill.rotation.z = svRot;
-          aimFill.material.color.copy(aimMat.color); aimFill.material.opacity = (aimSv ? 0.38 : 0.26) * aim.a;
+          aimFill.material.color.copy(aimTc); aimFill.material.opacity = (aimSv ? 0.38 : 0.26) * aim.a;
         }
       }
       // arco: solo con el apuntado activo (balón lanzado / en el aire para rematar)
@@ -1705,7 +1816,9 @@
               burstAt(e.x, e.y, e.z, 16 + pw * 10, 4.5 + pw * 1.5, 1, 0.78, 0.45, 0.6, 7);
               burstAt(e.x, e.y, e.z, 8, 3.2, tc.r, tc.g, tc.b, 0.4, 7);
             }
-            startTrail(1, 0.94, 0.66, 0.15 + pw * 0.04, 0.75 + pw * 0.3);
+            if (e.shot === 'roll') trailA = 0; // E1: golpe colocado (envolvente, power 0,2): sin estela
+            else if (e.chain >= 3) { startTrail(1, 0.8, 0.28, 0.2 + pw * 0.04, 1.1); speedLines(9, 0.36); } // E1 (tramo 2): 3 perfectos seguidos, estela dorada
+            else startTrail(1, 0.94, 0.66, 0.15 + pw * 0.04, 0.75 + pw * 0.3);
             squash.t = 0.12; squash.k = 0.07 + pw * 0.025; heat = 0.6 + pw * 0.4;
             // cartoon: explosión de cómic + estrellas; líneas de velocidad si es fuerte (o perfecto)
             burstToon(e.x, e.y, e.z, 0.7 + pw * 0.35, 0.16);
@@ -1801,7 +1914,7 @@
         case 'land': {
           var sp2 = e.speed || 4;
           if (e.inside) rippleAt(e.x, e.y, 1.6 + sp2 * 0.12, 0.6, 1, 0.95, 0.85, 0.9);
-          else rippleAt(e.x, e.y, 1.6 + sp2 * 0.12, 0.7, 1, 0.25, 0.18, 0.95);
+          else rippleAt(e.x, e.y, 1.6 + sp2 * 0.12, 0.7, RIP_OUT.r, RIP_OUT.g, RIP_OUT.b, 0.95);
           markAt(e.x, e.y, e.inside, sp2, g && g.ball ? g.ball.vx : 0, g && g.ball ? g.ball.vy : 0);
           if (!(tbSwap && sp2 > 8)) burstAt(e.x, e.y, 0.05, 10 + Math.min(14, sp2), 1.5 + sp2 * 0.15, 0.95, 0.9, 0.8, 1.2, 9);
           trailA = Math.min(trailA, 0.25);
@@ -1826,6 +1939,16 @@
         case 'challengeResult': // la huella se tiñe con la verdad (verde dentro / rojo fuera) y queda ~2 s
           rv.res = e.truthIn ? 1 : 0;
           if (!rv.on && isFinite(e.x) && isFinite(e.y)) { rv.x = e.x; rv.y = e.y; placeReview(e.x, e.y); rv.on = true; rv.k = 1; rv.hold = 2.2; }
+          break;
+        case 'drillStage': // E6: repetición nueva (la diana entra con su «pop» al leer g.drill.target)
+          drA = 0; drPop = 1;
+          break;
+        case 'drillRep': // E6: repetición de 3 puntos → destello en la diana (pool de ondas; sin dibujos nuevos)
+          if (e.pts >= 3 && drA > 0.05) {
+            var dk = softK();
+            rippleAt(drX, drY, drR * 2.6, 0.5, 1, 0.82, 0.35, 0.95 * dk);
+            rippleAt(drX, drY, drR * 4.2, 0.8, 1, 0.9, 0.6, 0.55 * dk);
+          }
           break;
         case 'set': // set: un poco en el plano + los cañones de las esquinas
           confettiInFrame(e.team === 1 ? 1 : 0, Math.round(70 * (qScale > 0.6 ? 1 : 0.7)));

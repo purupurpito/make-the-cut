@@ -726,3 +726,27 @@ y azul con `Path2D` de los mismos trazados que ICON_HIT de input.js, tres costur
   Pabellón (`EXTRA=map=hall`) media 49/50 · 321 k; baja 30/34 · 105 k. 6v6 media 58/60 · 334 k; baja 37/39 · 121 k. «Objetivos cumplidos»
   en los tres. Capturas `tools/out/arena-w/` (`final/`: pabellón y playa a 1280×720 y 844×390 táctil, alta y baja; 6v6).
 - Pendiente: probar la grúa del cambio de campo en la playa (courttest no admite `map=beach`); 6v6 en media a 334 k (cerca de 350 k).
+
+## Sprint 5 · Tarea A (fx.js, 12-nov-2026)
+- **E3 `VB.FX.OPTS = ['cbColors','ballStyle']`** y `VB.FX.onSettings(s, k)` (k null, 'cbColors' o 'ballStyle'; también se aplica al final de
+  `init` y en `onGameStart`). Dos paletas creadas al arrancar (`buildPalettes`: PAL[0] clásica, PAL[1] daltonismo); `applyPal` las copia
+  en los colores activos (MARK_IN/OUT, RIM_IN/OUT, RIP_OUT, REV_IN/OUT, AIM_OR/OK/SV, AIM_ROLL, AIM_EDGE): nada por frame.
+  Daltonismo: dentro azul `#2f8cff`, fuera naranja `#ff8a00` (marca del bote, su onda y la huella del challenge; la X se queda), diana
+  ámbar `#ff9f1c` → azul `#38a3ff` al ir perfecta, saque blanco, «al filo» magenta `#ff4fc8` (el coral se confundía con el ámbar).
+  Las pistas de fase del 6v6 no cambian: se distinguen por forma (celda, punto, chevrón, barra, aro con filo); solo `dig` frente a
+  `net`/sin fase difieren solo por tono (azul frente a celeste), sin rojo ni verde.
+  `ballStyle 'contraste'`: `ballTexture('contraste')` = amarillo `#ffd21f` / azul oscuro `#13235a` / crema `#fff6c8` (logo claro en el
+  panel oscuro); se rehace una vez al cambiar y se libera la textura vieja. Sin mallas ni materiales nuevos.
+- **E6 diana del ejercicio**: 3 mallas de estado nuevas en el lote de calcomanías (`N` +3; 0 dibujos): `drillTarget` (celda 8, `#ffb238`),
+  `drillRing` (aro con filo, celda 2, `#ffd27a`) y `setPreview` (E1). Lee `g.drill.target {x, y, r[, r2]}` cada frame (apagada con
+  `g.drill` null o `target` null, con fundido). Diana con el filo blanco en r; aro en `r2` o, si no viene, saque 2·r, recepción 2,2·r,
+  otros sin aro. Entra con un «pop» al cambiar de diana o con `drillStage`; pulso 0,95-1,05 a 2 Hz. Con `ctx.reduceMotion` (o, sin él,
+  `prefers-reduced-motion`) quieta. `drillRep` con `pts >= 3` → dos ondas doradas del `ripPool` en la diana (×0,4 con softFlash).
+- **E1**: retícula `aimPoint().kind === 'roll'` con el verde de COLOCAR `#3fd6a4`; `aimPoint().edge > 0.5` → aro coral `#ff6a4d` y el
+  relleno con el color del timing (dorado medido sin los factores roll ×0,6 y filo ×(1 + 0,35·e) de VB.MASTERY). Marcador de
+  `VB.Sim.setPreview(g, out)` (solo con `g.mastery`, ni demo ni autopilot): aro en el destino, color y tamaño por tempo ('' blanco 0,95,
+  quick naranja 0,72, lane verde 0,95, high celeste 1,25). Sin estela con `hit.shot === 'roll'`; `hit.chain >= 3`: estela dorada y
+  `speedLines(9)`.
+- Medido: `STRICT=1 perf.js 844x390 20 low` 29/31 draw calls (media/pico), igual con cbColors + contraste (copia de perf.js que los
+  inyecta) y con `EXTRA=drill=atk&gymauto=1` (main.js aún no monta el ejercicio: partido normal). Capturas de la diana con
+  un `g.drill` falso en pabellón y playa.

@@ -12,12 +12,16 @@
  * Uso:
  *   node tools/fingerprint6.js            compara con tools/fp-2v2.json (sale con código 1 si algo cambia)
  *   node tools/fingerprint6.js --write    regenera tools/fp-2v2.json (SOLO con el código de referencia, antes de tocar la sim)
+ *   node tools/fingerprint6.js --variant mastery [--write]   E1 (sprint 5): 50 semillas × 150 s de partido humano con
+ *          createGame({mastery:true}) y el bot pulsando también COLOCAR y GOLPEAR→SALTAR en el aire; compara con / escribe
+ *          tools/fp-mastery.json (no la llama simtest: protege la maestría frente a cambios de otros lotes)
  * tools/simtest.js lo llama al final (sección «Huella 2v2»).
  */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
-const REF = path.join(__dirname, 'fp-2v2.json');
+const MASTERY = process.argv.includes('--variant') && process.argv[process.argv.indexOf('--variant') + 1] === 'mastery';
+const REF = path.join(__dirname, MASTERY ? 'fp-mastery.json' : 'fp-2v2.json');
 const NSEEDS = 50, SECS = 150;
 
 function load() {
@@ -35,7 +39,7 @@ function mulberry(seed) {
 
 /** Bot humano sencillo y determinista (azar propio): va al punto de juego, golpea cerca del balón, salta a veces,
  *  cambia de jugador alguna vez y saca con flotante o en salto. Solo lee el estado; nunca toca g.rng. */
-function makeBot(seed) {
+function makeBot(seed, mastery) {
   const r = mulberry(seed * 7919 + 13);
   let serveWait = -1, jumpCd = 0;
   return function (g, S) {
@@ -59,6 +63,7 @@ function makeBot(seed) {
     if (bd < 1.6 && b.z < 3.2 && r() < 0.35) inp.hit = true;
     if (--jumpCd <= 0 && Math.abs(p.x) < 2.5 && bd < 2.5 && b.z > 2.3 && r() < 0.2) { inp.jump = true; jumpCd = 60; }
     if (p.z > 0.6 && bd < 2 && r() < 0.05) inp.jump = true;
+    if (mastery && p.z > 0.6 && bd < 2 && r() < 0.04) inp.jset = true; // (E1: golpe colocado y finta; solo en la variante mastery)
     if (r() < 0.004) inp.switchPlayer = true;
     if (r() < 0.002) inp.hit = true;
     return inp;
@@ -80,6 +85,7 @@ function badgesFor(seed) {
 const DIFFS = ['easy', 'normal', 'hard', 'expert'];
 function optsFor(variant, seed) {
   if (variant === 'cpu') return { demo: true, seed: seed, stats: true };
+  if (variant === 'mastery') return Object.assign(optsFor('human', seed), { mastery: true });
   const o = { demo: false, seed: seed, stats: true, difficulty: DIFFS[seed % 4], ctrl: seed % 3 === 0 ? 'one' : 'both', points: [11, 15, 21, 25][seed % 4] };
   if (seed % 5 === 0) o.rookie = true;
   if (variant === 'attrs') { o.attrs = attrsFor(seed); o.badges = badgesFor(seed); if (seed % 3 === 1) o.autopilot = true; }
@@ -100,7 +106,7 @@ function runOne(VB, variant, seed) {
   const opts = optsFor(variant, seed);
   const g = S.createGame(opts);
   let nrng = 0; const rng0 = g.rng; g.rng = function () { nrng++; return rng0(); };
-  const bot = variant === 'cpu' || opts.autopilot ? null : makeBot(seed);
+  const bot = variant === 'cpu' || opts.autopilot ? null : makeBot(seed, variant === 'mastery');
   const pts = [], evc = {}, evs = [];
   const steps = Math.round(SECS / DT);
   for (let i = 0; i < steps; i++) {
@@ -120,7 +126,7 @@ function runOne(VB, variant, seed) {
 
 function runAll() {
   const VB = load(), out = [];
-  for (let s = 1; s <= NSEEDS; s++) for (const v of ['cpu', 'human', 'attrs']) out.push(runOne(VB, v, s));
+  for (let s = 1; s <= NSEEDS; s++) for (const v of MASTERY ? ['mastery'] : ['cpu', 'human', 'attrs']) out.push(runOne(VB, v, s));
   return out;
 }
 
@@ -128,11 +134,12 @@ function main() {
   const t0 = Date.now(), write = process.argv.includes('--write');
   const res = runAll();
   if (write) {
-    fs.writeFileSync(REF, JSON.stringify({ note: 'Huella 2v2 (tools/fingerprint6.js). cpu/human: código ANTERIOR al refactor del sprint 1 del 6v6 (sin cambios desde entonces). attrs: regenerada el 10-nov-2026 con «atributos que se notan» y otra vez en la integración del mismo día (precisión del toque ATTR_K.err y frenada al momento; cpu/human comprobadas idénticas antes, 100 de 100). No regenerar salvo cambio intencionado del 2v2.', n: res.length, runs: res }, null, 0).replace(/\},\{/g, '},\n{') + '\n');
-    console.log('huella 2v2 escrita:', res.length, 'partidas,', res.reduce((a, r) => a + r.pts.split(' ').filter(Boolean).length, 0), 'puntos,', (Date.now() - t0) + ' ms');
+    if (MASTERY) fs.writeFileSync(REF, JSON.stringify({ note: 'Huella de la maestría (E1, sprint 5; tools/fingerprint6.js --variant mastery): partido humano 2v2 con createGame({mastery:true}). Regenerar solo con un cambio intencionado de la maestría.', n: res.length, runs: res }, null, 0).replace(/\},\{/g, '},\n{') + '\n');
+    else fs.writeFileSync(REF, JSON.stringify({ note: 'Huella 2v2 (tools/fingerprint6.js). cpu/human: código ANTERIOR al refactor del sprint 1 del 6v6 (sin cambios desde entonces). attrs: regenerada el 10-nov-2026 con «atributos que se notan» y otra vez en la integración del mismo día (precisión del toque ATTR_K.err y frenada al momento; cpu/human comprobadas idénticas antes, 100 de 100). No regenerar salvo cambio intencionado del 2v2.', n: res.length, runs: res }, null, 0).replace(/\},\{/g, '},\n{') + '\n');
+    console.log(MASTERY ? 'huella de la maestría escrita:' : 'huella 2v2 escrita:', res.length, 'partidas,', res.reduce((a, r) => a + r.pts.split(' ').filter(Boolean).length, 0), 'puntos,', (Date.now() - t0) + ' ms');
     return 0;
   }
-  if (!fs.existsSync(REF)) { console.error('FALLO: falta tools/fp-2v2.json (node tools/fingerprint6.js --write con el código de referencia)'); return 1; }
+  if (!fs.existsSync(REF)) { console.error('FALLO: falta ' + 'tools/' + path.basename(REF) + ' (node tools/fingerprint6.js' + (MASTERY ? ' --variant mastery' : '') + ' --write con el código de referencia)'); return 1; }
   const ref = JSON.parse(fs.readFileSync(REF, 'utf8')).runs;
   let bad = 0;
   for (let i = 0; i < Math.max(ref.length, res.length); i++) {
@@ -145,8 +152,8 @@ function main() {
   }
   const npts = res.reduce((a, r) => a + r.pts.split(' ').filter(Boolean).length, 0);
   const nrng = res.reduce((a, r) => a + r.rng, 0);
-  if (bad) { console.error('FALLO: huella 2v2 distinta en', bad, 'de', res.length, 'partidas'); return 1; }
-  console.log('huella 2v2 idéntica:', res.length, 'partidas,', npts, 'puntos,', nrng, 'llamadas a g.rng,', (Date.now() - t0) + ' ms');
+  if (bad) { console.error(MASTERY ? 'FALLO: huella de la maestría distinta en' : 'FALLO: huella 2v2 distinta en', bad, 'de', res.length, 'partidas'); return 1; }
+  console.log(MASTERY ? 'huella de la maestría idéntica:' : 'huella 2v2 idéntica:', res.length, 'partidas,', npts, 'puntos,', nrng, 'llamadas a g.rng,', (Date.now() - t0) + ' ms');
   return 0;
 }
 

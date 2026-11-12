@@ -117,7 +117,7 @@ async function runSize(size) {
     check(tk === 'kit/false', 'tocar la pestaña Equipación la abre (' + tk + ')');
     { const r = await rectOf('#optList'); await down(8, r.x + 90, r.y); for (let k = 1; k <= 6; k++) { await move(8, r.x + 90 - k * 30, r.y + k); await sleep(16); } await up(8); await sleep(400); }
     const ts = await evalJs("document.querySelector('#setTabs .tab.on').getAttribute('data-tab')");
-    check(ts === 'a11y', 'deslizar a la izquierda pasa a la pestaña siguiente (' + ts + ')');
+    check(ts === 'info', 'deslizar a la izquierda pasa a la pestaña siguiente (' + ts + ')');
     await shot('ajustes');
     await tap('#btnPanelBack'); await sleep(450);
     check(await evalJs("!(VB.UI.isPanelOpen&&VB.UI.isPanelOpen())&&!document.getElementById('menu').hidden"), 'tocar VOLVER cierra el panel');
