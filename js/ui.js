@@ -770,8 +770,13 @@
           var cm = (Math.abs(e.dist || 0) * 100).toFixed(1).replace('.', ','), io = e.truthIn ? 'IN' : 'OUT';
           var who = e.team === 0 ? 'ti' : 'la CPU', ph = e.overturned ? 'Punto para ' + who : 'Se mantiene';
           if (!e.overturned && e.team === 0 && e.left) ph += e.left[0] === 1 ? ', te queda 1 challenge' : e.left[0] ? ', te quedan ' + e.left[0] : ', sin challenges';
-          banner(io, 'A ' + cm + ' cm de la línea. ' + ph, '', e.overturned ? (e.team === 0 ? 'win' : 'lose') : 'neutral', 3.2, 'challenge');
-          srSay(io + ', a ' + cm + ' centímetros. ' + ph + '. Tú ' + g.score[0] + ', CPU ' + g.score[1] + '.');
+          // dist (IN) = cuánto entra el borde interior de la huella desde el borde exterior de la línea: <= 5 cm (ancho de la
+          // línea) es lo que la pisa; hasta 2·radio + 5 cm la huella aún toca la línea; más, el bote cae dentro sin tocarla
+          var dIn = Math.abs(e.dist || 0), tl = 2 * ((VB.C && VB.C.BR) || 0.21) + 0.05;
+          var tx = !e.truthIn ? 'A ' + cm + ' cm de la línea. ' : dIn <= 0.05 ? 'Pisa la línea ' + cm + ' cm. ' : dIn < tl ? 'Sobre la línea. ' : 'Dentro. ';
+          var sx = !e.truthIn ? ', a ' + cm + ' centímetros. ' : dIn <= 0.05 ? ', pisa la línea ' + cm + ' centímetros. ' : dIn < tl ? ', sobre la línea. ' : ', dentro. ';
+          banner(io, tx + ph, '', e.overturned ? (e.team === 0 ? 'win' : 'lose') : 'neutral', 3.2, 'challenge');
+          srSay(io + sx + ph + '. Tú ' + g.score[0] + ', CPU ' + g.score[1] + '.');
           break;
         }
         case 'newSet':
@@ -1272,6 +1277,20 @@
     var on = false;
     if (ctx.state === 'playing' && g.mode === 'point' && cam.shot === 'point') { var d = camDbg(); on = !!(d && d.pf && d.pf.mode === 'hero' && d.pf.heroX < -0.5); }
     if (on !== sbDim) { sbDim = on; if (el.sb) el.sb.classList.toggle('dim', on); }
+  }
+  /** Marcador en juego (petición de Ferran, 12-nov: «que no moleste tanto mid-gameplay»): con el balón en juego (g.mode 'rally',
+   *  desde el golpe de saque hasta el bote o la falta) el marcador se queda en la mosca del tanteo (.sb.inplay, ver index.html «TV D3»).
+   *  Saque por hacer, punto, pausa, final: entero. Cada frame, solo compara un booleano.
+   *  La caja de #sb conserva el tamaño entero (min-width/min-height del momento de entrar): camera.js (readHud) la lee en el
+   *  mismo frame del punto, ANTES de UI.update, para que el héroe no quede debajo del marcador ya crecido. */
+  var sbLive = false;
+  function sbLiveTick(g) {
+    var on = ctx.state === 'playing' && !!g && g.mode === 'rally';
+    if (on === sbLive || !el.sb) return;
+    sbLive = on;
+    if (on) { el.sb.style.minWidth = el.sb.offsetWidth + 'px'; el.sb.style.minHeight = el.sb.offsetHeight + 'px'; }
+    else { el.sb.style.minWidth = ''; el.sb.style.minHeight = ''; }
+    el.sb.classList.toggle('inplay', on);
   }
   function camDbg() { try { return VB.CameraRig && VB.CameraRig.getDebug ? VB.CameraRig.getDebug() : null; } catch (e) { return null; } }
   /** ¿Ya cortó la cámara al plano de reacción? Con CAM-05 (cutN) lo sabe; si no, 0,47 s reales tras empezar el plano del punto
@@ -1786,6 +1805,7 @@
         } else if (tips) {
           if (nt === 1) coach = '1r toque · <b>' + (tbLabel1 === 'DEFENSA' ? 'Defensa' : 'Recepción') + '</b>: ve al círculo y pulsa ' + gl.hit;
           else if (nt === 2) coach = g.size === 6 && p.role === 'S' ? '2º toque · <b>Coloca</b> con ' + gl.hit + ' (o ' + gl.jset + ' en el aire); la dirección elige: ' + LANES6   // (6v6 D3: el carril lo manda el stick o las flechas)
+            : g.beach ? '2º toque · <b>Colocación</b>: bajo el balón, ' + gl.hit + ' a tiempo (o salta y ' + gl.jset + '); a destiempo pitan <b>dobles</b>'   // (12-nov: dobles por timing en la playa)
             : '2º toque · <b>Colocación</b>: ponte debajo del balón y pulsa ' + gl.hit + '. Si saltas y pulsas ' + gl.jset + ', colocas en el aire';
           else if (nt === 3) coach = aim3(g, p) ? '3r toque · <b>Apunta con ' + gl.aim + '</b> y golpea con ' + gl.hit + ' en lo alto'
             : '3r toque · <b>Ataque</b>: ponte bajo el balón, salta con ' + gl.jump + ' y golpea con ' + gl.hit + ' arriba';
@@ -3594,6 +3614,7 @@
       if (!gym.done) gymTick();
       if (bootStage < 2) tryReveal();
       if (ctx.state !== 'menu') hud(g, dt);
+      sbLiveTick(g);
       if (ctx.state === 'playing' || ctx.state === 'over') presUpdate(g, dt);
       // en pausa no se ve ningún banner, pestaña ni aviso corto (tampoco los que llegan con la pausa ya puesta: escenas de depuración)
       else if (ctx.state === 'paused' && held) {

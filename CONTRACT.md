@@ -148,7 +148,7 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
   tope conjunto peloteo + defensas 0,4, bloqueo directo +0,4, ace +0,25, remate perfecto humano +0,1, punto de set +0,15 o final apretado +0,28 (el mayor), punto de partido +0,45).
   Función nueva: `VB.Sim.clutchOf(s0, s1, target)`. Umbrales para los demás: `VB.HOLD.bigAt` (0,55, «punto grande»: cinta grande, pausa larga) y 0,8 («enorme»: casi solo en
   punto de set/partido). CPU vs CPU: ~20 % de los puntos ≥ 0,55 y < 5 % ≥ 0,8 fuera de punto de set/partido (simtest lo comprueba en 20 partidos completos).
-- **Constantes nuevas en `VB.C`**: `IN_TOL` (0,03 m: tolerancia de la llamada de línea; úsese también para pintar dentro/fuera), `WINDUP` (0,07 s de armado del brazo),
+- **Constantes nuevas en `VB.C`**: `IN_TOL` (0,21 m = `C.BR` desde el 12-nov-2026: dentro si cualquier parte de la huella del balón dibujado toca la línea, FIVB 8.3; úsese también para pintar dentro/fuera), `WINDUP` (0,07 s de armado del brazo),
   `ASSIST` (0,16 s), `SWING` (0,30 s), `HOLD_Z/HOLD_FWD/HOLD_SIDE` (balón en la mano izquierda del sacador antes del lanzamiento).
 - **Funciones añadidas**: `hitWindow(g, p?, out?)` → `{t (s hasta el contacto ideal; <0 ya pasó), press (s hasta el momento ideal de PULSAR = t − WINDUP), d, dz, reach, kind, zc, x,y,z, active, canReach, attack, jumpT}`
   (reutiliza un objeto interno si no se pasa `out`), `aimPoint(g, out?, move?)` → `{x,y,kind:'serve'|'spike'|'tip'|'free', mode:1|2, aimed, spread, spreadPoor}`
@@ -183,7 +183,8 @@ main.js convierte con `VB.CameraRig.getBasis()` = `{fx, fy, rx, ry}` (adelante y
   aunque se pida otro), cambio de campo cada 7 puntos jugados (cada 5 en el 3r; sin el de los 8), el toque de bloqueo cuenta como toque
   (`g.touches = 1` tras él; el bloqueador puede dar el siguiente), la dejada se juega de nudillos («pokey»: más tensa; `hit.pokey = true`,
   `shot` sigue `'tip'`; textos «Pokey fuera»), y una colocación de dedos «poor» puede ser **dobles** (`point reason 'double'`, texto
-  «Dobles en la colocación de dedos»). Sin rotación (el saque alterna en el equipo como en 2v2). `newMatch.venue`. Evento `courtChange`
+  «Dobles en la colocación de dedos»; humano: según el timing, también en salto, `VB.Sim.dblSetP(te, grade, jset)` y
+  `VB.BEACH.dblA0/dblA1/dblP0/dblP1/dblJump/dblMax`, azar por `hash01`, no `g.rng`). Sin rotación (el saque alterna en el equipo como en 2v2). `newMatch.venue`. Evento `courtChange`
   con `why: 'swap'` (+ `every` 7|5, `pause` = `VB.BEACH.swapHold`). Cambiar el escenario en mitad de un partido espera al siguiente (main.js).
 - **Saque**: `serveReady` → silbato a los 0,7 s (antes no se puede lanzar) → GOLPEAR lanza flotante / SALTAR lanza en salto (`toss`)
   → GOLPEAR en el momento justo golpea (`hit kind:'serve'`). Si el balón cae sin golpearlo o pasan 8 s → falta de saque (`point reason:'serve'`).

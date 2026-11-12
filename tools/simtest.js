@@ -499,16 +499,17 @@ function runHlMatch(j) {
   const label = 'calibración del highlight (semilla ' + j.seed + ')';
   const g = S.createGame({ demo: true, seed: j.seed, stats: true }), rit = ritualChecker(label), evs = [];
   const pf = { streakT: -1, streakN: 0, setPoint: -1, matchPoint: -1, issues: 0 }, pts = [], trace = [];
-  let done = false, dribbles = 0, bounces = 0;
+  let done = false, dribbles = 0, bounces = 0, pendB = 0, redo = 0;
   try {
     for (let i = 0; i < 70 * 60 * C.SIM_HZ && !done; i++) {
       S.step(g, DT, null); evs.length = 0; S.drainEvents(g, evs); rit.step(g, evs);
       for (const e of evs) {
         if (e.type === 'newSet' || e.type === 'newMatch') { pf.streakT = -1; pf.streakN = 0; }
-        if (e.type === 'serveReady') { pf.setPoint = e.setPoint; pf.matchPoint = e.matchPoint; if (g.ritual.on) bounces += g.ritual.bounces; }
-        if (e.type === 'dribble') { dribbles++; trace.push('d' + e.n + '/' + e.of + '@' + e.speed); }
-        // challenge (B2): el punto anulado se vuelve a pitar; el recuento propio vuelve al de antes de ese punto
-        if (e.type === 'challenge') pf.rev = true;
+        if (e.type === 'serveReady') { pf.setPoint = e.setPoint; pf.matchPoint = e.matchPoint; pendB = g.ritual.on ? g.ritual.bounces : 0; bounces += pendB; }
+        if (e.type === 'dribble') { dribbles++; pendB--; trace.push('d' + e.n + '/' + e.of + '@' + e.speed); }
+        // challenge (B2): el punto anulado se vuelve a pitar; el recuento propio vuelve al de antes de ese punto. Pedido con el saque
+        // siguiente ya preparado (modo 'serve'), los botes del ritual que aún no se dieron se cancelan (y se rehace el saque)
+        if (e.type === 'challenge') { pf.rev = true; if (pendB > 0) { bounces -= pendB; redo++; } pendB = 0; }
         if (e.type === 'challengeResult') pf.rev = false;
         if (e.type === 'point') {
           if (pf.rev && pf.prev) { Object.assign(pf, pf.prev); pf.rev = false; }
@@ -527,7 +528,7 @@ function runHlMatch(j) {
     }
   } catch (e) { fail(label + ' excepción: ' + (e && e.stack || e)); }
   if (!done) fail(label + ': el partido no acaba en 70 min de juego');
-  return { kind: 'hl', seed: j.seed, pts, trace: trace.join(';'), dribbles, bounces, cpuServes: rit.cpu, serves: rit.serves, failures };
+  return { kind: 'hl', seed: j.seed, pts, trace: trace.join(';'), dribbles, bounces, cpuServes: rit.cpu, serves: rit.serves, redo, failures };
 }
 /** Banda calibrada (SIM-05): en 20 partidos CPU vs CPU, entre el 15 y el 25 % de los puntos con highlight >= VB.HOLD.bigAt (la
  *  cinta grande y la pausa larga) y menos del 5 % >= 0,8 fuera de los puntos de set/partido. Medido con 160 partidos de demo
@@ -558,7 +559,8 @@ function hlCalibration(res) {
   if (!holds[3.6] || !holds[2.2]) fail('calibración: faltan pausas de set (3,6) o de partido (2,2): ' + JSON.stringify(holds));
   // ritual: todos los saques de la demo son de la CPU, con un `dribble` por cada bote programado
   // (la demo bota VB.RITUAL.demoBounces veces: hoy 1, así que dribbles >= saques)
-  if (cs !== sv || !(dr >= sv * VB.RITUAL.demoBounces) || dr !== bo) fail('calibración: ritual ' + JSON.stringify({ saques: sv, cpu: cs, botes: bo, dribbles: dr }));
+  const redo = res.reduce((a, r) => a + (r.redo || 0), 0); // saques preparados y rehechos por un challenge (sus botes no se dieron)
+  if (cs !== sv || !(dr >= (sv - redo) * VB.RITUAL.demoBounces) || dr !== bo) fail('calibración: ritual ' + JSON.stringify({ saques: sv, cpu: cs, botes: bo, dribbles: dr }));
   if (failures === f0) console.log('  calibración del highlight y cobertura de señal/landSide/pausa/ritual/dribble OK');
 }
 
@@ -914,17 +916,34 @@ if (ONLY !== 'matrix') {
     if (!(b.z > 1.15 && b.z < 1.4 && fwd > 0.25 && fwd < 0.45 && lat > 0.08)) fail(`balón en la mano mal colocado z=${b.z.toFixed(2)} delante=${fwd.toFixed(2)} izq=${lat.toFixed(2)}`);
     else console.log(`balón del sacador a ${b.z.toFixed(2)} m, ${fwd.toFixed(2)} m delante, ${lat.toFixed(2)} m a la izquierda OK`);
   }
-  // llamada de línea: centro del balón 2 cm fuera = dentro (huella sobre la línea); 8 cm fuera = fuera
-  for (const [off, inside] of [[0.02, true], [0.08, false], [0.2, false]]) {
-    for (const axis of ['y', 'x']) {
-      const gl = S.createGame({ demo: false, seed: 40 });
-      rallyAt(gl, axis === 'y' ? { x: -5, y: -(C.HW + off), z: 0.6, vz: -3 } : { x: -(C.HL + off), y: 0, z: 0.6, vz: -3 });
-      gl.lastTeam = 0; gl.touchTeam = 0; gl.lastKind = 'spike'; gl.touches = 3; for (const p of gl.players) { p.x = S.side(p.team) * 8.5; p.y = 3; }
-      const ld = stepUntil(gl, 'land', 240).find(e => e.type === 'land');
-      if (!ld || ld.truthIn !== inside) fail(`línea ${axis} a ${off} m: truthIn=${ld && ld.truthIn}`); // (lo cantado, ld.inside, puede llevar error arbitral B1)
+  // llamada de línea (regla FIVB 8.3, Ferran 12-nov-2026): dentro si CUALQUIER parte de la huella del balón (radio C.BR, el balón
+  // que se dibuja) toca la línea. Centro fuera del borde exterior de la línea por menos de un radio = dentro; por más = fuera.
+  // Pabellón y playa, línea lateral (y) y de fondo (x)
+  { const R = C.BR, bad = [];
+    if (C.IN_TOL !== C.BR) bad.push('C.IN_TOL ' + C.IN_TOL + ' != C.BR ' + C.BR);
+    for (const venue of ['hall', 'beach']) for (const [off, inside] of [[0.02, true], [0.08, true], [R - 0.005, true], [R + 0.005, false], [R + 0.08, false], [-0.05, true]]) {
+      for (const axis of ['y', 'x']) {
+        const gl = S.createGame({ demo: false, seed: 40, venue }), HL = gl.HL, HW = gl.HW;
+        rallyAt(gl, axis === 'y' ? { x: -5, y: -(HW + off), z: 0.6, vz: -3 } : { x: -(HL + off), y: 0, z: 0.6, vz: -3 });
+        gl.lastTeam = 0; gl.touchTeam = 0; gl.lastKind = 'spike'; gl.touches = 3; for (const p of gl.players) { p.x = S.side(p.team) * 12; p.y = 5.9; }
+        const ld = stepUntil(gl, 'land', 240).find(e => e.type === 'land');
+        // (lo cantado, ld.inside, puede llevar error arbitral B1; la verdad, truthIn, y la distancia firmada, no)
+        if (!ld || ld.truthIn !== inside || Math.abs(ld.dist - (R - off)) > 0.012 || (S.lineDist(ld.x, ld.y, gl) >= 0) !== inside)
+          bad.push(venue + ' ' + axis + ' a ' + off.toFixed(3) + ' m: truthIn=' + (ld && ld.truthIn) + ' dist=' + (ld && ld.dist.toFixed(3)));
+      }
     }
+    // esquinas: la huella es un DISCO; fuera de la esquina cuenta la distancia a la esquina (no un cuadrado de lado R)
+    for (const venue of ['hall', 'beach']) {
+      const gl = S.createGame({ demo: false, seed: 41, venue }), HL = gl.HL, HW = gl.HW;
+      for (const [o, inside] of [[R / Math.SQRT2 - 0.004, true], [R / Math.SQRT2 + 0.004, false], [R - 0.0001, false], [0.1, true]]) {
+        const d = S.lineDist(HL + o, HW + o, gl);
+        if ((d >= 0) !== inside || Math.abs(d - (R - o * Math.SQRT2)) > 1e-9) bad.push(venue + ' esquina +' + o.toFixed(4) + ': lineDist=' + d.toFixed(4));
+      }
+      if (Math.abs(S.lineDist(HL - 0.3, 0.2, gl) - (R + 0.3)) > 1e-9) bad.push(venue + ' dentro: lineDist cambió');
+    }
+    if (bad.length) fail('llamada de línea (huella entera): ' + bad.join('; '));
+    else console.log('llamada de línea: huella entera del balón (radio ' + R + ' m): centro a ' + (R - 0.005).toFixed(3) + ' m fuera = dentro, a ' + (R + 0.005).toFixed(3) + ' = fuera (pabellón y playa), esquinas en disco OK');
   }
-  console.log('llamada de línea (2 cm fuera = dentro, 8 cm = fuera) OK');
   // saque / remate que roza la cinta y cae dentro sin que nadie lo toque: ace / kill (no "falta"); el que va a la red
   // y cae en su propio campo sigue siendo error
   let ncBad = 0;
@@ -1522,6 +1541,22 @@ if (ONLY !== 'matrix') {
       res.push(['challenge acertado anula el punto', left > 6.9 && cpuNo && ok && rv && rv.overturned && rv.dur === 4.5 && cr && cr.overturned && g.review === null &&
         g.score[0] === s0[0] + 1 && g.score[1] === s0[1] - 1 && g.challenges[0] === 2 && cr.left[0] === 2 && w0 === 1 && S.canChallenge(g, 0) === 0 && S.canChallenge(g, 1) === 0 &&
         ev.some(e => e.type === 'point' && e.team === 0), [left, s0, g.score, g.challenges]]); }
+    // huella entera (Ferran, 12-nov-2026): la verdad del challenge = la huella dibujada (radio C.BR) toca la línea. (1) bote en el
+    // campo de la CPU con la huella pisando la línea 5 mm (centro a C.BR − 5 mm fuera), cantado fuera: el challenge lo da DENTRO;
+    // (2) bote en el campo del humano con 5 mm de hueco (centro a C.BR + 5 mm fuera), cantado dentro: el challenge lo da FUERA.
+    // La revisión (g.review.x/y, lo que pinta fx.js placeReview) lleva el centro del bote: |y| − HW − C.BR = −dist
+    { const chk = (team, dist, wantIn) => {
+        for (let s = 1; s < 4000; s++) {
+          const r = landAt(s, dist, team), g = r.g, c = g.call; if (!c || !c.wrong || c.team !== 0) continue;
+          const ok = S.challenge(g, 0), rv = g.review && Object.assign({}, g.review), cr = review(g, 0).find(e => e.type === 'challengeResult');
+          const geo = rv ? Math.abs(Math.abs(rv.y) - C.HW - C.BR + dist) < 0.012 : false;
+          return { ok: ok && !!cr && cr.truthIn === wantIn && cr.overturned && rv.truthIn === wantIn && geo && (S.lineDist(rv.x, rv.y) >= 0) === wantIn,
+            info: [s, cr && cr.truthIn, cr && +cr.dist.toFixed(4), rv && +(Math.abs(rv.y) - C.HW).toFixed(4)] };
+        }
+        return { ok: false, info: 'sin bote mal cantado' };
+      };
+      const a = chk(0, 0.005, true), b = chk(1, -0.005, false);
+      res.push(['challenge con la huella entera: pisa la línea 5 mm = IN; 5 mm de hueco = OUT', a.ok && b.ok, [a.info, b.info]]); }
     // acertado en punto de set, pedido cuando ya ha empezado el set siguiente: el set vuelve atrás
     { const pre = g => { g.score = [23, 24]; g.serving = 1; };
       const r = findWrong(pre, true), g = r.g; const setW = r.pt.setWon;
@@ -1557,9 +1592,9 @@ if (ONLY !== 'matrix') {
       // y rara vez con un bote lejos de la línea (> 10 cm: nunca)
       let far = 0; for (let s = 1; s <= 60; s++) { const r = landAt(7000 + s, 0.4, 0); for (let i = 0; i < 120 * 3.2; i++) { S.step(r.g, DT, null); if (S.drainEvents(r.g).some(e => e.type === 'challenge')) { far++; break; } } }
       res.push(['la CPU pide challenge', n > 100 && asked / n > 0.08 && asked / n < 0.4 && good / asked > 0.5 && dOk && far === 0 && accepted === asked, [n, asked, good, far]]); }
-    const bad = res.filter(r => !r[1]);
+    const bad = res.filter(r => !r[1]), cpuR = res.find(r => r[0] === 'la CPU pide challenge');
     if (bad.length) fail('error arbitral / challenge: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
-    else console.log('error arbitral (tasas ' + res[0][2][0].join('/') + ') y challenge (acertado, punto de set, fallado, ventana 7 s, CPU ' + res[6][2][1] + '/' + res[6][2][0] + ') OK');
+    else console.log('error arbitral (tasas ' + res[0][2][0].join('/') + ') y challenge (acertado, punto de set, fallado, ventana 7 s, CPU ' + cpuR[2][1] + '/' + cpuR[2][0] + ', huella entera IN/OUT a ±5 mm) OK');
   }
   // modo «controlar 1 jugador» (createGame({ctrl:'one'})): el humano (bot 'bueno') lleva siempre al mismo jugador y la IA al
   // compañero en todo (toques, saque, bloqueo). g.ctrl no cambia nunca, el compañero toca y saca, pasa/coloca al humano, la IA
@@ -2432,7 +2467,7 @@ if (ONLY !== 'matrix') {
       rallyAt(g, { x, y, z: 0.5, vz: -2 });
       const ev = stepUntil(g, 'land', 300).find(e => e.type === 'land'); return ev ? ev.inside : null;
     };
-    const lines = { fondo85: [landAt('hall', -8.5, 0), landAt('beach', -8.5, 0)], lado43: [landAt('hall', -4, 4.3), landAt('beach', -4, 4.3)],
+    const lines = { fondo85: [landAt('hall', -8.5, 0), landAt('beach', -8.5, 0)], lado43: [landAt('hall', -4, 4.35), landAt('beach', -4, 4.35)], // (4,35: la huella, radio C.BR, queda a 14 cm, fuera de la banda de error B1)
       dentro: [landAt('beach', -7.6, 3.6)], fondo2: [landAt('beach', 8.4, -1)] };
     res.push(['(b) balón fuera más allá de 8 m de fondo y 4 m de lateral (en el pabellón, dentro)', lines.fondo85[0] === true && lines.fondo85[1] === false &&
       lines.lado43[0] === true && lines.lado43[1] === false && lines.dentro[0] === true && lines.fondo2[0] === false, lines]);
@@ -2494,6 +2529,29 @@ if (ONLY !== 'matrix') {
     rj.minZ = +rj.minZ.toFixed(3);
     res.push(['(j) saque de la CPU en la arena sin bote: toquecitos `juggle`, nunca `dribble`, balón alto y misma hora de lanzamiento', rj.serves > 20 && rj.drib === 0 &&
       rj.jug > 0 && rj.low === 0 && rj.late === 0 && rj.cnt === 0, rj]);
+    // (k) dobles en la colocación de dedos del HUMANO en la playa (Ferran, 12-nov-2026): según lo malo que sea el timing, más en salto;
+    // nunca con nota perfect/good ni en el pabellón. Azar hash01: la cuenta de g.rng no cambia
+    { const setAt = (seed, te, jump, venue) => {
+        const g = S.createGame({ seed, ctrl: 'one', venue, demo: false }), h = g.teams[0][0], m = g.teams[0][1];
+        S.drainEvents(g); g.time = 3 + seed * 0.37;
+        rallyAt(g, { x: 1.6, y: 0, z: 3.2, vz: -1 }); h.x = 1.6; h.y = 0; h.z = jump ? 0.9 : 0; g.touchTeam = 0; g.touches = 1; g.lastPlayer = m; g.lastKind = 'pass'; g.ctrl = h;
+        S._hit(g, h, null, te, jump ? 'jset' : '');
+        const ev = S.drainEvents(g), pt = ev.find(e => e.type === 'point'), hv = ev.find(e => e.type === 'hit');
+        return { dbl: !!(pt && pt.reason === 'double' && pt.text === 'Dobles en la colocación de dedos'), grade: hv && hv.grade, jset: hv && hv.jset };
+      };
+      const rate = (te, jump, venue, N) => { let d = 0, gd = 0; for (let s = 1; s <= N; s++) { const r = setAt(s, (s % 2 ? 1 : -1) * te, jump, venue); if (r.dbl) d++; else if (r.grade !== 'poor') gd++; } return { p: d / N, okGrades: gd }; };
+      const N = 400, tab = {}, ok = [];
+      for (const jump of [false, true]) for (const te of [0, 0.06, 0.09, 0.13, 0.2, 0.3]) { const r = rate(te, jump, 'beach', N); tab[(jump ? 'salto ' : 'suelo ') + te] = +(100 * r.p).toFixed(1); }
+      const hall = [rate(0.3, false, 'hall', 200).p, rate(0.3, true, 'hall', 200).p];
+      // perfect/good nunca; poor crece con |te|; en salto más que en el suelo; pabellón 0
+      ok.push(tab['suelo 0'] === 0 && tab['suelo 0.06'] === 0 && tab['suelo 0.09'] === 0 && tab['salto 0'] === 0 && tab['salto 0.06'] === 0 && tab['salto 0.09'] === 0);
+      ok.push(tab['suelo 0.13'] > 4 && tab['suelo 0.2'] > tab['suelo 0.13'] && tab['suelo 0.3'] > tab['suelo 0.2'] && tab['suelo 0.3'] < 55);
+      ok.push(tab['salto 0.13'] > tab['suelo 0.13'] && tab['salto 0.2'] > tab['suelo 0.2'] && tab['salto 0.3'] < 75);
+      ok.push(hall[0] === 0 && hall[1] === 0);
+      // una colocación buena o perfecta nunca, con cualquier |te| de la ventana buena: barrido fino
+      let goodDbl = 0; for (let s = 1; s <= 600; s++) { const te = ((s * 0.618034) % 1) * 0.4, r = setAt(s, te, s % 2 === 0, 'beach'); if (r.dbl && Math.abs(te) * (s % 2 === 0 ? VB.JSET.win : 1) <= C.W_GOOD) goodDbl++; }
+      ok.push(goodDbl === 0 && S.dblSetP(0.05, 'good', true) === 0 && S.dblSetP(0.4, 'perfect', false) === 0 && S.dblSetP(0.2, 'poor', true) > S.dblSetP(0.2, 'poor', false));
+      res.push(['(k) dobles del humano en la colocación de dedos según el timing (% por |te|; salto > suelo; perfect/good y pabellón 0)', ok.every(Boolean), { pct: tab, pabellon: hall, okMal: ok.map(Number).join('') }]); }
     const bad = res.filter(r => !r[1]);
     if (bad.length) fail('vóley playa: ' + bad.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('; '));
     console.log('\nVóley playa (' + NB + ' partidos, ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)' + (failures === f0 ? ' OK' : '') + '\n  ' + res.map(r => r[0] + ' ' + JSON.stringify(r[2])).join('\n  '));

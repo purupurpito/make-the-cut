@@ -45,8 +45,10 @@
     DIVE: 1.05,      // alcance extra lanzándose en plancha
     SIM_HZ: 120,     // paso fijo recomendado (main.js)
     // --- timing ---
-    IN_TOL: 0.03,    // "dentro": el centro del balón cae como mucho 3 cm fuera del borde exterior de la línea
-                     // (huella de contacto del balón real; el balón se dibuja más grande por legibilidad)
+    IN_TOL: 0.21,    // "dentro" (regla FIVB 8.3: el balón toca el suelo con CUALQUIER parte de él, líneas incluidas): el centro del
+                     // balón cae como mucho un radio de balón (C.BR, el MISMO que se dibuja) fuera del borde exterior de la línea.
+                     // 1 px de la huella sobre la línea = dentro. Antes 0,03 (huella del balón real): la huella dibujada en la
+                     // revisión pisaba la línea y salía «OUT» (Ferran, 12-nov-2026). Es = C.BR (simtest lo comprueba)
     SWING: 0.30,     // duración del gesto de golpeo (ventana de contacto tras pulsar)
     WINDUP: 0.07,    // armado del brazo: lo ideal es PULSAR esto antes del contacto ideal (te = pulsación + WINDUP - ideal)
     ASSIST: 0.16,    // el gesto espera al momento ideal si llega antes de esto (el contacto se ve en su sitio)
@@ -712,6 +714,16 @@
     return Math.max(0.05, 0.5 - 0.45 * (a - C.W_GOOD) / 0.2);
   }
   function gradeOf(q) { return q >= 0.78 ? 'perfect' : q >= 0.45 ? 'good' : 'poor'; }
+  /** Playa: prob. de que se piten dobles en una colocación de dedos del HUMANO (hit). te = desfase ya escalado por la ventana
+   *  (atributos, insignias, ×JSET.win en salto), grade = nota del toque. 'perfect'/'good' nunca, ni |te| <= dblA0 (= C.W_GOOD).
+   *  'poor': rampa lineal con |te| de BEACH.dblA0 (p dblP0) a BEACH.dblA1 (p dblP1) y plana después; en salto ×dblJump (tope dblMax). */
+  function dblSetP(te, grade, jset) {
+    var a = Math.abs(te || 0);
+    if (grade !== 'poor' || a <= BEACH.dblA0) return 0; // mal toque por la distancia, no por el timing: no se pita
+    var k = clamp((a - BEACH.dblA0) / (BEACH.dblA1 - BEACH.dblA0), 0, 1);
+    var pr = BEACH.dblP0 + (BEACH.dblP1 - BEACH.dblP0) * k;
+    return Math.min(BEACH.dblMax, jset ? pr * BEACH.dblJump : pr);
+  }
   /** Dispersión (m, radio) del remate del HUMANO según la calidad q: perfecto (q >= 0,9) casi exacto (<= 0,1 m),
    *  0,78 ~0,28, 0,5 ~0,74, 0,2 ~1,3. Monótona decreciente. */
   function spikeSpread(q) {
@@ -1022,11 +1034,20 @@
       q = ek > 1 ? q * (1 - AK.errQ[0] * (ek - 1)) : q + (1 - q) * (1 - ek) * AK.errQ[1];
       grade = gradeOf(q);
     }
-    // playa: la colocación de dedos se pita más (dobles). Un 2º toque de dedos (balón alto, no en salto ni de ataque, cuerpo o
-    // plancha) con mal timing es falta con prob. BEACH.dblSet (la IA, ×dblSetAI). Solo en la playa: el pabellón no gasta azar aquí
-    if (g.beach && count === 2 && grade === 'poor' && !jset && shot !== 'body' && shot !== 'dive' && shot !== 'tip' && b.z - p.z > 1.6 &&
-        !atkC0 && g.rng() < BEACH.dblSet * (human ? 1 : BEACH.dblSetAI)) {
-      fault(g, t, 'double', 'Dobles en la colocación de dedos', p); return;
+    // playa: la colocación de dedos se pita más (dobles). Solo en la playa: el pabellón no pasa por aquí.
+    //  - HUMANO: colocación de dedos (2º toque con el balón alto, o colocación en salto en cualquier toque) con mal timing: falta
+    //    con prob. dblSetP (crece con el desfase |te|, más en salto; nunca con 'perfect'/'good'). Azar hash01 (no g.rng): la
+    //    secuencia de g.rng no cambia por esto (Ferran, 12-nov-2026)
+    //  - IA: como antes, 2º toque de dedos 'poor' (no en salto) con prob. BEACH.dblSet × dblSetAI, con g.rng
+    if (g.beach && shot !== 'body' && shot !== 'dive' && shot !== 'tip' && (jset || !atkC0)) { // (en salto el contacto es «de ataque» por la altura)
+      if (human) {
+        var pDbl = (jset || (count === 2 && b.z - p.z > 1.6)) ? dblSetP(te, grade, jset) : 0;
+        if (pDbl > 0 && hash01(g.seed, Math.round(g.time * 1000), 0x0D0B1E + p.id * 7 + count) < pDbl) {
+          fault(g, t, 'double', 'Dobles en la colocación de dedos', p); return;
+        }
+      } else if (count === 2 && grade === 'poor' && !jset && !atkC0 && b.z - p.z > 1.6 && g.rng() < BEACH.dblSet * BEACH.dblSetAI) {
+        fault(g, t, 'double', 'Dobles en la colocación de dedos', p); return;
+      }
     }
     // 2v2: la colocación de la IA hereda la calidad del pase que le llega (SETQ.pass). Un pase malo (del humano o de la IA) da
     // una colocación peor y, con ella, un ataque más flojo o una bola de seguridad del compañero IA (abajo y ai.js)
@@ -1642,16 +1663,23 @@
   }
 
   /* ---------- Error arbitral (B1) ----------
-   * Distancia firmada (m) del borde de la huella del balón a la línea más cercana (> 0 dentro): dentro <=> dist >= 0,
-   * igual que el criterio de siempre de land() (C.IN_TOL). Con |dist| <= 0,10 el árbitro puede cantar al revés (REF_ERR),
+   * Distancia firmada (m) del borde de la huella del balón (radio C.IN_TOL = C.BR, el balón dibujado) al borde exterior de la
+   * línea más cercana: > 0 la huella pisa la línea o cae dentro (cuánto la pisa), < 0 hueco entre la huella y la línea. Dentro
+   * <=> dist >= 0, el mismo criterio para land(), el árbitro, el challenge, la CPU (B3, ai.js leaveServe) y la huella de fx.js. Con |dist| <= 0,10 el árbitro puede cantar al revés (REF_ERR),
    * sin avisar. Gasta g.rng solo en esos botes justos. */
   // Calibrado 9-nov-2026 (antes p 0.35/0.15/0.05): en partido casi no se veía (ver notes/sim.md, «error arbitral visible»).
   // La banda sigue en <= 10 cm; un árbitro solo, sin jueces de línea, con la huella a 1-2 cm de la línea es casi una moneda.
   // Es el error BASE (Partido rápido, sin modificador); los niveles de competición futuros lo escalarán.
   var REF_ERR = VB.REF_ERR = { d1: 0.02, p1: 0.45, d2: 0.05, p2: 0.30, d3: 0.10, p3: 0.15 };
-  /** Distancia (m) del bote (x, y) a la línea más cercana (+ dentro, − fuera, con C.IN_TOL). g = partida (su pista: 16×8 en la
-   *  playa); sin g, la pista de 18×9. */
-  function lineDist(x, y, g) { var hl = g ? g.HL : C.HL, hw = g ? g.HW : C.HW; return Math.min(hl + C.IN_TOL - Math.abs(x), hw + C.IN_TOL - Math.abs(y)); }
+  /** Distancia (m) del borde de la huella del bote (x, y) a la línea más cercana (+ dentro, − fuera; huella de radio C.IN_TOL).
+   *  Las líneas son parte del campo: g.HL/g.HW miden hasta su borde EXTERIOR (arena.js las pinta por dentro). g = partida (su
+   *  pista: 16×8 en la playa); sin g, la pista de 18×9. */
+  function lineDist(x, y, g) {
+    var hl = g ? g.HL : C.HL, hw = g ? g.HW : C.HW, ox = Math.abs(x) - hl, oy = Math.abs(y) - hw;
+    // centro fuera por las dos líneas (esquina): hueco del DISCO de la huella a la esquina, no un cuadrado de lado R
+    if (ox > 0 && oy > 0) return C.IN_TOL - Math.sqrt(ox * ox + oy * oy);
+    return Math.min(hl + C.IN_TOL - Math.abs(x), hw + C.IN_TOL - Math.abs(y)); // resto: la línea más cercana (mismo redondeo que antes)
+  }
   function refErrP(dist, g) {
     var R = (g && g.refErr) || REF_ERR, a = Math.abs(dist);
     return a < R.d1 ? R.p1 : a < R.d2 ? R.p2 : a <= R.d3 ? R.p3 : 0;
@@ -1677,7 +1705,7 @@
   }
   function land(g) {
     var b = g.ball;
-    // el balón toca el suelo justo debajo de su centro: dentro si esa huella toca la línea (las líneas son parte del campo)
+    // el balón toca el suelo justo debajo de su centro: dentro si su huella (radio C.BR, la que se ve) toca la línea (las líneas son parte del campo)
     var dist = lineDist(b.x, b.y, g), truthIn = dist >= 0, st = b.x > 0 ? 0 : 1;
     var oT = landOutcome(g, truthIn, st), calledIn = truthIn, oC = oT, oW = landOutcome(g, !truthIn, st);
     // B1: solo si cantar al revés cambia el punto (un balón que no cruzó la red da el mismo punto dentro o fuera)
@@ -1708,10 +1736,12 @@
   /** Pausa clásica (demo, autopilot, tests sin g.present): la de siempre. */
   var HOLD_LEGACY = { routine: 1.9, set: 3.6, match: 2.2, eight: 1.4 };
   /** Reglas de VÓLEY PLAYA (g.beach; solo lectura para los demás). Cambio de campo cada `swap` puntos jugados (`swap3` en el 3r
-   *  set) con `swapHold` s más de pausa (0 en la demo del menú); colocación de dedos: prob. de dobles de un 2º toque «poor»
-   *  (`dblSet`, la IA ×`dblSetAI`); pokey (dejada de nudillos): cima sobre el contacto `pokeyUp` y mínima `pokeyNet` sobre la red.
+   *  set) con `swapHold` s más de pausa (0 en la demo del menú); colocación de dedos: dobles del HUMANO con nota «poor» según el
+   *  desfase |te| (dblSetP: de `dblP0` a |te| = `dblA0` hasta `dblP1` a `dblA1`, ×`dblJump` en salto, tope `dblMax`), la IA con
+   *  prob. `dblSet`×`dblSetAI` en un 2º toque «poor» (no en salto); pokey (dejada de nudillos): cima sobre el contacto `pokeyUp` y mínima `pokeyNet` sobre la red.
    *  Sets a 21 y el 3r a 15 (g.points = 21, setTarget), pista 16×8 (C.BEACH), el bloqueo cuenta como toque. */
-  var BEACH = VB.BEACH = { swap: 7, swap3: 5, swapHold: 1.0, dblSet: 0.3, dblSetAI: 0.5, pokeyUp: 0.25, pokeyNet: 0.6, points: 21, points3: 15 };
+  var BEACH = VB.BEACH = { swap: 7, swap3: 5, swapHold: 1.0, dblSet: 0.3, dblSetAI: 0.5,
+    dblA0: 0.10, dblA1: 0.30, dblP0: 0.08, dblP1: 0.40, dblJump: 1.6, dblMax: 0.7, pokeyUp: 0.25, pokeyNet: 0.6, points: 21, points3: 15 };
   /** Pesos de highlightOf (SIM-01, calibrados en SIM-05; ver notes/sim.md §P3). Solo lectura para los demás módulos. */
   var HL = VB.HL = { base: 0.15, rallyFrom: 4, rally: 0.025, rallyMax: 0.35, dig: 0.08, digMax: 0.3, playMax: 0.4,
     block: 0.4, ace: 0.25, perfectKill: 0.1, setPoint: 0.15, clutch: 0.28, clutchLast: 8, clutchGap: 2, matchPoint: 0.45,
@@ -2282,7 +2312,7 @@
     var b = g.ball, G = gEff(b);
     var ft = (b.vz + Math.sqrt(b.vz * b.vz + 2 * G * Math.max(0, b.z - C.BR))) / G;
     var lx = b.x + b.vx * ft, ly = b.y + b.vy * ft, sr = side(rt);
-    if (Math.abs(lx) > g.HL + 0.15 || Math.abs(ly) > g.HW + 0.15 || lx * sr <= 0) return 0;
+    if (lineDist(lx, ly, g) < 0 || lx * sr <= 0) return 0; // fuera = lineDist < 0 (también en las esquinas)
     // ritmo: lo que cuenta para el receptor es el TIEMPO de vuelo (un flotante largo va más rápido solo
     // porque recorre más distancia: no por eso es más difícil); 1,0 s o menos = muy rápido
     var pace = smooth01((1.5 - ft) / 0.55);
@@ -2693,7 +2723,7 @@
     // remate apuntado (A2) y challenge (B2)
     statProf: statProf, attrK: attrK, profOf: profOf, ATTR_KEYS: ATTR_KEYS, spikeSpread: spikeSpread, serveSpread: serveSpread,
     // insignias: ids, nivel de un jugador, reacción/timing efectivos de la IA (ai.js), alcance
-    BADGE_IDS: BADGE_IDS, badgeLevel: bl, aiReact: aiReact, aiTiming: aiTiming, reachOf: reachOf, canChallenge: canChallenge, challenge: challenge, lineDist: lineDist, refErrP: refErrP,
+    BADGE_IDS: BADGE_IDS, badgeLevel: bl, aiReact: aiReact, aiTiming: aiTiming, reachOf: reachOf, canChallenge: canChallenge, challenge: challenge, lineDist: lineDist, refErrP: refErrP, dblSetP: dblSetP,
     _land: land, _point: point
   };
 })();

@@ -1487,3 +1487,9 @@ fama/tienda/logros/legado (playa) y hoja final. Arreglado en la Carrera de pista
 21») y lo repite en el párrafo (career-ui.js renderMatch6, ~l. 836-840); detrás de la Carrera de pista se ve la playa del menú
 (propuesta: que el fondo del hub siga a VB.Career.mode()). Aparte, no es de Carrera: a 390×844 la hoja final pisa el tanteo del MVP
 con la columna de ataque.
+
+## Arreglos del 12-nov-2026 (Ferran)
+- Marcador: `.sb.inplay` (ui.js `sbLiveTick`, index.html región «TV D3») mientras `g.mode==='rally'`: queda en «bug» (nombre +
+  tanteo, 72 %); `#sb` conserva su caja grande (min-width/min-height) para `readHud` de camera.js. Vuelve entero al acabar el punto.
+- Revisión del challenge: con IN dice «Pisa la línea x cm», con OUT «A x cm de la línea» (huella entera del balón, `C.IN_TOL = C.BR`).
+- Consejo del 2º toque en la playa (escritorio): «bajo el balón, J a tiempo (o salta y K); a destiempo pitan <b>dobles</b>» (una línea a 1280).

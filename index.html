@@ -2034,6 +2034,31 @@ button.ghost:focus-visible,button.ghost.kf{outline:none;background:var(--flat-hi
 .sb-chal::before{font-size:11px;letter-spacing:.06em}
 /* teléfono apaisado: sin nombre de pabellón la franja superior va sobrada y el ancho lo fija el cuerpo; «CH» algo mayor */
 @media (max-height:420px){.sb-chal{width:62px;gap:4px}.sb-chal::before{font-size:13px}}
+/* Marcador en juego (ui.js .inplay: g.mode 'rally', balón en juego): se queda en la mosca del tanteo (nombre + caja), más pequeño y
+   translúcido; sin franja (pabellón, set, CH), sin sacador, sets, parciales ni etiqueta de punto de set. Entre puntos, en el punto,
+   en la pausa y con el saque por hacer vuelve entero. Se encoge con medidas de verdad (alto de fila, letra, columnas) y no con
+   scale: el contador de peloteo (.rl) y el aviso de calidad (#callout) van debajo, siguen a su tamaño y suben con él.
+   Con «reducir movimiento» el bloque global de transiciones a 0,01 ms deja solo el cambio de estado. */
+.sb>.sb-top{transition:opacity .12s,height .3s var(--ease)}
+.sb>.sb-bw{transition:opacity .3s var(--ease)}
+.sb.aimthru>.sb-bw{transition-duration:.15s}
+.sb-body{transition:min-width .3s var(--ease)}
+.sb-row{transition:height .3s var(--ease),grid-template-columns .3s var(--ease),column-gap .3s var(--ease)}
+.sb-name,.sb-pts{transition:font-size .3s var(--ease)}
+.sb-sets{transition:opacity .2s}
+.sb-hist{max-height:40px;transition:max-height .3s var(--ease),padding .3s var(--ease),opacity .2s}
+.sb.inplay>.sb-top{height:0;opacity:0;width:0;align-self:flex-start;overflow:visible}
+.sb.inplay>.sb-top>*{flex-shrink:0}
+.sb.inplay:not(.dim):not(.aimthru)>.sb-bw{opacity:.72}
+.sb.inplay>.sb-bw{align-self:flex-start}
+.sb.inplay .sb-body{min-width:0}
+.sb.inplay .sb-row{height:30px;column-gap:6px;grid-template-columns:6px 1fr 0 0 40px}
+.sb.inplay .sb-row .sb-srv{opacity:0}
+.sb.inplay .sb-sets{opacity:0;overflow:hidden}
+.sb.inplay .sb-name{font-size:18px}
+.sb.inplay .sb-pts{font-size:24px}
+.sb.inplay .sb-hist{max-height:0;padding-top:0;padding-bottom:0;border-top-width:0;opacity:0;overflow:hidden}
+.sb.inplay>.sb-tag{display:none}
 /* ==== fin TV D3 ==== */
 /* ==== TV D4: tarjetas de modo ==== */
 /* Tarjetas planas (D1): radio 10 px, sin contorno de tinta ni sombra dura; el foco es el aro ámbar interior común (TV D7, capa ::after).

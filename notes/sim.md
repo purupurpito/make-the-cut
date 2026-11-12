@@ -1407,3 +1407,39 @@ llamadas a `g.rng`). El 6v6 CPU contra CPU cambia (formaciones nuevas y pipe) y 
 - simtest (j): colocación en salto humana con carril por la sim entera (saque rival → pase reconducido al punto de colocación → salto y COLOCAR
   con el stick en el carril): 9/9 por carril, pipe con d ≥ 3,3; con el stick a 0,3 hacia atrás el pipe sale 1/9 (zona muerta de verdad).
   drive6 `ROLE=OH`: pulsa → al menos una vez (si no, con la fila ya en Receptor nada se guardaba en localStorage).
+
+## Arreglos 12-nov-2026 (rama arreglos-12nov): dentro/fuera con el balón entero y dobles de la colocación en la playa
+
+**1. Dentro/fuera con la huella entera** (Ferran: «1 solo píxel de la bola que toque la línea significa que ha ido dentro»; FIVB 8.3).
+- `C.IN_TOL` 0,03 → **0,21 = C.BR** (el radio con que se dibuja el balón y la huella de la revisión de fx.js). `lineDist` sin cambio de
+  fórmula: `min(HL + IN_TOL − |x|, HW + IN_TOL − |y|)` = distancia firmada del borde de la huella al borde exterior de la línea
+  (> 0 pisa la línea o dentro; dentro ⇔ ≥ 0). Árbitro (`land`), verdad del challenge, decisión de la CPU (B3), error arbitral (B1, bandas
+  desde el borde de la huella), `leaveServe` (ai.js), aro de caída (fx.js) y huella de la revisión ya usaban `lineDist`/`C.IN_TOL`/`C.BR`:
+  todos coinciden sin tocarlos. `serveRisk`: el «saque que cae fuera» pasa de `HL/HW + 0,15` a `+ C.IN_TOL` (mismo criterio).
+- Cambia el 2v2 (más botes dentro cerca de las líneas): `tools/fp-2v2.json` regenerado a propósito con `--write`: 25 de las 150 partidas
+  cambian (1592 → 1595 puntos; 573026 → 573051 llamadas a g.rng). El ítem 4 no toca la huella (solo playa, y con hash01).
+- simtest «Vóley playa (b)»: el bote lateral de prueba pasa de 4,30 a 4,35 m (con la huella entera, 4,30 quedaba a 9 cm: dentro de la
+  banda del error arbitral B1, y la prueba es «sin error arbitral posible»).
+- simtest: «llamada de línea» reescrita (pabellón y playa, lateral y fondo, `C.IN_TOL === C.BR`, centro a BR−5 mm fuera = dentro, BR+5 mm
+  = fuera, `land.dist` = BR − desfase) y «challenge con la huella entera» (pisa 5 mm, cantado fuera → IN y se anula; 5 mm de hueco,
+  cantado dentro → OUT; `g.review.x/y` = centro del bote, lo que pinta fx.js).
+- simtest «calibración: ritual» contaba dos veces los botes de un saque preparado y cancelado por un challenge de la CPU pedido en modo
+  'serve' (se rehace el saque): ahora se descuentan los botes pendientes al llegar `challenge` y ese saque rehecho (`redo`) no exige su bote (la sim estaba bien;
+  salió con otra semilla, 20264).
+
+**4. Dobles en la colocación de dedos en la playa según el timing** (Ferran: «según cómo de malo sea el timing en la colocación en playa,
+sobre todo con salto, se pitan dobles»).
+- `hit()`, solo `g.beach`. HUMANO: colocación de dedos = 2º toque con el balón alto (`b.z − p.z > 1,6`, ni cuerpo, plancha, dejada ni
+  ataque) o colocación en salto (`jset`, en cualquier toque; el contacto en salto cuenta como «de ataque» por altura y por eso no se
+  excluye con `atkC0`). Prob. `dblSetP(te, grade, jset)`: 0 con nota perfect/good y con |te| ≤ `BEACH.dblA0` (0,10 = C.W_GOOD: un toque
+  «poor» por la distancia, no por el timing, no se pita); luego rampa lineal de `dblP0` 0,08 a |te| = 0,10 hasta `dblP1` 0,40 a |te| ≥
+  `dblA1` 0,30; en salto ×`dblJump` 1,6 (tope `dblMax` 0,7). `te` es el desfase ya escalado (atributos, insignias, ×JSET.win en salto).
+  Azar **hash01(seed, ms del toque, jugador)**, no `g.rng`: la secuencia de g.rng no cambia por esto.
+- IA: igual que antes (2º toque de dedos «poor», no en salto, `dblSet × dblSetAI` = 15 %, con g.rng). No se toca: ya existía y está
+  medido en simtest (i) (dobles < 3 % de los puntos).
+- Medido (scratch `dblfreq.js`, 1000 colocaciones por fila, desfase fijo):
+  suelo |te| 0–0,11: 0 % · 0,13: 12 % · 0,16: 18 % · 0,20: 24 % · 0,25: 32 % · ≥ 0,30: 40 %;
+  salto |te| 0–0,09: 0 % · 0,11: 22 % · 0,13: 27 % · 0,16: 37 % · 0,20: 47 % · ≥ 0,25: 62 %;
+  por nota (|te| uniforme 0–0,4): perfect 0 %, good 0 %, poor 32 % en el suelo y 52 % en salto; pabellón 0 % siempre.
+- `VB.Sim.dblSetP` exportada; `VB.BEACH` gana `dblA0, dblA1, dblP0, dblP1, dblJump, dblMax`. simtest «Vóley playa (k)».
+- Petición a ui.js (consejo del 2º toque en la playa: «A destiempo pitan dobles (en salto, más)») en el requests.md del workflow.

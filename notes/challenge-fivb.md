@@ -46,3 +46,37 @@ Existe una edición 2026 (CEV, https://inside.cev.eu/media/xkre2nzd/vcs-regs-202
   como en la tele; el árbitro confirma o cambia y el marcador se corrige. Con «Cámara estable» o en táctil, versión corta.
 - **La CPU también pide challenges** (con criterio: solo si el bote fue muy justo y tiene alguno), para que se vea el sistema.
 - Encaja con el modo 6v6 y con Carrera (VNL/Olimpiadas siempre con challenge; ligas modestas, sin él: más errores sin remedio).
+
+## Dentro / fuera con el balón entero (12-nov-2026, petición de Ferran)
+
+«El challenge debería medir todo el diámetro de la bola: 1 solo píxel de la bola que toque la línea significa que ha ido dentro.»
+Es la regla FIVB 8.3 (el balón es «dentro» cuando toca el suelo de la pista, **líneas incluidas**, con cualquier parte de él).
+
+- Antes: `C.IN_TOL = 0,03` (huella de contacto del balón real, 3 cm). Pero el balón del juego se dibuja con `C.BR = 0,21` y la huella
+  de la revisión (fx.js `placeReview`) también: una huella que pisaba la línea hasta 18 cm salía «OUT».
+- Ahora: `C.IN_TOL = C.BR = 0,21`. `lineDist(x, y, g) = min(HL + BR − |x|, HW + BR − |y|)`: distancia firmada del borde de la huella
+  del balón dibujado al borde exterior de la línea (g.HL/g.HW miden hasta el borde exterior: arena.js pinta las líneas de 5 cm por
+  dentro). Dentro ⇔ `dist ≥ 0`.
+- Usan esa misma definición: `land()` (verdad `truthIn`, evento `land.inside`/`dist`), el error arbitral B1 (bandas de ≤ 10 cm desde
+  el borde de la huella), el challenge (`g.review`, `challengeResult.truthIn/dist`), la decisión de la CPU (B3, `cpuChallengeDecide`),
+  la IA que deja botar el saque (ai.js `leaveServe`), `serveRisk` (sim.js: saque fuera = `lineDist < 0`), el aro de caída de fx.js
+  (`C.IN_TOL`) y la huella de la revisión (fx.js, radio `C.BR`). Con «IN», `dist` = cuánto pisa la huella la línea; con «OUT», el hueco.
+- simtest «llamada de línea» (pabellón y playa, lateral y fondo: centro a BR − 5 mm fuera = dentro, a BR + 5 mm = fuera) y
+  «challenge con la huella entera» (pisa 5 mm = IN y se anula la llamada; 5 mm de hueco = OUT).
+
+### Dibujo de la revisión ajustado a la regla (fx.js, verificador 12-nov-2026)
+- `revTex`: el filo oscuro de la huella va por dentro del disco (r 106..114 de 128): el borde exterior visible es exactamente `C.BR`.
+  Antes el trazo salía ~7 mm y un OUT por 5 mm parecía tocar.
+- `placeReview`: la línea resaltada (5 cm + 1,2 cm) acaba justo en el borde exterior de la línea pintada (antes sobresalía 6 mm
+  hacia fuera) y el halo (`revGlow`, 24 cm) va solo hacia dentro de la pista: no ilumina el hueco de un OUT.
+- `revLine` color 0.42/0.74/0.80 (antes 0.55/0.95/1): por debajo del umbral del bloom (0,82), sin halo que tape milímetros.
+- Comprobado proyectando la escena: a 1280×720 en la revisión 1 cm ≈ 4 px; huella a 5 mm = 2 px de la línea (OUT) o 2 px dentro (IN).
+- Esquinas (12-nov, revisión): `Sim.lineDist` mide la huella como DISCO. Con el centro fuera por las dos líneas devuelve
+  `C.IN_TOL - hypot(|x|-HL, |y|-HW)` (antes un cuadrado de lado R: 224/728 botes de esquina mal cantados). El resto, igual.
+  El marcador de caída de fx.js y `serveRisk` usan ya `lineDist` (mismo criterio). simtest lo prueba («esquinas en disco»).
+- `placeReview` elige la línea con la regla firmada de `lineDist` (`dEnd <= dSide`, antes por valor absoluto: junto a la
+  prolongación de la lateral cogía la lateral y la huella alargada parecía tocar). La barra resaltada y el halo acaban en la
+  esquina de la pista; cerca de la esquina (centro fuera y a < 1,2·R de la prolongación) la huella no se alarga.
+- Texto del resultado (ui.js `challengeResult`, arena.js pantalla): IN con dist <= 5 cm «Pisa la línea x cm» / «IN POR x cm»;
+  hasta 2·R + 5 cm «Sobre la línea» / «IN · SOBRE LÍNEA»; más, «Dentro» / «IN» (dist mide desde el borde exterior de la línea
+  hasta el borde interior de la huella; solo hasta 5 cm es «cuánto pisa»). OUT sin cambios: «A x cm de la línea».

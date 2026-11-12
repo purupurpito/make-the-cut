@@ -237,8 +237,10 @@
   function revTex() {
     var cv = canvas(256, 256), g = cv.getContext('2d');
     g.fillStyle = 'rgba(255,255,255,0.62)'; g.beginPath(); g.arc(128, 128, 114, 0, 6.283); g.fill();
-    g.strokeStyle = 'rgba(14,10,4,0.85)'; g.lineWidth = 8; g.beginPath(); g.arc(128, 128, 114, 0, 6.283); g.stroke();
-    g.strokeStyle = '#ffffff'; g.lineWidth = 3; g.beginPath(); g.arc(128, 128, 109, 0, 6.283); g.stroke();
+    // (12-nov) el filo oscuro va POR DENTRO del disco (r 106..114): el borde exterior de la huella es justo el radio del balón (C.BR),
+    // el mismo que mide la sim (C.IN_TOL = C.BR); antes el trazo salía 4 px (~7 mm) y un OUT por 5 mm parecía tocar la línea
+    g.strokeStyle = 'rgba(14,10,4,0.85)'; g.lineWidth = 8; g.beginPath(); g.arc(128, 128, 110, 0, 6.283); g.stroke();
+    g.strokeStyle = '#ffffff'; g.lineWidth = 3; g.beginPath(); g.arc(128, 128, 105, 0, 6.283); g.stroke();
     return tex(cv);
   }
   /** Onda de choque: filo brillante fino con un halo interior muy tenue que cae a 0 (nada de disco gris). */
@@ -1027,21 +1029,23 @@
   function courtHL(g) { g = g || (ctx && ctx.game); return g && g.HL > 0 ? g.HL : C.HL; }
   function courtHW(g) { g = g || (ctx && ctx.game); return g && g.HW > 0 ? g.HW : C.HW; }
   function placeReview(x, y) {
-    var HL = courtHL(), HW = courtHW();
-    var dEnd = HL - Math.abs(x), dSide = HW - Math.abs(y), L = 0.05, LEN = 2.6, end = Math.abs(dEnd) <= Math.abs(dSide);
+    var HL = courtHL(), HW = courtHW(); // la línea resaltada (L + 1,2 cm) acaba JUSTO en el borde exterior de la línea pintada (no 6 mm fuera)
+    var dEnd = HL - Math.abs(x), dSide = HW - Math.abs(y), L = 0.05, LEN = 2.6, end = dEnd <= dSide; // misma regla firmada que Sim.lineDist
+    // cerca de la esquina la huella no se alarga (alargada podría rozar la otra línea y contradecir un OUT)
+    var str = Math.min(dEnd, dSide) > 0 || Math.max(dEnd, dSide) > 1.2 * C.BR ? 1.18 : 1;
     var fs = 2 * C.BR * 128 / 114; // plano de la huella: el disco de revTex mide 114/128
     revFill.position.x = x; revFill.position.z = -y; revFill.rotation.z = 0;
     revLine.rotation.z = 0; revGlow.rotation.z = 0;
     if (end) {
-      var lx = (x >= 0 ? 1 : -1) * (HL - L / 2), ly = clampN(y, -HW + LEN / 2 - 0.4, HW - LEN / 2 + 0.4);
+      var lx = (x >= 0 ? 1 : -1) * (HL - (L + 0.012) / 2), ly = clampN(y, -HW + LEN / 2, HW - LEN / 2); // la barra acaba en la esquina de la pista
       revLine.position.x = lx; revLine.position.z = -ly; revLine.scale.set(L + 0.012, LEN, 1);
-      revGlow.position.x = lx; revGlow.position.z = -ly; revGlow.scale.set(0.3, LEN * 1.15, 1);
-      rv.sx = fs; rv.sy = fs * 1.18; // radio del balón en x (hacia la línea de fondo), 18 % más a lo largo
+      revGlow.position.x = (x >= 0 ? 1 : -1) * (HL - 0.12); revGlow.position.z = -ly; revGlow.scale.set(0.24, LEN, 1); // halo solo hacia dentro: no ilumina el hueco de un OUT
+      rv.sx = fs; rv.sy = fs * str; // radio del balón en x (hacia la línea de fondo), 18 % más a lo largo (no en la esquina)
     } else {
-      var sy = (y >= 0 ? 1 : -1) * (HW - L / 2), sx = clampN(x, -HL + LEN / 2 - 0.4, HL - LEN / 2 + 0.4);
+      var sy = (y >= 0 ? 1 : -1) * (HW - (L + 0.012) / 2), sx = clampN(x, -HL + LEN / 2, HL - LEN / 2);
       revLine.position.x = sx; revLine.position.z = -sy; revLine.scale.set(LEN, L + 0.012, 1);
-      revGlow.position.x = sx; revGlow.position.z = -sy; revGlow.scale.set(LEN * 1.15, 0.3, 1);
-      rv.sx = fs * 1.18; rv.sy = fs;
+      revGlow.position.x = sx; revGlow.position.z = -(y >= 0 ? 1 : -1) * (HW - 0.12); revGlow.scale.set(LEN, 0.24, 1);
+      rv.sx = fs * str; rv.sy = fs;
     }
   }
   /** Huella + línea resaltada mientras dura g.review (y ~2 s más tras el resultado, del color de la verdad: verde dentro,
@@ -1423,7 +1427,7 @@
       revGlow = rvMk(markTex, 0.0158, 3, 'revGlow'); revLine = rvMk(whiteTex, 0.0162, 3, 'revLine'); revFill = rvMk(revTex(), 0.0166, 3, 'revMark');
       aimFill = rvMk(markTex, 0.0185, 4, 'aimFill');
       aimLx = rvMk(whiteTex, 0.0172, 4, 'aimLx'); aimLy = rvMk(whiteTex, 0.0174, 4, 'aimLy');
-      revGlow.material.color.setRGB(0.25, 0.85, 1); revLine.material.color.setRGB(0.55, 0.95, 1);
+      revGlow.material.color.setRGB(0.25, 0.85, 1); revLine.material.color.setRGB(0.42, 0.74, 0.8); // (12-nov) bajo el umbral del bloom (0,82): sin halo que tape el hueco de un OUT por milímetros
       aimSpMap = aimMat.map; aimSvMap = aimSvTex();
       aimXray = new THREE.Mesh(aimRet.geometry, new THREE.MeshBasicMaterial({ map: aimSvMap, transparent: true, opacity: 0, depthTest: false, depthWrite: false, toneMapped: false }));
       aimXray.rotation.x = -Math.PI / 2; aimXray.renderOrder = 12; aimXray.visible = false; aimXray.frustumCulled = false; aimXray.name = 'aimXray'; root.add(aimXray);
@@ -1660,8 +1664,8 @@
         var tt = Math.min(1, Math.max(0, land.t) / 1.3), sc = 0.6 + tt * 0.7 + Math.sin(ctx.time * 9) * 0.03;
         marker.scale.set(sc, sc, sc); marker.rotation.z = ctx.time * 0.8;
         var mine = land.x > 0;
-        var tol = C.IN_TOL != null ? C.IN_TOL : 0.03; // mismo umbral que el árbitro de sim
-        var out = Math.abs(land.x) > courtHL(g) + tol || Math.abs(land.y) > courtHW(g) + tol; // pista de la partida (playa 16×8)
+        var out = Sim.lineDist ? Sim.lineDist(land.x, land.y, g) < 0 // mismo criterio que el árbitro de sim (huella entera, esquinas en disco)
+          : Math.abs(land.x) > courtHL(g) + C.BR || Math.abs(land.y) > courtHW(g) + C.BR;
         var mo;
         if (g.demo) { markerMat.color.setRGB(0.9, 0.95, 1); mo = 0.55; }
         else if (mine && !focusVis && !(six && g.jobs && g.jobs[0])) { markerMat.color.setRGB(YEL[0], YEL[1], YEL[2]); mo = 0.95; } // nadie tuyo va: el bote es lo que importa (6v6: si va un compañero, blanco)
