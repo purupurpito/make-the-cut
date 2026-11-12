@@ -78,7 +78,9 @@
     return { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, format: '2v2', cam6: '3p', camSens: 1, sfxVol: 1, musicVol: 0.75,
       camStable: false, rumble: true, hudScale: 1, softFlash: false, arena: Q.debug ? 'hall' : 'beach', arenaV: 2, beachLight: 'dia',
       volume: 1, crowdVol: 0.85, resScale: 0, fpsCap: 0, showFps: false, camDist: 'normal', camCuts: 'all', lessMotion: 'auto', cbColors: false, ballStyle: 'clasico',
-      keys: {}, padKeys: {}, padDead: 0.18, touchSize: 1, aimSet: true, msTiming: false };
+      keys: {}, padKeys: {}, padDead: 0.18, touchSize: 1, aimSet: true, msTiming: false, mapHall: 'palau', mapBeach: 'platja' };
+    // mapHall / mapBeach: sede de cada tipo (js/venues.js: 'palau' | … y 'platja' | 'fanals' | …, o 'rand' = al azar); Ajustes · Imagen.
+    // El tipo (`arena`) sigue siendo lo único que va a la sim; la sede solo cambia el escenario. Lo desconocido vuelve a la de serie.
   }
   /** keys / padKeys: objeto plano de como mucho 12 acciones; teclado = arrays de ≤ 2 cadenas de ≤ 24 caracteres, mando = arrays
    *  de ≤ 1 entero 0-11. Cualquier otra cosa → {} (de fábrica). Lo semántico (tecla reservada, repetida…) lo sanea input.js. */
@@ -134,6 +136,9 @@
     s.musicVol = Math.max(0, Math.min(1, isFinite(+s.musicVol) ? +s.musicVol : 0.75));
     if ([1, 1.15, 1.3].indexOf(s.hudScale) < 0) s.hudScale = 1;
     if (s.beachLight !== 'tarde') s.beachLight = 'dia';
+    var VV = VB.Venues;
+    if (!VV || !VV.valid('hall', s.mapHall)) s.mapHall = 'palau';
+    if (!VV || !VV.valid('beach', s.mapBeach)) s.mapBeach = 'platja';
     if ([11, 15, 21, 25].indexOf(s.setPoints) < 0) s.setPoints = 25;
     // equipación: solo colores de las paletas de ui.js (OPT.kit*) y diseños conocidos
     if (['diag', 'liso', 'franjas', 'rayas'].indexOf(s.kitPattern) < 0) s.kitPattern = 'diag';   // Partido rápido: puntos por set (sim: VB.Sim.SET_POINTS)
@@ -360,7 +365,7 @@
   /** Escenario del partido que se crea ('hall' | 'beach'): el que tiene arena montado (ajuste `arena` o ?map=). En la playa la sim
    *  juega con reglas de vóley playa (createGame({venue:'beach'}): pista 16×8, sets a 21/15, cambio de campo cada 7). */
   function venueNow() {
-    var v = VB.Arena && VB.Arena.venue ? VB.Arena.venue() : (Q.map || ctx.settings.arena);
+    var v = VB.Arena && VB.Arena.venue ? VB.Arena.venue() : (Q.map ? (VB.Venues && VB.Venues.kindOf(Q.map)) || Q.map : ctx.settings.arena);
     return v === 'beach' ? 'beach' : 'hall';
   }
   /** Escenario pedido en Ajustes durante un partido: se monta al salir de él (menú o partido nuevo). */
@@ -370,8 +375,18 @@
    *  ajuste fuera `v` (los módulos lo reciben por onSettings(s, 'arena'), sin tocar ctx.settings) y al volver al menú
    *  (toMenu → unforceVenue) se vuelve al escenario del ajuste. */
   var venueForced = '';   // escenario que había antes de forzar el de la Carrera ('' = no forzado)
-  function applyVenue(v) { var s = Object.assign({}, ctx.settings, { arena: v }); for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', s, 'arena'); }
-  function forceVenue(v) { var cur = venueNow(); if (cur === v) return; venueForced = cur; applyVenue(v); }
+  // v = tipo ('hall' | 'beach': la sede del ajuste de ese tipo) o id de sede ('fanals'…: esa; arena lo lee en `forceMap`)
+  function isMapId(v) { return !!(VB.Venues && VB.Venues.def(v)); }
+  function mapNow() { return VB.Arena && VB.Arena.map ? VB.Arena.map() : ''; }
+  function applyVenue(v) {
+    var id = isMapId(v), kind = id ? VB.Venues.kindOf(v) : v;
+    var s = Object.assign({}, ctx.settings, { arena: kind, forceMap: id ? v : '' });
+    for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', s, 'arena');
+  }
+  function forceVenue(v) {
+    var id = isMapId(v), cur = id ? mapNow() : venueNow(); if (cur === v) return;
+    venueForced = mapNow() || venueNow(); applyVenue(v);
+  }
   function unforceVenue() {
     if (!venueForced) return;
     var back = venueForced; venueForced = '';
@@ -626,10 +641,11 @@
     if (k === 'lessMotion') ctx.reduceMotion = calcReduce();
     // escenario en mitad de un partido (Ajustes desde la pausa): la pista y las reglas del partido no pueden cambiar a medias
     // (16×8 / 18×9), así que el cambio espera al siguiente partido o al menú (applyVenuePend)
-    if (k === 'arena' && ctx.game && !ctx.game.demo && ctx.state !== 'menu') { venuePend = true; call('UI', 'onSettings', ctx.settings, k); return; }
+    var venueK = k === 'arena' || k === 'mapHall' || k === 'mapBeach';
+    if (venueK && ctx.game && !ctx.game.demo && ctx.state !== 'menu') { venuePend = true; call('UI', 'onSettings', ctx.settings, k); return; }
     for (var i = 0; i < MODS.length; i++) call(MODS[i], 'onSettings', ctx.settings, k);
     // escenario: la demo del menú pasa a jugar con las reglas (y la pista) del nuevo escenario. En partido no cambia nada hasta el siguiente
-    if (k === 'arena' && ctx.state === 'menu' && ctx.game && ctx.game.demo && ctx.game.venue !== venueNow()) setGame(demoGame());
+    if (venueK && ctx.state === 'menu' && ctx.game && ctx.game.demo && ctx.game.venue !== venueNow()) setGame(demoGame());
   };
   ctx.actions.toggleMute = function () { ctx.actions.setSetting('muted', !ctx.settings.muted); };
   /** E3: vuelve a los valores por defecto (DEFAULTS) las claves dadas (todas si no se dan), guarda y avisa a cada módulo con

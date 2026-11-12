@@ -477,6 +477,7 @@
    * de calcomanías (celdas 9-11 del atlas, debajo de todo lo demás): 0 dibujos nuevos. Se apagan en los últimos 2 s. */
   var FOOT_N = 96, footCap = FOOT_N, fp = [], fpHead = 0, fpLast = [], fpAlive = 0, FOOT_LIFE = 6.5;
   var FP_CELL = [9, 10, 11]; // 0 = pie, 1 = surco de la plancha (también las lenguas del cráter del remate), 2 = cráter del balón
+  var SAND_C = [0.98, 0.87, 0.66]; // arena seca (Platja Llarga); las demás sedes, VB.Arena.look().sand
   function onBeach() { var A = VB.Arena; return !!(A && A.venue && A.venue() === 'beach'); }
   function footAtlas(g) {
     var C0 = DEC_CELL, x, y;
@@ -1884,6 +1885,9 @@
       if (duAlive) {
         var dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array, dAlive = 0, sandyV = onBeach();
         var dsz = sandyV ? 0.3 : 0.42; if (dust.material.size !== dsz) dust.material.size = dsz; // granos de arena más pequeños que el velo de polvo
+        // color de los granos: la arena de la sede (VB.Arena.look().sand) oscurecida para que se lea sobre la pista
+        var sdc = SAND_C; if (sandyV) { try { var lkA = VB.Arena.look && VB.Arena.look(); if (lkA && lkA.sand) sdc = lkA.sand; } catch (e) { } }
+        var sg0 = sdc[0] * 0.84, sg1 = sdc[1] * 0.69, sg2 = sdc[2] * 0.55;
         for (var dI = 0; dI < duCap; dI++) {
           var D = du[dI];
           if (D.life > 0) {
@@ -1901,7 +1905,7 @@
             var lk = Math.max(0, D.life / D.max), al = D.g > 0 ? Math.min(1, (1 - lk) * 12) * Math.min(1, lk * 4) * 0.85 * D.s : Math.min(1, (1 - lk) * 8) * lk * 0.42 * D.s;
             dp[dI * 3] = D.x; dp[dI * 3 + 1] = D.z; dp[dI * 3 + 2] = -D.y;
             // serrín de parquet (tono cálido) o arena seca en la playa
-            if (sandyV) { dc[dI * 4] = 0.82; dc[dI * 4 + 1] = 0.6; dc[dI * 4 + 2] = 0.36; } else { dc[dI * 4] = 0.88; dc[dI * 4 + 1] = 0.72; dc[dI * 4 + 2] = 0.52; }
+            if (sandyV) { dc[dI * 4] = sg0; dc[dI * 4 + 1] = sg1; dc[dI * 4 + 2] = sg2; } else { dc[dI * 4] = 0.88; dc[dI * 4 + 1] = 0.72; dc[dI * 4 + 2] = 0.52; }
             dc[dI * 4 + 3] = al; dAlive++;
           } else if (dp[dI * 3 + 1] !== -50) { dp[dI * 3 + 1] = -50; dc[dI * 4 + 3] = 0; }
         }
