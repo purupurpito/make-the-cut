@@ -636,6 +636,7 @@ section('Carrera de pista: partido 6v6, nota, calendario impar, temporada, copas
   ok(n2 === 9 && W === 9, 'liga de 9 clubes a una vuelta: 9 jornadas (' + W + ')');
   const sch = C.sched(c6, 'ES2'); ok(sch.every(wk => wk.length === 4) && C.leagueClubs(c6, 'ES2').every(k => sch.filter(wk => wk.some(m => m[0] === k.id || m[1] === k.id)).length === 8), 'cada club juega 8 y descansa 1');
   ok(C.weeksOf(c6, 'BR1') === 14, 'con 8 clubes, doble vuelta (14)');
+  c6.contract.role = 'Titular indiscutible';   // (titularidad: así sales de inicio y se prueba tu hueco; el banquillo, en su sección)
   const n = C.next(c6) || (C.simulateNext(), C.next(c6)), ms = C.matchSetup(c6);
   ok(ms && ms.format === '6v6' && ms.venue === 'hall' && ms.ctrlRole === 'OH' && ms.ctrl === 'one', 'partido 6v6 en el pabellón, llevas al receptor');
   ok(ms.attrs[0].length === 6 && ms.attrs[1].length === 6 && ms.attrs[0][ms.ctrlIdx].jump === Math.max(1, c6.player.st.jump - ms.fatigue + 0) , 'atributos de los 12; los tuyos en tu hueco (' + ms.ctrlIdx + ')');
@@ -718,7 +719,7 @@ section('Carrera de pista: puestos que crecen solos, guardado dañado y migraci�
   ok(C.setPosition('S') && c6.player.roleKey === 'S' && c6.player.role === 'Colocador', 'cambiar a colocador');
   if (c6.phase === 'off') C.stay(1);
   const ms = C.next(c6) && !C.next(c6).bench ? C.matchSetup(c6) : null;
-  if (ms) ok(ms.ctrlRole === 'S' && ms.ctrlIdx === VB.Sim.ROLES6.indexOf('S') && ms.nums[0][ms.ctrlIdx] === c6.player.num, 'el partido te pone de colocador en su hueco');
+  if (ms && ms.meOn) ok(ms.ctrlRole === 'S' && ms.ctrlIdx === VB.Sim.ROLES6.indexOf('S') && ms.nums[0][ms.ctrlIdx] === c6.player.num, 'el partido te pone de colocador en su hueco');
   delete VB.Sim.CTRL_ROLES6;
   ok(C.ctrlRole(c6) === 'OH', 'sin el puesto en sim.js, juegas de receptor (tu perfil se queda)');
   C._reset(); c6 = C.get(); ok(c6 && c6.player.roleKey === 'S', 'se guarda el puesto');
@@ -739,6 +740,219 @@ section('Carrera de pista: puestos que crecen solos, guardado dañado y migraci�
   ok(C.matchSetup(mb) === null || C.matchSetup(mb).venue === 'beach', 'la playa sigue en la playa');
   delete mem['voley3d.career6']; C._reset(); mem['voley3d.career.mode'] = 'hall';
   ok(C.mode() === 'beach', 'modo pista sin guardado de pista: la activa es la playa');
+}
+
+// ------------------------------------------------------------------ titularidad en la pista (13-nov-2026; notes/titularidad-y-cambios.md)
+section('Carrera de pista: titularidad (plantilla, seis de la jornada, rol, ofertas, partido con cambios y minutos)');
+if (!C.hall || !C.hall.available()) console.log('  (sin ligas de pista)');
+else {
+  const H = C.hall, keep = { c6: mem['voley3d.career6'], md: mem['voley3d.career.mode'], roles: VB.Sim.CTRL_ROLES6 };
+  VB.Sim.CTRL_ROLES6 = ['OH', 'S', 'OPP', 'MB'];
+  const R6 = VB.Sim.ROLES6 || ['S', 'OH', 'MB', 'OPP', 'OH', 'MB'];
+  const fresh = (seed, pos, role) => {
+    delete mem['voley3d.career6']; C._reset();
+    const c = C.create({ mode: 'hall', name: 'Titu Prueba', num: 9, pos: pos || 'OH', seed });
+    const i = c.offers.findIndex(o => !o.trial); if (role) c.offers[i].role = role;
+    C.acceptOffer(i, 2); return C.get();
+  };
+  const reLine = c => { c.sq6.wk = null; c.sq6.L = null; };   // otra elección en la misma jornada (pruebas)
+  const setAll = (c, v) => C.KEYS.forEach(k => { c.player.st[k] = v; });
+  const toLeagueFixture = c => { let g = 0; while (c.phase === 'league' && !C.next(c) && g++ < 5) C.simulateNext(); return c.phase === 'league' && !!C.next(c); };
+  const cntMsg = (c, t) => c.inbox.filter(m => m.t === t).length;
+  const NEUTRO = /\b(él|ella|bienvenida|nuevo fichaje|cansado|cansada|listo|lista|concentrado|concentrada)\b/i;
+  // plantilla
+  { const c = fresh(4100), k = C.myClub(c);
+    ok(JSON.stringify(H.squad(c, k, 1)) === JSON.stringify(H.squad(c, k, 1)) && JSON.stringify(H.squad(c, k, 1)) !== JSON.stringify(H.squad(c, k, 2)), 'squad6 determinista (por club y temporada)');
+    const cnt = l => l.reduce((m, x) => (m[x.pos] = (m[x.pos] || 0) + 1, m), {});
+    const s12 = H.squad(c, Object.assign({}, k, { ovr: 60 }), 1, 'OH'), s14 = H.squad(c, Object.assign({}, k, { ovr: 75 }), 1, 'OH'), c12 = cnt(s12), c14 = cnt(s14);
+    ok(s12.length === 11 && c12.S === 2 && c12.OPP === 2 && c12.OH === 3 && c12.MB === 3 && c12.L === 1, 'plantilla de 12 contándote a ti (sin ti: ' + JSON.stringify(c12) + ')');
+    ok(s14.length === 13 && c14.OH === 4 && c14.MB === 4 && c14.S === 2, 'club de ' + H.SQ_BIG + ' o más: +1 receptor y +1 central (14: ' + JSON.stringify(c14) + ')');
+    const nums = s14.filter(x => x.pos !== 'L').map(x => x.num);
+    ok(new Set(nums).size === nums.length && nums.every(n => n >= 1 && n <= 20 && n !== 13 && n !== c.player.num) && s14.find(x => x.pos === 'L').num === 13, 'dorsales únicos 1-20 sin el tuyo ni el 13 (el líbero lleva el 13): ' + nums.join(','));
+    ok(s14.every(x => x.name !== c.player.name) && new Set(s14.map(x => x.name.split(' ')[0])).size === s14.length, 'tú no estás en la lista y no se repiten nombres');
+    const nat = s14.filter(x => x.pos === 'MB'), kv = 75;
+    ok(nat.slice(0, 2).every(x => x.ovr >= kv - 3 && x.ovr <= kv + 4) && nat.slice(2).every(x => x.ovr >= kv - 9 && x.ovr <= kv - 1) && s14.every(x => x.conf >= 30 && x.conf <= 75 && x.form === 0 && x.fat === 0), 'medias: titulares naturales −3..+4, el resto −9..−1; confianza 30-75');
+    ok(c.sq6 && c.sq6.club === k.id && c.sq6.list.length === 11 + (k.ovr >= H.SQ_BIG ? 2 : 0), 'c.sq6 se crea al fichar (' + c.sq6.list.length + ' sin ti)');
+    const ro = C.roster(c); ok(ro.filter(p => p.me).length === 1 && ro.length === c.sq6.list.length + 1 && ro.every(p => ['start', 'sub', 'out'].indexOf(p.stat) >= 0 && typeof p.form === 'number' && p.posName), 'roster6 lee de c.sq6: tu fila, estado y forma');
+    ok(C.ROLE_HINT === H.ROLE_HINT && /^Compites por el puesto/.test(C.ROLE_HINT[0]) && /2 jornadas/.test(C.ROLE_HINT[1]) && /85/.test(C.ROLE_HINT[2]) && C.beach.ROLE_HINT !== H.ROLE_HINT, 'textos de rol de la pista (la playa conserva los suyos)');
+  }
+  // club muy superior: J1 en el banquillo, la bienvenida lo dice; luego un mensaje por cada cambio de estado
+  { delete mem['voley3d.career6']; C._reset(); let c = C.create({ mode: 'hall', name: 'Titu Prueba', num: 9, pos: 'OH', seed: 4200 });
+    const i = c.offers.findIndex(o => !o.trial), kk = C.club(c, c.offers[i].club); kk.ovr = Math.min(H.SQ_BIG - 1, kk.ovr + 15); c.offers[i].role = 'Rotación';   // (+15, sin llegar a la plantilla de 14)
+    C.acceptOffer(i, 2); c = C.get(); toLeagueFixture(c);
+    const n = C.next(c), wl = c.inbox.filter(m => /^Bienvenido a /.test(m.t)).slice(-1)[0];
+    ok(n.status === 'sub' && !n.bench && (n.whyCode === 'new' || n.whyCode === 'ovr') && n.rivalIn && n.rivalIn.name && n.gap < 0, 'fichar por un club muy superior: J1 en el banquillo (' + n.whyCode + ', gap ' + n.gap + ', sale ' + (n.rivalIn && n.rivalIn.name) + ')');
+    ok(wl && /Aquí tendrás que ganarte el puesto: por delante (está|están) .+\(\d+\)/.test(wl.x), 'bienvenida: «' + (wl && 'Aquí tendrás' + wl.x.split('Aquí tendrás')[1]) + '»');
+    ok(cntMsg(c, 'Empiezas en el banquillo') === 0 && /^Sale de inicio /.test(C.benchWhy(c)), 'sin mensaje repetido (la bienvenida ya lo cuenta); benchWhy: «' + C.benchWhy(c) + '»');
+    const ms = C.matchSetup(c); ok(ms && ms.meOn === false, 'desde el banquillo el partido se juega igual (matchSetup con meOn false)');
+    setAll(c, 95); reLine(c);
+    ok(C.next(c).status === 'start' && cntMsg(c, 'Sales de inicio') === 1, 'subes de nivel: sales de inicio y llega UN mensaje «Sales de inicio»');
+    C.next(c); C.roster(c); ok(cntMsg(c, 'Sales de inicio') === 1, 'mirar otra vez la jornada no repite el mensaje');
+    setAll(c, 20); reLine(c);
+    const stB = C.next(c).status, sm = c.inbox.filter(m => m.t === 'Empiezas en el banquillo');
+    ok(stB === 'sub' && sm.length === 1 && /^Esta semana sale de inicio .+: .+\. Estate a punto/.test(sm[0].x), 'bajas: «Empiezas en el banquillo» (' + (sm[0] && sm[0].x) + ')');
+    setAll(c, 95); c.fatigue = 90; reLine(c);
+    const nf = C.next(c); ok(nf.status === 'sub' && nf.whyCode === 'fatiga' && cntMsg(c, 'Descansas de inicio') === 0, 'con fatiga 90 descansas de inicio (sin mensaje: ya estabas en el banquillo)');
+    c.fatigue = 0; reLine(c); C.next(c); c.fatigue = 90; reLine(c); C.next(c);
+    ok(cntMsg(c, 'Descansas de inicio') === 1 && /mucha fatiga \(90\)/.test(c.inbox.filter(m => m.t === 'Descansas de inicio')[0].x), 'de titular a descanso: «Descansas de inicio» con la fatiga');
+    ok(!c.inbox.filter(m => m.k === 'coach').some(m => NEUTRO.test(m.x) || /·/.test(m.x)), 'mensajes del entrenador en neutro y sin «·»');
+  }
+  // rol: titular con dos suplencias → promesa incumplida (la fatiga no cuenta); indiscutible siempre; rotación → titular
+  { let c = fresh(4300, 'OH', 'Titular');
+    c.coach = 60; c.broken = 0; setAll(c, 95); let g = 0, rest = 0;
+    while (rest < 2 && g++ < 6) { if (!toLeagueFixture(c)) break; c.fatigue = 90; reLine(c); if (C.next(c).whyCode === 'fatiga') rest++; C.simulateNext(); }
+    ok(rest === 2 && c.sq6.titBench === 0 && c.broken !== c.season, 'titular que descansa por fatiga 2 jornadas: no cuenta como promesa incumplida');
+    setAll(c, 20); c.fatigue = 0; let subs = 0; g = 0;
+    while (subs < 2 && g++ < 6) { if (!toLeagueFixture(c)) break; c.fatigue = 0; c.coach = 60; reLine(c); if (C.next(c).status !== 'start') subs++; C.simulateNext(); }
+    ok(subs === 2 && c.broken === c.season && c.inbox.some(m => m.t === 'Promesa incumplida'), 'titular: 2 jornadas de liga en el banquillo por méritos → promesa incumplida (c.broken)');
+    c.contract.role = 'Titular indiscutible'; setAll(c, 20); c.coach = 35; c.fatigue = 84; reLine(c);
+    ok(C.next(c).status === 'start', 'indiscutible: de inicio aunque esté por debajo (fatiga 84)');
+    c.fatigue = 85; reLine(c); ok(C.next(c).status === 'sub' && C.next(c).whyCode === 'fatiga', 'indiscutible con fatiga 85: descansa');
+    c.fatigue = 0; reLine(c); const ms = C.matchSetup(c); ok(ms && ms.coach[0].me.pullAt === 99, 'indiscutible: no te cambian por jugar mal (pullAt 99)');
+    c = fresh(4400, 'OH', 'Rotación'); setAll(c, 95); const s0 = c.contract.salary; let st = 0; g = 0;
+    while (c.contract.role === 'Rotación' && g++ < 6) { if (!toLeagueFixture(c)) break; c.fatigue = 0; if (C.next(c).status === 'start') st++; C.simulateNext(); }
+    ok(c.contract.role === 'Titular' && st === H.STARTS_PROMOTE && c.contract.salary >= s0 && c.inbox.some(m => m.t === 'Te has ganado la titularidad'), 'rotación: ' + H.STARTS_PROMOTE + ' jornadas seguidas de inicio → titular (sueldo ' + s0 + ' → ' + c.contract.salary + ')');
+  }
+  // club de 14: convocatoria de 12; con la confianza por debajo de 20, fuera
+  { const c = fresh(4500, 'OH', 'Rotación'); toLeagueFixture(c); const k = C.myClub(c); k.ovr = 75; c.sq6 = null; setAll(c, 70);
+    const L = H.lineup(c);
+    ok(c.sq6.list.length === 13 && L.start.length === 6 && L.bench.length === 5 && L.out.length === 2 && L.out.indexOf('me') < 0 && L.lib, 'club de 14: seis, líbero y 5 suplentes; 2 fuera de la convocatoria de 12');
+    c.coach = 10; reLine(c); const n = C.next(c);
+    ok(n.status === 'out' && n.bench && n.whyCode === 'coach' && C.matchSetup(c) === null && cntMsg(c, 'Fuera de la convocatoria') === 1, 'confianza 10: fuera de la convocatoria (sin partido; mensaje «Fuera de la convocatoria»)');
+    const b0 = c.stats.bench | 0, xp0 = c.player.xp, coach0 = c.coach, r = C.benchNext(c);
+    ok(r && r.bench && r.nota === null && r.xp === 0 && r.part && r.part.status === 'out' && c.stats.bench === b0 + 1 && c.player.xp === xp0 && /no cuenta contigo/.test(r.why), 'benchNext6: sin nota ni XP, banquillo +1 (' + r.why + ')');
+    ok(c.coach === coach0 + (c.train !== 'rest' ? H.TRAIN_COACH : 0), 'entrenar fuera de la convocatoria suma +' + H.TRAIN_COACH + ' de confianza');
+  }
+  // ofertas coherentes con la plantilla
+  { const c = fresh(4600); let all = [];
+    for (let s = 0; s < 6; s++) { c.season = 1 + s; setAll(c, 50 + s * 6); c.notes = [{ nota: 7.4 }, { nota: 7.6 }, { nota: 7.2 }]; c.coach = 70; c.scouts = {}; all = all.concat(H._genOffers(c, false)); }
+    c.season = 1;
+    const st = [4600, 4601, 4602, 4603, 4604, 4605].reduce((a, s) => { delete mem['voley3d.career6']; C._reset(); return a.concat(C.create({ mode: 'hall', name: 'O', num: 4, pos: 'OH', seed: s }).offers.filter(o => !o.trial)); }, []);
+    const bad = all.concat(st).filter(o => !o.depth || !o.dm || (!o.dm.start && o.dm.gap < -3 && o.role !== 'Rotación') || (o.role === 'Titular indiscutible' && !(o.dm.start && o.dm.gap >= 3)) || (!o.dm.start && o.role === 'Titular indiscutible'));
+    ok(all.length >= 5 && st.length >= 10 && !bad.length, 'ofertas (' + all.length + ' de clubes, ' + st.length + ' de inicio): el rol respeta la profundidad (' + all.concat(st).slice(0, 5).map(o => o.role + ' ' + (o.dm.start ? 'tit' : o.dm.rank + 'º') + ' ' + o.dm.gap).join(', ') + ')');
+    ok(all.concat(st).every(o => Array.isArray(o.depth.ahead) && o.depth.rank === o.depth.ahead.length + 1 && o.depth.slots >= 1 && o.depth.rl === ['Rotación', 'Titular', 'Titular indiscutible'].indexOf(o.role)), 'cada oferta lleva su depth con su rol (quién va por delante y tu sitio)');
+    ok(all.concat(st).every(o => o.role !== 'Titular indiscutible' || (o.depth.start && !o.depth.ahead.length)), 'Titular indiscutible: «Tu sitio» dice que sales de inicio');
+  }
+  // «Tu sitio» de la oferta = lo que pasa en tu primera jornada en el club (revisión: 10 de 12 titulares decían «serías 3º» y salían)
+  { let same = 0, tot = 0; const bad = [];
+    for (let s = 0; s < 40; s++) {
+      delete mem['voley3d.career6']; C._reset();
+      let c = C.create({ mode: 'hall', name: 'Sitio Prueba', num: 9, pos: 'OH', seed: 6100 + s });
+      const i = c.offers.findIndex(o => !o.trial), o = c.offers[i], d = o.depth;
+      C.acceptOffer(i, 2); c = C.get(); toLeagueFixture(c);
+      const n = C.next(c); if (!n || n.status === 'out') continue;
+      tot++; if (d.start === (n.status === 'start')) same++; else bad.push(o.role + ':' + (d.start ? 'tit' : d.rank + 'º') + '→' + n.status + ' gap ' + d.gap);
+    }
+    ok(tot >= 20 && same >= tot - 3, '«Tu sitio» de la oferta coincide con la primera jornada en ' + same + ' de ' + tot + ' carreras (fallan: ' + bad.join(', ') + ')');
+  }
+  // matchSetup6 con los campos del contrato
+  { let c = fresh(4700, 'OH', 'Titular indiscutible'); toLeagueFixture(c); c.fatigue = 0;
+    const isB = b => b && ['S', 'OPP', 'OH', 'MB'].indexOf(b.role) >= 0 && VB.ATTR_KEYS.every(k => b.st[k] >= 1 && b.st[k] <= 99) && b.num >= 1 && b.num <= 99 && typeof b.name === 'string' && b.fat >= 0 && b.fat <= 100 && 'badges' in b;
+    let ms = C.matchSetup(c);
+    ok(ms.attrs[0].length === 6 && ms.attrs[1].length === 6 && ms.nums[0].length === 6 && ms.nums[1].length === 6 && ms.names[0].length === 6 && ms.names[1].length === 6, 'de inicio: 6+6 atributos, dorsales y nombres');
+    ok(ms.bench[0].length === 5 && ms.bench[1].length === 5 && ms.bench[0].concat(ms.bench[1]).every(isB), '5+5 suplentes {role, st, num, name, fat, badges}');
+    ok(ms.meOn === true && R6[ms.meSlot] === 'OH' && ms.ctrlIdx === ms.meSlot && ms.meBench === -1 && ms.nums[0][ms.meSlot] === 9 && ms.names[0][ms.meSlot] === c.player.name && ms.career.meOn === true && ms.career.status === 'start', 'meOn, meSlot (' + ms.meSlot + '), ctrlIdx y tu dorsal en tu hueco');
+    ok(ms.coach[0].auto && ms.coach[1].auto && [1, 2, 3].indexOf(ms.coach[0].iq) >= 0 && ms.coach[1].iq === ({ easy: 1, normal: 2, hard: 3, expert: 3 })[ms.difficulty] && ms.coach[0].me.pullAt === 99 && ms.coach[0].me.enterBad === true && ms.coach[0].me.garbage === true, 'entrenadores: iq por dificultad y reglas hacia ti (pullAt 99 con indiscutible)');
+    ok(new Set(ms.nums[0].concat(ms.bench[0].map(b => b.num))).size === 11, 'dorsales de tu equipo distintos (6 + 5)');
+    c.contract.role = 'Rotación'; c.coach = 40; setAll(c, 20); reLine(c);
+    ms = C.matchSetup(c);
+    ok(ms.meOn === false && ms.meSlot === -1 && ms.ctrlIdx === -1 && ms.meBench >= 0 && ms.meBench < 5 && ms.bench[0][ms.meBench].num === 9 && ms.bench[0][ms.meBench].name === c.player.name && ms.nums[0].indexOf(9) < 0 && ms.career.meOn === false && ms.career.status === 'sub', 'desde el banquillo: meOn false, meSlot −1, tú en bench[0][' + ms.meBench + ']');
+    ok(ms.coach[0].me.pullAt === 3 && ms.coach[0].me.backNextSet === false && typeof ms.coach[0].me.enterLostSet === 'boolean', 'rotación con confianza 40: pullAt 3, sin vuelta el set siguiente');
+    ok(ms.bench[0][ms.meBench].st.jump === Math.max(1, c.player.st.jump - ms.fatigue) && (!ms.badges || ms.badges[0].every(x => x === null)), 'tus atributos (con fatiga) en tu sitio del banquillo; ninguna insignia en pista');
+    const Lf = VB.CareerLife;
+    if (Lf) { c.money = 1e6; const b0 = ms.bench[0][ms.meBench].st.recv; Lf.buyGear('eyes'); const ms2 = C.matchSetup(C.get()); ok(ms2.bench[0][ms2.meBench].st.recv === Math.min(99, b0 + 1) && JSON.stringify(ms2.attrs[0]) === JSON.stringify(ms.attrs[0]), 'career-life: tu material va a tu ficha del banquillo (recepción ' + b0 + ' → ' + ms2.bench[0][ms2.meBench].st.recv + ')'); }
+  }
+  // partido con cambios (eventos falsos): minutos, nota, experiencia y estadísticas
+  { let c = fresh(4800, 'OH', 'Rotación'); toLeagueFixture(c); setAll(c, 20); c.coach = 50; reLine(c);
+    const mkG = ms => { const t0 = [0, 1, 2, 3, 4, 5].map(i => ({ team: 0, id: i, num: ms.nums[0][i] })), me = { team: 0, id: 23, num: 9 }; return { g: { career: ms.career, size: 6, teams: [t0, [0, 1, 2, 3, 4, 5].map(i => ({ team: 1, id: 16 + i }))], ctrl: me, ctrlBase: me }, t0, me }; };
+    const pts = (evs, n) => { for (let i = 0; i < n; i++) evs.push({ type: 'point', team: i % 2, how: 'error' }); };
+    let ms = C.matchSetup(c), G = mkG(ms), evs = [{ type: 'newMatch' }];
+    pts(evs, 20); evs.push({ type: 'newSet', setNo: 2 }, { type: 'lineup', team: 0, set: 2, ins: [G.me], outs: [G.t0[1]], meIn: true, meOut: false });
+    for (let i = 0; i < 6; i++) evs.push({ type: 'hit', team: 0, player: G.me, kind: 'spike', touch: 3, human: true, grade: 'good' }, { type: 'point', team: 0, how: 'kill' });
+    pts(evs, 14);
+    C.ingest(evs, G.g);
+    const xp0 = c.player.xp, lv0 = c.player.lvl, st0 = c.stats.starts | 0, si0 = c.stats.subIn | 0, nn = c.notes.length, L = C.league(C.myClub(c).lid);
+    let s = C.matchDone({ sets: [2, 0], setScores: [[11, 9], [12, 8]], win: true }, null, G.g);
+    const xpExp = Math.round((40 + 22 * s.nota + 40 + 6 * 6) * H.xpMul(L) * (0.35 + 0.65 * 0.5)) + ((s.life && s.life.xp) | 0);   // (+ el reto, si se cumple)
+    ok(s.part && s.part.status === 'sub' && s.part.entered === 2 && s.part.meR === 20 && s.part.rallies === 40 && Math.abs(s.part.share - 0.5) < 0.01 && s.part.sets.join() === '2', 'entras en el 2º set: 20 de 40 puntos (share ' + s.part.share + ')');
+    ok(typeof s.nota === 'number' && !s.bench && s.xp === xpExp && c.notes.length === nn + 1, 'nota con tus puntos en pista (' + s.nota + ') y XP escalada (' + s.xp + ' = ' + xpExp + ')');
+    ok((c.stats.starts | 0) === st0 && c.stats.subIn === si0 + 1 && c.stats.mr >= 20 && c.stats.rr >= 40, 'estadísticas: subIn +1, starts igual, puntos en pista');
+    // sin entrar: sin nota, banquillo +1, experiencia de banquillo
+    if (toLeagueFixture(c)) {
+      setAll(c, 20); reLine(c); ms = C.matchSetup(c); G = mkG(ms); evs = [{ type: 'newMatch' }]; pts(evs, 40); C.ingest(evs, G.g);
+      const b0 = c.stats.bench | 0, pl0 = c.stats.played, n0 = c.notes.length, xp1 = c.player.xp, m0 = c.player.matches;
+      s = C.matchDone({ sets: [2, 1], setScores: [[15, 10], [10, 15], [15, 12]], win: true }, null, G.g);
+      const bx = Math.round(H.BENCH_XP * H.xpMul(L));
+      ok(s.nota === null && s.bench && s.part.status === 'sub' && !s.part.entered && s.part.meR === 0 && c.stats.bench === b0 + 1 && c.stats.played === pl0 && c.notes.length === n0, 'sin entrar: «s. c.», banquillo +1, partidos jugados igual, c.notes sin entrada');
+      ok(s.xp === bx && c.player.matches === m0, 'experiencia de banquillo: ' + H.BENCH_XP + ' × ' + H.xpMul(L) + ' = ' + s.xp + ' (no cuenta como partido)');
+      ok(C.form(c) != null && c.notes.every(x => typeof x.nota === 'number'), 'forma y nota media sin nulos');
+    }
+    // de inicio y te cambian a mitad (y g.meR de la sim manda)
+    if (toLeagueFixture(c)) {
+      c.contract.role = 'Titular'; setAll(c, 95); c.coach = 40; reLine(c); ms = C.matchSetup(c); G = mkG(ms); G.t0[ms.meSlot] = G.me; G.g.teams[0] = G.t0;
+      evs = [{ type: 'newMatch' }]; pts(evs, 16); evs.push({ type: 'sub', team: 0, inP: G.t0[0], outP: G.me, why: 'meOut', n: 1, left: 5, set: 1, score: [8, 8], meIn: false, meOut: true }); pts(evs, 16);
+      C.ingest(evs, G.g); const coach0 = c.coach;
+      G.g.meR = 17; G.g.rallyN = 34;
+      s = C.matchDone({ sets: [0, 2], setScores: [[10, 15], [9, 15]], win: false }, null, G.g);
+      ok(s.part.status === 'start' && s.part.pulled === 1 && s.part.meR === 17 && s.part.rallies === 34, 'de inicio y te cambian en el 1r set; g.meR (17) y g.rallyN (34) de la sim mandan');
+      const tm = c.inbox.filter(m => m.t === 'Te he cambiado').slice(-1)[0];
+      ok(s.nota != null && (s.nota >= 6 || (tm && /en el 1r set/.test(tm.x))), 'mensaje «Te he cambiado» con el ordinal (' + (tm ? tm.x : 'nota ' + s.nota) + ')');
+    }
+  }
+  // simular siendo suplente: determinista, y entras a veces
+  { let c = fresh(4900, 'OH', 'Rotación'); toLeagueFixture(c); setAll(c, 40); c.coach = 50; reLine(c);
+    const snap = mem['voley3d.career6'] = JSON.stringify(c); C._reset(); c = C.get(); reLine(c);
+    const n = C.next(c); const a = C.simulateNext(c); mem['voley3d.career6'] = snap; C._reset(); c = C.get(); reLine(c); const b = C.simulateNext(c);
+    ok(n.status === 'sub' && a && b && JSON.stringify([a.nota, a.part, a.sets, a.xp]) === JSON.stringify([b.nota, b.part, b.sets, b.xp]), 'simular de suplente: misma semilla, mismo resultado (' + JSON.stringify(a.part) + ')');
+    let subs = 0, ins = 0;
+    for (let s = 0; s < 40; s++) {
+      const t = fresh(5000 + s, 'OH', 'Rotación'); if (!toLeagueFixture(t)) continue; setAll(t, 42); reLine(t);
+      if (C.next(t).status !== 'sub') continue;
+      subs++; const r = C.simulateNext(t); if (r.part.entered) { ins++; ok(r.part.share >= 0.08 && r.part.share <= 0.7 && r.part.meR > 0, 'entras con el 8-70 % de los puntos (' + r.part.share.toFixed(2) + ')'); }
+    }
+    ok(subs >= 20 && ins >= subs * 0.15 && ins <= subs * 0.7, 'en ' + subs + ' semillas de suplente entras en ' + ins + ' (15-70 %; calibrado con partidos jugados: ~45 %)');
+  }
+  // guardado sin c.sq6: migra al cargar
+  { const c = fresh(5100); const raw = JSON.parse(mem['voley3d.career6']); delete raw.sq6; mem['voley3d.career6'] = JSON.stringify(raw); C._reset();
+    const r = C.get(); let err = ''; try { C.next(r); C.simulateNext(); } catch (e) { err = e.message; }
+    ok(r && r.v === 1 && r.sq6 && r.sq6.club === r.myClub && r.sq6.list.length >= 11 && !err, 'guardado de pista sin c.sq6 (VER6 igual): se crea al cargar y se sigue jugando' + (err ? ' — ' + err : ''));
+    const raw2 = JSON.parse(mem['voley3d.career6']); raw2.sq6.list = 'x'; mem['voley3d.career6'] = JSON.stringify(raw2); C._reset();
+    ok(C.get() && Array.isArray(C.get().sq6.list) && C.get().sq6.list.length >= 11, 'c.sq6 dañada: se rehace');
+  }
+  // migrar no es fichar: tras varias jornadas en el club, un guardado sin c.sq6 no te trata de recién llegado
+  { let c = fresh(5150, 'OH', 'Titular'); setAll(c, 80); let g = 0;
+    while (g++ < 6) { if (!toLeagueFixture(c)) break; c.fatigue = 0; C.simulateNext(); c = C.get(); }
+    toLeagueFixture(c); const before = C.next(c);
+    const raw = JSON.parse(mem['voley3d.career6']); delete raw.sq6; mem['voley3d.career6'] = JSON.stringify(raw); C._reset(); c = C.get();
+    const after = C.next(c);
+    ok(c.sq6.fresh === 0 && after.whyCode !== 'new' && !/acabas de llegar/.test(after.why || ''), 'guardado viejo sin c.sq6 tras ' + (g - 1) + ' jornadas: fresh 0 y sin «acabas de llegar» (' + before.status + '/' + before.whyCode + ' → ' + after.status + '/' + after.whyCode + ')');
+    ok(c.sq6.meLs === (c.last && c.last.part && c.last.part.status === 'start' ? 1 : 0), 'y conserva si saliste de inicio la última jornada (meLs ' + c.sq6.meLs + ')');
+    fresh(5160); const raw2 = JSON.parse(mem['voley3d.career6']); delete raw2.sq6; mem['voley3d.career6'] = JSON.stringify(raw2); C._reset();
+    ok(C.get().sq6.fresh === 1, 'recién fichado (sin jugar aún): sigue siendo recién llegado');
+  }
+  // confianza por los suelos: la Rotación nunca queda fuera por el entrenador dos jornadas seguidas; el Titular nunca queda fuera por eso
+  { let c = fresh(5200, 'OH', 'Rotación'); const st = []; let g = 0;
+    while (g++ < 6) { if (!toLeagueFixture(c)) break; c.coach = 5; c.fatigue = 0; c.sq6.wk = null; const n = C.next(c); st.push(n.status + '/' + n.whyCode); if (n.bench) C.benchNext(c); else C.simulateNext(); c = C.get(); }
+    ok(st.length >= 4 && !st.some((x, i) => i && x === 'out/coach' && st[i - 1] === 'out/coach') && st.indexOf('out/coach') >= 0, 'rotación con confianza 5: fuera por el entrenador, pero nunca dos jornadas seguidas (' + st.join(', ') + ')');
+    c = fresh(5210, 'OH', 'Titular'); toLeagueFixture(c); c.coach = 5; c.fatigue = 0; reLine(c); const n = C.next(c);
+    ok(n.status !== 'out' && n.whyCode === 'coach', 'titular con confianza 5: al banquillo, no fuera de la convocatoria (' + n.status + '/' + n.whyCode + ')');
+  }
+  // un set que empiezas en el banquillo (lineup con meOut) no cuenta como set jugado
+  { const c = fresh(5300, 'OH', 'Titular indiscutible'); toLeagueFixture(c); c.fatigue = 0; reLine(c);
+    const ms = C.matchSetup(c), me = { team: 0, id: 3, num: 9 }, t0 = [0, 1, 2, 3, 4, 5].map(i => i === ms.meSlot ? me : { team: 0, id: i, num: ms.nums[0][i] });
+    const G = { career: ms.career, size: 6, teams: [t0, []], ctrl: me, ctrlBase: me }, evs = [{ type: 'newMatch' }];
+    for (let i = 0; i < 20; i++) evs.push({ type: 'point', team: i % 2, how: 'error' });
+    evs.push({ type: 'newSet', setNo: 2 }, { type: 'lineup', team: 0, set: 2, ins: [], outs: [], meIn: false, meOut: true });
+    for (let i = 0; i < 20; i++) evs.push({ type: 'point', team: i % 2, how: 'error' });
+    C.ingest(evs, G); G.meR = 20; G.rallyN = 40;
+    const s = C.matchDone({ sets: [1, 1], setScores: [[11, 9], [9, 11]] }, null, G);
+    ok(s.part.sets.join() === '1' && s.part.pulled === 2, 'lineup con meOut al empezar el 2º set: sets jugados = 1 (' + s.part.sets.join() + ')');
+  }
+  C.abandon(); C._reset();
+  if (keep.c6 != null) mem['voley3d.career6'] = keep.c6; else delete mem['voley3d.career6'];
+  if (keep.md != null) mem['voley3d.career.mode'] = keep.md; else delete mem['voley3d.career.mode'];
+  if (keep.roles) VB.Sim.CTRL_ROLES6 = keep.roles; else delete VB.Sim.CTRL_ROLES6;
+  C._reset();
 }
 
 section('Carrera de pista con los datos reales (js/leagues.js, generado de notes/clubes/*.json por tools/build-leagues.js)');

@@ -911,7 +911,11 @@
   var M = null;
   function newM(g) {
     var z = function () { return { kills: 0, aces: 0, blocks: 0, assists: 0, digs: 0, errors: 0, recvP: 0, perfect: 0, good: 0, poor: 0, serves: 0 }; };
-    return { g: g, p: [z(), z()], last0: -1, lastTeam: -1, server: -1, setter: -1, cand: -1, blocker: -1, prevKind: '', prevTeam: -1, rallies: 0 };
+    // pista con cambios (titularidad): on = tu jugador en pista; meR = puntos con él en pista; sets en los que estuvo; started /
+    // entered (set de tu primera entrada) / pulled (set del primer cambio que te saca); subEv = hubo eventos de cambio
+    var on = !(g && g.career && g.career.meOn === false);
+    return { g: g, p: [z(), z()], last0: -1, lastTeam: -1, server: -1, setter: -1, cand: -1, blocker: -1, prevKind: '', prevTeam: -1, rallies: 0,
+      on: on, meR: 0, setNo: 1, sets: on ? [1] : [], started: on, entered: 0, pulled: 0, pullWhy: '', subEv: false };
   }
   function slotOf(g, pl) {
     if (!pl || !g || !g.teams) return -1;
@@ -948,8 +952,20 @@
       } else if (e.type === 'block') {
         if (e.team === 0) M.blocker = slotOf(g, e.player);
         M.prevKind = 'block'; M.prevTeam = e.team;
+      } else if (e.type === 'sub' || e.type === 'lineup') {   // cambios (pista): entras o sales
+        M.subEv = true;
+        if (e.meIn && !M.on) { M.on = true; if (!M.entered) M.entered = M.setNo; if (M.sets.indexOf(M.setNo) < 0) M.sets.push(M.setNo); }
+        if (e.meOut && M.on) {
+          M.on = false; if (!M.pulled) { M.pulled = M.setNo; M.pullWhy = String(e.why || ''); }
+          // al empezar el set (lineup, antes del primer saque): newSet ya lo había apuntado y no lo has jugado
+          if (e.type === 'lineup') { var si = M.sets.indexOf(M.setNo); if (si >= 0) M.sets.splice(si, 1); }
+        }
+      } else if (e.type === 'newSet') {
+        M.setNo = e.setNo > 0 ? e.setNo | 0 : M.setNo + 1;
+        if (M.on && M.sets.indexOf(M.setNo) < 0) M.sets.push(M.setNo);
       } else if (e.type === 'point') {
         M.rallies++;
+        if (M.on) M.meR++;
         if (e.team === 0) {
           if ((e.how === 'kill' || e.how === 'tip') && M.last0 >= 0) {
             M.p[M.last0].kills++;
@@ -1517,6 +1533,28 @@
   var RATE6 = { OH: 3.0, OPP: 2.8, MB: 3.4, S: 2.0, L: 4.0 };
   var SIM_SHARE6 = { OH: 0.16, OPP: 0.2, MB: 0.11, S: 0.04, L: 0 };   // simular: parte de los puntos del equipo que son tuyos
   var cur6 = null, lost6 = false;
+  // Titularidad (13-nov-2026, notes/titularidad-y-cambios.md §A): el club tiene una plantilla con profundidad (c.sq6) y el entrenador
+  // elige el seis inicial de cada jornada (lineup6). Sustituye en la pista al banquillo por confianza de la playa (BENCH/benchFor).
+  var SQ_SIZE = { S: 2, OPP: 2, OH: 4, MB: 3, L: 1 }, SQ_BIG = 70, SQ_POS = ['S', 'OPP', 'OH', 'MB', 'L'];   // por puesto, contándote a ti
+  var SLOTS6 = { S: 1, OPP: 1, OH: 2, MB: 2, L: 1 }, LIST6 = 12;   // plazas en el seis (+ líbero) y convocatoria
+  var SEL_FORM = 0.8, SEL_CONF = 12, SEL_FAT0 = 50, SEL_FATK = 10, SEL_KEEP = 0.75, SEL_NOISE = 0.5;
+  // Tu media cuenta ME_EDGE más en la elección: el resto del equipo lo lleva la IA y tú lo juegas a mano (con los datos reales un
+  // jugador de Carrera va 6-12 por debajo de la media de su club las primeras temporadas (un novato de 45 empieza en clubes de 57-61):
+  // con +8 un novato de la rotación no salía de inicio en toda la temporada; con +12 compite por el puesto y lo gana con buenas notas)
+  var ME_EDGE = 12;
+  var OUT_COACH = 20, FAT_REST = 80, FAT_REST_TOP = 85, TIT_BONUS = 3, STARTS_PROMOTE = 3, TIT_BROKEN = 2;
+  var TRAIN_COACH = 1, IMPACT_COACH = 2, PULL_COACH = 2, FIT_START = 2, FIT_DEEP = 2, NOTA_MIN_R = 12, BENCH_XP = 20;
+  var WHY6 = { form: 'llega en mejor forma', ovr: 'tiene más nivel ahora mismo', conf: 'el entrenador se fía más de su juego', fatiga: 'vas con mucha fatiga',
+    'new': 'acabas de llegar y aún tienes que ganarte el sitio', coach: 'el entrenador no cuenta contigo', list: 'la convocatoria está llena' };
+  var ROLE_HINT6 = [
+    'Compites por el puesto: juega quien llegue mejor (media, forma, confianza y fatiga). Si sales de inicio ' + STARTS_PROMOTE + ' jornadas seguidas, pasas a titular.',
+    'El entrenador cuenta contigo de inicio salvo que estés muy por debajo o con mucha fatiga. Si te deja ' + TIT_BROKEN + ' jornadas en el banquillo, incumple la promesa y puedes irte sin pegas.',
+    'Sales siempre de inicio (salvo con fatiga de ' + FAT_REST_TOP + ' o más) y no te cambian por jugar mal. La confianza del entrenador nunca baja de ' + ROLE_FLOOR[2] + '.'
+  ];
+  function cap1(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
+  function yE(name) { return /^(h?[iíIÍ])/i.test(String(name || '')) && !/^h?i[aeoáéó]/i.test(String(name || '')) ? ' e ' : ' y '; }
+  function myForm6(c) { var f = form(c); return f == null ? 0 : clamp((f - 6.5) * 2, -FORM_MAX, FORM_MAX); }
+  function newSeasonStats6() { var s = newSeasonStats(); s.starts = 0; s.subIn = 0; s.mr = 0; s.rr = 0; return s; }
 
   // ---------------------------------------------------------------- puestos (los lee de sim.js: crecen solos cuando sim los añada)
   function positions6() {
@@ -1689,9 +1727,9 @@
     ['notes', 'offers', 'history', 'trophies', 'inbox', 'kos'].forEach(function (k) { if (!arr(o[k])) o[k] = []; });
     if (!o.tab || typeof o.tab !== 'object') o.tab = {};
     if (!o.scouts || typeof o.scouts !== 'object') o.scouts = {};
-    if (!o.stats || typeof o.stats !== 'object') o.stats = newSeasonStats();
-    if (!o.career || typeof o.career !== 'object') o.career = newSeasonStats();
-    [o.stats, o.career].forEach(function (x) { var z = newSeasonStats(); for (var k in z) if (!num(x[k])) x[k] = 0; });
+    if (!o.stats || typeof o.stats !== 'object') o.stats = newSeasonStats6();
+    if (!o.career || typeof o.career !== 'object') o.career = newSeasonStats6();
+    [o.stats, o.career].forEach(function (x) { var z = newSeasonStats6(); for (var k in z) if (!num(x[k])) x[k] = 0; });
     o.inbox = o.inbox.filter(function (m) { return m && typeof m.t === 'string'; }).slice(-INBOX_MAX);
     o.msgN = num(o.msgN) ? o.msgN | 0 : o.inbox.reduce(function (s, m) { return Math.max(s, (m.id | 0) + 1); }, 0);
     if (TRAIN_KEYS.indexOf(o.train) < 0) o.train = 'bal';
@@ -1721,6 +1759,23 @@
       o.contract = { club: me.id, years: 2, left: 2, role: ROLE_LV[rl], salary: salary6(o, me, rl), since: o.season };
     } else { ct.left = clampI(ct.left, 0, 5); ct.years = clampI(ct.years, 1, 5); ct.club = o.myClub; if (!num(ct.salary)) ct.salary = salary6(o, me, ROLE_LV.indexOf(ct.role)); }
     if (!o.objective || typeof o.objective.text !== 'string' || !num(o.objective.pos)) o.objective = objectiveFor6(o, me);
+    // titularidad (13-nov-2026): un guardado sin plantilla (c.sq6) o con una dañada la crea aquí (sin subir VER6)
+    var q6 = o.sq6;
+    if (!q6 || typeof q6 !== 'object' || q6.club !== me.id || !arr(q6.list) || !q6.list.length || !q6.list.every(function (x) { return x && typeof x.id === 'string' && typeof x.name === 'string' && SQ_POS.indexOf(x.pos) >= 0 && num(x.ovr) && num(x.num); })) o.sq6 = null;
+    else {
+      q6.list.forEach(function (x) { x.ovr = clampI(x.ovr, 20, 99); x.form = clampI(x.form, -FORM_MAX, FORM_MAX); x.fat = clampI(x.fat, 0, 100); x.conf = num(x.conf) ? clampI(x.conf, 30, 75) : 50; x.ls = x.ls ? 1 : 0; });
+      q6.run = clampI(q6.run, 0, 99); q6.titBench = clampI(q6.titBench, 0, 99); q6.meLs = q6.meLs ? 1 : 0; q6.fresh = q6.fresh ? 1 : 0; q6.outC = q6.outC ? 1 : 0;
+      if (['start', 'sub', 'out'].indexOf(q6.stat) < 0) q6.stat = null;
+      if (!q6.L || typeof q6.L !== 'object' || !arr(q6.L.start) || !arr(q6.L.bench) || !arr(q6.L.out)) { q6.L = null; q6.wk = null; }
+    }
+    var mig6 = !o.sq6;
+    if (o.phase !== 'off') sq6(o); else if (!o.sq6) o.sq6 = newSq6(o, me, o.season);
+    // (migrar no es fichar: «recién llegado» solo si fichaste en esta jornada o para la temporada que viene; y sigues de inicio si
+    // la última jornada saliste de inicio)
+    if (mig6 && o.sq6) {
+      o.sq6.fresh = num(o.joinWk) && o.joinWk >= wkKey6(o) ? 1 : 0;
+      o.sq6.meLs = !o.sq6.fresh && o.last && (o.last.part ? o.last.part.status === 'start' : !o.last.bench) ? 1 : 0;
+    }
     if (o.last && (!o.last.me || !arr(o.last.sets) || !arr(o.last.setScores))) o.last = null;
     if (o.window !== 'mid' && o.window !== 'end') o.window = '';
     if (['league', 'ko', 'off'].indexOf(o.phase) < 0) o.phase = 'league';
@@ -1823,23 +1878,209 @@
   }
   function wkKey6(c) { return (c.season | 0) * 1000 + (c.phase === 'ko' ? 500 + (c.koI | 0) * 10 + ((c.kos && c.kos[c.koI] && c.kos[c.koI].round) | 0) : c.week | 0); }
   function roundName6(pairs) { return pairs <= 1 ? 'Final' : pairs === 2 ? 'Semifinal' : pairs <= 4 ? 'Cuartos' : 'Octavos'; }
-  /** Dorsales del equipo (6 de la rotación, sin el tuyo; el líbero lleva el 13 de sim.js). Deterministas por club y temporada. */
-  function teamNums6(c, k) {
-    var r = rng(hash(c.seed, 'nums6', k.id, c.season)), pool = [];
-    for (var n = 1; n <= 20; n++) if (n !== c.player.num && n !== 13) pool.push(n);
-    return shuffle(r, pool).slice(0, 6);
+  // ---------------------------------------------------------------- plantilla con profundidad y seis inicial (titularidad)
+  /** Puesto con el que compites en la plantilla: el que llevas en el partido (ctrlRole6). */
+  function sqPos6(c) { return ctrlRole6(c); }
+  /** Plantilla de un club (jugadores inventados, sin ti), determinista por semilla, club y temporada. SQ_SIZE por puesto contándote a
+   *  ti en el tuyo (+1 receptor y +1 central en los clubes de SQ_BIG o más). Los dos primeros de cada puesto son los titulares
+   *  naturales (media del club −3..+4); el resto, −9..−1; el líbero ±3 (dorsal 13). Dorsales únicos 1-20 sin el tuyo ni el 13. */
+  function squad6(c, k, season, mePos) {
+    if (mePos == null) mePos = sqPos6(c);   // ('' = club rival: sin hueco para ti)
+    var r = rng(hash(c.seed, 'sq6', k.id, season)), pool = [], list = [], names = {}, ni = 0, big = k.ovr >= SQ_BIG;
+    names[c.player.name] = names[String(c.player.name).split(' ')[0]] = 1;
+    for (var n = 1; n <= 20; n++) if (n !== (c.player.num | 0) && n !== 13) pool.push(n);
+    shuffle(r, pool);
+    SQ_POS.forEach(function (pos) {
+      var cnt = SQ_SIZE[pos] + (big && (pos === 'OH' || pos === 'MB') ? 1 : 0) - (pos === mePos ? 1 : 0);
+      for (var i = 0; i < cnt; i++) {
+        var fn, nm, g = 0; do { fn = pick(r, FIRST); nm = fn + ' ' + pick(r, LAST); } while ((names[nm] || names[fn]) && g++ < 30); names[nm] = names[fn] = 1;   // (sin nombres repetidos en la plantilla)
+        var d = pos === 'L' ? -3 + 6 * r() : i < 2 ? -3 + 7 * r() : -9 + 8 * r(), o = clampI(k.ovr + d, 20, 99);
+        list.push({ id: 'q' + list.length, name: nm, pos: pos, num: pos === 'L' ? 13 : pool[ni++ % pool.length], ovr: o, form: 0, fat: 0,
+          conf: clampI(50 + 2 * (o - k.ovr), 30, 75), ls: i < SLOTS6[pos] ? 1 : 0 });
+      }
+    });
+    return list;
   }
-  /** Plantilla del club para la pestaña Equipo (jugadores inventados): los 6 de la rotación y el líbero, tú en tu puesto. */
+  function newSq6(c, k, season) {
+    return { club: k.id, season: season, pos: sqPos6(c), kovr: k.ovr, list: squad6(c, k, season), stat: null, why: '', wk: null, ahead: [], run: 0, titBench: 0, fresh: 1, meLs: 0, outC: 0, L: null };
+  }
+  /** Plantilla de tu club (c.sq6): la crea si falta o si es de otro club o de otro puesto. */
+  function sq6(c) {
+    var k = myClub(c); if (!k) return null;
+    var q = c.sq6;
+    if (!q || typeof q !== 'object' || q.club !== k.id || q.pos !== sqPos6(c) || !Array.isArray(q.list) || !q.list.length) q = c.sq6 = newSq6(c, k, c.season + (c.phase === 'off' ? 1 : 0));
+    return q;
+  }
+  /** Verano sin cambiar de club: los que siguen se mueven ±2 (y con la media del club), forma y fatiga a 0. */
+  function sqSummer6(c) {
+    var k = myClub(c), q = c.sq6; if (!k) return;
+    if (!q || q.club !== k.id || q.pos !== sqPos6(c) || !Array.isArray(q.list)) { c.sq6 = newSq6(c, k, c.season); return; }
+    var r = rng(hash(c.seed, 'sq6n', k.id, c.season)), dk = k.ovr - (q.kovr != null ? q.kovr : k.ovr);
+    q.list.forEach(function (x) { x.ovr = clampI(x.ovr + dk - 2 + 4 * r(), 20, 99); x.form = 0; x.fat = 0; });
+    q.kovr = k.ovr; q.season = c.season; q.run = 0; q.titBench = 0; q.outC = 0; q.wk = null; q.L = null;
+  }
+  function sqEntry6(c, q, id) {
+    if (id === 'me') return { id: 'me', name: c.player.name, pos: sqPos6(c), num: c.player.num, ovr: playerOvr(c), form: Math.round(myForm6(c)), fat: c.fatigue | 0, me: true };
+    for (var i = 0; i < q.list.length; i++) if (q.list[i].id === id) return q.list[i];
+    return null;
+  }
+  /** El entrenador elige el seis de la jornada (una vez por jornada: caché en c.sq6 por wkKey6, rol, club y puesto). sel = media +
+   *  0,8 × forma + (confianza − 50) / 12 − fatiga por encima de 50 / 10 + 0,75 si salió de inicio la anterior ± 0,5 (determinista).
+   *  Tú: tu media + ME_EDGE, forma de tus notas, la confianza del entrenador, tu fatiga; Titular +TIT_BONUS; Titular indiscutible
+   *  siempre de inicio (salvo fatiga ≥ FAT_REST_TOP); con fatiga ≥ FAT_REST descansas; con confianza < OUT_COACH no te convoca.
+   *  Devuelve { stat: 'start'|'sub'|'out', why, slot, start: [6 ids en orden ROLES6], bench: [ids], out: [ids], lib, rival, gap, ahead }. */
+  function lineup6(c) {
+    var q = sq6(c); if (!q) return null;
+    var wk = wkKey6(c), rl = roleIdx(c), pos = sqPos6(c), key = wk + '|' + rl + '|' + q.club + '|' + pos;
+    if (q.L && q.wk === key) return q.L;
+    var noise = function (id) { return (rng(hash(c.seed, 'sel', wk, id))() - 0.5) * 2 * SEL_NOISE; };
+    var ent = q.list.map(function (x) { return { id: x.id, pos: x.pos, ovr: x.ovr, form: x.form | 0, conf: x.conf, fat: x.fat | 0, keep: x.ls ? SEL_KEEP : 0, ls: x.ls }; });
+    var me = { id: 'me', pos: pos, ovr: playerOvr(c) + ME_EDGE, form: myForm6(c), conf: c.coach, fat: c.fatigue | 0, keep: !q.fresh && q.meLs ? SEL_KEEP : 0, me: true };
+    ent.push(me);
+    ent.forEach(function (e) {
+      e.t = { ovr: e.ovr, form: SEL_FORM * e.form, conf: (e.conf - 50) / SEL_CONF, fat: -Math.max(0, e.fat - SEL_FAT0) / SEL_FATK };
+      e.sel = e.t.ovr + e.t.form + e.t.conf + e.t.fat + e.keep + noise(e.id);
+    });
+    if (rl === 1) me.sel += TIT_BONUS;
+    // con confianza < OUT_COACH: la Rotación se queda fuera de la convocatoria, pero nunca dos jornadas seguidas (como benchFor en la
+    // playa); el Titular nunca queda fuera por eso: va al banquillo ('coachSub', primer suplente de su puesto)
+    var prevOut = !!q.outC;   // (squadWeek6: la jornada anterior te dejó fuera el entrenador)
+    var force = c.coach < OUT_COACH && rl < 2 ? (rl === 0 && !prevOut ? 'coach' : 'coachSub') : (rl === 2 ? me.fat >= FAT_REST_TOP : me.fat >= FAT_REST) ? 'fatiga' : rl === 2 ? 'start' : '';
+    var by = {}, out = [];
+    SQ_POS.forEach(function (p) {
+      by[p] = ent.filter(function (e) { return e.pos === p; }).sort(function (a, b) { return b.sel - a.sel || (a.id < b.id ? -1 : 1); });
+    });
+    var mine = by[pos], mi = mine.indexOf(me);
+    mine.splice(mi, 1);
+    if (force === 'start') mine.unshift(me);
+    else if (force === 'coach') out.push(me);
+    else if (force === 'fatiga' || force === 'coachSub') mine.splice(Math.min(mine.length, SLOTS6[pos]), 0, me);
+    else mine.splice(mi, 0, me);
+    var ord = mine.map(function (e) { return e.id; }); if (force === 'coach') ord.push('me');
+    // convocatoria de 12: fuera los peores de los puestos con más suplentes
+    var n = ent.length - out.length, why = force === 'coach' || force === 'coachSub' ? 'coach' : force === 'fatiga' ? 'fatiga' : '';
+    while (n > LIST6) {
+      var bp = '', br = 0;
+      ['S', 'OPP', 'OH', 'MB'].forEach(function (p) { var rs = by[p].length - SLOTS6[p]; if (rs > br || (rs === br && rs > 0 && by[p][by[p].length - 1].sel < by[bp][by[bp].length - 1].sel)) { bp = p; br = rs; } });
+      if (!bp || br <= 0) break;
+      var gone = by[bp].pop(); out.push(gone); n--;
+      if (gone === me) why = 'list';
+    }
+    var R = simRoles6(), cnt = {}, start = R.map(function (p) { var i = cnt[p] = (cnt[p] || 0); cnt[p]++; return by[p][i] ? by[p][i].id : ''; });
+    var bench = [];
+    ['S', 'OPP', 'OH', 'MB'].forEach(function (p) { by[p].slice(SLOTS6[p]).forEach(function (e) { bench.push(e.id); }); });
+    var slot = start.indexOf('me'), stat = slot >= 0 ? 'start' : out.indexOf(me) >= 0 ? 'out' : 'sub';
+    if (stat === 'out' && !why) why = 'list';
+    // rival de tu puesto: con 'start', el mejor suplente (quien te aprieta); si no, el titular más flojo (a quien tienes que superar)
+    var starters = mine.slice(0, SLOTS6[pos]).filter(function (e) { return e !== me; }), reserves = mine.slice(SLOTS6[pos]).filter(function (e) { return e !== me; });
+    var rv = stat === 'start' ? reserves[0] : starters[starters.length - 1];
+    if (stat !== 'start' && !why) {
+      if (q.fresh) why = 'new';
+      else if (rv) { var bw = 'ovr', bd = -1e9; ['ovr', 'form', 'conf'].forEach(function (t) { var d = rv.t[t] - me.t[t]; if (d > bd) { bd = d; bw = t; } }); why = bw; }
+      else why = 'ovr';
+    }
+    var L = { stat: stat, why: stat === 'start' ? '' : why, slot: slot, start: start, bench: bench, out: out.map(function (e) { return e.id; }), lib: by.L[0] ? by.L[0].id : '',
+      rival: rv ? rv.id : '', gap: rv ? round1(me.sel - rv.sel) : stat === 'start' ? 9 : -9, ahead: stat === 'start' ? [] : starters.map(function (e) { return e.id; }),
+      prevIn: '', ord: ord };
+    if (stat === 'start') { var was = ent.filter(function (e) { return e.pos === pos && e.ls && e !== me && start.indexOf(e.id) < 0; })[0]; L.prevIn = was ? was.id : L.rival; }
+    // mensajes del entrenador, solo al cambiar de estado (la primera elección en un club la explica la bienvenida)
+    var prev = q.stat, prevWhy = q.why;
+    q.wk = key; q.L = L; q.stat = stat; q.why = L.why; q.ahead = L.ahead.slice();
+    if (prev && prev !== stat) coachLineMsg6(c, q, L, prev, prevWhy);
+    return L;
+  }
+  function coachLineMsg6(c, q, L, prev, prevWhy) {
+    var who = function (id) { var e = id && sqEntry6(c, q, id); return e ? e.name : 'otro ' + POS6[sqPos6(c)].name.toLowerCase(); };
+    if (L.stat === 'start') {
+      if (prevWhy === 'fatiga') msg(c, 'coach', 'Sales de inicio', 'Ya has descansado: el próximo partido vuelves al seis inicial.');
+      else msg(c, 'coach', 'Sales de inicio', 'Has convencido en los entrenamientos: el próximo partido juegas de inicio en lugar de ' + who(L.prevIn) + '.');
+    } else if (L.stat === 'out') msg(c, 'coach', 'Fuera de la convocatoria', 'Esta jornada no entras en la lista de ' + LIST6 + '. ' + cap1(WHY6[L.why] || WHY6.list) + '. Sigue entrenando y volverás.');
+    else if (L.why === 'fatiga') msg(c, 'coach', 'Descansas de inicio', 'Vas con mucha fatiga (' + (c.fatigue | 0) + '). Empiezas en el banquillo para dosificarte.');
+    else msg(c, 'coach', 'Empiezas en el banquillo', 'Esta semana sale de inicio ' + who(L.rival) + ': ' + (WHY6[L.why] || WHY6.ovr) + '. Estate a punto: si el partido lo pide, entras.');
+  }
+  /** Texto del estado de la jornada (HALL.benchWhy): '' si sales de inicio. */
+  function whyText6(c) {
+    c = c || load6(); var L = c && myClub(c) ? lineup6(c) : null; if (!L || L.stat === 'start') return '';
+    var q = c.sq6, rv = L.rival && sqEntry6(c, q, L.rival);
+    if (L.stat === 'out') return cap1(WHY6[L.why] || WHY6.list) + '.';
+    return (rv ? 'Sale de inicio ' + rv.name + ': ' : '') + (rv ? WHY6[L.why] || WHY6.ovr : cap1(WHY6[L.why] || WHY6.ovr)) + '.';
+  }
+  /** Tras cada jornada de tu equipo: forma de cada uno (paseo ±1 con vuelta a 0), fatiga (+12 de inicio, +6 si entró, −15 si no jugó),
+   *  confianza ±1 según la forma. how: 'start' | 'in' | 'none' | 'out' (tú) o 'bye' (tu equipo descansa). Determinista. */
+  function squadWeek6(c, how) {
+    var q = c.sq6; if (!q || !Array.isArray(q.list)) return;
+    var L = q.L, st = {}, r = rng(hash(c.seed, 'sqw', c.season, wkKey6(c), q.club)), bye = how === 'bye', rin = how === 'in' && L ? L.rival : '';
+    if (L && !bye) { L.start.forEach(function (id) { st[id] = 1; }); if (L.lib) st[L.lib] = 1; }
+    q.list.forEach(function (x) {
+      var u = r(), f = x.form | 0; f += u < 0.3 ? -1 : u < 0.6 ? 1 : 0; if (f && r() < 0.3) f += f > 0 ? -1 : 1; x.form = clampI(f, -FORM_MAX, FORM_MAX);
+      x.fat = clampI((x.fat | 0) + (!bye && st[x.id] ? (x.id === rin ? 6 : 12) : -15), 0, 100);
+      if (!bye) x.ls = st[x.id] ? 1 : 0;
+      x.conf = clampI(x.conf + (x.form > 0 ? 1 : x.form < 0 ? -1 : 0), 30, 75);
+    });
+    if (!bye) { q.meLs = how === 'start' ? 1 : 0; q.fresh = 0; q.outC = how === 'out' && L && L.why === 'coach' ? 1 : 0; }
+  }
+  /** Rol tras una jornada de liga: Rotación → Titular con STARTS_PROMOTE inicios seguidos; Titular que se queda TIT_BROKEN jornadas
+   *  sin salir de inicio (no por fatiga) → promesa incumplida (c.broken). */
+  function roleWeek6(c, f) {
+    var q = c.sq6, L = q && q.L; if (!L || !f || f.kind !== 'league' || !c.contract) return;
+    var rl = roleIdx(c);
+    if (rl === 0) { q.run = L.stat === 'start' ? (q.run | 0) + 1 : 0; promoteCheck6(c); }
+    else if (rl === 1 && L.stat !== 'start' && L.why !== 'fatiga') {
+      q.titBench = (q.titBench | 0) + 1;
+      if (q.titBench >= TIT_BROKEN && c.broken !== c.season) {
+        c.broken = c.season;
+        msg(c, 'agent', 'Promesa incumplida', myClub(c).name + ' te fichó como titular y ya te ha dejado ' + plural(q.titBench, 'jornada', 'jornadas') + ' sin salir de inicio. Hasta final de temporada puedes irte sin pegas aunque tengas contrato, y los clubes lo saben: llegarán más ofertas (a mitad de temporada basta con una nota media de 6,5).');
+      }
+    }
+  }
+  /** Plantilla del club para Club › Equipo y career-life (mate6): la de c.sq6 con tu fila (me) y el estado de la jornada; para otro
+   *  club, la de squad6 sin guardar. Campos: name, pos, posName, ovr, num, me, form, stat ('start'|'sub'|'out'), slot (0-5 o −1). */
   function roster6(c, k) {
     k = k || myClub(c); if (!k) return [];
-    var R = simRoles6(), role = ctrlRole6(c), idx = R.indexOf(role), nums = teamNums6(c, k), r = rng(hash(c.seed, 'roster6', k.id, c.season)), out = [];
-    if (idx < 0) idx = 1;
-    R.concat(['L']).forEach(function (ro, i) {
-      var me = i === idx && k.id === c.myClub, nm = pick(r, FIRST) + ' ' + pick(r, LAST), o = clampI(k.ovr + (r() - 0.5) * 8, 20, 99);
-      out.push({ name: me ? c.player.name : nm, pos: ro, posName: POS6[ro].name, ovr: me ? playerOvr(c) : o, num: me ? c.player.num : ro === 'L' ? 13 : nums[i], me: me });
+    var mine = k.id === c.myClub, q = mine ? sq6(c) : null, L = mine && c.phase !== 'off' && myFixture6(c) ? lineup6(c) : null;
+    var list = mine ? q.list.slice() : squad6(c, k, c.season);
+    if (mine) list.push({ id: 'me' });
+    var R = simRoles6(), order = { S: 0, OPP: 1, OH: 2, MB: 3, L: 4 };
+    var out = list.map(function (x) {
+      var e = x.id === 'me' ? sqEntry6(c, q, 'me') : x, slot = L ? L.start.indexOf(x.id) : -1;
+      var stat = L ? (slot >= 0 || L.lib === x.id ? 'start' : L.out.indexOf(x.id) >= 0 ? 'out' : 'sub') : (x.ls || (x.id === 'me' && q.meLs) ? 'start' : 'sub');
+      return { id: e.id, name: e.name, pos: e.pos, posName: POS6[e.pos].name, ovr: e.ovr, num: e.num, me: x.id === 'me', form: e.form | 0, fat: e.fat | 0, stat: stat, slot: slot };
     });
+    out.sort(function (a, b) { return order[a.pos] - order[b.pos] || (a.stat === 'start' ? 0 : a.stat === 'sub' ? 1 : 2) - (b.stat === 'start' ? 0 : b.stat === 'sub' ? 1 : 2) || b.ovr - a.ovr; });
     return out;
   }
+  /** Tu sitio en el puesto (Club › Equipo): { k: 1.., n: jugadores del puesto, ahead: [nombres por delante] }. */
+  function depthNow6(c) {
+    var q = sq6(c); if (!q) return null;
+    var pos = sqPos6(c), L = myFixture6(c) && c.phase !== 'off' ? lineup6(c) : null;
+    var n = q.list.filter(function (x) { return x.pos === pos; }).length + 1;
+    if (!L) return { k: 0, n: n, ahead: [] };
+    var k = (L.ord || []).indexOf('me') + 1;
+    return { k: k || n, n: n, ahead: L.ahead.map(function (id) { var e = sqEntry6(c, q, id); return e ? e.name : ''; }), stat: L.stat };
+  }
+  /** Profundidad de tu puesto en un club (ofertas): tu sel de recién llegado (sin SEL_KEEP, confianza del rol rl) contra su plantilla
+   *  de esa temporada. { slots, ahead: [{name, ovr}], rank, start, gap }. k puede ser {id, ovr} con la media de la temporada que viene. */
+  function depth6(c, k, lid, season, rl, o) {
+    // o.merit: solo el nivel (sin las ventajas del rol: lo que usa el club para decidir qué rol puede prometer); si no, con el rol
+    // ofrecido como en lineup6 (Titular +TIT_BONUS, Titular indiscutible siempre de inicio) y la confianza con la que llegarías
+    // (o.pen: lo que resta una salida con contrato o una negociación rechazada), para que «Tu sitio» diga lo que pasará
+    o = o || {}; rl = rl == null ? 1 : rl;
+    var pos = sqPos6(c), list = squad6(c, k, season || c.season, pos).filter(function (x) { return x.pos === pos; });
+    var me = playerOvr(c) + ME_EDGE + SEL_FORM * myForm6(c) + (clamp(ROLE_COACH[rl] - (o.pen || 0), 0, 100) - 50) / SEL_CONF + (!o.merit && rl === 1 ? TIT_BONUS : 0);
+    var s = list.map(function (x) { return { name: x.name, ovr: x.ovr, sel: x.ovr + (x.conf - 50) / SEL_CONF + (x.ls ? SEL_KEEP : 0) }; }).sort(function (a, b) { return b.sel - a.sel; });
+    var slots = SLOTS6[pos], ahead = !o.merit && rl === 2 ? [] : s.filter(function (x) { return x.sel > me; }), ref = s[slots - 1];
+    return { slots: slots, ahead: ahead.map(function (x) { return { name: x.name, ovr: x.ovr }; }), rank: ahead.length + 1, start: ahead.length < slots, gap: ref ? round1(me - ref.sel) : 9, rl: o.merit ? -1 : rl };
+  }
+  /** Profundidad de una oferta: la de su rol (o.depth, la que se enseña) y la de solo el nivel (o.dm, con la que el club decide qué
+   *  rol puede prometer). Se rehace al cambiar el rol (negociación) o la confianza de llegada (negociación rechazada). */
+  function offerDepth6(c, o, season) {
+    var k = club(c, o.club); if (!k || !o.dm) return;
+    o.depth = depth6(c, { id: k.id, ovr: o.ovr != null ? o.ovr : k.ovr }, o.lid, season != null ? season : o.dSeason, Math.max(0, ROLE_LV.indexOf(o.role)), { pen: (o.negNo ? NEG_COACH : 0) + (earlyExit(c) ? EARLY_COACH : 0) });
+  }
+  /** Rol que puede prometer un club según su plantilla: sin sitio y lejos (gap < −3) como mucho Rotación; sin sitio, como mucho
+   *  Titular; indiscutible solo con sitio y gap ≥ 3. */
+  function capRole6(rl, d) { if (!d) return rl; if (!d.start) return Math.min(rl, d.gap < -3 ? 0 : 1); return d.gap < 3 ? Math.min(rl, 1) : rl; }
+  function fit6(d) { return d ? (d.start ? FIT_START : 0) - (d.rank >= 3 ? FIT_DEEP : 0) : 0; }
 
   // ---------------------------------------------------------------- crear
   function create6(o) {
@@ -1854,7 +2095,7 @@
     var c = { v: VER6, mode: 'hall', seed: seed, created: o.now || Date.now(), points: POINTS6.indexOf(+o.points) >= 0 ? +o.points : 15, ctrl: 'one',
       season: 1, week: 0, phase: 'pick', player: player, cc: '', leagues: [], clubs: [], cups: {}, intl: {}, myClub: -1, mate: null,
       tab: {}, myRes: { lid: '', w: [] }, kos: [], koI: 0, notes: [], coach: 50, objective: null, offers: [], window: 'start', review: null, last: null,
-      stats: newSeasonStats(), career: newSeasonStats(), history: [], trophies: [], pick: { round: 0, more: false }, inbox: [], msgN: 0,
+      stats: newSeasonStats6(), career: newSeasonStats6(), history: [], trophies: [], pick: { round: 0, more: false }, inbox: [], msgN: 0,
       train: 'bal', tp: { phys: 0, def: 0, atk: 0 }, fatigue: 0, listed: false, contract: null, money: 0, chem: 0, scouts: {},
       provisional: !!(VB.Leagues && VB.Leagues.provisional) };
     buildWorld6(c);
@@ -1887,10 +2128,11 @@
     return out;
   }
   function startOffer6(c, k, avg, round, r, trial) {
-    var it = round1(8 + (avg - k.ovr) + (r() - 0.5) * 8 + round * 2.5);
-    var rl = trial ? 0 : it > ROLE_NEED[2] ? 2 : it > ROLE_NEED[1] ? 1 : 0;
+    var d = depth6(c, k, k.lid, c.season, 1, { merit: true }), it = round1(8 + (avg - k.ovr) + (r() - 0.5) * 8 + round * 2.5 + fit6(d));   // (+2 si serías titular, −2 si 3º o peor)
+    var rl = trial ? 0 : capRole6(it > ROLE_NEED[2] ? 2 : it > ROLE_NEED[1] ? 1 : 0, d);
     var o = { club: k.id, lid: k.lid, cc: k.cc, ovr: k.ovr, interest: it, role: ROLE_LV[rl], years: trial ? 1 : 1 + Math.floor(r() * 2),
-      salary: Math.round(salary6(c, k, rl) * (round ? 0.85 : 1) / 50) * 50, objective: objectiveFor6(c, k).text, start: 1, foreign: false };
+      salary: Math.round(salary6(c, k, rl) * (round ? 0.85 : 1) / 50) * 50, objective: objectiveFor6(c, k).text, start: 1, foreign: false, dm: d, dSeason: c.season };
+    offerDepth6(c, o);
     if (trial) { o.trial = true; o.chance = round1(clamp(0.3 + (playerOvr(c) - START6) * 0.04, 0.1, 0.75) * 10) / 10; }
     return o;
   }
@@ -1901,19 +2143,28 @@
     c.contract = { club: k.id, years: years, left: years, role: ROLE_LV[rl], salary: o.salary || salary6(c, k, rl), since: c.season + (c.phase === 'off' ? 1 : 0) };
     c.coach = clamp(ROLE_COACH[rl] - (o.early ? EARLY_COACH : 0) - (o.negNo ? NEG_COACH : 0), 0, 100); c.listed = false; c.broken = 0;
     c.joinWk = c.phase === 'off' ? (c.season + 1) * 1000 : wkKey6(c);
+    c.sq6 = newSq6(c, k, c.season + (c.phase === 'off' ? 1 : 0));   // plantilla del club nuevo (titularidad)
     c.offers = []; c.window = '';
     if (c.phase === 'pick') { c.phase = 'league'; c.week = 0; c.pick = null; }
     if (c.phase !== 'off') {
       c.myRes = { lid: k.lid, w: [] };
-      c.objective = objectiveFor6(c, k); welcome6(c);
+      c.objective = objectiveFor6(c, k);
       if (c.phase === 'league') { if (c.week >= weeksOf6(c, k.lid)) endLeague6(c); else skipBye6(c); }
+      welcome6(c);   // (tras los descansos: la bienvenida ya sabe si sales de inicio en tu primer partido)
     }
     life(c, 'join', o);   // (como joinClub en la playa: Faro, «antes del debut» o «club nuevo»)
   }
   function welcome6(c) {
     var k = myClub(c), L = lg6(c, k.lid), ct = c.contract;
     msg(c, 'coach', 'Bienvenido a ' + k.name, 'Aquí empiezas como ' + ct.role.toLowerCase() + ' (' + plural(ct.years, 'temporada', 'temporadas') + ') y juegas de ' + POS6[c.player.roleKey].name.toLowerCase() +
-      ' en la ' + L.name + ' (' + L.country + '). Objetivo del club: ' + c.objective.text.toLowerCase() + '. El equipo no te conoce: la química sube con cada partido juntos.');
+      ' en la ' + L.name + ' (' + L.country + '). Objetivo del club: ' + c.objective.text.toLowerCase() + '. El equipo no te conoce: la química sube con cada partido juntos.' + aheadText6(c));
+  }
+  /** Bienvenida: si al llegar no sales de inicio, quién va por delante en tu puesto. */
+  function aheadText6(c) {
+    var L = myFixture6(c) ? lineup6(c) : null; if (!L || L.stat === 'start' || !L.ahead.length) return '';
+    var a = L.ahead.map(function (id) { return sqEntry6(c, c.sq6, id); }).filter(Boolean), t = function (e) { return e.name + ' (' + e.ovr + ')'; };
+    if (!a.length) return '';
+    return ' Aquí tendrás que ganarte el puesto: por delante ' + (a.length === 1 ? 'está ' + t(a[0]) : 'están ' + a.slice(0, -1).map(t).join(', ') + yE(a[a.length - 1].name) + t(a[a.length - 1])) + '.';
   }
 
   // ---------------------------------------------------------------- jornada, copas y temporada
@@ -1936,34 +2187,61 @@
     var f = myFixture6(c); if (!f) return null;
     var me = myClub(c), riv = club(c, f.home === me.id ? f.away : f.home), L = lg6(c, me.lid), ko = f.kind === 'ko' ? c.kos[f.ko] : null;
     var label = ko ? ko.name + ' · ' + roundName6(ko.rounds[f.round].length) : L.name + ' · Jornada ' + (f.week + 1) + ' de ' + weeksOf6(c, me.lid);
+    var lu = lineup6(c), rv = lu.rival ? sqEntry6(c, c.sq6, lu.rival) : null;
     return { kind: f.kind, week: f.week, round: f.round, ko: f.ko, i: f.i, label: label, home: club(c, f.home), away: club(c, f.away), me: me, rival: riv, atHome: f.home === me.id,
       ovrMe: Math.round(teamOvr6(c)), ovrRival: riv.ovr, diff: difficultyFor6(riv), soft: soft6(riv), diffName: diffLabel6(riv), comp: ko ? ko.kind : 'league', compName: ko ? ko.name : L.name,
-      foreign: riv.cc !== me.cc, rivalLeague: lg6(c, riv.lid), bench: f.kind === 'league' && benchFor(c, f) };
+      foreign: riv.cc !== me.cc, rivalLeague: lg6(c, riv.lid), bench: lu.stat === 'out',
+      // titularidad: 'start' (de inicio), 'sub' (empiezas en el banquillo: el partido se juega igual) o 'out' (fuera de la convocatoria)
+      status: lu.stat, whyCode: lu.why, why: whyText6(c), gap: lu.gap, slot: lu.slot,
+      rivalIn: rv ? { name: rv.name, pos: rv.pos, ovr: rv.ovr, form: rv.form | 0, num: rv.num } : null };
+  }
+  function iq6(d) { return d === 'easy' ? 1 : d === 'normal' ? 2 : 3; }
+  /** Reglas del entrenador de tu club hacia ti en el partido (sim/ai6, §B.3): cuándo te saca y cuándo te mete. */
+  function meRules6(c, L) {
+    var rl = roleIdx(c), low = c.coach < 45;
+    return { pullAt: rl === 2 ? 99 : rl === 1 ? (low ? 4 : 5) : (low ? 3 : 4), enterLostSet: L.gap >= -4, enterBad: true, garbage: true, backNextSet: c.coach >= 50 };
   }
   /** Opciones del partido de pista: 6v6 en el pabellón, tu puesto, atributos de los 12, colores de los dos clubes (con el líbero). */
   function matchSetup6(c) {
     c = c || load6(); var n = next6(c); if (!n || n.bench) return null;
-    var R = simRoles6(), role = ctrlRole6(c), idx = R.indexOf(role); if (idx < 0) { idx = R.indexOf('OH'); role = 'OH'; }
+    var R = simRoles6(), role = ctrlRole6(c), Lu = lineup6(c), q = c.sq6, meOn = Lu.stat === 'start', idx = meOn ? Lu.slot : -1;
     var r = rng(hash(c.seed, 'riv6', c.season, c.phase, n.week, n.round, n.ko, n.rival.id));
-    var stMe = copy(c.player.st), fm = fatigueMalus(c), ch = chemBonus6(c), mo = n.me.ovr, ro = n.rival.ovr;
+    var stMe = copy(c.player.st), fm = fatigueMalus(c), ch = chemBonus6(c);
     KEYS.forEach(function (key) { stMe[key] = clampI(stMe[key] - fm + (CHEM_KEYS.indexOf(key) >= 0 ? ch : 0), 1, 99); });
-    var a0 = R.map(function (pos, i) {
-      if (i === idx) return stMe;
-      var st = genSt(clamp(mo + (r() - 0.5) * 4, 1, 99), pos, r); CHEM_KEYS.forEach(function (kk) { st[kk] = clampI(st[kk] + ch, 1, 99); }); return st;
-    });
-    var a1 = R.map(function (pos) { return genSt(clamp(ro + (r() - 0.5) * 4, 1, 99), pos, r); });
     var bd = B() && B().forPlayer ? B().forPlayer(c.player) : null; if (bd && !Object.keys(bd).length) bd = null;
-    var nums = teamNums6(c, n.me); nums[idx] = c.player.num;
+    // tu equipo: el seis que eligió el entrenador (lineup6) y 5 suplentes; atributos por media + forma (+ química); tú, con fatiga y química
+    var stOf = function (x, pos, chem) { var st = genSt(clamp(x.ovr + (x.form | 0), 1, 99), pos, r); if (chem) CHEM_KEYS.forEach(function (kk) { st[kk] = clampI(st[kk] + ch, 1, 99); }); return st; };
+    var a0 = [], nums0 = [], names0 = [], b0 = [], meBench = -1;
+    Lu.start.forEach(function (id, i) {
+      if (id === 'me') { a0.push(stMe); nums0.push(c.player.num); names0.push(c.player.name); return; }
+      var x = sqEntry6(c, q, id); a0.push(stOf(x, R[i], true)); nums0.push(x.num); names0.push(x.name);
+    });
+    Lu.bench.slice(0, 5).concat(!meOn && Lu.bench.length > 5 && Lu.bench.indexOf('me') >= 5 ? ['me'] : []).forEach(function (id) {
+      if (b0.length >= 5) return;
+      if (id === 'me') { meBench = b0.length; b0.push({ role: role, st: stMe, num: c.player.num, name: c.player.name, fat: c.fatigue | 0, badges: bd }); return; }
+      var x = sqEntry6(c, q, id); b0.push({ role: x.pos, st: stOf(x, x.pos, true), num: x.num, name: x.name, fat: x.fat | 0, badges: null });
+    });
+    // el rival: su plantilla (squad6) con su seis por medias y 5 suplentes
+    var rs = squad6(c, n.rival, c.season, ''), byp = {};
+    SQ_POS.forEach(function (p) { byp[p] = rs.filter(function (x) { return x.pos === p; }).sort(function (a, b) { return b.ovr - a.ovr; }); });
+    var cnt = {}, a1 = [], nums1 = [], names1 = [], b1 = [];
+    R.forEach(function (p) { var i = cnt[p] = (cnt[p] || 0); cnt[p]++; var x = byp[p][i]; a1.push(stOf(x, p, false)); nums1.push(x.num); names1.push(x.name); });
+    ['S', 'OPP', 'OH', 'MB'].forEach(function (p) { byp[p].slice(SLOTS6[p], SLOTS6[p] + (p === 'OH' || p === 'MB' ? 2 : 1)).forEach(function (x) { b1.push({ role: p, st: stOf(x, p, false), num: x.num, name: x.name, fat: 0, badges: null }); }); });
+    b1 = b1.slice(0, 4).concat(b1.slice(4).sort(function (a, b) { return ovrOf(b.st) - ovrOf(a.st); }).slice(0, 1));
     var L = lg6(c, n.me.lid), k = n.me.kit, rk = n.rival.kit;
     var out = {
       format: '6v6', venue: 'hall', ctrlRole: role, ctrlIdx: idx, ctrl: 'one',
-      attrs: [a0, a1], badges: bd ? [R.map(function (x, i) { return i === idx ? bd : null; }), null] : null, nums: [nums, null],
+      attrs: [a0, a1], badges: bd ? [R.map(function (x, i) { return i === idx ? bd : null; }), null] : null, nums: [nums0, nums1],
+      // titularidad y cambios (contrato §I.1): main.js lo pasa tal cual a Sim.createGame
+      meOn: meOn, meSlot: idx, meBench: meOn ? -1 : meBench, names: [names0, names1], bench: [b0, b1],
+      coach: [{ auto: true, iq: iq6(difficultyFor6(n.me)), me: meRules6(c, Lu) }, { auto: true, iq: iq6(n.diff) }],
       points: c.points, difficulty: n.diff, rookie: !!n.soft, diffName: n.diffName, chem: ch, fatigue: fm,
       ref: copy(REF[ref6(L.strength)]),
       kit: { kitShirt: k.shirt, kitAccent: k.accent, kitShorts: k.shorts, kitPattern: k.pattern, kitLibero: k.libero },
       rivalKit: { kitShirt: rk.shirt, kitAccent: rk.accent, kitShorts: rk.shorts, kitPattern: rk.pattern, kitLibero: rk.libero },
       career: { mode: 'hall', season: c.season, phase: c.phase, week: n.week, round: n.round, label: n.label, me: n.me.short, rival: n.rival.short, venue: 'hall',
-        meName: n.me.name, rivalName: n.rival.name, player: c.player.name, num: c.player.num, pos: role, posName: POS6[role].name, mate: '', mateNum: 0 }
+        meName: n.me.name, rivalName: n.rival.name, player: c.player.name, num: c.player.num, pos: role, posName: POS6[role].name, mate: '', mateNum: 0,
+        meOn: meOn, status: meOn ? 'start' : 'sub' }
     };
     life(c, 'setup', out);   // material de la tienda y molestias (en tu hueco, ctrlIdx) y reto de la jornada (career-life.js)
     return out;
@@ -1990,6 +2268,7 @@
     while (c.phase === 'league' && c.week < weeksOf6(c, me.lid) && !myFixture6(c) && g++ < 4) {
       msg(c, 'club', 'Jornada ' + (c.week + 1) + ': descansas', 'Esta jornada a tu equipo le toca descansar. Entrenas, cobras y recuperas (fatiga −' + BENCH_REST + ').');
       trainWeek(c); pay(c); c.fatigue = clamp((c.fatigue | 0) - BENCH_REST, 0, 100);
+      squadWeek6(c, 'bye');
       weekAll6(c); c.week++;
       if (c.week === midWeek6(c)) midWindow6(c);
     }
@@ -2137,7 +2416,8 @@
       } else c.contract = ct;
       c.chem = Math.round((c.chem | 0) * 0.6);   // verano: parte del equipo cambia, algo de química se pierde
     }
-    c.season++; c.week = 0; c.phase = 'league'; c.kos = []; c.koI = 0; c.notes = []; c.stats = newSeasonStats(); c.offers = []; c.window = ''; c.review = null;
+    c.season++; c.week = 0; c.phase = 'league'; c.kos = []; c.koI = 0; c.notes = []; c.stats = newSeasonStats6(); c.offers = []; c.window = ''; c.review = null;
+    if (!moved) sqSummer6(c);   // la plantilla sigue (±2, forma y fatiga a 0); si fichaste, joinClub6 ya la hizo nueva
     c.tab = {}; c.myRes = { lid: myClub(c).lid, w: [] }; c.scouts = {};
     c.player.age = (c.player.age | 0) + 1;
     var fat0 = c.fatigue | 0; c.fatigue = 0;
@@ -2180,9 +2460,15 @@
       if (mid && (foreign || L.strength > myL.strength + 2) && an < 7.5 && !sct) return;
       var thr = o - 5 + (foreign ? 2 : 0) + Math.max(0, (L.strength - 70) / 5);
       var it = sc - thr + (r() - 0.5) * 8 - (mid ? 3 : 0) + (sct ? SCOUT_BONUS : 0);
-      if (it > 0) {
-        var rl = it > ROLE_NEED[2] ? 2 : it > ROLE_NEED[1] ? 1 : 0, q = qOf6(c, k, L.id);
-        cand.push({ club: k.id, lid: L.id, cc: L.cc, ovr: o, q: q, interest: round1(it), role: ROLE_LV[rl], years: 1 + Math.floor(r() * 3), salary: salary6(c, k, rl, L.id), foreign: foreign, scout: sct });
+      var yy = 1 + Math.floor(r() * 3);   // (se tira siempre: así la plantilla de un club no cambia el azar de los demás)
+      if (it + FIT_START > 0) {
+        var d = depth6(c, { id: k.id, ovr: o }, L.id, mid ? c.season : c.season + 1, 1, { merit: true });   // ¿jugarías? (la plantilla de la temporada en que llegas)
+        it += fit6(d);
+        if (it > 0) {
+          var rl = capRole6(it > ROLE_NEED[2] ? 2 : it > ROLE_NEED[1] ? 1 : 0, d), q = qOf6(c, k, L.id);
+          var of = { club: k.id, lid: L.id, cc: L.cc, ovr: o, q: q, interest: round1(it), role: ROLE_LV[rl], years: yy, salary: salary6(c, k, rl, L.id), foreign: foreign, scout: sct, dm: d, dSeason: mid ? c.season : c.season + 1 };
+          offerDepth6(c, of); cand.push(of);
+        }
       }
     });
     // de los clubes que te quieren, los 3 más atractivos: pesa sobre todo la liga y el club (con los datos reales hay 28 países y muchos
@@ -2213,37 +2499,64 @@
     return rec;
   }
   function labelOf6(c, f) { if (f.kind === 'league') return 'Jornada ' + (f.week + 1); var ko = c.kos[f.ko]; return ko.name + ' · ' + roundName6(ko.rounds[f.round].length); }
+  /** Cierra un partido tuyo de pista (jugado o simulado). extra.part = minutos en pista (titularidad): { status: 'start'|'sub',
+   *  started, entered, pulled, pullWhy, meR, rallies, share, sets }. Sin nota (me.nota null: no entraste o jugaste menos de
+   *  NOTA_MIN_R puntos) → sum.bench, sin nota en c.notes y experiencia de banquillo (BENCH_XP). */
   function closeMine6(c, f, res, me, sim, extra) {
     var win = res.sets[0] > res.sets[1], mk = myClub(c), L = lg6(c, mk.lid), rival = club(c, f.home === c.myClub ? f.away : f.home), nota = me.nota;
+    var part = extra && extra.part || { status: 'start', started: true, entered: 0, pulled: 0, pullWhy: '', meR: 0, rallies: 0, share: 1, sets: [] };
+    var has = nota != null, played = extra && extra.part ? (part.meR | 0) > 0 : true, share = clamp(+part.share || 0, 0, 1), sub = part.status !== 'start', rl = roleIdx(c);
     var mpts = (me.kills || 0) + (me.aces || 0) + (me.blocks || 0);
-    var xp = Math.round((40 + 22 * nota + (win ? 40 : 0) + 6 * Math.min(mpts, 10)) * xpMul6(L) * (sim ? 0.5 : 1));
+    // experiencia: con nota, la de siempre × (0,35 + 0,65 × parte jugada); sin nota, la del banquillo
+    var xp = has ? Math.round((40 + 22 * nota + (win ? 40 : 0) + 6 * Math.min(mpts, 10)) * xpMul6(L) * (sim ? 0.5 : 1) * (0.35 + 0.65 * share))
+      : Math.round(BENCH_XP * xpMul6(L) * (sim ? 0.5 : 1));
     var lv = addXP(c.player, xp), ct0 = coachText(c.coach);
-    c.coach = clamp(Math.round(c.coach + (nota - 6.2) * 2.5 + (win ? 1 : -1)), 0, 100);
-    coachFloor(c); pay(c); promoteCheck6(c);
+    if (!played) c.player.matches = Math.max(0, (c.player.matches | 0) - 1);   // (addXP cuenta un partido: sin entrar no lo es)
+    // confianza: la nota y el resultado pesan por la parte jugada; entrenar siendo suplente (+1), un buen cambio (+2), que te saquen (−2)
+    var dc = has ? (nota - 6.2) * 2.5 * share + (win ? 1 : -1) * share : 0, impact = false, pulledBad = false;
+    if (sub && c.train !== 'rest') dc += TRAIN_COACH;
+    if (sub && part.entered && has && nota >= 7) { dc += IMPACT_COACH; impact = true; }
+    if (part.pulled && rl < 2 && /^(meOut|bad|sim)$/.test(part.pullWhy || '')) { dc -= PULL_COACH; pulledBad = true; }
+    c.coach = clamp(Math.round(c.coach + dc), 0, 100);
+    coachFloor(c); pay(c);
     if (coachText(c.coach) !== ct0) msg(c, 'coach', 'El entrenador: «' + coachText(c.coach) + '»', COACH_LINE[coachText(c.coach)] || '');
-    c.chem = clamp((c.chem | 0) + (sim ? 3 : 5), 0, 100);
+    if (impact) msg(c, 'coach', 'Buen cambio', 'Saliste desde el banquillo y cambiaste el partido (nota ' + String(nota).replace('.', ',') + '). Así se gana el puesto.');
+    if (pulledBad && (!has || nota < 6)) msg(c, 'coach', 'Te he cambiado', 'Hoy no era tu día y te senté en el ' + ordn(part.pulled) + ' set. La próxima, más concentración.');
+    c.chem = clamp((c.chem | 0) + (played ? (sim ? 3 : 5) : 2), 0, 100);
     var tr = trainWeek(c);
+    if (!played) c.fatigue = clamp((c.fatigue | 0) - BENCH_REST, 0, 100);   // sin jugar, descansas
     [c.stats, c.career].forEach(function (x) {
-      x.played++; if (win) x.won++; if (sim) x.sim++;
-      x.pts += mpts; x.kills += me.kills || 0; x.aces += me.aces || 0; x.blocks += me.blocks || 0; x.assists += me.assists || 0; x.digs += me.digs || 0; x.errors += me.errors || 0;
+      if (played) {
+        x.played++; if (win) x.won++; if (sim) x.sim++;
+        x.pts += mpts; x.kills += me.kills || 0; x.aces += me.aces || 0; x.blocks += me.blocks || 0; x.assists += me.assists || 0; x.digs += me.digs || 0; x.errors += me.errors || 0;
+      } else x.bench = (x.bench | 0) + 1;
+      if (!sub && played) x.starts = (x.starts | 0) + 1;
+      if (sub && part.entered) x.subIn = (x.subIn | 0) + 1;
+      x.mr = (x.mr | 0) + (part.meR | 0); x.rr = (x.rr | 0) + (part.rallies | 0);
     });
-    c.notes.push({ nota: nota, win: win ? 1 : 0, sim: sim ? 1 : 0, kind: f.kind, wk: f.kind === 'league' ? f.week : f.round, rival: rival.id, s: res.sets.slice() });
-    var scout = scoutCheck6(c, nota);
+    if (has) c.notes.push({ nota: nota, win: win ? 1 : 0, sim: sim ? 1 : 0, kind: f.kind, wk: f.kind === 'league' ? f.week : f.round, rival: rival.id, s: res.sets.slice() });
+    var scout = has ? scoutCheck6(c, nota) : null;
     var label = labelOf6(c, f), phase0 = c.phase, season0 = c.season;
+    roleWeek6(c, f); squadWeek6(c, !sub ? 'start' : part.entered ? 'in' : 'none');
     recordMine6(c, f, res.sets, res.setScores);
     var round = finishRound6(c);
     var sum = { mode: 'hall', season: season0, phase: phase0, label: label, rival: rival.id, rivalName: rival.name, win: win, sets: res.sets.slice(), setScores: res.setScores.map(function (x) { return x.slice(); }),
-      sim: !!sim, nota: nota, me: me, xp: xp, lvlUp: lv.lvlUp, lvl: lv.lvl, ptsGained: lv.pts, badges: extra && extra.badges || [], coach: c.coach, train: tr, chem: c.chem, scout: scout,
+      sim: !!sim, nota: has ? nota : null, bench: !has, me: me, xp: xp, lvlUp: lv.lvlUp, lvl: lv.lvl, ptsGained: lv.pts, badges: extra && extra.badges || [], coach: c.coach, train: tr, chem: c.chem, scout: scout,
+      part: { status: sub ? 'sub' : 'start', started: !sub, entered: part.entered | 0, pulled: part.pulled | 0, meR: part.meR | 0, rallies: part.rallies | 0, share: Math.round(share * 100) / 100, sets: (part.sets || []).slice() },
       round: f.kind === 'league' ? round.map(function (m) { return { a: m.a, b: m.b, s: m.s }; }) : [], offers: c.window === 'mid' ? c.offers.length : 0, review: phase0 !== c.phase && c.phase === 'off' };
     life(c, 'match', sum, f);   // reto, fama, patrocinio, servicios, rival, decisión y logros (sum.life)
     c.last = sum;
+    nextLine6(c);
     save6(c);
     return sum;
   }
+  /** Tras cerrar una jornada: el entrenador ya elige el seis de la siguiente (y avisa si cambia tu estado). */
+  function nextLine6(c) { if (c.phase !== 'off' && c.phase !== 'pick' && myFixture6(c)) lineup6(c); }
+  /** Rotación con STARTS_PROMOTE jornadas de liga seguidas de inicio → titular (y sueldo de titular). Sustituye en la pista a PROMOTE_AT. */
   function promoteCheck6(c) {
-    if (!c.contract || roleIdx(c) !== 0 || c.coach < PROMOTE_AT) return;
+    var q = c.sq6; if (!c.contract || roleIdx(c) !== 0 || !q || (q.run | 0) < STARTS_PROMOTE) return;
     var k = myClub(c), s = Math.max(c.contract.salary | 0, salary6(c, k, 1));
-    c.contract.role = ROLE_LV[1]; c.contract.salary = s;
+    c.contract.role = ROLE_LV[1]; c.contract.salary = s; q.run = 0;
     msg(c, 'coach', 'Te has ganado la titularidad', 'Ya no eres de la rotación: desde hoy eres titular, y el club te sube el sueldo a ' + s + ' € al mes.');
   }
   /** Insignias de un partido sin contadores (simulado, o tu puesto fuera de los huecos 0-1 de badges.js): partidos y victorias. */
@@ -2261,53 +2574,93 @@
     var c = load6(); if (!c || !r || !r.sets) return null;
     var f = myFixture6(c); if (!f) return null;
     var m = M && (!g || M.g === g) ? M : newM(g), me = stats || m.p[0];
-    var rallies = m.rallies || (r.setScores || []).reduce(function (s, x) { return s + x[0] + x[1]; }, 0);
     var res = { sets: [r.sets[0] | 0, r.sets[1] | 0], setScores: (r.setScores || []).map(function (x) { return [x[0] | 0, x[1] | 0]; }) }, win = res.sets[0] > res.sets[1];
+    var all = res.setScores.reduce(function (s, x) { return s + x[0] + x[1]; }, 0);
+    // puntos jugados (contrato §I.3): g.meR de la sim; si no, los contados con los eventos; un partido sin cambios (ni eventos ni
+    // g.meR, empezando en pista) es el de antes: todos los puntos y nota siempre
+    var gm = g && typeof g.meR === 'number', legacy = !m.subEv && !gm && m.started;
+    var rallies = (g && g.rallyN) || m.rallies || all;
+    var meR = Math.max(0, gm ? g.meR | 0 : legacy ? rallies : m.meR | 0), share = rallies > 0 ? clamp(meR / rallies, 0, 1) : legacy ? 1 : 0;
     var mine = { kills: me.kills | 0, aces: me.aces | 0, blocks: me.blocks | 0, assists: me.assists | 0, digs: me.digs | 0, errors: me.errors | 0, recvP: me.recvP | 0, perfect: me.perfect | 0, good: me.good | 0, poor: me.poor | 0 };
-    mine.nota = rating(mine, { win: win, sets: res.sets }, rallies, RATE6[ctrlRole6(c)] || RATE6.OH);
+    mine.nota = legacy || meR >= NOTA_MIN_R ? rating(mine, { win: win, sets: res.sets }, legacy ? rallies : meR, RATE6[ctrlRole6(c)] || RATE6.OH) : null;
     var badges = [];
     try {
       var ix = g && g.teams && g.ctrl ? g.teams[0].indexOf(g.ctrl) : -1;
-      if (B() && B().endMatch && g && (ix === 0 || ix === 1)) { var ath = [null, null]; ath[ix] = c.player; badges = B().endMatch(g, win, ath) || []; }
+      if (meR <= 0) badges = [];
+      else if (B() && B().endMatch && g && (ix === 0 || ix === 1)) { var ath = [null, null]; ath[ix] = c.player; badges = B().endMatch(g, win, ath) || []; }
       else badges = simBadges6(c, win);
     } catch (e) { badges = []; }
+    var part = { status: m.started ? 'start' : 'sub', started: m.started, entered: m.entered | 0, pulled: m.pulled | 0, pullWhy: m.pullWhy || '', meR: meR, rallies: rallies, share: share, sets: m.sets.slice() };
     M = null;
-    return closeMine6(c, f, res, mine, false, { badges: badges });
+    return closeMine6(c, f, res, mine, false, { badges: badges, part: part });
   }
+  /** Simular tu partido. De inicio: como siempre (y, con nota < 5,5, alguna vez te cambian). Desde el banquillo: juega el titular de
+   *  tu puesto; entras con pIn = 0,3 + 0,06 × (gap + 4) (0,1-0,6; +0,2 si perdéis un set que no es el último y gap ≥ −4): de inicio
+   *  en el set siguiente al perdido (lo que queda de partido) o, si no, unos puntos del último set (8-30 %). */
   function simulateNext6(c) {
     c = c || load6(); if (!c) return null;
     var f = myFixture6(c); if (!f) return null;
     var n = next6(c); if (n.bench) return benchNext6(c);
-    var r = rng(hash(c.seed, 'mine6', c.season, c.phase, f.week, f.round, f.ko, c.notes.length)), to = teamOvr6(c);
-    var q = quickSim(to + (r() - 0.5) * 4, n.ovrRival + (r() - 0.5) * 4, r, c.points), win = q.sets[0] > q.sets[1], role = ctrlRole6(c);
-    var tot = q.setScores.reduce(function (s, x) { return s + x[0]; }, 0), sh = (SIM_SHARE6[role] || 0.12) * (0.8 + 0.4 * clamp((playerOvr(c) - n.me.ovr + 10) / 20, 0, 1));
-    var mp = Math.round(tot * sh), kills = Math.round(mp * (role === 'MB' ? 0.55 : 0.75)), aces = Math.round(mp * 0.1), blocks = Math.max(0, mp - kills - aces);
-    var me = { kills: kills, aces: aces, blocks: blocks, assists: Math.round(tot * (role === 'S' ? 0.45 : 0.03)), digs: Math.round(2 + r() * (role === 'L' || role === 'OH' ? 8 : 4)), errors: Math.round(1 + r() * 3), recvP: 0, perfect: 0, good: 0, poor: 0 };
-    me.nota = round1(clamp(6.1 + (to - n.ovrRival) * 0.04 + (win ? 0.6 : -0.6) + (r() - 0.5) * 1.6, 3, 9.5));
-    return closeMine6(c, f, { sets: q.sets, setScores: q.setScores }, me, true, { badges: simBadges6(c, win) });
+    var Lu = lineup6(c), sub = Lu.stat !== 'start', rl = roleIdx(c), role = ctrlRole6(c);
+    var r = rng(sub ? hash(c.seed, 'mine6', c.season, c.phase, f.week, f.round, f.ko, c.notes.length, 'sub') : hash(c.seed, 'mine6', c.season, c.phase, f.week, f.round, f.ko, c.notes.length)), to = teamOvr6(c);
+    if (sub && n.rivalIn) to += 0.3 * (n.rivalIn.ovr - playerOvr(c));   // juega el titular de tu puesto
+    var q = quickSim(to + (r() - 0.5) * 4, n.ovrRival + (r() - 0.5) * 4, r, c.points), win = q.sets[0] > q.sets[1];
+    var tot = q.setScores.reduce(function (s, x) { return s + x[0]; }, 0), all = q.setScores.reduce(function (s, x) { return s + x[0] + x[1]; }, 0), ns = q.setScores.length;
+    var share = 1, entered = 0, pulled = 0, pullWhy = '', sets = [];
+    if (sub) {
+      var lostAt = -1; q.setScores.forEach(function (x, i) { if (lostAt < 0 && x[0] < x[1]) lostAt = i; });
+      // (calibrado con partidos jugados de verdad, entrenador CPU de ai6: casi siempre entras con el partido roto en el set que lo
+      // decide, unos pocos puntos; o de inicio en el set siguiente a uno perdido si el entrenador te tiene cerca, enterLostSet)
+      var nearL = Lu.gap >= -4, viaLost = nearL && lostAt >= 0 && lostAt + 1 < ns;
+      var pIn = clamp(0.3 + 0.06 * (Lu.gap + 4), 0.1, 0.6) + (viaLost ? 0.2 : 0);
+      if (r() < pIn) {
+        if (viaLost) {
+          entered = lostAt + 2; var rest = 0; for (var si = lostAt + 1; si < ns; si++) rest += q.setScores[si][0] + q.setScores[si][1];
+          share = clamp(rest / Math.max(1, all) * (0.75 + 0.25 * r()), 0.1, 0.7);
+        } else { entered = ns; share = 0.08 + 0.22 * r(); }
+      } else share = 0;
+      for (var i = entered; entered && i <= ns; i++) sets.push(i);
+    } else for (var j = 1; j <= ns; j++) sets.push(j);
+    var sh = (SIM_SHARE6[role] || 0.12) * (0.8 + 0.4 * clamp((playerOvr(c) - n.me.ovr + 10) / 20, 0, 1));
+    var me = { kills: 0, aces: 0, blocks: 0, assists: 0, digs: 0, errors: 0, recvP: 0, perfect: 0, good: 0, poor: 0 }, nota = null;
+    if (share > 0) {
+      var mp = Math.round(tot * sh * share), kills = Math.round(mp * (role === 'MB' ? 0.55 : 0.75)), aces = Math.round(mp * 0.1), blocks = Math.max(0, mp - kills - aces);
+      me = { kills: kills, aces: aces, blocks: blocks, assists: Math.round(tot * share * (role === 'S' ? 0.45 : 0.03)), digs: Math.round((2 + r() * (role === 'L' || role === 'OH' ? 8 : 4)) * share), errors: Math.round((1 + r() * 3) * share), recvP: 0, perfect: 0, good: 0, poor: 0 };
+      nota = round1(clamp(6.1 + (to - n.ovrRival) * 0.04 + (win ? 0.6 : -0.6) + (r() - 0.5) * 1.6, 3, 9.5));
+      // de inicio con un partido flojo, a veces el entrenador te sienta (no siendo indiscutible)
+      if (!sub && nota < 5.5 && rl < 2 && r() < 0.3) {
+        share = 0.5 + 0.3 * r(); pulled = clamp(Math.floor(share * ns) + 1, 1, ns); pullWhy = 'sim'; sets = sets.slice(0, pulled);
+        ['kills', 'aces', 'blocks', 'assists', 'digs', 'errors'].forEach(function (k) { me[k] = Math.round(me[k] * share); });
+      }
+    }
+    var meR = Math.round(all * share);
+    if (sub && meR < NOTA_MIN_R) nota = null;
+    me.nota = nota;
+    var part = { status: sub ? 'sub' : 'start', started: !sub, entered: entered, pulled: pulled, pullWhy: pullWhy, meR: meR, rallies: all, share: share, sets: sets };
+    return closeMine6(c, f, { sets: q.sets, setScores: q.setScores }, me, true, { badges: meR > 0 ? simBadges6(c, win) : [], part: part });
   }
+  /** Fuera de la convocatoria: la jornada se simula sin ti. Sin nota ni experiencia; descansas (−BENCH_REST de fatiga), entrenas y cobras. */
   function benchNext6(c) {
     c = c || load6(); if (!c) return null;
     var f = myFixture6(c), n = f && next6(c); if (!n || !n.bench) return null;
     var r = rng(hash(c.seed, 'bench6', c.season, f.week)), me = myClub(c);
     var q = quickSim(me.ovr - 1 + (r() - 0.5) * 4, n.ovrRival + (r() - 0.5) * 4, r, c.points), win = q.sets[0] > q.sets[1];
-    var rl = roleIdx(c), why = benchWhy(c), first = !(c.stats.bench | 0);
+    var why = whyText6(c), all = q.setScores.reduce(function (s, x) { return s + x[0] + x[1]; }, 0);
     c.benchWk = wkKey6(c); pay(c);
     var tr = trainWeek(c);
     c.fatigue = clamp((c.fatigue | 0) - BENCH_REST, 0, 100);
+    if (c.train !== 'rest') c.coach = clamp(c.coach + TRAIN_COACH, 0, 100);   // entrenar bien también cuenta
     c.stats.bench = (c.stats.bench | 0) + 1; c.career.bench = (c.career.bench | 0) + 1;
-    if (rl === 1 && c.broken !== c.season) {
-      c.broken = c.season;
-      msg(c, 'agent', 'Promesa incumplida', me.name + ' te fichó como titular y te ha dejado en el banquillo. Hasta final de temporada puedes irte sin pegas aunque tengas contrato, y los clubes lo saben: llegarán más ofertas (a mitad de temporada basta con una nota media de 6,5).');
-    } else if (first) msg(c, 'coach', 'Esta jornada, al banquillo', why + ' Juega otro ' + POS6[c.player.roleKey].name.toLowerCase() + ' de la plantilla. Sube tus notas y volverás a jugar.');
     var rival = club(c, f.home === me.id ? f.away : f.home), phase0 = c.phase, season0 = c.season, label = labelOf6(c, f);
+    roleWeek6(c, f); squadWeek6(c, 'out');
     recordMine6(c, f, q.sets, q.setScores);
     var round = finishRound6(c);
     var sum = { mode: 'hall', season: season0, phase: phase0, label: label, rival: rival.id, rivalName: rival.name, win: win, sets: q.sets.slice(), setScores: q.setScores.map(function (x) { return x.slice(); }),
       sim: true, bench: true, why: why, sub: '', nota: null, me: { kills: 0, aces: 0, blocks: 0, assists: 0, digs: 0, errors: 0 }, xp: 0, lvlUp: 0, lvl: c.player.lvl, ptsGained: 0, badges: [],
+      part: { status: 'out', started: false, entered: 0, pulled: 0, meR: 0, rallies: all, share: 0, sets: [] },
       coach: c.coach, train: tr, chem: c.chem | 0, round: round.map(function (m) { return { a: m.a, b: m.b, s: m.s }; }), offers: c.window === 'mid' ? c.offers.length : 0, review: phase0 !== c.phase && c.phase === 'off' };
-    life(c, 'match', sum, f);   // en el banquillo: patrocinio y servicios (sin reto)
-    c.last = sum; save6(c);
+    life(c, 'match', sum, f);   // fuera de la convocatoria: patrocinio y servicios (sin reto)
+    c.last = sum; nextLine6(c); save6(c);
     return sum;
   }
 
@@ -2344,9 +2697,17 @@
     var c = load6(); if (!c || !c.offers || !c.offers[i]) return '';
     var o = c.offers[i], rl = ROLE_LV.indexOf(o.role);
     if (o.firm || o.trial || rl >= 2) return '';
-    var r = rng(hash(c.seed, 'neg6', c.season, c.phase, o.club, c.week)), ok = o.interest + r() * 4 > ROLE_NEED[rl + 1], k = club(c, o.club);
+    var kk = club(c, o.club);
+    var dm = o.dm || o.depth;
+    if (dm && capRole6(rl + 1, dm) <= rl) {   // la plantilla manda: no prometen lo que no pueden cumplir (sin enfado)
+      o.firm = true;
+      var ah = dm.ahead.map(function (x) { return x.name; });
+      msg(c, 'offer', 'Negociación: no puede ser', kk.name + ': «No podemos prometerte eso: ' + (ah.length ? 'por delante tienes a ' + (ah.length > 1 ? ah.slice(0, -1).join(', ') + yE(ah[ah.length - 1]) + ah[ah.length - 1] : ah[0]) : 'el puesto está muy disputado') + '.» La oferta sigue como estaba.');
+      save6(c); return 'cap';
+    }
+    var r = rng(hash(c.seed, 'neg6', c.season, c.phase, o.club, c.week)), ok = o.interest + r() * 4 > ROLE_NEED[rl + 1], k = kk;
     if (ok) { o.role = ROLE_LV[rl + 1]; o.salary = salary6(c, k, rl + 1, o.lid); o.interest = round1(o.interest - 2); } else o.negNo = true;
-    o.firm = true;
+    o.firm = true; offerDepth6(c, o);   // («Tu sitio» con el rol nuevo, o con la confianza de llegada más baja)
     msg(c, 'offer', ok ? 'Negociación: aceptada' : 'Negociación: rechazada', ok ? k.name + ' acepta: firmarías como ' + o.role.toLowerCase() + ' (' + o.salary + ' € al mes).' : k.name + ' no mejora su oferta y no le ha gustado que pidieras más: si firmas, el entrenador empezará con menos confianza.');
     save6(c); return ok ? 'ok' : 'no';
   }
@@ -2383,6 +2744,7 @@
   function setPosition6(k) {
     var c = load6(); if (!c || !POS6[k] || positions6().indexOf(k) < 0 || c.player.roleKey === k) return false;
     c.player.roleKey = k; c.player.role = POS6[k].name;
+    var mk = myClub(c); if (mk) { var st0 = c.sq6 && c.sq6.stat; c.sq6 = newSq6(c, mk, c.season + (c.phase === 'off' ? 1 : 0)); c.sq6.fresh = 0; c.sq6.stat = st0 || null; }   // plantilla con tu nuevo puesto
     msg(c, 'coach', 'Nuevo puesto: ' + POS6[k].name.toLowerCase(), 'De acuerdo: desde la próxima jornada juegas de ' + POS6[k].name.toLowerCase() + '. Tus atributos siguen siendo los tuyos; entrena lo que pide el puesto.');
     save6(c); return true;
   }
@@ -2416,7 +2778,12 @@
     acceptOffer: acceptOffer6, stay: stay6, negotiate: negotiate6, rejectAll: rejectAll6, moreTime: moreTime6, changeMate: function () { return ''; },
     setTraining: setTraining6, requestTransfer: requestTransfer6, bump: bump6, toggleBadge: toggleBadge6, unread: unread6, readMsg: readMsg6, readAll: readAll6,
     _genOffers: genOffers6, _scout: scoutCheck6, _wkKey: wkKey6, _name: function (r) { return pick(r, FIRST) + ' ' + pick(r, LAST); },   // (vida de la Carrera)
-    _reset: function () { cur6 = null; M = null; }, _buildWorld: buildWorld6, _endLeague: endLeague6
+    _reset: function () { cur6 = null; M = null; }, _buildWorld: buildWorld6, _endLeague: endLeague6,
+    // titularidad (13-nov-2026): plantilla, seis de la jornada, profundidad en las ofertas y textos de rol de la pista
+    ROLE_HINT: ROLE_HINT6, benchWhy: whyText6, whyText: whyText6, WHY: WHY6, lineup: lineup6, squad: squad6, squadWeek: squadWeek6, depth: depth6, depthNow: depthNow6,
+    capRole: capRole6, meRules: meRules6, SQ_SIZE: SQ_SIZE, SQ_BIG: SQ_BIG, SLOTS: SLOTS6, LIST: LIST6, ME_EDGE: ME_EDGE, OUT_COACH: OUT_COACH, FAT_REST: FAT_REST, FAT_REST_TOP: FAT_REST_TOP,
+    TIT_BONUS: TIT_BONUS, STARTS_PROMOTE: STARTS_PROMOTE, TIT_BROKEN: TIT_BROKEN, TRAIN_COACH: TRAIN_COACH, IMPACT_COACH: IMPACT_COACH, FIT_START: FIT_START, FIT_DEEP: FIT_DEEP,
+    NOTA_MIN_R: NOTA_MIN_R, BENCH_XP: BENCH_XP
   };
 
   var BEACH = {
@@ -2462,7 +2829,7 @@
   function hasMode(m) { return m === 'hall' ? !!load6() : !!load(); }
   function eng() { return mode() === 'hall' ? HALL : BEACH; }
   var F = {
-    beach: BEACH, hall: HALL, mode: mode, setMode: setMode, has: hasMode, POS6: POS6,
+    beach: BEACH, hall: HALL, mode: mode, setMode: setMode, has: hasMode, POS6: POS6, ordn: ordn,   // (ordn: «1r, 2º, 3r», también para main.js)
     /** Crear: o.mode 'hall' → Carrera de pista (y pasa a ser la activa); 'beach' → la de playa; sin mode, la activa. */
     create: function (o) {
       var m = o && (o.mode === 'hall' || o.mode === 'beach') ? o.mode : mode();

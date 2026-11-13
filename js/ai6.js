@@ -433,6 +433,174 @@
     return P.sys ? FORM.sysDig : FORM.oosDig;
   }
 
+
+  /* ---------- Entrenador CPU: cambios (solo con banquillo, g.subsOn; notes/titularidad-y-cambios.md §B.2-§B.3) ----------
+   * coachPlan(g, t): como mucho un cambio (o un doble) por balón muerto, o null. lineupPlan(g, t): cambios de la alineación del set
+   * siguiente (entre sets, sin gastar cambios). Azar con hash01 (g.seed, set y marcador), NUNCA g.rng. Solo por el mismo puesto u
+   * OH↔OPP (la IA reparte todo por p.role: un central en zona de receptor rompería las formaciones); el doble cambio intercambia S y
+   * OPP de zona y las formaciones lo aguantan (recvForm busca al colocador por su rol y la tabla de su zona es la del 5-1 normal).
+   *  perfPull: rendimiento del set para cambiar a un titular (× k = setTarget/25, mín. 0,6) por iq 1-3; tired / fresh: cansancio para
+   *  sentarlo y del que entra; doubleFrom: fracción del set desde la que hay doble cambio (y partido roto); serveGap: puntos de Saque
+   *  de ventaja del sacador especialista; garbage: diferencia de partido roto (× k); reserve: con tantos cambios hechos ya no hay
+   *  cambios de iniciativa (quedan para las vueltas); badP: probabilidad por balón muerto del cambio por mal rendimiento;
+   *  rest: cansancio con el que un titular descansa en la alineación del set; keep: rendimiento mínimo para seguir de inicio el set
+   *  siguiente si entraste y acabaste el set en pista (Carrera).
+   *  garbageShort / garbageLate: en sets de menos de 25 (Carrera: a 15) el partido roto no se escala con k (con k = 0,6 un 9-4 del
+   *  1r set ya era «roto» y el entrenador metía al suplente en casi todos los partidos): diferencia mínima garbageShort con el que va
+   *  por delante a garbageLate puntos o menos del final del set. */
+  var COACH = { perfPull: [4, 3, 3], tired: 0.8, fresh: 0.4, doubleFrom: 0.6, serveGap: 8, garbage: 8, garbageShort: 7, garbageLate: 4, reserve: 4, badP: 0.6, garbageMax: 1, rest: 0.75, keep: -1.5 };
+  function swapOK(a, b) { return a === b || (a === 'OH' && b === 'OPP') || (a === 'OPP' && b === 'OH'); }
+  function ovrOf(p) { var s = p.st; if (!s) return 50; var a = 0, K = VB.ATTR_KEYS; for (var i = 0; i < K.length; i++) a += s[K[i]]; return a / K.length; }
+  function srvOf(p) { return p.st ? p.st.serve : 50; }
+  function pairB(P, p) { for (var i = 0; i < P.length; i++) if (P[i].b === p && !P[i].back) return P[i]; return null; }
+  function pairA(P, p) { for (var i = 0; i < P.length; i++) if (P[i].a === p) return P[i]; return null; }
+  /** Jugador metido en un doble cambio o de sacador especialista aún sin vuelta: no se toca por iniciativa. */
+  function locked(P, p) {
+    for (var i = 0; i < P.length; i++) { var q = P[i]; if (!q.back && (q.why === 'double' || q.why === 'serve') && (q.a === p || q.b === p)) return true; }
+    return false;
+  }
+  /** Mejor suplente para entrar por out: mismo puesto antes que OH↔OPP, más fresco y con más media; legal (canSub del entrenador).
+   *  o.me: puede ser tu atleta (Carrera); o.fresh: cansancio máximo del que entra. */
+  function pickIn(g, t, out, o) {
+    var B = S.benchOf(g, t), hb = t === 0 ? g.ctrlBase : null, best = null, bs = -1e9;
+    for (var i = 0; i < B.length; i++) {
+      var c = B[i]; if (c === hb && !(o && o.me)) continue;
+      if (!swapOK(out.role, c.role)) continue;
+      if (o && o.fresh != null && !(c.tired < o.fresh)) continue;
+      if (S._canSubC(g, t, out, c)) continue;
+      var sc = (c.role === out.role ? 100 : 0) - 30 * (c.tired || 0) + 0.5 * ovrOf(c);
+      if (sc > bs) { bs = sc; best = c; }
+    }
+    return best;
+  }
+  /** Suplente de un puesto exacto (doble cambio). */
+  function pickRole(g, t, out, role) {
+    var B = S.benchOf(g, t), hb = t === 0 ? g.ctrlBase : null, best = null, bs = -1e9;
+    for (var i = 0; i < B.length; i++) {
+      var c = B[i]; if (c === hb || c.role !== role || S._canSubC(g, t, out, c)) continue;
+      var sc = ovrOf(c) - 30 * (c.tired || 0); if (sc > bs) { bs = sc; best = c; }
+    }
+    return best;
+  }
+  /** Titular de tu puesto (o OH↔OPP) que más conviene quitar para que entres tú: peor rendimiento y, a igualdad, más cansado. */
+  function worstFor(g, t, inn) {
+    var rot = g.rot[t], P = g.subs[t].pairs, best = null, bs = 1e9;
+    for (var i = 0; i < rot.length; i++) {
+      var p = rot[i]; if (p === inn || !swapOK(inn.role, p.role) || locked(P, p) || S._canSubC(g, t, p, inn)) continue;
+      var sc = (p.role === inn.role ? 0 : 50) + p.perf - (p.tired || 0); if (sc < bs) { bs = sc; best = p; }
+    }
+    return best;
+  }
+  function coachPlan(g, t) {
+    var co = g.coach && g.coach[t]; if (!g.subsOn || !co || !co.auto || !g.rot) return null;
+    var SS = g.subs[t], P = SS.pairs, rot = g.rot[t], tgt = S.setTarget(g), k = Math.max(0.6, tgt / 25), iq = co.iq || 2;
+    var my = g.score[t], op = g.score[1 - t], dif = my - op, hi = Math.max(my, op);
+    var hb = t === 0 ? g.ctrlBase : null, me = t === 0 && co.me ? co.me : null, i, q, p, c;
+    // 1. vueltas obligadas: el sacador especialista al perder el saque; el doble cambio cuando el colocador titular volvería a zona 1
+    for (i = 0; i < P.length; i++) { q = P[i]; if (!q.back && q.why === 'serve' && g.serving !== t && rot.indexOf(q.b) >= 0) return [{ out: q.b, inn: q.a, why: 'serveBack' }]; }
+    var dS = null, dO = null;
+    for (i = 0; i < P.length; i++) { q = P[i]; if (q.back || q.why !== 'double') continue; if (q.a.role === 'S') dS = q; else dO = q; }
+    if (dS && dO && rot.indexOf(dS.b) === 0) return [{ out: dS.b, inn: dS.a, why: 'doubleBack' }, { out: dO.b, inn: dO.a, why: 'doubleBack' }];
+    if (dS && !dO && rot.indexOf(dS.b) === 0) return [{ out: dS.b, inn: dS.a, why: 'doubleBack' }];
+    if (dO && !dS && rot.indexOf(dO.b) === 3) return [{ out: dO.b, inn: dO.a, why: 'doubleBack' }];
+    if (SS.n >= COACH.reserve) return null;   // sin cambios de iniciativa: los que quedan son para las vueltas
+    var late = hi >= COACH.doubleFrom * tgt, broken = tgt >= 25 ? late && Math.abs(dif) >= COACH.garbage * k : hi >= tgt - COACH.garbageLate && Math.abs(dif) >= COACH.garbageShort;
+    // ¿te sacó ya en este set? (por jugar mal): ni partido roto ni enterBad te vuelven a meter en el mismo set
+    var meGone = !!hb && !!pairA(P, hb);
+    // 2. reglas hacia ti (Carrera, equipo 0): te saca por jugar mal (pullAt) o te mete en un partido roto (garbage); enterBad va en 3
+    if (me && hb) {
+      if (!g.ctrlOut && rot.indexOf(hb) >= 0 && me.pullAt < 99 && hb.perf <= -me.pullAt * k) {
+        c = pickIn(g, t, hb, null); if (c) return [{ out: hb, inn: c, why: 'meOut' }];
+      }
+      // partido roto: solo en el set que decide el partido (el que va por delante ya tiene un set) y no tras sacarte en este set
+      if (g.ctrlOut && me.garbage && broken && !meGone && g.sets[dif > 0 ? t : 1 - t] >= 1) {
+        p = worstFor(g, t, hb); if (p) return [{ out: p, inn: hb, why: 'meIn', src: 'garbage' }];
+      }
+    }
+    // 3. mal rendimiento del set, perdiendo el set (probabilidad badP por balón muerto); con enterBad te prefiere a ti
+    var pull = COACH.perfPull[iq - 1] * k;
+    if (dif < 0) for (i = 0; i < rot.length; i++) {
+      p = rot[i]; if (p === hb || locked(P, p) || !(p.perf <= -pull)) continue;
+      if (S.hash01(g.seed, (g.setNo * 64 + my + op) * 32 + p.id, 0xC0AC + t) >= COACH.badP) continue;
+      if (me && me.enterBad && g.ctrlOut && !meGone && swapOK(p.role, hb.role) && !S._canSubC(g, t, p, hb)) return [{ out: p, inn: hb, why: 'meIn', src: 'bad' }];
+      c = pickIn(g, t, p, null); if (c) return [{ out: p, inn: c, why: 'bad' }];
+    }
+    // 4. cansancio (iq >= 2), con un suplente fresco
+    if (iq >= 2) for (i = 0; i < rot.length; i++) {
+      p = rot[i]; if (p === hb || locked(P, p) || !(p.tired >= COACH.tired)) continue;
+      c = pickIn(g, t, p, { fresh: COACH.fresh }); if (c) return [{ out: p, inn: c, why: 'tired' }];
+    }
+    // 5. doble cambio colocador/opuesto (iq 3): colocador titular en zona 4, opuesto en zona 1, set igualado desde doubleFrom; uno por set
+    if (iq >= 3 && !SS.dbl && SS.n <= S.SUB_MAX - 4 && late && Math.abs(dif) <= 2) {   // (2 que salen y 2 que vuelven)
+      var s0 = rot[3], o0 = rot[0];
+      if (s0.role === 'S' && o0.role === 'OPP' && s0 !== hb && o0 !== hb && !pairA(P, s0) && !pairA(P, o0) && !pairB(P, s0) && !pairB(P, o0)) {
+        var oS = pickRole(g, t, s0, 'OPP'), sS = pickRole(g, t, o0, 'S');
+        if (oS && sS) return [{ out: s0, inn: oS, why: 'double' }, { out: o0, inn: sS, why: 'double' }];
+      }
+    }
+    // 6. sacador especialista (iq 3): final de set apretado, el que va a sacar con serveGap puntos de Saque menos que un suplente
+    if (iq >= 3 && g.serving === t && my >= tgt - 4 && op >= tgt - 4 && Math.abs(dif) <= 2 && SS.n <= S.SUB_MAX - 2) {
+      var sv = rot[0], act = false;
+      for (i = 0; i < P.length; i++) if (!P[i].back && P[i].why === 'serve') act = true;
+      if (!act && sv !== hb && !locked(P, sv) && !pairB(P, sv) && !pairA(P, sv)) {
+        var B = S.benchOf(g, t), bc = null, bv = srvOf(sv) + COACH.serveGap;
+        for (i = 0; i < B.length; i++) {
+          c = B[i]; if (c === hb || !swapOK(sv.role, c.role) || srvOf(c) < bv || S._canSubC(g, t, sv, c)) continue;
+          bv = srvOf(c); bc = c;
+        }
+        if (bc) return [{ out: sv, inn: bc, why: 'serve' }];
+      }
+    }
+    // 7. partido roto (iq >= 2): descanso para el titular más cansado (como mucho garbageMax por set)
+    if (iq >= 2 && broken) {
+      var ng = 0; for (i = 0; i < P.length; i++) if (P[i].why === 'garbage') ng++;
+      if (ng < COACH.garbageMax) {
+        var wp = null, wt = 0.1;
+        for (i = 0; i < rot.length; i++) { p = rot[i]; if (p === hb || locked(P, p) || pairB(P, p) || pairA(P, p)) continue; if (p.tired > wt) { wt = p.tired; wp = p; } }
+        if (wp) { c = pickIn(g, t, wp, null); if (c) return [{ out: wp, inn: c, why: 'garbage' }]; }
+      }
+    }
+    return null;
+  }
+  /** Alineación del set que empieza (nextSet: g.setNo ya es el nuevo, g.setScores tiene el que acaba; pares y rendimiento aún del
+   *  set que acaba). Devuelve [{out (de g.lineup[t]), inn, why}] o null. Reglas hacia ti (Carrera): te cambiaron y sin backNextSet →
+   *  sigue de inicio quien entró por ti ('meOut'); entraste y acabaste el set en pista sin jugar mal → sigues ('meIn'); empezabas en el
+   *  banquillo y tu equipo perdió el set con enterLostSet → entras por el de tu puesto con peor rendimiento ('meIn'). Y (iq >= 2) el
+   *  titular con cansancio >= rest descansa si hay un suplente del puesto bastante más fresco ('tired'). Tu atleta nunca descansa así. */
+  function lineupPlan(g, t) {
+    var co = g.coach && g.coach[t]; if (!g.subsOn || !co || !co.auto) return null;
+    var L = g.lineup[t], rot = g.rot[t], P = g.subs[t].pairs, res = [], used = [], i, p, q;
+    var hb = t === 0 ? g.ctrlBase : null, me = t === 0 && co.me ? co.me : null;
+    var last = g.setScores[g.setScores.length - 1], lost = !!last && last[t] < last[1 - t];
+    function swap(o, n, why) {
+      if (!o || !n || o === n || used.indexOf(o) >= 0 || used.indexOf(n) >= 0 || L.indexOf(o) < 0 || L.indexOf(n) >= 0 || n.role === 'L') return false;
+      res.push({ out: o, inn: n, why: why }); used.push(o, n); return true;
+    }
+    if (me && hb) {
+      var inL = L.indexOf(hb) >= 0, onC = rot.indexOf(hb) >= 0;
+      if (inL && !onC && !me.backNextSet) { q = pairA(P, hb); if (q && !q.back && rot.indexOf(q.b) >= 0) swap(hb, q.b, 'meOut'); }
+      else if (!inL) {
+        // entraste y acabaste el set en pista: sigues de inicio si entraste por un set perdido o por el mal rendimiento del titular
+        // (no si entraste por un partido roto: eso era un descanso del titular)
+        if (onC) { q = pairB(P, hb); if (q && hb.perf > COACH.keep && q.src !== 'garbage') swap(q.a, hb, 'meIn'); }
+        if (!used.length && me.enterLostSet && lost) {
+          var w = null, ws = 1e9;
+          for (i = 0; i < L.length; i++) { p = L[i]; if (!swapOK(hb.role, p.role)) continue; var sc = (p.role === hb.role ? 0 : 50) + p.perf - (p.tired || 0); if (sc < ws) { ws = sc; w = p; } }
+          swap(w, hb, 'meIn');
+        }
+      }
+    }
+    if (co.iq >= 2) for (i = 0; i < L.length; i++) {
+      p = L[i]; if (p === hb || used.indexOf(p) >= 0 || !(p.tired >= COACH.rest)) continue;
+      var R = g.roster[t], best = null, bt = p.tired - 0.25;
+      for (var j = 0; j < R.length; j++) { var c = R[j]; if (c === hb || c.role !== p.role || L.indexOf(c) >= 0 || used.indexOf(c) >= 0 || !(c.tired < bt)) continue; bt = c.tired; best = c; }
+      if (best) swap(p, best, 'tired');
+    }
+    return res.length ? res : null;
+  }
+
   VB.AI6 = { computeJob: computeJob, pos: pos, spot: spot, humanOwns: humanOwns, setReady: setReady, placeServe: placeServe, passTarget: passTarget, chooseSet: chooseSet,
-    blockPlan: blockPlan, digK: digK, canAttack: canAttack, canPipe: canPipe, laneOf: laneOf, legalFixes: legalFixes, setterOf: setterOf, FORM: FORM, HUM: HUM };
+    blockPlan: blockPlan, digK: digK, canAttack: canAttack, canPipe: canPipe, laneOf: laneOf, legalFixes: legalFixes, setterOf: setterOf, FORM: FORM, HUM: HUM,
+    // entrenador CPU (cambios, solo con banquillo)
+    coachPlan: coachPlan, lineupPlan: lineupPlan, COACH: COACH };
 })();

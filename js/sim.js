@@ -388,10 +388,12 @@
     if (dk) g.drill = mkDrill(dk);
     dblFields(g); dblFields(g.ball); dblFields(g.pr1); dblFields(g.pr3); dblFields(g.rally);
     if (six) { g.roster = [teams[0].concat([g.libero[0]]), teams[1].concat([g.libero[1]])]; if (g.stats) { g.stats.overlap = [0, 0]; g.stats.liberoSwaps = 0; } }
+    if (six) subsInit(g, opts, diff);   // banquillo y cambios (solo con opts.bench: g.subsOn; sin él, solo campos apagados)
     refreshTeams(g);
     applyAttrs(g, opts.attrs);
     applyBadges(g, opts.badges);
     if (six) { for (var ci = 0; ci < teams[0].length; ci++) if (teams[0][ci].role === g.ctrlRole) { g.ctrl = teams[0][ci]; break; } g.ctrlBase = g.ctrl; } // 6v6: el 1r de ese puesto (OH1, S, OPP, MB1)
+    if (six) subsCtrl(g, opts);         // Carrera: tu atleta por meSlot (titular) o meBench (en el banquillo: g.ctrlOut)
     g.server = g.ctrl;
     newGame(g);
     return g;
@@ -460,14 +462,18 @@
     function e(k) { var v = d(k); return 1 - (v < 0 ? AK.err[0] : AK.err[1]) * v; }   // 1 con 50; 15 → ×1,5; 90 → ×0,6
   }
   /** Velocidad de despegue del salto del jugador p (C.JUMP_V × atributo Salto). */
-  function jumpV(p) { return p && p.ak ? C.JUMP_V * p.ak.jump : C.JUMP_V; }
+  function jumpV(p) { var v = p && p.ak ? C.JUMP_V * p.ak.jump : C.JUMP_V; return p && p.tired > 0 ? v * (1 - SUBK.jump * p.tired) : v; } // (cansancio: solo con banquillo, g.subsOn)
   function applyAttrs(g, attrs) {
     if (!attrs || g.demo) return;
     for (var t = 0; t < 2; t++) for (var i = 0; i < g.teams[t].length; i++) {
       var st = attrs[t] && attrs[t][i]; if (!st) continue;
-      var p = g.teams[t][i], c = {}; for (var j = 0; j < ATTR_KEYS.length; j++) c[ATTR_KEYS[j]] = clamp(Math.round(+st[ATTR_KEYS[j]] || 50), 1, 99);
-      p.st = c; p.prof = statProf(g.prof[t], c); p.ak = attrK(c);
+      attrOne(g, g.teams[t][i], st);
     }
+  }
+  /** Atributos de un jugador (applyAttrs; también los suplentes del banquillo, benchAttrs). */
+  function attrOne(g, p, st) {
+    var c = {}; for (var j = 0; j < ATTR_KEYS.length; j++) c[ATTR_KEYS[j]] = clamp(Math.round(+st[ATTR_KEYS[j]] || 50), 1, 99);
+    p.st = c; p.prof = statProf(g.prof[p.team], c); p.ak = attrK(c);
   }
   function profOf(g, p) { return (p && p.prof) || g.prof[p.team]; }
 
@@ -505,13 +511,17 @@
     if (!badges || g.demo) return;
     for (var t = 0; t < 2; t++) for (var i = 0; i < g.teams[t].length; i++) {
       var b = badges[t] && badges[t][i]; if (!b || typeof b !== 'object') continue;
-      var o = null;
-      for (var j = 0; j < BADGE_IDS.length; j++) {
-        var lv = Math.round(+b[BADGE_IDS[j]] || 0); if (lv < 1) continue;
-        (o = o || {})[BADGE_IDS[j]] = lv > 3 ? 3 : lv;
-      }
-      g.teams[t][i].badges = o;
+      g.teams[t][i].badges = badgeObj(b);
     }
+  }
+  /** {id: nivel 1-3} saneado (null si ninguna válida). */
+  function badgeObj(b) {
+    var o = null;
+    for (var j = 0; j < BADGE_IDS.length; j++) {
+      var lv = Math.round(+b[BADGE_IDS[j]] || 0); if (lv < 1) continue;
+      (o = o || {})[BADGE_IDS[j]] = lv > 3 ? 3 : lv;
+    }
+    return o;
   }
   /** Nivel (0-3) de la insignia id del jugador p. */
   function bl(p, id) { var b = p && p.badges; return b ? (b[id] | 0) : 0; }
@@ -779,7 +789,7 @@
   // (notes/camera_input.md, ronda 2). Pasar cada campo entero por un double al crear el objeto hace esa generalización aquí,
   // al crear el partido, y una sola vez por sitio. La semántica no cambia (mismo valor; simtest da la misma salida).
   function dblFields(o) { for (var k in o) { var v = o[k]; if (typeof v === 'number' && (v | 0) === v) { o[k] = 0.5; o[k] = v; } } return o; }
-  function emit(g, e) { e.t = g.time; dblFields(e); g.events.push(e); return e; }
+  function emit(g, e) { e.t = g.time; dblFields(e); g.events.push(e); if (g.subsOn) subEv(g, e); return e; }
   function rnd(g, a) { return (g.rng() * 2 - 1) * a; }
   function gauss(g) { return (g.rng() + g.rng() + g.rng() + g.rng() - 2) * 1.732; } // ~N(0,1)
 
@@ -1951,6 +1961,7 @@
     g.call = g._pendCall; g._pendCall = null; g.cpuChal = null; g.digTight = false; g.aim3.on = false;
     if (g.call) { g.call.team = 1 - w; g.call.t = g.time; g.call.setNo = g.setNo; g._snap = snapOf(g); } else g._snap = null;
     g.score[w]++; g.mode = 'point'; g.ball.held = null; endSwing(g);
+    if (g.subsOn) { g._subU = g._snap ? subUndo(g) : null; subCount(g); }   // banquillo: puntos en pista (g.meR, p.onR), del partido (g.rallyN) y cansancio
     var sideout = w !== g.serving;
     if (g.stats) { g.stats.points++; g.stats.won[w]++; g.stats.how = g.stats.how || {}; g.stats.why[text] = (g.stats.why[text] || 0) + 1; g.stats.rallies.push(g.rally.t); }
     emit(g, { type: 'whistle', reason: 'point' });
@@ -1967,6 +1978,7 @@
     // insignias: asistencia (colocador del remate que gana el punto) y block-out (remate que toca el bloqueo rival y sale)
     var assist = how === 'kill' && g.atkHow === 'kill' && g.atkTeam === w ? (g.atkSet || null) : null;
     var tool = g.lastKind === 'block' && g.prevKind === 'spike' && g.lastTeam !== w && (reason === 'out' || reason === 'antenna');
+    if (g.subsOn) subPerf(g, w, how, p); // banquillo: rendimiento del set (p.perf) para el entrenador
     // E1: jugada de maestría con la que se ganó el punto ('' sin g.mastery): la etiqueta del último ataque del equipo que gana si el
     // punto es suyo (remate o dejada; también el block-out)
     var move = g.mastery && g.atkTeam === w && (how === 'kill' || how === 'tip') ? g.atkMove : '';
@@ -2342,13 +2354,14 @@
     return true;
   }
   function endReview(g) {
-    var r = g.review, c = g.call; g.review = null;
+    var r = g.review, c = g.call, setNo0 = g.setNo; g.review = null;
     if (r.overturned && g._snap) {
       var s = g._snap, wOld = 1 - c.team;
       g.score = s.score; g.sets = s.sets; g.setNo = s.setNo; g.serving = s.serving; g.serverIdx = s.serverIdx; g.setScores = s.setScores;
       g.streakTeam = s.streakTeam; g.streakN = s.streakN; g.courtSwap3 = s.courtSwap3; g.pendingSet = s.pendingSet;
       g.setPoint = s.setPoint; g.matchPoint = s.matchPoint; g.challenges = s.challenges; g.lastPoint = s.lastPoint;
       if (g.stats) { g.stats.points--; g.stats.won[wOld]--; }
+      if (g.subsOn) { g.rallyN--; if (g._meLast) g.meR--; subRedo(g, setNo0); } // banquillo: el punto anulado no cuenta (ni su rendimiento ni su cansancio: se vuelve a contar abajo)
       if (g.mode === 'serve') { endRitual(g); endSwing(g); g.serveState = 'ready'; }
       // mismo bote (landSide del punto nuevo); si ya se preparó el saque siguiente, lastLand puede venir a null: se rehace con la llamada
       g.ball.held = null; if (g.lastLand) g.lastLand.t = g.time; else g.lastLand = { x: c.x, y: c.y, inside: c.truthIn, t: g.time };
@@ -2407,6 +2420,7 @@
     }
     var ox = p.x, oy = p.y;
     if (p.down > 0) { p.down -= dt; mx = my = 0; }
+    if (p.tired > 0) { var tk = 1 - SUBK.speed * p.tired; mx *= tk; my *= tk; } // cansancio (solo con banquillo: p.tired no existe sin g.subsOn)
     if (air) { p.x += p.jvx * dt; p.y += p.jvy * dt; }
     else {
       var spk = p.ak && isHuman(g, p) ? p.ak.speed : 1;
@@ -2849,13 +2863,16 @@
     g.challenges = [perSet(g), perSet(g)]; // los challenges no se acumulan entre sets
     g.serverIdx = g.serving === 0 ? [0, 1] : [1, 0];
     if (g.ctrlIdx) g.serverIdx[0] = 1 - g.serverIdx[0]; // modo 'one' con el n.º 2: el orden de saque del equipo 0, en espejo
+    var lu = g.subsOn ? subsNewSet(g) : null; // banquillo: alineación del set (sin gastar cambios) y contadores a 0
     resetRot(g);
     emit(g, { type: 'newSet', setNo: g.setNo });
+    if (lu) subsLineupEv(g, lu);
   }
   function newGame(g) {
     g.score = [0, 0]; g.sets = [0, 0]; g.setNo = 1; g.serving = 0; g.serverIdx = [0, 1]; g.setScores = [];
     // modo 'one' con el n.º 2 (ctrlIdx 1): orden de saque en espejo, así el jugador del humano saca primero como con el n.º 1
     if (g.ctrlIdx) g.serverIdx[0] = 1;
+    if (g.subsOn) subsNewSet(g, true); // banquillo: pista = alineación, contadores a 0 (también al volver a empezar la demo)
     resetRot(g);
     g.pendingSet = false; g.finished = false; g.lastPoint = null; g.courtSwap3 = false;
     g.challenges = [perSet(g), perSet(g)]; g.call = null; g.review = null; g.cpuChal = null; g._snap = null; g._pendCall = null;
@@ -2881,7 +2898,7 @@
     input = input || NOIN;
     var AI = VB.AI, b = g.ball;
     g.time += dt; g.blockCD -= dt; g.hitBuf -= dt; g.swingLock -= dt; g.jsetQ -= dt;
-    var human = !g.demo && !g.autopilot;
+    var human = !g.demo && !g.autopilot && !g.ctrlOut; // (Carrera: con tu atleta en el banquillo, g.ctrlOut, la entrada no mueve nada)
     var mv = input.move || NOIN.move, ml = dirLen(mv);
     var mx = mv[0], my = mv[1];
     if (ml > 1) { mx /= ml; my /= ml; ml = 1; }
@@ -2902,6 +2919,7 @@
 
     if (g.mode === 'point' || g.mode === 'over') {
       for (i = 0; i < g.players.length; i++) stepPlayer(g, g.players[i], dt, 0, 0);
+      if (g.subWait) subWalk(g, dt); // banquillo: el que entra camina desde la zona de cambio
       stepBall(g, dt);
       if (g.drill) { if (!g.drill.done) { g.timer -= dt; if (g.timer <= 0) drillStage(g); } return; } // E6: siguiente repetición (o quieto al acabar)
       g.timer -= dt;
@@ -2910,7 +2928,13 @@
           if (g.demo) { newGame(g); }
           else if (!(g.call && g.call.waived) && (canChallenge(g, 0) > 0 || canChallenge(g, 1) > 0 || g.cpuChal)) g.timer = 0; // B2: la ventana dura sus 7 s también en el punto de partido
           else if (!g.finished) { g.finished = true; emit(g, { type: 'gameOver', team: g.sets[0] > g.sets[1] ? 0 : 1, sets: [g.sets[0], g.sets[1]], setScores: g.setScores.slice() }); }
-        } else { if (g.pendingSet) nextSet(g); setupServe(g); }
+        } else {
+          if (g.pendingSet) nextSet(g);
+          // banquillo (g.subsOn): en balón muerto, antes del saque, los cambios pedidos y los del entrenador; con alguno, el saque espera
+          // SUB_HOLD s (rótulo y paseo del que entra) y luego se prepara sin volver a mirar
+          if (g.subsOn && !g.subWait && applySubs(g)) { g.subWait = true; g.timer = SUB_HOLD; }
+          else { if (g.subsOn) { g.subWait = false; g.subWalkL.length = 0; } setupServe(g); }
+        }
       }
       return;
     }
@@ -3171,6 +3195,282 @@
     return atkPhase(g, 0) ? g.pr3 : g.pr1;
   }
 
+
+  /* ---------- Banquillo y cambios (6v6; notes/titularidad-y-cambios.md §B e §I) ----------
+   * Solo con createGame({format:'6v6', bench:[[B…],[B…]]}) (g.subsOn). Sin banquillo, el 6v6 y el 2v2 no cambian: ningún campo
+   * nuevo de jugador, ningún gasto de g.rng (todo lo nuevo decide con hash01) y las mismas llamadas. Reglas FIVB 15.5-15.8:
+   * 6 cambios por equipo y set; un titular sale y vuelve una vez y solo por quien le sustituyó; el suplente entra una vez y solo
+   * sale por ese titular; el líbero no cuenta. Los cambios se aplican en balón muerto, antes del saque (applySubs): primero los
+   * pedidos (requestSub, g.subQ) y luego los del entrenador CPU (VB.AI6.coachPlan). Entre sets, la alineación (g.lineup) puede
+   * cambiar sin gastar cambios (VB.AI6.lineupPlan, evento 'lineup'). */
+  var SUB_MAX = 6, SUB_HOLD = 1.8;
+  /** Afinado del banquillo: efecto del cansancio en velocidad y salto, cansancio por punto en pista / salto / punto en el
+   *  banquillo (recupera), umbral de descanso en la alineación del set, velocidad del paseo del que entra y zona de cambio
+   *  (x desde la red, y = banda de la mesa). */
+  var SUBK = VB.SUBK = { speed: 0.03, jump: 0.02, onPt: 0.006, jumpT: 0.003, rest: 0.02, restLineup: 0.75, walk: 3.4, zoneX: 2.0, zoneY: 5.3 };   // (zoneY: el lado de los banquillos, arena.js CREW_BENCH_Y > 0)
+  var IQ_DIFF = { easy: 1, normal: 2, hard: 3, expert: 3 };
+  var BENCH_ROLES = ['S', 'OPP', 'OH', 'MB'];
+  function n2(o, k, v) { o[k] = 0.5; o[k] = v; }   // campo numérico que nace como double (dblFields)
+  /** Configuración del entrenador de un equipo (contrato §I.1). */
+  function coachOf(c, defIq) {
+    c = c && typeof c === 'object' ? c : {};
+    var iq = c.iq | 0; if (iq < 1 || iq > 3) iq = defIq;
+    var o = { auto: c.auto !== false, iq: iq, me: null }, m = c.me;
+    if (m && typeof m === 'object') o.me = { pullAt: +m.pullAt > 0 ? +m.pullAt : 99, enterLostSet: !!m.enterLostSet, enterBad: m.enterBad !== false,
+      garbage: m.garbage !== false, backNextSet: !!m.backNextSet };
+    return o;
+  }
+  /** createGame (6v6): nombres, banquillo (suplentes con id team·16 + 7 + i en g.roster) y estado de los cambios. */
+  function subsInit(g, opts, diff) {
+    var N = opts.names, t, i;
+    if (N) for (t = 0; t < 2; t++) for (i = 0; i < 6; i++) { var nm = N[t] && N[t][i]; if (typeof nm === 'string' && nm) g.teams[t][i].name = nm.slice(0, 40); }
+    var B = opts.bench && (Array.isArray(opts.bench[0]) || Array.isArray(opts.bench[1])) ? opts.bench : null;
+    g.subsOn = !!B; g.ctrlOut = false; g.subWait = false;
+    if (!B) return;
+    n2(g, 'meR', 0); n2(g, 'rallyN', 0); g._meLast = false; g._subU = null;
+    g.subs = [{ n: 0, pairs: [], dbl: false }, { n: 0, pairs: [], dbl: false }];
+    n2(g.subs[0], 'n', 0); n2(g.subs[1], 'n', 0);
+    g.subQ = [null, null]; g.subAtk = [null, null]; g.subWalkL = [];
+    var co = opts.coach || [];
+    g.coach = [coachOf(co[0], 2), coachOf(co[1], IQ_DIFF[diff] || 2)];
+    for (t = 0; t < 2; t++) {
+      var L = Array.isArray(B[t]) ? B[t] : [], k = 0;
+      for (i = 0; i < L.length && k < 6; i++) {
+        var b = L[i]; if (!b || BENCH_ROLES.indexOf(b.role) < 0) continue;
+        var nb = b.num === (b.num | 0) && b.num >= 1 && b.num <= 99 ? b.num : 20 + t * 10 + k;
+        var p = mk6Fields(mkPlayer(t, nb, 7 + k, 16)); p.role = b.role; p.bench = true; p.bi = i;
+        p.name = typeof b.name === 'string' ? b.name.slice(0, 40) : '';
+        if (b.st && typeof b.st === 'object' && !g.demo) attrOne(g, p, b.st);
+        if (b.badges && typeof b.badges === 'object' && !g.demo) p.badges = badgeObj(b.badges);
+        n2(p, 'fat0', clamp(+b.fat || 0, 0, 100) / 100);
+        g.roster[t].push(p); k++;
+      }
+      for (i = 0; i < g.roster[t].length; i++) {
+        var q = g.roster[t][i];
+        if (typeof q.name !== 'string') q.name = '';
+        n2(q, 'perf', 0); n2(q, 'tired', q.fat0 || 0); n2(q, 'onR', 0);
+      }
+    }
+  }
+  /** createGame (6v6): tu atleta. meSlot (0-5) = tu hueco en ROLES6; meBench = tu índice en bench[0] (empiezas en el banquillo:
+   *  g.ctrlOut). Sin ninguno de los dos, el de hoy (el primero del puesto ctrlRole). */
+  function subsCtrl(g, opts) {
+    var ms = opts.meSlot, mb = opts.meBench, p = null;
+    if (ms === (ms | 0) && ms >= 0 && ms < 6) p = g.teams[0][ms];
+    else if (g.subsOn && mb === (mb | 0) && mb >= 0) {
+      for (var i = 0; i < g.roster[0].length; i++) if (g.roster[0][i].bench && g.roster[0][i].bi === mb && g.roster[0][i].role !== 'L') p = g.roster[0][i];
+      if (p) g.ctrlOut = true;
+    }
+    if (!p) return;
+    g.ctrl = g.ctrlBase = p;
+    if (CTRL_ROLES6.indexOf(p.role) >= 0) g.ctrlRole = p.role;
+  }
+  /** emit (solo con g.subsOn): rendimiento por toques (recepción perfecta o defensa +0,3), último rematador de cada equipo y
+   *  cansancio por salto. */
+  function subEv(g, e) {
+    var p = e.player;
+    if (e.type === 'hit') {
+      if (e.kind === 'spike' && p) g.subAtk[p.team] = p;
+      if (p && p.perf != null && (e.dig || (e.recv && e.grade === 'perfect'))) p.perf += 0.3;
+    } else if (e.type === 'jump' && p && p.tired != null) p.tired = Math.min(1, p.tired + SUBK.jumpT);
+  }
+  /** point (solo con g.subsOn): puntos del partido, puntos con tu atleta en pista (también como líbero) y por jugador; cansancio. */
+  function subCount(g) {
+    g.rallyN++;
+    var me = !g.ctrlOut && !!g.ctrl && g.players.indexOf(g.ctrl) >= 0;
+    g._meLast = me; if (me) g.meR++;
+    for (var t = 0; t < 2; t++) for (var i = 0; i < g.roster[t].length; i++) {
+      var p = g.roster[t][i];
+      if (p.bench) p.tired = Math.max(0, p.tired - SUBK.rest);
+      else { p.onR++; p.tired = Math.min(1, p.tired + SUBK.onPt); }
+    }
+  }
+  /** point con llamada que se puede pedir (g._snap): rendimiento, puntos en pista y cansancio de cada jugador antes del punto, para
+   *  deshacerlos si el challenge lo anula (subRedo: el punto se vuelve a pitar y subCount / subPerf se cuentan otra vez). */
+  function subUndo(g) {
+    var v = [];
+    for (var t = 0; t < 2; t++) for (var i = 0; i < g.roster[t].length; i++) { var p = g.roster[t][i]; v.push(p, p.perf, p.onR, p.tired); }
+    return { set: g.setNo, v: v };
+  }
+  function subRedo(g, setNo0) {
+    var u = g._subU; g._subU = null;
+    if (!u || u.set !== setNo0) return;   // (si ya empezó otro set, subsNewSet puso el rendimiento a 0: no se toca)
+    for (var i = 0; i < u.v.length; i += 4) { var p = u.v[i]; p.perf = u.v[i + 1]; p.onR = u.v[i + 2]; p.tired = u.v[i + 3]; }
+  }
+  /** point (solo con g.subsOn): rendimiento del set. +1 punto directo (ace, remate, bloqueo, dejada), −1 error o falta, −0,5 al
+   *  que recibe el ace o al rematador bloqueado. */
+  function subPerf(g, w, how, fp) {
+    var lp = g.lastPlayer, l = 1 - w, a;
+    if (how === 'ace') { // (ace sin tocar: el que tenía que recibir, g.jobs del equipo que recibe)
+      if (g.server && g.server.team === w) g.server.perf += 1;
+      a = lp && lp.team === l ? lp : g.jobs[l]; if (a && a.perf != null) a.perf -= 0.5;
+    }
+    else if (how === 'kill') { a = g.subAtk[w]; if (a) a.perf += 1; }
+    else if (how === 'block') { if (lp && lp.team === w) lp.perf += 1; a = g.subAtk[l]; if (a) a.perf -= 0.5; }
+    else if (how === 'tip' || how === 'free') { if (lp && lp.team === w) lp.perf += 1; }
+    else { a = fp && fp.team === l ? fp : lp && lp.team === l ? lp : null; if (a && a.perf != null) a.perf -= 1; }
+  }
+  /** ¿Se puede cambiar out (en pista) por inn (del banquillo) en el equipo t? '' o el motivo: 'off' (sin banquillo), 'bench' (out no
+   *  está en pista o inn no está en el banquillo), 'libero' (out está fuera por el líbero, o uno de los dos es el líbero), 'me' (tu
+   *  jugador en el Partido rápido), 'max' (6 cambios), 'pair' (un suplente solo sale por su titular; un titular solo vuelve por su
+   *  suplente), 'back' (ese titular ya volvió), 'used' (ese suplente ya entró y salió). coach = true: el entrenador CPU (sin 'me'). */
+  function canSubX(g, t, out, inn, coach) {
+    if (!g.subsOn) return 'off';
+    if (!out || !inn || out.team !== t || inn.team !== t) return 'bench';
+    if (out.role === 'L' || inn.role === 'L' || out === g.liberoFor[t]) return 'libero';
+    if (g.rot[t].indexOf(out) < 0 || g.rot[t].indexOf(inn) >= 0 || g.roster[t].indexOf(inn) < 0) return 'bench';
+    if (!coach && t === 0 && g.ctrlBase && (out === g.ctrlBase || inn === g.ctrlBase) && !g.demo) return 'me';
+    var S = g.subs[t], P = S.pairs, i, q;
+    if (S.n >= SUB_MAX) return 'max';
+    for (i = 0; i < P.length; i++) {
+      q = P[i];
+      if (q.b === out && !q.back) return q.a === inn ? '' : 'pair';
+      if (q.a === out && q.back) return 'back';
+    }
+    for (i = 0; i < P.length; i++) {
+      q = P[i];
+      if (q.a === inn) return 'pair';
+      if (q.b === inn && q.back) return 'used';
+    }
+    // el humano solo cambia en el mismo puesto u OH↔OPP (la IA reparte todo por p.role); el entrenador CPU ya lo filtra
+    if (!coach && !(out.role === inn.role || (out.role === 'OH' && inn.role === 'OPP') || (out.role === 'OPP' && inn.role === 'OH'))) return 'role';
+    return '';
+  }
+  function canSub(g, t, out, inn) { return canSubX(g, t, out, inn, false); }
+  /** Pide un cambio para el siguiente balón muerto ('' o el motivo de canSub). Sustituye al pedido anterior del equipo. */
+  function requestSub(g, t, out, inn) {
+    var r = canSubX(g, t, out, inn, false);
+    if (!r) g.subQ[t] = { out: out, inn: inn };
+    return r;
+  }
+  function cancelSub(g, t) { if (g.subsOn && g.subQ) g.subQ[t] = null; }
+  function subsLeft(g, t) { return g.subsOn ? SUB_MAX - g.subs[t].n : 0; }
+  /** Suplentes del equipo t que no están en pista (sin el líbero), en el orden del banquillo. */
+  function benchOf(g, t) {
+    var out = []; if (!g.subsOn) return out;
+    for (var i = 0; i < g.roster[t].length; i++) { var p = g.roster[t][i]; if (p.role !== 'L' && g.rot[t].indexOf(p) < 0) out.push(p); }
+    return out;
+  }
+  /** Estado de p en el set: 'starter' (en pista sin cambio), 'in' (suplente que entró), 'back' (titular que volvió), 'out'
+   *  (titular cambiado, o suplente que ya entró y salió), 'bench' (sin jugar en el set). canOut / canIn: si puede salir / entrar. */
+  function subInfo(g, t, p) {
+    if (!g.subsOn || !p) return null;
+    var on = g.rot[t].indexOf(p) >= 0, P = g.subs[t].pairs, st = on ? 'starter' : 'bench', used = false;
+    for (var i = 0; i < P.length; i++) {
+      var q = P[i];
+      if (on) { if (q.b === p && !q.back) st = 'in'; else if (q.a === p && q.back) st = 'back'; }
+      else if (q.a === p && !q.back) st = 'out';
+      else if (q.b === p && q.back) { st = 'out'; used = true; }
+    }
+    var full = g.subs[t].n >= SUB_MAX;
+    return { state: st, canOut: on && !full && st !== 'back' && p !== g.liberoFor[t] && p.role !== 'L', canIn: !on && !full && p.role !== 'L' && !used };
+  }
+  /** Banquillo neutro del Partido rápido: S, OPP, OH, MB, OH con 50 en todo, dorsales desde el 7 sin los de la pista ni el líbero. */
+  var DEF_BENCH = ['S', 'OPP', 'OH', 'MB', 'OH'];
+  function defaultBench(t) {
+    var used = t === 1 ? [7, 8, 9, 10, 11, 12, 14] : [1, 2, 3, 4, 5, 6, 13], n = 7, out = [];
+    for (var i = 0; i < DEF_BENCH.length; i++) {
+      while (used.indexOf(n) >= 0) n++;
+      var st = {}; for (var j = 0; j < ATTR_KEYS.length; j++) st[ATTR_KEYS[j]] = 50;
+      out.push({ role: DEF_BENCH[i], st: st, num: n, name: '', fat: 0, badges: null }); n++;
+    }
+    return out;
+  }
+  /** Aplica el cambio out → inn del equipo t (ya validado): ocupa la zona en g.rot y el hueco en g.teams; el que entra sale de la
+   *  zona de cambio y camina hasta el sitio del que sale (g.subWalkL, durante SUB_HOLD). Evento 'sub'. */
+  function doSub(g, t, out, inn, why, src) {
+    var z = g.rot[t].indexOf(out), ti = g.teams[t].indexOf(out), S = g.subs[t], P = S.pairs, pr = null;
+    g.rot[t][z] = inn; if (ti >= 0) g.teams[t][ti] = inn;
+    inn.bench = false; out.bench = true; out.zone = 0; out.front = false;
+    var sd = side(t), tx = out.x, ty = out.y;
+    inn.x = sd * SUBK.zoneX; inn.y = SUBK.zoneY; inn.z = 0; inn.vz = 0; inn.vx = inn.vy = 0; inn.down = 0; inn.anim = 0; inn.cool = 0;
+    inn.jvx = inn.jvy = inn.lvx = inn.lvy = inn.rvx = inn.rvy = 0; inn.onGround = true; inn.lastAction = ''; inn.actionT = 99;
+    var dw = Math.hypot(tx - inn.x, ty - inn.y);
+    g.subWalkL.push(dblFields({ p: inn, x: tx, y: ty, v: Math.max(SUBK.walk, dw / (SUB_HOLD - 0.3)) }));
+    for (var i = 0; i < P.length; i++) if (P[i].b === out && !P[i].back) pr = P[i];
+    if (pr) pr.back = true; else P.push({ a: out, b: inn, back: false, why: why, src: src || why });   // (src: regla del entrenador que lo decidió; p. ej. 'garbage' para tu entrada con el partido roto)
+    S.n++;
+    if (why === 'double') S.dbl = true;
+    if (t === 0 && g.ctrlBase) {
+      if (out === g.ctrlBase) { g.ctrlOut = true; g.ctrl = out; endSwing(g); }
+      else if (inn === g.ctrlBase) { g.ctrlOut = false; g.ctrl = inn; endSwing(g); }
+    }
+    emit(g, { type: 'sub', team: t, inP: inn, outP: out, why: why, n: S.n, left: SUB_MAX - S.n, set: g.setNo, score: [g.score[0], g.score[1]],
+      meIn: t === 0 && inn === g.ctrlBase, meOut: t === 0 && out === g.ctrlBase });
+  }
+  /** Balón muerto (antes de setupServe): cambios pedidos y del entrenador CPU. Devuelve true si hubo alguno. */
+  function applySubs(g) {
+    var any = false, A6 = VB.AI6;
+    for (var t = 0; t < 2; t++) {
+      var q = g.subQ[t], did = false;
+      if (q) {
+        g.subQ[t] = null;
+        var why = canSubX(g, t, q.out, q.inn, false);
+        if (!why) { doSub(g, t, q.out, q.inn, 'human'); did = true; }
+        else emit(g, { type: 'subDenied', team: t, inP: q.inn, outP: q.out, why: why });
+      }
+      if (!did && g.coach[t].auto && A6 && A6.coachPlan) {
+        var plan = A6.coachPlan(g, t);
+        if (plan && plan.length === 1 && !canSubX(g, t, plan[0].out, plan[0].inn, true)) { doSub(g, t, plan[0].out, plan[0].inn, plan[0].why, plan[0].src); did = true; }
+        else if (plan && plan.length === 2 && g.subs[t].n + 2 <= SUB_MAX && plan[0].out !== plan[1].out && plan[0].inn !== plan[1].inn &&
+            !canSubX(g, t, plan[0].out, plan[0].inn, true) && !canSubX(g, t, plan[1].out, plan[1].inn, true)) {
+          doSub(g, t, plan[0].out, plan[0].inn, plan[0].why); doSub(g, t, plan[1].out, plan[1].inn, plan[1].why); did = true;
+        }
+      }
+      if (did) any = true;
+    }
+    if (any) refreshTeams(g);
+    return any;
+  }
+  /** Paseo del que entra durante SUB_HOLD (balón muerto). */
+  function subWalk(g, dt) {
+    var L = g.subWalkL;
+    for (var i = 0; i < L.length; i++) {
+      var w = L[i], p = w.p, dx = w.x - p.x, dy = w.y - p.y, d = Math.hypot(dx, dy);
+      if (d < 0.03 || dt <= 0) { p.vx = p.vy = 0; continue; }
+      var s = Math.min(d, w.v * dt); p.x += dx / d * s; p.y += dy / d * s; p.vx = dx / d * s / dt; p.vy = dy / d * s / dt;
+    }
+  }
+  /** nextSet / newGame (solo con g.subsOn): alineación del set siguiente (VB.AI6.lineupPlan; sin gastar cambios; nada en un partido
+   *  nuevo), el líbero fuera, pista = g.lineup, contadores y rendimiento a 0. Devuelve los cambios de alineación por equipo. */
+  function subsNewSet(g, fresh) {
+    var lu = [null, null], A6 = VB.AI6, hb = g.ctrlBase, wasOut = !!g.ctrlOut;
+    for (var t = 0; t < 2; t++) {
+      var L = g.lineup[t], ins = [], outs = [], i;
+      var plan = !fresh && g.coach[t].auto && A6 && A6.lineupPlan ? A6.lineupPlan(g, t) : null;
+      if (plan) for (i = 0; i < plan.length; i++) {
+        var c = plan[i], k = L.indexOf(c.out);
+        if (k < 0 || !c.inn || L.indexOf(c.inn) >= 0 || c.inn.role === 'L' || g.roster[t].indexOf(c.inn) < 0) continue;
+        L[k] = c.inn; ins.push(c.inn); outs.push(c.out);
+      }
+      var lib = g.libero[t], cur = g.liberoFor[t], tm = g.teams[t];
+      if (cur) { g.liberoFor[t] = null; emit(g, { type: 'libero', team: t, inP: cur, outP: lib, human: t === 0 && cur === hb }); }
+      for (i = 0; i < g.roster[t].length; i++) g.roster[t][i].bench = true;
+      tm.length = 0; for (i = 0; i < L.length; i++) { tm.push(L[i]); L[i].bench = false; }
+      var S = g.subs[t]; S.n = 0; S.pairs.length = 0; S.dbl = false; g.subQ[t] = null;
+      for (i = 0; i < g.roster[t].length; i++) g.roster[t][i].perf = 0;
+      lu[t] = { ins: ins, outs: outs };
+    }
+    if (fresh) { g.meR = 0; g.rallyN = 0; for (var u = 0; u < 2; u++) for (var r = 0; r < g.roster[u].length; r++) { var q = g.roster[u][r]; q.onR = 0; q.tired = q.fat0 || 0; } }
+    if (hb && hb.team === 0) {
+      g.ctrlOut = g.lineup[0].indexOf(hb) < 0; g.ctrl = hb; endSwing(g);
+      // entras o sales al empezar el set aunque la alineación no cambie (te sacaron y vuelves de inicio, o entraste y vuelves al
+      // banquillo): el 'lineup' del equipo 0 lo dice igual (meIn / meOut), para que la Carrera y los avisos no se desincronicen
+      var x0 = lu[0];
+      x0.meIn = !g.ctrlOut && (wasOut || x0.ins.indexOf(hb) >= 0); x0.meOut = g.ctrlOut && (!wasOut || x0.outs.indexOf(hb) >= 0);
+    }
+    g.subWait = false; g.subWalkL.length = 0;
+    refreshTeams(g);
+    return lu;
+  }
+  /** Eventos 'lineup' (después de newSet, antes del primer serveReady). */
+  function subsLineupEv(g, lu) {
+    for (var t = 0; t < 2; t++) {
+      var x = lu[t]; if (!x || (!x.ins.length && !x.meIn && !x.meOut)) continue;
+      emit(g, { type: 'lineup', team: t, set: g.setNo, ins: x.ins.slice(), outs: x.outs.slice(), meIn: t === 0 && !!x.meIn, meOut: t === 0 && !!x.meOut });
+    }
+  }
+
   VB.Sim = {
     createGame: createGame, step: step, drainEvents: drainEvents, setTarget: setTarget, SET_POINTS: SET_POINTS, court: court,
     predict: predict, predictLanding: predictLanding, focusPoint: focusPoint, askOk: askOk,
@@ -3203,6 +3503,10 @@
     BADGE_IDS: BADGE_IDS, badgeLevel: bl, aiReact: aiReact, aiTiming: aiTiming, reachOf: reachOf, canChallenge: canChallenge, challenge: challenge, lineDist: lineDist, refErrP: refErrP, dblSetP: dblSetP,
     _land: land, _point: point,
     // E6 (Entrenamiento): montaje público (pruebas) y puntuación pura; datos en VB.DRILL
-    drillStage: drillStage, drillScore: drillScore, _drillIdle: drillIdle
+    drillStage: drillStage, drillScore: drillScore, _drillIdle: drillIdle,
+    // banquillo y cambios (6v6 con opts.bench; notes/titularidad-y-cambios.md §B e §I.2)
+    canSub: canSub, requestSub: requestSub, cancelSub: cancelSub, subsLeft: subsLeft, benchOf: benchOf, subInfo: subInfo,
+    defaultBench: defaultBench, SUB_MAX: SUB_MAX, SUB_HOLD: SUB_HOLD, SUBK: SUBK, hash01: hash01,
+    _canSubC: function (g, t, out, inn) { return canSubX(g, t, out, inn, true); }, _applySubs: applySubs
   };
 })();

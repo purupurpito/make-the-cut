@@ -639,8 +639,10 @@
       if (sum.nota != null && !sum.sim) l.bestNota = Math.max(l.bestNota, sum.nota);
       // seguidores por el partido (simulado: un tercio; nadie lo ha visto)
       var base = Math.max(0, (sum.nota - 5.5)) * 22 + (sum.win ? 18 : 0) + (isKO(sum.phase) ? 30 : 0);
-      var fans = Math.round(base * LV_MULT[L] * (sum.sim ? 0.33 : 1) * (1 + 0.05 * Math.min(l.streak, 6)));
-      if (!sum.sim && sum.nota < 5) fans = -Math.round(l.fame * 0.02);
+      // pista con cambios: si jugaste solo una parte de los puntos (sum.part.share), la fama del partido escala con ella (mínimo 0,35)
+      var shf = sum.part && sum.part.share < 1 ? Math.max(0.35, +sum.part.share || 0) : 1;
+      var fans = Math.round(base * LV_MULT[L] * (sum.sim ? 0.33 : 1) * (1 + 0.05 * Math.min(l.streak, 6)) * shf);
+      if (!sum.sim && sum.nota < 5) fans = -Math.round(l.fame * 0.02 * shf);
       out.fans += addFame(c, fans);
       // reto de la jornada (solo jugando)
       if (!sum.sim) {
@@ -705,8 +707,10 @@
   /** matchSetup: material (+ a dos atributos por pieza y nivel) y molestias (−2 a todo). Solo en el partido. */
   function setup(c, m) {
     var l = ensure(c), ix = m && m.format === '6v6' ? m.ctrlIdx | 0 : 0;   // (pista: tu jugador va en tu hueco de la rotación, ctrlIdx)
-    if (!l || !m || !m.attrs || !m.attrs[0] || !m.attrs[0][ix]) return;
-    var st = m.attrs[0][ix], gb = gearBonus(c), hurt = l.hurt ? 2 : 0;
+    // pista empezando en el banquillo (titularidad, 13-nov-2026): tu jugador va en bench[0][meBench]
+    var bst = m && m.meOn === false && m.bench && m.bench[0] && m.bench[0][m.meBench | 0] ? m.bench[0][m.meBench | 0].st : null;
+    if (!l || !m || (!bst && (!m.attrs || !m.attrs[0] || !m.attrs[0][ix]))) return;
+    var st = bst || m.attrs[0][ix], gb = gearBonus(c), hurt = l.hurt ? 2 : 0;
     Object.keys(st).forEach(function (k) { st[k] = clamp(Math.round(st[k] + (gb[k] | 0) - hurt), 1, 99); });
     m.gear = gb; m.hurt = hurt;
     var ch = challenge(c); if (ch && m.career) { m.career.goal = ch.txt; m.career.duel = ch.duel; }

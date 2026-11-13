@@ -404,6 +404,7 @@
     el.pnCtl = $('pnCtl'); el.pKick = document.querySelector('#pause .sh-k');
     el.stamp = $('stamp'); el.stampIn = el.stamp.firstChild; el.stampT = $('stampT'); el.stampS = $('stampS'); el.sr = $('srLive');
     el.chal = $('chal'); el.chalK = el.chal ? el.chal.firstChild : null; el.chalKey = $('chalKey'); el.chalN = $('chalN'); el.chalBar = $('chalBar'); el.sbChal = $('sbChal');
+    try { subsDom(); } catch (e) { console.error('[VB][ERROR] UI.subsDom: ' + e); }   // banquillo y cambios (6v6)
   }
   function device() {
     var d = ctx.inputDevice || 'keyboard';
@@ -529,7 +530,7 @@
   // 6v6 espectador (g.watch de main.js, sprint 2: CPU contra CPU): rótulos de local / visitante en vez de TÚ / CPU
   var WATCH_CR = { me: 'LOC', rival: 'VIS', meName: 'Equipo local', rivalName: 'Equipo visitante' };
   function cpuTxt(s) {
-    var g = ctx && ctx.game, cr = g && !g.demo && (g.career || (g.watch && WATCH_CR));
+    var g = ctx && ctx.game, cr = g && !g.demo && (g.career || (g.watch0 && WATCH_CR));
     if (!cr || typeof s !== 'string' || s.indexOf('CPU') < 0) return s;
     return s.replace(/de la CPU/g, 'del rival').replace(/a la CPU/g, 'al rival').replace(/la CPU/g, 'el rival').replace(/La CPU/g, 'El rival')
       .replace(/\bCPU\b/g, cr.rival || 'RIVAL');
@@ -708,6 +709,7 @@
     // banner IN/OUT del challenge; y las estadísticas descuentan el punto anulado.
     var ovr = false;
     for (var oi = 0; oi < events.length; oi++) if (events[oi].type === 'challengeResult' && events[oi].overturned) ovr = true;
+    if (g.subsOn && !g.demo && events.length) subsEvents(g, events);   // banquillo: rótulo de los cambios y avisos de entrar / salir
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
       if (e.type === 'newMatch') { stats = newStats(); }
@@ -1685,7 +1687,7 @@
     if (drOn) drillHud(g);
     setHTML(el.sbSet, 'set', demo ? 'DEMO' : sepHTML(['SET ' + g.setNo, g.setNo === 3 ? 'A 15' : ''], 's'));
     // partido de Carrera (g.career, main.js): abreviaturas de los dos clubes en vez de TÚ / CPU
-    var cr = !demo && (g.career || (g.watch && WATCH_CR));
+    var cr = !demo && (g.career || (g.watch0 && WATCH_CR));
     setText(el.name0, 'n0', demo ? 'ROJO' : (cr && cr.me) || 'TÚ'); setText(el.name1, 'n1', demo ? 'AZUL' : (cr && cr.rival) || 'CPU');
     if (!demo) teamNames(cr);
     setText(el.pts0, 'p0', g.score[0]); setText(el.pts1, 'p1', g.score[1]);
@@ -2406,6 +2408,7 @@
     el.pS0.textContent = g.score[0]; el.pS1.textContent = g.score[1];
     el.pMid.innerHTML = 'SETS<b>' + g.sets[0] + '-' + g.sets[1] + '</b>';
     if (el.pKick) setSep(el.pKick, pauseKicker(g), 'd');
+    subsPauseBtn(g);
   }
 
   // ---------- Celebración previa a la pantalla final ----------
@@ -2416,7 +2419,7 @@
   function showEnd(e) {
     var win = e.team === 0, T = stats.t;
     var isNew = false, career = !!(ctx.game && ctx.game.career && !ctx.game.demo);
-    var watch = !!(ctx.game && ctx.game.watch && !ctx.game.demo);   // 6v6 espectador: tampoco cuenta
+    var watch = !!(ctx.game && ctx.game.watch0 && !ctx.game.demo);   // 6v6 espectador: tampoco cuenta (g.watch0: el de verdad; g.watch también vale en el banquillo)
     // 6v6 con humano (sprint 3): tampoco. El récord (y con él el fin de los consejos a la 1ª victoria, el novato de main.js
     // isRookie y la guía del primer partido) es del 2 contra 2; el 6v6 lo arrastra su equipo IA
     var six = !!(ctx.game && ctx.game.size === 6 && !ctx.game.demo);
@@ -2461,7 +2464,7 @@
     if (alt >= 0) { el.btnAgainAlt.textContent = 'Revancha en ' + OPT.difficulty.labels[alt]; el.btnAgainAlt.setAttribute('data-d', OPT.difficulty.vals[alt]); }
     // «Cambiar opciones»: al menú, directo a la preparación del Partido rápido (dificultad, puntos, control, escenario). En la
     // Carrera no (main.js careerEndSheet esconde además «Revancha en…»); en el 6v6 espectador de pruebas (?format=6v6) tampoco
-    var noOpts = !!career || !!(ctx.game && ctx.game.watch);   // (6v6 humano, sprint 3: sí, vuelve a la preparación con Formato 6 contra 6)
+    var noOpts = !!career || !!(ctx.game && ctx.game.watch0);   // (6v6 humano, sprint 3: sí, vuelve a la preparación con Formato 6 contra 6)
     if (el.btnEndOpts) { el.btnEndOpts.hidden = noOpts; el.btnEndOpts.parentNode.setAttribute('data-n', String((alt >= 0 && !career ? 1 : 0) + (noOpts ? 0 : 1) + 1)); }
     // (partido de Carrera, g.career: la experiencia y las insignias de su atleta las reparte VB.Career.matchDone, no el escuadrón)
     // (6v6 de pruebas, ?format=6v6: tampoco reparte al escuadrón de 2v2)
@@ -3155,6 +3158,8 @@
     // Juego, E1: colocación dirigida (sim opts.aimSet) y timing exacto en ms (solo el sello de ui.js)
     aimSet: { vals: [true, false], labels: ['Sí', 'No'] },
     msTiming: { vals: [true, false], labels: ['Sí', 'No'] },
+    // 6v6: cambios de tu equipo (main.js ctx.settings.subs6 → coach[0].auto): el entrenador CPU también cambia (nunca a ti) o solo los que pidas
+    subs6: { vals: ['auto', 'manual'], labels: ['Automáticos', 'Solo los míos'] },
     // sede de cada tipo (Ajustes · Imagen; js/venues.js: las disponibles + «Al azar»). arena.js la cambia en vivo
     mapBeach: mapOpt('beach'), mapHall: mapOpt('hall')
   };
@@ -3185,7 +3190,7 @@
   }
   /** E3: claves de cada apartado para «Restablecer este apartado» (ctx.actions.resetSettings). keys / pad: los de Controles. */
   var TAB_KEYS = { audio: ['volume', 'sfxVol', 'crowdVol', 'musicVol'], image: ['quality', 'resScale', 'fpsCap', 'showFps', 'beachLight', 'mapHall', 'mapBeach'], cam: ['camSens', 'camDist', 'camCuts', 'cam6'],
-    game: ['showHelp', 'coachTips', 'aimSet', 'msTiming'], a11y: ['camStable', 'rumble', 'hudScale', 'softFlash', 'lessMotion', 'cbColors', 'ballStyle'],
+    game: ['showHelp', 'coachTips', 'aimSet', 'msTiming', 'subs6'], a11y: ['camStable', 'rumble', 'hudScale', 'softFlash', 'lessMotion', 'cbColors', 'ballStyle'],
     kit: ['kitShirt', 'kitAccent', 'kitShorts', 'kitPattern'], keys: ['keys'], pad: ['padKeys', 'padDead'] };
   var resetArm = { b: null, t: 0, to: 0 };
   function resetDisarm() {
@@ -3368,6 +3373,7 @@
     }
     // Ajustes · Imagen: la fila de pabellones solo con más de uno; «Luz de playa» solo si la sede de playa elegida la admite
     var rowH = document.querySelector('#optList [data-opt="mapHall"]'), rowB = document.querySelector('#optList [data-opt="mapBeach"]'), rowL = document.querySelector('#optList [data-opt="beachLight"]');
+    var rowS6 = document.querySelector('[data-opt="subs6"]'); if (rowS6) rowS6.hidden = ctx.settings.format !== '6v6';   // «Cambios de tu equipo»: solo con 6 contra 6
     if (rowH) rowH.hidden = OPT.mapHall.vals.length < 2;
     if (rowB) rowB.hidden = OPT.mapBeach.vals.length < 2;
     if (rowL) {   // con «Al azar», manda la sede de playa montada (o ya sorteada): la de luz fija oculta la fila
@@ -4036,6 +4042,226 @@
   // =====================================================================
   //  API
   // =====================================================================
+
+  // =====================================================================
+  //  BANQUILLO Y CAMBIOS (6v6 con banquillo, sim g.subsOn; notes/titularidad-y-cambios.md §B.3-§B.6)
+  //  Rótulo de TV de cada cambio, avisos de entrar / salir (Carrera), barra «En el banquillo» con ×3 y los saltos (main.js
+  //  ctx.bench / ctx.actions.benchFast / benchSkip), velo «Simulando…», botón «Cambios n/6» de la pausa y su panel (Partido rápido).
+  //  Todo el DOM y el CSS se crean aquí (subsDom); sin banquillo no se ve nada.
+  // =====================================================================
+  var SUB_WHY = { max: 'Ya no quedan cambios en este set', used: 'Ya entró y salió en este set', pair: 'Solo puede cambiarse por el jugador al que sustituyó',
+    back: 'Ya volvió a pista en este set', libero: 'Ahora está el líbero: espera a que salga', me: 'Eres tú', bench: 'No está en pista', off: 'Este partido no tiene banquillo', role: 'Tiene que ser del mismo puesto' };
+  var ROLE_AB = { S: 'Col', OPP: 'Opu', OH: 'Rec', MB: 'Cen', L: 'Líb' };
+  var subUI = { tq: [], tv: null, tvT: 0, bar: null, veil: null, pn: null, pick: null, msg: '', msgT: 0, stat: {}, key: '', vkey: '', pkey: '' };
+  var SUB_CSS =
+    '#subTv{position:absolute;left:0;right:0;margin:0 auto;width:max-content;bottom:calc(16px + 9vh);z-index:31;pointer-events:none;display:none;min-width:260px;max-width:min(560px,92vw);' +
+    'font:700 calc(16px*var(--vs,1))/1.15 var(--display,sans-serif);color:#fff;filter:drop-shadow(0 6px 18px rgba(0,0,0,.45))}' +
+    '#subTv.show{display:block;animation:stIn .35s var(--ease,ease) both}#subTv.out{animation:stOut .3s ease both}' +
+    '#subTv .sbt-h{display:inline-block;padding:4px 14px 3px;font-size:.8em;letter-spacing:.14em;text-transform:uppercase;background:var(--k0,#ff6a2e);color:#160a02;transform:skewX(-12deg)}' +
+    '#subTv.t1 .sbt-h{background:var(--k1,#2a6dff);color:#fff}' +
+    '#subTv .sbt-b{background:rgba(10,16,30,.94);border:1px solid rgba(255,255,255,.14);border-left:5px solid var(--k0,#ff6a2e);padding:6px 12px 6px}' +
+    '#subTv.t1 .sbt-b{border-left-color:var(--k1,#2a6dff)}' +
+    '#subTv .sbt-row{display:flex;gap:16px;align-items:baseline;white-space:nowrap;padding:2px 0}#subTv .sbt-row+.sbt-row{border-top:1px solid rgba(255,255,255,.1)}' +
+    '#subTv .sbt-in::before{content:"▲ ";color:#4fe08a}#subTv .sbt-out{color:#c9d2e3}#subTv .sbt-out::before{content:"▼ ";color:#ff6b6b}' +
+    '#subTv .sbt-in,#subTv .sbt-out{overflow:hidden;text-overflow:ellipsis}#subTv .sbt-n{font:600 .66em/1.2 var(--ui,sans-serif);letter-spacing:.04em;color:#9fb0cc;margin-top:3px}' +
+    '@keyframes stIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}@keyframes stOut{to{opacity:0;transform:translateY(10px)}}' +
+    '@media (max-width:700px),(max-height:430px){#subTv{bottom:calc(8px + 4vh);min-width:0;font-size:14px}#subTv .sbt-nm{display:none}}' +
+    // con la barra del banquillo a la vista, el rótulo sube por encima de ella (si no, a 844×390 solo asomaba «Cambio»)
+    '.sb-bar #subTv{bottom:calc(80px + env(safe-area-inset-bottom))}@media (max-width:700px),(max-height:430px){.sb-bar #subTv{bottom:calc(66px + env(safe-area-inset-bottom))}}@media (max-width:560px){.sb-bar #subTv{bottom:calc(98px + env(safe-area-inset-bottom))}}' +
+    '#benchBar{position:absolute;left:0;right:0;margin:0 auto;width:max-content;bottom:max(14px,env(safe-area-inset-bottom));z-index:32;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;' +
+    'padding:8px 10px;background:rgba(10,16,30,.9);border:1px solid rgba(255,255,255,.14);border-radius:12px;max-width:calc(100vw - 32px);font:600 15px/1.1 var(--ui,sans-serif);color:#fff}' +
+    '#benchBar[hidden],#ffVeil[hidden]{display:none}#benchBar .bb-t{font:700 15px/1 var(--display,sans-serif);letter-spacing:.1em;text-transform:uppercase;color:#ffe7a0;padding:0 6px}' +
+    '#benchBar button{min-height:40px;padding:6px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;font:600 15px/1 var(--ui,sans-serif);cursor:pointer;display:inline-flex;gap:6px;align-items:center}' +
+    '#benchBar button.on{background:#ffd36a;color:#1a1300;border-color:#ffd36a;text-shadow:none}#benchBar button:focus-visible,#benchBar button.kf{outline:3px solid #ffd36a;outline-offset:2px}#benchBar .key{font-size:12px}' +
+    '@media (max-width:700px),(max-height:430px){#benchBar{gap:6px;padding:6px;bottom:max(8px,env(safe-area-inset-bottom))}#benchBar .bb-t{font-size:13px}#benchBar button{font-size:13px;padding:6px 10px;min-height:38px}#benchBar .key{display:none}}' +
+    '@media (max-width:560px){#benchBar .bb-t{flex-basis:100%;text-align:center}}' +
+    '#ffVeil{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(6,10,20,.82);backdrop-filter:blur(6px);color:#fff;text-align:center}' +
+    '#ffVeil b{display:block;font:700 28px/1.1 var(--display,sans-serif);letter-spacing:.08em;text-transform:uppercase}#ffVeil span{display:block;margin-top:8px;font:600 18px/1.2 var(--ui,sans-serif);color:#c9d2e3}' +
+    '#pnSubs .sb-msg{min-height:1.3em;margin:0 0 8px;font:600 14px/1.3 var(--ui,sans-serif);color:#ffe7a0}#pnSubs .sb-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}' +
+    '#pnSubs h3{margin:0 0 6px;font:700 13px/1 var(--display,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:#9fb0cc}' +
+    '#pnSubs .sb-list{display:flex;flex-direction:column;gap:5px}#pnSubs .sb-p{display:grid;grid-template-columns:2.2em 2.2em 2.6em 1fr auto;gap:6px;align-items:center;text-align:left;min-height:38px;padding:5px 9px;' +
+    'border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#fff;font:600 14px/1.1 var(--ui,sans-serif);cursor:pointer}' +
+    '#pnSubs .sb-p b{font:700 17px/1 var(--display,sans-serif)}#pnSubs .sb-z,#pnSubs .sb-r{color:#9fb0cc;font-size:12px}#pnSubs .sb-st{font-size:12px;color:#c9d2e3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '#pnSubs .sb-f{grid-column:1/-1;height:4px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}#pnSubs .sb-f u{display:block;height:100%;background:linear-gradient(90deg,#4fe08a,#ffd36a 60%,#ff6b6b)}' +
+    '#pnSubs .sb-p.sel{border-color:#ffd36a;background:rgba(255,211,106,.16)}#pnSubs .sb-p.q{border-color:#4fe08a}#pnSubs .sb-p[disabled]{opacity:.45;cursor:default}' +
+    '#pnSubs .sb-p em{font-style:normal;font-size:11px;padding:2px 6px;border-radius:6px;background:var(--k0,#ff6a2e);color:#160a02}#pnSubs .sb-head{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:0 0 8px}#pnSubs .sb-head .sb-msg{margin:0}#pnSubs .sb-foot{display:flex;gap:8px;flex:none}#pnSubs .sb-foot button{min-height:34px;padding:4px 12px}' +
+    '#pnSubs .sb-p:focus-visible,#pnSubs .sb-p.kf{outline:3px solid #ffd36a;outline-offset:1px}' +
+    '@media (max-width:700px),(max-height:430px){#pnSubs .sb-cols{gap:8px}#pnSubs .sb-p{grid-template-columns:2em 2em 2.4em 1fr;min-height:32px;padding:3px 6px;font-size:12px}#pnSubs .sb-st{display:none}#pnSubs .sb-p em{grid-column:4;justify-self:start}}' +
+    '#btnPSubs[hidden]{display:none}';
+  function subsDom() {
+    if (subUI.tv || !el.app) return;
+    var css = document.createElement('style'); css.id = 'subsCss'; css.textContent = SUB_CSS; document.head.appendChild(css);
+    subUI.tv = document.createElement('div'); subUI.tv.id = 'subTv'; subUI.tv.setAttribute('aria-hidden', 'true'); el.app.appendChild(subUI.tv);
+    var bb = subUI.bar = document.createElement('div'); bb.id = 'benchBar'; bb.hidden = true; bb.setAttribute('role', 'group'); bb.setAttribute('aria-label', 'En el banquillo');
+    bb.innerHTML = '<span class="bb-t">En el banquillo</span><button type="button" id="bbFast" aria-pressed="false"></button><button type="button" id="bbIn"></button><button type="button" id="bbEnd"></button>';
+    el.app.appendChild(bb);
+    var vl = subUI.veil = document.createElement('div'); vl.id = 'ffVeil'; vl.hidden = true; vl.setAttribute('role', 'status');
+    vl.innerHTML = '<div><b>Simulando…</b><span id="ffTxt"></span></div>'; el.app.appendChild(vl);
+    bb.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button'); if (!b) return;
+      if (b.id === 'bbFast' && ctx.actions.benchFast) ctx.actions.benchFast();
+      else if (b.id === 'bbIn' && ctx.actions.benchSkip) ctx.actions.benchSkip('in');
+      else if (b.id === 'bbEnd' && ctx.actions.benchSkip) ctx.actions.benchSkip('end');
+      subUI.key = ''; if (b.blur) b.blur();
+    });
+    // pausa: «Cambios n/6» (Partido rápido 6v6 con banquillo)
+    if (el.btnResume && !$('btnPSubs')) {
+      var pb = document.createElement('button'); pb.className = 'ghost'; pb.id = 'btnPSubs'; pb.hidden = true; pb.textContent = 'Cambios';
+      el.btnResume.insertAdjacentElement('afterend', pb); el.btnPSubs = pb;
+      pb.addEventListener('click', function () { if (ctx.state !== 'paused') return; uiSound('click'); openSubs(false); });
+    }
+    // panel «Cambios» (mismo marco que los paneles: #panel, Volver, foco y mando)
+    var host = el.panel && el.panel.querySelector('.sheet');
+    if (host && !$('pnSubs')) {
+      var pn = subUI.pn = document.createElement('div'); pn.id = 'pnSubs'; pn.hidden = true;
+      // («Anular cambio» arriba, junto al aviso: a 844×390 abajo quedaba fuera del panel)
+      pn.innerHTML = '<div class="sb-head"><p class="sb-msg" id="sbMsg" aria-live="polite"></p><div class="sb-foot" data-nav><button class="ghost" type="button" id="sbCancel" hidden>Anular cambio</button></div></div>' +
+        '<div class="sb-cols"><div><h3>En pista</h3><div class="sb-list" data-nav id="sbOn"></div></div><div><h3>Banquillo</h3><div class="sb-list" data-nav id="sbBench"></div></div></div>';
+      host.appendChild(pn);
+      PANELS.subs = ['pnSubs', 'Partido', 'Cambios'];
+      pn.addEventListener('click', function (ev) {
+        var b = ev.target.closest('button'); if (!b || b.disabled) return;
+        if (b.id === 'sbCancel') { subsCancel(); return; }
+        var id = b.getAttribute('data-pid'); if (id == null) return;
+        subsPickId(+id, b.getAttribute('data-on') === '1');
+      });
+    }
+    // Ajustes · Juego: «Cambios de tu equipo» (solo se ve con Formato 6 contra 6; renderOpts)
+    var ms = document.querySelector('[data-opt="msTiming"]');
+    if (ms && !document.querySelector('[data-opt="subs6"]')) ms.insertAdjacentHTML('afterend', '<button class="opt" data-opt="subs6"><span>Cambios de tu equipo<small>6 contra 6: los hace el entrenador o solo los que pidas en la pausa</small></span><span class="seg" data-seg="subs6"></span></button>');
+  }
+  function pnm(p, short) { if (!p) return ''; return p.num + (!short && p.name ? ' <span class="sbt-nm">' + escT(p.name) + '</span>' : ''); }
+  function pnmT(p) { return p ? p.num + (p.name ? ' ' + p.name : '') : ''; }
+  function subOrd(n) { n = n | 0; return n + (n === 1 || n === 3 ? 'r' : 'º'); }
+  /** Rótulo de TV: «Cambio | ▲ 7 Nico | ▼ 4 Leo», «Doble cambio» en dos filas, «Sacador», y «Cambios: n/6». */
+  function subsTv(g, list, now) {
+    if (!subUI.tv || !list.length) return;
+    if (!now && subUI.tvT > 0.3) { if (subUI.tq.length < 4) subUI.tq.push(list); return; }   // otro rótulo en pantalla: en cola
+    var e0 = list[0], w = e0.why, h = list.length > 1 ? 'Doble cambio' : w === 'serve' ? 'Sacador' : 'Cambio', rows = '';
+    for (var i = 0; i < list.length; i++) rows += '<div class="sbt-row"><span class="sbt-in">' + pnm(list[i].inP) + '</span><span class="sbt-out">' + pnm(list[i].outP) + '</span></div>';
+    var last = list[list.length - 1];
+    subUI.tv.className = ''; void subUI.tv.offsetWidth;
+    subUI.tv.innerHTML = '<div class="sbt-h">' + h + '</div><div class="sbt-b">' + rows + '<div class="sbt-n">Cambios: ' + (last.n | 0) + '/' + (VB.Sim && VB.Sim.SUB_MAX || 6) + '</div></div>';
+    subUI.tv.className = 'show t' + (e0.team === 1 ? 1 : 0);
+    subUI.tvT = 2.5;
+  }
+  /** Eventos 'sub' (en grupos del mismo paso: el doble cambio), 'lineup' y 'subDenied' de un frame. */
+  function subsEvents(g, events) {
+    var grp = [], gl = [];
+    for (var i = 0; i < events.length; i++) {
+      var e = events[i];
+      if (e.type === 'point' && g.subsOn) {   // puntos y errores por jugador para el panel
+        var sp = e.player && e.how === 'error' ? e.player : null;
+        if (sp) (subUI.stat[sp.id] || (subUI.stat[sp.id] = { err: 0 })).err++;
+      }
+      if (e.type === 'sub') {
+        if (grp.length && grp[0].team !== e.team) { gl.push(grp); grp = []; }
+        grp.push(e);
+        if (e.team === 0 && (e.meIn || e.meOut)) {
+          var tx = e.meIn ? '¡Entras! Por el ' + pnmT(e.outP) : 'Te cambian: entra el ' + pnmT(e.inP);
+          callout(tx, 0, 'tip', 2.2); srSay(tx);
+        } else srSay('Cambio ' + (e.team === 0 ? 'en tu equipo' : 'del rival') + ': entra el ' + e.inP.num + ', sale el ' + e.outP.num);
+        if (e.team === 0) subUI.pick = null;
+      } else if (e.type === 'lineup' && e.team === 0 && (e.meIn || e.meOut)) {
+        var lt = e.meIn ? '¡Entras! Sales de inicio en el ' + subOrd(e.set) + ' set' : 'Empiezas el ' + subOrd(e.set) + ' set en el banquillo';
+        callout(lt, 0, 'tip', 2.4); srSay(lt);
+      } else if (e.type === 'subDenied' && e.team === 0) {
+        var dt = 'Cambio anulado: ' + (SUB_WHY[e.why] || 'no se puede').toLowerCase();
+        callout(dt, 0, 'neg', 2.0); srSay(dt);
+      } else if (e.type === 'newMatch') { subUI.stat = {}; subUI.tq.length = 0; }
+    }
+    if (grp.length) gl.push(grp);
+    gl.sort(function (a, b) { return a[0].team - b[0].team; });   // el de tu equipo primero (y el otro, en cola)
+    for (var k = 0; k < gl.length; k++) subsTv(g, gl[k]);
+  }
+  /** Cada frame: rótulo, barra del banquillo y velo del salto. */
+  function subsTick(g, dt) {
+    if (!subUI.tv) return;
+    if (subUI.tvT > 0) {
+      subUI.tvT -= Math.max(0, dt);
+      if (subUI.tvT <= 0.3 && subUI.tv.className.indexOf('out') < 0) subUI.tv.className += ' out';
+      if (subUI.tvT <= 0) { subUI.tv.className = ''; if (subUI.tq.length) subsTv(g, subUI.tq.shift(), true); }
+    }
+    var B = ctx.bench || {}, on = !!(g && g.subsOn && g.ctrlOut && g.career && !g.demo && (ctx.state === 'playing') && !(ctx.introLeft > 0));
+    var ff = on && !!B.ff, k = on ? (ff ? 'f' : 'b') + (B.fast ? 1 : 0) + device() + padFam() : '';
+    if (subUI.key !== k) {
+      subUI.key = k;
+      subUI.bar.hidden = !on || ff;
+      if (el.app) el.app.classList.toggle('sb-bar', on && !ff);
+      if (on) {
+        var gl = G(), d = device();
+        var kk = function (x) { return d === 'touch' ? '' : ' ' + x; };
+        var f = $('bbFast'); f.innerHTML = '×3' + kk(gl.jump); f.classList.toggle('on', !!B.fast); f.setAttribute('aria-pressed', B.fast ? 'true' : 'false');
+        f.setAttribute('aria-label', B.fast ? 'Velocidad normal' : 'Ver a ×3');
+        $('bbIn').innerHTML = 'Saltar hasta que entres' + kk(gl.hit); $('bbEnd').innerHTML = 'Saltar al final' + kk(gl.sw);
+      }
+    }
+    if (subUI.veil.hidden === ff) subUI.veil.hidden = !ff;
+    if (ff) {
+      var vk = g.score[0] + '-' + g.score[1] + '|' + g.setNo;
+      if (subUI.vkey !== vk) { subUI.vkey = vk; var tt = $('ffTxt'); if (tt) tt.textContent = g.score[0] + '-' + g.score[1] + ' (' + subOrd(g.setNo) + ' set)'; }
+    }
+    if (subUI.msgT > 0) { subUI.msgT -= ctx.realDt || 0; }
+  }
+  /** Pausa: «Cambios {quedan}/6» solo en el Partido rápido 6v6 con banquillo. */
+  function subsPauseBtn(g) {
+    var b = el.btnPSubs; if (!b) return;
+    var S = VB.Sim, ok = !!(g && g.subsOn && !g.career && !g.demo && !g.watch0 && g.size === 6 && S && S.subsLeft);
+    b.hidden = !ok;
+    if (ok) b.textContent = 'Cambios ' + S.subsLeft(g, 0) + '/' + (S.SUB_MAX || 6);
+  }
+  function subsOk() { var g = ctx.game; return !!(g && g.subsOn && !g.career && !g.demo && VB.Sim && VB.Sim.requestSub); }
+  function openSubs(pick) {
+    if (!subsOk() || !subUI.pn) return false;
+    subUI.pick = null; subUI.msg = '';
+    if (pick) { var g = ctx.game, S = VB.Sim; for (var z = 1; z <= 6 && !subUI.pick; z++) { var p = S.onCourt(g, 0, z), inf = S.subInfo(g, 0, p); if (inf && inf.canOut && p !== g.ctrlBase) subUI.pick = p; } if (subUI.pick) subUI.msg = 'Ahora elige quién entra por el ' + subUI.pick.num; }
+    openPanel('subs', 'paused');
+    renderSubs();
+    return true;
+  }
+  function subsCancel() { var g = ctx.game; if (!subsOk()) return; VB.Sim.cancelSub(g, 0); subUI.pick = null; subUI.msg = 'Cambio anulado'; uiSound('back'); renderSubs(); }
+  function subsPickId(id, onC) {
+    var g = ctx.game, S = VB.Sim; if (!subsOk()) return;
+    var p = null; for (var i = 0; i < g.roster[0].length; i++) if (g.roster[0][i].id === id) p = g.roster[0][i];
+    if (!p) return;
+    if (onC) { subUI.pick = subUI.pick === p ? null : p; subUI.msg = subUI.pick ? 'Ahora elige quién entra por el ' + p.num : ''; uiSound('click'); renderSubs('[data-pid="' + p.id + '"]'); return; }
+    if (!subUI.pick) { subUI.msg = 'Elige primero quién sale (En pista)'; uiSound('back'); renderSubs(); return; }
+    var r = S.requestSub(g, 0, subUI.pick, p);
+    if (r) { subUI.msg = SUB_WHY[r] || 'No se puede'; uiSound('back'); }
+    else { subUI.msg = 'Cambio pedido: entra el ' + p.num + ' por el ' + subUI.pick.num + ' al acabar la jugada'; subUI.pick = null; uiSound('click'); srSay(subUI.msg); }
+    renderSubs();
+  }
+  function roleOK(a, b) { return a === b || (a === 'OH' && b === 'OPP') || (a === 'OPP' && b === 'OH'); }
+  function renderSubs(focusSel) {
+    var g = ctx.game, S = VB.Sim; if (!subUI.pn || !subsOk()) return;
+    var q = g.subQ && g.subQ[0], hon = '', hb = '', z, p, inf;
+    var row = function (p, onC, zone) {
+      inf = S.subInfo(g, 0, p) || {};
+      var me = p === g.ctrlBase || (g.ctrl === p && p.role === 'L' && g.liberoFor[0] === g.ctrlBase), lib = p.role === 'L';
+      // (con alguien de pista elegido, solo los del mismo puesto u OH↔OPP: la IA reparte todo por p.role)
+      var can = onC ? inf.canOut && !me && !lib : inf.canIn && !!subUI.pick && roleOK(subUI.pick.role, p.role);
+      if (!onC && !subUI.pick) can = inf.canIn;   // (sin nadie elegido se puede tocar igual: avisa de elegir primero)
+      var st = subUI.stat[p.id] || {}, P = stats && stats.p && stats.p[p.id];
+      var cls = 'sb-p' + (subUI.pick === p ? ' sel' : '') + (q && (q.out === p || q.inn === p) ? ' q' : '');
+      var lab = (onC ? 'Zona ' + zone + ', ' : '') + 'dorsal ' + p.num + (p.name ? ' ' + p.name : '') + ', ' + (ROLE_AB[p.role] || '') + (me ? ', tú' : '');
+      return '<button type="button" class="' + cls + '" data-pid="' + p.id + '" data-on="' + (onC ? 1 : 0) + '"' + (can ? '' : ' disabled') + ' aria-label="' + escT(lab) + '">' +
+        '<span class="sb-z">' + (onC ? 'Z' + zone : '') + '</span><b>' + p.num + '</b><span class="sb-r">' + (ROLE_AB[p.role] || '') + '</span>' +
+        '<span class="sb-st">' + ((P && P.pts) | 0) + ' pts | ' + (st.err | 0) + ' err' + (inf.state === 'out' ? ' | fuera' : inf.state === 'in' ? ' | entró' : '') + '</span>' + (me ? '<em>Tú</em>' : '<span></span>') +
+        '<i class="sb-f"><u style="width:' + Math.round(100 * Math.min(1, p.tired || 0)) + '%"></u></i></button>';
+    };
+    for (z = 1; z <= 6; z++) { p = S.onCourt(g, 0, z); hon += row(p, true, z); }
+    var B = S.benchOf(g, 0); for (var i = 0; i < B.length; i++) hb += row(B[i], false, 0);
+    $('sbOn').innerHTML = hon; $('sbBench').innerHTML = hb;
+    var m = subUI.msg || (q ? 'Cambio pedido: entra el ' + q.inn.num + ' por el ' + q.out.num + ' al acabar la jugada' : 'Quedan ' + S.subsLeft(g, 0) + ' de ' + (S.SUB_MAX || 6) + ' cambios en este set. Toca quién sale y luego quién entra');
+    $('sbMsg').textContent = m;
+    $('sbCancel').hidden = !q;
+    if (focusSel) { var f = subUI.pn.querySelector(focusSel); if (f && !f.disabled) focusEl(f, kbNow() || ctx.inputDevice === 'gamepad'); }
+    else if (subUI.pick === null && document.activeElement && subUI.pn.contains(document.activeElement) === false) focusLayer();
+    else if (document.activeElement === document.body || !subUI.pn.contains(document.activeElement)) focusLayer();
+    else if (document.activeElement && document.activeElement.disabled) focusLayer();
+    subsPauseBtn(g);
+  }
+
   VB.UI = {
     banner: banner,
     callout: callout,
@@ -4071,6 +4297,8 @@
     /** Pruebas (UI-20): última caja del aviso anclado {x, y, w, h} (px CSS), solo la tecla (konly) y zonas de los botones táctiles. */
     _prompt: function () { return { x: prLast.x, y: prLast.y, w: prLast.w, h: prLast.h, konly: prKonly, side: prSide, tb: tbx.L.slice() }; },
     isPanelOpen: function () { return !!panel; },
+    /** Pausa del Partido rápido 6v6 con banquillo: abre el panel «Cambios» (pick: con el primero de pista ya elegido, pruebas). */
+    openSubs: function (pick) { try { return openSubs(!!pick); } catch (e) { console.error('[VB][ERROR] UI.openSubs: ' + e); return false; } },
     /** E7: abre Acerca de ('news' | 'credits'). */
     openAbout: function (tab) { openAbout(tab, panel ? panelFrom : ctx.state); },
     /** Pruebas (E7): {seen, returning, auto: 'off' | 'waiting' | 'shown'}. */
@@ -4350,6 +4578,7 @@
       if (!gym.done) gymTick();
       if (bootStage < 2) tryReveal();
       if (ctx.state !== 'menu') hud(g, dt);
+      subsTick(g, dt);
       sbLiveTick(g);
       if (ctx.state === 'playing' || ctx.state === 'over') presUpdate(g, dt);
       // en pausa no se ve ningún banner, pestaña ni aviso corto (tampoco los que llegan con la pausa ya puesta: escenas de depuración)

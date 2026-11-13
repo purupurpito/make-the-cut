@@ -78,7 +78,7 @@
     return { muted: false, difficulty: 'normal', quality: 'auto', showHelp: true, coachTips: true, setPoints: 25, kitShirt: 0xff5a2c, kitAccent: 0xffb238, kitShorts: 0x191b22, kitPattern: 'diag', ctrlMode: 'both', ctrlPlayer: 0, format: '2v2', cam6: '3p', camSens: 1, sfxVol: 1, musicVol: 0.75,
       camStable: false, rumble: true, hudScale: 1, softFlash: false, arena: Q.debug ? 'hall' : 'beach', arenaV: 2, beachLight: 'dia',
       volume: 1, crowdVol: 0.85, resScale: 0, fpsCap: 0, showFps: false, camDist: 'normal', camCuts: 'all', lessMotion: 'auto', cbColors: false, ballStyle: 'clasico',
-      keys: {}, padKeys: {}, padDead: 0.18, touchSize: 1, aimSet: true, msTiming: false, mapHall: 'palau', mapBeach: 'platja' };
+      keys: {}, padKeys: {}, padDead: 0.18, touchSize: 1, aimSet: true, msTiming: false, mapHall: 'palau', mapBeach: 'platja', subs6: 'auto' };
     // mapHall / mapBeach: sede de cada tipo (js/venues.js: 'palau' | … y 'platja' | 'fanals' | …, o 'rand' = al azar); Ajustes · Imagen.
     // El tipo (`arena`) sigue siendo lo único que va a la sim; la sede solo cambia el escenario. Lo desconocido vuelve a la de serie.
   }
@@ -130,6 +130,7 @@
     // ajustes de antes de existir coachTips: quien ya ha ganado algún partido empieza sin consejos (como si acabara de ganar)
     if (!Q.debug && rec && rec.wins > 0 && !(o && 'coachTips' in o)) s.coachTips = false;
     if (DIFFS.indexOf(s.difficulty) < 0) s.difficulty = 'normal';
+    if (s.subs6 !== 'manual') s.subs6 = 'auto';   // 6v6: cambios de tu equipo (ui.js «Cambios de tu equipo»: Automáticos / Solo los míos)
     if (['auto', 'high', 'medium', 'low'].indexOf(s.quality) < 0) s.quality = 'auto';
     s.camSens = Math.max(0.5, Math.min(1.5, +s.camSens || 1));
     s.sfxVol = Math.max(0, Math.min(1, isFinite(+s.sfxVol) ? +s.sfxVol : 1));
@@ -352,6 +353,9 @@
   // ---------- Partidas ----------
   function setGame(g, kit) {
     ctx.game = g; ctx.timeScale = 1; acc = 0;
+    // g.watch0 = espectador de verdad (?format=6v6, escenas); g.watch se recalcula cada frame con el banquillo (g.watch0 || g.ctrlOut)
+    if (g && g.watch0 === undefined) g.watch0 = !!g.watch;
+    bench.fast = false; bench.ff = ''; bench.out = !!(g && g.ctrlOut); ctx.bench = bench;
     pendingEvents.length = 0;
     // equipación personalizada (Ajustes · Equipación) antes de construir atletas; en Carrera, la del club
     call('Players', 'setKit', kit || ctx.settings, null);
@@ -452,7 +456,17 @@
     var cv = cs ? (opts.venue === 'hall' ? 'hall' : 'beach') : fmt ? 'hall' : null;
     if (cv) forceVenue(cv);
     if (!auto) animHooks(cs);
-    var g = Sim.createGame({ demo: false, seed: seed(), difficulty: opts.difficulty || ctx.settings.difficulty, autopilot: auto, rookie: cs ? !!opts.rookie : isRookie(), present: !opts.autopilot,
+    // banquillo y cambios (6v6): la Carrera trae bench / meSlot / meBench / names / coach (VB.Career.matchSetup); el Partido rápido 6v6
+    // humano, el banquillo neutro de los dos equipos (Sim.defaultBench) y el entrenador de cada uno (el tuyo según «Cambios de tu
+    // equipo»). Nunca en el espectador (?format=6v6): tv6test y perf no cambian
+    var dq = opts.difficulty || ctx.settings.difficulty, b6 = null, c6 = null;
+    if (fmt && cs && opts.bench) { b6 = opts.bench; c6 = opts.coach || null; }
+    else if (fmt && !cs && (!auto || Q.bench6 === '1') && Sim.defaultBench) {   // (&bench6=1: también con autopilot / espectador, para perf.js)
+      b6 = [Sim.defaultBench(0), Sim.defaultBench(1)];
+      c6 = [{ auto: ctx.settings.subs6 !== 'manual', iq: 2 }, { auto: true, iq: IQ6[Sim.normDiff ? Sim.normDiff(dq) : dq] || 2 }];
+    }
+    var g = Sim.createGame({ demo: false, seed: seed(), difficulty: dq, autopilot: auto, rookie: cs ? !!opts.rookie : isRookie(), present: !opts.autopilot,
+      bench: b6 || undefined, coach: c6 || undefined, meSlot: cs && b6 ? opts.meSlot : undefined, meBench: cs && b6 ? opts.meBench : undefined, names: fmt && cs ? opts.names : undefined,
       points: opts.points || +Q.points || ctx.settings.setPoints, ctrl: fmt ? 'one' : (opts.ctrl || Q.ctrl || ctx.settings.ctrlMode), ctrlRole: fmt ? (cs && opts.ctrlRole) || 'OH' : undefined, // (6v6: siempre 'one'; el receptor, o tu puesto en la Carrera de pista; espectador sin eventos switch)
       ctrlIdx: ctrlIdxOf(opts),
       attrs: opts.attrs || (own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null),
@@ -532,6 +546,8 @@
     ctx.actions.startMatch({ career: m.career, attrs: m.attrs, badges: m.badges, points: m.points, difficulty: m.difficulty, rookie: !!m.rookie, ctrl: 'one', ctrlIdx: 0, ref: m.ref, // en la Carrera solo llevas a tu jugador (menús v2: ni las carreras guardadas con «los dos»)
       venue: m.venue || 'beach', // vóley playa: Platja Llarga y sus reglas (VB.Career.matchSetup().venue); la Carrera de pista, 'hall'
       format: m.format === '6v6' ? '6v6' : undefined, ctrlRole: m.ctrlRole || undefined, // Carrera de pista (lote C): 6v6 en tu puesto
+      // titularidad y cambios (notes/titularidad-y-cambios.md §I.1): tal cual a Sim.createGame
+      bench: m.bench || undefined, meSlot: m.meSlot, meBench: m.meBench, names: m.names || undefined, coach: m.coach || undefined,
       // equipación del club rival (Players.setKit st.rival); en la pista también kitLibero (color del líbero del club, que usa setKit, y con él la 2ª del rival si choca)
       kit: m.kit ? Object.assign({}, m.kit, { rival: m.rivalKit || null }) : null,
       // tus dorsales (sim: opts.nums; la pista los trae hechos en m.nums) y, en la playa, en el duelo con tu rival personal (career-life
@@ -547,6 +563,20 @@
     var m = document.getElementById('btnMenu'); if (m && m.getAttribute('data-cr')) { m.textContent = m.getAttribute('data-cr'); m.removeAttribute('data-cr'); }
   }
   function fmt1(v) { return (Math.round(v * 10) / 10).toFixed(1).replace('.', ','); }
+  /** Ordinal corto (guía de estilo: «1r», «2º», «3r»; nunca «1.er»): el de la Carrera si lo exporta, si no uno igual. */
+  function ordn(n) { var K = VB.Career; if (K && typeof K.ordn === 'function') { try { return K.ordn(n); } catch (e) { } } n = n | 0; return n + (n === 1 || n === 3 ? 'r' : 'º'); }
+  /** Línea de minutos de la hoja final de Carrera (sum.part, §I.3): «De inicio | 40 de 52 puntos» / «Entraste en el 2º set | …» /
+   *  «No llegaste a entrar», y «Te cambiaron en el 3r set». HTML con el separador de la guía (raya fina). */
+  function partLine(pt) {
+    if (!pt) return '';
+    var pts = (pt.meR | 0) + ' de ' + (pt.rallies | 0) + ' puntos', a = [];
+    if (pt.started) a.push('De inicio', pts);
+    else if (pt.entered) a.push('Entraste en el ' + ordn(pt.entered) + ' set', pts);
+    else a.push(pt.status === 'out' ? 'Fuera de la convocatoria' : 'No llegaste a entrar');
+    if (pt.pulled) a.push('Te cambiaron en el ' + ordn(pt.pulled) + ' set');
+    if (VB.UI && VB.UI.sep) { try { return VB.UI.sep(a, 'v'); } catch (e) { } }
+    return a.map(escHtml).join(' | ');
+  }
   function escHtml(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); }
   /** Hoja final de un partido de Carrera (tras showEnd de ui.js): título con el rival, antetítulo con la competición, nota y
    *  experiencia, y «Volver a la Carrera» en vez de «Revancha». Solo DOM: ui.js no se toca. */
@@ -565,8 +595,12 @@
     if (k && cs.label) { if (VB.UI && VB.UI.sep) k.innerHTML = VB.UI.sep(cs.label, 'd'); else k.textContent = cs.label.split(' · ').join(', '); }
     if (rec && s) {
       var d = document.createElement('div'); d.className = 'end-xp';
-      var html = '<span>Nota: <b>' + fmt1(s.nota || 0) + '</b></span><span>' + (cs.player ? escHtml(cs.player) + ': ' : '') + '<b>+' + (s.xp | 0) + ' XP</b>' + (s.lvlUp ? ' <span class="lv">¡NIVEL ' + s.lvl + '! +' + s.ptsGained + ' puntos</span>' : '') + '</span>';
+      // pista con banquillo (sum.part): sin nota con menos de 12 puntos en pista («s. c.», sin calificar)
+      var pt = s.part || null, sc = pt && s.nota == null;
+      var html = '<span>Nota: <b>' + (sc ? 's. c.' : fmt1(s.nota || 0)) + '</b>' + (sc ? ' <small>(menos de 12 puntos en pista)</small>' : '') + '</span><span>' + (cs.player ? escHtml(cs.player) + ': ' : '') + '<b>+' + (s.xp | 0) + ' XP</b>' + (s.lvlUp ? ' <span class="lv">¡NIVEL ' + s.lvl + '! +' + s.ptsGained + ' puntos</span>' : '') + '</span>';
       d.innerHTML = html; rec.appendChild(d);
+      var pl = partLine(pt);
+      if (pl) { var dp = document.createElement('div'); dp.className = 'end-xp end-part'; dp.innerHTML = '<span>' + pl + '</span>'; rec.appendChild(dp); }
       // insignias nuevas o que suben: en una fila compacta con su icono (el mismo estilo .end-bd que la hoja de Partido rápido);
       // con el texto largo («¡Insignia nueva: …!») cada una ocupaba una línea y a 844×390 «Menú principal» quedaba fuera
       if (s.badges && s.badges.length && VB.Badges) {
@@ -632,6 +666,7 @@
     if (ctx.settings[k] === v) return;
     ctx.settings[k] = v; saveSettings();
     if (k === 'muted') call('Audio', 'setMuted', !!v);
+    if (k === 'subs6' && ctx.game && ctx.game.subsOn && !ctx.game.career && ctx.game.coach) ctx.game.coach[0].auto = v !== 'manual';   // en vivo
     if (k.indexOf('kit') === 0 && ctx.game) call('Players', 'setKit', ctx.settings, ctx.game); // vista previa en vivo
     if (k === 'quality') { aq.downs = 0; aq.lastDown = -99; aq.noScale = false; aq.chk = null; applyQuality(pickQuality()); }
     // E3: resolución fija o automática, tope de 30 fps, contador de FPS y menos movimiento
@@ -809,6 +844,16 @@
     }
     if (startWait && !call('UI', 'bootBusy')) { var sw = startWait; startWait = null; ctx.actions.startMatch(sw); }
     var g = ctx.game;
+    // banquillo (Carrera, g.ctrlOut): g.watch = espectador de verdad o tu atleta en el banquillo (cámara 'tv', sin halo ni mandos);
+    // al entrar o salir, corte de cámara. GOLPEAR = «Saltar hasta que entres», SALTAR = ×3, CAMBIAR = «Saltar al final» (mando y teclado)
+    if (g && g.subsOn) {
+      var bOut = !!g.ctrlOut; g.watch = !!g.watch0 || bOut;
+      if (bOut !== bench.out) { bench.out = bOut; bench.fast = false; if (!bOut) bench.ff = ''; call('CameraRig', 'snap', g); }
+      if (bOut && it && ctx.state === 'playing' && !(intro.left > 0) && g.career && !bench.ff) {
+        if (it.hit) ctx.actions.benchSkip('in'); else if (it.switchPlayer) ctx.actions.benchSkip('end'); else if (it.jump) ctx.actions.benchFast();
+        it.hit = it.jump = it.jset = it.switchPlayer = false;
+      }
+    }
     ctx.portraitBlock = isTouch && ctx.state === 'playing' && ctx.height > ctx.width;
     var running = !ctx.frozen && ctx.state !== 'paused' && !ctx.portraitBlock;
 
@@ -828,7 +873,8 @@
     if (running && intro.left > 0) { gdt = realDt; edge.hit = edge.jump = edge.jset = edge.switchPlayer = false; acc = 0; }
     else if (running) {
       buildInput(ctx.state === 'playing' ? it : null);
-      gdt = realDt * ctx.timeScale;
+      // ×3 en el banquillo: sin cámara lenta (la escala de camera.js no cuenta)
+      gdt = realDt * (bench.fast && g && g.ctrlOut ? 3 : ctx.timeScale);
       acc += gdt;
       // SIM-03: GOLPEAR o SALTAR durante la pausa del punto la recorta (sim decide: tras 0,8 s y nunca a menos de 0,3 s);
       // el flanco se consume para que no llegue al saque siguiente
@@ -838,6 +884,7 @@
         if (skipped) { edge.hit = edge.jump = edge.jset = edge.switchPlayer = false; call('UI', 'onHoldSkip', g); }
       }
       var n = 0;
+      if (bench.ff && g && ctx.state === 'playing') { ffRun(g); acc = 0; n = MAX_STEPS + 1; gdt = 0; }
       while (acc >= STEP && n < MAX_STEPS) {
         simIn.hit = edge.hit; simIn.jump = edge.jump; simIn.jset = edge.jset; simIn.switchPlayer = edge.switchPlayer;
         edge.hit = edge.jump = edge.jset = edge.switchPlayer = false; // los flancos solo en el primer subpaso
@@ -845,6 +892,7 @@
         acc -= STEP; n++;
       }
       if (n === MAX_STEPS) acc = 0;
+      if (bench.ff) ffDrawSkip = true;
       Sim.drainEvents(g, frameEvents);
       if (ctx.state === 'playing' && g.finished && frameEvents.some(isGameOver)) setState('over');
       // E6: la 10ª repetición del ejercicio (la sim no emite gameOver: drillEnd y g.drill.done)
@@ -884,7 +932,8 @@
     // En pausa (y en la pantalla final ya asentada) la escena queda detrás de un velo desenfocado: se pinta
     // a 1/3 de frecuencia para ahorrar batería y calor en el móvil. Entrada y UI siguen a ritmo completo.
     // Móvil en vertical: el aviso "Gira el móvil" tapa toda la pantalla, no se pinta nada (batería).
-    var throttled = ctx.portraitBlock || (idleT > 0.6 && (ctx.frame % 3) !== 0);
+    var throttled = ctx.portraitBlock || (idleT > 0.6 && (ctx.frame % 3) !== 0) || ffDrawSkip;   // (banquillo: saltando no se pinta)
+    ffDrawSkip = false;
     // precompilado asíncrono en curso (arranque): no se pinta todavía (pintar esperaría al driver y congelaría el telón)
     if (progWarm.pending && progsPending() && progWarm.gate) throttled = true;
     // programas listos: primer dibujo de todo (variantes de ANGLE) justo antes del primer frame real, aún bajo el telón
@@ -910,7 +959,7 @@
   function isDrillEnd(e) { return e.type === 'drillEnd'; }
   /** Partido de Carrera: estadísticas para la nota (VB.Career.ingest) y cierre en gameOver (antes de UI.update). */
   function careerEvents(g, evs) {
-    var K = VB.Career; if (!K) return;
+    var K = VB.Career; if (!K || (g.career && g.career._debug)) return;   // (escena de prueba bench6: Carrera de mentira)
     try { if (K.ingest) K.ingest(evs, g); } catch (e) { reportError('Career.ingest', e); }
     for (var i = 0; i < evs.length; i++) {
       var e = evs[i];
@@ -920,6 +969,47 @@
     }
   }
   function safePoll(dt) { try { return VB.Input.poll(dt); } catch (e) { reportError('Input.poll', e); return null; } }
+
+  // ---------- Banquillo (Carrera de pista: empiezas de suplente o te cambian; notes/titularidad-y-cambios.md §B.3) ----------
+  // ctx.bench = {out: tu atleta en el banquillo, fast: ×3, ff: '' | 'in' (saltar hasta que entres) | 'end' (saltar al final)}; ui.js
+  // pinta la barra y el velo «Simulando…». Saltar = la sim avanza sin pintar en trozos de FF_CHUNK s de juego hasta FF_BUDGET ms por
+  // frame; los eventos van a la Carrera (careerEvents) y al recuento de ui.js (ingest), no a sonido ni atletas. Para con un 'sub' o
+  // 'lineup' que te mete (meIn) o con el final del partido: entonces los eventos de ese paso siguen el camino normal del frame
+  // (rótulo del cambio, hoja final), players.js se rehace (onGameStart) y la cámara corta.
+  var FF_CHUNK = 2, FF_BUDGET = 8, IQ6 = { easy: 1, normal: 2, hard: 3, expert: 3 };
+  var bench = { out: false, fast: false, ff: '' }, ffDrawSkip = false, ffBatch = [], ffStep = [];
+  ctx.bench = bench;
+  ctx.actions.benchFast = function () { var g = ctx.game; if (!g || !g.ctrlOut || bench.ff) return false; bench.fast = !bench.fast; call('Audio', 'ui', 'click'); return bench.fast; };
+  ctx.actions.benchSkip = function (mode) {
+    var g = ctx.game; if (!g || !g.ctrlOut || !g.career || ctx.state !== 'playing') return false;
+    bench.ff = mode === 'end' ? 'end' : 'in'; bench.fast = false; call('Audio', 'ui', 'click'); return true;
+  };
+  function ffStop(g) {
+    bench.ff = ''; bench.fast = false;
+    call('Players', 'onGameStart', g);
+    call('CameraRig', 'snap', g);
+  }
+  function ffRun(g) {
+    var t0 = performance.now(), steps = Math.round(FF_CHUNK / STEP), stop = false;
+    ffBatch.length = 0;
+    while (!stop && performance.now() - t0 < FF_BUDGET) {
+      for (var k = 0; k < steps; k++) {
+        try { Sim.step(g, STEP, null); } catch (e) { reportError('Sim.step', e); stop = true; break; }
+        ffStep.length = 0; Sim.drainEvents(g, ffStep);
+        if (!ffStep.length) continue;
+        var hit = false;
+        for (var j = 0; j < ffStep.length; j++) { var e = ffStep[j]; if (((e.type === 'sub' || e.type === 'lineup') && e.meIn) || e.type === 'gameOver') hit = true; }
+        if (hit) { for (j = 0; j < ffStep.length; j++) frameEvents.push(ffStep[j]); stop = true; break; }
+        for (j = 0; j < ffStep.length; j++) ffBatch.push(ffStep[j]);
+      }
+      if (g.finished || !g.ctrlOut) stop = true;
+    }
+    if (ffBatch.length) {
+      if (g.career && !g.demo) careerEvents(g, ffBatch);
+      call('UI', 'ingest', ffBatch, g);
+    }
+    if (stop) ffStop(g);
+  }
 
   // ---------- Medición y calidad adaptativa ----------
   // Ventanas de 2 s (afinado con tools/perf.js: móvil emulado 844x390, dpr 2,75, CPU ×4).
@@ -1168,6 +1258,29 @@
         keep = advanceUntil(g, function (e) { return e && e.type === 'drillStage' && e.n >= dn - 1; }, dt0, 900);
         break;
       }
+      // banquillo y cambios (6v6): sub6 = rótulo de un cambio recién hecho (pedido para tu equipo: entra el opuesto suplente; &team=1
+      // el rival), bench6 = Carrera empezando en el banquillo (barra «En el banquillo», cámara de televisión), subs6menu = pausa con el
+      // panel «Cambios» abierto (Partido rápido; &pick=1 con uno de pista ya elegido)
+      case 'sub6': case 'subs6menu': {
+        var tm6 = Q.team === '1' ? 1 : 0;
+        g = Sim.createGame({ demo: false, autopilot: name === 'sub6', seed: sd, difficulty: diff, format: '6v6', ctrl: 'one', ctrlRole: 'OH', present: true,
+          bench: [Sim.defaultBench(0), Sim.defaultBench(1)], coach: [{ auto: false, iq: 2 }, { auto: name !== 'sub6', iq: 2 }] });
+        if (name === 'sub6') {
+          var o6 = g.rot[tm6].filter(function (p) { return p.role === 'OPP'; })[0], i6 = Sim.benchOf(g, tm6).filter(function (p) { return p.role === 'OPP'; })[0];
+          keep = advanceUntil(g, function (e, gg) { if (e && e.type === 'hit' && e.touch === 2 && !gg.subQ[tm6] && !gg._rq6) { gg._rq6 = 1; Sim.requestSub(gg, tm6, o6, i6); } return e && e.type === 'sub'; }, Q.t ? +Q.t : 0.9, 900, uiIngest);
+        } else { keep = advanceUntil(g, function (e) { return e && e.type === 'point'; }, 0.6, 900, uiIngest); state = 'paused'; }
+        break;
+      }
+      case 'bench6': {
+        var bb = [Sim.defaultBench(0), Sim.defaultBench(1)], nm6 = ['Nico Serrat', 'Ari Lluch', 'Kai Morell', 'Dani Ferrer', 'Alex Roig'];
+        bb[0].forEach(function (b, i) { b.name = nm6[i]; });
+        g = Sim.createGame({ demo: false, seed: sd, difficulty: diff, format: '6v6', ctrl: 'one', present: true, bench: bb, meBench: 1,
+          names: [['Leo Brandt', 'Iker Sala', 'Pau Vidal', 'Joan Riera', 'Max Soler', 'Biel Mas'], null],
+          coach: [{ auto: true, iq: 2, me: { pullAt: 4, enterLostSet: true, enterBad: true, garbage: true, backNextSet: true } }, { auto: true, iq: 2 }] });
+        g.career = { _debug: true, me: 'VAL', rival: 'CAS', meName: 'Voley Valencia', rivalName: 'Voley Castelló', label: 'Hiperliga · Jornada 3 de 22', player: 'Tú', meOn: false, status: 'sub' };
+        keep = advanceUntil(g, function (e) { return e && e.type === 'point'; }, Q.t ? +Q.t : 2.6, 900, uiIngest);
+        break;
+      }
       case 'doll':   // maqueta del muñeco nuevo (js/doll.js): el pabellón con 4 muñecos y cámara fija; la sim queda congelada en el saque
         g = mk(true, true); break;
       default:
@@ -1179,6 +1292,7 @@
     if (state === 'paused') { setState('playing'); setState('paused'); } else setState(state);
     ctx.frozen = !live && name !== 'serve' && name !== 'hud' && name !== 'pause';
     call('CameraRig', 'snap', g);
+    if (name === 'subs6menu') call('UI', 'openSubs', Q.pick === '1');
     if (name === 'doll') { dollOn = true; call('Doll', 'start', ctx, g); }
     console.info('[VB] escena de depuración: ' + name + ' (modo ' + g.mode + ', ' + g.score.join('-') + ', sets ' + g.sets.join('-') + ')');
   }

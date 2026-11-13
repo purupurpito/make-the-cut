@@ -518,6 +518,16 @@ El cambio de campo (`courtChange`, plano `'court'`) usa un corte deliberado (rea
   clubCard(c, id), leaguesOf(c), TPL, NEWS_MAX, ANNALS_MAX, W_SUMMER, W_END, MKT`. `VB.CareerWorldUI`: `mentorCard, optsHTML, headlines,
   newsHTML, clubsHTML, act, back, reset, focusSel, isCard, css, FACE`. career.js `life()` llama a CareerLife y después a CareerWorld, y
   `life(c, 'join', o)` al final de `joinClub`. Bandeja: tipo nuevo `k 'mentor'` (solo escenas no vistas).
+- **Titularidad y cambios** (13-nov-2026, notes/titularidad-y-cambios.md; contrato Carrera ↔ partido en su §I). Arreglos tras la revisión:
+  `canSub/requestSub` del humano devuelven `'role'` si no es del mismo puesto u OH↔OPP (ui.js lo desactiva en el menú «Cambios»); un
+  challenge anulado deshace también `perf`, `onR` y `tired` del punto (`g._subU`); el evento `'lineup'` del equipo 0 sale también sin cambio
+  de alineación si tu atleta pasa de pista a banquillo o al revés al empezar el set (`meIn` / `meOut` = cambio de estado); los pares de
+  `g.subs[t].pairs` llevan `src` (regla que lo decidió: tu entrada con el partido roto es `why 'meIn', src 'garbage'` y no te deja de
+  inicio el set siguiente). ai6 `COACH.garbageShort/garbageLate`: en sets de menos de 25, partido roto = diferencia ≥ 7 a 4 puntos o menos
+  del final; tu entrada así solo en el set que decide el partido y nunca tras sacarte en ese set; doble cambio solo con 2 cambios hechos
+  como mucho. career.js: las ofertas llevan `depth` (con su rol: Titular +3, Indiscutible siempre de inicio, y la confianza de llegada) y
+  `dm` (solo nivel: decide el tope del rol y la negociación); `c.sq6.outC` (la jornada anterior te dejó fuera el entrenador: no dos
+  seguidas; el Titular va al banquillo, nunca fuera, por confianza baja); migrar un guardado sin `c.sq6` no te hace recién llegado.
 
 ## 5. Orden por frame (main.js)
 1. `realDt = min(maxdt, Δ)`; `resize` si cambió el contenedor.

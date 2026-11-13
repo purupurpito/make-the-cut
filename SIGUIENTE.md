@@ -184,6 +184,16 @@ Ferran lo revise. Usa búsqueda web.
    (nombres casi iguales al real como «Volley Verona», «Vòlei Manacor», «Partisan Beograd»; colores de Jastrzębie; «Champions Cup» a
    secas, que es oficial en rugby y fútbol, frente a «Champions Cup VEC»; clubes que faltan o que no jugaron la 2025-26) y los niveles
    de Catar e Irán.
+9. **Titularidad en la Carrera de pista (13-nov-2026, hecha; notes/titularidad-y-cambios.md):** `ME_EDGE = 12` (career.js) hace que tu
+   media cuente 12 más en la elección del seis: un 80 que ficha por un club de 86-89 sale de inicio casi siempre, así que «si fichas por
+   un club con mejores jugadores no juegas» solo pasa con clubes más de 12 por encima. ¿Se deja, se baja con las temporadas (p. ej. 12
+   de novato → 4 de veterano) o solo para la Rotación del primer club? Y un central novato en un club de 70 o más (14 jugadores,
+   convocatoria de 12) suele quedar fuera por «la convocatoria está llena» toda la temporada: ¿se acepta?
+   *Arreglado tras la revisión:* el entrenador ya no mete al suplente en casi todos los partidos (sets a 15: partido roto con 7 de
+   diferencia a 4 del final y solo en el set que decide; entras ~45 % de los partidos desde el banquillo, unos pocos puntos; simular
+   está calibrado igual), no te vuelve a meter tras sacarte, «Tu sitio» de la oferta dice lo que pasará en la 1ª jornada, el Titular
+   nunca queda fuera de la convocatoria por confianza baja y la Rotación nunca dos jornadas seguidas, y el menú «Cambios» solo deja
+   cambiar en el mismo puesto u OH↔OPP.
 
 ## Peticiones entre lotes
 (Escribe aquí: lote que pide → fichero, función y cambio exacto.)

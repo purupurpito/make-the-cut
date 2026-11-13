@@ -269,6 +269,7 @@
   var CELEBS = [{ id: 'saludo', name: 'Saludo', tier: 1 }, { id: 'bailecito', name: 'Bailecito', tier: 2 }, { id: 'avion', name: 'Avioncito', tier: 3 },
     { id: 'arquero', name: 'Arquero', tier: 4 }, { id: 'silencio', name: 'Silencio', tier: 5 }, { id: 'rodillazo', name: 'Rodillazo', tier: 6 }];
   var SIG_ID = '', RIVAL_NUM = -1, RIVAL_AT = -1e9, RIVAL_G = null;
+  var CUR_G = null;   // partido de los rigs actuales (onGameStart): con banquillo, un cambio en g.players[0] no rehace a todos
   // último defensor (hit.dig) y último atacante de cada equipo en el peloteo (digHero, stuffed); se limpian en serveReady
   var DIG_LAST = [null, null], ATK_LAST = [null, null];
   var LVL = { x: 0, y: 0, z: 0, t: 0 }, LV_KEY = [-2, -2], LV_X = [0, 0], LV_Y = [0, 0];   // bote previsto del saque que se deja pasar
@@ -4040,6 +4041,7 @@
       // partido sin llamada lo limpia. Rehacer los atletas del mismo partido (equipación, escenario) lo conserva.
       if (RIVAL_NUM >= 0 && RIVAL_G !== g) { if (nowMs() - RIVAL_AT < 3000) RIVAL_G = g; else { RIVAL_NUM = -1; RIVAL_G = null; } }
       DIG_LAST[0] = DIG_LAST[1] = ATK_LAST[0] = ATK_LAST[1] = null;
+      CUR_G = g;
       for (var i = 0; i < rigs.length; i++) groupRoot.remove(rigs[i].root);
       rigs.length = 0; byId.length = 0;
       for (var j = 0; j < g.players.length; j++) {
@@ -4049,6 +4051,11 @@
         if (LODR > 0) rigGeometry(r, LODR - 1);
         // primeros planos (screenLod): la malla completa también preparada, para no construirla en mitad de la jugada
         if (LODR < 2) rigGeometry(r, 2);
+      }
+      // banquillo (6v6 con g.subsOn): los suplentes ya construidos (sin añadir a la escena) para que el primer cambio no dé tirón
+      if (g.subsOn && g.roster) for (var t = 0; t < 2; t++) for (var q = 0; q < g.roster[t].length; q++) {
+        var bp = g.roster[t][q]; if (byId[bp.id]) continue;
+        var br = rigFor(bp); if (LODR > 0) rigGeometry(br, LODR - 1); if (LODR < 2) rigGeometry(br, 2);
       }
     },
     /** Rig de un jugador de la simulación (para cámara/FX).
@@ -4143,7 +4150,8 @@
       this._update(g, dt, events);
     },
     _update: function (g, dt, events) {
-      if (syncVenue() || !rigs.length || rigs[0].p !== g.players[0]) this.onGameStart(g);   // TAJO: al cambiar de escenario, se visten de nuevo
+      // (con banquillo, g.subsOn, un cambio puede sustituir a g.players[0]: mismo partido = syncRigs, sin rehacer a todos)
+      if (syncVenue() || !rigs.length || (rigs[0].p !== g.players[0] && !(g.subsOn && CUR_G === g))) this.onGameStart(g);   // TAJO: al cambiar de escenario, se visten de nuevo
       else if (g.size > 2) syncRigs(g);   // 6v6: el líbero (o un cambio) entra/sale de pista sin rehacer a los demás
       var i;
       // los rigs recién creados se orientan antes de leer eventos (puntos de contacto en su espacio)
