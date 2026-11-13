@@ -747,7 +747,7 @@ y azul con `Path2D` de los mismos trazados que ICON_HIT de input.js, tres costur
   en los tres. Capturas `tools/out/arena-w/` (`final/`: pabellón y playa a 1280×720 y 844×390 táctil, alta y baja; 6v6).
 - Pendiente: probar la grúa del cambio de campo en la playa (courttest no admite `map=beach`); 6v6 en media a 334 k (cerca de 350 k).
 
-## 1r árbitro: alto en el pabellón, calvo en la playa (12-nov-2026, Ferran)
+## 1r árbitro: aspecto por sede (12-nov-2026, Ferran)
 - `makePerson` admite `tall` (los tubos de las piernas van en un hueso propio con el pie en el suelo y el tronco en un hueso hijo de
   `upper`) y `baldable` (casquete del pelo en un hueso hijo de la cabeza + brillo de calva en otro). Solo R1 los lleva (+4 huesos).
 - `refLook()` (tras `finalizeOfficials` y en `setVenue`): pabellón = piernas ×1,2 y tronco ×1,12 (`REF_TALL`), cabeza igual: cadera 0,72 m,
