@@ -20,11 +20,10 @@
   /** Novedades: {v, d:'AAAA-MM-DD', t (título corto), items[] (frases de 90 caracteres como mucho)}. La más nueva primero. */
   VB.CHANGELOG = [
     {
-      v: '1.0.1', d: '2026-11-12', t: 'Arreglos de línea y árbitros',
+      v: '1.0.1', d: '2026-11-12', t: 'Arreglos de línea y marcador',
       items: [
-        'Challenge: si cualquier parte del balón toca la línea, es dentro.',
+        'Arreglado: el challenge da dentro si cualquier parte del balón toca la línea.',
         'Marcador más discreto mientras se juega el punto.',
-        'Árbitro de playa calvo y árbitro de pista más alto.',
         'Playa: colocar de dedos a destiempo puede costar dobles.'
       ]
     },
