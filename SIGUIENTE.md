@@ -172,6 +172,14 @@ Ferran lo revise. Usa búsqueda web.
   con ⚠; color del líbero del club y 2ª equipación en los choques (petición al lote A, abajo); colocador, opuesto y central (lote A);
   editor local de clubes (opcional, sin empezar); escudos propios (la ficha enseña los tres colores).
 
+**Sesiones de entrenamiento en la Carrera (13-nov-2026, hecho y probado, SIN COMMIT; notes/carrera.md §Sesiones):** petición de Ferran
+«añadir los entrenamientos como parte del modo carrera… un límite de 3 antes de la siguiente jornada… que no suban mucho». Playa y pista:
+hasta 3 sesiones por jornada (bloque «Entrenamiento» de Partido), ejercicio de VB.Gym de tu puesto jugado de verdad (vuelve al hub con el
+resultado; no toca `voley3d.gym`) o «rápido» (determinista, sin oro). Sube un pelín el atributo del ejercicio (+4/+5 por temporada con 3 oros
+por jornada), cansa (+3, +4, +6) y da «impresión en los entrenos» (pista: hasta +4 en la elección del seis; playa: confianza +1 por jornada
+de oros). `ME_EDGE` baja con las temporadas (12 → 4). Pendiente: que Ferran pruebe el ritmo jugando (¿3 oros por jornada es demasiado
+trabajo?, ¿la fatiga de las sesiones obliga a demasiadas semanas de Descanso?).
+
 ## Preguntas abiertas para Ferran (no decidir sin él)
 1. **Circuito Mundial de la Carrera de playa:** los clubes de élite no los gana nadie. ¿Reto final o se suaviza?
 2. **«Cerrar sesión»:** ¿borra el progreso local del dispositivo? Hoy no lo borra.
@@ -184,11 +192,13 @@ Ferran lo revise. Usa búsqueda web.
    (nombres casi iguales al real como «Volley Verona», «Vòlei Manacor», «Partisan Beograd»; colores de Jastrzębie; «Champions Cup» a
    secas, que es oficial en rugby y fútbol, frente a «Champions Cup VEC»; clubes que faltan o que no jugaron la 2025-26) y los niveles
    de Catar e Irán.
-9. **Titularidad en la Carrera de pista (13-nov-2026, hecha; notes/titularidad-y-cambios.md):** `ME_EDGE = 12` (career.js) hace que tu
-   media cuente 12 más en la elección del seis: un 80 que ficha por un club de 86-89 sale de inicio casi siempre, así que «si fichas por
-   un club con mejores jugadores no juegas» solo pasa con clubes más de 12 por encima. ¿Se deja, se baja con las temporadas (p. ej. 12
-   de novato → 4 de veterano) o solo para la Rotación del primer club? Y un central novato en un club de 70 o más (14 jugadores,
-   convocatoria de 12) suele quedar fuera por «la convocatoria está llena» toda la temporada: ¿se acepta?
+9. **Titularidad en la Carrera de pista (13-nov-2026, hecha; notes/titularidad-y-cambios.md). RESUELTA (13-nov-2026):** Ferran quiere que
+   fichar por un club mejor cueste de verdad. `ME_EDGE` ya no es fijo: `meEdge6(c)` = 12 en la 1ª temporada, −2 cada temporada, 4 desde la
+   5ª (por temporadas jugadas, no por nivel: el nivel depende de la dificultad y de simular). A cambio, las **sesiones de entrenamiento**
+   (hasta 3 antes de cada partido) dan una «impresión en los entrenos» que suma hasta +4 en la elección: un veterano que ficha por un club 8
+   por encima empieza de suplente y, entrenando bien, se gana el puesto en la jornada 4-10 (mediana 5); sin entrenar casi nunca. En un club
+   de su nivel sigue saliendo de inicio. Medidas en notes/carrera.md §Sesiones. Queda abierto lo del central novato en un club de 14
+   («la convocatoria está llena»).
    *Arreglado tras la revisión:* el entrenador ya no mete al suplente en casi todos los partidos (sets a 15: partido roto con 7 de
    diferencia a 4 del final y solo en el set que decide; entras ~45 % de los partidos desde el banquillo, unos pocos puntos; simular
    está calibrado igual), no te vuelve a meter tras sacarte, «Tu sitio» de la oferta dice lo que pasará en la 1ª jornada, el Titular

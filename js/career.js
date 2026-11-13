@@ -271,6 +271,7 @@
       }
       o.review.dm = !!o.review.dm;
     }
+    sessSane(o);   // sesiones de entrenamiento (13-nov-2026): un guardado sin c.ts lo crea vacío (sin subir VER)
     if (o.phase === 'pick') return o;   // aún sin club: el resto llega al firmar
     if (num(o.mate.chem)) o.mate.chem = clamp(Math.round(o.mate.chem), 0, 100);
     else o.mate.chem = old ? clamp((o.stats && o.stats.played | 0) * 4, 0, 60) : 0;   // los que ya jugaban juntos no empiezan de cero
@@ -574,6 +575,146 @@
     if (fatigueMalus(c) > m0) msg(c, 'train', 'El preparador físico avisa', 'Llevas muchas semanas cargando: fatiga ' + c.fatigue + ' de 100. Con tanta fatiga rindes menos en los partidos (−' + fatigueMalus(c) + ' en todos tus atributos). Una semana de Descanso la baja mucho; con Equilibrado no sube.');
     return { focus: c.train, gains: gains, fatigue: c.fatigue, fat0: f0 };
   }
+
+  // ------------------------------------------------------------------ sesiones de entrenamiento (13-nov-2026)
+  // Petición de Ferran: «añadir los entrenamientos como parte del modo carrera, para poder subir estadísticas, con un límite de por
+  // ejemplo 3 entrenamientos antes de la siguiente jornada. Que no suban mucho, que te den la posibilidad de subir un pelín. Así, un
+  // jugador que acaba de unirse a un equipo mejor, puede llegar a ser titular demostrando su valía ahí.»
+  // Entre jornada y jornada (playa y pista) hasta TRAIN_SESS sesiones. Cada una es un ejercicio del Entrenamiento (VB.Gym) que pega
+  // con tu puesto (SESS_BY): jugado de verdad (main.js: startCareerDrill → drillSetup + startMatch({drill, careerDrill}); al acabar,
+  // trainSession(id, 'play', total)) o «rápido» (sessQuick: determinista por semilla, temporada, jornada y sesión; según tu atributo,
+  // nunca da oro: peor de media que jugarlo bien). Efecto de cada sesión (sessDo):
+  //   - progreso en el ATRIBUTO del ejercicio (c.ts.p[k]; cada SESS_NEED, +1): SESS_MAX × (0,2 + 0,8 × calidad) × SESS_EFF[n.º de
+  //     sesión] × fatiga × ritmo de la dificultad (cd(c).train). calidad = puntos / umbral del oro (tope 1).
+  //   - fatiga +SESS_FAT[n] (3, 4 y 6: la tercera seguida se nota); con fatiga ≥ SESS_FAT_MAX no se entrena; por encima de FAT_FREE
+  //     cada sesión rinde menos (sessFatK, hasta la mitad) y el ejercicio jugado lleva la resta de fatiga del partido.
+  //   - impresión en el entrenador (c.ts.imp, 0-100): media móvil de la calidad de tus sesiones (SESS_IMP_A); una jornada sin
+  //     entrenar la baja (× SESS_IMP_DECAY); al fichar vuelve a 0 y en verano se queda en la mitad. Pista: suma hasta SEL_IMP a tu
+  //     `sel` en lineup6 (demostrar tu valía). Playa: cada sesión suma SESS_COACH × calidad / TRAIN_SESS de confianza (acumulada).
+  // El contador (c.ts.n) se reinicia al cerrar tu jornada (sessClose: jugada, simulada, banquillo, fuera o descanso) y, de reserva,
+  // si cambia la jornada (c.ts.wk).
+  // MEDIDA (node, tools/careertest.js «Sesiones de entrenamiento» y una prueba aparte de 3 semillas por modo; Normal; con enfoque
+  // Equilibrado y Descanso cuando la fatiga llega a 55): 3 oros por jornada dan como mucho 15 + 13 + 10 = 38 de progreso (≥ 2,6 jornadas
+  // por punto). Una temporada de playa entera (14 jornadas + el Open, 42-48 sesiones) haciendo SIEMPRE 3 sesiones con oro del mismo
+  // ejercicio sube ese atributo +4/+5 sobre no entrenar (≈ +1 cada 3-3,5 jornadas) y la media +0,2/+0,5 (las semanas de Descanso
+  // quitan algo del entreno semanal); con 3 «rápidas» de un atributo de 50, +2. En la pista (9-11 jornadas de liga), +2/+4 con oro. La
+  // experiencia y el entreno semanal dan ~16-24 puntos de atributo por temporada en ese tramo: las sesiones son un empujón, no otra
+  // progresión. Lo que más pesa es la impresión en el entrenador (pista: ver SEL_IMP y lineup6).
+  var TRAIN_SESS = 3, SESS_NEED = 100, SESS_MAX = 15, SESS_EFF = [1, 0.85, 0.7], SESS_FAT = [3, 4, 6], SESS_FAT_MAX = 80;
+  var SESS_QUICK = [0.3, 0.85], SESS_IMP_A = 0.15, SESS_IMP_DECAY = 0.75, SESS_COACH = 1;
+  // ejercicios con medallas de VB.Gym: atributo que sube (k), grupo (g) y umbrales de reserva (los de gym.js/sim, por si no están)
+  var SESS_DRILL = {
+    serve: { k: 'serve', g: 'atk', name: 'Saque a diana', short: 'Saque', help: '10 saques a la diana que se mueve', medals: [12, 18, 24] },
+    recv: { k: 'recv', g: 'def', name: 'Recepción', short: 'Recepción', help: '10 saques de la CPU: déjala en la zona del colocador', medals: [18, 24, 28] },
+    set: { k: 'set', g: 'atk', name: 'Colocación', short: 'Colocación', help: 'Coloca a tu compañero: de dedos o en salto', medals: [16, 22, 27] },
+    atk: { k: 'spike', g: 'atk', name: 'Remate', short: 'Remate', help: 'Tu compañero te coloca: remata a la diana', medals: [12, 18, 23] },
+    block: { k: 'block', g: 'def', name: 'Bloqueo', short: 'Bloqueo', help: 'La CPU ataca: salta a tiempo y cierra', medals: [6, 11, 16] }
+  };
+  // los que tienen sentido para tu rol (playa) o tu puesto (pista), el más propio primero
+  var SESS_BY = { atk: ['atk', 'block', 'serve', 'recv'], cr: ['recv', 'set', 'serve', 'atk'], uni: ['serve', 'recv', 'set', 'atk', 'block'],
+    OH: ['recv', 'atk', 'serve', 'block'], OPP: ['atk', 'block', 'serve'], MB: ['block', 'atk', 'serve'], S: ['set', 'serve', 'block'], L: ['recv', 'set'] };
+  var ATTR_TXT = { jump: 'Salto', speed: 'Velocidad', react: 'Reacción', recv: 'Recepción', dig: 'Defensa', set: 'Colocación', spike: 'Potencia', ctl: 'Control', block: 'Bloqueo', serve: 'Saque' };
+  function attrTxt(k) { var L = P() && P().LABEL; return (L && L[k]) || ATTR_TXT[k] || k; }
+  function isHallC(c) { return !!(c && c.mode === 'hall'); }
+  function sessKey(c) { return isHallC(c) ? wkKey6(c) : wkKey(c); }
+  function sessMedals(id) {
+    var G = VB.Gym; if (G && G.medalsOf) { try { var m = G.medalsOf(id); if (m) return m; } catch (e) { } }
+    var k = VB.DRILL && VB.DRILL.kinds && VB.DRILL.kinds[id];
+    return (k && k.medals) || SESS_DRILL[id].medals;
+  }
+  function sessMedal(id, t) { var m = sessMedals(id); return t >= m[2] ? 3 : t >= m[1] ? 2 : t >= m[0] ? 1 : 0; }
+  function sessFatK(c) { return clamp(1 - Math.max(0, (c.fatigue | 0) - FAT_FREE) / 80, 0.5, 1); }
+  /** Estado de las sesiones (c.ts), saneado (también para guardados viejos sin él). */
+  function sessSane(o) {
+    var num = function (v) { return typeof v === 'number' && isFinite(v); }, t = o.ts;
+    if (!t || typeof t !== 'object') t = o.ts = {};
+    t.n = clampI(num(t.n) ? t.n : 0, 0, TRAIN_SESS); if (!num(t.wk)) t.wk = null;
+    t.imp = num(t.imp) ? clamp(round1(t.imp), 0, 100) : 0; t.cf = num(t.cf) ? clamp(t.cf, 0, 1) : 0;
+    t.tot = num(t.tot) ? Math.max(0, t.tot | 0) : 0;
+    if (!t.p || typeof t.p !== 'object') t.p = {};
+    Object.keys(SESS_DRILL).forEach(function (id) { var k = SESS_DRILL[id].k; t.p[k] = num(t.p[k]) ? clamp(Math.round(t.p[k]), 0, SESS_NEED - 1) : 0; });
+    if (!t.last || typeof t.last !== 'object' || !SESS_DRILL[t.last.id]) t.last = null;
+    return t;
+  }
+  function sessState(c) { var t = sessSane(c); if (t.wk != null && t.wk !== sessKey(c)) { t.n = 0; t.wk = null; } return t; }
+  function sessFixture(c) { return isHallC(c) ? (c.phase === 'league' || c.phase === 'ko') && !!myFixture6(c) : (c.phase === 'league' || c.phase === 'cup') && !!myFixture(c); }
+  /** Ejercicios de tu puesto con lo que sube cada uno. */
+  function sessDrills(c) {
+    var pos = c && c.player ? c.player.roleKey : 'uni', ids = SESS_BY[pos] || SESS_BY.uni, G = VB.Gym;
+    return ids.map(function (id) {
+      var D = SESS_DRILL[id], gd = G && G.drill ? G.drill(id) : null;
+      return { id: id, name: gd ? gd.name : D.name, short: gd ? gd.short : D.short, help: gd ? gd.help : D.help, attr: D.k, attrName: attrTxt(D.k), group: D.g,
+        medals: sessMedals(id).slice(), v: c && c.player ? c.player.st[D.k] | 0 : 0, prog: c && c.ts && c.ts.p ? c.ts.p[D.k] | 0 : 0 };
+    });
+  }
+  /** Lo que la UI necesita: { max, used, left, can, why ('' | 'none' | 'done' | 'fatiga'), fat, fatMax, nextFat, imp, last, drills, need }. */
+  function sessInfo(c) {
+    if (!c || !c.player) return null;
+    var t = sessState(c), why = !myClub(c) || !sessFixture(c) ? 'none' : t.n >= TRAIN_SESS ? 'done' : (c.fatigue | 0) >= SESS_FAT_MAX ? 'fatiga' : '';
+    return { max: TRAIN_SESS, used: t.n, left: TRAIN_SESS - t.n, can: !why, why: why, fat: c.fatigue | 0, fatMax: SESS_FAT_MAX, nextFat: SESS_FAT[Math.min(t.n, TRAIN_SESS - 1)],
+      fatK: sessFatK(c), imp: t.imp, last: t.last, drills: sessDrills(c), need: SESS_NEED, tot: t.tot };
+  }
+  function sessOk(c, id) {
+    var inf = sessInfo(c); if (!inf) return 'none';
+    if (!SESS_DRILL[id] || !inf.drills.some(function (d) { return d.id === id; })) return 'drill';
+    return inf.why;
+  }
+  /** Resultado del «Entrenar rápido»: determinista (nunca g.rng); fracción del oro según tu atributo (35 → 0,3; 85 → 0,8; tope 0,85)
+   *  ± 0,08 y la resta de la fatiga. Nunca llega al oro. */
+  function sessQuick(c, id) {
+    var D = SESS_DRILL[id], m = sessMedals(id), t = sessState(c), r = rng(hash(c.seed, 'sess', c.season, sessKey(c), t.n, id));
+    var v = (c.player.st[D.k] | 0) - 2 * fatigueMalus(c);
+    return clampI(m[2] * (clamp(SESS_QUICK[0] + (v - 35) / 100, SESS_QUICK[0], SESS_QUICK[1]) + (r() - 0.5) * 0.16), 0, 30);
+  }
+  /** Una sesión: how 'play' (total del ejercicio jugado, 0-30) | 'quick'. Devuelve el resultado (también en c.ts.last) o
+   *  { ok: false, why } ('none' | 'done' | 'fatiga' | 'drill'). No guarda: lo hace el motor (trainSession de BEACH / HALL). */
+  function sessDo(c, id, how, total) {
+    var w = sessOk(c, id); if (w) return { ok: false, why: w };
+    var t = sessState(c), D = SESS_DRILL[id], m = sessMedals(id), n = t.n, quick = how !== 'play';
+    total = quick ? sessQuick(c, id) : clampI(total, 0, 30);
+    var q = clamp(total / m[2], 0, 1), fk = sessFatK(c);
+    var gain = Math.max(1, Math.round(SESS_MAX * (0.2 + 0.8 * q) * SESS_EFF[n] * fk * cd(c).train));
+    var k = D.k, up = '', st = c.player.st, fat0 = c.fatigue | 0, imp0 = t.imp, coach0 = c.coach | 0;
+    t.p[k] = (t.p[k] | 0) + gain;
+    if (t.p[k] >= SESS_NEED) { t.p[k] -= SESS_NEED; if (st[k] < 99) { st[k]++; up = k; } else t.p[k] = 0; }
+    c.fatigue = clamp(fat0 + SESS_FAT[n], 0, 100);
+    t.imp = round1(clamp(t.imp + SESS_IMP_A * (100 * q - t.imp), 0, 100));
+    if (!isHallC(c)) {   // playa: la confianza del entrenador sube poco a poco (entera: se acumula la fracción)
+      t.cf += SESS_COACH * q / TRAIN_SESS; var whole = Math.floor(t.cf + 1e-9);
+      if (whole > 0) { t.cf -= whole; c.coach = clamp((c.coach | 0) + whole, 0, 100); }
+    }
+    t.n = n + 1; t.wk = sessKey(c); t.tot++;
+    if (up) msg(c, 'train', 'Los entrenos dan fruto', '+1 en ' + attrTxt(k).toLowerCase() + ' (' + st[k] + ') gracias a las sesiones de ' + (SESS_DRILL[id].short).toLowerCase() + '.');
+    var res = { ok: true, id: id, how: quick ? 'quick' : 'play', total: total, medal: sessMedal(id, total), q: Math.round(q * 100) / 100, gain: gain, attr: k, prog: t.p[k], need: SESS_NEED,
+      up: up, v: st[k], fat0: fat0, fat: c.fatigue, imp0: imp0, imp: t.imp, coach0: coach0, coach: c.coach | 0, n: t.n, max: TRAIN_SESS, s: c.season | 0, wk: t.wk };
+    if (isHallC(c) && c.sq6) {   // pista: la impresión cuenta ya en el seis de esta jornada (y el entrenador avisa si cambia tu sitio)
+      var st0 = c.sq6.stat; c.sq6.wk = null; var L = lineup6(c);
+      res.stat0 = st0; res.stat = L ? L.stat : ''; res.sel = L ? L.imp : 0; res.gap = L ? L.gap : 0;
+    }
+    t.last = res;
+    return res;
+  }
+  /** Cierre de tu jornada (jugada, simulada, banquillo, fuera; bye = descanso de una liga impar, sin decaer: no hubo ocasión de
+   *  entrenar): sin ninguna sesión, la impresión baja; el contador vuelve a 0. */
+  function sessClose(c, bye) {
+    var t = sessSane(c);
+    if (!bye && !t.n && t.imp > 0) t.imp = round1(t.imp * SESS_IMP_DECAY);
+    t.n = 0; t.wk = null;
+  }
+  /** Lo que main.js necesita para jugar un ejercicio de la Carrera con tu jugador: atributos (con la resta de la fatiga), tus
+   *  insignias, la equipación de tu club y el n.º de sesión. null si no se puede entrenar ahora. */
+  function drillSetup(c, id) {
+    if (sessOk(c, id)) return null;
+    var k = myClub(c), fm = fatigueMalus(c), me = copy(c.player.st), mate;
+    KEYS.forEach(function (x) { me[x] = clampI(me[x] - fm, 1, 99); });
+    if (!isHallC(c) && c.mate && c.mate.st) mate = copy(c.mate.st);
+    else mate = genSt(clamp(isHallC(c) ? k.ovr : clubOvr(k), 1, 99), id === 'atk' ? 'S' : id === 'set' ? 'OH' : 'OH', rng(hash(c.seed, 'sessmate', c.season, k.id)));
+    var bd = B() && B().forPlayer ? B().forPlayer(c.player) : null; if (bd && !Object.keys(bd).length) bd = null;
+    var kt = k.kit || {};
+    return { id: id, mode: isHallC(c) ? 'hall' : 'beach', n: sessState(c).n + 1, max: TRAIN_SESS, attrs: [[me, mate], null], badges: bd ? [[bd, null], null] : null,
+      kit: { kitShirt: kt.shirt, kitAccent: kt.accent, kitShorts: kt.shorts, kitPattern: kt.pattern }, player: c.player.name, club: k.name, attr: SESS_DRILL[id].k, attrName: attrTxt(SESS_DRILL[id].k) };
+  }
+
   function badgePower(a) { var b = a.beq || [], s = 0; for (var i = 0; i < b.length; i++) s += (a.bd && a.bd[b[i]]) | 0; return s; }
   /** Fuerza de tu pareja para la simulación rápida: media de los dos + insignias + forma. */
   function teamOvr(c) {
@@ -679,6 +820,7 @@
     c.coach = clamp(ROLE_COACH[rl] + cd(c).coach0 - (o.early ? EARLY_COACH : 0) - (o.negNo ? NEG_COACH : 0), 0, 100); c.listed = false; c.broken = 0;   // (+ coach0 de la dificultad)
     c.coachD = diffOf(c);   // nivel del coach0 aplicado: setDifficulty lo corrige si cambias antes de jugar (seasonDiff ve el objetivo)
     c.joinWk = c.phase === 'off' ? (c.season + 1) * 1000 : wkKey(c);   // tu primera jornada en el club: no te sientan
+    sessSane(c).imp = 0; c.ts.cf = 0;   // entrenador nuevo: la impresión en los entrenos empieza de cero
     c.offers = []; c.window = '';
     if (c.phase === 'pick') { c.phase = 'league'; c.week = 0; c.pick = null; }
     if (c.phase !== 'off') { c.objective = makeObjective(c); welcome(c); }
@@ -1085,6 +1227,7 @@
     var badges = extra && extra.badges || [];
     var label = f.kind === 'league' ? 'Jornada ' + (f.week + 1) : (f.round === 0 ? 'Semifinal del Open' : 'Final del Open');
     var phase0 = c.phase, season0 = c.season;
+    sessClose(c);   // sesiones de entrenamiento: la jornada se cierra (contador a 0; sin sesiones, la impresión baja)
     recordMine(c, f, res.sets, res.setScores);
     var round = finishRound(c);
     var sum = { season: season0, phase: phase0, label: label, rival: rival.id, rivalName: rival.name, win: win, sets: res.sets.slice(), setScores: res.setScores.map(function (x) { return x.slice(); }),
@@ -1304,6 +1447,7 @@
         msg(c, 'club', 'Contrato renovado', 'Has renovado con ' + k.name + ' por ' + plural(y, 'temporada', 'temporadas') + ' como ' + c.contract.role.toLowerCase() + '.');
       } else c.contract = ct;
     }
+    if (!moved) { var tsv = sessSane(c); tsv.imp = round1(tsv.imp * 0.5); }   // verano: la impresión en los entrenos se queda en la mitad
     c.season++; c.week = 0; c.phase = 'league'; c.cup = null; c.notes = []; c.stats = newSeasonStats(); c.offers = []; c.window = ''; c.review = null; c.dUse = dZeros();
     c.player.age = (c.player.age | 0) + 1;
     // verano: la fatiga se recupera y la petición de traspaso caduca (antes seguía para siempre y no volvía a costar nada)
@@ -1436,6 +1580,7 @@
       msg(c, 'agent', 'Promesa incumplida', me.name + ' te fichó como titular y te ha dejado en el banquillo. Hasta final de temporada puedes irte sin pegas aunque tengas contrato, y los clubes lo saben: llegarán más ofertas (a mitad de temporada basta con una nota media de 6,5).');
     } else if (first) msg(c, 'coach', 'Esta jornada, al banquillo', why + ' Juega ' + c.mate.name + (alt ? ' con ' + alt.name : '') + '. Sube tus notas y volverás a jugar.');
     var rival = club(c, f.home === me.id ? f.away : f.home), phase0 = c.phase, season0 = c.season, label = 'Jornada ' + (f.week + 1);
+    sessClose(c);
     recordMine(c, f, q.sets, q.setScores);
     var round = finishRound(c);
     var sum = { season: season0, phase: phase0, label: label, rival: rival.id, rivalName: rival.name, win: win, sets: q.sets.slice(), setScores: q.setScores.map(function (x) { return x.slice(); }),
@@ -1538,10 +1683,24 @@
   var SQ_SIZE = { S: 2, OPP: 2, OH: 4, MB: 3, L: 1 }, SQ_BIG = 70, SQ_POS = ['S', 'OPP', 'OH', 'MB', 'L'];   // por puesto, contándote a ti
   var SLOTS6 = { S: 1, OPP: 1, OH: 2, MB: 2, L: 1 }, LIST6 = 12;   // plazas en el seis (+ líbero) y convocatoria
   var SEL_FORM = 0.8, SEL_CONF = 12, SEL_FAT0 = 50, SEL_FATK = 10, SEL_KEEP = 0.75, SEL_NOISE = 0.5;
-  // Tu media cuenta ME_EDGE más en la elección: el resto del equipo lo lleva la IA y tú lo juegas a mano (con los datos reales un
+  // Tu media cuenta más en la elección (meEdge6): el resto del equipo lo lleva la IA y tú lo juegas a mano. Con los datos reales un
   // jugador de Carrera va 6-12 por debajo de la media de su club las primeras temporadas (un novato de 45 empieza en clubes de 57-61):
-  // con +8 un novato de la rotación no salía de inicio en toda la temporada; con +12 compite por el puesto y lo gana con buenas notas)
-  var ME_EDGE = 12;
+  // con +8 un novato de la rotación no salía de inicio en toda la temporada; con +12 compite por el puesto y lo gana con buenas notas.
+  // 13-nov-2026 (pregunta 9 de SIGUIENTE.md, Ferran: «fichar por un club mejor tiene que costar de verdad»): la ventaja baja con las
+  // temporadas jugadas, ME_EDGE (12) en la 1ª, −ME_EDGE_STEP (2) cada temporada, hasta ME_EDGE_MIN (4) desde la 5ª. Por temporadas y
+  // no por nivel: el nivel depende de la dificultad y de simular o jugar; la temporada es igual para todos y se entiende («llevas 3
+  // temporadas: ya no eres un novato»). El novato sigue compitiendo en su primer club; un veterano que ficha por un club 6-10 por encima
+  // empieza de suplente y se gana el sitio con forma, confianza y la impresión de los entrenos (SEL_IMP). Medidas en careertest
+  // «Sesiones de entrenamiento» y en notes/carrera.md §Sesiones.
+  var ME_EDGE = 12, ME_EDGE_STEP = 2, ME_EDGE_MIN = 4;
+  // impresión en los entrenos (sesiones, c.ts.imp 0-100): suma hasta SEL_IMP a tu sel (0 sin entrenar: no castiga). Con 3 oros por
+  // jornada llega a ~40 en la 1ª jornada, ~60 en la 2ª, ~85 en la 4ª. Medido (8 semillas por caso, media 55, Rotación, notas de 6,5):
+  // veterano (T5, +4) que ficha por un club 8 por encima: entrenando con oro se gana el puesto (3 jornadas seguidas de inicio → Titular)
+  // en la jornada 4-10 (mediana 5; 7 de 8), sin entrenar 0-2 de 8; T3 (+8) en un club 12 por encima: 3-10 (mediana 5) contra 0-2 de 8;
+  // novato (T1, +12) en un club 16 por encima: 3-9 (mediana 4,5). En un club de su nivel el veterano sale de inicio casi siempre.
+  var SEL_IMP = 4;
+  /** Ventaja de tu media en la elección del seis según la temporada (por defecto la actual). */
+  function meEdge6(c, season) { var s = season != null ? season : c && c.season || 1; return Math.max(ME_EDGE_MIN, ME_EDGE - ME_EDGE_STEP * Math.max(0, (s | 0) - 1)); }
   var OUT_COACH = 20, FAT_REST = 80, FAT_REST_TOP = 85, TIT_BONUS = 3, STARTS_PROMOTE = 3, TIT_BROKEN = 2;
   var TRAIN_COACH = 1, IMPACT_COACH = 2, PULL_COACH = 2, FIT_START = 2, FIT_DEEP = 2, NOTA_MIN_R = 12, BENCH_XP = 20;
   var WHY6 = { form: 'llega en mejor forma', ovr: 'tiene más nivel ahora mismo', conf: 'el entrenador se fía más de su juego', fatiga: 'vas con mucha fatiga',
@@ -1742,6 +1901,7 @@
     o.listed = !!o.listed;
     var cos = countries6(); if (typeof o.cc !== 'string' || !o.leagues.some(function (L) { return L.cc === o.cc; })) o.cc = o.leagues[0].cc;
     o.notes = o.notes.filter(function (n) { return n && num(n.nota); });
+    sessSane(o);   // sesiones de entrenamiento (13-nov-2026): un guardado sin c.ts lo crea vacío (sin subir VER6)
     if (o.phase === 'pick') {
       o.myClub = -1; o.window = 'start';
       if (!o.pick || typeof o.pick !== 'object') o.pick = { round: 0, more: false };
@@ -1926,7 +2086,7 @@
   }
   /** El entrenador elige el seis de la jornada (una vez por jornada: caché en c.sq6 por wkKey6, rol, club y puesto). sel = media +
    *  0,8 × forma + (confianza − 50) / 12 − fatiga por encima de 50 / 10 + 0,75 si salió de inicio la anterior ± 0,5 (determinista).
-   *  Tú: tu media + ME_EDGE, forma de tus notas, la confianza del entrenador, tu fatiga; Titular +TIT_BONUS; Titular indiscutible
+   *  Tú: tu media + meEdge6 (12 de novato → 4 de veterano), la impresión de tus sesiones de entrenamiento (hasta SEL_IMP), forma de tus notas, la confianza del entrenador, tu fatiga; Titular +TIT_BONUS; Titular indiscutible
    *  siempre de inicio (salvo fatiga ≥ FAT_REST_TOP); con fatiga ≥ FAT_REST descansas; con confianza < OUT_COACH no te convoca.
    *  Devuelve { stat: 'start'|'sub'|'out', why, slot, start: [6 ids en orden ROLES6], bench: [ids], out: [ids], lib, rival, gap, ahead }. */
   function lineup6(c) {
@@ -1935,11 +2095,11 @@
     if (q.L && q.wk === key) return q.L;
     var noise = function (id) { return (rng(hash(c.seed, 'sel', wk, id))() - 0.5) * 2 * SEL_NOISE; };
     var ent = q.list.map(function (x) { return { id: x.id, pos: x.pos, ovr: x.ovr, form: x.form | 0, conf: x.conf, fat: x.fat | 0, keep: x.ls ? SEL_KEEP : 0, ls: x.ls }; });
-    var me = { id: 'me', pos: pos, ovr: playerOvr(c) + ME_EDGE, form: myForm6(c), conf: c.coach, fat: c.fatigue | 0, keep: !q.fresh && q.meLs ? SEL_KEEP : 0, me: true };
+    var me = { id: 'me', pos: pos, ovr: playerOvr(c) + meEdge6(c), form: myForm6(c), conf: c.coach, fat: c.fatigue | 0, keep: !q.fresh && q.meLs ? SEL_KEEP : 0, me: true, imp: SEL_IMP * (c.ts ? c.ts.imp || 0 : 0) / 100 };
     ent.push(me);
     ent.forEach(function (e) {
-      e.t = { ovr: e.ovr, form: SEL_FORM * e.form, conf: (e.conf - 50) / SEL_CONF, fat: -Math.max(0, e.fat - SEL_FAT0) / SEL_FATK };
-      e.sel = e.t.ovr + e.t.form + e.t.conf + e.t.fat + e.keep + noise(e.id);
+      e.t = { ovr: e.ovr, form: SEL_FORM * e.form, conf: (e.conf - 50) / SEL_CONF, fat: -Math.max(0, e.fat - SEL_FAT0) / SEL_FATK, imp: e.imp || 0 };
+      e.sel = e.t.ovr + e.t.form + e.t.conf + e.t.fat + e.t.imp + e.keep + noise(e.id);
     });
     if (rl === 1) me.sel += TIT_BONUS;
     // con confianza < OUT_COACH: la Rotación se queda fuera de la convocatoria, pero nunca dos jornadas seguidas (como benchFor en la
@@ -1981,7 +2141,7 @@
     }
     var L = { stat: stat, why: stat === 'start' ? '' : why, slot: slot, start: start, bench: bench, out: out.map(function (e) { return e.id; }), lib: by.L[0] ? by.L[0].id : '',
       rival: rv ? rv.id : '', gap: rv ? round1(me.sel - rv.sel) : stat === 'start' ? 9 : -9, ahead: stat === 'start' ? [] : starters.map(function (e) { return e.id; }),
-      prevIn: '', ord: ord };
+      prevIn: '', ord: ord, imp: round1(me.t.imp), edge: meEdge6(c) };
     if (stat === 'start') { var was = ent.filter(function (e) { return e.pos === pos && e.ls && e !== me && start.indexOf(e.id) < 0; })[0]; L.prevIn = was ? was.id : L.rival; }
     // mensajes del entrenador, solo al cambiar de estado (la primera elección en un club la explica la bienvenida)
     var prev = q.stat, prevWhy = q.why;
@@ -1993,10 +2153,11 @@
     var who = function (id) { var e = id && sqEntry6(c, q, id); return e ? e.name : 'otro ' + POS6[sqPos6(c)].name.toLowerCase(); };
     if (L.stat === 'start') {
       if (prevWhy === 'fatiga') msg(c, 'coach', 'Sales de inicio', 'Ya has descansado: el próximo partido vuelves al seis inicial.');
-      else msg(c, 'coach', 'Sales de inicio', 'Has convencido en los entrenamientos: el próximo partido juegas de inicio en lugar de ' + who(L.prevIn) + '.');
+      else if (L.imp >= 0.5 && L.gap - L.imp < 0) msg(c, 'coach', 'Sales de inicio', 'Te has ganado el sitio en los entrenos: el próximo partido juegas de inicio en lugar de ' + who(L.prevIn) + '.');
+      else msg(c, 'coach', 'Sales de inicio', 'Has convencido con tu juego: el próximo partido juegas de inicio en lugar de ' + who(L.prevIn) + '.');
     } else if (L.stat === 'out') msg(c, 'coach', 'Fuera de la convocatoria', 'Esta jornada no entras en la lista de ' + LIST6 + '. ' + cap1(WHY6[L.why] || WHY6.list) + '. Sigue entrenando y volverás.');
     else if (L.why === 'fatiga') msg(c, 'coach', 'Descansas de inicio', 'Vas con mucha fatiga (' + (c.fatigue | 0) + '). Empiezas en el banquillo para dosificarte.');
-    else msg(c, 'coach', 'Empiezas en el banquillo', 'Esta semana sale de inicio ' + who(L.rival) + ': ' + (WHY6[L.why] || WHY6.ovr) + '. Estate a punto: si el partido lo pide, entras.');
+    else msg(c, 'coach', 'Empiezas en el banquillo', 'Esta semana sale de inicio ' + who(L.rival) + ': ' + (WHY6[L.why] || WHY6.ovr) + '. Estate a punto: si el partido lo pide, entras.' + (L.imp < SEL_IMP / 2 ? ' Y demuéstrame en los entrenos que mereces jugar.' : ''));
   }
   /** Texto del estado de la jornada (HALL.benchWhy): '' si sales de inicio. */
   function whyText6(c) {
@@ -2066,7 +2227,7 @@
     // (o.pen: lo que resta una salida con contrato o una negociación rechazada), para que «Tu sitio» diga lo que pasará
     o = o || {}; rl = rl == null ? 1 : rl;
     var pos = sqPos6(c), list = squad6(c, k, season || c.season, pos).filter(function (x) { return x.pos === pos; });
-    var me = playerOvr(c) + ME_EDGE + SEL_FORM * myForm6(c) + (clamp(ROLE_COACH[rl] - (o.pen || 0), 0, 100) - 50) / SEL_CONF + (!o.merit && rl === 1 ? TIT_BONUS : 0);
+    var me = playerOvr(c) + meEdge6(c, season || c.season) + SEL_FORM * myForm6(c) + (clamp(ROLE_COACH[rl] - (o.pen || 0), 0, 100) - 50) / SEL_CONF + (!o.merit && rl === 1 ? TIT_BONUS : 0);
     var s = list.map(function (x) { return { name: x.name, ovr: x.ovr, sel: x.ovr + (x.conf - 50) / SEL_CONF + (x.ls ? SEL_KEEP : 0) }; }).sort(function (a, b) { return b.sel - a.sel; });
     var slots = SLOTS6[pos], ahead = !o.merit && rl === 2 ? [] : s.filter(function (x) { return x.sel > me; }), ref = s[slots - 1];
     return { slots: slots, ahead: ahead.map(function (x) { return { name: x.name, ovr: x.ovr }; }), rank: ahead.length + 1, start: ahead.length < slots, gap: ref ? round1(me - ref.sel) : 9, rl: o.merit ? -1 : rl };
@@ -2143,6 +2304,7 @@
     c.contract = { club: k.id, years: years, left: years, role: ROLE_LV[rl], salary: o.salary || salary6(c, k, rl), since: c.season + (c.phase === 'off' ? 1 : 0) };
     c.coach = clamp(ROLE_COACH[rl] - (o.early ? EARLY_COACH : 0) - (o.negNo ? NEG_COACH : 0), 0, 100); c.listed = false; c.broken = 0;
     c.joinWk = c.phase === 'off' ? (c.season + 1) * 1000 : wkKey6(c);
+    sessSane(c).imp = 0; c.ts.cf = 0;   // entrenador nuevo: la impresión en los entrenos empieza de cero
     c.sq6 = newSq6(c, k, c.season + (c.phase === 'off' ? 1 : 0));   // plantilla del club nuevo (titularidad)
     c.offers = []; c.window = '';
     if (c.phase === 'pick') { c.phase = 'league'; c.week = 0; c.pick = null; }
@@ -2268,7 +2430,7 @@
     while (c.phase === 'league' && c.week < weeksOf6(c, me.lid) && !myFixture6(c) && g++ < 4) {
       msg(c, 'club', 'Jornada ' + (c.week + 1) + ': descansas', 'Esta jornada a tu equipo le toca descansar. Entrenas, cobras y recuperas (fatiga −' + BENCH_REST + ').');
       trainWeek(c); pay(c); c.fatigue = clamp((c.fatigue | 0) - BENCH_REST, 0, 100);
-      squadWeek6(c, 'bye');
+      squadWeek6(c, 'bye'); sessClose(c, true);
       weekAll6(c); c.week++;
       if (c.week === midWeek6(c)) midWindow6(c);
     }
@@ -2416,6 +2578,7 @@
       } else c.contract = ct;
       c.chem = Math.round((c.chem | 0) * 0.6);   // verano: parte del equipo cambia, algo de química se pierde
     }
+    if (!moved) { var tsv = sessSane(c); tsv.imp = round1(tsv.imp * 0.5); }   // verano: la impresión en los entrenos se queda en la mitad
     c.season++; c.week = 0; c.phase = 'league'; c.kos = []; c.koI = 0; c.notes = []; c.stats = newSeasonStats6(); c.offers = []; c.window = ''; c.review = null;
     if (!moved) sqSummer6(c);   // la plantilla sigue (±2, forma y fatiga a 0); si fichaste, joinClub6 ya la hizo nueva
     c.tab = {}; c.myRes = { lid: myClub(c).lid, w: [] }; c.scouts = {};
@@ -2538,6 +2701,7 @@
     var scout = has ? scoutCheck6(c, nota) : null;
     var label = labelOf6(c, f), phase0 = c.phase, season0 = c.season;
     roleWeek6(c, f); squadWeek6(c, !sub ? 'start' : part.entered ? 'in' : 'none');
+    sessClose(c);   // sesiones de entrenamiento (antes de elegir el seis de la siguiente: nextLine6)
     recordMine6(c, f, res.sets, res.setScores);
     var round = finishRound6(c);
     var sum = { mode: 'hall', season: season0, phase: phase0, label: label, rival: rival.id, rivalName: rival.name, win: win, sets: res.sets.slice(), setScores: res.setScores.map(function (x) { return x.slice(); }),
@@ -2653,6 +2817,7 @@
     c.stats.bench = (c.stats.bench | 0) + 1; c.career.bench = (c.career.bench | 0) + 1;
     var rival = club(c, f.home === me.id ? f.away : f.home), phase0 = c.phase, season0 = c.season, label = labelOf6(c, f);
     roleWeek6(c, f); squadWeek6(c, 'out');
+    sessClose(c);
     recordMine6(c, f, q.sets, q.setScores);
     var round = finishRound6(c);
     var sum = { mode: 'hall', season: season0, phase: phase0, label: label, rival: rival.id, rivalName: rival.name, win: win, sets: q.sets.slice(), setScores: q.setScores.map(function (x) { return x.slice(); }),
@@ -2781,9 +2946,12 @@
     _reset: function () { cur6 = null; M = null; }, _buildWorld: buildWorld6, _endLeague: endLeague6,
     // titularidad (13-nov-2026): plantilla, seis de la jornada, profundidad en las ofertas y textos de rol de la pista
     ROLE_HINT: ROLE_HINT6, benchWhy: whyText6, whyText: whyText6, WHY: WHY6, lineup: lineup6, squad: squad6, squadWeek: squadWeek6, depth: depth6, depthNow: depthNow6,
-    capRole: capRole6, meRules: meRules6, SQ_SIZE: SQ_SIZE, SQ_BIG: SQ_BIG, SLOTS: SLOTS6, LIST: LIST6, ME_EDGE: ME_EDGE, OUT_COACH: OUT_COACH, FAT_REST: FAT_REST, FAT_REST_TOP: FAT_REST_TOP,
+    capRole: capRole6, meRules: meRules6, SQ_SIZE: SQ_SIZE, SQ_BIG: SQ_BIG, SLOTS: SLOTS6, LIST: LIST6, ME_EDGE: ME_EDGE, ME_EDGE_STEP: ME_EDGE_STEP, ME_EDGE_MIN: ME_EDGE_MIN, meEdge: meEdge6, SEL_IMP: SEL_IMP, OUT_COACH: OUT_COACH, FAT_REST: FAT_REST, FAT_REST_TOP: FAT_REST_TOP,
     TIT_BONUS: TIT_BONUS, STARTS_PROMOTE: STARTS_PROMOTE, TIT_BROKEN: TIT_BROKEN, TRAIN_COACH: TRAIN_COACH, IMPACT_COACH: IMPACT_COACH, FIT_START: FIT_START, FIT_DEEP: FIT_DEEP,
-    NOTA_MIN_R: NOTA_MIN_R, BENCH_XP: BENCH_XP
+    NOTA_MIN_R: NOTA_MIN_R, BENCH_XP: BENCH_XP,
+    // sesiones de entrenamiento (13-nov-2026): las mismas que la playa, con el guardado de pista
+    trainInfo: function (c) { return sessInfo(c || load6()); }, trainSession: function (id, how, total) { var c = load6(); if (!c) return null; var r = sessDo(c, id, how, total); if (r.ok) save6(c); return r; },
+    drillSetup: function (id) { var c = load6(); return c ? drillSetup(c, id) : null; }, trainQuick: sessQuick, _sessClose: sessClose
   };
 
   var BEACH = {
@@ -2810,7 +2978,12 @@
     _msg: msg, _addXP: addXP, _wkKey: wkKey,
     // dificultad de la Carrera (12-nov-2026)
     CDIFF: CDIFF, CDIFF_KEYS: CDIFF_KEYS, STEPS: STEPS, DIFF_MSG: DIFF_MSG, diffOf: diffOf, rivalAI: rivalAI, attrOf: attrOf, baseStep: baseStep, seasonDiff: seasonDiff, midNota: midNota, setDifficulty: setDifficulty,
-    _M: function () { return M; }, _reset: function () { cur = null; M = null; }, _genOffers: genOffers, _rng: rng, _hash: hash
+    _M: function () { return M; }, _reset: function () { cur = null; M = null; }, _genOffers: genOffers, _rng: rng, _hash: hash,
+    // sesiones de entrenamiento entre jornadas (13-nov-2026)
+    TRAIN_SESS: TRAIN_SESS, SESS_NEED: SESS_NEED, SESS_MAX: SESS_MAX, SESS_EFF: SESS_EFF, SESS_FAT: SESS_FAT, SESS_FAT_MAX: SESS_FAT_MAX, SESS_QUICK: SESS_QUICK,
+    SESS_IMP_A: SESS_IMP_A, SESS_IMP_DECAY: SESS_IMP_DECAY, SESS_COACH: SESS_COACH, SESS_DRILL: SESS_DRILL, SESS_BY: SESS_BY, sessMedal: sessMedal,
+    trainInfo: function (c) { return sessInfo(c || load()); }, trainSession: function (id, how, total) { var c = load(); if (!c) return null; var r = sessDo(c, id, how, total); if (r.ok) save(c); return r; },
+    drillSetup: function (id) { var c = load(); return c ? drillSetup(c, id) : null; }, trainQuick: sessQuick, _sessClose: sessClose
   };
 
   // =====================================================================================================================
@@ -2840,6 +3013,8 @@
     /** Al cerrar un partido: el de la Carrera a la que pertenece (g.career.mode), aunque la activa hubiera cambiado. */
     matchDone: function (r, st, g) { return (g && g.career && g.career.mode === 'hall' ? HALL : g && g.career ? BEACH : eng()).matchDone(r, st, g); },
     ingest: ingest, abortMatch: abortMatch, owns: owns,
+    /** Fin de un ejercicio de Carrera jugado (main.js): a la Carrera del ejercicio (g.careerDrill.mode), aunque la activa hubiera cambiado. */
+    drillDone: function (mode, id, total) { return (mode === 'hall' ? HALL : BEACH).trainSession(id, 'play', total); },
     _reset: function () { cur = null; cur6 = null; M = null; }
   };
   var C = {};

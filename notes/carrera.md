@@ -848,3 +848,61 @@ Resuelto en la integración del 9-nov-2026 (ver notes/ui_main.md, «Integración
   primero. careertest comprueba nombre entero al principio, el de la liga alta, sin «(» y ≤ 140 caracteres.
 - main.js `startCareerMatch`: si el rival personal lleva el 9, el 2º CPU (9 por defecto) pasa al 3; antes los dos hacían de rival
   (players.js marca por dorsal).
+
+## Sesiones de entrenamiento entre jornadas (13-nov-2026; playa y pista)
+
+Petición de Ferran (literal): «Tenemos que añadir los entrenamientos como parte del modo carrera, para poder subir estadísticas, con un
+límite de por ejemplo 3 entrenamientos antes de la siguiente jornada (partido). Que no suban mucho, que te den la posibilidad de subir un
+pelín. Así, un jugador que acaba de unirse a un equipo mejor, puede llegar a ser titular demostrando su valía ahí.»
+
+### Diseño (js/career.js, bloque «sesiones de entrenamiento», tras `trainWeek`)
+- **Límite:** `TRAIN_SESS = 3` sesiones antes de cada partido tuyo (`c.ts.n`). `sessClose(c)` lo pone a 0 al cerrar la jornada (jugada,
+  simulada, banquillo, fuera de la convocatoria; los descansos de una liga impar también, sin bajar la impresión) y, de reserva, si cambia la
+  clave de la jornada (`c.ts.wk` frente a `wkKey` / `wkKey6`). Sin partido pendiente (fin de temporada, eliminado de las copas) no hay sesiones.
+- **Ejercicios:** los 5 de VB.Gym con medallas, los que pegan con tu puesto (`SESS_BY`: receptor recepción, remate, saque y bloqueo; opuesto
+  remate, bloqueo, saque; central bloqueo, remate, saque; colocador colocación, saque, bloqueo; líbero recepción y colocación; en la playa,
+  bloqueador remate, bloqueo, saque y recepción; defensor recepción, colocación, saque y remate; universal los 5). Cada uno sube SU atributo
+  (`SESS_DRILL`: saque → Saque, recepción → Recepción, colocación → Colocación, remate → Potencia, bloqueo → Bloqueo).
+- **Jugar:** career-ui «Jugar» → `VB.ctx.actions.startCareerDrill(id)` (main.js) → `drillSetup` (tus atributos con la resta de la fatiga,
+  tus insignias, tu compañero de playa o uno de tu club en la pista, la equipación del club) → el ejercicio normal. En `drillEnd`, main.js
+  apunta la sesión (`VB.Career.drillDone(mode, id, total)`), la hoja final enseña progreso, fatiga e impresión y «Volver a la Carrera»
+  abre el hub en Partido › Entrenamiento con el resultado. No toca `voley3d.gym` (ni récords ni la XP del escuadrón de Partido rápido).
+  Abandonar o reiniciar el ejercicio a medias no gasta la sesión.
+- **Rápido:** `sessQuick`, determinista (`hash(seed, 'sess', temporada, jornada, n.º de sesión, ejercicio)`, nunca `g.rng` ni
+  `Math.random`): fracción del umbral de oro = 0,3 + (atributo − 35) / 100, entre 0,3 y 0,85, ± 0,08, menos 2 × la resta de fatiga. Nunca
+  da oro; un atributo de 50 saca ~0,45 del oro (sin medalla o bronce).
+- **Efecto:** calidad q = puntos / oro (tope 1). Progreso en el atributo = `SESS_MAX` (15) × (0,2 + 0,8 q) × `SESS_EFF[n]` (1; 0,85; 0,7) ×
+  fatiga (1 hasta 40, baja hasta 0,5) × ritmo de la dificultad (`cd(c).train`: Fácil 1,15, Normal 1, Difícil 0,9, Experto 0,85); cada
+  `SESS_NEED` (100), +1. Fatiga `SESS_FAT` = +3, +4 y +6; con 80 o más no se entrena. Impresión `c.ts.imp` (0-100) = media móvil
+  (`SESS_IMP_A` 0,15) de 100 q; una jornada sin sesiones × 0,75; al fichar a 0; en verano, la mitad. Pista: `lineup6` suma
+  `SEL_IMP` × imp / 100 (hasta +4) a tu `sel`; el entrenador avisa «Te has ganado el sitio en los entrenos» cuando sin ella no saldrías.
+  Playa: cada sesión suma `SESS_COACH` × q / 3 de confianza (se acumula la fracción en `c.ts.cf`: 3 oros = +1 por jornada).
+- **ME_EDGE decreciente (pregunta 9 de SIGUIENTE.md):** `meEdge6(c, season)` = 12 − 2 × (temporada − 1), mínimo 4. También en `depth6`
+  («Tu sitio» de las ofertas usa la de la temporada de destino). Por temporadas y no por nivel: el nivel depende de la dificultad y de
+  jugar o simular; la temporada es igual para todos.
+- **Guardado:** `c.ts = {n, wk, imp, cf, tot, p:{serve, recv, set, spike, block}, last}` en los dos guardados, sin subir VER / VER6;
+  `sessSane` lo crea o lo repara al cargar.
+
+### Medidas (node; tools/careertest.js «Sesiones de entrenamiento» y pruebas aparte en el scratchpad)
+- **Cuánto sube:** 3 oros por jornada = como mucho 38 de progreso (≥ 2,6 jornadas por punto). Temporada entera de playa (14 jornadas + el
+  Open, 42-48 sesiones, Equilibrado y Descanso al llegar a 55 de fatiga): +4/+5 en el atributo entrenado sobre no entrenar (≈ +1 cada 3-3,5
+  jornadas), +0,2/+0,5 de media (las semanas de Descanso quitan algo del entreno semanal). Con 3 «rápidas» de un atributo de 50: +2. Pista
+  (8-11 jornadas de liga): +2/+4 con oro. La experiencia y el entreno semanal dan ~16-24 puntos de atributo por temporada en ese tramo.
+- **Recién fichado que se gana el puesto** (media 55, Rotación, 8 semillas por caso; «ganar» = 3 jornadas seguidas de inicio, que te
+  hacen Titular; sin entrenar con notas de 6,5, entrenando con notas de 7,5 = «entrenar y jugar bien»; con notas de 6,5 entrenando sale casi
+  igual, porque de suplente casi no hay notas: lo que pesa es la impresión de los entrenos):
+
+  | Caso | Sin entrenar | 3 oros por jornada |
+  |---|---|---|
+  | T1 (+12), club 12 por encima | 7 de 8, jornada 3-11 | 8 de 8, jornada 3-4 |
+  | T1 (+12), club 16 por encima | 6 de 8, jornada 4-11 | 8 de 8, jornada 3-9 (mediana 4,5) |
+  | T3 (+8), club 12 por encima | 4 de 8, jornada 9-11 | 8 de 8, jornada 3-10 (mediana 5) |
+  | T5 (+4), club 8 por encima | 2 de 8, jornada 9-11 | 7 de 8, jornada 4-10 (mediana 5) |
+  | T5 (+4), club 12 por encima | 0 de 8 | 4 de 8, jornada 9-11 |
+  | T5 (+4), club 4 por encima (su nivel) | sale de inicio el 70 % | el 86 % |
+
+  careertest (6 semillas, T5, club 8 por encima): entrenando, 4 de 6 en las jornadas 4-7; sin entrenar, 0 de 6. Un veterano de 60 en un club
+  de 60 sale de inicio el 100 % de las jornadas.
+- **Carreras simuladas enteras** (6 semillas, 7 temporadas, solo simular y gastar puntos en lo más barato; el jugador simulado va 5-15 por
+  debajo de su club porque simular da la mitad de XP): con la ventaja fija de 12 sale de inicio el 50-64 % de T1-T5; con la decreciente, el
+  50 % en T1-T3 y el 30-37 % en T4-T5 sin entrenar, 58-66 % haciendo 3 sesiones rápidas por jornada.

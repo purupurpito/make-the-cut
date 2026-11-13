@@ -743,3 +743,19 @@ contorno grueso DE COLOR, cara grande dibujada, uniforme de equipo con el «tajo
 - Regla de datos: para cambiar un club o una competición se corrige el JSON de `notes/clubes/` y se ejecuta `node tools/build-leagues.js`
   (comprueba unicidad, colores, patrocinadores conocidos y «masculino/femenino» antes de escribir). `tools/careertest.js` falla si js/leagues.js
   no está al día con los JSON.
+
+### Sesiones de entrenamiento de la Carrera (13-nov-2026; playa y pista)
+- **API (VB.Career, en los dos motores; la fachada va a la activa):** `trainInfo(c?)` → `{max:3, used, left, can, why:''|'none'|'done'|'fatiga',
+  fat, fatMax:80, nextFat, fatK, imp, last, drills:[{id, name, short, help, attr, attrName, group, medals, v, prog}], need:100}`;
+  `trainSession(id, 'quick'|'play', total?)` → `{ok, id, how, total, medal, q, gain, attr, prog, need, up, v, fat0, fat, imp0, imp, coach0, coach,
+  n, max, s, wk}` (pista: `stat0, stat, sel, gap` del seis tras la sesión) o `{ok:false, why}`; `drillSetup(id)` → `{id, mode, n, max, attrs:
+  [[tú, compañero], null], badges, kit, attrName}` o null; `drillDone(mode, id, total)` (fachada: a la Carrera del ejercicio). Constantes
+  `TRAIN_SESS, SESS_NEED, SESS_MAX, SESS_EFF, SESS_FAT, SESS_FAT_MAX, SESS_QUICK, SESS_IMP_A, SESS_IMP_DECAY, SESS_COACH, SESS_DRILL, SESS_BY`;
+  pista: `hall.meEdge(c, season?)`, `ME_EDGE` (12), `ME_EDGE_STEP` (2), `ME_EDGE_MIN` (4), `SEL_IMP` (4); `lineup(c)` añade `imp` y `edge`.
+- **main.js:** `ctx.actions.startCareerDrill(id, auto)` (career-ui «Jugar») → `startMatch({drill, careerDrill: drillSetup})`: el ejercicio con tu
+  jugador de Carrera y la equipación del club, `g.careerDrill = {id, mode, n, max, attrName, done, res}`; en `drillEnd`, `careerDrillDone(g)` apunta
+  la sesión una vez; `toMenu()` vuelve al hub (`CareerUI.open('hub', {train:true, res})`). Abandonar o reiniciar a medias no gasta la sesión.
+- **ui.js:** con `g.careerDrill` la hoja final no llama a `VB.Gym.record` (ni `voley3d.gym` ni XP del escuadrón), enseña progreso, fatiga e
+  impresión, oculta «Repetir» y «Siguiente» y «Entrenamiento» pasa a «Volver a la Carrera» (también en la pausa).
+- **Guardado:** `c.ts = {n, wk, imp, cf, tot, p:{serve, recv, set, spike, block}, last}` en `voley3d.career` y `voley3d.career6` (sin subir VER ni
+  VER6; un guardado sin él o dañado se sanea al cargar con `sessSane`).

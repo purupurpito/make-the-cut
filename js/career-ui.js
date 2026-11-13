@@ -303,6 +303,17 @@
     '#career .pbar .bar{height:10px;border-radius:6px;background:rgba(0,0,0,.4);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}',
     '#career .pbar .bar i{display:block;height:100%;background:#4be0a0}',
     '#career .pbar b{font:800 14px var(--display);text-align:right}',
+    // sesiones de entrenamiento (Partido): puntos de sesiones, filas de ejercicio con «Jugar» y «Rápido», última sesión y pelea por el puesto
+    '#career .tr-dots{display:inline-flex;gap:5px;vertical-align:-2px}#career .tr-dots i{display:inline-block;width:13px;height:13px;border-radius:50%;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px var(--gold)}#career .tr-dots i.on{background:var(--gold);box-shadow:0 0 0 1.5px var(--tk)}',
+    '#career .tr-left{font:800 12px var(--ui);letter-spacing:0;text-transform:none;color:var(--soft)}',
+    '#career .tr-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:6px 12px;margin-top:8px}',
+    '#career .tr-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:4px 6px 4px 10px;border-radius:10px;background:rgba(0,0,0,.2)}',
+    '#career .tr-n b{display:block;font:800 15px var(--display);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '#career .tr-n small{display:block;font:600 12px var(--ui);color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '#career .tr-row button{min-height:40px;padding:0 12px;font-size:14px}',
+    '.is-touch #career .tr-row button{min-height:44px}',
+    '#career .tr-last{margin-top:8px;font-size:13.5px}#career .tr-up{color:#4be0a0}',
+    '#career .tr-fight{margin-top:6px;font-size:13.5px}#career .tr-why{margin-top:6px;font:700 13.5px var(--ui);color:#ffb070}',
     '#career .mate{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--sep)}',
     '#career .mate:first-of-type{border-top:0}',
     '#career .pick-acts{display:flex;gap:10px;flex-wrap:wrap}',
@@ -565,6 +576,73 @@
     }
     return h + '</div>';
   }
+  // ------------------------------------------------------------------ sesiones de entrenamiento (13-nov-2026)
+  // Bloque «Entrenamiento» de la pestaña Partido (playa y pista): sesiones que quedan antes del partido (puntos), los ejercicios de
+  // tu puesto con el atributo que sube, «Jugar» (el ejercicio de verdad: VB.ctx.actions.startCareerDrill) y «Rápido» (simulado),
+  // la última sesión y, en la pista, cómo vas en la pelea por el puesto. Lógica en career.js (trainInfo / trainSession).
+  var MEDAL_TXT = ['Sin medalla', 'Bronce', 'Plata', 'Oro'], trainNote = '', trainFocus = false;
+  function labU(k) { var LB = VB.Prog && VB.Prog.LABEL; return (LB && LB[k]) || k; }
+  function trainDots(inf) {
+    var h = '<span class="tr-dots" role="img" aria-label="' + plural(inf.left, 'sesión', 'sesiones') + ' de ' + inf.max + ' antes del partido">';
+    for (var i = 0; i < inf.max; i++) h += '<i class="' + (i < inf.left ? 'on' : '') + '"></i>';
+    return h + '</span>';
+  }
+  function trainLast(c, inf) {
+    var r = inf.last; if (!r || r.s !== (c.season | 0)) return '';
+    var dn = (C().SESS_DRILL && C().SESS_DRILL[r.id] || {}).short || r.id, an = lab(r.attr);
+    var parts = [{ h: '<b>' + esc(dn) + '</b> ' + (r.how === 'quick' ? '(rápido)' : '(jugado)') }, r.total + ' puntos', MEDAL_TXT[r.medal | 0],
+      r.up ? { h: '<b class="tr-up">+1 en ' + esc(an) + ' (' + r.v + ')</b>' } : '+' + r.gain + ' en ' + esc(an) + ' (' + r.prog + ' de ' + r.need + ')',
+      'Fatiga ' + r.fat0 + ' → ' + r.fat, 'Impresión ' + Math.round(r.imp0) + ' → ' + Math.round(r.imp)];
+    if (!isHall(c) && r.coach !== r.coach0) parts.push('Confianza +' + (r.coach - r.coach0));
+    return '<p class="tr-last">' + sp(parts, 'v') + '</p>';
+  }
+  /** Pista: tu sitio en la pelea por el puesto (gap de lineup6, con lo que suman los entrenos). */
+  function trainFight6(c) {
+    var H6 = C().hall || {}, L = H6.lineup ? H6.lineup(c) : null; if (!L) return '';
+    var rv = L.rival && c.sq6 ? c.sq6.list.filter(function (x) { return x.id === L.rival; })[0] : null, nm = rv ? esc(rv.name) : '', g = Math.abs(L.gap), imp = L.imp || 0;
+    var t = L.stat === 'start' ? (rv ? 'Sales de inicio: le sacas ' + num1(g) + ' a ' + nm + ', tu suplente' : 'Sales de inicio')
+      : L.stat === 'out' ? 'Fuera de la convocatoria' + (rv ? ': a ' + num1(g) + ' de ' + nm : '')
+        : rv ? 'Empiezas en el banquillo: a ' + num1(g) + ' de ' + nm : 'Empiezas en el banquillo';
+    return '<p class="tr-fight"><b>Pelea por el puesto.</b> ' + sp([t, imp >= 0.05 ? 'los entrenos te suman +' + num1(imp) : 'aún no te has hecho notar en los entrenos', 'tu media vale +' + (L.edge != null ? L.edge : 12) + ' en la elección'], 'v') + '</p>';
+  }
+  function trainCard(c) {
+    var K = C(); if (!K.trainInfo) return '';
+    var inf = K.trainInfo(c); if (!inf || inf.why === 'none') return '';
+    var head = '<h3>' + sp(['Entrenamiento', { h: trainDots(inf) + ' <span class="tr-left">' + inf.left + ' de ' + inf.max + '</span>' }], 'd') + '</h3>';
+    var why = inf.why === 'done' ? 'Ya has hecho las ' + inf.max + ' sesiones de esta jornada: vuelven tras el partido.'
+      : inf.why === 'fatiga' ? 'Con fatiga de ' + inf.fatMax + ' o más el preparador físico no te deja entrenar: descansa (enfoque Descanso o fisio).' : '';
+    var h = '<div class="card cr-train" id="crTrain">' + head +
+      '<p class="muted">' + (isHall(c) ? 'Hasta ' + inf.max + ' sesiones antes de cada partido. Suben un pelín el atributo del ejercicio y, si entrenas bien, el entrenador te tiene más en cuenta para el seis.'
+        : 'Hasta ' + inf.max + ' sesiones antes de cada partido. Suben un pelín el atributo del ejercicio y la confianza del entrenador.') +
+      ' Cada sesión cansa (+' + K.SESS_FAT.join(', +') + ').' + (inf.fatK < 1 ? ' Con tu fatiga (' + inf.fat + ') rindes menos.' : '') + '</p>';
+    h += '<div class="tr-list" role="list">' + inf.drills.map(function (d) {
+      var dis = inf.can ? '' : ' disabled';
+      return '<div class="tr-row" role="listitem"><span class="tr-n"><b>' + esc(d.short) + '</b><small>' + sp([esc(labU(d.attr)) + ' ' + d.v, 'progreso ' + d.prog + ' de ' + inf.need], 'v') + '</small></span>' +
+        '<button data-act="tr-play" data-d="' + d.id + '"' + dis + ' aria-label="Jugar el ejercicio de ' + esc(d.short.toLowerCase()) + '">Jugar</button>' +
+        '<button data-act="tr-quick" data-d="' + d.id + '"' + dis + ' aria-label="Entrenar rápido: ' + esc(d.short.toLowerCase()) + '">Rápido</button></div>';
+    }).join('') + '</div>';
+    if (why) h += '<p class="tr-why">' + esc(why) + '</p>';
+    h += trainLast(c, inf);
+    if (isHall(c)) h += trainFight6(c);
+    else h += '<p class="muted">' + sp(['Impresión en los entrenos ' + Math.round(inf.imp) + ' de 100', 'confianza del entrenador ' + (c.coach | 0)], 'v') + '</p>';
+    h += '<p class="note" role="status" aria-live="polite">' + esc(trainNote) + '</p></div>';
+    trainNote = '';
+    return h;
+  }
+  /** «Jugar» el ejercicio: cierra el hub y main.js lo arranca con tu jugador (al acabar vuelve aquí con el resultado). */
+  function trainPlay(id) {
+    var go = function () { if (VB.ctx && VB.ctx.actions && VB.ctx.actions.startCareerDrill) VB.ctx.actions.startCareerDrill(id); };
+    close(true);
+    var w = false; try { w = !!(VB.UI && VB.UI.wipe && VB.UI.wipe(2, go)); } catch (e) { w = false; }
+    if (!w) go();
+  }
+  function trainResText(r) {
+    if (!r || !r.ok) return r && r.why === 'done' ? 'Ya no quedan sesiones esta jornada.' : r && r.why === 'fatiga' ? 'Demasiada fatiga para entrenar.' : '';
+    var dn = (C().SESS_DRILL && C().SESS_DRILL[r.id] || {}).short || r.id;
+    return dn + ': ' + r.total + ' puntos (' + MEDAL_TXT[r.medal | 0].toLowerCase() + '). ' + (r.up ? '¡+1 en ' + lab(r.attr) + '!' : '+' + r.gain + ' de progreso en ' + lab(r.attr) + '.') +
+      (r.stat && r.stat0 && r.stat !== r.stat0 ? (r.stat === 'start' ? ' Te has ganado el sitio en los entrenos: sales de inicio.' : '') : '');
+  }
+
   function renderMatch(c) {
     // Faro (career-world-ui.js): la escena va arriba del todo, también en el resumen de fin de temporada (ascenso, título…)
     var h = WUI() && WUI().mentorCard ? WUI().mentorCard(c, HLP) : '';
@@ -592,6 +670,7 @@
             '<div class="acts"><button class="pri" data-act="bench">Ver la jornada</button></div></div>'
           : '<div class="acts"><button class="pri" data-act="play">Jugar partido</button><button data-act="sim">Simular <small style="font:600 12px var(--ui);text-transform:none;letter-spacing:0">(mitad de XP)</small></button></div></div>');
     }
+    h += trainCard(c);   // sesiones de entrenamiento antes del partido
     if (LUI()) h += LUI().matchCards(c, HLP);   // reto de la jornada y decisión pendiente
     var lastUn = (c.inbox || []).filter(function (m) { return !m.r; }).slice(-1)[0];
     if (lastUn) h += '<div class="card"><h3>Mensajes <span class="muted">(' + plural(C().unread(c), 'sin leer', 'sin leer') + ')</span></h3>' + msgHTML(lastUn) + '<div class="acts"><button data-tab="inbox">Ver mensajes</button></div></div>';
@@ -940,6 +1019,7 @@
         statusHTML6(c, n);
 
     }
+    h += trainCard(c);   // sesiones de entrenamiento antes del partido (y la pelea por el puesto)
     if (LUI()) h += LUI().matchCards(c, HLP);   // reto de la jornada (por puesto) y decisión pendiente, como en la playa
     var lastUn = (c.inbox || []).filter(function (m) { return !m.r; }).slice(-1)[0];
     if (lastUn) h += '<div class="card"><h3>Mensajes <span class="muted">(' + plural(C().unread(c), 'sin leer', 'sin leer') + ')</span></h3>' + msgHTML(lastUn) + '<div class="acts"><button data-tab="inbox">Ver mensajes</button></div></div>';
@@ -1064,7 +1144,7 @@
       h += '<div class="mate"' + (p.me ? ' style="background:rgba(255,128,64,.18);border-radius:10px;padding-left:8px"' : '') + '><div style="min-width:0"><b style="font:800 17px var(--display);text-transform:uppercase">' + sp([esc(p.name), 'n.º ' + p.num], 's') + '</b>' +
         '<p class="muted" style="margin:2px 0 0">' + sp(['Media ' + p.ovr, 'Forma: ' + esc(formTxt6(p.form)), p.me ? 'Tú' : ''], 'c') + ' <span class="tag ' + tg[1] + '">' + tg[0] + '</span></p></div></div>';
     });
-    h += '<p class="muted" style="margin-top:8px">El entrenador elige el seis de cada jornada por media, forma, confianza y fatiga (lo que haces en pista cuenta: tu media vale ' + (H6.ME_EDGE || 12) + ' más en su elección).</p>';
+    h += '<p class="muted" style="margin-top:8px">El entrenador elige el seis de cada jornada por media, forma, confianza, fatiga y la impresión de tus entrenos (lo que haces en pista cuenta: esta temporada tu media vale ' + (H6.meEdge ? H6.meEdge(c) : H6.ME_EDGE || 12) + ' más en su elección; la ventaja baja ' + (H6.ME_EDGE_STEP || 2) + ' cada temporada hasta ' + (H6.ME_EDGE_MIN || 4) + ').</p>';
     return h + '</div><div class="card"><h3>' + sp(['Química', ch + ' de 100'], 'd') + '</h3>' + meter(ch, 'Química del equipo', '#4be0a0') +
       '<p class="muted">Sube cada partido (+5 jugado, +3 simulado, +2 en el banquillo) y en verano se pierde una parte. ' + (cb ? 'Ahora suma +' + cb + ' a todo el equipo en reacción, colocación y recepción.' : 'A partir de 30 suma +1 a todo el equipo en reacción, colocación y recepción (hasta +3).') + ' Al fichar por otro club empieza de cero.</p></div>';
   }
@@ -1288,6 +1368,11 @@
       }
       case 'transfer': C().requestTransfer(b.getAttribute('data-on') === '1'); snd('click'); render(); focusSel('[data-act="transfer"]'); syncMenu(); return;
       case 'play': snd('start'); play(); return;
+      case 'tr-play': snd('start'); trainPlay(b.getAttribute('data-d')); return;
+      case 'tr-quick': {   // sesión simulada: resultado al momento (determinista)
+        var tq = C().trainSession(b.getAttribute('data-d'), 'quick'); trainNote = trainResText(tq);
+        snd(tq && tq.ok ? (tq.up ? 'toggle' : 'click') : 'back'); keepFocus(b, render); syncMenu(); return;
+      }
       case 'bench': {   // jornada sin ti (el entrenador te sienta): se simula y se enseña el resultado
         var bs = C().benchNext(c); if (!bs) return;
         snd('click'); freshLast = true; tab = 'match'; render(); syncMenu(); focusTab(); return;
@@ -1433,6 +1518,11 @@
   function focusFirst() {
     setTimeout(function () {
       if (!open) return;
+      // vuelta de un ejercicio de Carrera: el bloque Entrenamiento a la vista, con el foco en su primer botón activo
+      if (trainFocus) {
+        trainFocus = false; var tc = view === 'hub' ? root.querySelector('#crTrain') : null;
+        if (tc) { var tb = tc.querySelector('button:not([disabled])'); if (tb) focusEl(tb, kbNav); try { tc.scrollIntoView({ block: 'start' }); } catch (e) { } return; }
+      }
       // fin de temporada: el foco va a la pestaña (no a «Seguir en…», que rechaza todas las ofertas) y se ve la tarjeta del resumen
       var c = null; try { c = C() && C().get(); } catch (e) { c = null; }
       if (c && view === 'hub' && c.phase === 'off' && !root.querySelector('[data-act="play"]')) { focusTab(); return; }
@@ -1587,7 +1677,12 @@
 
   VB.CareerUI = {
     /** Abre la Carrera ('hub' | 'create'; sin argumento: el hub si hay carrera, si no crear). opts.fresh = acaba de jugarse un partido. */
-    open: function (v, opts) { if (opts && opts.fresh) { freshLast = true; tab = 'match'; } show(v); },
+    open: function (v, opts) {
+      if (opts && opts.fresh) { freshLast = true; tab = 'match'; }
+      // vuelta de un ejercicio de Carrera (main.js): a Partido, con el resultado en el bloque Entrenamiento
+      if (opts && opts.train) { tab = 'match'; trainNote = opts.res ? trainResText(opts.res) : ''; trainFocus = true; }
+      show(v);
+    },
     close: function () { close(); },
     isOpen: function () { return open; },
     nav: nav,

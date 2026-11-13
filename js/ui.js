@@ -2403,7 +2403,7 @@
     var dr = !!(g && g.drill && !g.demo);
     el.pause.classList.toggle('drill', dr);
     el.btnRestart.textContent = dr ? 'Reiniciar ejercicio' : 'Reiniciar partido';
-    el.btnQuit.textContent = dr ? 'Salir al entrenamiento' : 'Salir al menú';
+    el.btnQuit.textContent = dr ? (g.careerDrill ? 'Volver a la Carrera' : 'Salir al entrenamiento') : 'Salir al menú';   // (sesión de Carrera: sin gastarla)
     disarmRestart();
     el.pS0.textContent = g.score[0]; el.pS1.textContent = g.score[1];
     el.pMid.innerHTML = 'SETS<b>' + g.sets[0] + '-' + g.sets[1] + '</b>';
@@ -3807,12 +3807,16 @@
   function goGym(id) {
     if (!id) return;
     gymSel = id;
-    var f = function () { ctx.actions.startMatch({ drill: id }); };
+    // (sesión de entrenamiento de la Carrera a medias: «Reiniciar» la repite con tu jugador de Carrera, sin gastar sesión)
+    var cg = ctx.game && ctx.game.careerDrill && !ctx.game.careerDrill.done && !ctx.game.demo ? ctx.game : null;
+    var f = function () { if (cg && ctx.actions.startCareerDrill) ctx.actions.startCareerDrill(id, !!cg.autopilot); else ctx.actions.startMatch({ drill: id }); };
     if (!wipeRun(2, f) && !wp.cb) f();
   }
   /** Pausa «Salir al entrenamiento» / hoja final «Entrenamiento»: al menú, en la página Entrenamiento con la fila del ejercicio. */
   function goGymList(id) {
     var kb = kbNow() || ctx.inputDevice === 'gamepad';
+    // ejercicio de la Carrera: vuelta al hub de la Carrera (main.js toMenu lo abre en Partido › Entrenamiento con el resultado)
+    if (ctx.game && ctx.game.careerDrill && !ctx.game.demo) { var fc = function () { ctx.actions.toMenu(); }; if (!wipeRun(2, fc) && !wp.cb) fc(); return; }
     var f = function () {
       ctx.actions.toMenu();
       if (ctx.state !== 'menu') return;
@@ -3904,8 +3908,9 @@
   }
   /** drillEnd: apunta el total (VB.Gym.record, que da la XP de las medallas nuevas) y prepara la hoja final; se abre tras el sello. */
   function gymEndShow(e, g) {
-    var Gm = VB.Gym, id = e.kind, total = e.total | 0, res = null, M = gymMedals(id) || [99, 99, 99];
-    if (Gm && Gm.record && !ctx.debug) { try { res = Gm.record(id, total); } catch (er) { res = null; } }
+    var Gm = VB.Gym, id = e.kind, total = e.total | 0, res = null, M = gymMedals(id) || [99, 99, 99], cdr = g && g.careerDrill ? g.careerDrill : null;
+    // (sesión de la Carrera: no toca voley3d.gym ni da experiencia al escuadrón de Partido rápido; cuenta en la Carrera, main.js)
+    if (Gm && Gm.record && !ctx.debug && !cdr) { try { res = Gm.record(id, total); } catch (er) { res = null; } }
     if (!res) {   // depuración (o sin gym.js): lo que pasaría, sin guardar nada
       var pv = Gm && Gm.get ? Gm.get(id) : null, pm = pv ? pv.m | 0 : 0, mm = Gm && Gm.medalOf ? Gm.medalOf(id, total) : 0, xp = 0, XP = (Gm && Gm.XP) || [30, 50, 80];
       for (var lv = pm + 1; lv <= mm; lv++) xp += XP[lv - 1] || 0;
@@ -3929,13 +3934,28 @@
     if (res.newMedal && res.medal) rec += '<span class="new">¡Medalla de ' + MEDAL_N[res.medal].toLowerCase() + '!</span>';
     if (res.xp > 0) rec += '<span><b>+' + res.xp + ' de experiencia</b> (a cada jugador)</span>';
     if (res.medal < 3 && M[res.medal] < 99) rec += '<span>' + MEDAL_N[res.medal + 1] + ': ' + M[res.medal] + ' puntos</span>';
+    if (cdr) rec = careerDrillRec(cdr, total, res.medal);
     el.geRec.innerHTML = rec;
-    var nx = Gm && Gm.nextOf ? Gm.nextOf(id) : null;
+    var nx = Gm && Gm.nextOf && !cdr ? Gm.nextOf(id) : null;
     el.btnGeNext.hidden = !nx;
     if (nx) el.btnGeNext.textContent = 'Siguiente: ' + drillName(nx, true);
+    // sesión de la Carrera: sin «Repetir» ni «Siguiente» (cada una gasta sesión); «Entrenamiento» pasa a «Volver a la Carrera»
+    el.btnGeAgain.hidden = !!cdr;
+    if (cdr) { if (!el.btnGeList.getAttribute('data-cr')) el.btnGeList.setAttribute('data-cr', el.btnGeList.textContent); el.btnGeList.textContent = 'Volver a la Carrera'; setSep(el.geKick, ['Carrera', 'Sesión ' + cdr.n + ' de ' + cdr.max], 'd'); }
+    else if (el.btnGeList.getAttribute('data-cr')) { el.btnGeList.textContent = el.btnGeList.getAttribute('data-cr'); el.btnGeList.removeAttribute('data-cr'); }
     srSay(drillName(id) + ': ' + total + ' puntos' + (res.medal ? ', medalla de ' + MEDAL_N[res.medal].toLowerCase() : '') + (total > 0 && res.isBest ? ', nuevo récord' : ''));
     // depuración: la hoja al momento; si no, tras el sello de la última repetición (0,75 s) y la cortinilla
     geGate = !(ctx.debug && ctx.params.hold !== '1'); geWait = geGate; geT0 = ctx.time; shown = '';
+  }
+  /** Líneas de la hoja final de una sesión de la Carrera (resultado de VB.Career.drillDone en g.careerDrill.res). */
+  function careerDrillRec(cdr, total, medal) {
+    var r = cdr.res, out = '';
+    if (!r || !r.ok) return '<span>' + (r && r.why === 'fatiga' ? 'Demasiada fatiga: la sesión no cuenta' : r && r.why === 'done' ? 'Ya no quedaban sesiones: no cuenta' : 'La sesión no se ha podido apuntar') + '</span>';
+    var an = r.attr && VB.Prog && VB.Prog.LABEL ? VB.Prog.LABEL[r.attr] : cdr.attrName;
+    out += r.up ? '<span class="new">¡+1 en ' + escT(an) + '! (' + r.v + ')</span>' : '<span><b>+' + r.gain + '</b> de progreso en ' + escT(an) + ' (' + r.prog + ' de ' + r.need + ')</span>';
+    out += '<span>Fatiga ' + r.fat0 + ' → ' + r.fat + '</span><span>Impresión en el entrenador ' + Math.round(r.imp0) + ' → ' + Math.round(r.imp) + '</span>';
+    if (r.stat && r.stat0 && r.stat !== r.stat0 && r.stat === 'start') out += '<span class="new">Te has ganado el sitio en los entrenos</span>';
+    return out;
   }
   function geTick() {
     if (ctx.state !== 'over' || !isDrill()) { geWait = false; geGate = false; return; }

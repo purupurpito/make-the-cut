@@ -500,22 +500,41 @@
     tryFullscreen();
     ctx.frozen = false;
     applyVenuePend(); unforceVenue();
-    var free = id === 'free', own = !auto && !Q.debug;
+    var free = id === 'free', own = !auto && !Q.debug, cd = opts.careerDrill && !free ? opts.careerDrill : null;
     animHooks(null);
+    // sesión de entrenamiento de la Carrera (opts.careerDrill = VB.Career.drillSetup): tu jugador de Carrera (atributos con la fatiga,
+    // tus insignias) y tu compañero o uno de tu club, con la equipación del club; también con autopilot (pruebas: la IA juega por ti)
     var g = Sim.createGame({ demo: false, seed: seed(), drill: id, venue: venueNow(), autopilot: auto, present: false, rookie: false,
       difficulty: free ? ctx.settings.difficulty : 'normal', ctrl: free ? (Q.ctrl || ctx.settings.ctrlMode) : 'one', ctrlIdx: 0,
       points: ctx.settings.setPoints,
-      attrs: own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null,
-      badges: own && !Q.nobadges ? squadBadges() : null,
+      attrs: cd ? cd.attrs : own && !Q.noattrs && VB.Prog ? VB.Prog.attrs() : null,
+      badges: cd ? cd.badges : own && !Q.nobadges ? squadBadges() : null,
       // E1: la maestría también se practica en los ejercicios (finta y golpe colocado en Remate, colocación dirigida en Colocación)
       mastery: !auto, aimSet: ctx.settings.aimSet !== false });
     g.gym = g.drill ? id : null;
+    // marca de ejercicio de Carrera: al acabar (drillEnd) cuenta como sesión (careerDrillDone) y la hoja final vuelve al hub (ui.js)
+    if (cd && g.drill) g.careerDrill = { id: id, mode: cd.mode, n: cd.n, max: cd.max, attrName: cd.attrName || '', done: false, res: null };
     endTweaked = false; careerEnd = null;
     restoreEndButtons();
-    setGame(g, null);
+    setGame(g, cd ? cd.kit || null : null);
     setState('playing');
     if (Q.prewarm !== '0') { prewarm('t'); prewarmPrograms(false); }
     if (!auto && !opts.noIntro && Q.intro !== '0' && (!ctx.debug || Q.intro === '1')) introStart();
+  }
+  /** Sesión de entrenamiento de la Carrera (career-ui.js, bloque Entrenamiento): el ejercicio id con tu jugador de Carrera. Si no se
+   *  puede entrenar ahora (sin sesiones, fatiga, sin partido), vuelve al hub. auto = la IA juega por ti (pruebas). */
+  ctx.actions.startCareerDrill = function (id, auto) {
+    var K = VB.Career, s = null;
+    try { s = K && K.drillSetup ? K.drillSetup(id) : null; } catch (e) { reportError('Career.drillSetup', e); }
+    if (!s || !drillId(id)) { if (VB.CareerUI && VB.CareerUI.open) VB.CareerUI.open('hub', { train: true }); return false; }
+    ctx.actions.startMatch({ drill: id, careerDrill: s, autopilot: !!auto });
+    return true;
+  };
+  /** drillEnd de un ejercicio de Carrera: apunta la sesión una sola vez (VB.Career.drillDone, a la Carrera del ejercicio). */
+  function careerDrillDone(g) {
+    var d = g && g.careerDrill; if (!d || d.done) return;
+    d.done = true;
+    try { d.res = VB.Career && VB.Career.drillDone ? VB.Career.drillDone(d.mode, d.id, g.drill ? g.drill.total | 0 : 0) : null; } catch (e) { reportError('Career.drillDone', e); d.res = null; }
   }
   /** Insignias equipadas del escuadrón de Partido rápido para createGame({badges}) (null sin js/badges.js o sin ninguna). */
   function squadBadges() {
@@ -647,13 +666,16 @@
   ctx.actions.toMenu = function () {
     if (intro.left > 0) { intro.left = 0; ctx.introLeft = 0; intro.held.length = 0; call('CameraRig', 'playIntro', 0); call('UI', 'introEnd', true); }
     var fromCareer = !!(ctx.game && ctx.game.career && !ctx.game.demo && !ctx.debug);
+    // ejercicio de Carrera: de vuelta al hub, en Partido › Entrenamiento con el resultado (abandonado a medias: la sesión no se gasta)
+    var drillC = !!(ctx.game && ctx.game.careerDrill && !ctx.game.demo && !ctx.debug) ? ctx.game.careerDrill : null;
     if (fromCareer && !careerEnd && VB.Career && VB.Career.abortMatch) VB.Career.abortMatch(); // partido abandonado: la jornada sigue pendiente
     ctx.frozen = false;
     restoreEndButtons();
     unforceVenue();   // Carrera en la playa: de vuelta al escenario del ajuste
     setGame(demoGame());
     setState('menu');
-    if (fromCareer && !menuOnly && VB.CareerUI && VB.CareerUI.open) { try { VB.CareerUI.open('hub', { fresh: !!careerEnd }); } catch (e) { reportError('CareerUI.open', e); } }
+    if (drillC && VB.CareerUI && VB.CareerUI.open) { try { VB.CareerUI.open('hub', { train: true, res: drillC.res }); } catch (e) { reportError('CareerUI.open', e); } }
+    else if (fromCareer && !menuOnly && VB.CareerUI && VB.CareerUI.open) { try { VB.CareerUI.open('hub', { fresh: !!careerEnd }); } catch (e) { reportError('CareerUI.open', e); } }
     else if (fromCareer && VB.CareerUI && VB.CareerUI.syncMenu) { try { VB.CareerUI.syncMenu(); } catch (e) { } }
     careerEnd = null; menuOnly = false;
   };
@@ -661,7 +683,7 @@
   ctx.actions.resume = function () { if (ctx.state === 'paused') setState('playing'); };
   ctx.actions.togglePause = function () { if (ctx.state === 'playing') ctx.actions.pause(); else if (ctx.state === 'paused') ctx.actions.resume(); };
   // (E6: con un ejercicio en curso, «Reiniciar» repite el mismo ejercicio)
-  ctx.actions.restart = function () { var g = ctx.game; if (g && g.drill && !g.demo) ctx.actions.startMatch({ drill: g.drill.kind, autopilot: !!g.autopilot }); else ctx.actions.startMatch(); };
+  ctx.actions.restart = function () { var g = ctx.game; if (g && g.careerDrill && !g.careerDrill.done && !g.demo) ctx.actions.startCareerDrill(g.drill.kind, !!g.autopilot); else if (g && g.drill && !g.demo) ctx.actions.startMatch({ drill: g.drill.kind, autopilot: !!g.autopilot }); else ctx.actions.startMatch(); };
   ctx.actions.setSetting = function (k, v) {
     if (ctx.settings[k] === v) return;
     ctx.settings[k] = v; saveSettings();
@@ -896,7 +918,7 @@
       Sim.drainEvents(g, frameEvents);
       if (ctx.state === 'playing' && g.finished && frameEvents.some(isGameOver)) setState('over');
       // E6: la 10ª repetición del ejercicio (la sim no emite gameOver: drillEnd y g.drill.done)
-      else if (ctx.state === 'playing' && g.drill && g.drill.done && frameEvents.some(isDrillEnd)) setState('over');
+      else if (ctx.state === 'playing' && g.drill && g.drill.done && frameEvents.some(isDrillEnd)) { if (g.careerDrill) careerDrillDone(g); setState('over'); }
       if (g.career && !g.demo && frameEvents.length) careerEvents(g, frameEvents);
     } else { edge.hit = edge.jump = edge.jset = edge.switchPlayer = false; acc = 0; }
     ctx.gameDt = gdt;
