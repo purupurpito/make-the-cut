@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- El juego nuevo solo trae la partida sin preguntar si el referente es este origen: hay que mandar al menos el origen. -->
+<meta name="referrer" content="origin">
+<meta name="robots" content="noindex">
+<title>Take the Court</title>
+<meta name="description" content="Make the Cut ahora se llama Take the Court y está en takethecourt.com.">
+<link rel="canonical" href="https://takethecourt.com/">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Take the Court"><meta property="og:title" content="Take the Court">
+<meta property="og:description" content="Make the Cut ahora se llama Take the Court y está en takethecourt.com.">
+<meta property="og:url" content="https://takethecourt.com/"><meta property="og:image" content="https://takethecourt.com/og.png">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://takethecourt.com/og.png">
+<meta name="theme-color" content="#15102a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23fff4dc' stroke='%2315102a' stroke-width='2'/%3E%3Cpath d='M12 12C12 8 10.5 4.5 8 2.8M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8M12 12C9 14.5 5 15.5 2.4 14.6' fill='none' stroke='%2315102a' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&family=Titan+One&display=swap">
+<!--
+  TAKE THE COURT — bridge/index.html (y bridge/404.html, copia EXACTA): el puente de la dirección antigua.
+  Se publica en el repo nuevo purupurpito/make-the-cut (https://purupurpito.github.io/make-the-cut/). Lee las partidas de este
+  origen (SOLO las claves 'make-the-cut.*' y las viejas 'voley3d.*'; nunca las de otros proyectos de purupurpito.github.io, como
+  farolillo o emPat), las empaqueta y salta a https://takethecourt.com/#mig=<paquete>, que las mete con js/migrate.js.
+  Nunca borra nada de aquí. Formato y reglas: notes/dominio.md del juego (paquete 1.<z|j>.<sha16|0>.<base64url>).
+  - Sin partida: salta igual (con la ruta, la búsqueda y el hash de antes: ?sala=, netlogs.html…).
+  - Paquete de más de 900 000 caracteres (Firefox corta las direcciones hacia 1 MB): no salta; «Descargar mi partida» (archivo) y
+    «Abrir takethecourt.com» con #migfile. «Copiar código» solo hasta 200 000.
+  - App instalada con el nombre viejo (display-mode standalone): no salta sola; explica que hay que instalarla otra vez desde allí
+    (en iPhone la app instalada guarda aparte) y da el botón, el código y el archivo.
+  - Pruebas (solo en localhost): ?to=<url local> cambia el destino; ?stay=1 no salta (para capturas).
+  El juego nunca registró un service worker: aquí no hace falta ningún sw.js.
+-->
+<style>
+:root{--ink:#15102a;--ink2:#2f2560;--cream:#fff4dc;--cream2:#fffaf0;--gold:#ffcb3d;--teal:#1bb5a5;--kit:#ff5a2c;--alt:#a6ea2c;
+  --pop:"Titan One","Arial Black",Impact,system-ui,sans-serif;--ui:"Rubik",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--ink);color:var(--ink);font:16px/1.4 var(--ui)}
+body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  background:radial-gradient(circle at 12% 18%,rgba(255,90,44,.55) 0 9%,transparent 9.4%),radial-gradient(circle at 88% 82%,rgba(27,181,165,.5) 0 11%,transparent 11.4%),
+    radial-gradient(circle at 92% 12%,rgba(255,203,61,.45) 0 5%,transparent 5.4%),radial-gradient(circle at 6% 90%,rgba(166,234,44,.4) 0 6%,transparent 6.4%),var(--ink);
+  overflow-x:hidden}
+.card{position:relative;width:min(560px,100%);background:var(--cream);border:3px solid var(--ink);border-radius:18px;box-shadow:5px 6px 0 #000;
+  padding:22px 22px 18px;transform:rotate(-.8deg)}
+.card::before{content:"";position:absolute;inset:7px;border:2px dashed rgba(21,16,42,.28);border-radius:12px;pointer-events:none}
+.top{display:flex;align-items:center;gap:14px}
+.ball{flex:none;width:64px;height:64px;filter:drop-shadow(3px 3px 0 var(--ink))}
+.chip{display:inline-block;margin:0 0 6px;padding:3px 10px;background:var(--gold);border:2px solid var(--ink);border-radius:999px;font:13px/1.2 var(--pop);transform:rotate(-2deg)}
+h1{margin:0;font:clamp(22px,5.4vw,32px)/1.08 var(--pop);letter-spacing:.2px}
+h1 b{display:inline-block;color:var(--kit);text-shadow:2px 2px 0 var(--ink);-webkit-text-stroke:1px var(--ink)}
+p{margin:12px 0 0}
+#msg b{white-space:nowrap}
+.note{font-size:14px;opacity:.85}
+.warn{background:var(--cream2);border:2px solid var(--ink);border-radius:12px;padding:8px 12px}
+.acts{display:flex;flex-wrap:wrap;gap:12px 14px;margin-top:16px;align-items:center}
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:10px 20px;border:3px solid var(--ink);
+  font:17px/1.1 var(--pop);text-decoration:none;color:var(--ink);background:var(--cream2);cursor:pointer;box-shadow:3px 4px 0 var(--ink);
+  border-radius:46% 54% 42% 58% / 58% 46% 54% 42%;transform:rotate(1.2deg);-webkit-tap-highlight-color:transparent}
+.btn::after{content:"";position:absolute;right:-9px;top:-6px;width:9px;height:9px;border-radius:50%;background:inherit;border:2px solid var(--ink)}
+.btn.primary{background:var(--kit);color:#fff6e4;text-shadow:2px 2px 0 var(--ink);transform:rotate(-1.4deg);border-radius:52% 48% 56% 44% / 44% 58% 42% 56%}
+.btn.alt{background:var(--alt)}
+.btn.teal{background:var(--teal)}
+.btn:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.btn:active{transform:scale(.96,.92)}
+#manual{display:block;width:100%;height:4.6em;margin-top:8px;padding:6px 8px;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink);
+  font:13px/1.3 ui-monospace,Consolas,monospace;resize:none;word-break:break-all}
+.dots{display:inline-block;width:1.2em;text-align:left}
+[hidden]{display:none!important}
+@media (max-height:440px) and (orientation:landscape){
+  .card{width:min(680px,100%);padding:12px 16px 12px}
+  .ball{width:44px;height:44px}
+  h1{font-size:clamp(19px,3.4vw,26px)}
+  p{margin-top:7px;font-size:14px}
+  .note{font-size:13px}
+  .acts{margin-top:10px;gap:10px 12px}
+  .btn{min-height:44px;padding:8px 16px;font-size:15px}
+}
+@media (prefers-reduced-motion:reduce){.btn,.card,.chip{transform:none}}
+</style>
+</head>
+<body>
+<main class="card" role="main" aria-live="polite">
+  <div class="top">
+    <svg class="ball" viewBox="1.4 1.4 21.2 21.2" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#fff4dc"/><path d="M12 12C12 8 10.5 4.5 8 2.8A10 10 0 0 1 13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8C16 13.9 13.7 13 12 12Z" fill="#1bb5a5"/><path d="M12 12C12 8 10.5 4.5 8 2.8A10 10 0 0 1 13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8C16 13.9 13.7 13 12 12Z" fill="#ff5a2c" transform="rotate(120 12 12)"/><g fill="none" stroke="#15102a" stroke-width="1.1" stroke-linecap="round"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/><g transform="rotate(120 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g><g transform="rotate(240 12 12)"><path d="M12 12C12 8 10.5 4.5 8 2.8"/><path d="M13.8 2.2C16.5 5.5 17.8 9.5 17.3 13.8"/></g></g><circle cx="12" cy="12" r="10" fill="none" stroke="#15102a" stroke-width="1.6"/></svg>
+    <div>
+      <p class="chip">Nuevo nombre</p>
+      <h1>Make the Cut ahora se llama <b>Take the Court</b></h1>
+    </div>
+  </div>
+  <p id="msg">Llevándote a <b>takethecourt.com</b><span id="withSave"> con tu partida</span><span class="dots">…</span></p>
+  <p id="inst" class="warn" hidden>Tienes instalado el juego con el nombre antiguo. Entra en <b>takethecourt.com</b>, instálalo otra vez desde allí y borra el icono viejo.</p>
+  <p id="big" class="warn" hidden>Tu partida es tan grande que no cabe en un enlace. Descárgala aquí y, en takethecourt.com, elige el archivo en <b>Ajustes › Info › Traer tu partida</b>.</p>
+  <p id="lost" class="warn" hidden>Algún dato es demasiado grande para llevárselo y se queda aquí. El resto de tu partida sí viaja.</p>
+  <p id="copied" class="note" hidden>Código copiado. En takethecourt.com, pégalo en <b>Ajustes › Info › Traer tu partida</b>.</p>
+  <p id="copyHand" class="note" hidden>No se ha podido copiar solo: selecciona el código, cópialo y pégalo en takethecourt.com, en <b>Ajustes › Info › Traer tu partida</b>.</p>
+  <textarea id="manual" readonly hidden aria-label="Código de tu partida"></textarea>
+  <div class="acts">
+    <button id="dl" class="btn alt" type="button" hidden>Descargar mi partida</button>
+    <button id="cp" class="btn" type="button" hidden>Copiar código</button>
+    <a id="openFile" class="btn teal" href="https://takethecourt.com/#migfile" hidden>Abrir takethecourt.com</a>
+    <a id="go" class="btn primary" href="https://takethecourt.com/">Ir a takethecourt.com</a>
+  </div>
+  <p class="note" id="keep">Tu partida sigue guardada también aquí: no se borra nada.</p>
+  <noscript><p class="warn">Sin JavaScript no podemos llevarte la partida. El juego está en <a href="https://takethecourt.com/">takethecourt.com</a>.</p></noscript>
+</main>
+<script>
+(function () {
+  'use strict';
+  var TARGET = 'https://takethecourt.com/', BASE_PATH = '/make-the-cut/', MAX_URL = 900000, MAX_COPY = 200000, DELAY = 900;
+  var KEY_RE = /^make-the-cut\.[A-Za-z0-9_.-]{1,80}$/, MAX_VAL = 2000000, MAX_KEYS = 200;
+  // por encima de MAX_VAL / MAX_KEYS el enlace no vale (el juego lo rechaza) pero el archivo sí (js/migrate.js LIM.valFile / keysFile)
+  var MAX_VAL_FILE = 5500000, MAX_KEYS_FILE = 400, oversize = false, lost = [];
+  var $ = function (id) { return document.getElementById(id); };
+  var loc = window.location, search = loc.search || '', stay = false;
+  var isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(loc.hostname);
+  function dropParam(s, name) {
+    var q = s.replace(/^\?/, ''); if (!q) return '';
+    var out = [], parts = q.split('&');
+    for (var i = 0; i < parts.length; i++) if (parts[i] && parts[i].split('=')[0] !== name) out.push(parts[i]);
+    return out.length ? '?' + out.join('&') : '';
+  }
+  function param(s, name) {
+    var m = new RegExp('[?&]' + name + '=([^&]*)').exec(s); if (!m) return null;
+    try { return decodeURIComponent(m[1]); } catch (e) { return null; }
+  }
+  if (isLocal) {   // solo pruebas
+    var to = param(search, 'to');
+    if (to && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/[^\s#?]*$/.test(to)) TARGET = to;
+    stay = param(search, 'stay') === '1';
+    search = dropParam(dropParam(search, 'to'), 'stay');
+  }
+  search = dropParam(search, 'u');   // (la recarga de «Reiniciar» de js/update.js)
+  // ruta de antes (404.html: /make-the-cut/netlogs.html → netlogs.html)
+  var path = loc.pathname || '/', at = path.toLowerCase().indexOf(BASE_PATH);
+  var rest = at >= 0 ? path.slice(at + BASE_PATH.length) : path.replace(/^\/+/, '');
+  if (/^(index|404)\.html$/i.test(rest) || !/^[A-Za-z0-9._\-\/]*$/.test(rest) || rest.indexOf('..') >= 0 || rest.charAt(0) === '/') rest = '';
+  // hash de antes, sin restos de un traspaso
+  var hp = (loc.hash || '').replace(/^#/, '').split('&'), hk = [];
+  for (var i = 0; i < hp.length; i++) if (hp[i] && !/^(mig|migcode|migfile)(=|$)/.test(hp[i])) hk.push(hp[i]);
+  var hash = hk.join('&'), dest = TARGET + rest + search;
+  function finalUrl(p) { return dest + (p ? '#mig=' + p + (hash ? '&' + hash : '') : (hash ? '#' + hash : '')); }
+  var standalone = false;
+  try { standalone = (window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches)) || window.navigator.standalone === true; } catch (e) { }
+
+  var go = $('go'); go.href = finalUrl('');
+  function leave(u) { if (stay) return; setTimeout(function () { try { loc.replace(u); } catch (e) { loc.href = u; } }, DELAY); }
+
+  // ---- leer las partidas (solo make-the-cut.* y voley3d.*; nunca se borra nada)
+  function collect() {
+    var keys = {}, n = 0, LS, k, i, v, list = [];
+    try { LS = window.localStorage; if (!LS) return null; } catch (e) { return null; }
+    try { for (i = 0; i < LS.length; i++) { k = LS.key(i); if (k) list.push(k); } } catch (e) { return null; }
+    function add(name, val) {
+      if (!KEY_RE.test(name) || typeof val !== 'string') return;
+      if (/^make-the-cut\.(mig\.|migbak\.)|^make-the-cut\.account\.(gredir|rl|out)/.test(name)) return;
+      // la sesión (lleva el token de la cuenta) no viaja: el enlace queda en el historial y el archivo en Descargas; en
+      // takethecourt.com se vuelve a entrar y la nube trae lo suyo
+      if (/^make-the-cut\.account(\.meta\.up)?$/.test(name)) return;
+      if (Object.prototype.hasOwnProperty.call(keys, name)) return;
+      if (val.length > MAX_VAL_FILE || n >= MAX_KEYS_FILE) { lost.push(name); return; }   // ni en archivo: se avisa (no se pierde: sigue aquí)
+      if (val.length > MAX_VAL || n >= MAX_KEYS) oversize = true;   // solo por archivo o código
+      keys[name] = val; n++;
+    }
+    for (i = 0; i < list.length; i++) if (list[i].indexOf('make-the-cut.') === 0) { try { add(list[i], LS.getItem(list[i])); } catch (e) { } }
+    for (i = 0; i < list.length; i++) if (list[i].indexOf('voley3d.') === 0) {   // (las de antes de la 1.6.0, si la nueva no está)
+      k = 'make-the-cut.' + list[i].slice(8);
+      try { if (LS.getItem(k) === null) { v = LS.getItem(list[i]); add(k, v); } } catch (e) { }
+    }
+    return n ? keys : null;
+  }
+  // ---- empaquetar: JSON → deflate (si hay CompressionStream) → base64url; sha = 16 cifras del SHA-256 del JSON
+  function utf8(s) {
+    if (window.TextEncoder) return new TextEncoder().encode(s);
+    var b = unescape(encodeURIComponent(s)), u = new Uint8Array(b.length);
+    for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+    return u;
+  }
+  function b64u(u) {
+    var s = '', CH = 0x8000;
+    for (var i = 0; i < u.length; i += CH) s += String.fromCharCode.apply(null, u.subarray(i, i + CH));
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function hex16(buf) { var u = new Uint8Array(buf), h = ''; for (var i = 0; i < 8; i++) h += (u[i] < 16 ? '0' : '') + u[i].toString(16); return h; }
+  function sha(bytes) {
+    var c = window.crypto;
+    if (!c || !c.subtle || !c.subtle.digest) return Promise.resolve('0');
+    try { return c.subtle.digest('SHA-256', bytes).then(hex16, function () { return '0'; }); } catch (e) { return Promise.resolve('0'); }
+  }
+  function deflate(bytes) {
+    if (!window.CompressionStream || !window.Response || !window.Blob) return Promise.resolve(null);
+    try {
+      var st = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate'));
+      return new Response(st).arrayBuffer().then(function (b) { return new Uint8Array(b); }, function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+
+  var payload = '';
+  function download() {
+    var txt = JSON.stringify({ format: 'take-the-court-mig', v: 1, mig: payload });
+    try {
+      var b = new Blob([txt], { type: 'application/json' }), u = URL.createObjectURL(b), a = document.createElement('a');
+      a.href = u; a.download = 'partida-make-the-cut.json'; document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(u); if (a.parentNode) a.parentNode.removeChild(a); }, 4000);
+    } catch (e) { }
+  }
+  function copy() {
+    var done = function () { $('copied').hidden = false; $('openFile').href = TARGET + '#migcode'; $('openFile').hidden = false; };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(payload).then(done, fallback); return; } } catch (e) { }
+    fallback();
+    function fallback() {
+      try {
+        var t = document.createElement('textarea'); t.value = payload; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.focus(); t.select(); t.setSelectionRange(0, t.value.length);
+        var ok = false; try { ok = document.execCommand('copy'); } catch (e) { }
+        document.body.removeChild(t);
+        if (ok) { done(); return; }
+      } catch (e) { }
+      manual();
+    }
+    function manual() {   // sin portapapeles: el código a la vista para copiarlo a mano
+      var m = $('manual'); m.value = payload; m.hidden = false; $('copyHand').hidden = false;
+      try { m.focus(); m.select(); } catch (e) { }
+      $('openFile').href = TARGET + '#migcode'; $('openFile').hidden = false;
+    }
+  }
+  $('dl').onclick = download; $('cp').onclick = copy;
+
+  function ready(p) {
+    payload = p;
+    var fits = p.length <= MAX_URL && !oversize && !lost.length;
+    if (lost.length) $('lost').hidden = false;
+    go.href = fits ? finalUrl(p) : finalUrl('');
+    window.__bridge = { payload: p, fits: fits, url: go.href, standalone: standalone, oversize: oversize, lost: lost.slice() };
+    if (!fits) {
+      $('msg').hidden = true; $('big').hidden = false; $('dl').hidden = false; $('openFile').hidden = false;
+      $('openFile').href = TARGET + '#migfile'; go.className = 'btn'; go.textContent = 'Ir sin la partida';
+      if (p.length <= MAX_COPY) $('cp').hidden = false;
+      if (standalone) { $('inst').hidden = false; $('keep').hidden = true; }
+      return;
+    }
+    if (standalone) {
+      $('msg').hidden = true; $('inst').hidden = false; go.textContent = 'Seguir con mi partida';
+      $('dl').hidden = false; if (p.length <= MAX_COPY) $('cp').hidden = false;
+      return;
+    }
+    leave(go.href);
+  }
+
+  var keys = collect();
+  if (!keys) {
+    $('withSave').hidden = true;
+    window.__bridge = { payload: '', fits: true, url: go.href, standalone: standalone };
+    if (standalone) { $('msg').hidden = true; $('inst').hidden = false; $('keep').hidden = true; return; }
+    $('keep').hidden = true;
+    leave(go.href);
+    return;
+  }
+  // sin hora: el mismo guardado da el mismo paquete y el mismo sha (mig.done lo reconoce en una segunda visita)
+  var json = JSON.stringify({ v: 1, from: 'make-the-cut', keys: keys }), bytes = utf8(json);
+  if (!window.Promise) { ready('1.j.0.' + b64u(bytes)); return; }
+  sha(bytes).then(function (h) {
+    return deflate(bytes).then(function (z) { ready(z ? '1.z.' + h + '.' + b64u(z) : '1.j.' + h + '.' + b64u(bytes)); });
+  })['catch'](function () { try { ready('1.j.0.' + b64u(bytes)); } catch (e) { } });
+})();
+</script>
+</body>
+</html>
